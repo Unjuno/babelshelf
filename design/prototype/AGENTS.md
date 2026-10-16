@@ -83,3 +83,4 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 - All preview data is transient React state. No downloads, inference, real schedules, notifications, backup integrations or permission prompts.
 - Sheet material and z-order use the persistent Input anchor, not the conditionally mounted arc. Device chrome/keyboard remain protected template infrastructure.
 - For meaningful changes run node --test tests/memory-paths.test.mjs tests/memory-navigation.test.mjs and npm run build. Browser simulation is not physical-device evidence.
+- Favicon is a completely blank white square/paper, with no glyph, text, folded corner or branding.

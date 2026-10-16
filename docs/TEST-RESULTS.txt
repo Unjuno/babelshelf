@@ -6,7 +6,7 @@ as historical evidence; old counts/preview blockers are not the current status.
 
 Measured in Windows / Node 24.6.0:
 - Baseline npm test: 33 passed, 0 failed.
-- Baseline npm run check: syntax / DOM / model pins / 22 shell hashes passed.
+- Baseline npm run check: syntax / DOM / model pins / 23 shell hashes passed.
 - Baseline npm run test:markdown: 4 passed, 0 failed. The seed still lives in
   specs/pending/ for compatibility but no longer has an expected failure.
 - Prototype helper/build and copied-repository validation: see LOCAL-VERIFICATION.md.

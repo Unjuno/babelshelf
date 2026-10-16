@@ -7,6 +7,11 @@
       "sha256": "dd55928d535b80d1db295ba5f0bf61303e551a94f4112429b4dac1925376119e"
     },
     {
+      "path": "./blank-paper.svg",
+      "bytes": 132,
+      "sha256": "689d4dd13eabfa95e3741496fa68a55b8e0f2beb92016ed459844a5cc2163a5f"
+    },
+    {
       "path": "./core.js",
       "bytes": 8570,
       "sha256": "ad8e6c4d17284a86ee756e935ee464e784104fd98df873ecea470846f64020a6"
@@ -43,8 +48,8 @@
     },
     {
       "path": "./index.html",
-      "bytes": 7391,
-      "sha256": "75f424976caa44642f9612d252ded53c8130caf06e77f4521bf5eaf72d8c0e3c"
+      "bytes": 7398,
+      "sha256": "c19dae99c6edb62057e074b69d496efca3f7b580785d980c9a7591b1019857f6"
     },
     {
       "path": "./language-fixtures.json",
@@ -104,7 +109,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "3eff05b4199bd845915770a5c24afc6758d1bd4525880b70c4f2e1de9d0d901a"
+      "sha256": "512701d9c778e472ed18594963eb55230770cbf085287567b9a8223ce6dec7b7"
     },
     {
       "path": "./ui.js",

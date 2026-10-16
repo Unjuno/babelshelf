@@ -75,3 +75,5 @@ Required offline acceptance after app shutdown/restart: new notes, TXT/MD import
 ## Status
 
 Accepted interactive UI: design/prototype/. Baseline core/PWA: dist/. No integration between them is claimed. Persistent tool correction, canonical scheduled tasks, actual notifications, working local d1, real Bonsai generation, full offline cold restart and physical iPhone/Android acceptance remain pending.
+
+Favicon: a completely blank white paper/square with no visible mark or text. This applies to browser tab favicons; existing installed-PWA home-screen icons have not been redesigned.

@@ -5,7 +5,7 @@ Host: Windows PowerShell, Node 24.6.0. Working repository: babelshelf. No deploy
 | Check | Observed result | Scope |
 | --- | --- | --- |
 | npm test | 33 passed | Baseline core/source/server tests; includes old baseline navigation checks |
-| npm run check | Passed; 22 shell assets | Baseline syntax/DOM/model pins/generated asset hashes |
+| npm run check | Passed; 23 shell assets | Baseline syntax/DOM/model pins/generated asset hashes |
 | npm run test:markdown | 4 passed | Formerly pending Markdown acceptance seed, now implemented |
 | npm run test:prototype | 5 passed | Home/ancestor mapping, protected roots, path/depth validation |
 | npm --prefix design/prototype ci | Passed; 77 packages installed | Fresh repository copy after repairing dependency lock consistency |
