@@ -115,3 +115,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 - ReferenceCard shares text excerpt/image/video/audio previews across citation example and sent originals. Example citation pins v1. Attachments are not generated citations. Weekly schedule now includes weekday and device-zone/next-local-occurrence preview; no runtime execution guarantee.
 
 - Answer citations use compact inline marks only. Show source filenames, original text and media previews on demand after opening the mark; do not add permanent source cards below answers. Dark original text and sheet actions must retain strong contrast.
+
+- Keep the visible Input surface free of Example and Hold/Menu helper labels. Bundled content remains a prototype fixture, not evidence of model inference; document that outside the product screen.
