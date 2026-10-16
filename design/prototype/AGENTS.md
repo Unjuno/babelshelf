@@ -108,3 +108,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 - Scheduled work is a prompt: New/Edit schedule uses a multiline Prompt with exact body preservation, not a title-only task. List heading derives from the first line; notification receipts retain the prompt. Repeat uses the same app-owned glass choice sheet (Every day/Every week) with draft-preserving return/Cancel; no native select menu. Execution and canonical persistence remain unconnected.
 
 - Tools is a protected sixth canonical root, outside Home, with read-only bundled definitions and a disabled MCP template. User definitions are inactive data; file creation never enables execution/network. Keep built-in IDs/protection separate from user-authored frontmatter. app-settings schema 3 includes Tools.
+
+- Settings is the seventh protected root (schema 4). Managed settings file IDs/paths are immutable but values are editable and validated. Derive control values only from preference-records.ts records; do not recreate parallel React preference state. Keep short Settings categories, folder/Open file links and append-only revisions. UI records are still session-only.

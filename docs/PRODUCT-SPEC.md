@@ -24,7 +24,7 @@ The user may later choose external tools/MCP/frontier models as an optional sepa
 
 Memory opens at Home, analogous to a user's own area rather than a system root. Home has Inbox, Notes and Files. Breadcrumbs navigate each ancestor; folder rows enter their immediate contents. Upper-level Memory navigation explicitly reveals internal locations.
 
-Canonical roots: Inbox, Notes, Schedule, Notifications, Attachments, Tools. They cannot be renamed, moved or deleted by the UI, models or tools. User files/subfolders are writable below them. Maximum stored folder depth is five, including the system root. IDs, links, references and previous versions survive path edits.
+Canonical roots: Inbox, Notes, Schedule, Notifications, Attachments, Tools, Settings. They cannot be renamed, moved or deleted by the UI, models or tools. User files/subfolders are writable below them. Maximum stored folder depth is five, including the system root. IDs, links, references and previous versions survive path edits.
 
 Home is a display grouping, not another stored folder or account. Home / Files maps to Attachments; Home / Notes maps to Notes; Home / Inbox maps to Inbox. The prototype never creates OS Markdown files. Baseline persistence is IndexedDB with an inspectable projection/export, documented in STORAGE-CONTRACT.md.
 
@@ -99,3 +99,7 @@ Tools is a protected canonical root reached through the Memory ancestor, outside
 A definition is data, never execution permission. New/custom/MCP definitions remain inactive until an adapter validates schema, operation scope, endpoint, exposed tool changes, data disclosure and explicit user enablement. Do not put credentials in Markdown, exported records or model context. No arbitrary JS, shell, stdio process or module URL may be launched from these files. Built-in adapters stay bundled and independently enforce permissions. Do not connect on boot or merely because a file is present. All ordinary local functions must remain usable without an external MCP service.
 
 Current implementation: inspectable session-only definitions and protected operations; not an MCP client, registry loader or execution adapter. Schema 3 adds Tools without migrating/deleting baseline records. Typed schemas, validation/import, consent and transport implementations are next work.
+
+## Unified Settings records
+
+Settings belongs at the Memory root and cannot be deleted or renamed. Standard models.md/appearance.md/connection.md files have fixed IDs/paths, editable validated JSON values and retained revisions. README is read-only. The dedicated Settings screen edits the same records, with short category entries and links to Memory; it does not maintain duplicate preference state. Invalid edits leave the current valid setting intact. Runtime readiness, permissions and secrets never come from these user-editable files. Prototype records remain session-only.

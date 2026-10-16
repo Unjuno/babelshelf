@@ -138,3 +138,9 @@ No new real-browser or device PASS is claimed.
 - Prototype helpers: 11/11 PASS; protection includes Tools root and bundled definitions while custom definition deletion remains allowed. TypeScript/Vite build PASS; runtime 28/28 unchanged; ~530 kB bundle warning remains.
 - Desktop browser: Memory ancestor -> Tools -> built-in search definition; Edit and File actions disabled. New custom-tool.md created under Tools and Edit enabled; custom definition listed beside protected built-ins.
 - No tool/MCP execution, external connection, credential storage, persistent definition registration or physical-device verification performed.
+
+2026-10-17 unified Settings records
+- Prototype helper tests 14/14 PASS: control updates append original bytes/version; invalid fields/values do not mutate active records; speech selection requires registered library; managed settings reject deletion.
+- Desktop browser: Settings categories -> Appearance/Sand -> Open file shows background sand at v2. Invalid theme Save shows Unsupported appearance value and retains valid v2. Direct file edit Light/Sage/Frosted saved at v3; History lists v1/v2/v3.
+- Settings root/files and dedicated controls share transient notes state. No durable preference storage, baseline migration, model runtime or physical-device verification claimed.
+- Reverse reflection confirmed in controls: Light/Sage/Frosted selected after direct file save. Model picker change to Bonsai 2B appears in models.md at v2. Console errors observed: none. TypeScript/Vite build PASS; protected runtime 28/28 unchanged; bundle-size warning remains (~536 kB).

@@ -386,3 +386,5 @@ button.model-picker svg{flex-shrink:0}
 .device-screen:has(.appearance-dark) .schedule-form>label{color:#c0d1c7}.device-screen:has(.appearance-dark) .schedule-form input:not([type=checkbox]){background:#1b2d25;color:#eff8f3}.device-screen:has(.appearance-dark) .schedule-form .solid-button{background:#385947;color:#eff8f3!important}
 
 .file-footer button:disabled{opacity:.35;cursor:default;background:transparent}
+
+.settings-file-link{display:flex;align-items:center;gap:7px;border:0;background:transparent;min-height:44px;font:inherit;color:#005b40;margin:0 0 18px}.device-screen:has(.appearance-dark) .settings-file-link{color:#b8edcf}.settings-screen .page-heading h1{margin:0}.settings-categories .settings-action{min-height:58px}

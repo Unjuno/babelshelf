@@ -4,7 +4,7 @@ test('five folder levels allow files, sixth folder is rejected',()=>{assert.equa
 test('file creation needs a name only and refuses traversal or conflicting paths',()=>{assert.equal(paths.filePath('work','Meeting.md'),'work/Meeting.md');assert.equal(paths.filePath('','Meeting'),'Meeting.md');for(const name of ['../bad','a/b','a\\b',''])assert.throws(()=>paths.filePath('work',name));assert.throws(()=>paths.filePath('work','meeting',['WORK/MEETING.md']));assert.throws(()=>paths.folderPath('work','a',['work/a']));});
 
 test('Memory has immutable system folders and creates only inside them',()=>{
- assert.deepEqual(paths.SYSTEM_FOLDERS,['Inbox','Notes','Schedule','Notifications','Attachments','Tools']);
+ assert.deepEqual(paths.SYSTEM_FOLDERS,['Inbox','Notes','Schedule','Notifications','Attachments','Tools','Settings']);
  assert.equal(Object.isFrozen(paths.SYSTEM_FOLDERS),true);
  assert.equal(paths.memoryFilePath('Inbox','記録'),'Inbox/記録.md');
  assert.equal(paths.memoryFolderPath('Notes','Projects'),'Notes/Projects');
