@@ -183,7 +183,7 @@ export default function Prototype() {
 
   <MobileScroll className={'knowledge-scroll appearance-'+effectiveTheme+' background-'+background+' material-'+material}>
    {page==='input'?<main className="conversation" style={{minHeight:availableHeight}} aria-label="Input and results">
-    <div className="sample-exchange"><span className="example-label">Example</span><div className="user-bubble">What did we decide about the meeting?</div><div className="reply-text">Move it to Monday at 10. The venue stays the same.<button className="source-inline" aria-label="View source" title="Source" onClick={()=>{keyboard.hide();setSheet('source');}}><Quotes size={16} weight="duotone"/></button></div><ReferenceCard source={{kind:'text',name:'meeting.md',location:'v1 · Notes/work',excerpt:'Move it to Monday at 10. The venue stays the same.'}} onOpen={()=>{keyboard.hide();setSheet('source');}}/></div>
+    <div className="sample-exchange"><span className="example-label">Example</span><div className="user-bubble">What did we decide about the meeting?</div><div className="reply-text">Move it to Monday at 10. The venue stays the same.<button className="source-inline" aria-label="View source" title="Source" onClick={()=>{keyboard.hide();setSheet('source');}}><Quotes size={16} weight="duotone"/></button></div></div>
     {messages.map((message,i)=><div className="sent-message" key={i}>{message.text&&<div className="user-bubble added-message">{message.text}</div>}{message.attachments.map(item=><ReferenceCard key={item.id} source={{name:item.name,kind:item.kind,url:item.url,excerpt:item.text?.slice(0,220),location:'Attachment · '+item.status}} onOpen={()=>showAttachment(item)}/>)}</div>)}
    </main>:page==='memory'?<main className="secondary-screen">
     {current?<>

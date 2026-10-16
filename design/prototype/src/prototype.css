@@ -417,3 +417,7 @@ button.model-picker svg{flex-shrink:0}
 @media(prefers-reduced-transparency:reduce){.editor-actions,.reference-card{background:#f4f8f6}}
 
 .device-screen:has(.appearance-dark) .source-inline{color:#b8edcf!important}.device-screen:has(.appearance-dark) :is(.editor-actions .solid-button,.send-button){background:#385947;color:#eff8f3!important}.protected-label{font-size:14px}
+
+/* Source details stay on demand; original text and actions remain readable in dark sheets. */
+.device-screen:has(.appearance-dark) .file-body{color:#eff8f3}
+.device-screen:has(.appearance-dark) .solid-button{background:#385947;color:#eff8f3!important;border-color:#6d9681}

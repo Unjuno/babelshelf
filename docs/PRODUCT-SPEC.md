@@ -106,7 +106,7 @@ Settings belongs at the Memory root and cannot be deleted or renamed. Standard m
 
 ## UI review corrections and file previews
 
-Input/results now shows a source file card alongside the inline source marker. Cards expose filename, revision/location and excerpt; the reusable renderer also supports original image/video thumbnails and audio Listen affordances. Clicking opens original content/player. The bundled exchange is explicitly Example and its source remains pinned to original v1, independent of later edits. Sent attachments use the same preview renderer but are labeled Attachment plus actual processing status; they are not presented as generated-answer citations. No model has analyzed them.
+Input/results shows only a compact inline source marker beside the answer. Tapping it opens source details with filename, exact revision/location and original text or media preview; source cards are not permanently displayed below answers. The reusable attachment renderer supports original image/video thumbnails and audio Listen affordances. The bundled exchange is explicitly Example and its source remains pinned to original v1, independent of later edits. Sent attachments use the same preview renderer but are labeled Attachment plus actual processing status; they are not presented as generated-answer citations. No model has analyzed them.
 
 Editor Save/Cancel are fixed above the keyboard; scheduled prompt fields scroll independently from the footer. Send and source controls have 44px boxes. Managed setting files show Fixed path rather than the same read-only lock used for bundled definitions; managed files remain directly editable. Folder protection remains enforced without implying all contents are read-only.
 

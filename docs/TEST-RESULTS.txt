@@ -152,3 +152,8 @@ No new real-browser or device PASS is claimed.
 - Real local fixture selection MD/WAV/MP4/PNG -> Send -> shared original cards. PNG complete with native dimensions 393x852; MP4 duration 1s, readyState4, error null and player rendered; WAV Play -> Pause verified. Test media are playback fixtures, not inference evidence. Media analysis remains unprepared.
 - Dark preparation label colors now rgb(201,223,210) over rgb(36,56,48), measured contrast ~8.89:1; unavailable prepare buttons disabled consistently. Send/source boxes 44 CSS px.
 - Folder identity protection no longer implies read-only contents; managed settings display Fixed path and remain editable. No physical touch/50ms timing/IME/assistive technology or full offline restart verification.
+
+2026-10-17 Compact citations and dark source contrast
+- Removed permanent answer source card; desktop browser confirms zero sample answer cards, inline mark opens exact v1/path/original, Open file opens Memory original reader. Sent attachment previews retained.
+- Dark source and original reader body rgb(239,248,243) over sheet rgb(36,56,48); primary action uses same foreground over rgb(56,89,71). Browser console errors: none.
+- Prototype helper tests 15/15 PASS; TypeScript/Vite build PASS; protected runtime 28/28 unchanged. Existing ~541 kB chunk warning remains. Physical mobile devices and inference not tested in this UI-only revision.

@@ -113,3 +113,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 
 - UI-review fixes: fixed editor actions above keyboard; task sheet has scrollable fields and pinned actions; source/Send 44px; dark readiness contrast; Fixed path vs read-only distinction; unread badges; unavailable Prepare buttons disabled. Keep approved 50ms hold and short hint, pending physical-touch evidence.
 - ReferenceCard shares text excerpt/image/video/audio previews across citation example and sent originals. Example citation pins v1. Attachments are not generated citations. Weekly schedule now includes weekday and device-zone/next-local-occurrence preview; no runtime execution guarantee.
+
+- Answer citations use compact inline marks only. Show source filenames, original text and media previews on demand after opening the mark; do not add permanent source cards below answers. Dark original text and sheet actions must retain strong contrast.

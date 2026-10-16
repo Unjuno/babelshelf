@@ -31,3 +31,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 ## Reference preview surface
 
 ReferenceCard.tsx is the shared text/image/video/audio file-preview renderer. A future grounded answer must supply verified record ID, exact revision/range/time span separately; a URL/name in this UI is not provenance validation. Current example answers use a pinned bundled note v1. User media is only attached originals, labeled as such. Native playback is independent of transcription/OCR readiness. No test-generated transcript, answer or media-derived citation is substituted for real inference.
+
+Answer citations stay compact inline marks. Filename, revision, original excerpt and media preview belong in the opened source surface, not a permanently visible answer card. User-sent attachment previews remain visible with their input.
