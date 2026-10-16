@@ -4,6 +4,9 @@ Unit2 implemented actual Bonsai + a native-browser production entry.
 Current Node baseline35 / prototype25 / product artifact2 PASS.
 Production build745c77f0897f7b7a (index-BzK2QyJn.js); protected preview
 runtime unchanged. See MODEL-RUNTIME-VERIFICATION.md for exact evidence.
+Follow-up native layout build54e2cd22152e893d (index-BjzwrC05.js) updated
+through normal Check/Apply/reopen, without bypass. Button top14/height72,
+breadcrumb top126: no overlap; saved generated data retained. Worker unchanged.
 
 PC IAB: worker GPU probe PASS after GPUAdapterInfo clone fix. Explicit4B
 download/hash/load, actual multilingual summary/citations/exact save PASS.

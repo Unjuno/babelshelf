@@ -28,6 +28,8 @@ An older production shell8b05200ed00efedf at4182 also ran with its server stoppe
 
 Updated build745c77f0897f7b7a (index-BzK2QyJn.js) removes preview-only status-bar strips and adds explicit update controls. A development-only Network bypass plus Page.reload bootstrapped the first update-capable page; then its normal Check/Apply update flow activated the verified new shell without clearing storage. QA1057-offline-answer remained readable after normal reload. Shared inference worker hash CP1YQK8C was unchanged by this UI update.
 
+Follow-up build54e2cd22152e893d (index-BjzwrC05.js) fixes native navigation positioning as well. The normal Check/Apply/reopen flow was exercised again without a development bypass. Measured primary button top14/height72 and breadcrumb top126 do not overlap; the saved generated answer is intact. Inference worker hash remains unchanged.
+
 These results prove distribution-server-unavailable new-tab startup with local resources and inference fetch denial. They do not prove OS-level airplane mode, a full browser-process restart, installed iPhone PWA relaunch, GPU memory/thermal behavior or every required function.
 
 ## Remaining limitations
