@@ -25,3 +25,7 @@ The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It s
 The baseline currently passes its Node and Markdown seed tests. The accepted UI has separate helper/build checks and desktop-browser simulation evidence. These do not establish end-to-end integration or device/offline/model completion. Historical bwrap/no-adapter results remain historical environment results, not evidence against the models.
 
 Never erase existing data, silently overwrite restore conflicts, retrieve missing normal-use assets without permission, or treat an internal model action as unrestricted write/delete authority.
+
+## Media/notification integration
+
+Follow docs/MEDIA-HARNESS.md. Persist asset/derived/source identities, bounded extraction and read-state events without resetting existing records. UI readiness is not model availability. Integrate appearance persistence separately from personal records.

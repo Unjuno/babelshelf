@@ -7,7 +7,7 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 | Location | Purpose | Current limits |
 | --- | --- | --- |
 | `dist/` | Baseline PWA: IndexedDB records, immutable revisions, source ranges, search, backup validation and pinned Bonsai asset infrastructure | Older Input / bottom Markdown toggle; real inference, device and complete offline acceptance remain unverified |
-| `design/prototype/` | Accepted glass UI, hold-and-slide navigation, Home breadcrumbs, editor/history previews, model-role selection | React memory only; no real inference, persistent storage, scheduled execution or notifications |
+| `design/prototype/` | Accepted glass UI, hold-and-slide navigation, Home breadcrumbs, editor/history previews, model-role selection, media previews, appearance and notification details | React memory only; no real inference, persistent storage, scheduled execution or notifications |
 
 Read [the accepted product specification](docs/PRODUCT-SPEC.md) and [integration plan](docs/IMPLEMENTATION-PLAN.md). Do not carry the old bottom-toggle layout into the new UI simply because baseline source checks still cover it.
 
@@ -66,3 +66,5 @@ See [measured results and outstanding gates](docs/TEST-RESULTS.txt). Node/source
 - `specs/pending/`: historical acceptance seeds; the Markdown seed now passes.
 
 No model weights, downloaded inference runtime, private user notes or credentials are included. Baseline notes/settings are in IndexedDB and model/runtime assets in OPFS. The third-party inference runtime's redistribution license remains unresolved. No deployment is performed by this handoff.
+
+Attachment/decision processing contracts and current UI limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Multi-attachment preview can read bounded TXT/MD originals; media analysis and persistent asset storage remain unconnected.

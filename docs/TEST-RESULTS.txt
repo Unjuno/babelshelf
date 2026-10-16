@@ -95,3 +95,21 @@ Minimal controls: added one source regression test for hidden composer modes/att
 two primary navigation destinations and no Brain brand label. Diagnostics errors translated
 to English; multilingual fixture source text intentionally retained. HTML nesting checked.
 No new real-browser or device PASS is claimed.
+
+2026-10-17 item-actions UI follow-up (desktop browser simulation only)
+- Prototype helpers: 7/7 pass, including protected-folder deletion and conflict-safe restore checks.
+- TypeScript/Vite build: pass; 28 protected runtime files verified. Existing >500 kB bundle warning remains.
+- In-app browser on repository preview 4181: 550ms held pointer opens folder Rename/Delete and file Edit/Delete; folder confirmation shows contents; move to Trash, Restore and original v1/body verified; Edit opens original/path fields.
+- Saving a preview schedule creates a local receipt; deleting that notification leaves the schedule present and disabled. No scheduled execution or OS notification is claimed.
+- Prototype state/Trash remains transient; persistent deletion, permanent purge, storage reclamation and physical touch-device behavior remain unverified.
+
+2026-10-17 settings/media/notifications handoff
+- Baseline Node: 33/33 PASS. Static/pins/assets: PASS (23 hashes).
+- Markdown acceptance: 4/4 PASS. Prototype helpers: 7/7 PASS.
+- Prototype TypeScript/Vite production build: PASS; 28 protected runtime files unchanged. Bundle warning >500 kB remains (approximately 515 kB before gzip).
+- Desktop in-app browser (4181): real local sample.md + sample.wav multiple selection, actual Japanese text read, sent text/attachments retained, original text inspection, WAV duration 1s/error null and play -> pause control verified. No inference response fabricated. Video codecs/PDF/OCR/transcription are not validated.
+- Notification flow: actual preview schedule-save receipt -> Unread -> detail -> Read -> Delete notification; source schedule remains disabled/present.
+- Appearance: Dark/Sage/Frosted selected, Reset restores System/Paper/Clear; visual review of app surfaces and protected device indicator backgrounds. No accessibility conformance or physical-device claim.
+- Settings Trash: preview deletion -> Settings/Local files/Trash -> Restore -> empty Trash verified in desktop browser.
+- Console errors observed during flow: none. Native media control required AX interaction (DOM locator cannot reach UA control).
+- Prototype storage, preferences, notification events, attachment URLs and Trash are session-only. Canonical storage, citations for media, extraction models, real Bonsai/d1, offline cold restart and physical iPhone/Android remain unverified.

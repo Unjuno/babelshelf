@@ -20,3 +20,7 @@
 ## Completion boundary
 
 A passing UI build or a static sample answer does not complete any inference or persistence gate. A successful desktop pointer test does not complete a physical touch or iPhone gate. Retain the baseline until its functions have been deliberately integrated and regression-tested.
+
+## Current surface additions
+
+The UI reference now includes compact navigation, item operations and session-only Trash, multiple attachment originals with bounded TXT/MD reading, media capability statuses, appearance presets/reset, and notification read/detail/delete flows. Integrate these using MEDIA-HARNESS.md rather than treating their React state as production storage. Verify source-range citation opening once real extraction and generation are connected.

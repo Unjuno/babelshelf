@@ -10,6 +10,6 @@
     "test:markdown": "node --test specs/pending/markdown.acceptance.mjs",
     "dev:prototype": "npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4180",
     "build:prototype": "npm --prefix design/prototype run build",
-    "test:prototype": "node --test design/prototype/tests/memory-paths.test.mjs design/prototype/tests/memory-navigation.test.mjs"
+    "test:prototype": "node --test design/prototype/tests/memory-paths.test.mjs design/prototype/tests/memory-navigation.test.mjs design/prototype/tests/memory-trash.test.mjs"
   }
 }

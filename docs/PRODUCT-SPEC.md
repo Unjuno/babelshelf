@@ -77,3 +77,15 @@ Required offline acceptance after app shutdown/restart: new notes, TXT/MD import
 Accepted interactive UI: design/prototype/. Baseline core/PWA: dist/. No integration between them is claimed. Persistent tool correction, canonical scheduled tasks, actual notifications, working local d1, real Bonsai generation, full offline cold restart and physical iPhone/Android acceptance remain pending.
 
 Favicon: a completely blank white paper/square with no visible mark or text. This applies to browser tab favicons; existing installed-PWA home-screen icons have not been redesigned.
+
+## File operations and recovery
+
+Fixed canonical directories and Home are protected. A 450ms item hold opens the same glass action sheet as the accessible Actions button; ordinary tap opens the item. Files offer Edit / Delete, user folders Rename / Delete. Input navigation retains its separate 50ms hold. The compact arc uses 75px radius and a 110-degree sweep while preserving 44px secondary targets.
+
+Delete requires target confirmation; folders show descendant file/folder counts. Retain exact records/revisions in recovery batches. Immediate Undo and Settings > Local files > Trash > Restore provide recovery. Restore refuses conflicting IDs/paths rather than overwriting. Memory's header has only creation +; do not put an ambiguous Trash icon beside it.
+
+Prototype Trash is transient React state, not durable recovery or space reclamation. Permanent deletion/retention/storage controls remain pending. Deleting a notification only removes that event, never its source schedule or execution history.
+
+## Attachments, capabilities, appearance and notification details
+
+See MEDIA-HARNESS.md for the accepted processing/provenance and decision boundaries. Prototype supports multi-attachment originals and bounded TXT/MD reading, sent-input grouping, original inspection, Media readiness statuses, Theme/Background/Glass/reset controls, and read/detail/delete notification receipts linked to schedules. Settings and records are transient; processing models, canonical notification storage and media-aware citations are not integrated.

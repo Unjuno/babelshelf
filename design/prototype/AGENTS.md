@@ -84,3 +84,15 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 - Sheet material and z-order use the persistent Input anchor, not the conditionally mounted arc. Device chrome/keyboard remain protected template infrastructure.
 - For meaningful changes run node --test tests/memory-paths.test.mjs tests/memory-navigation.test.mjs and npm run build. Browser simulation is not physical-device evidence.
 - Favicon is a completely blank white square/paper, with no glyph, text, folded corner or branding.
+
+## Item actions and recovery
+
+- Fixed canonical folders and Home are protected. User files/folders expose 450ms long press and an accessible Actions button. Files: Edit / Delete; folders: Rename / Delete. Confirm target/counts and retain exact records/revisions. Undo/Restore refuse conflicts.
+- Trash belongs in Settings > Local files, with explicit Restore and item counts; Memory header contains only creation +. Recovery is transient in the prototype, with no permanent purge or storage reclamation claim.
+- Compact navigation uses 75px radius and a 110-degree sweep with 44px secondary targets; Input remains 72px with a separate 50ms hold.
+
+## Attachments and settings
+
+- Multi-attachment +, per-item original preview/status/removal, sent text+attachments stay grouped. TXT/MD reading is real and bounded to 1 MiB; audio/video use browser playback. No generated answers, OCR/transcription or unsupported-format extraction is simulated. Revoke object URLs on removal/unmount.
+- Media readiness is explicit Not prepared; no unconnected Prepare buttons. Appearance System/Light/Dark, Paper/Sage/Sand, Clear/Frosted and Reset are transient UI settings. Keep protected black device indicators readable.
+- Notifications open detail, mark read and link to current schedule. Deleting only removes the notification event. Save receipts must say execution is not connected. Canonical Memory-backed notification persistence is pending.
