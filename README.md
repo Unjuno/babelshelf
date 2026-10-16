@@ -7,7 +7,7 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 | Location | Purpose | Current limits |
 | --- | --- | --- |
 | `dist/` | Baseline PWA: IndexedDB records, immutable revisions, source ranges, search, backup validation and pinned Bonsai asset infrastructure | Older Input / bottom Markdown toggle; real inference, device and complete offline acceptance remain unverified |
-| `design/prototype/` | Accepted glass UI, hold-and-slide navigation, Home breadcrumbs, editor/history previews, model-role selection, media previews, appearance and notification details | React memory only; no real inference, persistent storage, scheduled execution or notifications |
+| `design/prototype/` | Accepted glass UI, hold-and-slide navigation, Home breadcrumbs, editor/history previews, model-role selection, media previews, appearance and notification details | Canonical IndexedDB note/settings adapter, literal capture/search/read, TXT/MD import, edit/history and note backup/restore; real inference, durable media/tasks and production PWA shell pending |
 
 Read [the accepted product specification](docs/PRODUCT-SPEC.md) and [integration plan](docs/IMPLEMENTATION-PLAN.md). Do not carry the old bottom-toggle layout into the new UI simply because baseline source checks still cover it.
 
@@ -26,7 +26,7 @@ Open http://127.0.0.1:4180/. The command binds to localhost. If occupied:
 npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4181
 ```
 
-The phone frame/keyboard are browser simulations. Model choices are candidates, not loaded models. The initial conversation is static design sample text; Send only appends the user's input and reports that inference is not connected. Preview records/settings disappear on reload.
+The phone frame/keyboard are browser simulations. Model choices are candidates, not loaded models. There is no fixture conversation. Remember/記録, Search/検索 and Read/読んで use real local records. Capture opens a review before saving. Text attachments sent from the composer become new originals. Notes and Settings persist in IndexedDB across reloads; schedules, notifications and media players are not yet integrated. The production PWA shell and inference remain pending.
 
 ## Start the baseline PWA
 
@@ -68,3 +68,5 @@ See [measured results and outstanding gates](docs/TEST-RESULTS.txt). Node/source
 No model weights, downloaded inference runtime, private user notes or credentials are included. Baseline notes/settings are in IndexedDB and model/runtime assets in OPFS. The third-party inference runtime's redistribution license remains unresolved. No deployment is performed by this handoff.
 
 Attachment/decision processing contracts and current UI limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Multi-attachment preview can read bounded TXT/MD originals; media analysis and persistent asset storage remain unconnected.
+
+Browser storage is origin-specific: 4173, 4180 and 4181 do not automatically share IndexedDB. Use local backup/restore to transfer between origins. The adapter uses the existing mlb-memory-v1 schema without clearing it. The 4180 development server now serves repository source, not the older outputs copy.

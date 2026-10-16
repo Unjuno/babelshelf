@@ -447,3 +447,5 @@ button.model-picker svg{flex-shrink:0}
 .device-screen:has(.appearance-dark) .settings-screen button:focus-visible{outline-color:#b8edcf}
 
 .schedule-note{font-size:14px;color:#435f52}.device-screen:has(.appearance-dark) .schedule-note{color:#c9dfd2}
+
+.storage-gate{padding:180px 24px 40px;font-size:18px;color:#243c32}.turn-status{font-size:16px;color:#435f52;margin:12px 0}.retrieved-result{margin:16px 0;white-space:pre-wrap;overflow-wrap:anywhere}.retrieved-result>span{font-size:18px}.source-preview mark{background:#e0d78b;color:#16251c}.device-screen:has(.appearance-dark) .turn-status{color:#c9dfd2}
