@@ -1,7 +1,7 @@
 import defaults from './app-settings.json' with { type: 'json' };
 
 type Settings = typeof defaults;
-const roots = ['Inbox','Notes','Schedule','Notifications','Attachments'];
+const roots = ['Inbox','Notes','Schedule','Notifications','Attachments','Tools'];
 const allowedText = ['4B','2B'];
 const allowedDecision = ['', 'd1-omni-600M','d1-3B'];
 
@@ -16,7 +16,7 @@ function freeze<T>(value:T):T {if(value&&typeof value==='object'){Object.values(
 export function validateSettings(value:unknown):Settings {
  keys(value,['schemaVersion','models','defaults','appearance','media','storage','harness']);
  const c=value as Settings;
- if(c.schemaVersion!==2)throw Error('Unsupported settings version');
+ if(c.schemaVersion!==3)throw Error('Unsupported settings version');
  keys(c.models,['text','decision','transcription']);
  for(const [role,allowed] of [['text',allowedText],['decision',allowedDecision]] as const){
   const options=c.models[role];

@@ -384,3 +384,5 @@ button.model-picker svg{flex-shrink:0}
 .schedule-repeat-field{display:grid;gap:8px;font-size:15px;color:#52685d}.schedule-form textarea{resize:vertical;min-height:116px;line-height:1.5}.device-screen:has(.appearance-dark) .schedule-repeat-field{color:#c0d1c7}.device-screen:has(.appearance-dark) .schedule-form textarea{color:#eff8f3;background:#1b2d25}
 
 .device-screen:has(.appearance-dark) .schedule-form>label{color:#c0d1c7}.device-screen:has(.appearance-dark) .schedule-form input:not([type=checkbox]){background:#1b2d25;color:#eff8f3}.device-screen:has(.appearance-dark) .schedule-form .solid-button{background:#385947;color:#eff8f3!important}
+
+.file-footer button:disabled{opacity:.35;cursor:default;background:transparent}

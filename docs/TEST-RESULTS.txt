@@ -133,3 +133,8 @@ No new real-browser or device PASS is claimed.
 2026-10-17 schedule prompt and Repeat correction
 - Desktop browser: multiline Japanese Prompt -> Repeat glass sheet -> weekly -> Cancel returns without losing draft -> Save -> reopen Edit schedule preserves full prompt/newline and weekly 09:00.
 - This validates transient UI records only, not scheduled model execution.
+
+2026-10-17 Tools directory
+- Prototype helpers: 11/11 PASS; protection includes Tools root and bundled definitions while custom definition deletion remains allowed. TypeScript/Vite build PASS; runtime 28/28 unchanged; ~530 kB bundle warning remains.
+- Desktop browser: Memory ancestor -> Tools -> built-in search definition; Edit and File actions disabled. New custom-tool.md created under Tools and Edit enabled; custom definition listed beside protected built-ins.
+- No tool/MCP execution, external connection, credential storage, persistent definition registration or physical-device verification performed.

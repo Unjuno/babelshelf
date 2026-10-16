@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {memoryBreadcrumbs,memoryFolderEntries,memoryCreationFolder} from '../src/memory-navigation.ts';
 test('Home shows user locations and root exposes internal locations only on request',()=>{
- const folders=['Inbox','Notes','Notes/work','Schedule','Notifications','Attachments'];
+ const folders=['Inbox','Notes','Notes/work','Schedule','Notifications','Attachments','Tools'];
  assert.deepEqual(memoryFolderEntries('home','',folders).map(e=>e.label),['Inbox','Notes','Files']);
- assert.deepEqual(memoryFolderEntries('root','',folders).map(e=>e.label),['Home','Schedule','Notifications']);
+ assert.deepEqual(memoryFolderEntries('root','',folders).map(e=>e.label),['Home','Schedule','Notifications','Tools']);
  assert.deepEqual(memoryFolderEntries('folder','Notes',folders).map(e=>e.path),['Notes/work']);
 });
 test('breadcrumbs navigate ancestors without changing canonical paths or depth',()=>{

@@ -106,3 +106,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 - Speech to text has an independent session-only catalog and selector (Whisper tiny/base multilingual candidates). Adding a candidate does not download assets or run recognition. Prepare is disabled until a verified adapter exists; mic links to settings. app-settings schema 2 validates the new role.
 
 - Scheduled work is a prompt: New/Edit schedule uses a multiline Prompt with exact body preservation, not a title-only task. List heading derives from the first line; notification receipts retain the prompt. Repeat uses the same app-owned glass choice sheet (Every day/Every week) with draft-preserving return/Cancel; no native select menu. Execution and canonical persistence remain unconnected.
+
+- Tools is a protected sixth canonical root, outside Home, with read-only bundled definitions and a disabled MCP template. User definitions are inactive data; file creation never enables execution/network. Keep built-in IDs/protection separate from user-authored frontmatter. app-settings schema 3 includes Tools.

@@ -1,6 +1,6 @@
 # Settings contract
 
-The bundled prototype definition is design/prototype/src/app-settings.json. app-settings.ts validates and copies/freezes it before use. Schema version 2 rejects unknown/missing fields, unsupported models, invalid defaults, unsafe harness policy and oversized text budgets. Invalid bundled settings fail explicitly rather than silently choosing a model/provider.
+The bundled prototype definition is design/prototype/src/app-settings.json. app-settings.ts validates and copies/freezes it before use. Schema version 3 rejects unknown/missing fields, unsupported models, invalid defaults, unsafe harness policy and oversized text budgets. Invalid bundled settings fail explicitly rather than silently choosing a model/provider.
 
 ## Current consumers
 
@@ -23,3 +23,5 @@ A future schema version needs explicit migrations and evidence-based adapter rea
 Schema 2 adds the independent transcription model catalog/default; version 1 is not a supported imported format. No user preference persistence existed to migrate. Tiny/base multilingual Whisper candidates are registry entries, not downloaded or installed assets. Settings > Speech to text > + / Add model registers/selects a catalog entry in session state; the selector can switch registered entries or Not configured. Adding never changes Text/Decision selections or grants readiness. Prepare stays disabled with Runtime not connected. The microphone surface shows the selected model/status and Open settings; it does not invoke browser SpeechRecognition or upload audio.
 
 Model parameters/languages are checked against https://github.com/openai/whisper and https://huggingface.co/openai/whisper-tiny : tiny 39M, base 74M, both multilingual variants rather than .en. Parameter count is not download size, peak runtime memory, browser compatibility or Japanese accuracy evidence. No quality/performance guarantee is implied. Before downloads: pin exact model conversion/runtime revisions, asset names/byte sizes/SHA-256 and separate licenses, then verify local generation, cancellation and offline reload. The Bonsai manifest is unchanged.
+
+Schema 3 adds the protected Tools root. The baseline persistent store is unchanged. Tool definition Markdown is not read by the settings loader and cannot override the bundled harness policy.

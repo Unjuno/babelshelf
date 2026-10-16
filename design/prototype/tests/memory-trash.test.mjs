@@ -18,3 +18,11 @@ test('restore refuses IDs and case-insensitive path conflicts without overwritin
  assert.equal(canRestore(batch,[{id:'a',path:'Inbox/other.md'}],['Notes']),false);
  assert.equal(canRestore(batch,[],['Notes/work']),false);
 });
+
+test('bundled tool definitions and their root cannot be deleted; user definitions can',()=>{
+ const bundled={id:'builtin',path:'Tools/README.md',protected:true};
+ const custom={id:'custom',path:'Tools/custom.md'};
+ assert.throws(()=>deletionContents({kind:'file',value:'builtin'},[bundled,custom],['Tools']),/protected/);
+ assert.throws(()=>deletionContents({kind:'folder',value:'Tools'},[bundled,custom],['Tools']),/protected/);
+ assert.deepEqual(deletionContents({kind:'file',value:'custom'},[bundled,custom],['Tools']).notes,[custom]);
+});

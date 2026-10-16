@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "models": {
     "text": [
       {
@@ -88,7 +88,8 @@
       "Notes",
       "Schedule",
       "Notifications",
-      "Attachments"
+      "Attachments",
+      "Tools"
     ],
     "maxFolderDepth": 5,
     "captureFolder": "Inbox"
