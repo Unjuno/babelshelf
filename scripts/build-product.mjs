@@ -1,0 +1,20 @@
+import {execFileSync} from 'node:child_process';
+import {readFile,writeFile,readdir} from 'node:fs/promises';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+const prototype=path.resolve('design/prototype');
+execFileSync(process.execPath,[path.join(prototype,'node_modules/typescript/bin/tsc'),'--project',path.join(prototype,'product/tsconfig.json')],{stdio:'inherit'});
+execFileSync(process.execPath,[path.join(prototype,'node_modules/vite/bin/vite.js'),'build','--config',path.join(prototype,'product.vite.config.ts')],{cwd:prototype,stdio:'inherit'});
+const root=path.join(prototype,'dist/app'),files=[];
+async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const full=path.join(folder,entry.name);if(entry.isDirectory())await walk(full);else{const bytes=await readFile(full);files.push({path:'./'+path.relative(root,full).split(path.sep).join('/'),sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});}}}
+await walk(root);files.sort((a,b)=>a.path.localeCompare(b.path));
+const build=createHash('sha256').update(JSON.stringify(files)).digest('hex').slice(0,16),models=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
+const remote=[models.runtime.file.url,...models.models.map(m=>m.file.url)];
+const worker=`const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
+const absolute=path=>new URL(path,self.registration.scope).href;
+self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);for(const file of FILES){const response=await fetch(absolute(file.path),{cache:'no-store',credentials:'same-origin'});if(!response.ok)throw Error('App asset missing');const bytes=await response.clone().arrayBuffer(),digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');if(bytes.byteLength!==file.bytes||digest!==file.sha256)throw Error('App asset verification failed');await cache.put(absolute(file.path),response);}})()));
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+self.addEventListener('fetch',event=>{const request=event.request,url=new URL(request.url);if(request.method!=='GET'){event.respondWith(new Response('Method unavailable',{status:405}));return;}if(url.origin!==self.location.origin){event.respondWith(REMOTE.includes(url.href)?fetch(request):Promise.resolve(new Response('Network disabled',{status:503})));return;}event.respondWith((async()=>{const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);const hit=await cache.match(absolute(path));return hit??new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain'}});})());});
+self.addEventListener('message',event=>{if(event.data?.type==='activate-update')self.skipWaiting();if(event.data==='build')event.ports[0]?.postMessage({build:BUILD,cache:CACHE,assets:FILES.length});});`;
+await writeFile(path.join(root,'sw.js'),worker);await writeFile(path.join(root,'build.json'),JSON.stringify({build,files},null,2));
+console.log('Product shell '+build+' · '+files.length+' verified assets');

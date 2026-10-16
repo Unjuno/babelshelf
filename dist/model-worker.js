@@ -1,3 +1,4 @@
+import {adapterSnapshot} from './gpu-info.js';
 import {SHA256} from './sha256.js';
 import {fileResponse} from './ranges.js';
 const networkFetch=globalThis.fetch.bind(globalThis);
@@ -9,7 +10,7 @@ async function directory(){return root??=await (await navigator.storage.getDirec
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
 async function meta(id){try{return JSON.parse(await (await file('ready-'+id+'.json')).text());}catch{return null;}}
 async function writeJSON(name,value){const w=await(await(await directory()).getFileHandle(name,{create:true})).createWritable();await w.write(JSON.stringify(value));await w.close();}
-async function hashFile(f,notify=()=>{}){const h=new SHA256(),r=f.stream().getReader();let n=0,last=0;while(true){const {value,done}=await r.read();if(done)break;h.update(value);n+=value.length;if(n-last>8e6){notify(n/f.size);last=n;}}return h.hex();}
+async function hashFile(f,notify=()=>{}){const h=new SHA256(),r=f.stream().getReader();let n=0,last=0;while(true){controller?.signal.throwIfAborted();const {value,done}=await r.read();if(done)break;h.update(value);n+=value.length;if(n-last>8e6){notify(n/f.size);last=n;}}return h.hex();}
 async function storeAsset(entry,id,local=null){
  const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{}
  const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();const h=new SHA256();let count=0,last=0;let reader;
@@ -26,7 +27,7 @@ async function load(id,size){
  await unload();controller.signal.throwIfAborted();
  const f=await file(m.file.sha256),runtime=await file(manifest.runtime.file.sha256);
  send(id,'progress','Verifying…');
- if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||await hashFile(f)!==m.file.sha256||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
+ if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||await hashFile(f,p=>send(id,'progress','Verifying model · '+Math.round(p*100)+'%'))!==m.file.sha256||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
  send(id,'progress','Loading…');
  const moduleURL=URL.createObjectURL(new Blob([runtime],{type:'text/javascript'}));let api;
  try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}
@@ -46,7 +47,7 @@ onmessage=async({data})=>{
   switch(cmd){
    case 'init':manifest=args.manifest;result=await status();break;
    case 'status':result=await status();break;
-   case 'probe':{if(!navigator.gpu){result={available:false,reason:'WebGPU API unavailable in this Worker'};break;}const adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});result=adapter?{available:true,info:adapter.info,features:[...adapter.features],limits:{maxBufferSize:adapter.limits.maxBufferSize,maxStorageBufferBindingSize:adapter.limits.maxStorageBufferBindingSize}}:{available:false,reason:'No WebGPU adapter was returned'};break;}
+   case 'probe':{if(!navigator.gpu){result={available:false,reason:'WebGPU API unavailable in this Worker'};break;}const adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});result=adapter?adapterSnapshot(adapter):{available:false,reason:'No WebGPU adapter was returned'};break;}
 
    case 'prepare':{
     const m=manifest.models.find(m=>m.id===args.model);if(!m)throw Error('Unsupported model');if(!args.localFiles&&!args.allowNetwork)throw Error('Downloads are off');

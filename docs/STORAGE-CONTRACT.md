@@ -1,3 +1,9 @@
+## Production engine/shell update — 2026-10-17
+
+The separate product entry uses native browser controls with the same UI and canonical adapter. The protected phone runtime is unchanged. Shell install verifies bundled assets; ordinary missing resources return503 without fallback. Inference uses OPFS and denies default fetch; explicit preparation alone can fetch pinned assets. Downloads reset OFF at boot via a retained connection-record revision. App updates verify a new cache and preserve IDB/OPFS; they ask to reopen rather than discarding a live draft automatically.
+
+Generated-result saving now uses the existing answer bytes and sources in a review, creates a new generated ID and rejects sources changed before commit. No regeneration occurs. Literal Answer/Summarize routes complement actual Bonsai classification. See MODEL-RUNTIME-VERIFICATION.md for measured scope and limits. Persistent schedules, notifications, media and complete auxiliary-state backups are still pending.
+
 ## Current integration — 2026-10-17
 
 The accepted UI now uses the existing `mlb-memory-v1` notes store through `design/prototype/src/knowledge-store.ts`. Baseline JS core remains the source for record creation, revision, search, reference validation and backup. It opens schema1 unchanged; no data reset. Only missing built-in Tools/Settings records are initialized. Static sample conversation/notes have been removed. Legacy lowercase paths, IDs, revisions, sources, aliases and unknown metadata remain byte-for-byte until an explicit edit.

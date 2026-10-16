@@ -2,7 +2,11 @@
 
 A smartphone-oriented, local knowledge interface inspired by GBrain. Stored knowledge is the source of truth; models are interfaces for operating on it.
 
-**The UI direction is settled enough for integration. The usable offline MVP is not complete.** There are two runnable surfaces:
+**The usable offline MVP is not complete.** Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
+
+Run `npm run build:app`, then `node scripts/serve-product.mjs 4180` for the native-browser PWA at http://127.0.0.1:4180/. This static server never runs inference. The protected phone preview remains independently runnable. Downloads reset OFF on boot; explicit model preparation is required. The production shell uses verified caches and explicit update controls. Older surface descriptions below are retained for development reference; the linked verification document takes precedence.
+
+There are also two development/reference surfaces:
 
 | Location | Purpose | Current limits |
 | --- | --- | --- |

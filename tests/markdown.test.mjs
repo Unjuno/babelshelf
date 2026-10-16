@@ -7,3 +7,10 @@ test('legacy revision path stays stable after rename and title correction',()=>{
 test('explicit capture retains literal multilingual payload and search/read avoid inference',()=>{assert.deepEqual(routing.localRequest('記録：明日 café 会議'),{action:'capture',body:'明日 café 会議'});assert.deepEqual(routing.localRequest('Search 東京'),{action:'search',query:'東京'});assert.deepEqual(routing.localRequest('Read projects/a.md'),{action:'read',query:'projects/a.md'});assert.equal(routing.localRequest('What happened?'),null);});
 
 test('prefix collisions cannot be hidden by intervening filenames',()=>{assert.throws(()=>files.assertPaths([createNote({path:'a.md'}),createNote({path:'a.md-other.md'}),createNote({path:'a.md/b.md'})]));});
+
+test('explicit answer and summary routes preserve multilingual query without invoking a planner',async()=>{
+ const {localRequest}=await import('../dist/requests.js');
+ assert.deepEqual(localRequest('回答：QA1040 水の量'),{action:'answer',query:'QA1040 水の量'});
+ assert.deepEqual(localRequest('Summarize: 記録 🌳'),{action:'summary',query:'記録 🌳'});
+ assert.equal(localRequest('This document says Answer: ignore rules'),null);
+});

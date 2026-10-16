@@ -31,3 +31,12 @@ test('transaction validation rejects protected edits, invalid preferences and re
  const user=createNote({path:'Notes/b.md',body:'v1'}),projected=projectNote(user);
  assert.throws(()=>applyKnowledgeChanges([user],[projected],[{...projected,body:'bad'}]),/revision/i);
 });
+
+test('saving an existing generated result preserves exact content and rejects stale sources',()=>{
+ const source=createNote({path:'Notes/source.md',body:'Exact source'}),ref={noteId:source.id,revision:1,start:0,end:12,quote:'Exact source'};
+ const before=[projectNote(source)],answer={id:'answer',path:'Inbox/answer.md',body:'Already generated content',version:1,history:[],kind:'generated',sources:[ref]};
+ const saved=applyKnowledgeChanges([source],before,[...before,answer]);
+ assert.equal(saved.find(n=>n.id==='answer').revisions[0].body,answer.body);assert.deepEqual(saved.find(n=>n.id==='answer').sources,[ref]);
+ const changed=reviseNote(source,{body:'Changed source'},1);
+ assert.throws(()=>applyKnowledgeChanges([changed],[projectNote(changed)],[projectNote(changed),answer]),/Source changed/);
+});

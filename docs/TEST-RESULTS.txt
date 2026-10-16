@@ -1,3 +1,31 @@
+CURRENT GOAL PROGRESS — 2026-10-17 JST
+
+Unit2 implemented actual Bonsai + a native-browser production entry.
+Current Node baseline35 / prototype25 / product artifact2 PASS.
+Production build745c77f0897f7b7a (index-BzK2QyJn.js); protected preview
+runtime unchanged. See MODEL-RUNTIME-VERIFICATION.md for exact evidence.
+
+PC IAB: worker GPU probe PASS after GPUAdapterInfo clone fix. Explicit4B
+download/hash/load, actual multilingual summary/citations/exact save PASS.
+Production build16da582c384327bd, distribution server stopped, app tab closed
+and a new tab opened: OPFS4B reload PASS. A new random code captured after
+restart was answered correctly by real4B with a valid source and saved
+without regeneration. Actual Stop/Stopped and Unload/Unloaded PASS.
+No quantitative stop responsiveness or physical-device claim is made.
+
+Origin4182 with server stopped: startup/search, new capture, Rebuild index,
+brainpack export/digest validation and confirmed local restore PASS.
+App Check/Apply update at4180 retained notes and model files; the generated
+QA1057-offline-answer stayed readable. Fresh product tab console errors none.
+No IDB/OPFS clearing, deployment, push or remote inference was performed.
+
+Pending whole-goal gates: bounded corrections/undo/receipts, canonical
+schedules/events/run history, durable media/extraction, d1/ASR/custom model
+compatibility, complete state backup, update robustness, real IME/enlarged
+text/touch, Android/iPhone and full browser/PWA-process offline relaunch.
+Runtime-specific redistribution license remains unresolved. Goal active;
+MVP not complete. Historical and earlier unit reports follow.
+
 CURRENT HANDOFF — 2026-10-17 JST
 
 This update distinguishes the baseline PWA (dist/) from the accepted UI harness

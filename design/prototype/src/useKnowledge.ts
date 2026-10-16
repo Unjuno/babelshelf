@@ -9,7 +9,7 @@ export function useKnowledge(defaults:NoteView[]){
  function setNotes(change:NoteView[]|((notes:NoteView[])=>NoteView[])){
   count.current++;setPending(true);setError('');lastError.current=null;
   queue.current=queue.current.then(async()=>{
-   try{const before=current.current,next=typeof change==='function'?change(before):change;
+   lastError.current=null;try{const before=current.current,next=typeof change==='function'?change(before):change;
     const value=await knowledge.commit(before,next);current.current=value;render(value);
    }catch(e){lastError.current=e as Error;setError((e as Error).message);try{const actual=await knowledge.views();current.current=actual;render(actual);}catch{}}
    finally{count.current--;setPending(count.current>0);}

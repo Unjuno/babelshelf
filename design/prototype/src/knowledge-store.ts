@@ -1,14 +1,14 @@
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
-import {createNote,reviseNote,withdrawNote,latest,checkNotes,buildIndex,searchNotes,makeBackup,parseBackup,mergeNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,withdrawNote,latest,validateRefs,checkNotes,buildIndex,searchNotes,makeBackup,parseBackup,mergeNotes} from '../../../dist/core.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {openDB} from '../../../dist/storage.js';
-import {parsePreference,preferenceGroup} from './preference-records.ts';
+import {parsePreference,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath} from './memory-paths.ts';
 
-export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;importedFrom?:{name:string;bytes:number}};
+export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number}};
 type Canonical=ReturnType<typeof createNote>;
 export function projectNote(n:Canonical):NoteView {
  const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.importedFrom?{importedFrom:n.importedFrom}:{})};
@@ -31,7 +31,8 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
    result[i]=reviseNote(active,{body:next.body,path:next.path},latest(old).version);
   }else{
    if(next.version!==1||next.history.length)throw Error('Invalid new revision');
-   const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path});
+   if(next.kind==='generated'&&(!next.sources?.length||!validateRefs(records,next.sources,{currentOnly:true}).ok))throw Error('Source changed · review before saving');
+   const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path,kind:next.kind??'original',sources:next.sources??[]});
    result.push({...created,id,...(next.importedFrom?{importedFrom:next.importedFrom}:{})});
   }
  }
@@ -55,7 +56,10 @@ export class KnowledgeStore {
   return this.transaction<NoteView[]>(['notes'],'readwrite',(tx,done)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
    try{const records=q.result;for(const seed of defaults){if(records.some(n=>n.id===seed.id))continue;
     const note={...createNote({title:seed.path.split('/').at(-1),body:seed.body,path:seed.path}),id:seed.id,ui:{protected:!!seed.protected,managed:!!seed.managed}};records.push(note);store.add(note);
-   }checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){tx.abort();console.error('Initialization failed',e);}
+   }
+   const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
+   if(connection&&parsePreference('connection',latest(connection).body).downloads){const changed=reviseNote(connection,{body:formatPreference('connection',{downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
+   checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){tx.abort();console.error('Initialization failed',e);}
   };});
  }
  async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}

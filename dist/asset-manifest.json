@@ -23,13 +23,18 @@
     },
     {
       "path": "./engine.js",
-      "bytes": 1289,
-      "sha256": "90724d042e048de88bc540dd724329367a028f7479d315fdbc95bd59c43183f9"
+      "bytes": 1474,
+      "sha256": "0538c1e6672f34ed63f68e7c235dd3621825c6933442659dfce58d823c289007"
     },
     {
       "path": "./files.js",
       "bytes": 2212,
       "sha256": "03eaf991a0ff68ec7433cb5d6576e49d2f148e1cbd690f61d13e7a727b64401a"
+    },
+    {
+      "path": "./gpu-info.js",
+      "bytes": 427,
+      "sha256": "467cf3827dcff78db182b8e11c72defc894e47ef5c1f2a4ad6ec51eeaa257c6d"
     },
     {
       "path": "./icon-192.png",
@@ -73,8 +78,8 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 7588,
-      "sha256": "f2a4f72a0fe71396e662fc42ec955cda0261894c1f978b7bf6b74e1cb471818c"
+      "bytes": 7574,
+      "sha256": "a34b58c7b4849bede61f31239bd54ce1f955a29e50c0fba1544c14c33c87254b"
     },
     {
       "path": "./ranges.js",
@@ -88,8 +93,8 @@
     },
     {
       "path": "./requests.js",
-      "bytes": 706,
-      "sha256": "c24aa1990651d3f6dd445d50686295138ec87f2b33ca16ad364f8d7556408036"
+      "bytes": 885,
+      "sha256": "8f9981fecd1a04496f9e2329c36d962bf235dcbc4c0c925e026109d88ff2532e"
     },
     {
       "path": "./sha256.js",
@@ -109,7 +114,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "512701d9c778e472ed18594963eb55230770cbf085287567b9a8223ce6dec7b7"
+      "sha256": "0943ca3e612acfc2b0513b235e1d86c342053f5b036edcfee6eb8b09b28e6ed5"
     },
     {
       "path": "./ui.js",

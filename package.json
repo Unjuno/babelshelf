@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "build:app": "node scripts/build-product.mjs",
+    "dev:app": "node scripts/serve-product.mjs",
+    "test:app": "node --test specs/product.acceptance.mjs",
     "check": "node scripts/check.mjs",
     "dev": "node scripts/serve.mjs",
     "test:markdown": "node --test specs/pending/markdown.acceptance.mjs",
