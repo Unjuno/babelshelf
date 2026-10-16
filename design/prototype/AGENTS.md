@@ -96,3 +96,5 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 - Multi-attachment +, per-item original preview/status/removal, sent text+attachments stay grouped. TXT/MD reading is real and bounded to 1 MiB; audio/video use browser playback. No generated answers, OCR/transcription or unsupported-format extraction is simulated. Revoke object URLs on removal/unmount.
 - Media readiness is explicit Not prepared; no unconnected Prepare buttons. Appearance System/Light/Dark, Paper/Sage/Sand, Clear/Frosted and Reset are transient UI settings. Keep protected black device indicators readable.
 - Notifications open detail, mark read and link to current schedule. Deleting only removes the notification event. Save receipts must say execution is not connected. Canonical Memory-backed notification persistence is pending.
+
+- Shared defaults and catalogs live in src/app-settings.json, validated by app-settings.ts. Never put ready/installed claims, runtime URLs, executable tools or permission escalation into settings. See docs/SETTINGS-CONTRACT.md.

@@ -1,3 +1,4 @@
+import { settings } from './app-settings.ts';
 export type MemoryScope = 'home' | 'root' | 'folder';
 export const USER_ROOTS = Object.freeze([
  {path:'Inbox',label:'Inbox'}, {path:'Notes',label:'Notes'}, {path:'Attachments',label:'Files'},
@@ -16,5 +17,5 @@ export function memoryFolderEntries(scope:MemoryScope,path:string,folders:string
  return folders.filter(p=>p.split('/').slice(0,-1).join('/')===path).map(p=>({label:p.split('/').at(-1)!,path:p,scope:'folder' as MemoryScope}));
 }
 export function memoryCreationFolder(scope:MemoryScope,path:string,kind:'file'|'folder'){
- return scope==='folder'?path:kind==='file'?'Inbox':'Notes';
+ return scope==='folder'?path:kind==='file'?settings.storage.captureFolder:'Notes';
 }

@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "models": {
+    "text": [
+      {
+        "value": "4B",
+        "label": "Bonsai 2 · 4B"
+      },
+      {
+        "value": "2B",
+        "label": "Bonsai 2 · 2B"
+      }
+    ],
+    "decision": [
+      {
+        "value": "",
+        "label": "Not configured"
+      },
+      {
+        "value": "d1-omni-600M",
+        "label": "Open d1 · Omni 600M"
+      },
+      {
+        "value": "d1-3B",
+        "label": "Open d1 · 3B"
+      }
+    ]
+  },
+  "defaults": {
+    "textModel": "4B",
+    "decisionModel": "",
+    "downloads": false,
+    "theme": "system",
+    "background": "paper",
+    "glass": "clear"
+  },
+  "appearance": {
+    "themes": [
+      "system",
+      "light",
+      "dark"
+    ],
+    "backgrounds": [
+      "paper",
+      "sage",
+      "sand"
+    ],
+    "glass": [
+      "clear",
+      "frosted"
+    ]
+  },
+  "media": {
+    "maxTextBytes": 1048576,
+    "capabilities": [
+      {
+        "id": "image.read",
+        "label": "Image reading"
+      },
+      {
+        "id": "audio.transcribe",
+        "label": "Transcription"
+      },
+      {
+        "id": "video.read",
+        "label": "Video reading"
+      }
+    ]
+  },
+  "storage": {
+    "protectedRoots": [
+      "Inbox",
+      "Notes",
+      "Schedule",
+      "Notifications",
+      "Attachments"
+    ],
+    "maxFolderDepth": 5,
+    "captureFolder": "Inbox"
+  },
+  "harness": {
+    "localOnly": true,
+    "implicitDownloads": false,
+    "automaticOverwrite": false,
+    "automaticDelete": false,
+    "clarifyAmbiguousTarget": true,
+    "preserveOriginals": true,
+    "requireSourceRevision": true
+  }
+}

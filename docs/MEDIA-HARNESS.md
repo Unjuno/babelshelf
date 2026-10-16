@@ -21,3 +21,5 @@ The composer uses one attachment + and a separate voice action. Pending items ca
 Settings: independent Text/Decision selection; Media capability readiness; Appearance theme/background/glass presets/reset; Connection permission; Local files backup/restore/Trash. Appearance is local session state in the prototype. Not-prepared media capabilities have no fake Prepare action.
 
 Notifications: save receipts are actual preview events with title/body/timestamp/read state and linked schedule ID. Opening detail marks read. Opening source resolves the same schedule object; deleting a notification never deletes its schedule. These receipts are not evidence of timed execution or OS delivery. Canonical Memory-backed notification records remain integration work.
+
+Bundled configuration and its actual consumers: see SETTINGS-CONTRACT.md. Harness policy in configuration is not an implemented execution adapter.

@@ -113,3 +113,8 @@ No new real-browser or device PASS is claimed.
 - Settings Trash: preview deletion -> Settings/Local files/Trash -> Restore -> empty Trash verified in desktop browser.
 - Console errors observed during flow: none. Native media control required AX interaction (DOM locator cannot reach UA control).
 - Prototype storage, preferences, notification events, attachment URLs and Trash are session-only. Canonical storage, citations for media, extraction models, real Bonsai/d1, offline cold restart and physical iPhone/Android remain unverified.
+
+2026-10-17 shared settings definition
+- Prototype: 10/10 helper tests PASS, including unsupported/malformed config, unsafe policy, immutable copy and protected root cases.
+- Prototype TypeScript/Vite build PASS; protected runtime 28/28 unchanged. Bundle-size warning remains (approximately 519 kB).
+- Baseline sources and inference/runtime assets unchanged. Settings harness policy is declarative; no new inference or execution capability is claimed.
