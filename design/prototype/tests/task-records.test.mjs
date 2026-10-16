@@ -1,0 +1,66 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {formatTask,parseTask,taskDefinition,taskNextAt,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,taskRunView} from '../src/task-records.ts';
+import {projectNote,applyKnowledgeChanges} from '../src/knowledge-store.ts';
+import {createNote,latest} from '../../../dist/core.js';
+
+const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+const task={repeat:'once',time:'09:00',days:[1],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:zone,enabled:true,notify:true,prompt:'  要約して\nOriginal bytes.\n'};
+function registered(){const n=createNote({path:'Schedule/test.md',body:formatTask(task)});n.ui={recordType:'schedule'};n.taskCursor={definition:taskDefinition(task),nextAt:taskNextAt(task,new Date(2026,9,19)).toISOString()};return n;}
+test('task Markdown preserves exact prompt and validation rejects execution directives',()=>{
+ const body=formatTask(task);assert.equal(parseTask(body).prompt,task.prompt);
+ assert.throws(()=>parseTask(body.replace('"enabled": true','"enabled": "yes"')),/Invalid/);
+ assert.throws(()=>formatTask({...task,shell:'delete all'}),/Unknown/);
+ assert.equal(taskDefinition(task),taskDefinition({...task,enabled:false}));
+});
+test('only registered, enabled tasks can be claimed; the same occurrence is idempotent',()=>{
+ const note=registered(),now=new Date(2026,9,20,9,0,10);
+ assert.throws(()=>claimTaskRun([{...note,ui:undefined}],note.id,'owner',now),/registered/);
+ const claim=claimTaskRun([note],note.id,'owner',now);
+ const records=[note,claim.run];
+ assert.throws(()=>claimTaskRun(records,note.id,'other',now),/already/);
+ assert.equal(taskRunView(claim.run).status,'running');
+ assert.equal(taskRunView(claim.run).taskRevision,1);
+});
+test('missed occurrences do not execute without an explicit retry and failed attempts remain versioned',()=>{
+ const note=registered(),late=new Date(2026,9,20,10);
+ const missed=claimTaskRun([note],note.id,'owner',late);
+ assert.equal(taskRunView(missed.run).status,'missed');
+ const retry=claimTaskRun([note,missed.run],note.id,'owner',late,{retry:true});
+ assert.equal(taskRunView(retry.run).attempt,1);
+ const finished=finishTaskRun([note,retry.run],retry.run.id,'owner',{status:'failed',error:'Not prepared'},late);
+ assert.equal(taskRunView(finished.run).status,'failed');
+ assert.equal(finished.run.revisions.length,3);
+ const again=claimTaskRun([finished.task,finished.run],note.id,'other',late,{retry:true});
+ assert.equal(taskRunView(again.run).attempt,2);
+});
+test('finishing a run checks its owner, retains task bytes, and consumes a one-off only after success',()=>{
+ const note=registered(),now=new Date(2026,9,20,9);
+ const {run}=claimTaskRun([note],note.id,'owner',now);
+ const sources=[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}];
+ assert.throws(()=>finishTaskRun([note,run],run.id,'other',{status:'succeeded',answer:'actual result',sources},now),/owner/);
+ const result=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'actual result',sources},now);
+ assert.equal(result.task.taskCursor.nextAt,null);
+ assert.equal(latest(result.task).body,latest(note).body);
+ assert.equal(taskRunView(result.run).answer,'actual result');
+});
+test('path changes do not reschedule; editing the canonical task changes conditions and preserves original',()=>{
+ const note=registered(),before=projectNote(note),moved={...before,path:'Schedule/moved.md',version:2,history:[before.body]};
+ const renamed=applyKnowledgeChanges([note],[before],[moved])[0];assert.deepEqual(renamed.taskCursor,note.taskCursor);
+ const next={...before,body:formatTask({...task,repeat:'daily',time:'10:00'}),version:2,history:[before.body]};
+ const changed=applyKnowledgeChanges([note],[before],[next])[0];assert.equal(new Date(changed.taskCursor.nextAt).getHours(),10);assert.equal(latest(note).body,before.body);
+ assert.throws(()=>applyKnowledgeChanges([note],[before],[{...next,body:'invalid'}]),/format/);
+ assert.equal(taskDefinition({...task,id:'display-only',nextAt:'ignored'}),taskDefinition(task));
+});
+test('leases prevent an active second owner and expired work requires explicit retry',()=>{
+ const note=registered(),start=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',start);
+ const kept=heartbeatRun([run],run.id,'owner',new Date(+start+60000));
+ assert.throws(()=>claimTaskRun([note,kept],note.id,'other',new Date(+start+100000)),/already running/);
+ const expired=claimTaskRun([note,kept],note.id,'other',new Date(+start+160000));
+ assert.equal(taskRunView(expired.run).status,'interrupted');assert.equal(expired.execute,false);
+ assert.throws(()=>claimTaskRun([note,expired.run],note.id,'other',new Date(+start+170000)),/processed/);
+});
+test('skip consumes an occurrence without inventing an inference attempt',()=>{
+ const note=registered(),now=new Date(2026,9,20,10),skipped=skipTaskRun([note],note.id,'user',now);
+ assert.equal(taskRunView(skipped.run).attempt,0);assert.equal(taskRunView(skipped.run).status,'skipped');assert.equal(skipped.task.taskCursor.nextAt,null);
+});

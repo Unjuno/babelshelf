@@ -4,6 +4,8 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 
 **The usable offline MVP is not complete.** Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
 
+Continuous Input now persists local dialogue and passes prior context to routing and answering. Long history is compacted with the same local model, retaining original turns and bounded original-excerpt recall. See [CONVERSATION-CONTRACT.md](docs/CONVERSATION-CONTRACT.md). Canonical foreground task/event integration is described in [SCHEDULE-CONTRACT.md](docs/SCHEDULE-CONTRACT.md); whole-MVP acceptance remains pending.
+
 Run `npm run build:app`, then `node scripts/serve-product.mjs 4180` for the native-browser PWA at http://127.0.0.1:4180/. This static server never runs inference. The protected phone preview remains independently runnable. Downloads reset OFF on boot; explicit model preparation is required. The production shell uses verified caches and explicit update controls. Older surface descriptions below are retained for development reference; the linked verification document takes precedence.
 
 There are also two development/reference surfaces:

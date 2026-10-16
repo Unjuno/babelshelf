@@ -449,3 +449,5 @@ button.model-picker svg{flex-shrink:0}
 .schedule-note{font-size:14px;color:#435f52}.device-screen:has(.appearance-dark) .schedule-note{color:#c9dfd2}
 
 .storage-gate{padding:180px 24px 40px;font-size:18px;color:#243c32}.turn-status{font-size:16px;color:#435f52;margin:12px 0}.retrieved-result{margin:16px 0;white-space:pre-wrap;overflow-wrap:anywhere}.retrieved-result>span{font-size:18px}.source-preview mark{background:#e0d78b;color:#16251c}.device-screen:has(.appearance-dark) .turn-status{color:#c9dfd2}
+
+.schedule-scope{font-size:16px;line-height:1.5;color:#435f52;margin:-6px 0 18px}.execution-row>span{display:flex;flex-direction:column;gap:4px}.execution-row small,.execution-time{font-size:16px;color:#435f52}.execution-status{font-size:18px;font-weight:550}.execution-detail .file-body{margin-top:18px}.device-screen:has(.appearance-dark) :is(.schedule-scope,.execution-row small,.execution-time){color:#c9dfd2}

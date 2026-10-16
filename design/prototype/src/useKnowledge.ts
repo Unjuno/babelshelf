@@ -16,6 +16,6 @@ export function useKnowledge(defaults:NoteView[]){
   });
  }
  async function flush(){await queue.current;if(lastError.current)throw lastError.current;}
- async function refresh(){await flush();const value=await knowledge.views();current.current=value;render(value);}
+ async function refresh(){await queue.current;const value=await knowledge.views();current.current=value;render(value);lastError.current=null;setError('');}
  return {notes,setNotes,ready,pending,error,flush,refresh};
 }

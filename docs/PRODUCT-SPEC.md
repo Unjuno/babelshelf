@@ -2,6 +2,8 @@
 
 Updated 2026-10-17 JST. This is the current design baseline, replacing historical bottom-toggle, fixed rail and tap-to-open iterations. It specifies intended behavior; implementation status is listed separately.
 
+Current implementation: canonical storage, native PWA shell and actual PC Bonsai4B are connected. Continuous dialogue/compaction and canonical foreground task records are described in [CONVERSATION-CONTRACT.md](CONVERSATION-CONTRACT.md) and [SCHEDULE-CONTRACT.md](SCHEDULE-CONTRACT.md). Historical implementation-status paragraphs below are superseded by these contracts and MODEL-RUNTIME-VERIFICATION; full/device MVP acceptance is still incomplete.
+
 ## Purpose and operating constraints
 
 A PWA usable on Android/iPhone without app-store distribution. After explicit preparation of verified app/runtime/model assets, normal knowledge operations must work without reconnecting. Knowledge belongs in local stored records and their original sources, not in a model or chat session.

@@ -2,18 +2,22 @@
   "baseline_commit": "42c93c635827aec6d4c9b4f0d8679b9a5f838eb6",
   "github_repository_created": true,
   "default_test_result": {
-    "pass": 31,
+    "pass": 35,
     "fail": 0
   },
   "pending_markdown_tests": {
-    "pass": 0,
-    "fail": 4,
-    "expected": "Not implemented"
+    "pass": 4,
+    "fail": 0,
+    "expected": "Implemented baseline contract"
   },
-  "real_bonsai_generation": "NOT_VERIFIED",
+  "real_bonsai_generation": "PC_VERIFIED_4B_PTQ1_0_ONLY_SEE_MODEL_RUNTIME_VERIFICATION",
   "iphone_offline": "NOT_VERIFIED",
-  "latest_navigation_and_tree": "NOT_IMPLEMENTED",
+  "latest_navigation_and_tree": "IMPLEMENTED_WITH_CANONICAL_INDEXEDDB_ADAPTER",
   "sites_deployment_changed_during_handoff": false,
   "repository": "Unjuno/babelshelf",
-  "repository_created_by": "user"
+  "repository_created_by": "user",
+  "offline_mvp": "INCOMPLETE_DEVICE_AND_FEATURE_GATES_REMAIN",
+  "conversation_contract": "docs/CONVERSATION-CONTRACT.md",
+  "conversation_verification": "PC_4B_FIRST_ORIGINAL_RECALL_AFTER_COMPACTION_AND_EXACT_REVIEWED_SAVE_VERIFIED_FORMATTING_LIMIT_RECORDED",
+  "schedule_contract": "docs/SCHEDULE-CONTRACT.md"
 }

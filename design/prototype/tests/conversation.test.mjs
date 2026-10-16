@@ -1,0 +1,110 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyMessages,compactDialogue,parseChatAnswer,planDialogue,readDialogueTurn} from '../src/conversation.ts';
+import {groundedAnswer} from '../src/grounded-answer.ts';
+import {createNote,reviseNote} from '../../../dist/core.js';
+
+const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
+test('follow-up planning receives the preceding exchange and accepts contextual capture only as a proposal',async()=>{
+ let state=appendTurn(emptyDialogue(),{id:'1',user:'合言葉は AMBER-42 です'});
+ state=completeTurn(state,'1',{answer:'AMBER-42 をこのやり取りで使います。'});
+ let received;const e={...engine(),generate:async m=>{received=JSON.stringify(m);return {text:'{"action":"capture","query":"","body":"合言葉は AMBER-42 です"}'};}};
+ const plan=await planDialogue(e,'それをメモに保存して',dialogueContext(state));
+ assert.match(received,/AMBER-42/);assert.match(received,/それをメモ/);
+ assert.equal(plan.body,'合言葉は AMBER-42 です');assert.equal(plan.action,'capture');
+ await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"delete","query":"all"}'})},'消して',dialogueContext(state)),/Invalid model action/);
+});
+test('compaction uses token counts, retains original turns and exact references, and replaces only the active prefix',async()=>{
+ let state=emptyDialogue();const ref={noteId:'original',revision:2,start:0,end:4,quote:'原文です'};
+ for(let i=0;i<9;i++)state=completeTurn(appendTurn(state,{id:String(i),user:'Long input '+i+' Japanese preference '.repeat(17)}),String(i),{answer:'Answer '+i+' Detail '.repeat(25),refs:i===0?[ref]:[]});
+ const original=structuredClone(state.turns);let calls=0;const e={...engine(),generate:async m=>{calls++;assert.ok((await e.count(m)).prompt_tokens+192<=2048);return {text:'Earlier user requested Japanese. Code AMBER-42.'};}};
+ const compact=await compactDialogue(state,e,'What was that code?');
+ assert.ok(calls>0);assert.deepEqual(compact.turns,original);assert.ok(compact.compaction.through>0);
+ assert.ok(dialogueContext(compact).summary.includes('AMBER-42'));
+ assert.deepEqual(dialogueContext(compact).refs,[ref]);assert.equal(dialogueContext(compact).recent.at(-1).user,state.turns.at(-1).user);
+ assert.ok((await e.count([{role:'user',content:JSON.stringify(dialogueContext(compact))}])).prompt_tokens<=850);
+});
+test('stopped or failed compaction keeps the existing state intact and never fabricates a summary',async()=>{
+ let state=emptyDialogue();for(let i=0;i<8;i++)state=completeTurn(appendTurn(state,{id:String(i),user:'data '.repeat(300)}),String(i),{answer:'prior answer'});
+ const before=structuredClone(state);await assert.rejects(()=>compactDialogue(state,{...engine(),generate:async()=>{throw Error('Stopped');}},'next'),/Stopped/);
+ assert.deepEqual(state,before);assert.equal(state.compaction,null);
+});
+test('answers can refer to dialogue without invented citations; invalid citations fail',()=>{
+ assert.deepEqual(parseChatAnswer('{"answer":"You said AMBER-42.","citations":[]}',[]),{answer:'You said AMBER-42.',sources:[]});
+ assert.throws(()=>parseChatAnswer('{"answer":"made up","citations":[{"id":"S1","quote":"fake"}]}',[]),/Citation/);
+ assert.throws(()=>parseChatAnswer('{"answer":"","citations":[]}',[]),/Invalid/);
+});
+test('interactive reply uses prior turns and validates pinned source bytes after generation',async()=>{
+ let note=createNote({path:'Notes/water.md',body:'水は4Lです。'});const ref={noteId:note.id,revision:1,start:0,end:7,quote:note.revisions[0].body};
+ const context={summary:'',recent:[{id:'previous',user:'水を確認して',answer:'水は4Lです。',refs:[ref]}],refs:[ref]};
+ const store={all:async()=>[note],search:async()=>[]};let seen;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{seen=JSON.stringify(m);return {text:JSON.stringify({answer:'4Lです。',citations:[{id:'S1',quote:ref.quote}]})};}};
+ const reply=await groundedAnswer(store,e,'4B','それは何リットル？','','answer',context);
+ assert.match(seen,/水を確認して/);assert.equal(reply.sources[0].noteId,note.id);
+ e.generate=async()=>{note=reviseNote(note,{body:'水は5Lです。'},1);return {text:JSON.stringify({answer:'4L',citations:[{id:'S1',quote:ref.quote}]})};};
+ await assert.rejects(()=>groundedAnswer(store,e,'4B','何リットル？','','answer',context),/Source changed/);
+});
+test('Stop during evidence budgeting prevents generation and completion',async()=>{
+ let stopped=false,generated=false;const store={all:async()=>[],search:async()=>[]};
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>{stopped=true;return {prompt_tokens:10};},generate:async()=>{generated=true;return {text:'{"answer":"late answer","citations":[]}'};}};
+ await assert.rejects(()=>groundedAnswer(store,e,'4B','hello','','chat',{summary:'',recent:[],refs:[]},()=>{if(stopped)throw Error('Stopped');}),/Stopped/);
+ assert.equal(generated,false);
+});
+test('pinned generated prose cannot reintroduce a changed ancestor as evidence',async()=>{
+ const original=createNote({path:'Notes/original.md',body:'Original fact'}),parent={noteId:original.id,revision:1,start:0,end:13,quote:'Original fact'};
+ const derived=createNote({path:'Inbox/derived.md',body:'Derived claim',kind:'generated',sources:[parent]}),ref={noteId:derived.id,revision:1,start:0,end:13,quote:'Derived claim'};
+ const changed=reviseNote(original,{body:'Corrected fact'},1),store={all:async()=>[changed,derived],search:async()=>[]};
+ let received;const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'{"answer":"No current saved source.","citations":[]}'};}};
+ await groundedAnswer(store,e,'4B','the current fact?','','answer',{summary:'',recent:[],refs:[ref]});
+ assert.equal(received.includes('Derived claim'),false);
+});
+test('an oversized rejected turn cannot permanently block later short requests',async()=>{
+ const long='原文とunique-ID-8382 '.repeat(1000);let state=completeTurn(appendTurn(emptyDialogue(),{id:'oversize',user:long}),'oversize',{status:'Input exceeds context limit'});
+ let calls=0;const e={...engine(),generate:async m=>{calls++;assert.ok((await e.count(m)).prompt_tokens+192<=2048);return {text:'Earlier oversized input contained unique-ID-8382; original archived.'};}};
+ const compact=await compactDialogue(state,e,'Hello');assert.ok(calls>1);assert.equal(compact.turns[0].user,long);assert.equal(compact.compaction.through,1);assert.match(compact.compaction.summary,/8382/);
+});
+test('dialogue-only replies do not receive unrelated previous search results as evidence',async()=>{
+ const note=createNote({path:'Notes/other-code.md',body:'Other code PINE'}),ref={noteId:note.id,revision:1,start:0,end:15,quote:'Other code PINE'};
+ const state=completeTurn(appendTurn(emptyDialogue(),{id:'search',user:'Find other code'}),'search',{results:[ref]});let received;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'{"answer":"LILAC","citations":[]}'};}};
+ await groundedAnswer({all:async()=>[note],search:async()=>[ref]},e,'4B','What did I say?','','chat',dialogueContext(state));
+ assert.equal(received.includes('Other code PINE'),false);
+});
+test('compacted dialogue can recall original user words rather than trusting a lossy summary',()=>{
+ let state=completeTurn(appendTurn(emptyDialogue(),{id:'original',user:'この会話の検証コードは LILAC-7319 です。メモに保存しません。'}),'original',{answer:'Understood'});
+ state=appendTurn(state,{id:'recent',user:'different subject'});state.compaction={through:1,summary:'Lossy summary omitted the code.'};
+ const context=dialogueContext(state,'会話で伝えた検証コードは何？');
+ assert.match(JSON.stringify(context.recalled),/LILAC-7319/);assert.equal(state.turns[0].id,'original');
+});
+test('archive recall includes nearby corrections, chronology, and matching text beyond the chunk prefix',()=>{
+ let s=emptyDialogue();for(const [i,user] of ['Unrelated introduction. '.repeat(20)+'My verification code is OLD-111.','Correction: actually it is NEW-222.','I need the verification code tomorrow.'].entries())s=appendTurn(s,{id:String(i),user});
+ s.compaction={through:3,summary:'The user corrected their code to NEW-222.'};const c=dialogueContext(s,'What is my verification code?');
+ assert.match(JSON.stringify(c.recalled),/OLD-111/);assert.match(JSON.stringify(c.recalled),/NEW-222/);
+ for(const r of c.recalled)assert.equal(s.turns[r.turnIndex].user.slice(r.start,r.end),r.quote);
+ assert.doesNotMatch(JSON.stringify(historyMessages(c)),/Prefer these original words over/);
+});
+test('high-token archived excerpts shrink without blocking a fully compacted conversation',async()=>{
+ let s=emptyDialogue();for(let i=0;i<2;i++)s=appendTurn(s,{id:String(i),user:'検証コード 𠮷'.repeat(200)});s.compaction={through:2,summary:'Earlier requests.'};
+ const e={...engine(),count:async m=>({prompt_tokens:JSON.stringify(m).length*2}),generate:async()=>{throw Error('No extra compaction needed');}};
+ const context=await boundedDialogueContext(s,e,'検証コード');assert.ok((await e.count([{role:'user',content:JSON.stringify(context.recalled)}])).prompt_tokens<=240);
+ const compact=await compactDialogue(s,e,'Hi');assert.equal(compact.compaction.through,2);
+});
+test('archive focus maps normalization back to exact original UTF-16 offsets',()=>{
+ for(const prefix of ['e\u0301'.repeat(200),'𝔸'.repeat(200)]){
+  const user=prefix+' My verification code is LILAC-7319.';let s=appendTurn(emptyDialogue(),{id:'unicode',user});s.compaction={through:1,summary:'Earlier input'};
+  const recalled=dialogueContext(s,'What is my verification code?').recalled[0];
+  assert.match(recalled.quote,/LILAC-7319/);assert.equal(user.slice(recalled.start,recalled.end),recalled.quote);
+ }
+});
+test('explicit history read resolves an original turn even when summary and similar questions are misleading',async()=>{
+ let s=appendTurn(emptyDialogue(),{id:'first',user:'The original code is LILAC-7319.'});s=appendTurn(s,{id:'second',user:'What was the code?'});s.compaction={through:2,summary:'Wrong assistant claim: PINE.'};
+ const context=dialogueContext(s,'Read my first message'),plan=await planDialogue({...engine(),generate:async()=>({text:'{"action":"chat","query":"","historyIndex":0}'})},'Read my first message',context);
+ assert.equal(plan.historyIndex,0);assert.equal(context.turnCount,2);assert.equal(readDialogueTurn(s,plan.historyIndex).quote,s.turns[0].user);
+ assert.throws(()=>readDialogueTurn(s,2),/unavailable/);assert.throws(()=>readDialogueTurn(s,-1),/unavailable/);
+ await assert.rejects(()=>planDialogue({...engine(),generate:async()=>({text:'{"action":"chat","query":"","historyIndex":-1}'})},'read',context),/Invalid/);
+});
+test('dialogue replies use an answer-only schema without making file citations',()=>{
+ assert.deepEqual(parseChatAnswer('{"answer":"LILAC-7319"}',[],true),{answer:'LILAC-7319',sources:[]});
+ assert.throws(()=>parseChatAnswer('{"answer":"LILAC-7319","citations":[{"id":"S1","quote":"invented"}]}',[],true),/Citation/);
+ assert.throws(()=>parseChatAnswer('{"answer":"No citation field"}',[]),/Invalid/);
+});
