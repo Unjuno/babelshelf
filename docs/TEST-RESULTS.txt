@@ -118,3 +118,8 @@ No new real-browser or device PASS is claimed.
 - Prototype: 10/10 helper tests PASS, including unsupported/malformed config, unsafe policy, immutable copy and protected root cases.
 - Prototype TypeScript/Vite build PASS; protected runtime 28/28 unchanged. Bundle-size warning remains (approximately 519 kB).
 - Baseline sources and inference/runtime assets unchanged. Settings harness policy is declarative; no new inference or execution capability is claimed.
+
+2026-10-17 attachment source choice
+- TypeScript/Vite build PASS; protected runtime 28/28 unchanged.
+- Desktop browser: + directly opens multi-file picker; selected test Markdown can be removed.
+- CDP coarse-pointer simulation: + opens Take photo / Choose files / Cancel; Take photo opens a single-image picker. Native camera capture on physical Android/iPhone remains unverified.

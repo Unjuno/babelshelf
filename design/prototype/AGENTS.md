@@ -98,3 +98,7 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 - Notifications open detail, mark read and link to current schedule. Deleting only removes the notification event. Save receipts must say execution is not connected. Canonical Memory-backed notification persistence is pending.
 
 - Shared defaults and catalogs live in src/app-settings.json, validated by app-settings.ts. Never put ready/installed claims, runtime URLs, executable tools or permission escalation into settings. See docs/SETTINGS-CONTRACT.md.
+
+## Attachment source choice
+
+On a fine-pointer desktop, composer + opens multi-file selection directly. On primary coarse-pointer devices it opens the common glass sheet: Take photo / Choose files / Cancel. Photo uses a separate single image input with capture=environment; file selection stays multiple and does not request capture. Both feed the same attachment inspection/removal/send path. Native camera behavior depends on the browser/device and requires physical-device verification; the phone preview preset alone is not hardware detection.

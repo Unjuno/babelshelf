@@ -23,3 +23,7 @@ Settings: independent Text/Decision selection; Media capability readiness; Appea
 Notifications: save receipts are actual preview events with title/body/timestamp/read state and linked schedule ID. Opening detail marks read. Opening source resolves the same schedule object; deleting a notification never deletes its schedule. These receipts are not evidence of timed execution or OS delivery. Canonical Memory-backed notification records remain integration work.
 
 Bundled configuration and its actual consumers: see SETTINGS-CONTRACT.md. Harness policy in configuration is not an implemented execution adapter.
+
+## Attachment source choice
+
+On a fine-pointer desktop, composer + opens multi-file selection directly. On primary coarse-pointer devices it opens the common glass sheet: Take photo / Choose files / Cancel. Photo uses a separate single image input with capture=environment; file selection stays multiple and does not request capture. Both feed the same attachment inspection/removal/send path. Native camera behavior depends on the browser/device and requires physical-device verification; the phone preview preset alone is not hardware detection.
