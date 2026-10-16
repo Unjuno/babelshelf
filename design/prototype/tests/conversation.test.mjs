@@ -1,13 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyMessages,compactDialogue,parseChatAnswer,planDialogue,readDialogueTurn} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,parseChatAnswer,planDialogue,readDialogueTurn} from '../src/conversation.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
+import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
 import {createNote,reviseNote} from '../../../dist/core.js';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
+test('original recall serializes only dialogue excerpt fields while retaining citation receipts',()=>{
+ const refs=Array.from({length:12},(_,i)=>({noteId:'source-'+i,revision:1,start:0,end:700,quote:'unvalidated source '.repeat(40)}));
+ const state=completeTurn(appendTurn(emptyDialogue(),{id:'answer',user:'question'}),'answer',{answer:'Short original answer',refs});
+ const original=readDialogueTurn(state,0,'assistant'),context={summary:'',recent:[],refs:[],recalled:[original]};
+ assert.deepEqual(original.refs,refs);
+ const payload=JSON.stringify(historyPayload(context)),messages=JSON.stringify(historyMessages(context));
+ for(const serialized of [payload,messages]){assert.match(serialized,/Short original answer/);assert.doesNotMatch(serialized,/unvalidated source|source-0|"refs"/);assert.ok(serialized.length<1000);}
+});
 test('follow-up planning receives the preceding exchange and accepts contextual capture only as a proposal',async()=>{
  let state=appendTurn(emptyDialogue(),{id:'1',user:'合言葉は AMBER-42 です'});
  state=completeTurn(state,'1',{answer:'AMBER-42 をこのやり取りで使います。'});
+ state=appendTurn(state,{id:'save-only',user:'Save it',status:'Saved'});assert.equal(dialogueContext(state).lastAnswerIndex,0);
  let received;const e={...engine(),generate:async m=>{received=JSON.stringify(m);return {text:'{"action":"capture","query":"","body":"合言葉は AMBER-42 です"}'};}};
  const plan=await planDialogue(e,'それをメモに保存して',dialogueContext(state));
  assert.match(received,/AMBER-42/);assert.match(received,/それをメモ/);
@@ -98,7 +108,7 @@ test('archive focus maps normalization back to exact original UTF-16 offsets',()
 });
 test('explicit history read resolves an original turn even when summary and similar questions are misleading',async()=>{
  let s=appendTurn(emptyDialogue(),{id:'first',user:'The original code is LILAC-7319.'});s=appendTurn(s,{id:'second',user:'What was the code?'});s.compaction={through:2,summary:'Wrong assistant claim: PINE.'};
- const context=dialogueContext(s,'Read my first message'),plan=await planDialogue({...engine(),generate:async()=>({text:'{"action":"chat","query":"","historyIndex":0}'})},'Read my first message',context);
+ const context=dialogueContext(s,'Read my first message'),plan=await planDialogue({...engine(),generate:async()=>({text:'{"action":"recall","query":"","historyIndex":0,"historyPart":"user"}'})},'Read my first message',context);
  assert.equal(plan.historyIndex,0);assert.equal(context.turnCount,2);assert.equal(readDialogueTurn(s,plan.historyIndex).quote,s.turns[0].user);
  assert.throws(()=>readDialogueTurn(s,2),/unavailable/);assert.throws(()=>readDialogueTurn(s,-1),/unavailable/);
  await assert.rejects(()=>planDialogue({...engine(),generate:async()=>({text:'{"action":"chat","query":"","historyIndex":-1}'})},'read',context),/Invalid/);
@@ -107,4 +117,47 @@ test('dialogue replies use an answer-only schema without making file citations',
  assert.deepEqual(parseChatAnswer('{"answer":"LILAC-7319"}',[],true),{answer:'LILAC-7319',sources:[]});
  assert.throws(()=>parseChatAnswer('{"answer":"LILAC-7319","citations":[{"id":"S1","quote":"invented"}]}',[],true),/Citation/);
  assert.throws(()=>parseChatAnswer('{"answer":"No citation field"}',[]),/Invalid/);
+});
+
+test('literal dialogue tools transform actual original bytes without regex, writes or lost provenance',()=>{
+ const original={turnId:'prior',turnIndex:2,speaker:'assistant',quote:'A$&;日本語;🌳',start:0,end:11};const before=structuredClone(original);
+ const result=applyTextTransform('{"action":"replace","find":";","with":"\\n"}',original);
+ assert.equal(result.answer,'A$&\n日本語\n🌳');assert.equal(result.toolCalls[0].result.matches,2);assert.equal(result.toolCalls[0].target.turnId,'prior');assert.deepEqual(original,before);
+ assert.equal(applyTextTransform('{"action":"replace","find":"A$&","with":"$&"}',original).answer,'$&;日本語;🌳');
+ const missing=applyTextTransform('{"action":"replace","find":"missing","with":"x"}',original);assert.equal(missing.answer,undefined);assert.match(missing.toolCalls[0].result.error,/not found/);
+ assert.throws(()=>applyTextTransform('{"action":"replace","find":"","with":"x"}',original),/Invalid/);
+ assert.throws(()=>applyTextTransform('{"action":"delete","answer":"done"}',original),/Invalid/);
+ assert.throws(()=>applyTextTransform('{"action":"replace","find":";","with":"x","path":"Settings/models.md"}',original),/Invalid/);
+ assert.throws(()=>applyTextTransform('{"action":"reply","answer":"x"}',original),/Cannot resolve/);
+ assert.match(applyTextTransform(JSON.stringify({action:'replace',find:'A',with:'x'.repeat(30000)}),original).status,/limit/);
+ const unchanged=applyTextTransform('{"action":"replace","find":";","with":";"}',original);assert.equal(unchanged.answer,undefined);assert.match(unchanged.toolCalls[0].result.error,/No change/);
+});
+
+test('line splitting is a typed delimiter operation, not model-authored replacement prose',()=>{
+ const original={turnId:'original',turnIndex:0,speaker:'assistant',quote:'north;south;east',start:0,end:16};
+ const result=applyTextTransform('{"action":"split_lines","delimiter":";"}',original);
+ assert.equal(result.answer,'north\nsouth\neast');assert.equal(result.toolCalls[0].name,'text.split_lines');
+ assert.deepEqual(result.toolCalls[0].arguments,{delimiter:';'});assert.equal(result.toolCalls[0].result.matches,2);
+ assert.throws(()=>applyTextTransform('{"action":"split_lines","delimiter":";","with":"invented"}',original),/Invalid/);
+ assert.throws(()=>applyTextTransform('{"action":"split_lines","delimiter":""}',original),/Invalid/);
+ assert.match(applyTextTransform('{"action":"split_lines","delimiter":"|"}',original).status,/not found/);
+ assert.equal(applyTextTransform('{"action":"split_lines","delimiter":"🌳"}',{...original,quote:'山🌳川'}).answer,'山\n川');
+});
+
+test('literal-operation planning carries only selected original/current request and enforces cancellation before accepting output',async()=>{
+ const original={turnId:'first',turnIndex:0,speaker:'user',quote:'My code is CEDAR-4826.',start:0,end:22};
+ const messages=textTransformMessages('What code?',original);assert.equal(messages.length,2);assert.match(messages[1].content,/CEDAR/);assert.match(messages[1].content,/What code/);
+ const result=await transformDialogueText({...engine(),generate:async()=>({text:'{"action":"replace","find":"-","with":"/"}'})},'replace dash with slash',original);assert.equal(result.answer,'My code is CEDAR/4826.');
+ await assert.rejects(()=>transformDialogueText({...engine(),generate:async()=>({text:'{"action":"reply","answer":"partial"}',stopped:true})},'code?',original),/Stopped/);
+ let generated=false;await assert.rejects(()=>transformDialogueText({...engine(),generate:async()=>{generated=true;return {text:''};}},'code?',original,()=>{throw Error('Stopped');}),/Stopped/);assert.equal(generated,false);
+});
+
+test('planner can select a read-only transformation only with an explicit original-turn target',async()=>{
+ const state=completeTurn(appendTurn(emptyDialogue(),{id:'first',user:'code'}),'first',{answer:'CEDAR-4826'}),context=dialogueContext(state);
+ const e={...engine(),generate:async()=>({text:'{"action":"transform","query":"","historyIndex":0,"historyPart":"assistant"}'})};
+ assert.equal((await planDialogue(e,'Split the preceding answer',context)).action,'transform');
+ await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"transform","query":""}'})},'split',context),/Invalid/);
+ await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"transform","query":"","historyIndex":0}'})},'split',context),/Invalid/);
+ const ref={noteId:'assistant-source',revision:1,start:0,end:5,quote:'other'};state.turns[0].refs=[ref];
+ assert.deepEqual(readDialogueTurn(state,0,'user').refs,[]);assert.deepEqual(readDialogueTurn(state,0,'assistant').refs,[ref]);
 });

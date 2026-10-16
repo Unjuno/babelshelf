@@ -6,14 +6,16 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 
 Continuous Input now persists local dialogue and passes prior context to routing and answering. Long history is compacted with the same local model, retaining original turns and bounded original-excerpt recall. See [CONVERSATION-CONTRACT.md](docs/CONVERSATION-CONTRACT.md). Canonical foreground task/event integration is described in [SCHEDULE-CONTRACT.md](docs/SCHEDULE-CONTRACT.md); whole-MVP acceptance remains pending.
 
+Harness/prompt diagnosis uses fixed public inputs and the actual prepared local model in an explicit developer route, separate from the accepted UI. Reproducible reports, failure boundaries and literal read-only operation design: [HARNESS-EVALUATION.md](docs/HARNESS-EVALUATION.md).
+
 Run `npm run build:app`, then `node scripts/serve-product.mjs 4180` for the native-browser PWA at http://127.0.0.1:4180/. This static server never runs inference. The protected phone preview remains independently runnable. Downloads reset OFF on boot; explicit model preparation is required. The production shell uses verified caches and explicit update controls. Older surface descriptions below are retained for development reference; the linked verification document takes precedence.
 
 There are also two development/reference surfaces:
 
 | Location | Purpose | Current limits |
 | --- | --- | --- |
-| `dist/` | Baseline PWA: IndexedDB records, immutable revisions, source ranges, search, backup validation and pinned Bonsai asset infrastructure | Older Input / bottom Markdown toggle; real inference, device and complete offline acceptance remain unverified |
-| `design/prototype/` | Accepted glass UI, hold-and-slide navigation, Home breadcrumbs, editor/history previews, model-role selection, media previews, appearance and notification details | Canonical IndexedDB note/settings adapter, literal capture/search/read, TXT/MD import, edit/history and note backup/restore; real inference, durable media/tasks and production PWA shell pending |
+| `dist/` | Shared IndexedDB, immutable revisions, sources, search, backup and pinned Bonsai worker; older baseline UI | The accepted production entry is built separately; baseline Node checks are not device acceptance |
+| `design/prototype/` | Accepted UI, shared canonical adapter, dialogue, foreground tasks/events and local inference; separate `product/` native PWA entry | Durable media/extraction, model correction review/undo, full-state backup and complete offline/device acceptance remain pending |
 
 Read [the accepted product specification](docs/PRODUCT-SPEC.md) and [integration plan](docs/IMPLEMENTATION-PLAN.md). Do not carry the old bottom-toggle layout into the new UI simply because baseline source checks still cover it.
 
@@ -32,7 +34,7 @@ Open http://127.0.0.1:4180/. The command binds to localhost. If occupied:
 npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4181
 ```
 
-The phone frame/keyboard are browser simulations. Model choices are candidates, not loaded models. There is no fixture conversation. Remember/記録, Search/検索 and Read/読んで use real local records. Capture opens a review before saving. Text attachments sent from the composer become new originals. Notes and Settings persist in IndexedDB across reloads; schedules, notifications and media players are not yet integrated. The production PWA shell and inference remain pending.
+The phone frame/keyboard are browser simulations. There is no fixture conversation. Remember/記録, Search/検索 and Read/読んで use real local records. Capture opens a review before saving. Text attachments become new originals. Notes, Settings, dialogue and foreground tasks/events persist in IndexedDB. Actual prepared Bonsai4B inference has been exercised in the separate production entry at4180; each origin needs its own prepared assets. Decision/ASR entries remain candidates. Media playback does not imply persistent originals or model extraction. See the verification document for measured flows and remaining gates.
 
 ## Start the baseline PWA
 

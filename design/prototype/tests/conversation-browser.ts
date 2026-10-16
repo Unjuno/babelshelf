@@ -5,7 +5,7 @@ document.querySelector('#run')!.addEventListener('click',async()=>{
  const name='babelshelf-dialogue-qa-'+crypto.randomUUID(),a=new KnowledgeStore(name),b=new KnowledgeStore(name),lines:string[]=[];
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);lines.push('PASS · '+label);output.textContent=lines.join('\n');};
  try{
-  await a.initialize([]);const state=completeTurn(appendTurn(emptyDialogue(),{id:'first',user:'保存しない会話の原文 🌳'}),'first',{answer:'Local reply fixture; no inference.'});
+  await a.initialize([]);const state=completeTurn(appendTurn(emptyDialogue(),{id:'first',user:'保存しない会話の原文 🌳'}),'first',{answer:'Local reply fixture; no inference.',toolCalls:[{name:'text.replace',target:{turnId:'first',turnIndex:0,speaker:'user'},arguments:{find:';',with:'\n'},result:{matches:1,text:'Local reply fixture; no inference.'}}]});
   await a.compareState('dialogue',undefined,state);a.close();
   const reopened=validateDialogue(await b.getState('dialogue'));check(JSON.stringify(reopened)===JSON.stringify(state),'exact dialogue survives database close/reopen');
   const competing=appendTurn(state,{id:'second',user:'続き'});const writes=await Promise.allSettled([a.compareState('dialogue',state,competing),b.compareState('dialogue',state,{...competing,revision:3})]);

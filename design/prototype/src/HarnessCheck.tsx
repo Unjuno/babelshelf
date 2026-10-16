@@ -1,0 +1,39 @@
+// Explicit local diagnostic route. Fixed INPUT fixtures; every output is real inference.
+// Does not open the knowledge database, read conversations, download or write records.
+import {useEffect,useRef,useState} from 'react';
+// @ts-expect-error Shared baseline controller is JavaScript.
+import {Engine} from '../../../dist/engine.js';
+import manifest from '../../../dist/model-manifest.json';
+import {dialogueAnswerMessages} from './grounded-answer';
+import type {DialogueContext} from './conversation';
+import {parseChatAnswer} from './conversation';
+
+const code='CEDAR-4826',expected='CEDAR\n4826';
+const request='直前の回答のコードを、ハイフンの前と後に分けて二行で返して。';
+const direct='コード CEDAR-4826 をハイフンの前と後に分けて二行で返して。';
+const recent:DialogueContext={summary:'',refs:[],turnCount:1,recent:[{id:'fixture',user:'この会話のコードは '+code+' です。',answer:code}]};
+const read:DialogueContext={summary:'',refs:[],turnCount:1,recent:[],recalled:[{turnId:'fixture',turnIndex:0,speaker:'assistant',quote:code,start:0,end:code.length}]};
+const summary:DialogueContext={summary:'The preceding assistant answer was '+code+'.',refs:[],turnCount:1,recent:[]};
+type Fixture={id:string;messages:{role:string;content:string}[];expected?:string;json:boolean;reset:boolean;profile?:'greedy'|'bonsai-nonthinking';seed?:number};
+const fixtures:Fixture[]=[
+ {id:'raw-minimal',messages:[{role:'system',content:'Follow the last user request. Output only the requested result.'},{role:'user',content:direct}],json:false,reset:true},
+ {id:'json-minimal',messages:[{role:'system',content:'Follow the last user request. Return ONLY JSON {"answer":"..."}.'},{role:'user',content:direct}],json:true,reset:false},
+ {id:'direct-app',messages:dialogueAnswerMessages(direct),json:true,reset:false},
+ {id:'recent-app',messages:dialogueAnswerMessages(request,recent),json:true,reset:false},
+ {id:'read-app',messages:dialogueAnswerMessages(request,read),json:true,reset:false},
+ {id:'summary-app',messages:dialogueAnswerMessages(request,summary),json:true,reset:false},
+ {id:'read-reset',messages:dialogueAnswerMessages(request,read),json:true,reset:true},
+ {id:'read-English',messages:dialogueAnswerMessages('Split the code in the previous answer at the hyphen. Return the two parts on separate lines.',read),json:true,reset:true},
+];
+export default function HarnessCheck(){
+ const engine=useRef<any>(null),cancelled=useRef(false),lock=useRef(false);
+ const [ready,setReady]=useState(false),[running,setRunning]=useState(false),[status,setStatus]=useState('Checking local assets'),[results,setResults]=useState<any[]>([]),[cases,setCases]=useState(fixtures);
+ useEffect(()=>{const e=new Engine(manifest,()=>{},new Worker(new URL('./bonsai-worker.ts',import.meta.url),{type:'module'}));engine.current=e;e.init().then((assets:any)=>{setReady(!!assets['4B']?.filesPresent);setStatus(assets['4B']?.filesPresent?'Local 4B available':'Not prepared · use Settings');}).catch((error:Error)=>setStatus(error.message));return()=>{e.abort();e.worker.terminate();};},[]);
+ async function run(){if(lock.current||!ready)return;lock.current=true;cancelled.current=false;setRunning(true);setResults([]);
+  try{const e=engine.current;if(e.loaded!=='4B')await e.load('4B',(_type:string,value:string)=>setStatus(String(value)));for(const fixture of cases){if(cancelled.current)break;setStatus(fixture.id);const count=await e.call('count',{messages:fixture.messages});if(count.prompt_tokens+256>manifest.contextTokens)throw Error('Fixture exceeds context');const raw=await e.call('generate',{messages:fixture.messages,maxTokens:256,resetSession:fixture.reset,profile:fixture.profile,seed:fixture.seed});if(cancelled.current||raw.stopped)break;let answer='',error='';try{answer=fixture.json?parseChatAnswer(raw.text,[],true).answer:raw.text;}catch(e){error=(e as Error).message;}const target=fixture.expected??expected;setResults(previous=>[...previous,{id:fixture.id,resetSession:fixture.reset,profile:fixture.profile??'greedy',seed:fixture.seed,input:fixture.messages,count,expected:target,answer,error,pass:!error&&answer.trim()===target,raw}]);}setStatus(cancelled.current?'Stopped':'Completed');}
+  catch(error){setStatus((error as Error).message);}finally{lock.current=false;setRunning(false);}
+ }
+ async function importCases(file?:File){if(!file||lock.current)return;try{if(file.size>150000)throw Error('Fixture file too large');const value=JSON.parse(await file.text());if(!Array.isArray(value.cases)||!value.cases.length||value.cases.length>30)throw Error('Invalid fixture cases');for(const f of value.cases){if(typeof f.id!=='string'||typeof f.expected!=='string'||typeof f.json!=='boolean'||typeof f.reset!=='boolean'||!Array.isArray(f.messages)||f.messages.length>20||f.messages.some((m:any)=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string')||f.profile!==undefined&&!['greedy','bonsai-nonthinking'].includes(f.profile)||f.seed!==undefined&&(!Number.isInteger(f.seed)||f.seed<0||f.seed>4294967295))throw Error('Invalid fixture');}setCases(value.cases);setStatus('Loaded '+value.cases.length+' cases');}catch(error){setStatus((error as Error).message);}}
+ const report={schema:1,model:'4B',revision:manifest.models.find(m=>m.id==='4B')!.revision,runtime:manifest.runtime.revision,contextTokens:manifest.contextTokens,maxTokens:256,status,results};
+ return <main style={{height:'100dvh',overflow:'auto',padding:24,background:'#fff',color:'#14251c'}}><h1>Local harness check</h1><p>Test inputs · actual Bonsai 4B · no knowledge records or downloads</p><label>Load cases <input aria-label="Load cases" type="file" accept=".json" disabled={running} onChange={e=>void importCases(e.target.files?.[0])}/></label><p><button disabled={!ready||running} onClick={()=>void run()}>Run comparison</button><button disabled={!running} onClick={()=>{cancelled.current=true;engine.current?.abort();}}>Stop</button></p><p role="status">{status}</p><table style={{borderSpacing:12,textAlign:'left'}}><thead><tr><th>Case</th><th>Result</th><th>Answer</th></tr></thead><tbody>{results.map(r=><tr key={r.id}><td>{r.id}</td><td>{r.pass?'PASS':'FAIL'}</td><td style={{whiteSpace:'pre-wrap'}}>{r.error||r.answer}</td></tr>)}</tbody></table><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:16}}>{JSON.stringify(report,null,2)}</pre></main>;
+}

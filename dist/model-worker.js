@@ -61,11 +61,15 @@ onmessage=async({data})=>{
    case 'count':if(!session)throw Error('Model not loaded');result=session.count_tokens(args.messages,{enable_thinking:false});break;
    case 'generate':{
     if(!session)throw Error('Model not loaded');
+    if(args.profile!==undefined&&!['greedy','bonsai-nonthinking'].includes(args.profile))throw Error('Unsupported generation profile');
+    if(args.seed!==undefined&&(!Number.isSafeInteger(args.seed)||args.seed<0||args.seed>4294967295))throw Error('Invalid sampling seed');
+    if(args.resetSession===true)session.reset();
     const count=session.count_tokens(args.messages,{enable_thinking:false});if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
     const start=performance.now();let first=null,last=null,text='',chunks=0;
-    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,do_sample:false,signal:controller.signal});
+    const sampling=args.profile==='bonsai-nonthinking'?{do_sample:true,temperature:.7,top_p:.8,top_k:20,min_p:0,seed:args.seed??0}:{do_sample:false};
+    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,...sampling,signal:controller.signal});
     for await(const event of stream){if(event.type==='text'){text+=event.text;first??=performance.now();last=performance.now();chunks++;send(id,'text',event.text);}else if(event.type==='prefill')send(id,'progress',`Prefill · ${event.done} / ${event.total}`);}
-    const raw=await stream.result;result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs:performance.now()-start,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],stopped:controller.signal.aborted};break;
+    const raw=await stream.result;result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs:performance.now()-start,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],finishReason:raw?.finish_reason,usage:raw?.usage,stopped:controller.signal.aborted};break;
    }
    default:throw Error('Unknown action');
   }
