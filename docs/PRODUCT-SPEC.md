@@ -103,3 +103,13 @@ Current implementation: inspectable session-only definitions and protected opera
 ## Unified Settings records
 
 Settings belongs at the Memory root and cannot be deleted or renamed. Standard models.md/appearance.md/connection.md files have fixed IDs/paths, editable validated JSON values and retained revisions. README is read-only. The dedicated Settings screen edits the same records, with short category entries and links to Memory; it does not maintain duplicate preference state. Invalid edits leave the current valid setting intact. Runtime readiness, permissions and secrets never come from these user-editable files. Prototype records remain session-only.
+
+## UI review corrections and file previews
+
+Input/results now shows a source file card alongside the inline source marker. Cards expose filename, revision/location and excerpt; the reusable renderer also supports original image/video thumbnails and audio Listen affordances. Clicking opens original content/player. The bundled exchange is explicitly Example and its source remains pinned to original v1, independent of later edits. Sent attachments use the same preview renderer but are labeled Attachment plus actual processing status; they are not presented as generated-answer citations. No model has analyzed them.
+
+Editor Save/Cancel are fixed above the keyboard; scheduled prompt fields scroll independently from the footer. Send and source controls have 44px boxes. Managed setting files show Fixed path rather than the same read-only lock used for bundled definitions; managed files remain directly editable. Folder protection remains enforced without implying all contents are read-only.
+
+The navigation retains the approved 50ms hold with a short Hold/Menu hint; no real-touch usability pass is claimed. Unread notifications appear as a badge on the collapsed input/menu button and a dot on the notification destination. Model preparation actions are uniformly disabled until a runtime is connected; dark-mode readiness labels use opaque readable foregrounds.
+
+Weekly schedules have explicit weekday. Time basis is the device timezone at save, with local next-occurrence preview; this is not a promise of closed-PWA wakeup. The preview helper advances local wall-clock dates (including platform DST normalization). Arbitrary timezone selection/conversion, DST ambiguity policy and production execution remain unimplemented. Changing device zone is not a validated scheduling workflow.

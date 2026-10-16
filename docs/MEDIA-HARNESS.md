@@ -27,3 +27,7 @@ Bundled configuration and its actual consumers: see SETTINGS-CONTRACT.md. Harnes
 ## Attachment source choice
 
 On a fine-pointer desktop, composer + opens multi-file selection directly. On primary coarse-pointer devices it opens the common glass sheet: Take photo / Choose files / Cancel. Photo uses a separate single image input with capture=environment; file selection stays multiple and does not request capture. Both feed the same attachment inspection/removal/send path. Native camera behavior depends on the browser/device and requires physical-device verification; the phone preview preset alone is not hardware detection.
+
+## Reference preview surface
+
+ReferenceCard.tsx is the shared text/image/video/audio file-preview renderer. A future grounded answer must supply verified record ID, exact revision/range/time span separately; a URL/name in this UI is not provenance validation. Current example answers use a pinned bundled note v1. User media is only attached originals, labeled as such. Native playback is independent of transcription/OCR readiness. No test-generated transcript, answer or media-derived citation is substituted for real inference.

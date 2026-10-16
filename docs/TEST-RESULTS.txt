@@ -144,3 +144,11 @@ No new real-browser or device PASS is claimed.
 - Desktop browser: Settings categories -> Appearance/Sand -> Open file shows background sand at v2. Invalid theme Save shows Unsupported appearance value and retains valid v2. Direct file edit Light/Sage/Frosted saved at v3; History lists v1/v2/v3.
 - Settings root/files and dedicated controls share transient notes state. No durable preference storage, baseline migration, model runtime or physical-device verification claimed.
 - Reverse reflection confirmed in controls: Light/Sage/Frosted selected after direct file save. Model picker change to Bonsai 2B appears in models.md at v2. Console errors observed: none. TypeScript/Vite build PASS; protected runtime 28/28 unchanged; bundle-size warning remains (~536 kB).
+
+2026-10-17 UI review corrections + source previews
+- Prototype helper tests 15/15 PASS, including weekly/daily local occurrence and invalid time. TypeScript/Vite build PASS; protected runtime 28/28 unchanged; existing ~542 kB chunk warning remains.
+- Desktop browser: direct editor keyboard shows fixed Cancel/Save; task sheet keyboard shows pinned Cancel/Save and scrollable fields. Weekly Mon at 09:00 preview resolves to next Mon; saved task creates visible unread badge.
+- Source file preview: bundled answer visibly marked Example, meeting.md / v1 / excerpt -> Source original v1. Subsequent source edits cannot silently substitute current bytes into this example reference.
+- Real local fixture selection MD/WAV/MP4/PNG -> Send -> shared original cards. PNG complete with native dimensions 393x852; MP4 duration 1s, readyState4, error null and player rendered; WAV Play -> Pause verified. Test media are playback fixtures, not inference evidence. Media analysis remains unprepared.
+- Dark preparation label colors now rgb(201,223,210) over rgb(36,56,48), measured contrast ~8.89:1; unavailable prepare buttons disabled consistently. Send/source boxes 44 CSS px.
+- Folder identity protection no longer implies read-only contents; managed settings display Fixed path and remain editable. No physical touch/50ms timing/IME/assistive technology or full offline restart verification.
