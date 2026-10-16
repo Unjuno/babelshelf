@@ -1,0 +1,19 @@
+{
+  "baseline_commit": "42c93c635827aec6d4c9b4f0d8679b9a5f838eb6",
+  "github_repository_created": true,
+  "default_test_result": {
+    "pass": 31,
+    "fail": 0
+  },
+  "pending_markdown_tests": {
+    "pass": 0,
+    "fail": 4,
+    "expected": "Not implemented"
+  },
+  "real_bonsai_generation": "NOT_VERIFIED",
+  "iphone_offline": "NOT_VERIFIED",
+  "latest_navigation_and_tree": "NOT_IMPLEMENTED",
+  "sites_deployment_changed_during_handoff": false,
+  "repository": "Unjuno/babelshelf",
+  "repository_created_by": "user"
+}

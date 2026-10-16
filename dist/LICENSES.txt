@@ -1,0 +1,40 @@
+Mobile Local Brain original source — MIT License
+Copyright (c) 2026 Mobile Local Brain contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Third-party model assets (NOT bundled):
+PrismML Ternary Bonsai 2 4B and 2B GGUF — Apache-2.0, per each pinned model card.
+Source repositories/revisions/hashes: model-manifest.json.
+Full 4B upstream license/notice included in research/ of source distribution.
+The model weights are fetched only by explicit preparation and are not part of
+this app deployment or source archive. No vision projector is used.
+
+Third-party inference runtime (NOT bundled):
+WebML Community / ternary-bonsai-2-hermes-webgpu, commit
+621e20782f208660f4f58283c2ce58430020f243, qwen35-vision-Kzp5MMIJ.js.
+The Space metadata has no runtime-specific license statement. Its
+THIRD_PARTY_NOTICES.md describes Hermes UI references and fonts, which this app
+does not use, and must not be treated as a blanket runtime license.
+The runtime is not redistributed or relicensed by this project. Explicit initial
+preparation fetches the exact pinned upstream bundle into the user's local
+storage. Upstream license clarification is required before bundling or further
+redistributing that runtime. This is a stated unresolved licensing issue.
+This project does not treat the Apache license of @huggingface/kernels or the
+model weights as a license for the complete independently built runtime bundle.
+
+GBrain design reference only: no GBrain source code copied.
+No external font, image, analytics, framework or UI package is bundled.

@@ -1,0 +1,7 @@
+import fs from 'node:fs/promises';import {execFileSync} from 'node:child_process';import {createHash} from 'node:crypto';
+const files=await fs.readdir('dist');for(const f of files.filter(f=>f.endsWith('.js')))execFileSync(process.execPath,['--check','dist/'+f]);
+const manifest=JSON.parse(await fs.readFile('dist/model-manifest.json','utf8'));for(const m of manifest.models){if(!/^[a-f0-9]{40}$/.test(m.revision)||!/^[a-f0-9]{64}$/.test(m.file.sha256))throw Error('Unpinned model');}
+const html=await fs.readFile('dist/index.html','utf8');const js=await fs.readFile('dist/app.js','utf8');for(const m of js.matchAll(/\$\('([^']+)'\)/g)){if(!html.includes('id="'+m[1]+'"'))throw Error('Unknown DOM ID: '+m[1]);}
+const sourceHashes=[];for(const f of files.filter(f=>!['asset-manifest.json','sw.js'].includes(f))){sourceHashes.push(createHash('sha256').update(await fs.readFile('dist/'+f)).digest('hex'));}const cacheId='mlb-shell-'+createHash('sha256').update(sourceHashes.join('')).digest('hex').slice(0,16);let sw=await fs.readFile('dist/sw.js','utf8');sw=sw.replace(/const CACHE='[^']+';/,"const CACHE='"+cacheId+"';");await fs.writeFile('dist/sw.js',sw);
+const shell=[];for(const f of files.filter(f=>f!=='asset-manifest.json')){const bytes=await fs.readFile('dist/'+f);shell.push({path:'./'+f,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});}
+await fs.writeFile('dist/asset-manifest.json',JSON.stringify({build:'0.1.0',files:shell},null,2));console.log(`Syntax / DOM / model pins / ${shell.length} shell asset hashes: PASS`);

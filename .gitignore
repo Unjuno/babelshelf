@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.*
+*.gguf
+*.brainpack
+*.log
+.DS_Store

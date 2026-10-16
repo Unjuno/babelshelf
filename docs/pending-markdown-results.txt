@@ -1,0 +1,109 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> mobile-local-brain@0.1.0 test:markdown
+> node --test specs/pending/markdown.acceptance.mjs
+
+✖ Markdown tree follows paths and leaves original content untouched (3.86569ms)
+✖ Markdown rename is versioned and survives backup (2.223913ms)
+✖ unsafe paths are rejected; legacy notes get readable non-colliding paths (0.378077ms)
+✖ Markdown export contains the exact saved body and revision identity (0.282912ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 0
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 128.846048
+
+✖ failing tests:
+
+test at specs/pending/markdown.acceptance.mjs:4:1
+✖ Markdown tree follows paths and leaves original content untouched (3.86569ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/ba115e421ba2/local-handoff/mobile-local-brain/specs/pending/markdown.acceptance.mjs:4:86)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at specs/pending/markdown.acceptance.mjs:5:1
+✖ Markdown rename is versioned and survives backup (2.223913ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'projects/plan.md'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/ba115e421ba2/local-handoff/mobile-local-brain/specs/pending/markdown.acceptance.mjs:5:208)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'projects/plan.md',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at specs/pending/markdown.acceptance.mjs:6:1
+✖ unsafe paths are rejected; legacy notes get readable non-colliding paths (0.378077ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/ba115e421ba2/local-handoff/mobile-local-brain/specs/pending/markdown.acceptance.mjs:6:93)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at specs/pending/markdown.acceptance.mjs:7:1
+✖ Markdown export contains the exact saved body and revision identity (0.282912ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/ba115e421ba2/local-handoff/mobile-local-brain/specs/pending/markdown.acceptance.mjs:7:88)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

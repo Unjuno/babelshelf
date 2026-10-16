@@ -1,0 +1,88 @@
+// Pure knowledge operations. Offsets are UTF-16 code units, matching String.slice.
+export const latest=n=>n.revisions.at(-1);
+const clone=v=>structuredClone(v);
+const norm=s=>s.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
+export function createNote({title='',body='',aliases=[],kind='original',sources=[]}={}){
+ if(typeof title!=='string'||typeof body!=='string'||!['original','generated'].includes(kind))throw Error('Invalid note');
+ const at=new Date().toISOString();return {id:crypto.randomUUID(),kind,state:'active',createdAt:at,aliases:[...aliases],sources:clone(sources),revisions:[{version:1,title,body,at}]};
+}
+export function reviseNote(note,patch,expected){
+ if(latest(note).version!==expected)throw Error('Version conflict');
+ if(note.state!=='active')throw Error('Note withdrawn');
+ const n=clone(note),p=latest(n);n.revisions.push({version:p.version+1,title:patch.title??p.title,body:patch.body??p.body,at:new Date().toISOString()});
+ if(patch.aliases)n.aliases=[...patch.aliases];return n;
+}
+export function withdrawNote(note,expected){const n=reviseNote(note,{},expected);n.state='withdrawn';n.withdrawnAt=new Date().toISOString();return n;}
+export function chunks(body,max=700){
+ const out=[];let start=0;for(const part of body.split(/(\n\s*\n)/)){
+  if(part.trim())for(let i=0;i<part.length;i+=max)out.push({start:start+i,end:start+Math.min(part.length,i+max),quote:part.slice(i,i+max)});
+  start+=part.length;
+ }return out;
+}
+function grams(s){s=norm(s);const c=Array.from(s);return c.length<2?c:[...new Set(c.slice(0,-1).map((v,i)=>v+c[i+1]))];}
+export function validateRefs(notes,refs,{currentOnly=false}={}){
+ const map=new Map(notes.map(n=>[n.id,n]));const errors=[];
+ for(const r of refs){const n=map.get(r.noteId),v=n?.revisions.find(v=>v.version===r.revision);
+  if(!n||n.state!=='active'||!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote||(currentOnly&&latest(n).version!==r.revision))errors.push(r.noteId??'unknown');
+ }return {ok:errors.length===0,errors};
+}
+function eligible(n,map,seen=new Set()){
+ if(n.state!=='active'||seen.has(n.id))return false;
+ if(n.kind!=='generated')return true;
+ seen=new Set([...seen,n.id]);return n.sources.length>0&&n.sources.every(r=>{const parent=map.get(r.noteId);return parent&&validateRefs([...map.values()],[r],{currentOnly:true}).ok&&eligible(parent,map,seen);});
+}
+const indexCache=new WeakMap();
+export function buildIndex(notes,{force=false}={}){
+ if(!force&&indexCache.has(notes))return indexCache.get(notes);
+ const map=new Map(notes.map(n=>[n.id,n])),docs=[],postings=new Map();
+ for(const n of notes){if(!eligible(n,map))continue;const v=latest(n);for(const c of chunks(v.body)){
+  const text=norm(c.quote),head=norm(v.title+' '+n.aliases.join(' ')),tokens=grams(text),i=docs.length;docs.push({n,v,c,text,head,tokens});
+  for(const term of new Set([...tokens,...grams(head),...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
+ }}
+ const index={docs,postings,avg:docs.reduce((s,d)=>s+d.tokens.length,0)/Math.max(1,docs.length)};indexCache.set(notes,index);return index;
+}
+export function searchNotes(notes,query,limit=8){
+ const q=norm(query);if(!q)return [];
+ const terms=grams(q),{docs,postings,avg}=buildIndex(notes),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
+ return [...candidates].map(i=>{const d=docs[i];let score=0;for(const t of terms){const count=d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(d.head.includes(t))score+=idf*2;}
+  if(d.text.includes(q))score+=20;if(d.head.includes(q))score+=30;
+  return {noteId:d.n.id,revision:d.v.version,title:d.v.title,...d.c,score};
+ }).filter(h=>h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,Math.max(1,Math.min(20,limit)));
+}
+export function resolveLinks(note,notes){
+ const text=latest(note).body;const matches=[...text.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((note:[a-zA-Z0-9-]+)\)/g)];
+ return matches.map(m=>{const target=m[1]??m[2];const choices=target.startsWith('note:')?notes.filter(n=>n.id===target.slice(5)):notes.filter(n=>norm(latest(n).title)===norm(target)||n.aliases.some(a=>norm(a)===norm(target)));
+  return {label:target,status:choices.length>1?'ambiguous':choices.length===0?'missing':choices[0].state==='active'?'resolved':'withdrawn',targetId:choices.length===1?choices[0].id:null};});
+}
+export async function digest(text){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
+export async function makeBackup(notes){const payload={schema:1,createdAt:new Date().toISOString(),notes:clone(notes)};return {format:'mobile-local-brainpack',sha256:await digest(JSON.stringify(payload)),payload};}
+export function checkNotes(notes){
+ if(!Array.isArray(notes)||notes.length>20000)throw Error('Invalid note count');const ids=new Set();
+ for(const n of notes){
+  if(!n||typeof n.id!=='string'||!n.id||ids.has(n.id)||!['active','withdrawn'].includes(n.state)||!['original','generated'].includes(n.kind)||!Array.isArray(n.aliases)||n.aliases.some(a=>typeof a!=='string')||!Array.isArray(n.sources)||!Array.isArray(n.revisions)||!n.revisions.length)throw Error('Invalid note schema');ids.add(n.id);
+  for(const [i,v]of n.revisions.entries())if(!v||v.version!==i+1||typeof v.title!=='string'||typeof v.body!=='string'||v.body.length>10000000||typeof v.at!=='string')throw Error('Invalid revision');
+ }
+ for(const n of notes)for(const r of n.sources){const v=notes.find(n=>n.id===r.noteId)?.revisions.find(v=>v.version===r.revision);if(!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote)throw Error('Invalid source reference');}
+ return true;
+}
+export async function parseBackup(text){
+ if(text.length>200000000)throw Error('Backup too large');const pack=JSON.parse(text);
+ if(pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==1||pack.sha256!==await digest(JSON.stringify(pack.payload)))throw Error('Backup verification failed');checkNotes(pack.payload.notes);return pack.payload;
+}
+export function mergeNotes(existing,incoming){
+ const map=new Map(existing.map(n=>[n.id,clone(n)])),conflicts=[];
+ for(const n of incoming){const old=map.get(n.id);if(!old){map.set(n.id,clone(n));continue;}if(JSON.stringify(old)!==JSON.stringify(n))conflicts.push({id:n.id,title:latest(n).title,reason:'ID conflict · local note kept'});}
+ const merged=[...map.values()];checkNotes(merged);return {notes:merged,conflicts};
+}
+export function validateTool(call,notes){
+ const a=call?.arguments;if(!a||typeof a!=='object'||Array.isArray(a))throw Error('Invalid action');
+ switch(call.name){
+  case 'search_notes':if(typeof a.query!=='string'||a.query.length>2000||a.limit!==undefined&&(!Number.isInteger(a.limit)||a.limit<1||a.limit>20))throw Error('Invalid search');break;
+  case 'read_note':if(typeof a.note_id!=='string'||!notes.some(n=>n.id===a.note_id&&n.state==='active'))throw Error('Note unavailable');break;
+  case 'create_note':if(typeof a.title!=='string'||typeof a.body!=='string'||a.body.length>30000||!Array.isArray(a.source_refs)||!validateRefs(notes,a.source_refs,{currentOnly:true}).ok)throw Error('Invalid note or sources');break;
+  default:throw Error('Action not allowed');
+ }return call;
+}
+export function parseJSON(text){const s=text.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');return JSON.parse(s);}
+export function parseAnswer(text,evidence){const value=parseJSON(text);if(typeof value.answer!=='string'||!value.answer.trim()||!Array.isArray(value.citations)||!value.citations.length)throw Error('Invalid answer or sources');
+ const refs=[];for(const c of value.citations){const r=evidence.find(r=>r.label===c.id);if(!r||typeof c.quote!=='string'||!c.quote||!r.quote.includes(c.quote))throw Error('Citation mismatch');refs.push({...r,citedQuote:c.quote});}return {answer:value.answer,refs};}

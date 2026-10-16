@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import os from 'node:os';import path from 'node:path';
+const mod=await import('../scripts/serve.mjs').catch(()=>({}));
+test('local server serves static PWA with correct MIME, 404, HEAD and traversal rejection',async()=>{
+ assert.equal(typeof mod.createDevServer,'function');const root=await fs.mkdtemp(path.join(os.tmpdir(),'mlb-serve-'));await fs.writeFile(path.join(root,'index.html'),'<h1>Local</h1>');await fs.writeFile(path.join(root,'app.js'),'export const value=1;');
+ const server=mod.createDevServer(root);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+server.address().port;
+ try{assert.equal(await(await fetch(base+'/')).text(),'<h1>Local</h1>');assert.match((await fetch(base+'/app.js')).headers.get('content-type'),/javascript/);assert.equal((await fetch(base+'/missing')).status,404);assert.equal(await(await fetch(base+'/',{method:'HEAD'})).text(),'');assert.equal((await fetch(base+'/%2e%2e%2foutside')).status,403);assert.equal((await fetch(base+'/',{method:'POST'})).status,405);}finally{await new Promise(resolve=>server.close(resolve));await fs.rm(root,{recursive:true,force:true});}
+});

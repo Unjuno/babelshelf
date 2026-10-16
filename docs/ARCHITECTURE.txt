@@ -1,0 +1,32 @@
+Mobile Local Brain 0.1.0
+
+UI (app.js) — explicit user operations and confirmation dialogs
+  Brain core (core.js) — immutable revisions, withdrawal, Unicode N-gram inverted index,
+                         explicit links, exact evidence offsets, backup validation
+  IndexedDB (storage.js) — canonical notes/settings/test reports; optimistic version checks
+  Engine (engine.js) — worker RPC, progress, cancellation, single-operation control
+    model-worker.js — OPFS immutable SHA-256-addressed assets; streamed download/hash
+      pinned WebML Qwen3.5 runtime — load, chat-session count_tokens/generate, dispose
+      custom local fetch — HEAD and byte Range responses from OPFS GGUF
+      global fetch rejected — no inference network fallback
+  sw.js — cache-only shell; every shipped file verified on install; old caches retained
+
+No server inference, sync, telemetry, login, API key, embeddings, external fonts.
+Sites hosts immutable static application assets, not note data.
+
+Canonical: note ID, all revisions, state, aliases, generated source refs.
+Derived: in-memory inverted index, chunks, answer view.
+Model assets: separate OPFS directory. Not part of note backup.
+GBrain code: not copied. Reference: specified commit 3ed487d2b72f1c1950f7f722cd5241e4ec537e83.
+
+Control limits: maximum search limit 20; main planner exactly one search_notes call,
+read only selected active records, then one answer generation; create_note is only a
+preview followed by human confirmation. No arbitrary evaluation or destructive model tools.
+
+Source offsets: UTF-16 String.slice units, not UTF-8 byte offsets. Original text is never normalized
+in storage. NFKC normalization is used only for the derived search index.
+
+Limitations: no semantic cross-language retrieval if keywords never overlap. Multilingual
+input/output is allowed, but there is no demonstrated universal multilingual quality.
+Generated-note provenance is recursively checked; changed/withdrawn roots are excluded.
+Very large source notes are excerpted within runtime count_tokens and labeled partial.

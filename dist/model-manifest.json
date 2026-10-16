@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "build": "0.1.0",
+  "runtime": {
+    "name": "WebML Community Qwen3.5 WebGPU bundle",
+    "upstream": "webml-community/ternary-bonsai-2-hermes-webgpu",
+    "revision": "621e20782f208660f4f58283c2ce58430020f243",
+    "file": {
+      "name": "runtime.js",
+      "bytes": 2208435,
+      "sha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+      "url": "https://huggingface.co/spaces/webml-community/ternary-bonsai-2-hermes-webgpu/resolve/621e20782f208660f4f58283c2ce58430020f243/assets/qwen35-vision-Kzp5MMIJ.js"
+    },
+    "licenseStatus": "Runtime-specific license not stated in Space metadata. Not redistributed in this build. Explicit preparation fetches directly from upstream for local use."
+  },
+  "models": [
+    {
+      "id": "4B",
+      "name": "Ternary Bonsai 2 4B",
+      "repository": "prism-ml/Ternary-Bonsai-2-4B-gguf",
+      "revision": "8d6557168168f91ea6697a4a49ed2ef622b53adb",
+      "format": "PTQ1_0",
+      "license": "Apache-2.0",
+      "file": {
+        "name": "Ternary-Bonsai-2-4B-PTQ1_0.gguf",
+        "bytes": 949549920,
+        "sha256": "56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60",
+        "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/resolve/8d6557168168f91ea6697a4a49ed2ef622b53adb/Ternary-Bonsai-2-4B-PTQ1_0.gguf"
+      },
+      "tokenizer": "GGUF metadata",
+      "chatTemplate": "GGUF tokenizer.chat_template metadata",
+      "mmproj": null,
+      "generationVerified": false
+    },
+    {
+      "id": "2B",
+      "name": "Ternary Bonsai 2 2B",
+      "repository": "prism-ml/Ternary-Bonsai-2-2B-gguf",
+      "revision": "683f7be2629342a50987627b40881e54761a2430",
+      "format": "PTQ1_0",
+      "license": "Apache-2.0",
+      "file": {
+        "name": "Ternary-Bonsai-2-2B-PTQ1_0.gguf",
+        "bytes": 429183456,
+        "sha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+        "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf"
+      },
+      "tokenizer": "GGUF metadata",
+      "chatTemplate": "GGUF tokenizer.chat_template metadata",
+      "mmproj": null,
+      "generationVerified": false
+    }
+  ],
+  "contextTokens": 2048,
+  "maxReplyTokens": 256
+}

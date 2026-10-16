@@ -1,0 +1,73 @@
+import {SHA256} from './sha256.js';
+import {fileResponse} from './ranges.js';
+const networkFetch=globalThis.fetch.bind(globalThis);
+// Inference never has a network fallback, even when update permission is ON.
+globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));
+let manifest,model,session,controller,busy=false,root;
+const send=(id,type,value)=>postMessage({id,type,value});
+async function directory(){return root??=await (await navigator.storage.getDirectory()).getDirectoryHandle('mlb-assets-v1',{create:true});}
+async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
+async function meta(id){try{return JSON.parse(await (await file('ready-'+id+'.json')).text());}catch{return null;}}
+async function writeJSON(name,value){const w=await(await(await directory()).getFileHandle(name,{create:true})).createWritable();await w.write(JSON.stringify(value));await w.close();}
+async function hashFile(f,notify=()=>{}){const h=new SHA256(),r=f.stream().getReader();let n=0,last=0;while(true){const {value,done}=await r.read();if(done)break;h.update(value);n+=value.length;if(n-last>8e6){notify(n/f.size);last=n;}}return h.hex();}
+async function storeAsset(entry,id,local=null){
+ const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{}
+ const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();const h=new SHA256();let count=0,last=0;let reader;
+ try{
+  if(local){if(local.size!==entry.bytes)throw Error('File size mismatch');reader=local.stream().getReader();}
+  else {const res=await networkFetch(entry.url,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});if(!res.ok||!res.body)throw Error('Download failed · HTTP '+res.status);reader=res.body.getReader();}
+  while(true){controller.signal.throwIfAborted();const {value,done}=await reader.read();if(done)break;count+=value.length;if(count>entry.bytes)throw Error('Unexpected file size');h.update(value);await w.write(value);if(Date.now()-last>300){send(id,'progress',`${entry.name} · ${(count/1e6).toFixed(1)} / ${(entry.bytes/1e6).toFixed(1)} MB`);last=Date.now();}}
+  if(count!==entry.bytes||h.hex()!==entry.sha256)throw Error('Verification failed');await w.close();return name;
+ }catch(e){await reader?.cancel().catch(()=>{});await w.abort().catch(()=>{});try{await(await directory()).removeEntry(name);}catch{}throw e;}
+}
+async function status(){const out={};for(const m of manifest.models){const x=await meta(m.id);if(x){try{const a=await file(x.modelHash),r=await file(x.runtimeHash);out[m.id]={...x,filesPresent:a.size===m.file.bytes&&r.size===manifest.runtime.file.bytes};}catch{out[m.id]={...x,filesPresent:false};}}else out[m.id]=null;}return out;}
+async function load(id,size){
+ const m=manifest.models.find(m=>m.id===size);if(!m)throw Error('Unsupported model');const ready=await meta(size);if(!ready)throw Error('Model not downloaded');
+ await unload();controller.signal.throwIfAborted();
+ const f=await file(m.file.sha256),runtime=await file(manifest.runtime.file.sha256);
+ send(id,'progress','Verifying…');
+ if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||await hashFile(f)!==m.file.sha256||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
+ send(id,'progress','Loading…');
+ const moduleURL=URL.createObjectURL(new Blob([runtime],{type:'text/javascript'}));let api;
+ try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}
+ const localURL=new URL('__model/'+m.file.name,self.location.href).href;
+ const localFetch=async(url,options={})=>{if(String(url)!==localURL)throw Error('Blocked resource: '+url);return fileResponse(f,options);};
+ model=await api.Qwen3_5ForConditionalGeneration.from_pretrained(localURL,{mmproj:null,fetch:localFetch,cache:false,maxLength:manifest.contextTokens,prefixSnapshotStore:null,decodePipelineDepth:1,signal:controller.signal,chatTemplateArgs:{enable_thinking:false},onProgress:p=>send(id,'progress',p.message??p.status)});
+ session=model.create_session();const loadedModel=model;model.lost.then(e=>{if(model!==loadedModel)return;send(0,'lost',String(e?.message??e));model=null;session=null;});
+ return {model:size,contextTokens:model.contextLength,device:model.deviceInfo(),memory:model.memoryStats()};
+}
+async function unload(){await session?.dispose();session=null;await model?.dispose();model=null;}
+onmessage=async({data})=>{
+ const {id,cmd,args={}}=data;
+ if(cmd==='abort'){controller?.abort(new DOMException('Stopped','AbortError'));return;}
+ if(busy){send(id,'error','Busy');return;}busy=true;controller=new AbortController();
+ try{
+  let result;
+  switch(cmd){
+   case 'init':manifest=args.manifest;result=await status();break;
+   case 'status':result=await status();break;
+   case 'probe':{if(!navigator.gpu){result={available:false,reason:'WebGPU API unavailable in this Worker'};break;}const adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});result=adapter?{available:true,info:adapter.info,features:[...adapter.features],limits:{maxBufferSize:adapter.limits.maxBufferSize,maxStorageBufferBindingSize:adapter.limits.maxStorageBufferBindingSize}}:{available:false,reason:'No WebGPU adapter was returned'};break;}
+
+   case 'prepare':{
+    const m=manifest.models.find(m=>m.id===args.model);if(!m)throw Error('Unsupported model');if(!args.localFiles&&!args.allowNetwork)throw Error('Downloads are off');
+    const files=args.localFiles??[];const match=e=>files.find(f=>f.name===e.name||f.name===e.sha256);
+    if(args.localFiles&&(!match(m.file)||!match(manifest.runtime.file)))throw Error('Model GGUF and runtime.js required');
+    await storeAsset(manifest.runtime.file,id,match(manifest.runtime.file));await storeAsset(m.file,id,match(m.file));
+    const ready={model:m.id,modelHash:m.file.sha256,runtimeHash:manifest.runtime.file.sha256,verifiedAt:new Date().toISOString(),generationVerified:false,offlineVerified:false};await writeJSON('ready-'+m.id+'.json',ready);result=ready;break;
+   }
+   case 'load':result=await load(id,args.model);break;
+   case 'unload':await unload();result=true;break;
+   case 'count':if(!session)throw Error('Model not loaded');result=session.count_tokens(args.messages,{enable_thinking:false});break;
+   case 'generate':{
+    if(!session)throw Error('Model not loaded');
+    const count=session.count_tokens(args.messages,{enable_thinking:false});if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
+    const start=performance.now();let first=null,last=null,text='',chunks=0;
+    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,do_sample:false,signal:controller.signal});
+    for await(const event of stream){if(event.type==='text'){text+=event.text;first??=performance.now();last=performance.now();chunks++;send(id,'text',event.text);}else if(event.type==='prefill')send(id,'progress',`Prefill · ${event.done} / ${event.total}`);}
+    const raw=await stream.result;result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs:performance.now()-start,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],stopped:controller.signal.aborted};break;
+   }
+   default:throw Error('Unknown action');
+  }
+  send(id,'done',result);
+ }catch(e){send(id,'error',e?.name==='AbortError'?'Stopped':String(e?.message??e));}finally{busy=false;controller=null;}
+};

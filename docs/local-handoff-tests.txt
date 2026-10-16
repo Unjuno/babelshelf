@@ -1,0 +1,43 @@
+
+> mobile-local-brain@0.1.0 test
+> node --test tests/*.test.mjs
+
+✔ incremental SHA-256 matches Node crypto across empty, boundary and large chunks (114.229633ms)
+✔ offline range responses cover HEAD, bounded, open and suffix requests (11.876286ms)
+✔ new note preserves literal source and immutable revisions (4.760553ms)
+✔ Japanese search finds evidence beyond document beginning with exact UTF-16 ranges (9.254316ms)
+✔ withdrawn notes and derivatives with withdrawn sources cannot ground answers (1.305021ms)
+✔ forged, changed and out of bounds references are rejected (1.140162ms)
+✔ backup hash validates and restore is non-destructive including tombstones (14.778719ms)
+✔ explicit links never silently resolve duplicate titles (1.482408ms)
+✔ tool allowlist rejects arbitrary code, destructive tools and unknown IDs (0.430127ms)
+✔ 1000 Japanese notes preserve specific evidence recall and aliases (97.626747ms)
+✔ Japanese English Chinese Korean and mixed input stay searchable (1.803145ms)
+✔ generated answer rejects missing or forged citation IDs and quotes (1.027699ms)
+✔ English UI starts at Chat without instructional paragraphs (1.471221ms)
+✔ composer uses form submission and keeps separate message turns (0.277552ms)
+✔ new chat turns mount under the thread, never inside their own reply (0.919289ms)
+✔ chat shows one send action and no mode or attachment controls (0.459849ms)
+✔ local server serves static PWA with correct MIME, 404, HEAD and traversal rejection (115.206745ms)
+✔ source changes invalidate derivative reuse and stale evidence (5.870448ms)
+✔ search indexes one-character and normalized full-width aliases (2.01101ms)
+✔ malformed backup schemas and duplicate IDs fail after valid digest too (17.382191ms)
+✔ backup source references must exist and must match exact source ranges (1.474776ms)
+✔ script and injection strings remain literal data through backup round-trip (6.588455ms)
+✔ app renders no user HTML and has no remote script/image/font dependencies (15.094051ms)
+✔ inference worker rejects default fetch and pins downloaded model files (3.073048ms)
+✔ no incoming model action can invoke arbitrary or destructive tools (0.836178ms)
+✔ restore rejects dependent evidence when same-ID conflicts change its source bytes (1.874329ms)
+✔ visible text never uses a font-size smaller than 16 CSS px (1.653129ms)
+✔ mobile note list is vertical and opens a dedicated reading screen (0.258387ms)
+✔ main actions declare at least 48px target size and retain visible focus (0.345728ms)
+✔ destructive actions and diagnostic tools are disclosed separately from ordinary reading (0.255873ms)
+✔ declared reading and action text colors meet the internal 4.5 contrast target (0.536513ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 408.332803

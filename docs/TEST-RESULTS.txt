@@ -1,0 +1,68 @@
+TEST RESULTS — 2026-10-16, build 0.1.0
+
+Node test runner: 30 PASS, 0 FAIL. See container-tests.txt for raw log.
+No model mocks are used in the ordinary product. Node tests cover pure core behavior
+and inspect security configuration; they are not an IndexedDB/WebGPU browser pass.
+
+Core: immutable source/version retention, edit conflict rejection, long Japanese text,
+Unicode source offsets, withdrawal and stale derived roots, unknown/forged/out-of-range
+citations, exact quote checks, duplicate-title links, multilingual and mixed keyword
+search, 1000-record retrieval, backup integrity, unknown schema, duplicate ID and
+source-conflict restore refusal, literal malicious text round-trip, tool allowlist.
+Assets: streaming SHA-256 versus Node crypto at 0/1/55/56/63/64/65/1000/1000000 bytes,
+HEAD and bounded/open/suffix Range response behavior, invalid Range rejection.
+
+Static check: JavaScript syntax, DOM IDs, pinned model revision/hash, all shell asset hashes PASS.
+PWA manifest and PNG/SVG icons present. Server MIME and real Safari installation remain untested.
+
+Container browser QA: BLOCKED. sites-preview starts with bwrap and failed:
+Can't mount proc on /newroot/proc: Operation not permitted.
+Supervisor status: stopped. No substitute server/browser path was used to claim a pass.
+
+Prior remote Chrome upstream demo test (not this app): 4B PTQ1_0 then 2B PTQ1_0,
+context 2048, max reply 128, Thinking OFF. Both returned
+Model load failed: No WebGPU adapter was returned.
+Therefore: real generation, stop and offline model reload NOT RUN.
+This is an environment failure, not evidence that the model cannot run on an iPhone.
+
+In-app REAL browser tests implemented but NOT RUN here:
+- isolated IndexedDB save/re-read, history/conflict, multilingual evidence,
+  withdrawal, backup/restore/hash rejection
+- real OPFS write/read
+- SW control and full shell-cache SHA-256 validation
+- Worker WebGPU adapter probe
+- real Bonsai generation of a fresh random verification code with exact citation checks
+- 50 real-model multilingual test cases (Japanese/English/Chinese/Korean/mixed, ten each),
+  search planning -> retrieval -> cited answer -> generated note saved to isolated DB -> backup
+- cold-start marker and canonical version/state comparison
+
+PWA kill/relaunch cannot be proved by the reload marker alone.
+Airplane mode / Wi-Fi OFF, new post-disconnect files and notes, fresh generation,
+summary, confirmed derived save, backups and isolated restore/reindex must be exercised.
+Normal application no-network audit, GPU lost, OOM, quota/restore/update-failure injection,
+three PWA cold starts plus device restart: NOT RUN.
+
+iPhone 16/17/Air: NOT TESTED. Android: NOT TESTED.
+Inference throughput/TTFT/thermal stability: NOT MEASURED.
+50-case facts/citation tests do not measure natural-language fluency; human review required.
+No universal multi-language support or completed Gate 0/3 is claimed.
+
+Outstanding: actual browser and device validation; upstream runtime redistribution license
+clarification; robust model-version migration/rollback UI; backup conflict-resolution UI;
+full-document hierarchical summaries; semantic/cross-language retrieval and richer quality suites.
+No missing work is replaced with a canned response or another provider's model.
+
+UI revision: 5 source-based regression tests added. Visible declared font sizes >=16px,
+18px body, vertical mobile list / reading / explicit edit controls, >=48px button targets,
+separate withdrawal and diagnostics disclosure, six text/background contrast pairs >=4.5.
+These checks do NOT establish actual device readability, visual layout or accessibility conformance.
+
+English chat UI: three source checks added for English/no-instruction initial UI, form and
+IME-safe composer event structure, and chat-turn mounting. A real-DOM mounting diagnostic
+was added to the in-browser suite but has not run in the unavailable preview environment.
+Conversation rendering, form interaction, keyboard/IME and history persistence still require real-browser verification.
+
+Minimal controls: added one source regression test for hidden composer modes/attachments,
+two primary navigation destinations and no Brain brand label. Diagnostics errors translated
+to English; multilingual fixture source text intentionally retained. HTML nesting checked.
+No new real-browser or device PASS is claimed.

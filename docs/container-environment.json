@@ -1,0 +1,13 @@
+{
+  "node": "v24.19.0",
+  "platform": "linux",
+  "arch": "x64",
+  "cpus": [
+    {
+      "model": "INTEL(R) XEON(R) PLATINUM 8573C",
+      "reportedMHz": 0
+    }
+  ],
+  "logicalCPUs": 9,
+  "note": "Container metadata only. No inference benchmark. GPU/clock/batch not measured."
+}
