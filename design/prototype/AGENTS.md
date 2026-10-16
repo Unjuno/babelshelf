@@ -119,3 +119,6 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 - Keep the visible Input surface free of Example and Hold/Menu helper labels. Bundled content remains a prototype fixture, not evidence of model inference; document that outside the product screen.
 
 - Settings panels share one header row: Back, title, canonical settings-file action; overview uses title and folder action. Never stack Back/Open file as separate rows. Use consistent 16px card padding, 16px card spacing, 48px choice controls and 44px toolbar targets across Models/Appearance/Connection/Local files.
+
+- All model roles share Add model registration, registered-only selectors, Not configured, matching Add affordances and readiness states. Catalog registration never implies a download or working runtime. Preserve legacy model records/history when adding text/decision libraries.
+- Schedule Repeat contains Once, Every day, Every week (multiple days), Every month and Custom (days/weeks anchored to a start date). Keep exact prompt while changing conditions. Validate next occurrence, show missing-month-day skip policy, and do not claim timed execution is connected.

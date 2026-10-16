@@ -445,3 +445,5 @@ button.model-picker svg{flex-shrink:0}
 .device-screen:has(.appearance-dark) .settings-screen .settings-action{border-color:#58736780}
 .settings-screen button:focus-visible{outline:2px solid #227452;outline-offset:3px}
 .device-screen:has(.appearance-dark) .settings-screen button:focus-visible{outline-color:#b8edcf}
+
+.schedule-note{font-size:14px;color:#435f52}.device-screen:has(.appearance-dark) .schedule-note{color:#c9dfd2}

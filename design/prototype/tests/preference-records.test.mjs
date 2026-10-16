@@ -26,3 +26,18 @@ test('model selections reference the library and managed settings cannot be dele
  assert.equal(readPreference('models',registered).transcriptionModel,'whisper-tiny');
  assert.throws(()=>deletionContents({kind:'file',value:'settings-models'},original,['Settings']),/protected/);
 });
+
+test('all roles require registration; old model records migrate without losing history',()=>{
+ const original=structuredClone(initialPreferenceNotes),before=original.find(n=>n.id==='settings-models');
+ assert.throws(()=>updatePreference('models',original,m=>({...m,textModel:'2B'})),/before selecting/);
+ assert.throws(()=>updatePreference('models',original,m=>({...m,decisionModel:'d1-3B'})),/before selecting/);
+ const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'2B'],textModel:'2B',decisionLibrary:['d1-3B'],decisionModel:'d1-3B'}));
+ assert.equal(readPreference('models',registered).textModel,'2B');
+ assert.deepEqual(registered.find(n=>n.id===before.id).history,[before.body]);
+ const legacy={...readPreference('models',original)};delete legacy.textLibrary;delete legacy.decisionLibrary;
+ const body=formatPreference('models',legacy),parsed=parsePreference('models',body);
+ assert.deepEqual(parsed.textLibrary,['4B']);assert.deepEqual(parsed.decisionLibrary,[]);
+ const older=original.map(n=>n.id===before.id?{...n,body}:n);
+ const changed=updatePreference('models',older,m=>({...m,textLibrary:['4B','2B'],textModel:'2B'}));
+ assert.deepEqual(changed.find(n=>n.id===before.id).history,[body]);
+});
