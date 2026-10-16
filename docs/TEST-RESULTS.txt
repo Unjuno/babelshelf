@@ -129,3 +129,7 @@ No new real-browser or device PASS is claimed.
 - Desktop browser: microphone unconfigured -> Open settings -> add Whisper tiny -> registered/selected; add Whisper base -> switch back to tiny. Text remains Bonsai 2 4B, Decision remains unconfigured. Mic displays selected tiny and Not prepared.
 - Catalog: tiny 39M/base 74M multilingual metadata checked against official OpenAI Whisper sources; not evidence of browser execution or model quality.
 - Download/Prepare disabled because runtime/asset manifest unconnected. No browser speech recognition, model download, transcription or physical-device test performed. Library and selection remain transient.
+
+2026-10-17 schedule prompt and Repeat correction
+- Desktop browser: multiline Japanese Prompt -> Repeat glass sheet -> weekly -> Cancel returns without losing draft -> Save -> reopen Edit schedule preserves full prompt/newline and weekly 09:00.
+- This validates transient UI records only, not scheduled model execution.

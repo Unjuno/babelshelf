@@ -89,3 +89,5 @@ Prototype Trash is transient React state, not durable recovery or space reclamat
 ## Attachments, capabilities, appearance and notification details
 
 See MEDIA-HARNESS.md for the accepted processing/provenance and decision boundaries. Prototype supports multi-attachment originals and bounded TXT/MD reading, sent-input grouping, original inspection, Media readiness statuses, Theme/Background/Glass/reset controls, and read/detail/delete notification receipts linked to schedules. Settings and records are transient; processing models, canonical notification storage and media-aware citations are not integrated.
+
+- Scheduled work is a prompt: New/Edit schedule uses a multiline Prompt with exact body preservation, not a title-only task. List heading derives from the first line; notification receipts retain the prompt. Repeat uses the same app-owned glass choice sheet (Every day/Every week) with draft-preserving return/Cancel; no native select menu. Execution and canonical persistence remain unconnected.
