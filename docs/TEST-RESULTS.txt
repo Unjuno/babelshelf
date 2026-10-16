@@ -157,3 +157,8 @@ No new real-browser or device PASS is claimed.
 - Removed permanent answer source card; desktop browser confirms zero sample answer cards, inline mark opens exact v1/path/original, Open file opens Memory original reader. Sent attachment previews retained.
 - Dark source and original reader body rgb(239,248,243) over sheet rgb(36,56,48); primary action uses same foreground over rgb(56,89,71). Browser console errors: none.
 - Prototype helper tests 15/15 PASS; TypeScript/Vite build PASS; protected runtime 28/28 unchanged. Existing ~541 kB chunk warning remains. Physical mobile devices and inference not tested in this UI-only revision.
+
+2026-10-17 Settings UI consistency
+- Settings panels share a single 48px header row with 44px Back/file targets; removed stacked Back/Open file rows. Cards use 16px padding/gaps and 48px choices. Appearance groups use the same card/heading rhythm as Models. Speech status no longer duplicates runtime state.
+- PC browser: overview -> Models/Appearance/Connection/Local files and Back verified; decision picker opens; light/dark selection works; appearance file reflects dark at v3. Header measured 48 CSS px. No physical-device check claimed.
+- Prototype helpers 15/15 PASS; TypeScript/Vite build PASS; protected mobile runtime 28/28 unchanged; existing bundle-size warning remains.

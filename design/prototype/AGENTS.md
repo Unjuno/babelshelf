@@ -117,3 +117,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 - Answer citations use compact inline marks only. Show source filenames, original text and media previews on demand after opening the mark; do not add permanent source cards below answers. Dark original text and sheet actions must retain strong contrast.
 
 - Keep the visible Input surface free of Example and Hold/Menu helper labels. Bundled content remains a prototype fixture, not evidence of model inference; document that outside the product screen.
+
+- Settings panels share one header row: Back, title, canonical settings-file action; overview uses title and folder action. Never stack Back/Open file as separate rows. Use consistent 16px card padding, 16px card spacing, 48px choice controls and 44px toolbar targets across Models/Appearance/Connection/Local files.
