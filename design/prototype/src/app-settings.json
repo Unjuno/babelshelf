@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "models": {
     "text": [
       {
@@ -24,6 +24,20 @@
         "value": "d1-3B",
         "label": "Open d1 · 3B"
       }
+    ],
+    "transcription": [
+      {
+        "value": "whisper-tiny",
+        "label": "Whisper tiny",
+        "parameters": 39000000,
+        "language": "Multilingual"
+      },
+      {
+        "value": "whisper-base",
+        "label": "Whisper base",
+        "parameters": 74000000,
+        "language": "Multilingual"
+      }
     ]
   },
   "defaults": {
@@ -32,7 +46,8 @@
     "downloads": false,
     "theme": "system",
     "background": "paper",
-    "glass": "clear"
+    "glass": "clear",
+    "transcriptionModel": ""
   },
   "appearance": {
     "themes": [

@@ -378,3 +378,5 @@ button.model-picker svg{flex-shrink:0}
 .notification-detail p{color:#243c32}.device-screen:has(.appearance-dark) .notification-detail p{color:#eff8f3}
 
 .device-screen:has(.appearance-dark) .attachment-source-menu .settings-action{color:#eff8f3}
+
+.speech-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}.speech-heading h2{margin:0!important}.speech-heading .icon-button{color:#005b40}.speech-runtime-status{font-size:14px;color:#52685d;padding:4px 0 12px}.speech-candidate>span{display:flex;flex-direction:column;gap:5px}.speech-candidate strong{font-weight:550}.speech-candidate small{font-size:14px;color:#52685d}.device-screen:has(.appearance-dark) :is(.speech-runtime-status,.speech-candidate small){color:#c0d1c7}.device-screen:has(.appearance-dark) .speech-heading .icon-button{color:#b8edcf}

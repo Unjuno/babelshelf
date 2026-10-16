@@ -16,14 +16,18 @@ function freeze<T>(value:T):T {if(value&&typeof value==='object'){Object.values(
 export function validateSettings(value:unknown):Settings {
  keys(value,['schemaVersion','models','defaults','appearance','media','storage','harness']);
  const c=value as Settings;
- if(c.schemaVersion!==1)throw Error('Unsupported settings version');
- keys(c.models,['text','decision']);
+ if(c.schemaVersion!==2)throw Error('Unsupported settings version');
+ keys(c.models,['text','decision','transcription']);
  for(const [role,allowed] of [['text',allowedText],['decision',allowedDecision]] as const){
   const options=c.models[role];
   if(!Array.isArray(options)||options.length!==allowed.length)throw Error('Invalid model registry');
   options.forEach((item,i)=>{keys(item,['value','label']);if(item.value!==allowed[i]||typeof item.label!=='string'||!item.label.trim())throw Error('Unsupported model');});
  }
- keys(c.defaults,['textModel','decisionModel','downloads','theme','background','glass']);
+ const speechIDs=['whisper-tiny','whisper-base'];
+ if(!Array.isArray(c.models.transcription)||c.models.transcription.length!==2)throw Error('Invalid transcription registry');
+ c.models.transcription.forEach((item,i)=>{keys(item,['value','label','parameters','language']);if(item.value!==speechIDs[i]||typeof item.label!=='string'||!item.label.trim()||item.parameters!==[39000000,74000000][i]||item.language!=='Multilingual')throw Error('Unsupported transcription model');});
+ keys(c.defaults,['textModel','decisionModel','transcriptionModel','downloads','theme','background','glass']);
+ if(c.defaults.transcriptionModel!==''&&!speechIDs.includes(c.defaults.transcriptionModel))throw Error('Invalid transcription default');
  if(!allowedText.includes(c.defaults.textModel)||!allowedDecision.includes(c.defaults.decisionModel)||c.defaults.downloads!==false)throw Error('Invalid model/network defaults');
  keys(c.appearance,['themes','backgrounds','glass']);
  list(c.appearance.themes,['system','light','dark']);list(c.appearance.backgrounds,['paper','sage','sand']);list(c.appearance.glass,['clear','frosted']);

@@ -123,3 +123,9 @@ No new real-browser or device PASS is claimed.
 - TypeScript/Vite build PASS; protected runtime 28/28 unchanged.
 - Desktop browser: + directly opens multi-file picker; selected test Markdown can be removed.
 - CDP coarse-pointer simulation: + opens Take photo / Choose files / Cancel; Take photo opens a single-image picker. Native camera capture on physical Android/iPhone remains unverified.
+
+2026-10-17 transcription model UI
+- Prototype helpers 10/10 PASS, including rejected unsupported transcription IDs/defaults. TypeScript/Vite build PASS, runtime 28/28 unchanged; existing chunk-size warning remains (~527 kB).
+- Desktop browser: microphone unconfigured -> Open settings -> add Whisper tiny -> registered/selected; add Whisper base -> switch back to tiny. Text remains Bonsai 2 4B, Decision remains unconfigured. Mic displays selected tiny and Not prepared.
+- Catalog: tiny 39M/base 74M multilingual metadata checked against official OpenAI Whisper sources; not evidence of browser execution or model quality.
+- Download/Prepare disabled because runtime/asset manifest unconnected. No browser speech recognition, model download, transcription or physical-device test performed. Library and selection remain transient.

@@ -18,6 +18,10 @@ test('configuration rejects unsupported models, budgets and missing fields',()=>
  candidate.models.text[0].value='4B';candidate.media.maxTextBytes=2**30;
  assert.throws(()=>validateSettings(candidate),/budget/);
  delete candidate.media;assert.throws(()=>validateSettings(candidate));
+ const speech=structuredClone(settings);speech.models.transcription[0].value='whisper-tiny.en';
+ assert.throws(()=>validateSettings(speech),/transcription/);
+ speech.models.transcription[0].value='whisper-tiny';speech.defaults.transcriptionModel='unregistered';
+ assert.throws(()=>validateSettings(speech),/transcription/);
 });
 test('validated defaults are copied and immutable and preserve protected roots',()=>{
  const candidate=structuredClone(settings),validated=validateSettings(candidate);
