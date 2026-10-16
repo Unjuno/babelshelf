@@ -1,0 +1,128 @@
+import { memoryFilePath as filePath, memoryFolderPath as folderPath, validateMemoryFilePath as validateFilePath, SYSTEM_FOLDERS, isSystemFolder, MAX_FOLDER_DEPTH } from './memory-paths';
+import { memoryBreadcrumbs, memoryFolderEntries, memoryCreationFolder, type MemoryScope } from './memory-navigation';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { ChatCircle, FolderSimple, GearSix, Camera, Microphone, PaperPlaneTilt, FileText, CaretRight, CaretDown, ArrowLeft, X, Plus, Check, Clock, Bell, Quotes, LockSimple } from '@phosphor-icons/react';
+import { BottomSheet, KeyboardInput, KeyboardTextarea, MobileScroll, useKeyboard, useKeyboardInsets } from './mobile';
+
+type Page = 'input' | 'memory' | 'schedule' | 'notifications' | 'settings';
+type Schedule = { id:string; title:string; repeat:string; time:string; enabled:boolean; notify:boolean };
+type Note = { id: string; path: string; body: string; version: number; history: string[] };
+const textModels=[{value:'4B',label:'Bonsai 2 · 4B'},{value:'2B',label:'Bonsai 2 · 2B'}];
+const decisionModels=[{value:'',label:'Not configured'},{value:'d1-omni-600M',label:'Open d1 · Omni 600M'},{value:'d1-3B',label:'Open d1 · 3B'}];
+const initialNotes: Note[] = [
+  { id:'meeting', path:'Notes/work/meeting.md', body:'# Meeting\n\nMove it to Monday at 10. The venue stays the same.', version:1, history:[] },
+  { id:'ideas', path:'Notes/personal/ideas.md', body:'# Ideas\n\nA place for things to return to.', version:1, history:[] },
+];
+const tabs = [{id:'input' as Page,label:'Input',icon:ChatCircle},{id:'memory' as Page,label:'Memory',icon:FolderSimple},{id:'schedule' as Page,label:'Schedule',icon:Clock},{id:'notifications' as Page,label:'Notifications',icon:Bell},{id:'settings' as Page,label:'Settings',icon:GearSix}];
+
+export default function Prototype() {
+ const keyboard=useKeyboard(), {bottomInset,availableHeight}=useKeyboardInsets();
+ const [page,setPage]=useState<Page>('input'),[draft,setDraft]=useState('');
+ const [messages,setMessages]=useState<string[]>([]),[notes,setNotes]=useState(initialNotes),[opened,setOpened]=useState<string|null>(null);
+ const [editing,setEditing]=useState(false),[editBody,setEditBody]=useState(''),[editPath,setEditPath]=useState(''),[query,setQuery]=useState('');
+ const [sheet,setSheet]=useState<'voice'|'history'|'schedule'|'file'|'folder'|'source'|'text-model'|'decision-model'|null>(null),[notice,setNotice]=useState('');
+ const [model,setModel]=useState('4B'),[decisionModel,setDecisionModel]=useState(''),[downloads,setDownloads]=useState(false),[attachment,setAttachment]=useState<{name:string,url:string}|null>(null);
+ const [schedules,setSchedules]=useState<Schedule[]>([]),[scheduleId,setScheduleId]=useState<string|null>(null),[scheduleTitle,setScheduleTitle]=useState(''),[scheduleRepeat,setScheduleRepeat]=useState('daily'),[scheduleTime,setScheduleTime]=useState('09:00'),[scheduleNotify,setScheduleNotify]=useState(true);
+ const [fileName,setFileName]=useState(''),[fileBody,setFileBody]=useState(''),[activeFolder,setActiveFolder]=useState(''),[extraFolders,setExtraFolders]=useState<string[]>([]),[folderName,setFolderName]=useState('');
+ const [memoryScope,setMemoryScope]=useState<MemoryScope>('home');
+ function browseMemory(scope:MemoryScope,path=''){keyboard.hide();setMemoryScope(scope);setActiveFolder(path);setOpened(null);setEditing(false);setQuery('');}
+ const files=useRef<HTMLInputElement>(null), noticeTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ const [navOpen,setNavOpen]=useState(false),[navTarget,setNavTarget]=useState<Page|null>(null);
+ const home=useRef<HTMLButtonElement>(null),navButtons=useRef<Partial<Record<Page,HTMLButtonElement|null>>>({});
+ const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),skipClick=useRef(false),targetRef=useRef<Page|null>(null);
+ const press=useRef<{id:number;x:number;y:number;held:boolean;moved:boolean}|null>(null);
+ function clearHold(){if(holdTimer.current){clearTimeout(holdTimer.current);holdTimer.current=null;}}
+ function markTarget(next:Page|null){targetRef.current=next;setNavTarget(next);}
+ function closeNav(){clearHold();press.current=null;setNavOpen(false);markTarget(null);}
+ function showNav(){keyboard.hide();setNavOpen(true);markTarget(null);}
+ useEffect(()=>()=>clearHold(),[]);
+ function beginHold(e:PointerEvent<HTMLButtonElement>){
+  if(!e.isPrimary||e.button!==0)return;
+  clearHold();skipClick.current=false;markTarget(null);
+  press.current={id:e.pointerId,x:e.clientX,y:e.clientY,held:false,moved:false};
+  e.currentTarget.setPointerCapture(e.pointerId);
+  holdTimer.current=setTimeout(()=>{if(press.current){press.current.held=true;showNav();}},50);
+ }
+ function slideHold(e:PointerEvent<HTMLButtonElement>){
+  const p=press.current;if(!p||p.id!==e.pointerId)return;
+  if(Math.hypot(e.clientX-p.x,e.clientY-p.y)>12)p.moved=true;
+  if(!p.held){if(p.moved)clearHold();return;}
+  const center=home.current?.getBoundingClientRect();
+  if(center&&Math.hypot(e.clientX-center.x-center.width/2,e.clientY-center.y-center.height/2)<center.width*.6){markTarget(null);return;}
+  const distances=tabs.slice(1).map(t=>{const r=navButtons.current[t.id]?.getBoundingClientRect();return{id:t.id,d:r?Math.hypot(e.clientX-r.x-r.width/2,e.clientY-r.y-r.height/2):Infinity,r};}).sort((a,b)=>a.d-b.d);
+  const previous=distances.find(t=>t.id===targetRef.current),nearest=distances[0];
+  if(previous?.r&&previous.d<previous.r.width*.76&&previous.d<nearest.d+6)return;
+  markTarget(nearest.r&&nearest.d<nearest.r.width*.72?nearest.id:null);
+ }
+ function finishHold(e:PointerEvent<HTMLButtonElement>){
+  const p=press.current;if(!p||p.id!==e.pointerId)return;
+  slideHold(e);
+  clearHold();press.current=null;skipClick.current=true;
+  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  if(p.held){const next=targetRef.current;closeNav();if(next)navigate(next);else if(!p.moved)navigate('input');}
+  else if(!p.moved){closeNav();navigate('input');}
+ }
+ function cancelHold(){skipClick.current=true;closeNav();}
+ useEffect(()=>{const cancel=()=>closeNav();window.addEventListener('blur',cancel);return()=>window.removeEventListener('blur',cancel);},[]);
+ function navKeys(e:KeyboardEvent<HTMLElement>){
+  if(e.key==='Escape'){e.preventDefault();if(press.current)skipClick.current=true;closeNav();home.current?.focus();return;}
+  if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft','Home','End'].includes(e.key)){
+   e.preventDefault();showNav();const currentIndex=tabs.slice(1).findIndex(t=>navButtons.current[t.id]===document.activeElement);
+   const index=e.key==='Home'?0:e.key==='End'?3:(currentIndex+(e.key==='ArrowUp'||e.key==='ArrowLeft'?-1:1)+4)%4;
+   requestAnimationFrame(()=>{markTarget(tabs[index+1].id);navButtons.current[tabs[index+1].id]?.focus();});
+  }
+ }
+ useEffect(()=>{if(sheet)keyboard.hide();},[sheet]);
+ const current=notes.find(n=>n.id===opened);
+ function toast(text:string){setNotice(text);if(noticeTimer.current)clearTimeout(noticeTimer.current);noticeTimer.current=setTimeout(()=>setNotice(''),3500);}
+ function navigate(next:Page){keyboard.hide();setPage(next);if(next==='memory'){setMemoryScope('home');setActiveFolder('');setQuery('');}setOpened(null);setEditing(false);home.current?.focus({preventScroll:true});}
+ function openNote(id:string){keyboard.hide();setPage('memory');setOpened(id);setEditing(false);setMemoryScope('folder');setActiveFolder(notes.find(n=>n.id===id)?.path.split('/').slice(0,-1).join('/')??'');}
+ function editSchedule(s?:Schedule){keyboard.hide();setScheduleId(s?.id??null);setScheduleTitle(s?.title??'');setScheduleRepeat(s?.repeat??'daily');setScheduleTime(s?.time??'09:00');setScheduleNotify(s?.notify??true);setSheet('schedule');}
+ function saveSchedule(){if(!scheduleTitle.trim())return toast('Enter a title');if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(scheduleTime))return toast('Use HH:MM');const item:Schedule={id:scheduleId??crypto.randomUUID(),title:scheduleTitle.trim(),repeat:scheduleRepeat,time:scheduleTime,enabled:schedules.find(s=>s.id===scheduleId)?.enabled??false,notify:scheduleNotify};setSchedules(items=>[...items.filter(s=>s.id!==item.id),item]);keyboard.hide();setSheet(null);toast('Saved in preview · execution not connected');}
+ function send(){if(!draft.trim()&&!attachment)return;setMessages(m=>[...m,draft.trim()||(attachment?.name??'')]);setDraft('');setAttachment(null);keyboard.hide();toast('Preview only · no model connected');}
+ function createFile(){try{const path=filePath(memoryCreationFolder(memoryScope,activeFolder,'file'),fileName,[...notes.map(n=>n.path),...allFolders]);const n:Note={id:crypto.randomUUID(),path,body:fileBody,version:1,history:[]};setNotes(a=>[...a,n]);setOpened(n.id);setActiveFolder(path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setSheet(null);keyboard.hide();toast('Saved in preview');}catch(e){toast((e as Error).message);}}
+ function createFolder(){try{const path=folderPath(memoryCreationFolder(memoryScope,activeFolder,'folder'),folderName,[...allFolders,...notes.map(n=>n.path)]);setExtraFolders(a=>[...a,path]);setActiveFolder(path);setMemoryScope('folder');setFolderName('');keyboard.hide();setSheet(null);}catch(e){toast((e as Error).message);}}
+ function startFile(){keyboard.hide();setSheet('file');setOpened(null);setFileName('');setFileBody('');setFolderName('');}
+ function save(){if(!current)return;let path:string;try{path=editPath.trim()===current.path?current.path:validateFilePath(editPath.trim());}catch(e){return toast((e as Error).message);}if(notes.some(n=>n.id!==current.id&&n.path===path))return toast('Path already exists');setNotes(all=>all.map(n=>n.id===current.id?{...n,path,body:editBody,version:n.version+1,history:[...n.history,n.body]}:n));setActiveFolder(path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setEditing(false);keyboard.hide();toast('Saved in preview');}
+ const visible=notes.filter(n=>(n.path+' '+n.body).toLowerCase().includes(query.toLowerCase()));
+ const allFolders=[...new Set([...SYSTEM_FOLDERS,...extraFolders,...notes.map(n=>n.path.split('/').slice(0,-1).join('/'))].flatMap(path=>path?path.split('/').map((_,i,a)=>a.slice(0,i+1).join('/')):[]))].sort((a,b)=>{const ai=SYSTEM_FOLDERS.indexOf(a),bi=SYSTEM_FOLDERS.indexOf(b);return (ai<0?5:ai)-(bi<0?5:bi)||a.localeCompare(b);});
+ const crumbs=memoryBreadcrumbs(memoryScope,activeFolder);
+ const folderEntries=memoryFolderEntries(memoryScope,activeFolder,allFolders);
+ const scopedNotes=visible.filter(n=>memoryScope==='folder'?(query?n.path.startsWith(activeFolder+'/'):n.path.split('/').slice(0,-1).join('/')===activeFolder):memoryScope==='home'&&query?['Inbox','Notes','Attachments'].some(root=>n.path.startsWith(root+'/')):false);
+ const visibleFolders=query?folderEntries.filter(f=>f.label.toLowerCase().includes(query.toLowerCase())):folderEntries;
+ const creationParent=memoryCreationFolder(memoryScope,activeFolder,sheet==='folder'?'folder':'file');
+ const renderBreadcrumbs=()=> <nav className="memory-breadcrumbs" aria-label="Memory path">{crumbs.map((crumb,i)=><span className="crumb" key={crumb.scope+crumb.path}>{i>0&&<CaretRight size={13}/>}<button aria-current={i===crumbs.length-1?'location':undefined} onClick={()=>browseMemory(crumb.scope,crumb.path)}>{crumb.label}</button></span>)}</nav>;
+ const renderListing=()=> <>{visibleFolders.map(entry=><button className="folder-row directory-row" key={entry.scope+entry.path} aria-label={'Open '+entry.label} onClick={()=>browseMemory(entry.scope,entry.path)}><FolderSimple size={21}/><span>{entry.label}</span>{memoryScope==='root'&&isSystemFolder(entry.path)&&<LockSimple size={14} className="system-lock" aria-label="Protected folder"/>}<CaretRight size={17} className="directory-arrow"/></button>)}{scopedNotes.map(n=><button className="file-row" key={n.id} onClick={()=>openNote(n.id)}><FileText size={21}/><span>{query?n.path:n.path.split('/').at(-1)}</span></button>)}{!visibleFolders.length&&!scopedNotes.length&&<div className="empty-state">No files</div>}</>;
+ return <>
+
+  <MobileScroll className="knowledge-scroll">
+   {page==='input'?<main className="conversation" style={{minHeight:availableHeight}} aria-label="Input and results">
+    <div className="sample-exchange"><div className="user-bubble">What did we decide about the meeting?</div><div className="reply-text">Move it to Monday at 10. The venue stays the same.<button className="source-inline" aria-label="View source" title="Source" onClick={()=>{keyboard.hide();setSheet('source');}}><Quotes size={16} weight="duotone"/></button></div></div>
+    {messages.map((text,i)=><div key={i} className="user-bubble added-message">{text}</div>)}
+   </main>:page==='memory'?<main className="secondary-screen">
+    {current?<>
+     {renderBreadcrumbs()}
+     {editing?<div className="edit-form"><label>Path<KeyboardInput value={editPath} onChange={e=>setEditPath(e.target.value)} aria-label="Markdown path"/></label><KeyboardTextarea aria-label="Markdown content" value={editBody} onChange={e=>setEditBody(e.target.value)} rows={13}/><div className="action-row"><button className="quiet-button" onClick={()=>{keyboard.hide();setEditing(false);}}>Cancel</button><button className="solid-button" onClick={save}><Check size={18}/>Save</button></div></div>:<><div className="file-heading"><FileText size={20}/><span>{current.path}</span></div><div className="file-body">{current.body}</div><div className="file-footer"><span>v{current.version}</span><button className="quiet-button" onClick={()=>setSheet('history')}>History</button><button className="quiet-button" onClick={()=>{setEditBody(current.body);setEditPath(current.path);setEditing(true);}}>Edit</button></div></>}
+    </>:<><div className="page-heading"><h1>Memory</h1><div className="memory-actions"><button className="icon-button" aria-label="New file" title={memoryScope==='root'?'Open a folder':'Add'} disabled={memoryScope==='root'} onClick={startFile}><Plus size={22}/></button></div></div>{renderBreadcrumbs()}<KeyboardInput className="file-search" aria-label="Find files" placeholder="Find files…" value={query} onChange={e=>setQuery(e.target.value)}/><div className="file-tree">{renderListing()}</div></>}
+
+   </main>:page==='schedule'?<main className="secondary-screen schedule-screen"><div className="page-heading"><h1>Schedule</h1><button className="icon-button" aria-label="New schedule" onClick={()=>editSchedule()}><Plus size={22}/></button></div><div className="schedule-group">{schedules.length?schedules.map(s=><div className="schedule-row" key={s.id}><button className="schedule-detail" onClick={()=>editSchedule(s)}><span className="schedule-name">{s.title}</span><span className="schedule-meta">{s.repeat==='daily'?'Every day':'Every week'} · {s.time}{s.notify?' · Notify':''}</span></button><input type="checkbox" role="switch" aria-label={'Enable '+s.title} checked={s.enabled} onChange={e=>{setSchedules(a=>a.map(x=>x.id===s.id?{...x,enabled:e.target.checked}:x));toast('Preview only · execution not connected');}}/></div>):<div className="schedule-empty"><Clock size={27}/><span>No schedules</span></div>}</div></main>:page==='notifications'?<main className="secondary-screen notifications-screen"><div className="page-heading"><h1>Notifications</h1></div><div className="schedule-group"><div className="schedule-empty"><Bell size={27}/><span>No notifications</span></div></div></main>:<main className="secondary-screen settings-screen"><h1>Settings</h1><section className="model-settings"><h2>Text model</h2><button className="model-picker" aria-label="Text model" aria-haspopup="dialog" onClick={()=>{keyboard.hide();setSheet('text-model');}}><span>{textModels.find(m=>m.value===model)?.label}</span><CaretDown size={17}/></button><div className="model-preparation"><span>Not prepared</span><button className="quiet-button" aria-label="Prepare text model" onClick={()=>toast('Model preparation is not connected')}>Prepare</button></div></section><section className="model-settings"><h2>Decision model</h2><button className="model-picker" aria-label="Decision model" aria-haspopup="dialog" onClick={()=>{keyboard.hide();setSheet('decision-model');}}><span>{decisionModels.find(m=>m.value===decisionModel)?.label}</span><CaretDown size={17}/></button><div className="model-preparation"><span>{decisionModel?'Not prepared':'Not configured'}</span><button className="quiet-button" aria-label="Prepare decision model" disabled={!decisionModel} onClick={()=>toast('Decision model preparation is not connected')}>Prepare</button></div></section><section><h2>Connection</h2><label className="setting-row"><span>Downloads & updates</span><input type="checkbox" role="switch" checked={downloads} onChange={e=>{setDownloads(e.target.checked);toast('Preview setting only');}}/></label></section><section><h2>Local files</h2><button className="settings-action" onClick={()=>toast('Backup is not connected in this preview')}>Export backup<CaretRight size={18}/></button><button className="settings-action" onClick={()=>toast('Restore is not connected in this preview')}>Restore backup<CaretRight size={18}/></button></section></main>}
+  </MobileScroll>
+  <nav aria-label="Main navigation" onKeyDown={navKeys} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))closeNav();}}>
+   {navOpen&&<div className="nav-scrim" onPointerDown={()=>closeNav()} aria-hidden="true"/>}
+   <button ref={home} className={'chat-home'+(page==='input'?' selected':'')+(navOpen?' menu-open':'')} title="Input · hold for menu" aria-label="Input" aria-haspopup="menu" aria-expanded={navOpen} aria-controls={navOpen?'arc-navigation':undefined} aria-current={page==='input'?'page':undefined} onPointerDown={beginHold} onPointerMove={slideHold} onPointerUp={finishHold} onPointerCancel={cancelHold} onLostPointerCapture={()=>{if(press.current)cancelHold();}} onContextMenu={e=>e.preventDefault()}
+    onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(navOpen){closeNav();navigate('input');}else{showNav();requestAnimationFrame(()=>navButtons.current.memory?.focus());}}}}
+    onClick={e=>{if(skipClick.current){skipClick.current=false;return;}if(e.detail===0)showNav();else{closeNav();navigate('input');}}}><ChatCircle size={32} weight={page==='input'?'fill':'regular'}/></button>
+   {navOpen&&<><div className="glass-nav"><svg className="nav-curve" viewBox="0 0 146 146" aria-hidden="true"><path className="curve-edge" d="M114 28 A86 86 0 0 1 28 114"/><path className="curve-surface" d="M114 28 A86 86 0 0 1 28 114"/></svg><div className="nav-items" id="arc-navigation" role="menu" aria-label="Go to">{tabs.slice(1).map(t=><button ref={el=>{navButtons.current[t.id]=el;}} key={t.id} role="menuitem" title={t.label} aria-label={t.label} aria-current={page===t.id?'page':undefined} className={(page===t.id?'selected ':'')+(navTarget===t.id?'gesture-selected':'')} onFocus={()=>markTarget(t.id)} onPointerMove={e=>{if(!press.current&&(e.movementX||e.movementY))markTarget(t.id);}} onClick={()=>{closeNav();navigate(t.id);}}><t.icon size={23} weight={page===t.id||navTarget===t.id?'fill':'regular'}/></button>)}</div></div><div className="arc-choice" role="status">{tabs.find(t=>t.id===navTarget)?.label??'Choose'}</div></>}
+
+  </nav>
+  {page==='input'&&sheet===null&&<div className="composer-dock" style={{bottom:bottomInset+12}}>
+   {attachment&&<div className="attachment-preview"><img src={attachment.url} alt={attachment.name}/><span>{attachment.name}</span><button className="icon-button" aria-label="Remove photo" onClick={()=>setAttachment(null)}><X size={18}/></button></div>}
+   <form className="compact-composer" onSubmit={e=>{e.preventDefault();send();}}><button type="button" className="icon-button" aria-label="Add photo" onClick={()=>{keyboard.hide();files.current?.click();}}><Camera size={22}/></button><KeyboardTextarea rows={1} placeholder="Write…" aria-label="Message" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();send();}}}/><button type="button" className="icon-button" aria-label="Voice input" onClick={()=>{keyboard.hide();setSheet('voice');}}><Microphone size={22}/></button><button className="send-button" type="submit" aria-label="Send"><PaperPlaneTilt size={21}/></button></form>
+  </div>}
+  <input ref={files} type="file" accept="image/*" hidden onChange={e=>{const f=e.target.files?.[0];if(f)setAttachment({name:f.name,url:URL.createObjectURL(f)});e.target.value='';}}/>
+  {notice&&<div className="preview-toast" role="status" style={{bottom:bottomInset+(page==='input'?86:16)}}>{notice}</div>}
+  <BottomSheet open={sheet!==null} onOpenChange={open=>{if(!open)setSheet(null);}} title={sheet==='text-model'?'Text model':sheet==='decision-model'?'Decision model':sheet==='source'?'Source':sheet==='file'?'New file':sheet==='folder'?'New folder':sheet==='voice'?'Voice input':sheet==='schedule'?(scheduleId?'Edit schedule':'New schedule'):'History'}>
+   {sheet==='text-model'||sheet==='decision-model'?<div className="model-choice-sheet"><div className="model-options" role="group" aria-label={sheet==='text-model'?'Text model choices':'Decision model choices'}>{(sheet==='text-model'?textModels:decisionModels).map(option=><button key={option.value} className="model-option" aria-pressed={option.value===(sheet==='text-model'?model:decisionModel)} onClick={()=>{if(sheet==='text-model')setModel(option.value);else setDecisionModel(option.value);keyboard.hide();setSheet(null);}}><span>{option.label}</span>{option.value===(sheet==='text-model'?model:decisionModel)&&<Check size={21} weight="bold"/>}</button>)}</div><div className="action-row"><button className="quiet-button" onClick={()=>setSheet(null)}>Cancel</button></div></div>:sheet==='source'?<div className="source-preview"><div className="file-heading"><FileText size={18}/><span>{notes.find(n=>n.id==='meeting')?.path}</span></div><div className="file-body">{notes.find(n=>n.id==='meeting')?.body}</div><div className="action-row"><button className="quiet-button" onClick={()=>setSheet(null)}>Close</button><button className="solid-button" onClick={()=>{setSheet(null);openNote('meeting');}}>Open file</button></div></div>:sheet==='file'||sheet==='folder'?<form className="schedule-form creation-form" onSubmit={e=>{e.preventDefault();if(sheet==='file')createFile();else createFolder();}}><div className="creation-types" role="tablist" aria-label="Create"><button type="button" role="tab" aria-selected={sheet==='file'} onClick={()=>{keyboard.hide();setSheet('file');}}>File</button><button type="button" role="tab" aria-selected={sheet==='folder'} disabled={creationParent.split('/').filter(Boolean).length>=MAX_FOLDER_DEPTH} title={creationParent.split('/').filter(Boolean).length>=MAX_FOLDER_DEPTH?'Maximum 5 folder levels':'New folder'} onClick={()=>{keyboard.hide();setSheet('folder');}}>Folder</button></div><div className="new-file-location"><FolderSimple size={17}/>{memoryBreadcrumbs('folder',creationParent).slice(1).map(c=>c.label).join(' / ')}<span className="depth-count">{creationParent.split('/').length}/5</span></div><label>Name<KeyboardInput aria-label={sheet==='file'?'File name':'Folder name'} placeholder={sheet==='file'?'File name':'Folder name'} value={sheet==='file'?fileName:folderName} onChange={e=>sheet==='file'?setFileName(e.target.value):setFolderName(e.target.value)}/></label>{sheet==='file'&&<label>Content<KeyboardTextarea aria-label="New file content" placeholder="Write…" rows={4} value={fileBody} onChange={e=>setFileBody(e.target.value)}/></label>}<div className="action-row"><button type="button" className="quiet-button" onClick={()=>{keyboard.hide();setSheet(null);}}>Cancel</button><button type="submit" className="solid-button">Save</button></div></form>:sheet==='schedule'?<form className="schedule-form creation-form" onSubmit={e=>{e.preventDefault();saveSchedule();}}><label>Title<KeyboardInput aria-label="Schedule title" value={scheduleTitle} onChange={e=>setScheduleTitle(e.target.value)} placeholder="Title"/></label><label>Repeat<select aria-label="Repeat" value={scheduleRepeat} onChange={e=>setScheduleRepeat(e.target.value)}><option value="daily">Every day</option><option value="weekly">Every week</option></select></label><label>Time<KeyboardInput aria-label="Schedule time" inputMode="numeric" value={scheduleTime} onChange={e=>setScheduleTime(e.target.value)} placeholder="09:00"/></label><label className="notify-row"><span><Bell size={18}/>Notification</span><input type="checkbox" role="switch" checked={scheduleNotify} onChange={e=>setScheduleNotify(e.target.checked)}/></label><div className="action-row"><button type="button" className="quiet-button" onClick={()=>{keyboard.hide();setSheet(null);}}>Cancel</button><button className="solid-button" type="submit">Save</button></div></form>:sheet==='voice'?<div className="voice-preview"><Microphone size={32}/><div>Not connected in this preview</div><button className="quiet-button" onClick={()=>setSheet(null)}>Close</button></div>:<div className="version-list"><button className="quiet-button" onClick={()=>setSheet(null)}>Close</button>{current&&[...current.history,current.body].map((body,i)=><details key={i}><summary>v{i+1}</summary><div className="file-body">{body||'Empty'}</div></details>)}</div>}
+  </BottomSheet>
+ </>;
+}

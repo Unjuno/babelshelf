@@ -3,7 +3,7 @@ import {createNote,reviseNote,withdrawNote,latest,searchNotes,validateRefs,makeB
 import {openDB,saveNote,txValue} from './storage.js';
 export async function runDiagnostics(onRow=()=>{}){
  const rows=[];const run=async(name,fn)=>{try{await fn();rows.push({name,status:'PASS'});}catch(e){rows.push({name,status:'FAIL',error:e.message});}onRow(rows.at(-1));};
- const assert=(v,m)=>{if(!v)throw Error(m);};await run('Chat DOM',async()=>{const thread=document.createElement('div'),question='<script>unsafe</script> Hello 你好 안녕';const reply=appendChatTurn(thread,question);assert(thread.firstElementChild?.contains(reply),'Turn mount failed');assert(thread.querySelector('.user-message').textContent===question&&!thread.querySelector('script'),'Literal message changed');});let database;const dbName='mlb-disposable-test-'+crypto.randomUUID();
+ const assert=(v,m)=>{if(!v)throw Error(m);};await run('Input / results DOM',async()=>{const thread=document.createElement('div'),question='<script>unsafe</script> Hello 你好 안녕';const reply=appendChatTurn(thread,question);assert(thread.firstElementChild?.contains(reply),'Turn mount failed');assert(thread.querySelector('.user-message').textContent===question&&!thread.querySelector('script'),'Literal message changed');});let database;const dbName='mlb-disposable-test-'+crypto.randomUUID();
  await run('IndexedDB',async()=>{database=await openDB(dbName);});
  if(database){try{
   const n=createNote({title:'診断専用',body:'🪴識別子は青葉742。\n\nThe code is Cedar-38. 星河会议。 새봄 회의。'});

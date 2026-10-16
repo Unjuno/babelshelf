@@ -1,3 +1,5 @@
+HISTORICAL BASELINE — see PRODUCT-SPEC.md and IMPLEMENTATION-PLAN.md for current accepted design. This file describes the original engine, not the accepted UI harness.
+
 Mobile Local Brain 0.1.0
 
 UI (app.js) — explicit user operations and confirmation dialogs

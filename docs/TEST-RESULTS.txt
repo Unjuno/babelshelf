@@ -1,3 +1,32 @@
+CURRENT HANDOFF — 2026-10-17 JST
+
+This update distinguishes the baseline PWA (dist/) from the accepted UI harness
+(design/prototype/). They are not integrated. Historical results below are retained
+as historical evidence; old counts/preview blockers are not the current status.
+
+Measured in Windows / Node 24.6.0:
+- Baseline npm test: 33 passed, 0 failed.
+- Baseline npm run check: syntax / DOM / model pins / 22 shell hashes passed.
+- Baseline npm run test:markdown: 4 passed, 0 failed. The seed still lives in
+  specs/pending/ for compatibility but no longer has an expected failure.
+- Prototype helper/build and copied-repository validation: see LOCAL-VERIFICATION.md.
+
+Desktop in-app browser, phone simulation:
+- Input and hold/slide/release navigation, Home/ancestor browsing, file draft/save,
+  original editing and previous-version inspection, model-choice sheets and
+  independent model selections were exercised during design work.
+- These are prototype memory-state flows, not persistent integration or inference.
+- Selected current captures are in design/. No physical iPhone/Android pass.
+
+NOT VERIFIED / NOT CONNECTED:
+- Real Bonsai generation, stop, GPU memory/thermal behavior and offline reload.
+- Open d1 local browser execution or preprocessing/decision quality.
+- Accepted UI -> IndexedDB adapter, tool patches/receipts/undo and schema migration.
+- Markdown-backed Schedule/notification rule/event views and actual execution.
+- All-feature offline cold PWA/device restart, real IME and accessibility acceptance.
+- Upstream inference runtime redistribution license remains unresolved.
+
+Historical evidence follows unchanged:
 TEST RESULTS — 2026-10-16, build 0.1.0
 
 Node test runner: 30 PASS, 0 FAIL. See container-tests.txt for raw log.

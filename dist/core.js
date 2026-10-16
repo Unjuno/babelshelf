@@ -1,15 +1,16 @@
+import {normalizePath,defaultPath,notePath,assertPaths} from './files.js';
 // Pure knowledge operations. Offsets are UTF-16 code units, matching String.slice.
 export const latest=n=>n.revisions.at(-1);
 const clone=v=>structuredClone(v);
 const norm=s=>s.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
-export function createNote({title='',body='',aliases=[],kind='original',sources=[]}={}){
+export function createNote({title='',body='',aliases=[],kind='original',sources=[],path}={}){
  if(typeof title!=='string'||typeof body!=='string'||!['original','generated'].includes(kind))throw Error('Invalid note');
- const at=new Date().toISOString();return {id:crypto.randomUUID(),kind,state:'active',createdAt:at,aliases:[...aliases],sources:clone(sources),revisions:[{version:1,title,body,at}]};
+ const at=new Date().toISOString(),id=crypto.randomUUID();return {id,kind,state:'active',createdAt:at,aliases:[...aliases],sources:clone(sources),revisions:[{version:1,title,body,path:path===undefined?defaultPath(title,id):normalizePath(path),at}]};
 }
 export function reviseNote(note,patch,expected){
  if(latest(note).version!==expected)throw Error('Version conflict');
  if(note.state!=='active')throw Error('Note withdrawn');
- const n=clone(note),p=latest(n);n.revisions.push({version:p.version+1,title:patch.title??p.title,body:patch.body??p.body,at:new Date().toISOString()});
+ const n=clone(note),p=latest(n);n.revisions.push({version:p.version+1,title:patch.title??p.title,body:patch.body??p.body,path:patch.path===undefined?notePath(note):normalizePath(patch.path),at:new Date().toISOString()});
  if(patch.aliases)n.aliases=[...patch.aliases];return n;
 }
 export function withdrawNote(note,expected){const n=reviseNote(note,{},expected);n.state='withdrawn';n.withdrawnAt=new Date().toISOString();return n;}
@@ -62,6 +63,7 @@ export function checkNotes(notes){
   if(!n||typeof n.id!=='string'||!n.id||ids.has(n.id)||!['active','withdrawn'].includes(n.state)||!['original','generated'].includes(n.kind)||!Array.isArray(n.aliases)||n.aliases.some(a=>typeof a!=='string')||!Array.isArray(n.sources)||!Array.isArray(n.revisions)||!n.revisions.length)throw Error('Invalid note schema');ids.add(n.id);
   for(const [i,v]of n.revisions.entries())if(!v||v.version!==i+1||typeof v.title!=='string'||typeof v.body!=='string'||v.body.length>10000000||typeof v.at!=='string')throw Error('Invalid revision');
  }
+ for(const n of notes)for(const v of n.revisions)if(v.path!==undefined)normalizePath(v.path);assertPaths(notes);
  for(const n of notes)for(const r of n.sources){const v=notes.find(n=>n.id===r.noteId)?.revisions.find(v=>v.version===r.revision);if(!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote)throw Error('Invalid source reference');}
  return true;
 }

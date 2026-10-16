@@ -1,3 +1,4 @@
+import {assertPaths} from './files.js';
 import {latest,checkNotes,mergeNotes} from './core.js';
 let pending;
 export function openDB(name='mlb-memory-v1'){
@@ -8,7 +9,7 @@ export function txValue(database,store,mode,run){return new Promise((resolve,rej
 export async function allNotes(){return txValue(await db(),'notes','readonly',s=>s.getAll());}
 export async function saveNote(note,expected=null,database=null){
  const d=database??await db();return new Promise((resolve,reject)=>{const t=d.transaction('notes','readwrite'),s=t.objectStore('notes'),q=s.get(note.id);let error;
- q.onsuccess=()=>{const old=q.result;if(expected===null?!!old:!old||latest(old).version!==expected){error=Error('Version conflict');t.abort();return;}s.put(note);};t.oncomplete=()=>resolve(note);t.onabort=t.onerror=()=>reject(error??t.error??Error('Save failed'));});
+ q.onsuccess=()=>{const old=q.result;if(expected===null?!!old:!old||latest(old).version!==expected){error=Error('Version conflict');t.abort();return;}const paths=s.getAll();paths.onsuccess=()=>{try{assertPaths([...paths.result.filter(n=>n.id!==note.id),note]);s.put(note);}catch(e){error=e;t.abort();}};};t.oncomplete=()=>resolve(note);t.onabort=t.onerror=()=>reject(error??t.error??Error('Save failed'));});
 }
 export async function restoreNotes(incoming){checkNotes(incoming);const d=await db();return new Promise((resolve,reject)=>{const t=d.transaction('notes','readwrite'),s=t.objectStore('notes'),q=s.getAll();let result,validationError;
  q.onsuccess=()=>{try{result=mergeNotes(q.result,incoming);const ids=new Set(q.result.map(n=>n.id));for(const n of result.notes)if(!ids.has(n.id))s.put(n);}catch(e){validationError=e;t.abort();}};t.oncomplete=()=>resolve(result);t.onabort=t.onerror=()=>reject(validationError??t.error??Error('Restore failed'));});}

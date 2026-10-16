@@ -5,3 +5,7 @@ node_modules/
 *.brainpack
 *.log
 .DS_Store
+
+design/prototype/dist/
+design/prototype/test-results/
+design/prototype/playwright-report/

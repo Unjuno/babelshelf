@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "build": "0.1.0",
+  "build": "0.2.0-local",
   "runtime": {
     "name": "WebML Community Qwen3.5 WebGPU bundle",
     "upstream": "webml-community/ternary-bonsai-2-hermes-webgpu",

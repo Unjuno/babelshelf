@@ -1,12 +1,15 @@
 {
   "name": "mobile-local-brain",
-  "version": "0.1.0",
+  "version": "0.2.0-local",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "check": "node scripts/check.mjs",
     "dev": "node scripts/serve.mjs",
-    "test:markdown": "node --test specs/pending/markdown.acceptance.mjs"
+    "test:markdown": "node --test specs/pending/markdown.acceptance.mjs",
+    "dev:prototype": "npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4180",
+    "build:prototype": "npm --prefix design/prototype run build",
+    "test:prototype": "node --test design/prototype/tests/memory-paths.test.mjs design/prototype/tests/memory-navigation.test.mjs"
   }
 }
