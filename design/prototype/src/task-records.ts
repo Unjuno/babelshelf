@@ -107,7 +107,7 @@ export function finishTaskRun(records:any[],runId:string,owner:string,result:{st
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
  const completed={...data,...result,finishedAt:now.toISOString()};const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
- if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition){
+ if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition&&task.taskCursor.nextAt===data.dueAt){
   const after=new Date(Math.max(+now,+asDate(data.dueAt))),nextAt=definition.repeat==='once'?null:nextScheduleOccurrence(definition,after).toISOString();
   updated={...task,taskCursor:{...task.taskCursor,nextAt}};
  }

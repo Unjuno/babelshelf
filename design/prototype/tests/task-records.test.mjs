@@ -74,3 +74,14 @@ test('scheduled success validates the complete current source chain before consu
  const changed=reviseNote(source,{body:'Corrected marker MAPLE-102.'},1),records=[task,run,changed,parent],before=structuredClone(records);
  assert.equal(validateRefs(records,refs,{currentOnly:true}).ok,true);assert.throws(()=>finishTaskRun(records,run.id,'owner',{status:'succeeded',answer:'controlled contract result',sources:refs},now),/Source changed/);assert.deepEqual(records,before);
 });
+
+
+test('an older completion cannot consume a different pending occurrence of the same definition',()=>{
+ const note=registered(),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
+ const pending=new Date(+now+86400000).toISOString(),current={...note,taskCursor:{...note.taskCursor,nextAt:pending}};
+ const sources=[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}];
+ const result=finishTaskRun([current,run],run.id,'owner',{status:'succeeded',answer:'controlled historical completion',sources},now);
+ assert.equal(result.task.taskCursor.nextAt,pending);assert.deepEqual(result.task,current);assert.equal(taskRunView(result.run).status,'succeeded');assert.equal(taskRunView(result.run).dueAt,note.taskCursor.nextAt);
+ const skipped=finishTaskRun([current,run],run.id,'owner',{status:'skipped',error:'User skipped old occurrence'},now);
+ assert.equal(skipped.task.taskCursor.nextAt,pending);
+});
