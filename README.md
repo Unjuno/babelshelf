@@ -4,6 +4,8 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 
 **The usable offline MVP is not complete.** Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
 
+Local backup now includes canonical records, original dialogue, folder/Trash metadata and correction receipts in an atomic schema2 snapshot. Restore previews conflicts and refuses stale or conflicting full-state writes. Model/runtime assets and unpersisted attachment originals are excluded; divergent destination data still needs manual reconciliation. See [BACKUP-CONTRACT.md](docs/BACKUP-CONTRACT.md).
+
 Continuous Input now persists local dialogue and passes prior context to routing and answering. Long history is compacted with the same local model, retaining original turns and bounded original-excerpt recall. See [CONVERSATION-CONTRACT.md](docs/CONVERSATION-CONTRACT.md). Canonical foreground task/event integration is described in [SCHEDULE-CONTRACT.md](docs/SCHEDULE-CONTRACT.md); whole-MVP acceptance remains pending.
 
 Harness/prompt diagnosis uses fixed public inputs and the actual prepared local model in an explicit developer route, separate from the accepted UI. Reproducible reports, failure boundaries and literal read-only operation design: [HARNESS-EVALUATION.md](docs/HARNESS-EVALUATION.md).
@@ -17,7 +19,7 @@ There are also two development/reference surfaces:
 | Location | Purpose | Current limits |
 | --- | --- | --- |
 | `dist/` | Shared IndexedDB, immutable revisions, sources, search, backup and pinned Bonsai worker; older baseline UI | The accepted production entry is built separately; baseline Node checks are not device acceptance |
-| `design/prototype/` | Accepted UI, shared canonical adapter, dialogue, reviewed literal corrections/Undo, foreground tasks/events and local inference; separate `product/` native PWA entry | Durable media/extraction, semantic/system model edits, typed failed-attempt ledger, full-state backup and complete offline/device acceptance remain pending |
+| `design/prototype/` | Accepted UI, canonical records, dialogue, reviewed corrections/Undo, foreground tasks/events, local inference and state brainpack; separate `product/` native PWA entry | Durable media/extraction, semantic/system edits, typed failed-attempt ledger, complete asset/device recovery and offline/device acceptance remain pending |
 
 Read [the accepted product specification](docs/PRODUCT-SPEC.md) and [integration plan](docs/IMPLEMENTATION-PLAN.md). Do not carry the old bottom-toggle layout into the new UI simply because baseline source checks still cover it.
 

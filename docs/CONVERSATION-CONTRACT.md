@@ -6,7 +6,7 @@ The Input surface has one continuous local dialogue, with no session picker or N
 
 IndexedDB `mlb-memory-v1`, existing schema1 `settings` store, key `ui-v1-dialogue`. This auxiliary record holds schema/revision, original user/assistant turns, statuses, attachment descriptors, exact source references and a compaction cursor/summary. It does not store object URLs or claim durable media storage. Metadata after a restart marks media previews unavailable. Original TXT/MD records remain separately canonical.
 
-Writes compare the entire expected previous record inside one read/write transaction. Concurrent tabs cannot silently overwrite each other's conversation; a conflicting tab must reopen. A submitted turn is persisted before inference. An unfinished turn is marked interrupted after reopening; it is not automatically replayed. All original turns remain available in the local record and visible Input history after compaction. This auxiliary record is currently excluded from the note-only brainpack; full auxiliary-state export/recovery remains a whole-MVP gate.
+Writes compare the entire expected previous record inside one read/write transaction. Concurrent tabs cannot silently overwrite each other's conversation; a conflicting tab must reopen. A submitted turn is persisted before inference. An unfinished turn is marked interrupted after reopening; it is not automatically replayed. All original turns remain available in the local record and visible Input history after compaction. The accepted product's schema2 state brainpack now includes this auxiliary record and validates its historical references. Schema1 baseline exports remain note-only. See BACKUP-CONTRACT.md for conflict behavior and media/device recovery limits.
 
 ## Model context
 

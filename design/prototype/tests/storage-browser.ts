@@ -1,5 +1,6 @@
 import {KnowledgeStore,projectNote} from '../src/knowledge-store.ts';
-import {createNote,makeBackup,parseBackup} from '../../../dist/core.js';
+import {createNote} from '../../../dist/core.js';
+import {parseStateBackup} from '../src/backup-state.ts';
 const output=document.querySelector('#results')!;
 document.querySelector('#run')!.addEventListener('click',async()=>{
  const store=new KnowledgeStore('babelshelf-storage-qa-'+crypto.randomUUID()),lines:string[]=[];
@@ -20,7 +21,7 @@ document.querySelector('#run')!.addEventListener('click',async()=>{
   const raw=await store.all(),saved=raw.find((n:any)=>n.id===view.id);
   check(saved.revisions.length===2&&saved.revisions[0].body===view.body,'correction appends and retains original');
   check(JSON.stringify(raw.find((n:any)=>n.id===original.id))===JSON.stringify(original),'legacy metadata/ID/revision/aliases unchanged');
-  const backup=JSON.stringify(await store.backup()),parsed=await parseBackup(backup);
+  const backup=JSON.stringify(await store.backup()),parsed=await parseStateBackup(backup);
   check(parsed.notes.length===2,'backup verifies full revision records');
   current=await store.views();await store.commit(current,current.filter(n=>n.id!==view.id));
   check((await store.all()).find((n:any)=>n.id===view.id).state==='withdrawn','delete retains canonical withdrawn record');

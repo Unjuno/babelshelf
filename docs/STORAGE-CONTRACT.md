@@ -1,6 +1,10 @@
+## Current state backup integration
+
+The accepted product now exports checksummed schema2 brainpacks from one atomic notes/settings/runs snapshot, including original dialogue, empty folders/Trash metadata and correction receipts. Full-state conflicts cause zero writes; whole-state expected snapshots reject stale approval. Historical schema1 note-only files remain readable. Newly imported schedules require review and downloads-ON preferences append OFF. See BACKUP-CONTRACT.md for exact encoding, exclusions and conflict limits. Earlier backup/persistence status statements below are historical and superseded by this paragraph; model/runtime assets, unpersisted media and fresh-device conflict reconciliation remain pending.
+
 ## Reviewed correction integration
 
-Ordinary-note model proposals now have a bounded adapter, explicit Before/After review, full expected-record checks and notes+runs atomic revision/receipt persistence. History offers revision-based Undo with stale-target rejection. See CORRECTION-CONTRACT.md for exact limits and auxiliary-backup exclusion. Dedicated schedule/event persistence is documented in SCHEDULE-CONTRACT.md; older pending statements below are chronological.
+Ordinary-note model proposals now have a bounded adapter, explicit Before/After review, full expected-record checks and notes+runs atomic revision/receipt persistence. History offers revision-based Undo with stale-target rejection. See CORRECTION-CONTRACT.md for exact limits. Dedicated schedule/event persistence is documented in SCHEDULE-CONTRACT.md; older pending statements below are chronological.
 
 ## Production engine/shell update — 2026-10-17
 

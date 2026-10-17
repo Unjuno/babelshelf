@@ -1,6 +1,6 @@
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
-import {createNote,reviseNote,withdrawNote,latest,validateRefs,checkNotes,buildIndex,searchNotes,makeBackup,parseBackup,mergeNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,withdrawNote,latest,validateRefs,checkNotes,buildIndex,searchNotes,mergeNotes} from '../../../dist/core.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
@@ -10,6 +10,7 @@ import {validateMemoryFilePath} from './memory-paths.ts';
 import {localDate} from './schedule-time.ts';
 import {parseTask,formatTask,taskDefinition,taskNextAt,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
+import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot} from './backup-state.ts';
 export {prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
 export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number}};
@@ -18,6 +19,16 @@ export function projectNote(n:Canonical):NoteView {
  const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{})};
 }
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
+function readSnapshot(tx:IDBTransaction,done:(value:StateSnapshot)=>void){
+ const result:StateSnapshot={notes:[],settings:[],runs:[]};let pending=5;
+ const complete=()=>{if(!--pending)done(result);};
+ const notes=tx.objectStore('notes').getAll();notes.onsuccess=()=>{result.notes=notes.result;complete();};
+ for(const name of ['settings','runs'] as const){const store=tx.objectStore(name),keys=store.getAllKeys(),values=store.getAll();
+  // Both requests share a transaction, so no writer can interleave keys/values.
+  const finish=()=>{if(keys.readyState==='done'&&values.readyState==='done')result[name]=keys.result.map((key,i)=>({key:key as string,value:values.result[i]}));};
+  keys.onsuccess=()=>{finish();complete();};values.onsuccess=()=>{finish();complete();};
+ }
+}
 export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],after:NoteView[]):Canonical[]{
  const result=structuredClone(records),oldView=new Map(before.map(n=>[n.id,n])),newView=new Map(after.map(n=>[n.id,n]));
  if(newView.size!==after.length)throw Error('Duplicate ID conflict');
@@ -127,8 +138,25 @@ export class KnowledgeStore {
  }
  async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
  async search(query:string){const all=await this.all(),explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));return searchNotes(records,query,12);}
- async backup(){return makeBackup(await this.all());}
- async checkBackup(text:string){return parseBackup(text);}
- async restore(text:string){const incoming=await parseBackup(text);for(const n of incoming.notes){if(n.ui?.recordType==='schedule'){parseTask(latest(n).body);}else if(n.ui?.recordType==='execution')taskRunView(n);else if(n.ui?.recordType==='notification')noticeView(n);}return this.transaction<any>(['notes'],'readwrite',(tx,done)=>{const s=tx.objectStore('notes'),q=s.getAll();q.onsuccess=()=>{try{const merged=mergeNotes(q.result,incoming.notes);for(const n of merged.notes)if(!q.result.some(x=>x.id===n.id)){if(n.ui?.recordType==='schedule')n.ui={...n.ui,requiresReview:true};s.add(n);}done(merged);}catch(e){tx.abort();}};});}
+ async snapshot():Promise<StateSnapshot>{return this.transaction(['notes','settings','runs'],'readonly',(tx,done)=>readSnapshot(tx,done));}
+ async backup(){return makeStateBackup(await this.snapshot());}
+ async checkBackup(text:string){return parseStateBackup(text);}
+ async reviewBackup(text:string){const payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0}};}
+ async restore(text:string,expected?:string){
+  const incoming=await parseStateBackup(text);
+  if(incoming.schema===1){for(const n of incoming.notes){if(n.ui?.recordType==='schedule')parseTask(latest(n).body);else if(n.ui?.recordType==='execution')taskRunView(n);else if(n.ui?.recordType==='notification')noticeView(n);}}
+  const db=await this.open();return new Promise<{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean}>((resolve,reject)=>{
+   const tx=db.transaction(['notes','settings','runs'],'readwrite');let result:{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean},error:unknown;
+   readSnapshot(tx,current=>{try{
+    if(expected&&expected!==stateHash(current))throw Error('Local data changed · review backup again');
+    if(incoming.schema===1){const merged=mergeNotes(current.notes,incoming.notes),fresh=merged.notes.filter((n:any)=>!current.notes.some(old=>old.id===n.id));for(const n of fresh)tx.objectStore('notes').add(guardRestoredNote(n));result={conflicts:merged.conflicts,added:{notes:fresh.length,settings:0,runs:0},restored:true};return;}
+    const plan=planStateRestore(current,incoming);if(!plan.writes){result={conflicts:plan.conflicts,added:{notes:0,settings:0,runs:0},restored:false};return;}
+    for(const note of plan.writes.notes)tx.objectStore('notes').add(note);
+    for(const store of ['settings','runs'] as const)for(const entry of plan.writes[store])tx.objectStore(store).add(entry.value,entry.key);
+    result={conflicts:[],added:plan.added,restored:true};
+   }catch(e){error=e;tx.abort();}});
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Restore failed'));
+  });
+ }
  close(){this.database?.close();this.database=null;}
 }

@@ -1,0 +1,89 @@
+// Portable local data, never runtime readiness, executable tools or write authority.
+// @ts-expect-error Shared baseline core is JavaScript.
+import {checkNotes,latest,reviseNote,parseBackup,validateRefs} from '../../../dist/core.js';
+// @ts-expect-error Shared hash is JavaScript.
+import {SHA256} from '../../../dist/sha256.js';
+// @ts-expect-error Shared paths are JavaScript.
+import {notePath} from '../../../dist/files.js';
+import {validateDialogue} from './conversation.ts';
+import {parsePreference,preferenceGroup,formatPreference} from './preference-records.ts';
+import {parseTask,taskRunView,noticeView} from './task-records.ts';
+import {prepareCorrection} from './note-corrections.ts';
+import {memoryFolderPath} from './memory-paths.ts';
+
+export type Entry={key:string;value:any};
+export type StateSnapshot={notes:any[];settings:Entry[];runs:Entry[]};
+export type StatePayload={schema:1|2;createdAt:string;notes:any[];settings?:Entry[];runs?:Entry[];excluded?:string[]};
+export type RestoreConflict={store:'notes'|'settings'|'runs';key:string;label:string};
+export type StateRestorePlan={conflicts:RestoreConflict[];added:{notes:number;settings:number;runs:number};writes:StateSnapshot|null};
+const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments'];
+const equal=(a:unknown,b:unknown)=>stateHash(a)===stateHash(b);
+function encode(value:any){const undefinedPaths:string[][]=[];
+ const walk=(v:any,path:string[]):any=>{if(v===undefined){undefinedPaths.push(path);return null;}if(Array.isArray(v))return v.map((x,i)=>walk(x,[...path,String(i)]));if(v&&typeof v==='object'){const out=Object.create(null);for(const [key,item] of Object.entries(v))out[key]=walk(item,[...path,key]);return out;}return v;};
+ return {data:walk(value,[]),undefinedPaths};
+}
+export const stateHash=(value:unknown):string=>new SHA256().update(new TextEncoder().encode(JSON.stringify(encode(value)))).hex();
+function jsonOnly(value:any){
+ if(value===undefined||value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return;
+ if(Array.isArray(value)){for(const item of value)jsonOnly(item);return;}
+ if(value&&Object.getPrototypeOf(value)===Object.prototype){for(const item of Object.values(value))jsonOnly(item);return;}
+ throw Error('Backup contains unsupported non-JSON data');
+}
+function entries(list:Entry[]){
+ if(!Array.isArray(list)||list.length>20000)throw Error('Invalid backup entries');const keys=new Set<string>();
+ for(const item of list){if(!item||typeof item.key!=='string'||!item.key||keys.has(item.key))throw Error('Invalid or duplicate backup key');keys.add(item.key);jsonOnly(item.value);}
+}
+function sourceRefs(notes:any[],refs:unknown){
+ // Historical references survive withdrawal. This projection validates bytes only;
+ // it does not make the original eligible for current model evidence or restore it.
+ if(!Array.isArray(refs)||!validateRefs(notes.map(n=>({...n,state:'active'})),refs).ok)throw Error('Invalid backup source reference');
+}
+function validateState(state:StateSnapshot){
+ jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);
+ for(const n of state.notes){const path=notePath(n),group=preferenceGroup(path);
+  if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
+  if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
+  if(n.ui?.recordType==='execution'){const r=taskRunView(n);if(typeof r.startedAt!=='string'||!['running','succeeded','failed','stopped','missed','interrupted','skipped'].includes(r.status)||!state.notes.some(t=>t.id===r.taskId&&t.revisions.some((v:any)=>v.version===r.taskRevision)))throw Error('Invalid execution target');sourceRefs(state.notes,r.sources??[]);}
+  if(n.ui?.recordType==='notification'){const r=noticeView(n);if(typeof r.read!=='boolean'||typeof r.createdAt!=='string'||!state.notes.some(t=>t.id===r.taskId)||!state.notes.some(t=>t.id===r.runId))throw Error('Invalid notification target');}
+ }
+ for(const {key,value} of state.settings){
+  if(key==='ui-v1-dialogue'){const d=validateDialogue(value);for(const turn of d.turns){sourceRefs(state.notes,turn.refs??[]);sourceRefs(state.notes,turn.results??[]);if(turn.attachments!==undefined&&(!Array.isArray(turn.attachments)||turn.attachments.some(a=>!a||['id','name','kind','status'].some(k=>typeof (a as any)[k]!=='string'))))throw Error('Invalid dialogue attachments');}}
+  if(key==='ui-v1-folders'){if(!Array.isArray(value)||new Set(value).size!==value.length)throw Error('Invalid folder metadata');for(const path of value){if(typeof path!=='string')throw Error('Invalid folder metadata');const parts=path.split('/');memoryFolderPath(parts.slice(0,-1).join('/'),parts.at(-1)!);}}
+  if(key==='ui-v1-trash'){if(!Array.isArray(value))throw Error('Invalid recovery metadata');for(const batch of value){if(!batch||typeof batch.id!=='string'||typeof batch.label!=='string'||!Array.isArray(batch.notes)||!Array.isArray(batch.folders))throw Error('Invalid recovery metadata');for(const n of batch.notes)if(!state.notes.some(x=>x.id===n.id&&x.state==='withdrawn'))throw Error('Recovery target unavailable');}}
+ }
+ for(const {key,value:r} of state.runs)if(key.startsWith('ui-v1-correction-')||r?.type==='note-correction'){
+  const n=state.notes.find(n=>n.id===r?.noteId),before=n?.revisions.find((v:any)=>v.version===r?.beforeVersion),after=n?.revisions.find((v:any)=>v.version===r?.afterVersion);
+  if(r?.schema!==1||r.type!=='note-correction'||key!=='ui-v1-correction-'+r.id||!before||!after||r.afterVersion!==r.beforeVersion+1||!['applied','undone'].includes(r.status)||typeof r.appliedAt!=='string'||! /^[a-f0-9]{64}$/.test(r.afterHash)||typeof r.path!=='string')throw Error('Invalid correction receipt');
+  const raw={action:r.operation?.name==='text.split_lines'?'split_lines':r.operation?.name==='text.replace'?'replace':'invalid',...r.operation?.arguments};
+  const old={...n,state:'active',revisions:n.revisions.slice(0,r.beforeVersion)},prepared=prepareCorrection(old,r.request,JSON.stringify(raw));
+  if(prepared.after!==after.body||!equal(prepared.operation,r.operation)||r.path!==notePath(n,r.beforeVersion))throw Error('Invalid correction operation');
+  if(r.status==='undone'&&(!Number.isInteger(r.undoVersion)||r.undoVersion<=r.afterVersion||n.revisions[r.undoVersion-1]?.body!==before.body||typeof r.undoneAt!=='string'))throw Error('Invalid correction Undo');
+ }
+}
+export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]};return {format:'mobile-local-brainpack',sha256:stateHash(payload),payload};}
+export async function parseStateBackup(text:string):Promise<StatePayload>{
+ if(text.length>200000000)throw Error('Backup too large');const pack=JSON.parse(text);
+ if(pack.payload?.schema===1)return parseBackup(text);
+ if(pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed');
+ const payload=structuredClone(pack.payload),paths=payload.undefinedPaths;
+ if(!Array.isArray(paths)||paths.length>200000)throw Error('Invalid optional value encoding');const seen=new Set<string>();
+ for(const path of paths){if(!Array.isArray(path)||path.length<2||!['notes','settings','runs'].includes(path[0])||path.some(k=>typeof k!=='string')||seen.has(JSON.stringify(path)))throw Error('Invalid optional value path');seen.add(JSON.stringify(path));let parent=payload;
+  for(const key of path.slice(0,-1)){if(!parent||typeof parent!=='object'||!Object.hasOwn(parent,key))throw Error('Invalid optional value path');parent=parent[key];}
+  const key=path.at(-1);if(!parent||typeof parent!=='object'||!Object.hasOwn(parent,key)||parent[key]!==null)throw Error('Invalid optional value path');Object.defineProperty(parent,key,{value:undefined,enumerable:true,configurable:true,writable:true});
+ }
+ delete payload.undefinedPaths;validateState(payload);return payload;
+}
+export function guardRestoredNote(note:any){
+ let n=structuredClone(note);if(n.ui?.recordType==='schedule')n.ui={...n.ui,requiresReview:true};
+ if(n.id==='settings-connection'&&n.ui?.managed&&parsePreference('connection',latest(n).body).downloads)n=reviseNote(n,{body:formatPreference('connection',{downloads:false})},latest(n).version);
+ return n;
+}
+export function planStateRestore(current:StateSnapshot,incoming:StatePayload):StateRestorePlan{
+ const writes:StateSnapshot={notes:[],settings:[],runs:[]},conflicts:RestoreConflict[]=[];
+ for(const n of incoming.notes){const old=current.notes.find(x=>x.id===n.id);if(old){if(!equal(old,n))conflicts.push({store:'notes',key:n.id,label:notePath(n)});}else writes.notes.push(structuredClone(n));}
+ for(const store of ['settings','runs'] as const)for(const item of incoming[store]??[]){const old=current[store].find(x=>x.key===item.key);if(old){if(!equal(old.value,item.value))conflicts.push({store,key:item.key,label:item.key});}else writes[store].push(structuredClone(item));}
+ const added={notes:writes.notes.length,settings:writes.settings.length,runs:writes.runs.length};if(conflicts.length)return {conflicts,added,writes:null};
+ writes.notes=writes.notes.map(guardRestoredNote);
+ validateState({notes:[...current.notes,...writes.notes],settings:[...current.settings,...writes.settings],runs:[...current.runs,...writes.runs]});
+ return {conflicts,added,writes};
+}
