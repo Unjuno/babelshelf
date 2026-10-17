@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-10-18",
+  "runtime": "@wllama/wllama@3.8.1",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "method": "Pinned source inspection; no new inference/comparison",
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/46ca246de9bb1c35269722a6240d37d9dfd79cad/tools/server/server-context.cpp",
+      "bytes": 237744,
+      "sha256": "221a725fa7d17376da5f2fe17fc05f8b72eb898cb5afe25e96251c1f5ae98e78"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/46ca246de9bb1c35269722a6240d37d9dfd79cad/tools/server/server-task.cpp",
+      "bytes": 67587,
+      "sha256": "aa752f0ba1ce4be15c65dbce43b769fdeeb5b0f72286005ef40028eea1f56e95"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/46ca246de9bb1c35269722a6240d37d9dfd79cad/tools/server/server-common.cpp",
+      "bytes": 70648,
+      "sha256": "5469471d9259aac72d7327493c0d280f11b7a0ff5bbdaa6fb57c85a7fc916b6a"
+    }
+  ],
+  "conclusion": "A zero-output completion cannot be treated as a supported generation-free count endpoint. Normal TextRuntime registration stays unavailable.",
+  "sourceLocations": {
+    "effectiveRequestLimit": {
+      "file": "server-context.cpp",
+      "line": 1840
+    },
+    "limitCheckedAfterGeneratedToken": {
+      "file": "server-context.cpp",
+      "line": 1918
+    },
+    "positivePromptOverflowRefusal": {
+      "file": "server-context.cpp",
+      "line": 3288
+    },
+    "usageUsesTaskPromptTokens": {
+      "file": "server-context.cpp",
+      "line": 2138
+    }
+  },
+  "limits": [
+    "Source inference, not a measured zero-output runtime test",
+    "No unsupported private API, estimated token count, model/default/runtime replacement or normal registration",
+    "Existing actual diagnostic load/generation/Stop evidence is retained, not revoked"
+  ]
+}

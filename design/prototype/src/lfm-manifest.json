@@ -86,5 +86,10 @@
       "licenseUrl": "https://huggingface.co/LiquidAI/LFM2.5-230M-GGUF/blob/03502067c64ce32ac4fe87b0cec0310a1a13d3e9/LICENSE",
       "licenseSha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b"
     }
-  ]
+  ],
+  "normalHarness": {
+    "supported": false,
+    "reason": "Exact pre-generation token count required",
+    "scope": "diagnostic-generation-only"
+  }
 }
