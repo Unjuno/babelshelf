@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "model": "2B",
+  "revision": "683f7be2629342a50987627b40881e54761a2430",
+  "runtime": "621e20782f208660f4f58283c2ce58430020f243",
+  "contextTokens": 2048,
+  "maxTokens": 256,
+  "status": "Stopped",
+  "results": [
+    {
+      "id": "raw-minimal",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Follow the last user request. Output only the requested result."
+        },
+        {
+          "role": "user",
+          "content": "コード CEDAR-4826 をハイフンの前と後に分けて二行で返して。"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 52,
+        "image_tokens": 0
+      },
+      "maxTokens": 256,
+      "expected": null,
+      "answer": "コード：\nCEDAR-4826\nハイフン前：CEDAR\nハイフン後：4826",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "コード：\nCEDAR-4826\nハイフン前：CEDAR\nハイフン後：4826",
+        "inputTokens": 52,
+        "ttftMs": 1295.800000000745,
+        "elapsedMs": 2667,
+        "textChunks": 25,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 52,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 28,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    }
+  ]
+}

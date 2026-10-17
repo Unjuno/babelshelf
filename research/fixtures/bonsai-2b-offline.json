@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "offline-new-question",
+      "expected": null,
+      "json": true,
+      "reset": true,
+      "profile": "greedy",
+      "maxTokens": 128,
+      "messages": [
+        {"role":"system","content":"Answer the current question from the supplied text. Return ONLY one JSON object with an answer string. No other text."},
+        {"role":"user","content":"A newly created public test record says: The parcel label is WILLOW-6942. What is the parcel label?"}
+      ]
+    }
+  ]
+}

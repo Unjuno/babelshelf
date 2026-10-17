@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "model": "2B",
+  "revision": "683f7be2629342a50987627b40881e54761a2430",
+  "runtime": "621e20782f208660f4f58283c2ce58430020f243",
+  "contextTokens": 2048,
+  "maxTokens": 256,
+  "status": "Completed",
+  "results": [
+    {
+      "id": "offline-new-question",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Answer the current question from the supplied text. Return ONLY one JSON object with an answer string. No other text."
+        },
+        {
+          "role": "user",
+          "content": "A newly created public test record says: The parcel label is WILLOW-6942. What is the parcel label?"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 67,
+        "image_tokens": 0
+      },
+      "maxTokens": 128,
+      "expected": null,
+      "answer": "WILLOW-6942",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "{\n  \"answer\": \"WILLOW-6942\"\n}",
+        "inputTokens": 67,
+        "ttftMs": 1451.199999999255,
+        "elapsedMs": 2355.89999999851,
+        "textChunks": 15,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 67,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 18,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    }
+  ]
+}

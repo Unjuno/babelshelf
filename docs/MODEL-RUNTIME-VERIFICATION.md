@@ -1,6 +1,8 @@
 # Bonsai and production entry verification — 2026-10-17 JST
 
-Unit29 adds a diagnostic same-weight official CPU reference, not a new PWA build. Four public native generations match the retained WebGPU output and prompt counts, including three instruction/target failures. See [raw evidence and reproducible commands](../research/evaluations/reference-cpu.md). This narrows attribution but proves neither numerical equivalence nor repaired subject selection. No engine/provider/model/runtime/license change follows. Current native product remains5ca20e9c35b7cfc8; the Unit28 ordinary-context failure remains open.
+Unit30 adds actual manifest2B PC WebGPU comparison, cached-asset reload/new question under owned-tab network emulation offline, and explicit Stop. Required controls still fail, so normal selection remains4B. [Reports and limits](../research/evaluations/bonsai-2b.md). Current productbefd36343feda27d/index-CWFJeerC adds only diagnostic model selection and a count/Stop fix to normal5ca behavior; the ordinary-context source-selection failure stays open. No new model/provider/runtime/reader/license pins.
+
+Unit29 added a diagnostic same-weight official CPU reference, not a new PWA build. Four public native generations match the retained WebGPU output and prompt counts, including three instruction/target failures. See [raw evidence and reproducible commands](../research/evaluations/reference-cpu.md). This narrows attribution but proves neither numerical equivalence nor repaired subject selection. No engine/provider/model/runtime/license change followed. At Unit29 the native product remained5ca20e9c35b7cfc8.
 
 These are Windows PC / Codex in-app Chromium results, not Android or iPhone results. The full goal remains active.
 
