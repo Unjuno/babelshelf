@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `481be5d7c0b92560`; combined PC evidence extends through Unit127; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `a337d6cd0b19794b`; combined PC evidence extends through Unit128; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -46,3 +46,5 @@ Unit125 connects optional fixed LFM350M to normal model controls with packaged v
 Unit126 conditions planner instructions on the existing allowed scope. Actual fresh LFM count776->509 with unchanged input/context; no LFM quality retry. Current-build native offline prepared Bonsai4B natural knowledge answer16/currentv2 citations passes, preserving notes/settings/old dialogue. General routing, LFM failure and device/full-offline gates remain.
 
 Unit127 closes failed init/Load client retention: original error preserved, failed worker disposed, no automatic retry, explicit local restoration stays asset-only and next Load starts fresh. Actual server-stopped cold offline dedicated public-model fixture passes recovery/real generation Stop/reload; no normal UI fault injection, useful LFM/phone/all-function claim.
+
+Unit128 adds failed-Load local presence refresh with original-error/Stop preservation. Actual native offline normal UI stale public-file presence -> failed Load -> Not prepared -> real local filechooser import -> Load/Unload passes without restart, retaining all notes/settings/prior runs. Arbitrary quota/permission/device recovery remains separate.
