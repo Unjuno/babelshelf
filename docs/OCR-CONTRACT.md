@@ -32,3 +32,10 @@ PC browser recognition is real, but broad accuracy is not established. The Engli
 
 
 Unit19: ordinary Send can run this prepared reader directly, saving automatic text as extracted rather than reviewed. Missing preparation never starts a download. Read/Use text/Save note remains available; see INPUT-READINGS.md for atomic import, Stop and current-input scope.
+
+
+## Unit58 offline process acceptance slice
+
+On current product09ce5657aa1c9149, the owned public PC QA profile explicitly registered/prepared pinned English+Japanese data. Actual browser processes started with context offline then ran empty-Send OCR on a printed-English PNG, retained separate exact original and extraction, searched its recognized code and generated a source-validated4B answer from that text. A region preview decoded the original1400x500 image; Save original matched raw fixture bytes. An identical brainpack restore retained notes/settings/runs exactly, and another offline process reopened the source/image. See TEST-RESULTS for intermediate loading screenshot and asynchronous policy-inspection limits.
+
+This is OCR and one English fixture, not scene recognition, Japanese accuracy, physical camera/phone or every-format offline acceptance. Prepared OCR data/model assets are separate from brainpack content.
