@@ -1,7 +1,18 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {recordOperation,startActivity,finishActivity,validateActivity} from '../src/harness-activity.ts';
 import {emptyDialogue,appendTurn,dialogueContext,historyPayload,validateDialogue} from '../src/conversation.ts';
+import {planDialogue} from '../src/conversation.ts';
 const input={query:'日本語の記録'};
+test('invalid planner output is bounded audit evidence only, never accepted or added to model history',async()=>{
+ const raw='{"action":"recall","historyIndex":0,"historyPart":"user"}',entries=[];
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:10}),generate:async()=>({text:raw})};
+ await assert.rejects(recordOperation('dialogue.plan',{question:'first message?'},()=>planDialogue(engine,'first message?',{summary:'',recent:[],refs:[],turnCount:1}),async a=>entries.push(a)),/Invalid model action/);
+ assert.equal(entries[1].status,'failed');assert.equal(entries[1].error.code,'invalid_model_output');assert.equal(entries[1].output.raw,raw);assert.equal(entries[1].output.reason,'query');assert.equal(entries[1].output.truncated,false);
+ const state=appendTurn(emptyDialogue(),{id:'failed',user:'first message?',activity:entries.slice(-1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/historyIndex/);
+ engine.generate=async()=>({text:'x'.repeat(20000)});const malformed=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>malformed.push(a)),/JSON/);assert.ok(malformed[1].output.raw.length<=8192);assert.equal(malformed[1].output.reason,'json');assert.equal(malformed[1].output.truncated,true);
+ engine.generate=async()=>({text:raw,stopped:true});const stopped=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>stopped.push(a)),/Stopped/);assert.equal(stopped[1].output,undefined);
+ const forged=Object.assign(Error('Invalid model action'),{diagnostic:{raw:'untrusted'}}),generic=[];await assert.rejects(recordOperation('dialogue.plan',{},async()=>{throw forged},async a=>generic.push(a)));assert.equal(generic[1].output,undefined);
+});
 test('read-only attempt is persisted before work and records detached exact input/output once',async()=>{
  const events=[];const args=structuredClone(input),out={count:1,ids:['note1']};const result=await recordOperation('memory.search',args,async()=>{assert.equal(events.length,1);assert.equal(events[0].status,'running');args.query='changed';return out;},async a=>events.push(structuredClone(a)));
  assert.equal(result,out);assert.equal(events[1].status,'succeeded');assert.equal(events[1].input.query,input.query);out.ids.push('late');assert.deepEqual(events[1].output.ids,['note1']);assert.equal(events[0].id,events[1].id);

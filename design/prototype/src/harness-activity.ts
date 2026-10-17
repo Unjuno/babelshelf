@@ -1,4 +1,5 @@
 // Audit data only. A receipt never authorizes execution, replay, writes or network.
+import {PlannerOutputError} from './planner-error.ts';
 export const activityTools=['decision.prepare','decision.load','decision.unload','decision.classify','image.read','ocr.prepare','model.prepare','model.unload','speech.prepare','pdf.read','speech.transcribe','model.load','memory.search','memory.read','dialogue.plan','dialogue.compact','dialogue.read','text.transform','memory.propose_correction','knowledge.answer'] as const;
 export type ActivityTool=typeof activityTools[number];
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
@@ -22,7 +23,7 @@ function failure(error:unknown){const message=(error instanceof Error?error.mess
 export function finishActivity(a:Activity,result:{output?:unknown;error?:unknown}):Activity{validateActivity([a]);if(a.status!=='running')throw Error('Activity already finished');let next:Activity;if('error' in result){const error=failure(result.error);next={...a,finishedAt:new Date().toISOString(),status:error.code==='stopped'?'stopped':'failed',error,...(result.output!==undefined?{output:payload(result.output)}:{})};}else next={...a,finishedAt:new Date().toISOString(),status:'succeeded',output:payload(result.output??null)};validateActivity([next]);return structuredClone(next);}
 export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined):Promise<T>{
  const started=startActivity(tool,input);await persist(structuredClone(started));let result:T;
- try{result=await work();}catch(error){try{await persist(finishActivity(started,{error}));}catch{throw Error('Operation failed · activity record unavailable');}throw error;}
+ try{result=await work();}catch(error){try{await persist(finishActivity(started,{error,...(tool==='dialogue.plan'&&error instanceof PlannerOutputError?{output:error.diagnostic}:{})}));}catch{throw Error('Operation failed · activity record unavailable');}throw error;}
  // A final record failure must not run the tool again or invent a tool failure.
  try{const reported=failureOf(result);await persist(finishActivity(started,{output:project(result),...(reported!==undefined?{error:reported}:{})}));}catch{throw Error('Operation completed · activity record unavailable');}return result;
 }

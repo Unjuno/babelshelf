@@ -1,4 +1,5 @@
 import {validateActivity,type Activity} from './harness-activity.ts';
+import {PlannerOutputError} from './planner-error.ts';
 import type {InputReadingRef} from './input-readings.ts';
 import type {VoiceInput} from './voice-input.ts';
 // Dialogue is working context, never authorization or a replacement for canonical notes.
@@ -115,9 +116,17 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
 export async function planDialogue(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[]){
  const messages=planDialogueMessages(question,context,attachments);
  if((await engine.count(messages)).prompt_tokens+160>engine.manifest.contextTokens)throw Error('Input exceeds context limit');
- const generated=await engine.generate(messages,160);if(generated.stopped)throw Error('Stopped');const value=parseJSON(generated.text);
- if(['recall','capture','transform'].includes(value.action)&&value.historyIndex!=null&&!['user','assistant'].includes(value.historyPart))throw Error('Invalid model action · select the original speaker');
- if(!['chat','recall','capture','search','read','answer','summary','transform','edit'].includes(value.action)||typeof value.query!=='string'||value.query.length>2000||value.action==='edit'&&!value.query.trim()||['recall','transform'].includes(value.action)&&value.historyIndex==null||value.historyIndex!=null&&(!Number.isInteger(value.historyIndex)||value.historyIndex<0||value.historyIndex>=(context.turnCount??Infinity))||value.historyPart!==undefined&&!['user','assistant'].includes(value.historyPart)||value.action==='capture'&&value.historyIndex==null&&(typeof value.body!=='string'||!value.body.trim()||value.body.length>30000))throw Error('Invalid model action');return value as {action:string;query:string;body?:string;historyIndex?:number|null;historyPart?:'user'|'assistant'};
+ const generated=await engine.generate(messages,160);if(generated.stopped)throw Error('Stopped');
+ const invalid=(reason:string,message='Invalid model action'):never=>{throw new PlannerOutputError(message,generated.text,reason);};
+ let value;try{value=parseJSON(generated.text);}catch{invalid('json','Invalid model JSON');}
+ if(!value||typeof value!=='object'||Array.isArray(value))invalid('object');
+ if(!['chat','recall','capture','search','read','answer','summary','transform','edit'].includes(value.action))invalid('action');
+ if(typeof value.query!=='string'||value.query.length>2000||value.action==='edit'&&!value.query.trim())invalid('query');
+ if(['recall','capture','transform'].includes(value.action)&&value.historyIndex!=null&&!['user','assistant'].includes(value.historyPart))invalid('historyPart','Invalid model action · select the original speaker');
+ if(['recall','transform'].includes(value.action)&&value.historyIndex==null||value.historyIndex!=null&&(!Number.isInteger(value.historyIndex)||value.historyIndex<0||value.historyIndex>=(context.turnCount??Infinity)))invalid('historyIndex');
+ if(value.historyPart!==undefined&&!['user','assistant'].includes(value.historyPart))invalid('historyPart');
+ if(value.action==='capture'&&value.historyIndex==null&&(typeof value.body!=='string'||!value.body.trim()||value.body.length>30000))invalid('body');
+ return value as {action:string;query:string;body?:string;historyIndex?:number|null;historyPart?:'user'|'assistant'};
 }
 export function parseChatAnswer(text:string,evidence:any[],dialogueOnly=false){
  const value=parseJSON(text);if(typeof value.answer!=='string'||!value.answer.trim()||value.citations===undefined&&!dialogueOnly||value.citations!==undefined&&!Array.isArray(value.citations))throw Error('Invalid answer');
