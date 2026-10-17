@@ -456,3 +456,7 @@ button.model-picker svg{flex-shrink:0}
 .voice-preview{color:inherit}.speech-runtime-status{color:inherit;overflow-wrap:anywhere;max-width:100%}
 
 .speech-language{display:flex;align-items:center;gap:12px;color:inherit}.speech-language input{width:88px;min-height:44px;border:1px solid currentColor;border-radius:14px;background:transparent;color:inherit;font:inherit;padding:8px}
+
+.activity-entry { padding: 14px 0; border-bottom: 1px solid var(--glass-border, rgba(128,150,145,.35)); }
+.activity-entry summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 18px; font-weight: 600; }
+.activity-data { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 16px; line-height: 1.5; margin: 8px 0 16px; }

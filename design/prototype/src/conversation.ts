@@ -1,3 +1,4 @@
+import {validateActivity,type Activity} from './harness-activity.ts';
 import type {VoiceInput} from './voice-input.ts';
 // Dialogue is working context, never authorization or a replacement for canonical notes.
 // @ts-expect-error Shared baseline is JavaScript.
@@ -5,7 +6,7 @@ import {parseJSON,parseAnswer,searchNotes} from '../../../dist/core.js';
 import type {TextToolReceipt} from './text-transform';
 import type {OriginalRef} from './original-assets';
 export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string;title?:string};
-export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput}[]};
+export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput}[]};
 export type Dialogue={schema:1;revision:number;turns:DialogueTurn[];compaction:{through:number;summary:string}|null};
 export type DialogueContext={summary:string;recent:DialogueTurn[];refs:SourceRef[];turnCount?:number;lastAnswerIndex?:number;recalled?:{turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number}[]};
 export type ChatEngine={manifest:{contextTokens:number};count:(m:any[])=>Promise<{prompt_tokens:number}>;generate:(m:any[],maxTokens?:number)=>Promise<{text:string;stopped?:boolean}>};
@@ -17,7 +18,7 @@ export function completeTurn(state:Dialogue,id:string,result:Partial<Omit<Dialog
 export function validateDialogue(value:unknown):Dialogue{
  const s=value as Dialogue;
  if(s?.schema!==1||!Number.isInteger(s.revision)||!Array.isArray(s.turns)||s.turns.some(t=>typeof t.id!=='string'||typeof t.user!=='string'||t.answer!==undefined&&typeof t.answer!=='string'||t.status!==undefined&&typeof t.status!=='string')||new Set(s.turns.map(t=>t.id)).size!==s.turns.length)throw Error('Conversation data invalid');
- if(s.compaction&&(!Number.isInteger(s.compaction.through)||s.compaction.through<0||s.compaction.through>s.turns.length||typeof s.compaction.summary!=='string'))throw Error('Conversation summary invalid');return s;
+ if(s.compaction&&(!Number.isInteger(s.compaction.through)||s.compaction.through<0||s.compaction.through>s.turns.length||typeof s.compaction.summary!=='string'))throw Error('Conversation summary invalid');for(const turn of s.turns)if(turn.activity!==undefined)validateActivity(turn.activity);return s;
 }
 function focusExcerpt(text:string,question:string,limit:number){
  let normalized='';const originalOffsets:number[]=[];
