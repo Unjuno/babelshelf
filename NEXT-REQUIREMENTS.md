@@ -106,3 +106,5 @@ Prioritize a usable initial capability set, not further Bonsai-only testing. Ini
 ## Unit66 initial preparation connected
 
 Models/Initial preparation now reviews selectedtext +unsetWhispertiny/OCR, sizes/readiness, explicitconnectionpermission, sequentialverification/Stop and atomicfinalmodelchoices. ActualnativeStop/retry/offlineUse passed while preserving a selectedcustomtextmodel. See INITIAL-PREPARATION.md. This addresses initial role setup; alternative general text-engine/model support beyond currentQwen3.5GGUF remains an implementation priority, not a completed capability. Existingmodel/knowledgechoices remain.
+
+Additional local text engine (Unit67 foundation): latest human direction explicitly permits non-Bonsai local models. Official SmolLM2 360M Instruct ONNX assets are pinned and independently downloaded/verified, with a cancellable asset-store foundation. This is not yet registered runtime support. Complete worker, common-port routing, Add model/initial-preparation integration and actual browser offline/Stop checks; preserve defaults. See docs/ADDITIONAL-TEXT-ENGINE.md.
