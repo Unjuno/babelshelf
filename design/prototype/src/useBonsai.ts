@@ -1,7 +1,8 @@
 import type {StructuredFormat} from './structured-grammar';
 import {TextEngineRouter} from './text-engine-router';
 import {createOnnxTextBackend} from './onnx-text-backend';
-import {combinedTextManifest} from './text-model-manifest';
+import {combinedLocalTextManifest as combinedTextManifest,lfmTextModels,describeLfmText} from './lfm-text-manifest';
+import {createLfmTextBackend} from './lfm-text-backend';
 import {createTextInference,type TextRuntime} from './text-inference';
 import {useEffect,useRef,useState} from 'react';
 // @ts-expect-error Shared baseline worker controller is JavaScript.
@@ -13,7 +14,7 @@ import baseManifest from '../../../dist/model-manifest.json';
 export function useBonsai(models:CustomLocalModel[]=[],ready=true){
  const records=useRef(models);records.current=models;const manifest=withLocalModels(baseManifest,models);const registryKey=JSON.stringify(models),configured=useRef(''),observed=useRef(''),initialized=useRef<Promise<unknown>|null>(null);
  const cancelEpoch=useRef(0),cancelled=useRef(false),operationLock=useRef(false);const engine=useRef<any>(null),[busy,setBusy]=useState(false),[progress,setProgress]=useState(''),[,setLoaded]=useState(''),[assets,setAssets]=useState<Record<string,any>>({});
- useEffect(()=>{const worker=new Worker(new URL('./bonsai-worker.ts',import.meta.url),{type:'module'});const webml=new Engine(baseManifest,(error:string)=>{setProgress(error);setLoaded('');},worker);const e=new TextEngineRouter(webml,()=>createOnnxTextBackend(()=>new Worker(new URL('./onnx-text-worker.ts',import.meta.url),{type:'module'})));engine.current=e;const init:Promise<unknown>=e.init();initialized.current=init;init.catch((err:Error)=>setProgress(err.message));return()=>{e.abort();e.worker.terminate();if(engine.current===e)engine.current=null;};},[]);
+ useEffect(()=>{const worker=new Worker(new URL('./bonsai-worker.ts',import.meta.url),{type:'module'});const webml=new Engine(baseManifest,(error:string)=>{setProgress(error);setLoaded('');},worker);const e=new TextEngineRouter(webml,()=>createOnnxTextBackend(()=>new Worker(new URL('./onnx-text-worker.ts',import.meta.url),{type:'module'})),[{id:'lfm-text',modelIds:lfmTextModels.map(m=>m.id),describe:describeLfmText,create:()=>createLfmTextBackend(()=>new Worker(new URL('./lfm-text-worker.ts',import.meta.url),{type:'module'}))}]);engine.current=e;const init:Promise<unknown>=e.init();initialized.current=init;init.catch((err:Error)=>setProgress(err.message));return()=>{e.abort();e.worker.terminate();if(engine.current===e)engine.current=null;};},[]);
  async function syncRegistry(nextRecords=records.current,check=()=>{}){check();if(!ready||!engine.current)throw Error('Storage not ready');await initialized.current;check();const key=JSON.stringify(nextRecords);if(configured.current!==key){if(engine.current.loaded){await engine.current.unload();check();setLoaded('');}const next=withLocalModels(baseManifest,nextRecords);const assets=await engine.current.call('configure',{models:nextRecords});check();setAssets(assets);engine.current.manifest=next;configured.current=key;setProgress('');}}
  useEffect(()=>{if(!ready||operationLock.current||observed.current===registryKey)return;observed.current=registryKey;void operation(check=>syncRegistry(records.current,check)).catch(()=>{});},[ready,registryKey,busy]);
  const events=(type:string,value:string)=>{if(type==='progress')setProgress(String(value));};

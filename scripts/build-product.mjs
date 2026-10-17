@@ -19,7 +19,8 @@ const decision=JSON.parse(await readFile('design/prototype/src/decision-manifest
 const ocr=JSON.parse(await readFile('design/prototype/src/ocr-manifest.json','utf8'));
 const onnxText=JSON.parse(await readFile('design/prototype/src/onnx-text-manifest.json','utf8'));
 const qwenText=JSON.parse(await readFile('design/prototype/src/qwen-text-manifest.json','utf8'));
-const remote=[...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
+const lfm=JSON.parse(await readFile('dist/lfm-model-manifest.json','utf8'));
+const remote=[...lfm.models.filter(m=>m.id==='lfm25-350m-qad-q4-0').map(m=>m.file.url),...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
 const worker=productWorker({build,files,remote});
 await writeFile(path.join(root,'sw.js'),worker);await writeFile(path.join(root,'build.json'),JSON.stringify({build,files},null,2));
 console.log('Product shell '+build+' · '+files.length+' verified assets');

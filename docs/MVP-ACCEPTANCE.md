@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `19ad28d22fe9051a`; combined PC evidence extends through Unit124; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `974958b1c9ca8682`; combined PC evidence extends through Unit125; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -40,3 +40,5 @@ Unit121 connects asset-only ONNX startup to the normal product: current-build of
 Unit122 verifies the actual normal ONNX asset-only-to-Load/Unload transition after Unit121, offline with unchanged notes/settings and retained runs. It adds lifecycle regression evidence, no new model quality or device acceptance.
 
 Unit124 completes the separate Asyncify/memory32 native build and actual PC execution/count agreement. Build54234 is terminal. Normal LFM admission remains open; forced compatibility resources on Chrome do not establish Safari/device acceptance.
+
+Unit125 connects optional fixed LFM350M to normal model controls with packaged verified default/compat CPU runtime. Actual cold offline normal UI lifecycle passes after the prepared-state propagation fix; Hello routing fails with retained invalid operation output. Original observer failures and independent backup revalidation remain explicit. This candidate is not a useful-chat replacement certificate. No default/data/UI layout change; physical devices, useful general routing and full MVP gates remain.

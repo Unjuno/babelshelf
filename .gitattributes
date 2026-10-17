@@ -11,3 +11,7 @@ research/evaluations/reference-cpu-e3de715/** -text whitespace=-blank-at-eof,-bl
 # Preserve byte-pinned source patch and upstream license on Windows.
 research/runtime/wllama-count/count.patch -text
 research/runtime/wllama-count/UPSTREAM-LICENCE -text
+
+# Preserve pinned generated runtime JS byte identity.
+design/prototype/runtime/wllama-count/*.js -text
+design/prototype/runtime/wllama-count/*.wasm binary

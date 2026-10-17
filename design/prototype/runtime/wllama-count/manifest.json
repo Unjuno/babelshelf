@@ -1,0 +1,35 @@
+{
+  "name": "wllama CPU count extension",
+  "revision": "wllama-3.8.1-count1-a09a6c37e9e58c44",
+  "contextTokens": 2048,
+  "maxReplyTokens": 768,
+  "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "patchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+  "files": [
+    {
+      "path": "index.js",
+      "bytes": 318537,
+      "sha256": "7172035fb1521a83b178048efddfdb3c0fd90fd6e7c0f5831c9d95a68c7f9539"
+    },
+    {
+      "path": "default.wasm",
+      "bytes": 6886604,
+      "sha256": "8e709bee62b81a1e432f67450956c6e9f2d9a55492de42bc21bc5293c157b03a"
+    },
+    {
+      "path": "compat.js",
+      "bytes": 128615,
+      "sha256": "978b330aa7d8644e2edbe991415cb39b45d67540ad7d15f68f5a60f4b6147ce7"
+    },
+    {
+      "path": "compat.wasm",
+      "bytes": 13685530,
+      "sha256": "1f9644d6c42a4106e34a0111d506d5068c84efe5ae5e9225611960cc0a4fec4c"
+    }
+  ],
+  "licenses": [
+    "wllama-MIT.txt",
+    "llama-cpp-MIT.txt"
+  ]
+}

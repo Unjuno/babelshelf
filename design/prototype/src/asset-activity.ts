@@ -1,3 +1,4 @@
+import {getLfmTextManifest} from './lfm-text-manifest.ts';
 import {isOnnxText,getOnnxTextManifest} from './text-model-manifest.ts';
 // @ts-expect-error Shared strict manifest builder is JavaScript.
 import {withLocalModels} from '../../../dist/local-model-manifest.js';
@@ -10,6 +11,7 @@ export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.
 type FileDescriptor={name:string;size:number;type:string};
 const filePin=(f:{name?:string;path?:string;bytes:number;sha256:string})=>({name:f.name??f.path!,bytes:f.bytes,sha256:f.sha256});
 export function textAssetInput(id:string,allowNetwork=false,files?:FileDescriptor[],customModels:CustomLocalModel[]=[]){
+ const lfm=getLfmTextManifest(id);if(lfm)return {source:{name:lfm.name},role:'text',model:{id:lfm.id,revision:lfm.revision,format:'GGUF',file:filePin(lfm.file)},runtime:lfm.runtime,allowNetwork,method:files?'local-files':allowNetwork?'explicit-preparation':'local-only',...(files?{files:files.map(f=>({name:f.name,bytes:f.size,mime:f.type}))}:{})};
  if(isOnnxText(id)){const m=getOnnxTextManifest(id)!;return {source:{name:m.name},role:'text',model:{id:m.id,revision:m.revision,format:'ONNX',files:m.files.map(filePin)},runtime:m.runtime,allowNetwork,method:files?'local-files':allowNetwork?'explicit-preparation':'local-only',...(files?{files:files.map(f=>({name:f.name,bytes:f.size,mime:f.type}))}:{})};}
  const m=withLocalModels(textManifest,customModels).models.find((m:{id:string})=>m.id===id);if(!m)throw Error('Model not configured');
  return {source:{name:m.name},role:'text',model:{id:m.id,revision:m.revision,format:m.format,file:filePin(m.file)},runtime:{name:textManifest.runtime.name,revision:textManifest.runtime.revision,file:filePin(textManifest.runtime.file)},allowNetwork,method:files?'local-files':allowNetwork?'explicit-preparation':'local-only',...(files?{files:files.map(f=>({name:f.name,bytes:f.size,mime:f.type}))}:{})};

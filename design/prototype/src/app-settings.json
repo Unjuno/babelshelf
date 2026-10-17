@@ -17,6 +17,10 @@
       {
         "value": "qwen25-05b-instruct",
         "label": "Qwen2.5 \u00b7 0.5B"
+      },
+      {
+        "value": "lfm25-350m-qad-q4-0",
+        "label": "LFM2.5 \u00b7 350M \u00b7 QAD"
       }
     ],
     "decision": [

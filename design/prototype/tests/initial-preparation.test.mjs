@@ -45,3 +45,9 @@ test('standard-set presence is not reported as text verification',()=>{
  const plan=initialPreparationPlan(initial(),{text:true,speech:true,ocr:true});
  assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.bytes,0);
 });
+
+
+test('LFM initial preparation budgets only selected weights; packaged runtime is independent',()=>{
+ const prefs=initial();prefs.textModel='lfm25-350m-qad-q4-0';prefs.textLibrary.push(prefs.textModel);
+ const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,219312832);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);assert.equal(initial().textModel,'4B');
+});

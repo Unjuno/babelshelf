@@ -82,3 +82,13 @@ Unit122 closes the native Load/Unload regression after Unit121: normal current-b
 
 
 Unit124 supplies the separately pinned, successfully built Asyncify/memory32 compatibility pair and actual native PC execution with exact count/generation agreement. Both default and compat binaries now have narrow native API evidence. Normal catalog/router/asset-preparation registration and useful structured flow remain to be connected; do not infer Safari/phone acceptance from forced resource selection on Chrome.
+
+
+## Normal LFM candidate registration (Unit125)
+The normal app now registers fixed LFM2.5-350M QAD Q4_0 with the trusted CPU count backend. It is an optional Add model entry, never a default replacement. The fixed model revision/hash/license remain separate from the compiled runtime. Arbitrary/custom LFM GGUF and LFM230M are not admitted by this registration. Existing WebML/custom and ONNX backends remain.
+
+runtime/wllama-count contains the separately pinned common library/default WASM/compat JS/compat WASM. Source/patch revisions and byte pins are checked before the product build; source and staged Git bytes are verified. Git attributes preserve generated JS and binary WASM bytes. Wllama and llama.cpp MIT attribution remains separate from model licenses. The current legacy LfmCheck manifest still describes its old diagnostic runtime; normal admission uses lfm-text-manifest.ts and the packaged count runtime instead.
+
+The normal registration uses the existing lazy prepared backend and a dedicated owned worker. Status/Prepare/Verify access only app-owned pinned stores; Load reads existing OPFS weights, verifies them through the adapter, and uses packaged resources only. Inference fetch is restricted to its packaged native URLs. No CDN/remote fallback, tool or knowledge-write API enters this worker. Initial preparation counts selected model bytes without adding unrelated WebML runtime capacity. Explicit online preparation allows only the pinned350M URL; local import works with downloads OFF.
+
+Native offline normal UI import/Verify/Load/Unload is established in Unit125 after a worker asset-presence propagation bug was fixed. Normal Hello Send FAILED: actual350M output selected unavailable read action and is retained as a bounded invalid_model_output, without a guessed action/answer. It is not established as a useful normal-chat alternative; default Bonsai and its data remain unchanged. No prompt tuning or comparative suite was run.

@@ -7,12 +7,12 @@ import {withLocalModels} from '../../../dist/local-model-manifest.js';
 const base=JSON.parse(await readFile(new URL('../../../dist/model-manifest.json',import.meta.url),'utf8'));
 // Actual hook/port source with controlled React effects and worker command completion.
 // This checks scheduling/cancellation, not inference or device capability.
-const source=(await readFile(new URL('../src/useBonsai.ts',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'').replace(/new URL\('\.\/(?:bonsai|onnx-text)-worker\.ts',import\.meta\.url\)/g,"'worker'");
+const source=(await readFile(new URL('../src/useBonsai.ts',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'').replace(/new URL\('\.\/(?:bonsai|onnx-text|lfm-text)-worker\.ts',import\.meta\.url\)/g,"'worker'");
 function setup(loaded=''){
  const effects=[],refs=[],calls=[];let index=0,resolveConfigure;
  class Engine{constructor(manifest){this.manifest=manifest;this.loaded=loaded;this.worker={terminate(){}};}init(){return Promise.resolve({});}call(cmd){calls.push(cmd);if(cmd==='configure')return new Promise(resolve=>{resolveConfigure=resolve;});return Promise.resolve({});}abort(){calls.push('abort');}async load(model){calls.push('load:'+model);this.loaded=model;}async unload(){calls.push('unload');this.loaded='';}async generate(){calls.push('generate');return {text:'controlled test output'};}}
  const useRef=value=>refs[index++]??(refs[index-1]={current:value}),useState=value=>[typeof value==='object'?{'4B':{filesPresent:true}}:value,()=>{}];
- const hook=new Function('createTextInference','useEffect','useRef','useState','Engine','withLocalModels','baseManifest','Worker','TextEngineRouter','createOnnxTextClient','combinedTextManifest',stripTypeScriptTypes(source)+';return useBonsai;')(createTextInference,f=>effects.push(f),useRef,useState,Engine,withLocalModels,base,class{},class{constructor(webml){return webml;}},()=>{},x=>x);
+ const hook=new Function('createTextInference','useEffect','useRef','useState','Engine','withLocalModels','baseManifest','Worker','TextEngineRouter','createOnnxTextBackend','combinedTextManifest','lfmTextModels','describeLfmText','createLfmTextBackend',stripTypeScriptTypes(source)+';return useBonsai;')(createTextInference,f=>effects.push(f),useRef,useState,Engine,withLocalModels,base,class{},class{constructor(webml){return webml;}},()=>{},x=>x,[],()=>({}),()=>{});
  const api=hook([],true);effects[0]();return {api,calls,release:()=>resolveConfigure({})};
 }
 for(const operation of ['load','prepare'])test('Stop during registry synchronization cannot start '+operation,async()=>{
