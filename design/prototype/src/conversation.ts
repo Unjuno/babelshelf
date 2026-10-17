@@ -1,3 +1,4 @@
+import {validateFileResults,type FileResult} from './file-discovery.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
 import {planningContextForInputs} from './current-input-scope.ts';
 import {harnessActionCatalog,validHarnessAction,validHarnessTarget,type PlannerScope} from './harness-actions.ts';
@@ -12,7 +13,7 @@ import {parseJSON,parseAnswer,searchNotes} from '../../../dist/core.js';
 import type {TextToolReceipt} from './text-transform';
 import type {OriginalRef} from './original-assets';
 export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string;title?:string;groundingEligible?:boolean};
-export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
+export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];files?:FileResult[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
 export type Dialogue={schema:1;revision:number;turns:DialogueTurn[];compaction:{through:number;summary:string}|null;currentResult?:{turnId:string};currentFile?:WorkingFile};
 export type DialogueContext={historyAssistantIndices?:number[];summary:string;recent:DialogueTurn[];refs:SourceRef[];turnCount?:number;lastAnswerIndex?:number;currentResult?:{turnId:string};currentFile?:WorkingFile;recalled?:{turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number}[]};
 export type {TextEngine as ChatEngine} from './text-inference';
@@ -25,7 +26,7 @@ export function completeTurn(state:Dialogue,id:string,result:Partial<Omit<Dialog
 export function validateDialogue(value:unknown):Dialogue{
  const s=value as Dialogue;
  if(s?.schema!==1||!Number.isInteger(s.revision)||!Array.isArray(s.turns)||s.turns.some(t=>typeof t.id!=='string'||typeof t.user!=='string'||t.answer!==undefined&&typeof t.answer!=='string'||t.status!==undefined&&typeof t.status!=='string')||new Set(s.turns.map(t=>t.id)).size!==s.turns.length)throw Error('Conversation data invalid');
- if(s.compaction&&(!Number.isInteger(s.compaction.through)||s.compaction.through<0||s.compaction.through>s.turns.length||typeof s.compaction.summary!=='string'))throw Error('Conversation summary invalid');for(const turn of s.turns)if(turn.activity!==undefined)validateActivity(turn.activity);if(s.currentResult!==undefined&&(!s.currentResult||Object.keys(s.currentResult).some(k=>k!=='turnId')||typeof s.currentResult.turnId!=='string'||!s.turns.some(t=>t.id===s.currentResult!.turnId&&t.answer?.trim())))throw Error('Conversation current result invalid');if(s.currentFile!==undefined)validateWorkingFile(s.currentFile);return s;
+ if(s.compaction&&(!Number.isInteger(s.compaction.through)||s.compaction.through<0||s.compaction.through>s.turns.length||typeof s.compaction.summary!=='string'))throw Error('Conversation summary invalid');for(const turn of s.turns){if(turn.activity!==undefined)validateActivity(turn.activity);if(turn.files!==undefined)validateFileResults(turn.files);}if(s.currentResult!==undefined&&(!s.currentResult||Object.keys(s.currentResult).some(k=>k!=='turnId')||typeof s.currentResult.turnId!=='string'||!s.turns.some(t=>t.id===s.currentResult!.turnId&&t.answer?.trim())))throw Error('Conversation current result invalid');if(s.currentFile!==undefined)validateWorkingFile(s.currentFile);return s;
 }
 function focusExcerpt(text:string,question:string,limit:number){
  let normalized='';const originalOffsets:number[]=[];

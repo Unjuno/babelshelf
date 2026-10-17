@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {prepareOriginal,readOriginal,originalNote,originalKey,MAX_ORIGINAL_BYTES,checkAttachmentBatch,validateOriginalLinks} from '../src/original-assets.ts';
-import {latest,searchNotes,makeBackup} from '../../../dist/core.js';
+import {latest,searchNotes,makeBackup,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts';
 test('immutable original retains exact UTF8/BOM bytes separately from decoded note and versioned coverage',async()=>{
  const bytes=new Uint8Array([239,187,191,...new TextEncoder().encode('水 Water 🌳\n')]),file=new File([bytes],'資料.txt',{type:'text/plain'}),asset=await prepareOriginal(file,'asset1');
@@ -66,4 +66,16 @@ test('new text format invalid encodings and NUL never produce readable evidence'
 test('additional text formats keep bounded decoding without truncating originals',async()=>{
  const bytes=new Uint8Array(1024*1024+1).fill(65),asset=await prepareOriginal(new File([bytes],'large.log')),note=originalNote(asset);
  assert.equal(note.revisions[0].body,'');assert.equal(note.attachmentText,undefined);assert.deepEqual(readOriginal(asset),bytes);
+});
+
+import {findStoredFiles,validateFileResults,validateFileResultLinks} from '../src/file-discovery.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext} from '../src/conversation.ts';
+test('unread originals are discoverable by metadata without fabricated text or citation ranges',async()=>{
+ const asset=await prepareOriginal(new File(['unread image bytes'],'避難図100.png',{type:'image/png'}),'unread100'),note=originalNote(asset),before=structuredClone(note);
+ const files=findStoredFiles([note],'避難図100.png');assert.equal(files.length,1);assert.deepEqual(Object.keys(files[0]).sort(),['kind','noteId','path','revision']);assert.equal(files[0].noteId,note.id);assert.equal(latest(note).body,'');assert.equal(searchNotes([note],'避難図100.png').length,0);assert.deepEqual(note,before);
+ validateFileResultLinks([note],files);const renamed=reviseNote(note,{path:'Attachments/renamed100.md'},1);validateFileResultLinks([renamed],files);validateFileResultLinks([withdrawNote(renamed,2)],files);assert.throws(()=>validateFileResults([{...files[0],quote:'invented'}]),/file result/i);assert.throws(()=>validateFileResultLinks([note],[{...files[0],revision:99}]),/file result/i);
+ const d=completeTurn(appendTurn(emptyDialogue(),{id:'file-search',user:'Search: 避難図100.png'}),'file-search',{files});assert.deepEqual(dialogueContext(d).refs,[]);
+ const state={notes:[note],settings:[{key:'ui-v1-dialogue',value:d}],runs:[{key:originalKey(asset.id),value:asset}]};assert.deepEqual((await parseStateBackup(JSON.stringify(await makeStateBackup(state)))).settings[0].value.turns[0].files,files);
+ const bad=structuredClone(state);bad.settings[0].value.turns[0].files[0].path='Inbox/other.md';await assert.rejects(makeStateBackup(bad),/file result/i);
+ assert.equal(findStoredFiles([{...note,state:'withdrawn'}],'避難図100.png').length,0);
 });

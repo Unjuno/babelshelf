@@ -1,3 +1,4 @@
+import {findStoredFiles} from './file-discovery.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
@@ -266,7 +267,7 @@ export class KnowledgeStore {
   });
  }
  async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
- async search(query:string,stored=false){const all=await this.all(),explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));return (stored?searchStoredNotes:searchNotes)(records,query,12);}
+ async search(query:string,stored=false){const all=await this.all(),explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12);const text=searchStoredNotes(records,query,12),ids=new Set(text.map((r:any)=>r.noteId));return [...findStoredFiles(records,query).filter(file=>!ids.has(file.noteId)),...text].slice(0,12);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
