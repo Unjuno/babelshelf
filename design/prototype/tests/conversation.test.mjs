@@ -170,6 +170,12 @@ test('existing-note edits route to a target proposal rather than capture or dire
  await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"edit","query":""}'})},'fix it',context),/Invalid/);
 });
 
+test('new schedule creation is a finite proposal action, while model output cannot attach write permissions',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0},e={...engine(),generate:async()=>({text:'{"action":"schedule","query":"","historyIndex":null}'})};
+ assert.equal((await planDialogue(e,'Create a daily stock-check prompt at nine',context)).action,'schedule');
+ await assert.rejects(planDialogue({...e,generate:async()=>({text:'{"action":"schedule","query":"","enabled":true}'})},'schedule',context),/Invalid/);
+});
+
 test('a newly retrieved topic outranks old pinned references and excludes unrelated dialogue facts from grounded generation',async()=>{
  const old=createNote({path:'Notes/old.md',body:'The old code is PINE-9191.'}),fresh=createNote({path:'Notes/copper.md',body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),oldRef=ref(old),freshRef=ref(fresh);const store={all:async()=>[old,fresh],search:async()=>[freshRef]};const context={summary:'Old code PINE-9191',recent:[{id:'old',user:'old code?',answer:'PINE-9191'}],refs:[oldRef]};
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.evidence[0].noteId,fresh.id);assert.doesNotMatch(JSON.stringify(messages),/PINE-9191/);return {text:JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};const reply=await groundedAnswer(store,e,'4B','What is the copper code?','copper code','answer',context);assert.equal(reply.sources[0].noteId,fresh.id);

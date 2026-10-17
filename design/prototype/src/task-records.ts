@@ -1,6 +1,6 @@
 // Typed application records stored as ordinary versioned Markdown notes.
 // @ts-expect-error Shared baseline core is JavaScript.
-import {createNote,reviseNote,latest,validateRefs} from '../../../dist/core.js';
+import {createNote,reviseNote,latest,validateRefs,checkNotes} from '../../../dist/core.js';
 import {nextScheduleOccurrence,localDate,type ScheduleRule} from './schedule-time.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
@@ -30,6 +30,11 @@ export function taskDefinition(task:Task){return JSON.stringify(Object.fromEntri
 export function taskNextAt(task:Task,now=new Date()):Date{
  if(task.repeat==='once')return nextScheduleOccurrence(task,new Date(new Date(task.date+'T00:00:00').getTime()-86400000));
  return nextScheduleOccurrence(task,now);
+}
+export function createTaskNote(records:any[],task:Task,id:string=crypto.randomUUID(),now=new Date()){
+ if(typeof id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))throw Error('Invalid schedule identity');
+ if(records.some(n=>n.id===id))throw Error('Schedule already saved · reopen it');
+ const note={...createNote({path:'Schedule/'+localDate(now)+'-'+id+'.md',title:task.prompt.trim().split('\n')[0].slice(0,72),body:formatTask(task)}),id,ui:{recordType:'schedule'}};checkNotes([...records,note]);return note;
 }
 export function reviseTaskNote(old:any,task:Task,now=new Date()){
  if(!old||old.state!=='active'||old.ui?.recordType!=='schedule'||old.ui?.protected||old.ui?.managed)throw Error('Schedule target protected or unavailable');

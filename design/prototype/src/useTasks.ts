@@ -29,7 +29,7 @@ export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boo
   }finally{if(heartbeat)clearInterval(heartbeat);locked.current=false;setActive(null);await latest.current.refresh();}
  }
  async function skip(id:string){await knowledge.skipRun(id,owner.current);await latest.current.refresh();}
- async function save(task:Task,id?:string,expected?:number){if(savingLock.current)throw Error('Saving');savingLock.current=true;setSaving(true);try{await knowledge.putTask(task,id,expected);await latest.current.refresh();}finally{savingLock.current=false;setSaving(false);}}
+ async function save(task:Task,id?:string,expected?:number,creationId?:string){if(savingLock.current)throw Error('Saving');savingLock.current=true;setSaving(true);try{const note=await knowledge.putTask(task,id,expected,creationId);try{await latest.current.refresh();return {note,refreshError:null};}catch(e){return {note,refreshError:e as Error};}}finally{savingLock.current=false;setSaving(false);}}
  async function read(id:string){await knowledge.readNotification(id);await latest.current.refresh();}
  useEffect(()=>{if(!ready)return;let stopped=false;
   const poll=async()=>{if(stopped||document.visibilityState!=='visible'||locked.current||isBlocked())return;
