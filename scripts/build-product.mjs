@@ -1,3 +1,4 @@
+import {productWorker} from './product-worker.mjs';
 import {execFileSync} from 'node:child_process';
 import {readFile,writeFile,readdir,mkdir,copyFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -10,16 +11,12 @@ const root=path.join(prototype,'dist/app'),files=[];
 async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const full=path.join(folder,entry.name);if(entry.isDirectory())await walk(full);else{const bytes=await readFile(full);files.push({path:'./'+path.relative(root,full).split(path.sep).join('/'),sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});}}}
 await mkdir(path.join(root,'licenses'),{recursive:true});for(const name of await readdir('design/prototype/licenses'))await copyFile(path.join('design/prototype/licenses',name),path.join(root,'licenses',name));
 await walk(root);files.sort((a,b)=>a.path.localeCompare(b.path));
-const build=createHash('sha256').update(JSON.stringify(files)).digest('hex').slice(0,16),models=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
+const workerSource=await readFile(new URL('./product-worker.mjs',import.meta.url),'utf8');
+const build=createHash('sha256').update(JSON.stringify(files)).update(workerSource).digest('hex').slice(0,16),models=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
 const speech=JSON.parse(await readFile('design/prototype/src/speech-manifest.json','utf8'));
 const decision=JSON.parse(await readFile('design/prototype/src/decision-manifest.json','utf8'));
 const ocr=JSON.parse(await readFile('design/prototype/src/ocr-manifest.json','utf8'));
 const remote=[...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
-const worker=`const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
-const absolute=path=>new URL(path,self.registration.scope).href;
-self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);for(const file of FILES){const response=await fetch(absolute(file.path),{cache:'no-store',credentials:'same-origin'});if(!response.ok)throw Error('App asset missing');const bytes=await response.clone().arrayBuffer(),digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');if(bytes.byteLength!==file.bytes||digest!==file.sha256)throw Error('App asset verification failed');await cache.put(absolute(file.path),response);}})()));
-self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
-self.addEventListener('fetch',event=>{const request=event.request,url=new URL(request.url);if(request.method!=='GET'){event.respondWith(new Response('Method unavailable',{status:405}));return;}if(url.origin!==self.location.origin){event.respondWith(REMOTE.includes(url.href)?fetch(request):Promise.resolve(new Response('Network disabled',{status:503})));return;}event.respondWith((async()=>{const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);const hit=await cache.match(absolute(path));return hit??new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain'}});})());});
-self.addEventListener('message',event=>{if(event.data?.type==='activate-update')self.skipWaiting();if(event.data==='build')event.ports[0]?.postMessage({build:BUILD,cache:CACHE,assets:FILES.length});});`;
+const worker=productWorker({build,files,remote});
 await writeFile(path.join(root,'sw.js'),worker);await writeFile(path.join(root,'build.json'),JSON.stringify({build,files},null,2));
 console.log('Product shell '+build+' · '+files.length+' verified assets');

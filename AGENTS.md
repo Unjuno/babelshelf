@@ -12,6 +12,7 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - In prototype, read design/prototype/AGENTS.md in full; preserve its locked mobile runtime. Put product UI in its Prototype.tsx/prototype.css. Do not change lock hashes to bypass checks.
 - npm test / npm run check validate the baseline. npm run test:markdown runs a formerly pending seed that now passes. npm run test:prototype and npm run build:prototype validate the prototype; browser/device/inference results must be reported separately.
 - Do not deploy, merge, purge data, or add services/accounts/telemetry as part of routine UI changes.
+- Before changing app updates/cache routing, read docs/PWA-UPDATE-CONTRACT.md. Old open pages must retain their lazy readers; active-client enumeration alone does not protect back/forward cached pages. Historical app caches currently remain, and storage reclamation is still open. Never treat model assets, canonical data or foreign cache names as app cleanup targets.
 
 - Local speech now has pinned Whisper tiny/Transformers WASM assets, explicit preparation, review and atomic original/transcript storage. Read docs/SPEECH-CONTRACT.md. Never infer accurate transcription, physical microphone support, automatic language detection or whole-device offline acceptance from one PC sample.
 

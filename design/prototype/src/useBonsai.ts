@@ -10,7 +10,7 @@ export function useBonsai(){
  async function prepare(model:string,allowNetwork:boolean,localFiles?:File[]){return operation(async()=>{if(!allowNetwork&&!localFiles)throw Error('Downloads are off');await engine.current.call('prepare',{model,allowNetwork,localFiles},events);setAssets(await engine.current.call('status'));setProgress('Verified');});}
  async function load(model:string){return operation(async()=>{setLoaded('');await engine.current.load(model,events);setLoaded(model);setProgress('Loaded');});}
  async function unload(){return operation(async()=>{await engine.current.unload();setLoaded('');setProgress('Unloaded');});}
- async function generate(messages:unknown[],maxTokens=256){return operation(async()=>{if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens);if(cancelled.current)throw Error('Stopped');return result;});}
+ async function generate(messages:unknown[],maxTokens=256){return operation(async()=>{if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens);if(cancelled.current)throw Error('Stopped');setProgress('');return result;});}
  function stop(){cancelled.current=true;engine.current?.abort();setProgress('Stopping…');}
  return {manifest,busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,load,unload,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
 }
