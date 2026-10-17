@@ -1,3 +1,4 @@
+import {calculatorInput} from './tools/math.calculate/tool';
 import {speechReady as preparedSpeech} from './speech-assets';
 import {ocrReady as preparedOcr} from './ocr-assets';
 import {initialPreparationPlan,runInitialPreparation,type InitialPreparation} from './initial-preparation';
@@ -456,6 +457,8 @@ export default function Prototype() {
    setDraft(current=>current===text?'':current);setAttachments([]);keyboard.hide();if(items.length)await refreshStorage();setChatProgress('');checkSend();let inputReadings:CurrentInputRef[]=sent.flatMap<CurrentInputRef>(a=>a.reading?[a.reading]:a.status==='Text available'?[{kind:'text',noteId:a.id,revision:1}]:[]);const literalRequest=localRequest(text.trimStart());let request=scopeLiteralRequest(literalRequest,inputReadings.length>0),context=dialogueContext(prior,text);
    const importedRefs=imported.filter(n=>n.body.length).map(n=>({noteId:n.id,revision:1,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}));
    const unread=sent.find(a=>a.status!=='Text available'&&!a.voice&&!a.reading);if(unread&&text&&(!request||['answer','summary'].includes(request.action)||request.action==='capture'&&inputReadings.length>0)){await finishTurn(id,{refs:importedRefs,status:'Original saved · '+unread.status});return;}
+   const expression=items.length?null:calculatorInput(text);
+   if(expression!==null){const result=await trace('math.calculate',{expression,...await builtinToolRegistry.identity('math.calculate')},()=>builtinToolRegistry.run('math.calculate',{expression},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}));checkSend();await finishTurn(id,{answer:String(result[0].result),status:'Calculated',refs:[]});return;}
    if(text&&(!request||['answer','summary'].includes(request.action))){
     if(!model||bonsai.loaded!==model){await trace('model.load',{model},async()=>{if(!model)throw Error('Model not configured · Settings');if(!bonsai.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await bonsai.load(model);return {loaded:model};});}
     inference=bonsai.pin!();

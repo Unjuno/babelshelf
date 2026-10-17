@@ -47,3 +47,15 @@ test('registry refuses invalid authority, duplicate IDs, missing code/skill and 
 test('registry cancellation refuses late results even for a handler that omits its own check',async()=>{
  let stopped=false;const pkg=declaration();pkg.run=async()=>{stopped=true;return notes};const registry=createToolRegistry([pkg]);await assert.rejects(registry.run('memory.search',{}, {...host,check(){if(stopped)throw Error('Stopped')}}),/Stopped/);
 });
+
+import {calculate,calculatorInput,run as calculator} from '../src/tools/math.calculate/tool.ts';
+test('local arithmetic obeys precedence, signs, bounds and never evaluates code',async()=>{
+ assert.equal(calculate('(1200 + 800) / 4'),500);assert.equal(calculate('−2 × (3 + 4)'),-14);
+ assert.equal(calculate('1e2 + .5'),100.5);assert.equal(calculate('0.1+0.2'),0.1+0.2);
+ for(const s of ['1/0','1e309','2**3','globalThis.alert(1)','1;2','2(3)','('.repeat(40)+'1'+')'.repeat(40)])assert.throws(()=>calculate(s));
+ assert.equal(calculatorInput(' (1200 + 800) / 4 = '),'(1200 + 800) / 4');
+ for(const s of ['2026-10-18 meeting','read 2+3','what is 2+3','Inbox/a.md'])assert.equal(calculatorInput(s),null);
+ assert.equal((await calculator({expression:'2+3'},host))[0].result,5);
+ await assert.rejects(calculator({expression:'2+3',write:true},host));
+ await assert.rejects(calculator({expression:'2+3'},{...host,check(){throw Error('Stopped')}}),/Stopped/);
+});
