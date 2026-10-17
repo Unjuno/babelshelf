@@ -8,6 +8,8 @@ New natural-language task creation now uses a typed proposal, existing editable 
 
 ## Completed and preserved
 
+Unit27 replaces nested JSON compaction carriers with literal untrusted summary/fragment blocks. Exact-byte/budget/Stop regression and actual public multi-cycle4B evidence are recorded in TEST-RESULTS.txt and research/evaluations/compaction-carry.md. This closes a representation defect, while lossy summary formatting and remaining semantic/device gates stay open.
+
 - Baseline PWA has path-aware immutable revisions, path/collision validation, literal capture/search/read routes and local file exchange infrastructure.
 - Accepted interactive UI is committed in design/prototype/, with its own dependency lock and protected device runtime. It is a design harness, not the PWA persistence layer.
 - Accepted decisions are consolidated in PRODUCT-SPEC.md. Old chronological iterations are not acceptance criteria.

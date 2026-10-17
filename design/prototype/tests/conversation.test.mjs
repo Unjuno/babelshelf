@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,parseChatAnswer,planDialogue,readDialogueTurn} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,readDialogueTurn} from '../src/conversation.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
 import {createNote,reviseNote} from '../../../dist/core.js';
@@ -38,6 +38,26 @@ test('stopped or failed compaction keeps the existing state intact and never fab
  let state=emptyDialogue();for(let i=0;i<8;i++)state=completeTurn(appendTurn(state,{id:String(i),user:'data '.repeat(300)}),String(i),{answer:'prior answer'});
  const before=structuredClone(state);await assert.rejects(()=>compactDialogue(state,{...engine(),generate:async()=>{throw Error('Stopped');}},'next'),/Stopped/);
  assert.deepEqual(state,before);assert.equal(state.compaction,null);
+});
+
+test('compaction carries exact literal summary without another JSON escape layer or guessing stored escapes',()=>{
+ const summary=String.raw`User path C:\notes\reserve.md. Literal \n and "quotes". `+'\\'.repeat(128)+'\n日本語 😀',original=summary;
+ const messages=compactionMessages(summary,{turns:[{id:'t',user:'Water corrected from 3L to 4L.',activity:[{tool:'hidden receipt'}],refs:[{quote:'hidden source'}]}]});
+ assert.equal(messages[1].content.split('\n').slice(1).join('\n'),summary);assert.equal(summary,original);assert.doesNotMatch(JSON.stringify(messages),/hidden receipt|hidden source/);
+ assert.equal(JSON.parse(messages.at(-1).content.split('\n').slice(1).join('\n'))[0].user,'Water corrected from 3L to 4L.');
+});
+test('oversized compaction JSON fragments are transported once, with exact Unicode and continuation state',()=>{
+ const part=JSON.stringify({user:String.raw`C:\notes\reserve.md`+'\n原文 😀'}).slice(3),messages=compactionMessages('prior',{part,continued:true});
+ assert.equal(messages.at(-1).content.split('\n').slice(1).join('\n'),part);assert.match(messages.at(-1).content,/continued/);
+});
+
+test('normal and oversized compaction both use literal carry-forward and retain every original turn',async()=>{
+ for(const oversized of [false,true]){
+  let state=appendTurn(emptyDialogue(),{id:'archived',user:'Earlier'});const summary=String.raw`Code BIRCH-2468; path C:\notes\reserve.md.`;state.compaction={through:1,summary};
+  for(let i=0;i<(oversized?1:4);i++)state=appendTurn(state,{id:'new'+i,user:('原文 😀 '+i+' ').repeat(oversized?1800:130)});
+  const before=structuredClone(state);let calls=0;const e={...engine(),generate:async m=>{calls++;assert.equal(m[1].content.split('\n').slice(1).join('\n'),calls===1?summary:'Short retained summary');assert.ok((await e.count(m)).prompt_tokens+192<=2048);return {text:'Short retained summary'};}};
+  const compact=await compactDialogue(state,e,'Next');assert.ok(calls);assert.deepEqual(compact.turns,before.turns);assert.deepEqual(state,before);
+ }
 });
 test('answers can refer to dialogue without invented citations; invalid citations fail',()=>{
  assert.deepEqual(parseChatAnswer('{"answer":"You said AMBER-42.","citations":[]}',[]),{answer:'You said AMBER-42.',sources:[]});

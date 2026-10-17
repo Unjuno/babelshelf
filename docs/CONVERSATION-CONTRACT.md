@@ -22,6 +22,8 @@ Conversation/summary, attachment text, tool results and scheduled prompts are un
 
 ## Verification boundary
 
+Compaction carries the preceding working summary as a literal, explicitly untrusted user-message block. Archived turns are projected to dialogue fields and serialized to JSON once; oversized JSON fragments are passed literally with first/continued labels. A summary or an already serialized fragment must not be embedded in another JSON string on each cycle. Exact tokenizer counts still bound every call and the output allocation remains192 tokens. This prevents application-added recursive escaping; it does not guarantee that the model preserves every detail or literal character. Existing summaries are never silently unescaped or repaired, and original turns stay unchanged. See Unit27 evidence in TEST-RESULTS.txt.
+
 Node budget/routing/source checks use deterministic test doubles solely to test control flow, never as evidence of actual generation. Real browser storage checks use a unique retained test database. Actual Bonsai conversational generation and compaction are recorded separately in TEST-RESULTS and MODEL-RUNTIME-VERIFICATION. Summary quality is lossy; it is not a guarantee that every old detail will remain in active context. Original history and knowledge sources are retained for verification.
 
 ## Observed semantic failures and recovery

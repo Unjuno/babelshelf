@@ -17,6 +17,10 @@ The accepted UI uses the existing canonical IndexedDB store. Memory, preferences
 
 Remaining work must preserve the full product objective:
 
+Compaction transport now avoids application-added recursive escaping, with three actual public4B comparison cycles retained in research/evaluations/compaction-carry.md. Exact line-break and broader semantic retention still fail in that sample; no summary repair or whole-MVP completion follows from the transport fix.
+
+Immediate reproduction: Unit27 offline normal first-message code recall succeeded, but the next Japanese two-line transform selected recall/index13/user from a similar archived instruction and echoed the current request. D1's transform classification deferred correctly; Bonsai's action/target choice failed. Original82turns and all records remain. Address this current-versus-archived-intent ambiguity using public synthetic fixtures and normal integration; do not erase the failure or infer a fix from isolated operation-selection success.
+
 1. Prepared empty-page PDF OCR is connected; broad scanned-layout fidelity, general image/video-frame understanding and verified video-container timing remain open; retain originals, bounded coverage and processor provenance. Current OCR Japanese sample contains errors.
 2. Decision and compatible custom model/runtime adapters require their own pinned artifacts, compatibility and license verification. Candidate registration is not execution support; no provider/cloud fallback.
 3. Existing registered local-zone tasks use typed reviewed patches and whole-record expected snapshots, shared cursor semantics and atomic receipts/Undo. New natural-language tasks use bounded typed proposals/clarification and editable review, stable creation identity and paused Save; broader date/prompt/language fidelity remains under evaluation. Typed settings/tools model edits remain pending. Ordinary-note semantic correction remains source-only; attaching a file does not expand its factual rewriting authority.

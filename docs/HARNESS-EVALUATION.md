@@ -1,5 +1,7 @@
 # Local harness evaluation
 
+For compaction transport comparisons, fixtures may explicitly use `expected: null` and a per-case `maxTokens` from1 to512 (192 for the production compaction allocation). Such results are **Observed**, with `pass: null`; prose without an exact oracle never earns a fabricated PASS. Actual counted input plus that allocation must fit the pinned2048-token context. Omitted per-case allocation keeps the historical256 default. Fixture loading rejects unknown case/message fields, models, URLs and tool declarations. The bounded public fixture generator `research/compaction-carry.mjs` carries only the preceding actual report outputs into cycles2/3; it never reads knowledge storage, normalizes escapes or injects expected summaries. Raw reports retain inputs/counts/completion metadata and semantic failures.
+
 The accepted UI stays fixed. Diagnose the actual prompt/harness/runtime boundary before attributing failure to model capacity. This is a bounded diagnostic addition under the active implementation goal; it does not authorize writes or change models.
 
 Production `/?check=harness` is an explicit developer route, never a normal-screen panel. It loads the already prepared pinned Bonsai4B through the same worker, denies inference network fallback and has no note/conversation store access. It never downloads assets. All inputs are public fixed fixtures; all outputs come from actual local inference. The expected string is a test oracle, not an answer supplied to the generator.
