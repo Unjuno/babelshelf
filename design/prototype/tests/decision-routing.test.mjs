@@ -1,6 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {decisionRoutingQuestion,decisionRoutingState,decisionRoute,routeWithDecision} from '../src/decision-routing.ts';
+import {decisionRoutingQuestion,decisionRoutingState,decisionRoute as route,routeWithDecision} from '../src/decision-routing.ts';
 import {decisionManifest} from '../src/decision-assets.ts';
+const identity={model:decisionManifest.id,revision:decisionManifest.conversion.revision,inputLimit:decisionManifest.inputLimit,scope:'text-only'};
+const decisionRoute=(value,q,c,attachments=[])=>route(value,q,c,identity,attachments);
 const empty={summary:'',recent:[],refs:[],turnCount:0};
 const context={summary:'Earlier summary',recent:[{id:'t',user:'Keep original words',answer:'Earlier response',activity:[{tool:'not model context'}],refs:[{quote:'private citation body'}]}],refs:[{quote:'not authority'}],turnCount:1,lastAnswerIndex:0};
 const result=(choice='answer',confidence=.98)=>{const names=Object.keys(decisionRoutingQuestion.criteria),probabilities=Object.fromEntries(names.map(k=>[k,k===choice?confidence:(1-confidence)/(names.length-1)]));return {answer:{type:'choice',choice,confidence,probabilities},model:decisionManifest.id,revision:decisionManifest.conversion.revision,scope:'text-only',device:'webgpu',inputTokens:120,elapsedMs:10};};
@@ -14,11 +16,11 @@ test('only validated confident read-only decisions skip planner and retain exact
  for(const mutate of [r=>r.answer.choice='delete',r=>r.answer.confidence=NaN,r=>r.answer.probabilities.answer=1.1,r=>r.revision='other',r=>r.scope='omni',r=>r.inputTokens=9999,r=>delete r.answer.probabilities.recall]){const r=result();mutate(r);assert.throws(()=>decisionRoute(r,'x',empty),/Invalid decision route/);}
 });
 test('only a typed work context limit defers; Stop, crash, malformed output and receipt failures propagate',async()=>{
- let calls=0;const trace=async(_tool,_input,work,project)=>{calls++;const value=await work();project(value);return value;};const engine={classify:async()=>result()};assert.equal((await routeWithDecision(engine,'q',{summary:'',recent:[],refs:[]},[],trace,()=>{})).request.action,'answer');assert.equal(calls,1);
- const limit=Object.assign(Error('Decision context limit'),{code:'decision_context_limit'});const limited={classify:async()=>{throw limit;}};assert.deepEqual(await routeWithDecision(limited,'q',context,[],trace,()=>{}),{request:null,reason:'context-limit'});
- for(const error of [Error('Stopped'),Error('Decision runtime failed')])await assert.rejects(routeWithDecision({classify:async()=>{throw error;}},'q',context,[],trace,()=>{}),e=>e===error);
+ let calls=0;const trace=async(_tool,_input,work,project)=>{calls++;const value=await work();project(value);return value;};const engine={identity,classify:async()=>result()};assert.equal((await routeWithDecision(engine,'q',{summary:'',recent:[],refs:[]},[],trace,()=>{})).request.action,'answer');assert.equal(calls,1);
+ const limit=Object.assign(Error('Decision context limit'),{code:'decision_context_limit'});const limited={identity,classify:async()=>{throw limit;}};assert.deepEqual(await routeWithDecision(limited,'q',context,[],trace,()=>{}),{request:null,reason:'context-limit'});
+ for(const error of [Error('Stopped'),Error('Decision runtime failed')])await assert.rejects(routeWithDecision({identity,classify:async()=>{throw error;}},'q',context,[],trace,()=>{}),e=>e===error);
  const ledger=Object.assign(Error('Receipt failed'),{code:'decision_context_limit'});await assert.rejects(routeWithDecision(limited,'q',context,[],async(_t,_i,work)=>{try{await work();}catch{}throw ledger;},()=>{}),e=>e===ledger);
- await assert.rejects(routeWithDecision({classify:async()=>({...result(),revision:'forged'})},'q',context,[],trace,()=>{}),/Invalid decision route/);
+ await assert.rejects(routeWithDecision({identity,classify:async()=>({...result(),revision:'forged'})},'q',context,[],trace,()=>{}),/Invalid decision route/);
  await assert.rejects(routeWithDecision(engine,'q',context,[],trace,()=>{throw Error('Stopped');}),/Stopped/);
 });
 
@@ -29,4 +31,14 @@ test('intent cannot replace history-resolved retrieval queries, while current in
   assert.equal(decisionRoute(result(action),'What about the second one?',context,[{name:'current.txt',kind:'text',status:'Text available'}]).request.action,action);
  }
  assert.equal(decisionRoute(result('chat'),'Hello',context).request.action,'chat');
+});
+
+
+test('routing uses the pinned adapter identity independently of D1 or media roles',async()=>{
+ const other={model:'another-local-decision',revision:'pinned-other-revision',inputLimit:512,scope:'text-only'},answer={...result(),model:other.model,revision:other.revision};
+ assert.equal(route(answer,'q',empty,other).request.action,'answer');assert.throws(()=>route(answer,'q',empty,identity),/Invalid decision route/);
+ const receipts=[],engine={identity:other,classify:async()=>answer};const trace=async(_tool,input,work)=>{receipts.push(input);return work();};
+ assert.equal((await routeWithDecision(engine,'q',empty,[],trace,()=>{})).request.action,'answer');assert.equal(receipts[0].model,other.model);assert.equal(receipts[0].scope,'text-only');assert.equal(receipts[0].inputLimit,512);
+ engine.classify=async()=>{engine.identity={...other,revision:'changed'};return answer;};await assert.rejects(routeWithDecision(engine,'q',empty,[],trace,()=>{}),/selection changed/);
+ assert.throws(()=>route(answer,'q',empty,{...other,inputLimit:0}),/runtime identity/);assert.throws(()=>route({...answer,scope:'omni'},'q',empty,other),/Invalid decision route/);
 });
