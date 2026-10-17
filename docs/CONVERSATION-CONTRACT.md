@@ -1,3 +1,9 @@
+## Current submitted input scope (Unit37)
+
+Readable attachments in the current submitted turn have their own finite inputs target. The harness removes the older currentFile pin from the planner projection (also inside the message builder), while retaining that pin in durable dialogue. The contextual action catalog directs attachment answer/summary to inputs; their identities/revisions remain the existing submitted reading refs. Unscoped answer/summary/capture requests bind to this scope without altering raw planner receipts. Explicit file/path/knowledge conflicts refuse rather than silently substituting a source.
+
+Explicit current/history recall/transform/capture, including retained legacy indexed capture, keep their original selectors; only successful audited exact-original resolution clears input readings. Failed resolution preserves originals. inputs requires current readable descriptors and strict action/query/target fields; it cannot supply IDs, revisions, history, bodies or authority. Literal Read/Search still use their explicit path/knowledge route after saved originals are retained and inference readings cleared. This fixes competing scope metadata, not universal semantic intent accuracy.
+
 ## Local text inference boundary (Unit34)
 
 `text-inference.ts` owns the shared TextEngine/TextRuntime contract; conversation's ChatEngine is a compatibility type alias. Grounded answers no longer depend on the React useBonsai return type. The approved Bonsai hook bridges its existing worker through one stable live adapter; actual messages/token counts/generated text remain runtime-owned. Models, tokenizer/templates, revision pins and permissions are unchanged.

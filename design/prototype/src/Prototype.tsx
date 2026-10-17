@@ -1,3 +1,4 @@
+import {planningContextForInputs,bindCurrentInputRequest} from './current-input-scope.ts';
 import {executionAtRevision} from './execution-selection.ts';
 import {createDialogueWriter} from './dialogue-writer';
 import {createFileFocusQueue,workingFileNote,workingFileMetadata,bindWorkingFileRequest,scopeLiteralRequest,withWorkingFile,type WorkingFile} from './working-file';
@@ -404,7 +405,7 @@ export default function Prototype() {
     if(compact.compaction!==prior.compaction)await saveDialogue({...dialogue.current,revision:dialogue.current.revision+1,compaction:compact.compaction});
     context=preparedContext.context;checkSend();setChatProgress('');
    }
-   context={...context,refs:[...context.refs,...importedRefs]};
+   context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    if(!request&&text){
     const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
     if(decisionModel==='d1-omni-600M'&&decision.ready){
@@ -416,6 +417,7 @@ export default function Prototype() {
    if(literalRequest&&['read','search'].includes(literalRequest.action))inputReadings=[];
    if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputReadings.length)throw Error('Choose the opened file or current attachments');
    if(request&&inputReadings.length)request=routeInputRequest(request,inputReadings,!!localRequest(text.trimStart()));
+   if(request)request=bindCurrentInputRequest(request,inputReadings.length>0);
    const fileBinding=request?bindWorkingFileRequest(request,prior.currentFile,inputReadings.length>0):undefined;if(fileBinding)request=fileBinding.request;
    let selectedFile:any;const workingFile=request?.target==='file'?prior.currentFile:undefined;
    if(request?.target==='file'){

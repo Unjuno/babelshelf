@@ -1,0 +1,7 @@
+# Server-stopped offline page reopen acceptance
+
+Verify current native product without localhost server: close only the agent-owned unloaded product tab, stop the verified repository server PID on4180, open a new owned page and apply tab-level network denial. Preserve user tabs and every IDB/OPFS/cache record. This tests new document/worker startup from installed assets; browser process and physical phone remain separate gates.
+
+Submit a newly created public Markdown file after server shutdown, ask a new question, inspect exact original citation, review/save exact generated output, export/validate local state. Also exercise index rebuild/search if available. Restart the same local server hidden after terminal verification and restore only the owned tab's network settings. No downloads or runtime/provider changes. Record failures without resetting caches or repairing output.
+
+Observed native bbd failure after successful cached startup: real planner returned answer/target=file/query verification code while the new attachment was the requested source; old currentFile was Settings/appearance.md v3. The existing conflict guard refused, and original/failed turn are retained. Added current-input-scope projection/binding and typed inputs scope; reviewed controls cover direct builder, invalid identities/empty inputs and original conversation target regressions. This is a shared harness contract change, not a model-output alias or answer repair. Repeat the same actual question after final normal update and server stop.
