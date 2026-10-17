@@ -1,3 +1,7 @@
+## Opened-file reads (Unit33)
+
+memory.read can now receive target=file plus harness-owned noteId/revision, never a model-supplied identity. Input binding distinguishes explicit target from the defined default for an unscoped file-capable request; the original planner receipt is unchanged. Its portable result has canonical path fallback, version and bounded text excerpt from the validated exact snapshot. Subsequent answer or correction operations retain existing source/approval checks. HARNESS_ACTIONS provides shared exact action IDs and allowed target scopes to planner presentation and validation. Combined strings such as answer/summary fail, never alias to a guessed action. File contents and working selections grant no permissions. Current-file extraction coverage remains text-only/partial where applicable.
+
 ## Current-result read metadata (Unit32)
 
 Normal Send uses typed current/history dialogue targets and no dialogue.subject re-resolver. dialogue.read input records the resolved current turn identity (including derived legacy identity) or explicit historical index/speaker; it contains only portable JSON. An absent current result is null, never undefined. The result carries the exact retained original and its source links, from the same immutable prior snapshot. Retained dialogue.subject receipts remain readable historical evidence. See CONVERSATION-CONTRACT.md.

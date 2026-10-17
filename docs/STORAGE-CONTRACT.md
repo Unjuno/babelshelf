@@ -1,3 +1,7 @@
+## Working file selection
+
+Optional dialogue.currentFile stores only canonical note ID and viewed revision; it is not a disk file or a duplicate body. Focus selection and turn updates share one serialized writer with expected-dialogue CAS, persists across Input navigation/restart and is included in schema2 brainpack. Backup validates the original revision link, including retained withdrawn history. Execution additionally requires the current active version. No notes/revisions are removed or rewritten to introduce this optional field. See CONVERSATION-CONTRACT.md Unit33.
+
 ## Current state backup integration
 
 The accepted product now exports checksummed schema2 brainpacks from one atomic notes/settings/runs snapshot, including original dialogue, empty folders/Trash metadata, correction receipts and newly submitted attachment originals. Full-state conflicts cause zero writes; whole-state expected snapshots reject stale approval. Historical schema1 note-only files remain readable but cannot carry new asset-linked notes without original bytes. Newly imported schedules require review and downloads-ON preferences append OFF. See BACKUP-CONTRACT.md for exact encoding, exclusions and size/conflict limits. Earlier backup/persistence status statements below are historical and superseded by this paragraph; model/runtime assets, derived media extraction, larger-archive export and fresh-device conflict reconciliation remain pending.

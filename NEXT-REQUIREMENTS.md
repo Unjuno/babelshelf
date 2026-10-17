@@ -46,3 +46,7 @@ Run baseline Node/Markdown, prototype tests/build, product-shell tests and prote
 ## Latest direction: model-independent harness
 
 Unit32 replaces normal Unit31 A/B re-selection with harness-owned current-result identity and typed current/history targets. Continue toward canonical-file/task working targets and model/runtime adapter boundaries. Real-model tests prove integration/load/generation/Stop/offline compatibility and representative flows; do not center development on Bonsai prompt-variant benchmarking. All broader MVP/device gates remain open.
+
+## Opened-file working target
+
+Unit33 implements persisted currentFile ID/version, serialized focus writes, typed file targets and scoped source/Before-After correction dispatch. Keep generated-output selection distinct; source eligibility, protected-system edit limits and whole-record CAS remain. Continue with model-independent runtime adapter extraction, general semantic-operation scope, typed settings/tools edits and remaining media/storage/device gates. Do not treat this increment as the full MVP.

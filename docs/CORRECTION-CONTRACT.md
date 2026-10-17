@@ -1,3 +1,7 @@
+## Opened-file targets
+
+Unit33 adds target=file: the model supplies no file identity/path. Harness-owned currentFile pins the rendered canonical ID/version. A read validates that pin before proposing from its exact snapshot. Existing Before/After, immutable expected record, Save/CAS, protected-record restrictions, schedule patch validation and Undo all remain mandatory. A prior file selection is not authorization to save a model edit. See CONVERSATION-CONTRACT.md.
+
 # Reviewed model corrections
 
 Ordinary saved Markdown notes can be targeted by exact ID/path or one unambiguous filename. Model routing may select `edit`; it cannot commit. Ambiguous/missing targets ask for a full path rather than selecting the first search hit. Registered schedules now use the separate typed patch described below. Settings, Tools, execution/notification logs and other managed/protected/withdrawn records remain unavailable to this adapter. Existing direct editors are unchanged.

@@ -25,6 +25,7 @@ test('only a typed work context limit defers; Stop, crash, malformed output and 
 test('intent cannot replace history-resolved retrieval queries, while current input evidence keeps its fixed scope',()=>{
  for(const action of ['answer','summary']){
   assert.deepEqual(decisionRoute(result(action),'What about the second one?',context),{request:null,reason:'contextual-query'});
+  assert.deepEqual(decisionRoute(result(action),'this file',{...empty,currentFile:{noteId:'selected',revision:2}}),{request:null,reason:'contextual-query'});
   assert.equal(decisionRoute(result(action),'What about the second one?',context,[{name:'current.txt',kind:'text',status:'Text available'}]).request.action,action);
  }
  assert.equal(decisionRoute(result('chat'),'Hello',context).request.action,'chat');

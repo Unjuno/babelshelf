@@ -18,7 +18,7 @@ export type RoutingAttachments={name:string;kind:string;status:string}[];
 // D1 classifies the current intent only. Historical instructions must not compete
 // with it; full context stays with the query-resolution guard and Bonsai harness.
 export const decisionRoutingState=(question:string,attachments:RoutingAttachments=[])=>JSON.stringify({currentRequest:question,...(attachments.length?{currentAttachments:attachments}:{})});
-const hasPriorDialogue=(context:DialogueContext)=>!!((context.turnCount??0)>0||context.summary||context.recent.length||context.refs.length||context.recalled?.length);
+const hasPriorDialogue=(context:DialogueContext)=>!!(context.currentFile||(context.turnCount??0)>0||context.summary||context.recent.length||context.refs.length||context.recalled?.length);
 export type DecisionRoute={request:{action:'answer'|'summary'|'chat';query:string}|null;reason:'confident-read-only'|'structured-request'|'ambiguous'|'context-limit'|'contextual-query'};
 export function decisionRoute(result:any,question:string,context:DialogueContext,attachments:RoutingAttachments=[]):DecisionRoute{
  const a=result?.answer,keys=Object.keys(decisionRoutingQuestion.criteria),p=a?.probabilities;

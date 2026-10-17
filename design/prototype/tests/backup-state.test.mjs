@@ -65,3 +65,9 @@ test('backup rejects unsupported structured-clone values, duplicate keys, invali
 test('export refuses a file beyond its readable UTF8 byte budget before offering an unusable backup',()=>{
  const payload={text:'日本語'.repeat(30)},encoded=JSON.stringify(payload);assert.ok(encoded.length<200);assert.throws(()=>serializeStateBackup(payload,200),/large/i);assert.equal(serializeStateBackup(payload,1000),encoded);
 });
+
+test('file working target retains its historical version through backup and rejects nonexistent identities',async()=>{
+ const state=snapshot(),pin={noteId:state.notes[0].id,revision:1};state.settings[0].value.currentFile=pin;
+ const pack=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(pack.settings[0].value.currentFile,pin);
+ state.settings[0].value.currentFile={noteId:'missing',revision:1};await assert.rejects(()=>makeStateBackup(state),/Working file/);
+});

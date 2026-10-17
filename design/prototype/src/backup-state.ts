@@ -1,3 +1,4 @@
+import {validateWorkingFileLink} from './working-file.ts';
 import {validateOcrLinks} from './ocr-text.ts';
 import {validateProcessing} from './processing-history.ts';
 import {validatePdfLinks} from './pdf-text.ts';
@@ -57,7 +58,7 @@ function validateState(state:StateSnapshot){
   if(n.ui?.recordType==='notification'){const r=noticeView(n);if(typeof r.read!=='boolean'||typeof r.createdAt!=='string'||!state.notes.some(t=>t.id===r.taskId)||!state.notes.some(t=>t.id===r.runId))throw Error('Invalid notification target');}
  }
  for(const {key,value} of state.settings){
-  if(key==='ui-v1-dialogue'){const d=validateDialogue(value);for(const turn of d.turns){sourceRefs(state.notes,turn.refs??[]);sourceRefs(state.notes,turn.results??[]);if(turn.attachments!==undefined&&(!Array.isArray(turn.attachments)||turn.attachments.some(a=>!a||['id','name','kind','status'].some(k=>typeof (a as any)[k]!=='string'))))throw Error('Invalid dialogue attachments');}}
+  if(key==='ui-v1-dialogue'){const d=validateDialogue(value);if(d.currentFile)validateWorkingFileLink(state.notes,d.currentFile);for(const turn of d.turns){sourceRefs(state.notes,turn.refs??[]);sourceRefs(state.notes,turn.results??[]);if(turn.attachments!==undefined&&(!Array.isArray(turn.attachments)||turn.attachments.some(a=>!a||['id','name','kind','status'].some(k=>typeof (a as any)[k]!=='string'))))throw Error('Invalid dialogue attachments');}}
   if(key==='ui-v1-folders'){if(!Array.isArray(value)||new Set(value).size!==value.length)throw Error('Invalid folder metadata');for(const path of value){if(typeof path!=='string')throw Error('Invalid folder metadata');const parts=path.split('/');memoryFolderPath(parts.slice(0,-1).join('/'),parts.at(-1)!);}}
   if(key==='ui-v1-trash'){if(!Array.isArray(value))throw Error('Invalid recovery metadata');for(const batch of value){if(!batch||typeof batch.id!=='string'||typeof batch.label!=='string'||!Array.isArray(batch.notes)||!Array.isArray(batch.folders))throw Error('Invalid recovery metadata');for(const n of batch.notes)if(!state.notes.some(x=>x.id===n.id&&x.state==='withdrawn'))throw Error('Recovery target unavailable');}}
  }
