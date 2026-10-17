@@ -89,3 +89,6 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 
 
 - Unit120 prepared-text-backend keeps trusted asset presence/Verify/explicit Prepare outside lazy inference startup. Preserve presenceOnly, explicit network authority, loaded/busy guards and terminal Stop with no replay. Actual dedicated PC cold offline fixture verified SHA with zero workers before Load, then native Stop/owned disposal/explicit reload. Normal LFM UI/router admission remains incomplete. Compat54234 remains a live build; optimizer21280 was observed, so re-poll/inspect rather than restart. See ADDITIONAL-TEXT-ENGINE.md and Unit120 evidence.
+
+
+- Unit121 normal useBonsai ONNX registration now uses onnx-text-backend + prepared-text-backend. Keep status/Verify/Prepare outside inference worker startup; Load alone constructs the unchanged verified ONNX worker. Native current-build cold offline Verify retained all notes/settings/prior runs with no ONNX worker. Existing processing tool name for Verify is model.prepare with local-only/verified-assets, not model.verify. Preserve original observer FAIL plus revalidated.json; do not rerun inference to repair observer assertions. Product19ad28d22fe9051a/106, prototype357. Compat54234/optimizer21280 last verified live; normal LFM admission still pending.

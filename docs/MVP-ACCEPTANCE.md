@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `1619afe036170b3a`; combined PC evidence extends through Unit120; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `19ad28d22fe9051a`; combined PC evidence extends through Unit121; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -34,3 +34,5 @@ Unit91 adds reviewed divergent ordinary source-free note content recovery: nativ
 Unit92 exposes measured origin storage estimates in Local files/initial preparation and explicitly requested browser persistence. Native Chrome denied the request and UI truthfully remains Best effort; canonical before/after backups identical. This does not close phone quota/eviction/retention or large-archive gates.
 
 Unit93 combines the existing selected Bonsai4B/Whisper/OCR/PDF/TXT/MD pipeline in one retained QA profile and current-build offline process: five actual inputs, one real sourced answer, exact reviewed Save and index rebuild. Independent backups prove byte-exact originals/current-input citations and preservation of prior knowledge/history. Further offline process proves Japanese search, exact original read, unchanged notes/runs and local backup/no-op restore. Original monolithic Read observer timed out on legitimate navigation and stays FAIL; separately retained native continuation/production-backup verifiers close that scoped observation gap without re-running extraction/generation. D1, hardware capture, OS airplane/installed-PWA and phone gates are excluded, not waived. See TEST-RESULTS Unit93.
+
+Unit121 connects asset-only ONNX startup to the normal product: current-build offline Verify hashes actual prepared files with no ONNX inference worker, preserving notes/settings/prior runs. Original QA receipt-name assertion failure and independent retained-backup revalidation are both recorded in TEST-RESULTS.txt. Unit117/118/120 supply the LFM exact-count/prepared-worker prerequisites; its earlier missing public count dependency is addressed in the isolated patched runtime, while normal LFM admission and compat/device acceptance remain open.
