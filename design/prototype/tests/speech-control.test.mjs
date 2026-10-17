@@ -15,3 +15,17 @@ test('microphone requests are synchronous gated and late grants/rejections canno
 test('review save locks synchronously and distinguishes committed data from a refresh failure',async()=>{
  let locked=false,writes=0;const commit=deferred();const run=()=>saveReviewedTranscript(()=>{if(locked)return false;locked=true;return true;},()=>locked=false,async()=>{writes++;return commit.promise;},async()=>{throw Error('Refresh failed');});const a=run(),b=run();assert.equal(await b,undefined);commit.resolve({id:'saved1'});const result=await a;assert.equal(writes,1);assert.equal(result.note.id,'saved1');assert.equal(result.refreshError,'Refresh failed');assert.equal(locked,false);
 });
+
+
+test('read-only speech status does not advertise processing busy while worker exclusion remains intact',async()=>{
+ const w=new WorkerFixture(),updates=[],client=new SpeechClient(()=>w,(busy,progress)=>updates.push({busy,progress}));
+ const status=client.call('status');assert.equal(updates.at(-1).busy,false);
+ await assert.rejects(client.call('transcribe'),/busy/);assert.equal(w.messages.length,1);
+ w.onmessage({data:{id:w.messages[0].id,progress:'Checking'}});assert.equal(updates.at(-1).busy,false);
+ w.onmessage({data:{id:w.messages[0].id,value:false}});assert.equal(await status,false);
+ for(const operation of ['prepare','transcribe']){
+  const pending=client.call(operation);assert.equal(updates.at(-1).busy,true);
+  w.onmessage({data:{id:w.messages.at(-1).id,progress:'Working'}});assert.equal(updates.at(-1).busy,true);
+  w.onmessage({data:{id:w.messages.at(-1).id,value:true}});await pending;assert.equal(updates.at(-1).busy,false);
+ }
+});

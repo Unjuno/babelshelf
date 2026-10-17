@@ -1,14 +1,14 @@
 export class SpeechClient {
- private worker:any=null;private sequence=0;private pending:{resolve:(v:any)=>void;reject:(e:Error)=>void}|null=null;
+ private worker:any=null;private sequence=0;private pending:{type:string;resolve:(v:any)=>void;reject:(e:Error)=>void}|null=null;
  private factory:()=>any;private update:(busy:boolean,progress?:string)=>void;
  constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void){this.factory=factory;this.update=update;}
  call(type:string,values:any={}):Promise<any>{
   if(this.pending)return Promise.reject(Error('Speech model busy'));
   if(!this.worker){const w=this.factory();this.worker=w;
-   w.onmessage=({data}:any)=>{if(this.worker!==w||data.id!==this.sequence)return;if(data.progress){this.update(true,data.progress);return;}const p=this.pending;this.pending=null;this.update(false,data.error);if(data.error)p?.reject(Error(data.error));else p?.resolve(data.value);};
+   w.onmessage=({data}:any)=>{if(this.worker!==w||data.id!==this.sequence)return;if(data.progress){this.update(this.pending?.type!=='status',data.progress);return;}const p=this.pending;this.pending=null;this.update(false,data.error);if(data.error)p?.reject(Error(data.error));else p?.resolve(data.value);};
    w.onerror=()=>{if(this.worker!==w)return;this.worker=null;w.terminate();const p=this.pending;this.pending=null;this.update(false,'Speech runtime failed');p?.reject(Error('Speech runtime failed'));};
   }
-  this.update(true);return new Promise((resolve,reject)=>{this.pending={resolve,reject};this.worker.postMessage({id:++this.sequence,type,...values});});
+  this.update(type!=='status');return new Promise((resolve,reject)=>{this.pending={type,resolve,reject};this.worker.postMessage({id:++this.sequence,type,...values});});
  }
  stop(){this.sequence++;this.worker?.terminate();this.worker=null;const p=this.pending;this.pending=null;this.update(false,'Stopped');p?.reject(Error('Stopped'));}
 }

@@ -10,6 +10,10 @@ Settings > Models > Add transcription model > Whisper tiny registers the candida
 
 Whisper's base model is MIT. Its ONNX conversion card points to the same base. Transformers.js is Apache-2.0; ONNX Runtime is MIT with separate ThirdPartyNotices. Copies and source references are in design/prototype/licenses and the production shell. This does not resolve or alter the separate Bonsai WebML Community runtime redistribution-license gate.
 
+## Startup status and processing gate (Unit47)
+
+The read-only startup status call retains exclusive access to its speech worker, but reports no processing busy state. It does not transcribe, download, grant readiness before validation or block independent text-only Input. Concurrent calls on that worker still fail explicitly; prepare/transcribe continue to report busy throughout progress and completion. Stop/crash behavior is unchanged. A brief preparation request during status may return Speech model busy and is never auto-replayed.
+
 ## Input, review and persistence
 
 Voice input offers Record and Choose audio. Recording uses getUserMedia/MediaRecorder for local bytes only; recognition uses the installed local model. A synchronous permission gate prevents duplicate requests; close/unmount invalidates pending requests and releases late-granted streams. Recording stops at120seconds. Imported originals are bounded to32MiB; supported browser codecs decode and downmix/resample to mono16kHz, then reject durations beyond120seconds. Decoder transient memory is not a phone-memory guarantee. Unknown/undecodable files refuse; video extraction is not connected.
