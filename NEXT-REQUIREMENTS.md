@@ -10,6 +10,8 @@ Unit46 confirms current-build PC offline-context capture/reopen/Japanese search/
 
 Unit48 replaces incidental Latin bigram matching with complete words/codes while preserving non-Latin grams and exact source excerpts. Current PC offline code lookup returned1instead of4; see [SEARCH-CONTRACT.md](docs/SEARCH-CONTRACT.md) for bounds. This does not close broad multilingual semantic accuracy or capacity gates.
 
+Unit49 adds a reproducible [desktop process-restart storage check](docs/OFFLINE-PROCESS-CHECK.md): three actual Chrome PIDs, two offline-context restarts, persisted capture/import/search/correction/history/reindex and backup/conflict/no-op restore. This closes that bounded PC storage flow only; installed-PWA/OS-isolated/mobile and inference-inclusive restart acceptance remain open.
+
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.
