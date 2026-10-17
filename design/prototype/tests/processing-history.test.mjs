@@ -23,3 +23,9 @@ test('asset receipt pins current model/runtime without bytes or inferred readine
 test('asset gate locks before awaited receipt storage and releases after failure without replay',async()=>{
  const {AssetOperationGate}=await import('../src/asset-activity.ts');const gate=new AssetOperationGate();let reject,calls=0;const first=gate.run(async()=>{calls++;await new Promise((_,r)=>reject=r);});assert.equal(gate.busy,true);await assert.rejects(gate.run(async()=>{calls++;}),/busy/);assert.equal(calls,1);reject(Error('storage unavailable'));await assert.rejects(first,/storage/);assert.equal(gate.busy,false);assert.equal(await gate.run(async()=>42),42);assert.equal(gate.busy,false);
 });
+
+test('custom asset audit pins declarative model and fixed runtime without network URLs',async()=>{
+ const {textAssetInput}=await import('../src/asset-activity.ts');const sha256='a'.repeat(64),model={id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'Custom',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};
+ const input=textAssetInput(model.id,false,[{name:'custom.gguf',size:1000,type:''}],[model]);assert.equal(input.model.id,model.id);assert.equal(input.model.revision,model.revision);assert.equal(input.model.file.sha256,sha256);assert.equal(input.allowNetwork,false);assert.equal(input.runtime.revision,'621e20782f208660f4f58283c2ce58430020f243');assert.ok(!JSON.stringify(input).includes('https://'));
+ assert.throws(()=>textAssetInput(model.id,false,[],[{...model,ready:true}]),/model/);
+});
