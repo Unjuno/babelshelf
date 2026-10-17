@@ -23,3 +23,6 @@ Working speech descriptors in dialogue include the reviewed transcript and optio
 Interactive dialogue activity is retained in the same settings record and schema2 snapshot. Lifecycle/JSON/operation validation applies to imports; receipts remain untrusted local audit data and never schedule or execute an operation. A pending attempt remains incomplete after restore, with no automatic replay. Historical raw failure messages and results are preserved. See HARNESS-ACTIVITY.md.
 
 Explicit model asset operations also travel as untrusted processing receipts in runs, with manifest pins and historical outcomes. The model/runtime bytes remain excluded. Restoring a successful Prepare/Load receipt never installs, enables, downloads or loads a model; current readiness is separately inspected from real local assets. Missing terminal records remain incomplete and are never replayed. See HARNESS-ACTIVITY.md.
+
+
+Long restore reviews use the same scrollable fields and fixed action row as schedule/media reviews. Conflict paths can scroll independently while Cancel and the disabled Restore remain visible. This changes layout only: any conflict still refuses all writes, and whole-state approval fingerprint checks remain authoritative. Unit40 native checks cover93 conflicting notes at360x780 and320x568; no general device/keyboard acceptance follows.
