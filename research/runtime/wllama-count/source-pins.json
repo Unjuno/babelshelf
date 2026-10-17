@@ -1,0 +1,39 @@
+{
+  "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "emsdkVersion": "4.0.20",
+  "emsdkRevision": "e4fe26ef59168ff44f4c23c466e497bf60b3411e",
+  "patchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+  "files": [
+    {
+      "path": "cpp/glue.hpp",
+      "baseSha256": "d53c9e1e9ba733f3c370a5901dfc38c760789ebdbfc0662d52cb53b3fb521f3e",
+      "patchedLfSha256": "d572ab1bf2edcea1c52aa52e8119a1968fda1bddc97f43a8c8fb6e537817980b"
+    },
+    {
+      "path": "cpp/wllama-context.h",
+      "baseSha256": "d969365ec6a60b5a1e36f2fd3f013b548b11339bf21102adbceec77488766a45",
+      "patchedLfSha256": "3aba5cd1934cf81c9d9ea0f94aa0992f751e825a74275f57d32f1ce1b893804c"
+    },
+    {
+      "path": "cpp/wllama.cpp",
+      "baseSha256": "c774a993c7dd292f7f2325ef94528a49e7b4b7aa029db9443b311cb974a3c5ed",
+      "patchedLfSha256": "949a29ece0549898830e4767ecc5c124b716c1d2d0ffa55ec28f717952198b4e"
+    },
+    {
+      "path": "src/glue/messages.ts",
+      "baseSha256": "2af925b377f67e0fcd29a70f13dcdbb2d3170b331f35f8559fb58119f243de9c",
+      "patchedLfSha256": "65e52848511c7b7905dbdac80b0fa0c04fbfd5fd3da11d47e5ec8ee36a4f28ea"
+    },
+    {
+      "path": "src/wllama.ts",
+      "baseSha256": "d13a66e21e3dc699ca901dceea4637394b571e0955757e42657171adecb6076a",
+      "patchedLfSha256": "71f42c5e83610183708b9dea9f567bfc23ba7b7080fb9bd29e232ac9dfc8b668"
+    }
+  ],
+  "status": "source-extension; native build and actual count verification pending; not normal model registration",
+  "license": {
+    "upstream": "https://github.com/ngxson/wllama/blob/7ed17361caf221a84aa1e80ca85a3d6324f3af85/LICENCE",
+    "sha256": "2186b1f191c2fa62fd8a966a45f1af647e5e97c28415d65668163a6350ca054d"
+  }
+}

@@ -12,6 +12,13 @@ export class LfmAdapter {
    this.loaded=id;this.info={model:id,backend,actualGpuLayers:backend==='cpu'?0:null,loadMs:this.clock()-loadStart,runtimeLoadMs:this.clock()-start,verificationMs:start-loadStart,context,template,workerResources:{compat:runtime.getWorkerResources().compat,wasmPath:runtime.getWorkerResources().wasmPath},runtimeVersion:this.Wllama.getLibllamaVersion()};return this.info;
   }catch(error){await runtime?.exit().catch(()=>{});this.runtime=null;this.loaded=null;if(signal?.aborted||epoch!==this.epoch)throw Error('Stopped');throw error;}finally{this.busy=false;}
  }
+ async count(messages,{signal,json=true}={}){
+  if(this.busy||!this.runtime||!this.loaded)throw Error('Model not ready');
+  if(!Array.isArray(messages)||messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))throw Error('Invalid messages');
+  if(typeof this.runtime.countChatTokens!=='function')throw Error('Exact pre-generation token count unavailable');
+  const epoch=this.epoch,check=()=>{if(signal?.aborted||epoch!==this.epoch)throw Error('Stopped');};check();this.busy=true;
+  try{const count=await this.runtime.countChatTokens({messages,...(json?{response_format:{type:'json_object'}}:{})});check();if(!Number.isSafeInteger(count)||count<0)throw Error('Invalid prompt token count');return count;}finally{this.busy=false;}
+ }
  async generate(messages,{signal,maxTokens=256,onContent=()=>{},json=true}={}){
   if(this.busy||!this.runtime||!this.loaded)throw Error('Model not ready');if(!Number.isInteger(maxTokens)||maxTokens<1||maxTokens>256)throw Error('Output budget exceeded');if(!Array.isArray(messages)||messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))throw Error('Invalid messages');
   signal?.throwIfAborted();this.busy=true;const runtime=this.runtime,epoch=this.epoch,controller=new AbortController();this.controller=controller;const stop=()=>controller.abort();signal?.addEventListener('abort',stop,{once:true});const check=()=>{if(signal?.aborted||controller.signal.aborted||epoch!==this.epoch)throw Error('Stopped');};const start=this.clock();let first=null,text='',usage=null,timings=null;

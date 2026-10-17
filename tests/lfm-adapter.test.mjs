@@ -26,3 +26,12 @@ test('noninferiority calculation keeps paired outcomes and incomplete quality ne
 test('zero output budget is not accepted as a token-counting substitute',async()=>{
  const s=setup();await s.adapter.load(file,model.id,{backend:'cpu'});let calls=0;s.adapter.runtime.createChatCompletion=async()=>{calls++;throw Error('Runtime must not run');};await assert.rejects(s.adapter.generate([{role:'user',content:'Count only'}],{maxTokens:0}),/Output budget/);assert.equal(calls,0);assert.equal(s.adapter.busy,false);await s.adapter.unload();
 });
+
+
+test('optional exact count never falls back to generation and discards cancelled late results',async()=>{
+ const s=setup();await s.adapter.load(file,model.id,{backend:'cpu'});let generation=0;s.adapter.runtime.createChatCompletion=async()=>{generation++;throw Error('Must not generate');};
+ await assert.rejects(s.adapter.count([{role:'user',content:'text'}]),/Exact pre-generation/);assert.equal(generation,0);
+ let options;s.adapter.runtime.countChatTokens=async value=>{options=value;return 17;};assert.equal(await s.adapter.count([{role:'user',content:'text'}]),17);assert.deepEqual(options.response_format,{type:'json_object'});
+ s.adapter.runtime.countChatTokens=async()=>NaN;await assert.rejects(s.adapter.count([{role:'user',content:'text'}]),/Invalid prompt/);assert.equal(s.adapter.busy,false);
+ let release;s.adapter.runtime.countChatTokens=()=>new Promise(resolve=>release=resolve);const pending=s.adapter.count([{role:'user',content:'text'}]);s.adapter.abort();release(18);await assert.rejects(pending,/Stopped/);assert.equal(s.adapter.busy,false);assert.equal(generation,0);await s.adapter.unload();
+});
