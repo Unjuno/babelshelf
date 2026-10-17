@@ -3,6 +3,7 @@
 // Modified: strict bounded inputs, no silent state/instruction/option truncation,
 // portable typed output and no execution authority. See licenses/decision-model-*.
 export type DecisionQuestion={type:'choice';instructions:string;criteria:Record<string,string>}|{type:'score';instructions:string;criteria:string[]}|{type:'noul';instructions:string;criteria?:Record<string,string>};
+export class DecisionContextError extends Error {code='decision_context_limit';}
 type Tokenizer={encode:(text:string,options:{add_special_tokens:boolean})=>number[]};
 const plain=(value:any)=>value&&typeof value==='object'&&!Array.isArray(value)&&[Object.prototype,null].includes(Object.getPrototypeOf(value));
 export function validateDecisionQuestion(q:DecisionQuestion){
@@ -16,14 +17,14 @@ export function validateDecisionQuestion(q:DecisionQuestion){
 const escape=(text:string)=>text.replace(/<\|([A-Za-z0-9_]+)\|>/g,'<¦$1¦>');
 export function decisionOptions(q:DecisionQuestion){validateDecisionQuestion(q);return q.type==='choice'?Object.entries(q.criteria).map(([k,v])=>k+': '+v):q.type==='score'?q.criteria.map((v,i)=>'level '+i+': '+v):['false: '+(q.criteria?.false??q.criteria?.no??'no, the statement does not hold'),'true: '+(q.criteria?.true??q.criteria?.yes??'yes, the statement holds')];}
 export function encodeDecision(tok:Tokenizer,state:string,q:DecisionQuestion,maxLength=2048){
- validateDecisionQuestion(q);if(typeof state!=='string'||state.length>128000||!Number.isInteger(maxLength)||maxLength<128||maxLength>2048)throw Error('Decision context limit');
+ validateDecisionQuestion(q);if(typeof state!=='string'||state.length>128000||!Number.isInteger(maxLength)||maxLength<128||maxLength>2048)throw new DecisionContextError('Decision context limit');
  const enc=(text:string)=>{const ids=tok.encode(text,{add_special_tokens:false});if(!Array.isArray(ids)||ids.some(n=>!Number.isInteger(n)||n<0||n>=65536))throw Error('Decision tokenizer invalid');return ids;};
  const markersSpec:[string,number][]=[['<|startoftext|>',1],['<|reserved_7|>',17],['<|reserved_8|>',18],['<|reserved_9|>',19],['<|reserved_10|>',20],['<|reserved_11|>',21],['<|mask|>',16]];
  for(const [token,id] of markersSpec){const ids=enc(token);if(ids.length!==1||ids[0]!==id)throw Error('Decision tokenizer markers incompatible');}
  const opts=decisionOptions(q),budget=Math.max(96,Math.min(opts.length*24+32,Math.floor(maxLength/2))),per=Math.max(2,Math.floor((budget-3*opts.length)/opts.length));
- const instructions=enc(escape(q.instructions));if(instructions.length+1>Math.max(16,budget))throw Error('Decision instruction context limit');const branch=[18,...instructions],markers:number[]=[];
- for(const option of opts){const ids=enc(escape(' '+option));if(ids.length>per)throw Error('Decision option token limit');markers.push(branch.length+1);branch.push(19,16,...ids,20);}
- branch.push(21);const stateIds=enc(escape(state)),room=maxLength-branch.length-2;if(stateIds.length>room)throw Error('Decision context limit');
+ const instructions=enc(escape(q.instructions));if(instructions.length+1>Math.max(16,budget))throw new DecisionContextError('Decision instruction context limit');const branch=[18,...instructions],markers:number[]=[];
+ for(const option of opts){const ids=enc(escape(' '+option));if(ids.length>per)throw new DecisionContextError('Decision option token limit');markers.push(branch.length+1);branch.push(19,16,...ids,20);}
+ branch.push(21);const stateIds=enc(escape(state)),room=maxLength-branch.length-2;if(stateIds.length>room)throw new DecisionContextError('Decision context limit');
  const prefix=[1,17,...stateIds],ids=[...prefix,...branch],positions=markers.map(p=>p+prefix.length);if(ids.length>maxLength||positions.some(p=>ids[p]!==16))throw Error('Decision marker positions invalid');
  return {ids,markers:positions,qtype:q.type==='choice'?0:q.type==='score'?1:2,stateTokens:stateIds.length,stateTruncated:false};
 }

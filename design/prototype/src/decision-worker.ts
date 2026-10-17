@@ -4,7 +4,7 @@ import wasmURL from '../node_modules/onnxruntime-web-d1/dist/ort-wasm-simd-threa
 import mjsURL from '../node_modules/onnxruntime-web-d1/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
 import {PreTrainedTokenizer,env} from '@huggingface/transformers';
 import {decisionManifest,decisionStatus,prepareDecision,readDecisionFile} from './decision-assets';
-import {encodeDecision,decisionAnswer,validateDecisionQuestion,type DecisionQuestion} from './decision';
+import {DecisionContextError,encodeDecision,decisionAnswer,validateDecisionQuestion,type DecisionQuestion} from './decision';
 const networkFetch=globalThis.fetch.bind(globalThis);
 const localRuntime=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;return localRuntime.has(new URL(url,location.href).href)?networkFetch(input,options):Promise.reject(Error('Network disabled for decisions'));};
@@ -40,5 +40,5 @@ self.onmessage=async({data})=>{
   else if(data.type==='unload'){await unload();value={loaded:false};}
   else if(data.type==='classify')value=await classify(data.state,data.question);
   else throw Error('Unknown decision operation');check();self.postMessage({id:data.id,value});
- }catch(e){self.postMessage({id:data.id,error:controller.signal.aborted?'Stopped':(e as Error).message});}finally{busy=false;controller=undefined;}
+ }catch(e){self.postMessage({id:data.id,error:controller.signal.aborted?'Stopped':(e as Error).message,...(!controller.signal.aborted&&e instanceof DecisionContextError?{code:e.code}:{})});}finally{busy=false;controller=undefined;}
 };

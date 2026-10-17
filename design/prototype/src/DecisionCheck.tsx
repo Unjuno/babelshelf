@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {useDecision} from './useDecision';
 import {decisionManifest} from './decision-assets';
-const question={type:'choice' as const,instructions:'What does the user want to do?',criteria:{answer:'Ask a question about saved knowledge',chat:'Have a general conversation',capture:'Save a new note',edit:'Correct an existing note',search:'Find a file',schedule:'Create a scheduled task'}};
+import {decisionRoutingQuestion as question} from './decision-routing';
 export default function DecisionCheck(){
  const engine=useDecision(true),[state,setState]=useState('What is the reserve water amount in my saved notes?'),[result,setResult]=useState('');
  async function run(){setResult('');try{setResult(JSON.stringify(await engine.classify(state,question),null,2));}catch(e){setResult((e as Error).message);}}

@@ -19,3 +19,9 @@ test('loaded lifecycle resets only when the worker is discarded, preserving a gr
  const inference=c.call('classify');f.workers[0].onerror();await assert.rejects(inference,/runtime failed/i);assert.equal(loaded,false);assert.equal(resets,1);
  c.dispose();
 });
+
+test('worker context-limit code is typed but cancelled requests never inherit a fallback code',async()=>{
+ const f=factory(),c=new DecisionClient(()=>f.create(),()=>{});assert.equal(c.working,false);
+ const limit=c.call('classify');assert.equal(c.working,true);f.workers[0].onmessage({data:{id:f.workers[0].messages.at(-1).id,error:'Decision context limit',code:'decision_context_limit'}});await assert.rejects(limit,e=>e.code==='decision_context_limit');assert.equal(c.working,false);
+ const stopped=c.call('classify');c.stop();await assert.rejects(stopped,e=>e.message==='Stopped'&&!e.code);assert.equal(c.working,false);c.dispose();
+});

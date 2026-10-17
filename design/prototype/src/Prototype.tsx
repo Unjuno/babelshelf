@@ -1,3 +1,4 @@
+import {routeWithDecision} from './decision-routing';
 import {useDecision} from './useDecision';
 import {readInputOriginal} from './automatic-reading';
 import {transcribeOriginal} from './speech-input';
@@ -99,7 +100,7 @@ export default function Prototype() {
  function checkSend(){if(sendCancelled.current)throw Error('Stopped');}
  const inputReadController=useRef<AbortController|null>(null);
  const [inputReadProgress,setInputReadProgress]=useState<{id:string;label:string}|null>(null);
- function stopInput(){sendCancelled.current=true;inputReadController.current?.abort();if(inputReadController.current)speech.stop();bonsai.stop();}
+ function stopInput(){sendCancelled.current=true;inputReadController.current?.abort();if(inputReadController.current)speech.stop();bonsai.stop();decision.stopIfBusy();}
  useEffect(()=>()=>{sendCancelled.current=true;inputReadController.current?.abort();},[]);
  useEffect(()=>{if(page!=='input')return;const scroller=conversationElement.current?.closest('.native-scroll');if(scroller)scroller.scrollTop=scroller.scrollHeight;},[messages,page,availableHeight]);
  const [appUpdateReady,setAppUpdateReady]=useState(false);
@@ -140,7 +141,7 @@ export default function Prototype() {
  const [fileName,setFileName]=useState(''),[fileBody,setFileBody]=useState(''),[activeFolder,setActiveFolder]=useState(''),[extraFolders,setExtraFolders]=useState<string[]>([]),[folderName,setFolderName]=useState('');
  const [itemTarget,setItemTarget]=useState<ItemTarget|null>(null),[trash,setTrash]=useState<TrashBatch[]>([]),[rename,setRename]=useState('');
  const [scheduleExpected,setScheduleExpected]=useState<number|undefined>(),[selectedTask,setSelectedTask]=useState<string|null>(null),[selectedExecution,setSelectedExecution]=useState<string|null>(null);
- const taskController=useTasks(notes,storageReady,()=>assetGate.current.busy||bonsai.busy||storagePending||sendLock.current||sending||backupBusy||sheet==='restore-backup',refreshStorage,async prompt=>{const request=localRequest(prompt);if(request?.action==='capture')throw Error('Scheduled work is read-only');return groundedAnswer(knowledge,bonsai,model,prompt,request?.query??prompt,request?.action==='summary'?'summary':'answer');});
+ const taskController=useTasks(notes,storageReady,()=>assetGate.current.busy||bonsai.busy||decision.busy||storagePending||sendLock.current||sending||backupBusy||sheet==='restore-backup',refreshStorage,async prompt=>{const request=localRequest(prompt);if(request?.action==='capture')throw Error('Scheduled work is read-only');return groundedAnswer(knowledge,bonsai,model,prompt,request?.query??prompt,request?.action==='summary'?'summary':'answer');});
  const {tasks:schedules,notifications,executions}=taskController;
  const [attachments,setAttachments]=useState<Attachment[]>([]),[selectedAttachment,setSelectedAttachment]=useState<Attachment|null>(null),[selectedNotification,setSelectedNotification]=useState<string|null>(null);
  const theme=appearancePreferences.theme,background=appearancePreferences.background,material=appearancePreferences.glass;
@@ -361,7 +362,7 @@ export default function Prototype() {
   try{await flushStorage();const result=await runReviewedCorrection(()=>knowledge.revertCorrection(receipt.id),refreshStorage);setCorrectionReceipts(rows=>rows.map(r=>r.id===result.receipt.id?result.receipt:r));toast(result.refreshError?'Restored · reopen file':'Restored as a new revision');}catch(e){toast((e as Error).message);}finally{correctionLock.current=false;setCorrectionSaving(false);}
  }
  async function send(){if(assetGate.current.busy)return toast('Model busy');
-  const text=draft;if(!text.trim()&&!attachments.length)return;if(sendLock.current||bonsai.busy||decision.busy||taskController.active)return;if(ocrLock.current||pdfLock.current||speechDecodeLock.current||speech.busy||recorder.current||microphoneGate.current.pending)return toast('Reading attachments');if(!storageReady||!dialogueReady||storagePending)return toast('Saving');if(attachments.some(a=>a.status==='Reading'))return toast('Reading attachments');
+  const text=draft;if(!text.trim()&&!attachments.length)return;if(sendLock.current)return;if(bonsai.busy||decision.busy||taskController.active)return toast('Model busy');if(ocrLock.current||pdfLock.current||speechDecodeLock.current||speech.busy||recorder.current||microphoneGate.current.pending)return toast('Reading attachments');if(!storageReady||!dialogueReady||storagePending)return toast('Saving');if(attachments.some(a=>a.status==='Reading'))return toast('Reading attachments');
   sendLock.current=true;sendCancelled.current=false;setSending(true);const controller=new AbortController();inputReadController.current=controller;const automatic=new Set<string>();const items=attachments.map(a=>({...a})),id=crypto.randomUUID(),prior=dialogue.current;activeInputId.current=id;
   async function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(result:T)=>unknown,failureOf?:(result:T)=>unknown){return recordOperation(tool,input,async()=>{checkSend();const result=await work();checkSend();return result;},async activity=>{const turn=dialogue.current.turns.find(t=>t.id===id);if(!turn)throw Error('Input unavailable');await finishTurn(id,{activity:updateActivity(turn.activity??[],activity)});},project,failureOf);}
   try{
@@ -383,7 +384,12 @@ export default function Prototype() {
    }
    context={...context,refs:[...context.refs,...importedRefs]};
    if(!request&&text){
-    request=await trace('dialogue.plan',{model,question:text},()=>planDialogue(bonsai,text,context,sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}))));checkSend();
+    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
+    if(decisionModel==='d1-omni-600M'&&decision.ready){
+     if(!decision.loaded){setChatProgress('Loading decision model…');await trace('decision.load',decisionAssetInput(false),()=>decision.load());}
+     checkSend();setChatProgress('Selecting action…');const routed=await routeWithDecision(decision,text,context,descriptors,trace,checkSend);request=routed.request;checkSend();
+    }
+    if(!request)request=await trace('dialogue.plan',{model,question:text},()=>planDialogue(bonsai,text,context,descriptors));checkSend();setChatProgress('');
    }
    if(request&&inputReadings.length)request=routeInputRequest(request,inputReadings,!!localRequest(text.trimStart()));
    if(request?.action==='edit'){
@@ -479,7 +485,7 @@ export default function Prototype() {
   </nav>
   {page==='input'&&sheet===null&&<div className="composer-dock" style={{bottom:bottomInset+12}}>
    {attachments.length>0&&<div className="pending-attachments">{attachments.map(item=>attachmentCard(item,true))}</div>}
-   <form className="compact-composer" onSubmit={e=>{e.preventDefault();send();}}><button type="button" className="icon-button" aria-label="Add attachment" disabled={sending} onClick={()=>{keyboard.hide();if(window.matchMedia('(pointer: coarse)').matches){home.current?.focus({preventScroll:true});setSheet('attachment-source');}else files.current?.click();}}><Plus size={22}/></button><KeyboardTextarea rows={1} placeholder="Write…" aria-label="Message" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();send();}}}/><button type="button" className="icon-button" aria-label="Voice input" disabled={sending} onClick={()=>{keyboard.hide();setSheet('voice');}}><Microphone size={22}/></button><button className="send-button" type="submit" aria-label="Send" disabled={sending||bonsai.busy||!!taskController.active||!!assetAction}><PaperPlaneTilt size={21}/></button></form>
+   <form className="compact-composer" onSubmit={e=>{e.preventDefault();send();}}><button type="button" className="icon-button" aria-label="Add attachment" disabled={sending} onClick={()=>{keyboard.hide();if(window.matchMedia('(pointer: coarse)').matches){home.current?.focus({preventScroll:true});setSheet('attachment-source');}else files.current?.click();}}><Plus size={22}/></button><KeyboardTextarea rows={1} placeholder="Write…" aria-label="Message" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();send();}}}/><button type="button" className="icon-button" aria-label="Voice input" disabled={sending} onClick={()=>{keyboard.hide();setSheet('voice');}}><Microphone size={22}/></button><button className="send-button" type="submit" aria-label="Send" disabled={sending||bonsai.busy||decision.busy||!!taskController.active||!!assetAction}><PaperPlaneTilt size={21}/></button></form>
   </div>}
   <input ref={files} type="file" multiple accept="image/*,audio/*,video/*,.txt,.md,.pdf" hidden onChange={e=>{const selected=Array.from(e.target.files??[]);e.target.value='';void addAttachments(selected);}}/>
   <input ref={cameraFiles} type="file" accept="image/*" capture="environment" hidden onChange={e=>{const selected=Array.from(e.target.files??[]);e.target.value='';void addAttachments(selected);}}/>
