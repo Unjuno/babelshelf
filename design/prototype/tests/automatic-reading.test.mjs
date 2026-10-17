@@ -71,3 +71,15 @@ test('a different selected role or unsupported model cannot reach a prepared med
  }
  assert.equal(called,0);
 });
+
+import {recoverSubmittedInput} from '../src/input-recovery.ts';
+test('failed submitted input returns only to an empty composer without duplicate originals or automatic replay',()=>{
+ const sent={text:'質問',attachments:[{asset:{id:'raw',revision:1,sha256:'pin'},reading:{kind:'ocr',noteId:'derived',revision:1},status:'Image text extracted'}]};
+ const recovered=recoverSubmittedInput({text:'',attachments:[]},sent);
+ assert.deepEqual(recovered,sent);assert.notEqual(recovered.attachments,sent.attachments);assert.notEqual(recovered.attachments[0],sent.attachments[0]);
+ assert.equal(recoverSubmittedInput({text:'new draft',attachments:[]},sent),null);
+ assert.equal(recoverSubmittedInput({text:' ',attachments:[]},sent),null);
+ assert.equal(recoverSubmittedInput({text:'',attachments:[{}]},sent),null);
+ assert.equal(recoverSubmittedInput({text:'',attachments:[]},null),null);
+ for(const extra of [{file:{}},{prepared:{}},{reviewedText:{}},{asset:undefined}])assert.throws(()=>recoverSubmittedInput({text:'',attachments:[]},{...sent,attachments:[{...sent.attachments[0],...extra}]}),/originals/);
+});
