@@ -40,7 +40,7 @@ Open http://127.0.0.1:4180/. The command binds to localhost. If occupied:
 npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4181
 ```
 
-The phone frame/keyboard are browser simulations. There is no fixture conversation. Remember/記録, Search/検索 and Read/読んで use real local records. Capture opens a review before saving. Text attachments become new originals. Notes, Settings, dialogue and foreground tasks/events persist in IndexedDB. Actual prepared Bonsai4B inference has been exercised in the separate production entry at4180; each origin needs its own prepared assets. Decision/ASR entries remain candidates. Media playback does not imply persistent originals or model extraction. See the verification document for measured flows and remaining gates.
+The phone frame/keyboard are browser simulations. There is no fixture conversation. Remember/記録, Search/検索 and Read/読んで use real local records. Capture opens a review before saving. Text attachments become new originals. Notes, Settings, dialogue and foreground tasks/events persist in IndexedDB. Actual prepared Bonsai4B inference has been exercised in the separate production entry at4180; each origin needs its own prepared assets. Decision entries remain candidates; prepared local speech/OCR/PDF processing has scoped PC evidence. Submitted originals persist; playback alone does not imply model extraction. See the verification document for measured flows and remaining gates.
 
 ## Start the baseline PWA
 
@@ -81,7 +81,7 @@ See [measured results and outstanding gates](docs/TEST-RESULTS.txt). Node/source
 
 No model weights, downloaded inference runtime, private user notes or credentials are included. Baseline notes/settings are in IndexedDB and model/runtime assets in OPFS. The third-party inference runtime's redistribution license remains unresolved. No deployment is performed by this handoff.
 
-Attachment/decision processing contracts and current limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Explicit Send stores original bytes, canonical projections and input atomically; reopening resolves verified originals without file reselection. TXT/MD decoding and raw byte provenance are connected. OCR/transcription/video understanding remain unprepared; native playback does not imply model understanding.
+Attachment/decision processing contracts and current limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Explicit Send stores original bytes, canonical projections and input atomically; reopening resolves verified originals without file reselection. TXT/MD decoding and raw byte provenance are connected. Prepared OCR/transcription/PDF extraction is connected, including automatic Send processing. General scene/video-frame understanding remains unprepared; native playback does not imply model understanding.
 
 Browser storage is origin-specific: 4173, 4180 and 4181 do not automatically share IndexedDB. Use local backup/restore to transfer between origins. The adapter uses the existing mlb-memory-v1 schema without clearing it. The 4180 development server now serves repository source, not the older outputs copy.
 
@@ -90,3 +90,5 @@ Local speech: Whisper tiny has explicit verified preparation, local WASM recogni
 - Local PNG/JPEG OCR now has pinned Tesseract runtime/language assets, explicit preparation, reviewed atomic raw/derived storage and region-aware source metadata. Read docs/OCR-CONTRACT.md. Japanese sample recognition had errors; do not claim broad accuracy. Unsaved image-plus-question context, scanned PDF OCR, video vision and physical-device/full-offline acceptance remain pending.
 
 - Reviewed OCR/PDF Use text now stages an attachment without changing the draft; Send imports raw/extracted notes and dialogue together, matching TXT/MD behavior. Current-file grounding includes mixed readable attachments, excludes raw-projection prose and historical pins, and refuses changed/withdrawn or oversized scopes. Read docs/INPUT-READINGS.md. Pending drafts before Send are not durable.
+
+Ordinary Send now runs already prepared local PNG/JPEG OCR, PDF text-layer extraction and supported audio/video-audio transcription before atomic raw/extracted/dialogue import. Automatic results are labelled extracted rather than human-reviewed; missing assets never download implicitly. See [INPUT-READINGS.md](docs/INPUT-READINGS.md) for Stop, partial coverage, current-file grounding and remaining limits.

@@ -31,3 +31,6 @@ The engine's own package license is Apache-2.0. CMaps and fonts have their own n
 Unit14 has actual PC PDF.js/IndexedDB, native app, actual Bonsai4B citation and server-unavailable fresh-tab evidence in TEST-RESULTS.txt. It does not establish physical Android/iPhone behavior, whole-browser-process/OS-network-isolated cold start, general PDF fidelity, OCR accuracy or the entire offline MVP.
 
 Unit18: Review also offers Use text to stage the extraction with the current question; Send atomically imports raw/text/dialogue and grounds current-input answers in these files. Partial coverage and exact page source remain. See INPUT-READINGS.md. Scanned PDF OCR is still pending.
+
+
+Unit19: ordinary Send can extract the bundled PDF text layer directly before atomic import; automatic output is extracted, not human-reviewed. Empty text reports OCR required. Review remains optional through explicit Read text. See INPUT-READINGS.md.

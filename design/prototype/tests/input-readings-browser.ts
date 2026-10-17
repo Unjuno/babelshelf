@@ -1,3 +1,4 @@
+import {makeTranscript} from '../src/speech-transcript';
 import {KnowledgeStore} from '../src/knowledge-store';
 import {prepareOriginal,originalRef} from '../src/original-assets';
 import {makeOcrText} from '../src/ocr-text';
@@ -26,6 +27,7 @@ document.querySelector('#run')!.addEventListener('click',async()=>{
   check((await a.all()).length===3&&(await a.snapshot()).runs.length===1,'existing original supports a new reviewed extraction without duplicate raw');
   const views=await a.views();await a.commit(views,views.filter(n=>n.id!==raw.id));before=stateHash(await a.snapshot());failed=false;try{const again={...review,id:crypto.randomUUID()};await b.submitInput(current,turn(current,crypto.randomUUID(),again),[],[again]);}catch{failed=true;}
   check(failed&&stateHash(await a.snapshot())===before,'withdrawn original rejects new Send without changing history');
+  const audio=await prepareOriginal(new File(['controlled audio bytes'],'input.wav',{type:'audio/wav'})),speech:ReviewedText={kind:'speech',id:crypto.randomUUID(),value:makeTranscript(audio,2000,{text:'The copper code is Maple 42.',chunks:[{text:'The copper code is Maple 42.',timestamp:[0,2]}]})},spoken=turn(current,crypto.randomUUID(),speech,audio);await a.submitInput(current,spoken,[audio],[speech]);current=spoken;check((await a.all()).some(n=>n.id===speech.id&&n.transcription.text===speech.value.text),'automatic speech reading persists through the same atomic input transaction');
   const pack=JSON.stringify(await a.backup()),plan=await restored.reviewBackup(pack);await restored.restore(pack,plan.expected);restored.close();check(stateHash(await restored.snapshot())===stateHash(await a.snapshot()),'empty database restore retains exact original, extraction and reading links');
   out.textContent+='\nDONE · real IndexedDB, controlled extraction metadata, databases retained';
  }catch(e){out.textContent+='\nFAIL · '+(e as Error).message;}finally{a.close();b.close();restored.close();}

@@ -1,18 +1,18 @@
-# Reviewed attachments in Input
+# Attachments in Input
 
-The accepted Input UI now supports a question with reviewed image/PDF text without first saving a separate note manually. This extends the existing TXT/Markdown import behavior. It does not add sessions or a second conversation UI.
+The accepted Input UI supports a question with local image/PDF/audio/video-audio text without first saving a separate note manually. This extends the existing TXT/Markdown import behavior. It does not add sessions or a second conversation UI.
 
 ## Review and storage
 
 Read text runs the real prepared local processor. Use text retains the existing draft and other attachments and stages the exact reviewed metadata under the raw attachment ID. It writes no canonical note. Remove discards that pending item; reload before Send does not preserve pending work. Save note remains an explicit alternative.
 
-Send is a durable import action: one transaction checks the expected dialogue revision, original identities, extraction metadata and current original state, then writes new raw originals, separate OCR/PDF text notes and the input turn. Existing originals are reused without copying bytes. Duplicate extraction IDs, conflicts, malformed reading links and withdrawn targets abort the entire transaction. A failed transaction keeps the draft/attachments available. Stopping subsequent inference leaves the successfully imported originals/text and a stopped input turn; it does not silently undo the import.
+Send is a durable import action: one transaction checks the expected dialogue revision, original identities, extraction metadata and current original state, then writes new raw originals, separate OCR/PDF/transcript text notes and the input turn. Existing originals are reused without copying bytes. Duplicate extraction IDs, conflicts, malformed reading links and withdrawn targets abort the entire transaction. A failed transaction keeps the draft/attachments available. Stopping subsequent inference leaves the successfully imported originals/text and a stopped input turn; it does not silently undo the import.
 
 A dialogue attachment's reading field contains kind, canonical extraction note ID and first revision only. Exact text, processor pins, pages/regions and original hashes remain on the extraction record. Full-state backups retain both; validation rejects cross-file, mismatched kind/version, orphan or forged original links. Historical links remain valid after later correction/withdrawal; those historical references never restore current evidence eligibility.
 
 ## Grounding and intent
 
-Current readable attachments include TXT/MD originals and reviewed OCR/PDF derivatives. Retrieval is scoped to those files, with one leading relevant excerpt per file before extra matches. Raw binary-note bodies provide only dependency eligibility and cannot enter the derived-file evidence. All current files must contribute an excerpt within the actual tokenizer budget; failure asks for fewer attachments. Results describe selected excerpts rather than whole-file comprehension. Partial PDF coverage remains recorded and shown in review/pending status.
+Current readable attachments include TXT/MD originals and OCR/PDF/transcript derivatives. Retrieval is scoped to those files, with one leading relevant excerpt per file before extra matches. Raw binary-note bodies provide only dependency eligibility and cannot enter the derived-file evidence. All current files must contribute an excerpt within the actual tokenizer budget; failure asks for fewer attachments. Results describe selected excerpts rather than whole-file comprehension. Partial PDF coverage remains recorded and shown in review/pending status.
 
 Bounded dialogue history may clarify what the user means or the requested format, but supplies no additional attachment facts. Old note pins are excluded from this current-input scope. Inputs are revalidated before and after generation; changed/withdrawn evidence fails, including uncited selected files. Exact canonical references let source marks open the correct original image regions or PDF pages.
 
@@ -23,3 +23,14 @@ Natural requests still reach the existing planner. For already reviewed current 
 Pure metadata fixtures validate links/retrieval and are not OCR or inference evidence. Real IndexedDB tests cover concurrent Send, returned extraction refs for empty Send, all-or-nothing failures, old-dialogue conflict, existing raw reuse, withdrawal and empty-database restore. Native UI and actual Bonsai results are recorded separately in TEST-RESULTS.txt. Broad semantic accuracy, scanned PDFs, video vision and physical/full-process offline acceptance remain separate gates.
 
 Unit18 actual PC evidence: mixed OCR/TXT answer and two current-file citations, empty PDF Send/following summary, exact generated-answer Save, existing PDF raw reuse and server-unavailable tab restart/read/export/restore passed their scoped checks. The requested original-language summary format failed twice with actual4B, including after prompt clarification; correct facts/quotes do not prove instruction/language fidelity. See TEST-RESULTS.txt.
+
+
+## Automatic prepared readers on Send
+
+Ordinary Send now attempts PNG/JPEG OCR, PDF text-layer extraction and audio/video-audio transcription before the atomic import. OCR and speech use only the selected, already prepared local models; missing assets never trigger a download. PDF processing uses bundled local PDF.js assets. Original bytes remain separate and immutable. Successful automatic derivatives are labelled extracted, not reviewed. Their first text revision and processor provenance remain available for direct correction/history and exact original-source previews. Manual Read/Use text/Save note remains available when inspection before Send is preferred.
+
+An unavailable/unsupported/empty/failed reader leaves that attachment unread, preserving its original and per-item error with the submitted input. If any requested media remains unread, factual question answering is refused rather than inferred from filenames or old dialogue. Successfully extracted attachments may still be saved in that same import. Empty PDF text reports OCR required; scanned-page OCR is not implemented by this route. PDF text is bounded to the existing page/text limits, image processing supplies recognized text only, and video supplies audio only: the evidence explicitly excludes unprocessed scenes/frames and unmapped container timing.
+
+Stop before import aborts the owned OCR/PDF worker or speech request, discards transient extraction results and retains the draft/attachments; completed processing receipts remain audit history. Audio decode/render cannot be interrupted mid-browser-call, so cancellation is checked immediately after each and its result is discarded. Stop after an import keeps committed originals/extractions/dialogue. Ledger write failure aborts Send rather than silently degrading to an unread result. Editing a draft while extraction is running preserves the newer text when the submitted snapshot commits. Pending drafts remain session-only until Send.
+
+Speech extraction uses the same strict reading-link shape and canonical transcript metadata as other readers. Source previews preserve estimated audio ranges and whole-original video playback; no frame understanding or precise video seeking is claimed. No decision-model runtime, provider fallback or permission expansion is added.

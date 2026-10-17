@@ -1,39 +1,41 @@
 import {ocrTextNote,validateOcrText,type OcrText} from './ocr-text.ts';
 import {pdfTextNote,validatePdfText,type PdfText} from './pdf-text.ts';
+import {transcriptNote,validateTranscript,type Transcript} from './speech-transcript.ts';
 import {originalKey,type OriginalAsset} from './original-assets.ts';
 import type {Dialogue,SourceRef} from './conversation.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {buildIndex,searchNotes,chunks,latest} from '../../../dist/core.js';
-export type ReviewedText={kind:'ocr';id:string;value:OcrText}|{kind:'pdf';id:string;value:PdfText};
-export type InputReadingRef={kind:'ocr'|'pdf';noteId:string;revision:1};
+export type ReviewedText={kind:'ocr';id:string;value:OcrText}|{kind:'pdf';id:string;value:PdfText}|{kind:'speech';id:string;value:Transcript};
+export type InputReadingRef={kind:'ocr'|'pdf'|'speech';noteId:string;revision:1};
 export type CurrentInputRef=InputReadingRef|{kind:'text';noteId:string;revision:1};
 export function routeInputRequest<T extends {action:string}>(request:T,inputs:CurrentInputRef[],literal:boolean):T{return inputs.length&&!literal&&['read','search','chat'].includes(request.action)?{...request,action:'answer'}:request;}
 export const readingRef=(r:ReviewedText):InputReadingRef=>({kind:r.kind,noteId:r.id,revision:1});
-export const readingStatus=(r:ReviewedText)=>r.kind==='ocr'?'Image text reviewed':'PDF text reviewed · '+r.value.pages.length+' / '+r.value.totalPages+' pages';
+export const readingStatus=(r:ReviewedText,reviewed=true)=>{const state=reviewed?'reviewed':'extracted';return r.kind==='ocr'?'Image text '+state:r.kind==='pdf'?'PDF text '+state+' · '+r.value.pages.length+' / '+r.value.totalPages+' pages':(r.value.sourceTrack==='video-audio'?'Audio transcript '+state+' · frames not processed':'Transcript '+state);};
 export function buildInputReadings(readings:ReviewedText[],runs:{key:string;value:any}[]){
  if(readings.length>16||new Set(readings.map(r=>r.id)).size!==readings.length)throw Error('Duplicate input reading');
  return readings.map(r=>{const asset=runs.find(v=>v.key===originalKey(r.value?.original?.id??''))?.value as OriginalAsset;
   if(!asset||!r.id||r.id===asset.id)throw Error('Input reading original unavailable');
-  if(r.kind==='ocr')return ocrTextNote(r.id,asset,r.value);if(r.kind==='pdf')return pdfTextNote(r.id,asset,r.value);throw Error('Input reading unsupported');
+  if(r.kind==='ocr')return ocrTextNote(r.id,asset,r.value);if(r.kind==='pdf')return pdfTextNote(r.id,asset,r.value);if(r.kind==='speech')return transcriptNote(r.id,asset,r.value);throw Error('Input reading unsupported');
  });
 }
 export function validateInputReadings(dialogue:Dialogue|undefined,notes:any[],runs:{key:string;value:any}[]){
  for(const turn of dialogue?.turns??[])for(const a of turn.attachments??[])if(a.reading!==undefined){
   const r=a.reading,n=notes.find(n=>n.id===r?.noteId),v=n?.revisions?.find((v:any)=>v.version===r.revision),asset=runs.find(v=>v.key===originalKey(a.asset?.id??''))?.value as OriginalAsset;
-  if(!r||Object.keys(r).sort().join(',')!=='kind,noteId,revision'||!['ocr','pdf'].includes(r.kind)||r.revision!==1||!n||!v||!asset||!a.asset||a.voice||n.originalAsset||n.transcription||n.mediaSource?.id!==a.asset.id||n.mediaSource?.revision!==a.asset.revision||n.mediaSource?.sha256!==a.asset.sha256)throw Error('Input reading link invalid');
-  const value=r.kind==='ocr'?n.ocrText:n.pdfText;if(!value||r.kind==='ocr'&&n.pdfText||r.kind==='pdf'&&n.ocrText||v.body!==value.text)throw Error('Input reading text unavailable');
-  if(r.kind==='ocr')validateOcrText(value,asset);else validatePdfText(value,asset);
+  if(!r||Object.keys(r).sort().join(',')!=='kind,noteId,revision'||!['ocr','pdf','speech'].includes(r.kind)||r.revision!==1||!n||!v||!asset||!a.asset||a.voice||n.originalAsset||n.mediaSource?.id!==a.asset.id||n.mediaSource?.revision!==a.asset.revision||n.mediaSource?.sha256!==a.asset.sha256)throw Error('Input reading link invalid');
+  const value=r.kind==='ocr'?n.ocrText:r.kind==='pdf'?n.pdfText:n.transcription;if(!value||[n.ocrText,n.pdfText,n.transcription].filter(Boolean).length!==1||v.body!==value.text)throw Error('Input reading text unavailable');
+  if(r.kind==='ocr')validateOcrText(value,asset);else if(r.kind==='pdf')validatePdfText(value,asset);else validateTranscript(value,asset);
  }
 }
 // Scope retrieval to the reviewed attachments, before unrelated history/search.
 // One leading excerpt per file precedes additional matches from any one file.
-export function readingEvidence(records:any[],refs:CurrentInputRef[],question:string):SourceRef[]{
+export function readingEvidence(records:any[],refs:CurrentInputRef[],question:string):(SourceRef&{coverage:string})[]{
  if(!refs.length)return [];const eligible=new Set(buildIndex(records).docs.map((d:any)=>d.n.id));
- const primary:SourceRef[]=[],extra:SourceRef[]=[];
+ const primary:(SourceRef&{coverage:string})[]=[],extra:(SourceRef&{coverage:string})[]=[];
  for(const ref of refs){const n=records.find(n=>n.id===ref.noteId);
-  if(!n||!eligible.has(n.id)||latest(n).version!==ref.revision||!(ref.kind==='text'?n.originalAsset&&n.attachmentText:ref.kind==='ocr'?n.ocrText:n.pdfText))throw Error('Input source changed · retry');
+  if(!n||!eligible.has(n.id)||latest(n).version!==ref.revision||!(ref.kind==='text'?n.originalAsset&&n.attachmentText:ref.kind==='ocr'?n.ocrText:ref.kind==='pdf'?n.pdfText:n.transcription))throw Error('Input source changed · retry');
   const scoped=[n,...records.filter(r=>r.id===n.mediaSource?.id).map(r=>({...r,revisions:r.revisions.map((v:any)=>({...v,body:''}))}))],found=searchNotes(scoped,question,4).filter((hit:any)=>hit.noteId===n.id),fallback=chunks(latest(n).body).slice(0,1).map((c:any)=>({noteId:n.id,revision:ref.revision,title:latest(n).title,...c}));
-  const hits=found.length?found:fallback;if(!hits.length)throw Error('Input text unavailable');primary.push(hits[0]);extra.push(...hits.slice(1));
+  const coverage=ref.kind==='ocr'?'Recognized image text only; scene not processed':ref.kind==='pdf'?'PDF text layer; '+n.pdfText.pages.length+'/'+n.pdfText.totalPages+' pages':ref.kind==='speech'?(n.transcription.sourceTrack==='video-audio'?'Video audio-only transcript; frames not processed; container timing unmapped':'Audio transcript; estimated segment timing'):'Original text';
+  const hits=(found.length?found:fallback).map((hit:any)=>({...hit,coverage}));if(!hits.length)throw Error('Input text unavailable');primary.push(hits[0]);extra.push(...hits.slice(1));
  }
  return [...primary,...extra].filter((r,i,a)=>a.findIndex(v=>v.noteId===r.noteId&&v.start===r.start&&v.end===r.end)===i);
 }

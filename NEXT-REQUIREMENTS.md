@@ -13,7 +13,7 @@ The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It s
 
 ## Current integration and remaining gates
 
-The accepted UI uses the existing canonical IndexedDB store. Memory, preferences, foreground schedules/execution records/notification events, continuous dialogue, reviewed ordinary-note correction/Undo, durable originals and full-state brainpacks are connected. Local Bonsai 4B, Whisper tiny, PDF text layers and PNG/JPEG OCR have scoped PC browser evidence in docs/TEST-RESULTS.txt. Unit18 adds reviewed image/PDF Use text and atomic Send alongside TXT/MD, with canonical source marks; see docs/INPUT-READINGS.md. The projection is not disk-backed Markdown files.
+The accepted UI uses the existing canonical IndexedDB store. Memory, preferences, foreground schedules/execution records/notification events, continuous dialogue, reviewed ordinary-note correction/Undo, durable originals and full-state brainpacks are connected. Local Bonsai 4B, Whisper tiny, PDF text layers and PNG/JPEG OCR have scoped PC browser evidence in docs/TEST-RESULTS.txt. Unit18 adds reviewed image/PDF Use text and atomic Send alongside TXT/MD, with canonical source marks; see docs/INPUT-READINGS.md. Unit19 adds automatic prepared image/PDF/audio/video-audio reading on Send, with truthful extraction/coverage status and the same atomic storage. The projection is not disk-backed Markdown files.
 
 Remaining work must preserve the full product objective:
 
