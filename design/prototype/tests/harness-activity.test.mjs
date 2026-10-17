@@ -3,6 +3,14 @@ import {recordOperation,startActivity,finishActivity,validateActivity} from '../
 import {emptyDialogue,appendTurn,dialogueContext,historyPayload,validateDialogue} from '../src/conversation.ts';
 import {planDialogue} from '../src/conversation.ts';
 const input={query:'日本語の記録'};
+
+test('unresolved speaker choice retains actual bounded model failure without becoming history or permission',async()=>{
+ const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts'),entries=[],raw='{"source":"none"}';
+ const a={turnId:'a',turnIndex:0,speaker:'user',quote:'user words',start:0,end:10},b={turnId:'b',turnIndex:1,speaker:'assistant',quote:'answer',start:0,end:6};
+ await assert.rejects(recordOperation('dialogue.subject',{question:'which?',a,b},()=>resolveDialogueSubject({manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:raw})},'which?',a,b),async entry=>entries.push(entry)),/Original unavailable/);
+ assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.equal(entries[1].output.raw,raw);assert.equal(entries[1].output.reason,'unresolved');validateActivity(entries.slice(1));
+ const state=appendTurn(emptyDialogue(),{id:'turn',user:'which?',activity:entries.slice(1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/source|dialogue.subject/);
+});
 test('invalid planner output is bounded audit evidence only, never accepted or added to model history',async()=>{
  const raw='{"action":"recall","historyIndex":0,"historyPart":"user"}',entries=[];
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:10}),generate:async()=>({text:raw})};

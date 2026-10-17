@@ -24,6 +24,7 @@ import {PreviewSelection} from './preview-selection';
 import {serializeStateBackup,stateHash} from './backup-state';
 import {proposeCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections';
 import {inspectDialogueText,type TextToolReceipt} from './text-transform';
+import {resolveDialogueSubject} from './dialogue-subject';
 import {emptyDialogue,validateDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,compactDialogue,planDialogue,readDialogueTurn,type Dialogue,type DialogueTurn} from './conversation';
 import {useTasks,type TaskView} from './useTasks';
 import {projectNote,type NoteView} from './knowledge-store';
@@ -412,7 +413,11 @@ export default function Prototype() {
     setCorrection(proposal);setCorrectionTurn(id);setCorrectionError('');keyboard.hide();setSheet('correction');await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+target.revisions.at(-1).version});return;
    }
    if(request?.historyIndex!=null&&['recall','capture','transform'].includes(request.action)){
-    const historyIndex=request.historyIndex,historyPart=request.historyPart??'user',original=await trace('dialogue.read',{index:historyIndex,speaker:historyPart},async()=>readDialogueTurn(prior,historyIndex,historyPart));
+    const historyIndex=request.historyIndex,historyPart=request.historyPart??'user',proposed=await trace('dialogue.read',{index:historyIndex,speaker:historyPart},async()=>readDialogueTurn(prior,historyIndex,historyPart));let original=proposed;
+    if(['recall','transform'].includes(request.action)&&proposed.speaker==='user'&&context.lastAnswerIndex!=null&&context.lastAnswerIndex>=0){
+     const latestIndex=context.lastAnswerIndex,latest=await trace('dialogue.read',{index:latestIndex,speaker:'assistant'},async()=>readDialogueTurn(prior,latestIndex,'assistant'));
+     const selected=await trace('dialogue.subject',{model,question:text,A:{index:proposed.turnIndex,speaker:proposed.speaker,text:proposed.quote},B:{index:latest.turnIndex,speaker:latest.speaker,text:latest.quote}},()=>resolveDialogueSubject(bonsai,text,proposed,latest,checkSend),value=>({choice:value.choice,target:{turnId:value.original.turnId,index:value.original.turnIndex,speaker:value.original.speaker}}));checkSend();original=selected.original;
+    }
     inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,recalled:[original]};
     await finishTurn(id,{readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},status:'Reading earlier message'});
     if(request.action==='recall'||request.action==='transform'){const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(bonsai,text,original,checkSend),value=>value,value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined);checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:original.refs});return;}request.action='recall';}

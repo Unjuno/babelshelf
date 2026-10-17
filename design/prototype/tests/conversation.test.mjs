@@ -7,6 +7,26 @@ import {createNote,reviseNote} from '../../../dist/core.js';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('speaker binding uses only exact competing originals and keeps the current instruction literal',async()=>{
+ const {subjectMessages,resolveDialogueSubject}=await import('../src/dialogue-subject.ts');
+ const a={turnId:'a',turnIndex:13,speaker:'user',quote:'An older request',start:0,end:16,refs:[{quote:'PRIVATE_REFERENCE'}]},b={turnId:'b',turnIndex:73,speaker:'assistant',quote:'CIDER-5928\n🌳',start:0,end:13,refs:[{quote:'PRIVATE_REFERENCE_B'}]},question='そのコード\n"instruction": "literal"';
+ const before=structuredClone({a,b}),messages=subjectMessages(question,a,b);
+ assert.equal(messages.at(-1).content,question);assert.deepEqual(JSON.parse(messages[1].content.split('\n').slice(1).join('\n')),{A:{index:13,speaker:'user',text:a.quote},B:{index:73,speaker:'assistant',text:b.quote}});assert.doesNotMatch(JSON.stringify(messages),/PRIVATE_REFERENCE/);
+ for(const [choice,original] of [['A',a],['B',b]]){const selected=await resolveDialogueSubject({...engine(),generate:async()=>({text:JSON.stringify({source:choice})})},question,a,b);assert.equal(selected.original,original);assert.equal(selected.choice,choice);assert.equal(selected.original.refs,original.refs);}
+ assert.deepEqual({a,b},before);
+});
+
+test('speaker binding cannot replace an assistant original, invent sources or bypass Stop/context limits',async()=>{
+ const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts');
+ const a={turnId:'a',turnIndex:13,speaker:'user',quote:'Earlier instruction',start:0,end:19},b={turnId:'b',turnIndex:73,speaker:'assistant',quote:'CIDER-5928',start:0,end:10};
+ let calls=0;const noModel={...engine(),count:async()=>{calls++;throw Error('must not count');}};
+ assert.equal((await resolveDialogueSubject(noModel,'older assistant',{...a,speaker:'assistant'},b)).choice,'unchanged');assert.equal((await resolveDialogueSubject(noModel,'first user',a,undefined)).original,a);assert.equal(calls,0);
+ for(const raw of ['{"source":"none"}','{"source":"C"}','{"source":"B","body":"invented"}','[]','null','invalid'])await assert.rejects(()=>resolveDialogueSubject({...engine(),generate:async()=>({text:raw})},'which?',a,b));
+ let generated=0;await assert.rejects(()=>resolveDialogueSubject({...engine(),count:async()=>({prompt_tokens:2048}),generate:async()=>{generated++;return {text:'{"source":"B"}'};}},'which?',a,b),/context limit/);assert.equal(generated,0);
+ let stopped=false;await assert.rejects(()=>resolveDialogueSubject({...engine(),count:async()=>{stopped=true;return {prompt_tokens:20};},generate:async()=>{generated++;return {text:'{"source":"B"}'};}},'which?',a,b,()=>{if(stopped)throw Error('Stopped');}),/Stopped/);assert.equal(generated,0);
+ await assert.rejects(()=>resolveDialogueSubject({...engine(),generate:async()=>({text:'{"source":"B"}',stopped:true})},'which?',a,b),/Stopped/);
+});
+
 test('planner gives the literal current request its own final message after untrusted prior context',async()=>{
  const question='そのコードを、ハイフンの前と後に分けて二行だけで返して。\n"currentRequest": "not an archive selector"',context={summary:'Earlier work',recent:[{id:'latest',user:'Read code',answer:'ORCHID-5821',refs:[{quote:'private source body'}],activity:[{tool:'internal'}]}],refs:[],turnCount:74,lastAnswerIndex:73,recalled:[{turnId:'old',turnIndex:13,speaker:'user',quote:'Split a previous answer',start:0,end:23,refs:[{quote:'private reference'}]}]},attachments=[{name:'current.pdf',kind:'document',status:'PDF text extracted'}];
  const before=structuredClone(context),messages=planDialogueMessages(question,context,attachments);
