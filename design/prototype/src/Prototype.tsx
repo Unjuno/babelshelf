@@ -23,7 +23,7 @@ import {MetadataWriter} from './metadata-writer';
 import {PreviewSelection} from './preview-selection';
 import {serializeStateBackup,stateHash} from './backup-state';
 import {proposeCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections';
-import {transformDialogueText,type TextToolReceipt} from './text-transform';
+import {inspectDialogueText,type TextToolReceipt} from './text-transform';
 import {emptyDialogue,validateDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,compactDialogue,planDialogue,readDialogueTurn,type Dialogue,type DialogueTurn} from './conversation';
 import {useTasks,type TaskView} from './useTasks';
 import {projectNote,type NoteView} from './knowledge-store';
@@ -415,7 +415,7 @@ export default function Prototype() {
     const historyIndex=request.historyIndex,historyPart=request.historyPart??'user',original=await trace('dialogue.read',{index:historyIndex,speaker:historyPart},async()=>readDialogueTurn(prior,historyIndex,historyPart));
     inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,recalled:[original]};
     await finishTurn(id,{readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},status:'Reading earlier message'});
-    if(request.action==='transform'){const result=await trace('text.transform',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>transformDialogueText(bonsai,text,original,checkSend),value=>value,value=>value.status?Error(value.status):undefined);checkSend();await finishTurn(id,{...result,status:result.status,refs:original.refs});return;}
+    if(request.action==='recall'||request.action==='transform'){const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(bonsai,text,original,checkSend),value=>value,value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined);checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:original.refs});return;}request.action='recall';}
     if(request.action==='capture')request.body=original.quote;else request.action='chat';
    }
    if(request?.action==='capture'){const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';if(request.historyIndex==null&&inputReadings.length){const parsed=await trace('knowledge.answer',{model,question:text,mode:'capture',inputReadings},()=>groundedAnswer(knowledge,bonsai,model,text,request!.query||text,'summary',context,checkSend,inputReadings));checkSend();request.body=parsed.answer;sources=parsed.sources;kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Review before saving',refs:sources});}else await finishTurn(id,{status:'Review before saving',refs:importedRefs});setCaptureTurn(id);setFileSources(sources);setFileKind(kind);setFileName(request.body!.split('\n')[0].replace(/[\\/:*?"<>|%]/g,'-').replace(/[. ]+$/g,'').slice(0,50)||'Note');setFileBody(request.body!);setActiveFolder('Inbox');setMemoryScope('folder');setSheet('file');return;}

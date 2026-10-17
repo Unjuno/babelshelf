@@ -1,0 +1,28 @@
+# Current request versus similar archived requests — 2026-10-17
+
+PC native in-app Chromium/WebGPU, explicit developer route on product3ed5b4802c79ade6. Prepared pinned Bonsai4B revision8d6557168168f91ea6697a4a49ed2ef622b53adb, runtime621e20782f208660f4f58283c2ce58430020f243, context2048, greedy, resetSession=true for every case. Public synthetic context only; no knowledge/conversation storage access, downloads or remote inference. All18 outputs are actual generations with finishReason=stop/stopped=false. They are retained as Observed/pass=null, not broad semantic PASS. Maximum counted input704 tokens; per-case allocations32/160/256 are retained in reports. Single-PC generation durations5.0–38.4s exclude asset preparation and do not predict phone performance.
+
+The synthetic history has an old user split instruction at index13, a saved-only paused schedule, and a recent assistant code ORCHID-5821 at lastAnswerIndex73. The current request asks to split that code into two lines. No expected answer is supplied to the generator.
+
+| Experiment | Actual observation | Adopted |
+| --- | --- | --- |
+| Existing shared policy/carrier | recall/index13/user, the similar archived instruction: reproduces the native Unit27 defect | Baseline only |
+| Same policy, prior context then literal final current message | recall/index73/assistant: target corrected, operation still recall | Carrier only |
+| Same separated carrier plus stronger policy tail | Same recall/index73/assistant | No extra policy tail |
+| Concise replacement policy | transform/index13/user and query=null; invalid production parameters | No |
+| Independent intent stage, four requests | transform/capture/chat correct; first-message recall also classified transform | No new classifier stage |
+| Legacy source-only tool selector, split/read pair | Correct hyphen split; read-only question incorrectly selected a space split | Not extended to all original reads |
+| Source-only selector with explicit read option | split_lines delimiter hyphen for split; read for original-code question | Common original processing protocol |
+| Old/separated control pairs | Both selected first0/user, capture73/assistant and chat/null for greeting | Carrier preserved these required controls |
+
+Unused query/body/speaker fields remain noisy: e.g. separated first-message recall has a query copied from the old split instruction; indexed recall resolves its original and does not use that query as a search. Greeting historyPart differs while historyIndex is null. These are not required-field dispatch failures, but also not proof of general semantic fidelity. No output action, target or answer is silently substituted with an oracle.
+
+The accepted change is **separate literal current request + shared original-processing stage**, not any of the failed replacement policies or an independent action classifier. Indexed recall and transform both read their exact chosen original, then the actual local model selects read/split_lines/replace using only the current instruction and source text. Read proceeds to source-scoped answering without a supplied answer. Literal operations use the existing deterministic processor/receipt; missing substrings or invalid operations fail and never become generated tool results. Capture stays an exact-byte review path. Wrong source selection can still occur; the carrier does not prove universal reference resolution.
+
+Reproduction: `node research/current-request-routing.mjs probe` / `controls`, then load the resulting local fixtures through `/?check=harness`. Historical baseline policy is frozen in the retained probe fixture so future product code is not mislabeled as old. `policy`, `concise` and `research/current-request-staged.mjs intent` reproduce rejected alternatives. `node research/current-request-operations.mjs` / `read` generate the source-only comparisons. A policy-controls file and staged target experiment were not run and are not acceptance evidence.
+
+Raw reports: `current-request-*-3ed5b4802c79ade6.json`; exact inputs under `../fixtures/`. `node research/verify-current-request.mjs` verifies the current production builders exactly match the actual tested separated/read-tool messages and replays the retained real split JSON through the production literal parser. That replay does not perform new inference. Actual normal-screen/offline integration is separately recorded in TEST-RESULTS.txt Unit28; isolated success cannot replace that gate.
+
+Later native5ca20e9c35b7cfc8 integration **still failed**: first-message recall/read/answer worked, then identical split selected old13/user and split that instruction at a comma. All originals/failed turns remain; no result was saved. This prevents source-selection acceptance, regardless of the earlier public target success.
+
+Thirteen additional real observations are retained under `current-request-{indexed,relative,relative-roles}-5ca20e9c35b7cfc8.json`. In repeated public follow-ups, separated context chose82/assistant, but explicit recent indices chose81/assistant and a target-only numeric schema copied0/assistant. A symbolic reference selector chose latest_user for the anaphoric split and explicitly14th-user request. Actual prior user/assistant roles did not fix those two cases: the split emitted fenced code instead of target JSON; the older request still chose latest_user. First-user/capture/latest-user controls worked. These alternatives are rejected, not shipped. All31 total generations finished normally, which is distinct from correct validated dispatch. Maximum observed input791 tokens. The remaining task is reliable source selection in the real ongoing context, not another claim from an isolated successful fixture.

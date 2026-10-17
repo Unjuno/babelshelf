@@ -1,0 +1,281 @@
+{
+  "schema": 1,
+  "model": "4B",
+  "revision": "8d6557168168f91ea6697a4a49ed2ef622b53adb",
+  "runtime": "621e20782f208660f4f58283c2ce58430020f243",
+  "contextTokens": 2048,
+  "maxTokens": 256,
+  "status": "Completed",
+  "results": [
+    {
+      "id": "relative-roles-split",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "最初のユーザーメッセージのコードを原文で確認し、コードだけ答えて。"
+        },
+        {
+          "role": "assistant",
+          "content": "ORCHID-5821"
+        },
+        {
+          "role": "user",
+          "content": "そのコードを、ハイフンの前と後に分けて二行だけで返して。"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 201,
+        "image_tokens": 0
+      },
+      "maxTokens": 64,
+      "expected": null,
+      "answer": "```\nORCHID-5821\n```",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "```\nORCHID-5821\n```",
+        "inputTokens": 201,
+        "ttftMs": 5632.800000000745,
+        "elapsedMs": 6833.199999999255,
+        "textChunks": 10,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 201,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 12,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    },
+    {
+      "id": "relative-roles-first",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "最初のユーザーメッセージのコードを原文で確認し、コードだけ答えて。"
+        },
+        {
+          "role": "assistant",
+          "content": "ORCHID-5821"
+        },
+        {
+          "role": "user",
+          "content": "この会話の最初のユーザーメッセージに書かれた検証コードを、原文を確認してコードだけ答えて。新しいメモには保存しないで。"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 210,
+        "image_tokens": 0
+      },
+      "maxTokens": 64,
+      "expected": null,
+      "answer": "```json\n{\"target\":\"first_user\"}\n```",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "```json\n{\"target\":\"first_user\"}\n```",
+        "inputTokens": 210,
+        "ttftMs": 6456.5,
+        "elapsedMs": 7540.89999999851,
+        "textChunks": 9,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 210,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 11,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    },
+    {
+      "id": "relative-roles-capture",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "最初のユーザーメッセージのコードを原文で確認し、コードだけ答えて。"
+        },
+        {
+          "role": "assistant",
+          "content": "ORCHID-5821"
+        },
+        {
+          "role": "user",
+          "content": "今の回答をそのまま新しいメモに保存したい。"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 193,
+        "image_tokens": 0
+      },
+      "maxTokens": 64,
+      "expected": null,
+      "answer": "{\"target\":\"latest_answer\"}",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "{\"target\":\"latest_answer\"}",
+        "inputTokens": 193,
+        "ttftMs": 5547.800000000745,
+        "elapsedMs": 6140,
+        "textChunks": 6,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 193,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 6,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    },
+    {
+      "id": "relative-roles-user",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "最初のユーザーメッセージのコードを原文で確認し、コードだけ答えて。"
+        },
+        {
+          "role": "assistant",
+          "content": "ORCHID-5821"
+        },
+        {
+          "role": "user",
+          "content": "直前に私が書いたメッセージを、そのまま引用して。"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 194,
+        "image_tokens": 0
+      },
+      "maxTokens": 64,
+      "expected": null,
+      "answer": "{\"target\":\"latest_user\"}",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "{\"target\":\"latest_user\"}",
+        "inputTokens": 194,
+        "ttftMs": 5564.10000000149,
+        "elapsedMs": 6152.199999999255,
+        "textChunks": 6,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 194,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 6,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    },
+    {
+      "id": "relative-roles-older",
+      "resetSession": true,
+      "profile": "greedy",
+      "input": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "最初のユーザーメッセージのコードを原文で確認し、コードだけ答えて。"
+        },
+        {
+          "role": "assistant",
+          "content": "ORCHID-5821"
+        },
+        {
+          "role": "user",
+          "content": "この会話の14番目のユーザーメッセージを引用して。"
+        }
+      ],
+      "count": {
+        "prompt_tokens": 196,
+        "image_tokens": 0
+      },
+      "maxTokens": 64,
+      "expected": null,
+      "answer": "{\"target\":\"latest_user\"}",
+      "error": "",
+      "pass": null,
+      "raw": {
+        "text": "{\"target\":\"latest_user\"}",
+        "inputTokens": 196,
+        "ttftMs": 5533.39999999851,
+        "elapsedMs": 6123.89999999851,
+        "textChunks": 6,
+        "rawSummary": [
+          "finish_reason",
+          "message",
+          "usage",
+          "timings"
+        ],
+        "finishReason": "stop",
+        "usage": {
+          "prompt_tokens": 196,
+          "cached_tokens": 0,
+          "image_tokens": 0,
+          "completion_tokens": 6,
+          "reasoning_tokens": 0
+        },
+        "stopped": false
+      }
+    }
+  ]
+}

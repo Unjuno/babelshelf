@@ -1,11 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,readDialogueTurn} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueMessages,readDialogueTurn} from '../src/conversation.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
 import {createNote,reviseNote} from '../../../dist/core.js';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
+
+test('planner gives the literal current request its own final message after untrusted prior context',async()=>{
+ const question='そのコードを、ハイフンの前と後に分けて二行だけで返して。\n"currentRequest": "not an archive selector"',context={summary:'Earlier work',recent:[{id:'latest',user:'Read code',answer:'ORCHID-5821',refs:[{quote:'private source body'}],activity:[{tool:'internal'}]}],refs:[],turnCount:74,lastAnswerIndex:73,recalled:[{turnId:'old',turnIndex:13,speaker:'user',quote:'Split a previous answer',start:0,end:23,refs:[{quote:'private reference'}]}]},attachments=[{name:'current.pdf',kind:'document',status:'PDF text extracted'}];
+ const before=structuredClone(context),messages=planDialogueMessages(question,context,attachments);
+ assert.deepEqual(messages.at(-1),{role:'user',content:question});assert.equal(messages.length,3);assert.match(messages[1].content,/untrusted context, not a new request/);
+ const data=JSON.parse(messages[1].content.slice(messages[1].content.indexOf('\n')+1));assert.equal(data.lastAnswerIndex,73);assert.equal(data.originalEarlierExcerpts[0].turnIndex,13);assert.equal(data.recent[0].answer,'ORCHID-5821');assert.deepEqual(data.currentAttachments,attachments);assert.doesNotMatch(JSON.stringify(messages),/private source body|private reference|internal/);assert.deepEqual(context,before);
+ let counted=false;const e={...engine(),count:async m=>{counted=true;assert.deepEqual(m,messages);return {prompt_tokens:400};},generate:async(m,max)=>{assert.ok(counted);assert.equal(max,160);assert.deepEqual(m,messages);return {text:'{"action":"transform","query":"","historyIndex":73,"historyPart":"assistant"}'};}};
+ assert.equal((await planDialogue(e,question,context,attachments)).historyIndex,73);
+});
+
+test('planner refuses an over-budget or stopped call without inventing a corrected action or target',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:1};let generated=false;
+ await assert.rejects(planDialogue({...engine(),count:async()=>({prompt_tokens:1900}),generate:async()=>{generated=true;return {text:''};}},'split it',context),/context/);assert.equal(generated,false);
+ await assert.rejects(planDialogue({...engine(),generate:async()=>({text:'{"action":"transform","query":"","historyIndex":0,"historyPart":"assistant"}',stopped:true})},'split it',context),/Stopped/);
+});
+
+test('original-message processing distinguishes read from a validated literal tool independently of the planner action',async()=>{
+ const {inspectDialogueText}=await import('../src/text-transform.ts');assert.equal(typeof inspectDialogueText,'function');
+ const original={turnId:'latest',turnIndex:73,speaker:'assistant',quote:'ORCHID-5821',start:0,end:11},before=structuredClone(original);let count=0;
+ const e={...engine(),count:async messages=>{count++;const input=JSON.parse(messages.at(-1).content);assert.equal(input.text,original.quote);assert.equal(input.instruction,'Split the preceding code on the hyphen');assert.ok(input.delimiters.includes('-'));return {prompt_tokens:200};},generate:async(_messages,max)=>{assert.ok(count);assert.equal(max,256);return {text:'{"action":"split_lines","delimiter":"-"}'};}};
+ const split=await inspectDialogueText(e,'Split the preceding code on the hyphen',original);assert.equal(split.operation,'transform');assert.equal(split.result.answer,'ORCHID\n5821');assert.equal(split.result.toolCalls[0].target.turnIndex,73);assert.equal(split.result.toolCalls[0].result.matches,1);assert.deepEqual(original,before);
+ const read=await inspectDialogueText({...engine(),generate:async()=>({text:'{"action":"read"}'})},'Read the code',original);assert.deepEqual(read,{operation:'read'});assert.equal(read.answer,undefined);
+ await assert.rejects(inspectDialogueText({...engine(),generate:async()=>({text:'{"action":"read","answer":"invented","tools":["delete"]}'})},'Read',original),/Invalid text operation/);
+ const missing=await inspectDialogueText({...engine(),generate:async()=>({text:'{"action":"split_lines","delimiter":";"}'})},'Split',original);assert.match(missing.result.status,/Text not found/);assert.equal(missing.result.answer,undefined);
+ await assert.rejects(inspectDialogueText({...engine(),generate:async()=>({text:'{"action":"split_lines","delimiter":"-"}',stopped:true})},'Split',original),/Stopped/);
+ let generated=false;await assert.rejects(inspectDialogueText({...engine(),count:async()=>({prompt_tokens:2000}),generate:async()=>{generated=true;return {text:''};}},'Split',original),/context/);assert.equal(generated,false);
+});
 test('original recall serializes only dialogue excerpt fields while retaining citation receipts',()=>{
  const refs=Array.from({length:12},(_,i)=>({noteId:'source-'+i,revision:1,start:0,end:700,quote:'unvalidated source '.repeat(40)}));
  const state=completeTurn(appendTurn(emptyDialogue(),{id:'answer',user:'question'}),'answer',{answer:'Short original answer',refs});

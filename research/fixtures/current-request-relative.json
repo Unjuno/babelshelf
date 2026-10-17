@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "id": "relative-split",
+      "expected": null,
+      "json": false,
+      "reset": true,
+      "maxTokens": 64,
+      "profile": "greedy",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "そのコードを、ハイフンの前と後に分けて二行だけで返して。"
+        }
+      ]
+    },
+    {
+      "id": "relative-first",
+      "expected": null,
+      "json": false,
+      "reset": true,
+      "maxTokens": 64,
+      "profile": "greedy",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "この会話の最初のユーザーメッセージに書かれた検証コードを、原文を確認してコードだけ答えて。新しいメモには保存しないで。"
+        }
+      ]
+    },
+    {
+      "id": "relative-capture",
+      "expected": null,
+      "json": false,
+      "reset": true,
+      "maxTokens": 64,
+      "profile": "greedy",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "今の回答をそのまま新しいメモに保存したい。"
+        }
+      ]
+    },
+    {
+      "id": "relative-user",
+      "expected": null,
+      "json": false,
+      "reset": true,
+      "maxTokens": 64,
+      "profile": "greedy",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "直前に私が書いたメッセージを、そのまま引用して。"
+        }
+      ]
+    },
+    {
+      "id": "relative-older",
+      "expected": null,
+      "json": false,
+      "reset": true,
+      "maxTokens": 64,
+      "profile": "greedy",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Select which earlier dialogue message the CURRENT request refers to. Return ONLY JSON {\"target\":\"latest_answer|first_user|latest_user|specified\"}, choosing one target. latest_answer: the preceding assistant answer, including an anaphoric request to use or transform it without another explicit position. first_user: explicitly the first user message in this conversation. latest_user: explicitly what the user said in the preceding user message. specified: another explicitly identified older message or position. Select the relationship from the CURRENT request only. Do not choose a message merely because an old request has similar words. Do not output numbers, text content, an answer, permissions or a tool call."
+        },
+        {
+          "role": "user",
+          "content": "この会話の14番目のユーザーメッセージを引用して。"
+        }
+      ]
+    }
+  ]
+}
