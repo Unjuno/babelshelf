@@ -33,3 +33,18 @@ test('validated defaults are copied and immutable and preserve protected roots',
 test('OCR registry cannot claim installation or select an unregistered custom runtime',()=>{
  const candidate=structuredClone(settings);candidate.models.ocr[0].installed=true;assert.throws(()=>validateSettings(candidate),/Unknown/);candidate.models.ocr=[{value:'remote-ocr',label:'Remote'}];assert.throws(()=>validateSettings(candidate),/Unsupported/);
 });
+
+import {readDeviceStorage,requestStorageProtection,storageBytes} from '../src/device-storage.ts';
+test('device storage reports only measured browser values and never asks permission while reading',async()=>{
+ let requests=0;const port={estimate:async()=>({usage:20,quota:100}),persisted:async()=>false,persist:async()=>{requests++;return false;}};
+ assert.deepEqual(await readDeviceStorage(port),{usage:20,quota:100,available:80,persistent:false,canRequest:true});assert.equal(requests,0);
+ const result=await requestStorageProtection(port);assert.equal(requests,1);assert.equal(result.outcome,'not-granted');assert.equal(result.state.persistent,false);
+ assert.equal((await readDeviceStorage({})).available,null);assert.equal((await readDeviceStorage({estimate:async()=>({usage:NaN,quota:Infinity})})).usage,null);
+ assert.equal((await readDeviceStorage({estimate:async()=>({usage:200,quota:100})})).available,0);
+ assert.equal((await readDeviceStorage({estimate:async()=>{throw Error('unavailable');},persisted:async()=>true})).persistent,true);
+ assert.equal((await requestStorageProtection({})).outcome,'unsupported');assert.equal(storageBytes(null),'Unknown');assert.equal(storageBytes(0),'0 B');
+});
+test('persistence request cannot manufacture verified protection when the browser does not confirm it',async()=>{
+ const result=await requestStorageProtection({persist:async()=>true,persisted:async()=>false});assert.equal(result.outcome,'granted');assert.equal(result.state.persistent,false);
+ const denied=await requestStorageProtection({persist:async()=>{throw Error('NotAllowed');},persisted:async()=>false});assert.equal(denied.outcome,'not-granted');assert.equal(denied.state.persistent,false);
+});

@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit91 product is `52ef8bef7e563ea1`; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit92 product is `916f27b73f131db7`; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -30,3 +30,5 @@ Recent implementation deltas: Unit82 adds deterministic explicit-expression math
 Unit89 adds relative app text sizing and measured composer reservation; native PC root32px/320px-width reflow and controlled composition guard pass, without phone/OS-font claims. Unit90 routes existing isolated ONNX models through trusted backend registrations, rejects unknown IDs and preserves worker Stop/fault switching. Third-engine routing is controlled contract evidence only, not a new usable runtime. Actual current-build offline Bonsai4B sourced-answer regression passes. LFM normal registration remains dependent on an exact pre-generation tokenizer/template API, removed from the pinned wllama3 public interface; preliminary generation evidence is not revoked or upgraded.
 
 Unit91 adds reviewed divergent ordinary source-free note content recovery: native two branches, stale review refusal, new destination revision and retained source branch in History/export. It does not merge generated/source-bearing/media/system metadata or dialogue, and does not close those broader recovery gates.
+
+Unit92 exposes measured origin storage estimates in Local files/initial preparation and explicitly requested browser persistence. Native Chrome denied the request and UI truthfully remains Best effort; canonical before/after backups identical. This does not close phone quota/eviction/retention or large-archive gates.
