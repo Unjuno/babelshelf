@@ -34,3 +34,10 @@ Backup verifies new pins against retained task/run revisions, exact body/title, 
 Schedule status derives from both same-page activity and the canonical execution matching task ID, definition and due instant. A retained running record must not become Paused merely because its original page closed. Its action is Check execution. The existing transactional claim remains authoritative: another live owner refuses; checking an expired running claim records Interrupted without executing. Retry is a separate explicit action. The display does not guess lease expiry or guarantee that a closed process remains alive, and it does not add background execution.
 
 Unit50 native PC evidence covers Memory-edited task reflection, real process interruption, explicit expired-claim check, an actual unprepared-model failure on Retry, historical notification pins and notification-only deletion. That failure is not successful inference or a timed-execution/device acceptance result.
+
+
+## Unit57 prepared offline foreground success
+
+Current product09ce5657aa1c9149 has scoped actualPC evidence for a paused future one-off task explicitly run after an offline browser-process start. The prepared4B returned24 with current originalv4 citation and retained model/runtime revisions; one successful Attempt1/v2 execution, completion cursor and separately pinned notice persisted. A later offline process opened that event's exact result; reading/deleting only the event left the task/run unchanged. Further restart retained Completed/oneexecution and disabled replay. Interactive dialogue was unchanged by scheduled inference.
+
+This does not enable a closed-PWA timer or OS notification, prove timed wakeup or physical-phone resource behavior, or replace recurrence/lease/retry controls. Exact operations/artifacts are in TEST-RESULTS.txt; earlier interruption/failure evidence is retained.

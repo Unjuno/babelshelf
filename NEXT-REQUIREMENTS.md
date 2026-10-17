@@ -2,7 +2,7 @@
 
 The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It supersedes the earlier bottom-toggle UI brief and chronological design notes.
 
-## Current handoff after Unit56
+## Current handoff after Unit57
 
 Model-independent work has superseded the historical Unit31 source-rescue approach below. Unit34/45 share a local inference port with Stop and model/runtime revision lifecycle guards; this is not arbitrary custom-model compatibility. Unit35 implements finite reviewed appearance/model-selection settings patches; Tools definition model edits remain pending. Unit42/43 make folder rename and delete/Trash recovery atomic with canonical note/history metadata. Unit44 exposes selected-revision Markdown downloads separately from full-state brainpacks.
 
@@ -78,3 +78,6 @@ Unit55 adds actual approved4B Answer/source/exactSave plus offline-before-naviga
 
 
 Unit56 verifies current-model-independent Send natural opened-file correction through automaticload/context/planning/source/proposal, reviewedapprovalv3, offlineprocessreopen, historicalv2citation and append-onlyUndov4 onPC. No app/promptchange or benchmark; broaderlanguage/device/all-function gates stay open. README/currenthandoff now distinguish supersededUnit31 rescue and newer process/settings evidence.
+
+
+Unit57 verifies currentproduct actual4B paused-task manualforeground success afterofflineprocessstart, currentv4citation/modelpins, exactnotice result, read/event-onlydelete and laterofflineprocess completion/no-replay retention. Interactive dialogue/priornotes unchanged. No app/promptchange, timed/closedPWA/OSnotification or physical-device claim.
