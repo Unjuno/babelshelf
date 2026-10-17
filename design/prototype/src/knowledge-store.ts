@@ -12,13 +12,14 @@ import {parseTask,formatTask,taskDefinition,taskNextAt,taskRunView,noticeView,no
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
 export {prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
-export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef};
+export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef};
 type Canonical=ReturnType<typeof createNote>;
 export function projectNote(n:Canonical):NoteView {
- const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{})};
+ const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{})};
 }
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 function readSnapshot(tx:IDBTransaction,done:(value:StateSnapshot)=>void){
@@ -86,6 +87,12 @@ export class KnowledgeStore {
  async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}
  async views(){return (await this.all()).filter(n=>n.state==='active').map(projectNote);}
  async original(ref:OriginalRef):Promise<OriginalAsset>{const asset=await this.transaction<OriginalAsset>(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').get(originalKey(ref.id));q.onsuccess=()=>done(q.result);});readOriginal(asset,ref);return asset;}
+ async saveTranscript(id:string,value:Transcript,newOriginal?:OriginalAsset){
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done)=>{
+   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
+   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Transcript already saved');const asset=newOriginal??raw.result,note=transcriptNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
+  });
+ }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[]){
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');

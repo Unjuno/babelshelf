@@ -5,5 +5,6 @@ import '../src/prototype.css';
 import './product.css';
 const root=ReactDOM.createRoot(document.getElementById('root')!);
 if(new URLSearchParams(location.search).get('check')==='harness')import('../src/HarnessCheck').then(({default:HarnessCheck})=>root.render(<HarnessCheck/>));
+else if(new URLSearchParams(location.search).get('check')==='speech')import('../src/SpeechCheck').then(({default:SpeechCheck})=>root.render(<SpeechCheck/>));
 else root.render(<div className="device-screen product-screen" id="app-screen" data-testid="device-screen"><div className="mobile-app-viewport"><NativeViewport><Prototype/></NativeViewport></div></div>);
 if('serviceWorker' in navigator)navigator.serviceWorker.getRegistration().then(existing=>existing??navigator.serviceWorker.register('./sw.js')).catch(error=>console.error('Offline preparation failed',error));

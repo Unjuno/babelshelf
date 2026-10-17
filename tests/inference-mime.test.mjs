@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mkdtemp,writeFile,rm} from 'node:fs/promises';import os from 'node:os';import path from 'node:path';import {createDevServer} from '../scripts/serve.mjs';
+test('local inference module and wasm assets use executable MIME types with nosniff',async()=>{
+ const root=await mkdtemp(path.join(os.tmpdir(),'babelshelf-mime-'));await writeFile(path.join(root,'engine.mjs'),'export default 1');await writeFile(path.join(root,'engine.wasm'),new Uint8Array([0,97,115,109]));const server=createDevServer(root);await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ try{const base='http://127.0.0.1:'+server.address().port;for(const [name,type] of [['engine.mjs','text/javascript'],['engine.wasm','application/wasm']]){const response=await fetch(base+'/'+name);assert.ok(response.headers.get('content-type').startsWith(type));assert.equal(response.headers.get('x-content-type-options'),'nosniff');}}finally{await new Promise(r=>server.close(r));await rm(root,{recursive:true});}
+});

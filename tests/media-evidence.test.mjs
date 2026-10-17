@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createNote,withdrawNote,searchNotes,validateRefs} from '../dist/core.js';
+test('withdrawn audio excludes its transcript and generated descendants from current evidence while retaining exact history',()=>{
+ const audio={...createNote({body:'',path:'Attachments/audio.md'}),originalAsset:{id:'audio1',revision:1,sha256:'a'.repeat(64)},id:'audio1'},transcript={...createNote({body:'CEDAR-4826',path:'Attachments/transcript.md'}),mediaSource:audio.originalAsset};const ref={noteId:transcript.id,revision:1,start:0,end:10,quote:'CEDAR-4826'},answer=createNote({body:'CEDAR-4826',kind:'generated',sources:[ref]});const before=[audio,transcript,answer];assert.ok(searchNotes(before,'CEDAR-4826').some(n=>n.noteId===transcript.id));const after=[withdrawNote(audio,1),transcript,answer];assert.equal(searchNotes(after,'CEDAR-4826').length,0);assert.equal(validateRefs(after,[ref]).ok,false);assert.equal(transcript.revisions[0].body,'CEDAR-4826');
+});

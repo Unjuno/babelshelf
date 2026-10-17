@@ -1,8 +1,9 @@
+import speechLanguages from './speech-languages.json' with {type:'json'};
 import {settings} from './app-settings.ts';
 
 export type PreferenceGroup='models'|'appearance'|'connection';
 const defaults={
- models:{textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
+ models:{transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
  appearance:{theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass},
  connection:{downloads:settings.defaults.downloads},
 };
@@ -19,9 +20,10 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('textLibrary' in value)&&!('decisionLibrary' in value)){
   value.textLibrary=value.textModel?[value.textModel]:[];value.decisionLibrary=value.decisionModel?[value.decisionModel]:[];
  }
+ if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!==Object.keys(defaults[group]).sort().join('|'))throw Error('Unknown or missing setting');
  if(group==='models'){
-  const m=value as Preferences['models'];
+  const m=value as Preferences['models'];if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
   for(const [role,library,selected] of [['text',m.textLibrary,m.textModel],['decision',m.decisionLibrary,m.decisionModel]] as const){
    if(!Array.isArray(library)||new Set(library).size!==library.length||library.some(id=>!id||!settings.models[role].some(x=>x.value===id)))throw Error('Unsupported model library');
    if(selected!==''&&!library.includes(selected))throw Error('Add the model before selecting it');

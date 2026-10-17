@@ -82,3 +82,5 @@ No model weights, downloaded inference runtime, private user notes or credential
 Attachment/decision processing contracts and current limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Explicit Send stores original bytes, canonical projections and input atomically; reopening resolves verified originals without file reselection. TXT/MD decoding and raw byte provenance are connected. OCR/transcription/video understanding remain unprepared; native playback does not imply model understanding.
 
 Browser storage is origin-specific: 4173, 4180 and 4181 do not automatically share IndexedDB. Use local backup/restore to transfer between origins. The adapter uses the existing mlb-memory-v1 schema without clearing it. The 4180 development server now serves repository source, not the older outputs copy.
+
+Local speech: Whisper tiny has explicit verified preparation, local WASM recognition and original-linked reviewed transcript notes. See [speech contract](docs/SPEECH-CONTRACT.md) for current bounds, actual evidence and remaining phone/accuracy gates.

@@ -13,8 +13,8 @@
     },
     {
       "path": "./core.js",
-      "bytes": 8570,
-      "sha256": "ad8e6c4d17284a86ee756e935ee464e784104fd98df873ecea470846f64020a6"
+      "bytes": 8997,
+      "sha256": "5e4d866ddb3e7f68031a9f6338926425ceaf5d44d6612df7ef7e436fd9696029"
     },
     {
       "path": "./diagnostics.js",
@@ -114,7 +114,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "d3260f3523b8a38a6c261c2bb32f8938d60b421e947020f3e24d50aa78d24048"
+      "sha256": "980e16ad826f81f9c810eeb4d20095bcf6673493416d68bdd85bda9c2137083e"
     },
     {
       "path": "./ui.js",
