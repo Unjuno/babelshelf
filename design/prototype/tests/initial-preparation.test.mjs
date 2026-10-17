@@ -40,3 +40,8 @@ test('selected connected decision role is prepared once without silently adding 
  assert.throws(()=>initialPreparationPlan({...prefs,decisionModel:'d1-3B'},{text:true,speech:true,ocr:true}),/Decision runtime not connected/);
  assert.equal(initialPreparationPlan(initial(),{text:true,speech:true,ocr:true}).steps.some(s=>s.role==='decision'),false);
 });
+
+test('standard-set presence is not reported as text verification',()=>{
+ const plan=initialPreparationPlan(initial(),{text:true,speech:true,ocr:true});
+ assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.bytes,0);
+});
