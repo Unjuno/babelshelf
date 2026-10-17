@@ -8,9 +8,9 @@
     "update:runtime-lock": "node scripts/update-mobile-runtime-lock.mjs",
     "test:runtime": "playwright test",
     "test:sites": "node --test tests/sites-worker.test.mjs",
-    "predev": "npm run check:runtime",
+    "predev": "npm run check:runtime && node scripts/prepare-ocr-runtime.mjs",
     "dev": "vite",
-    "prebuild": "npm run check:runtime",
+    "prebuild": "npm run check:runtime && node scripts/prepare-ocr-runtime.mjs",
     "build": "tsc && vite build && node scripts/prepare-sites-build.mjs"
   },
   "dependencies": {
@@ -24,7 +24,8 @@
     "motion": "12.42.2",
     "pdfjs-dist": "6.4.299",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "tesseract.js": "7.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

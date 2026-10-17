@@ -29,3 +29,7 @@ test('validated defaults are copied and immutable and preserve protected roots',
  assert.throws(()=>validated.storage.protectedRoots.pop(),TypeError);
  candidate.storage.protectedRoots[0]='Other';assert.throws(()=>validateSettings(candidate));
 });
+
+test('OCR registry cannot claim installation or select an unregistered custom runtime',()=>{
+ const candidate=structuredClone(settings);candidate.models.ocr[0].installed=true;assert.throws(()=>validateSettings(candidate),/Unknown/);candidate.models.ocr=[{value:'remote-ocr',label:'Remote'}];assert.throws(()=>validateSettings(candidate),/Unsupported/);
+});

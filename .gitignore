@@ -9,3 +9,5 @@ node_modules/
 design/prototype/dist/
 design/prototype/test-results/
 design/prototype/playwright-report/
+
+design/prototype/.ocr-runtime/

@@ -1,14 +1,14 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "models": {
     "text": [
       {
         "value": "4B",
-        "label": "Bonsai 2 · 4B"
+        "label": "Bonsai 2 \u00b7 4B"
       },
       {
         "value": "2B",
-        "label": "Bonsai 2 · 2B"
+        "label": "Bonsai 2 \u00b7 2B"
       }
     ],
     "decision": [
@@ -18,11 +18,11 @@
       },
       {
         "value": "d1-omni-600M",
-        "label": "Open d1 · Omni 600M"
+        "label": "Open d1 \u00b7 Omni 600M"
       },
       {
         "value": "d1-3B",
-        "label": "Open d1 · 3B"
+        "label": "Open d1 \u00b7 3B"
       }
     ],
     "transcription": [
@@ -38,6 +38,12 @@
         "parameters": 74000000,
         "language": "Multilingual"
       }
+    ],
+    "ocr": [
+      {
+        "value": "tesseract-7",
+        "label": "Tesseract 7"
+      }
     ]
   },
   "defaults": {
@@ -47,7 +53,8 @@
     "theme": "system",
     "background": "paper",
     "glass": "clear",
-    "transcriptionModel": ""
+    "transcriptionModel": "",
+    "ocrModel": ""
   },
   "appearance": {
     "themes": [

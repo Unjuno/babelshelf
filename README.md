@@ -86,3 +86,5 @@ Attachment/decision processing contracts and current limits: [MEDIA-HARNESS.md](
 Browser storage is origin-specific: 4173, 4180 and 4181 do not automatically share IndexedDB. Use local backup/restore to transfer between origins. The adapter uses the existing mlb-memory-v1 schema without clearing it. The 4180 development server now serves repository source, not the older outputs copy.
 
 Local speech: Whisper tiny has explicit verified preparation, local WASM recognition and original-linked reviewed transcript notes. See [speech contract](docs/SPEECH-CONTRACT.md) for current bounds, actual evidence and remaining phone/accuracy gates.
+
+- Local PNG/JPEG OCR now has pinned Tesseract runtime/language assets, explicit preparation, reviewed atomic raw/derived storage and region-aware source metadata. Read docs/OCR-CONTRACT.md. Japanese sample recognition had errors; do not claim broad accuracy. Unsaved image-plus-question context, scanned PDF OCR, video vision and physical-device/full-offline acceptance remain pending.

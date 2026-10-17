@@ -1,9 +1,10 @@
+import {OCR_LANGUAGES,type OcrLanguage} from './ocr-assets.ts';
 import speechLanguages from './speech-languages.json' with {type:'json'};
 import {settings} from './app-settings.ts';
 
 export type PreferenceGroup='models'|'appearance'|'connection';
 const defaults={
- models:{transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
+ models:{ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
  appearance:{theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass},
  connection:{downloads:settings.defaults.downloads},
 };
@@ -21,9 +22,10 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   value.textLibrary=value.textModel?[value.textModel]:[];value.decisionLibrary=value.decisionModel?[value.decisionModel]:[];
  }
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
+ if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('ocrModel' in value)&&!('ocrLibrary' in value)&&!('ocrLanguage' in value)){value.ocrModel='';value.ocrLibrary=[];value.ocrLanguage='eng+jpn';}
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!==Object.keys(defaults[group]).sort().join('|'))throw Error('Unknown or missing setting');
  if(group==='models'){
-  const m=value as Preferences['models'];if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
+  const m=value as Preferences['models'];if(!Array.isArray(m.ocrLibrary)||new Set(m.ocrLibrary).size!==m.ocrLibrary.length||m.ocrLibrary.some(id=>id!=='tesseract-7')||m.ocrModel!==''&&!m.ocrLibrary.includes(m.ocrModel)||!OCR_LANGUAGES.includes(m.ocrLanguage))throw Error('Unsupported image reader');if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
   for(const [role,library,selected] of [['text',m.textLibrary,m.textModel],['decision',m.decisionLibrary,m.decisionModel]] as const){
    if(!Array.isArray(library)||new Set(library).size!==library.length||library.some(id=>!id||!settings.models[role].some(x=>x.value===id)))throw Error('Unsupported model library');
    if(selected!==''&&!library.includes(selected))throw Error('Add the model before selecting it');

@@ -1,3 +1,4 @@
+import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
@@ -102,6 +103,12 @@ export class KnowledgeStore {
   return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done)=>{
    const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
    const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('PDF text already saved');const asset=newOriginal??raw.result,note=pdfTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
+  });
+ }
+ async saveOcrText(id:string,value:OcrText,newOriginal?:OriginalAsset){
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done)=>{
+   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
+   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
   });
  }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[]){

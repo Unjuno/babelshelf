@@ -3,6 +3,7 @@ import {readFile,writeFile,readdir,mkdir,copyFile} from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 const prototype=path.resolve('design/prototype');
+execFileSync(process.execPath,[path.join(prototype,'scripts/prepare-ocr-runtime.mjs')],{stdio:'inherit'});
 execFileSync(process.execPath,[path.join(prototype,'node_modules/typescript/bin/tsc'),'--project',path.join(prototype,'product/tsconfig.json')],{stdio:'inherit'});
 execFileSync(process.execPath,[path.join(prototype,'node_modules/vite/bin/vite.js'),'build','--config',path.join(prototype,'product.vite.config.ts')],{cwd:prototype,stdio:'inherit'});
 const root=path.join(prototype,'dist/app'),files=[];
@@ -11,7 +12,8 @@ await mkdir(path.join(root,'licenses'),{recursive:true});for(const name of await
 await walk(root);files.sort((a,b)=>a.path.localeCompare(b.path));
 const build=createHash('sha256').update(JSON.stringify(files)).digest('hex').slice(0,16),models=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
 const speech=JSON.parse(await readFile('design/prototype/src/speech-manifest.json','utf8'));
-const remote=[models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
+const ocr=JSON.parse(await readFile('design/prototype/src/ocr-manifest.json','utf8'));
+const remote=[...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
 const worker=`const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
 const absolute=path=>new URL(path,self.registration.scope).href;
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);for(const file of FILES){const response=await fetch(absolute(file.path),{cache:'no-store',credentials:'same-origin'});if(!response.ok)throw Error('App asset missing');const bytes=await response.clone().arrayBuffer(),digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');if(bytes.byteLength!==file.bytes||digest!==file.sha256)throw Error('App asset verification failed');await cache.put(absolute(file.path),response);}})()));

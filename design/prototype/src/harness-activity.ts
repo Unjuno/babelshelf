@@ -1,5 +1,5 @@
 // Audit data only. A receipt never authorizes execution, replay, writes or network.
-export const activityTools=['model.prepare','model.unload','speech.prepare','pdf.read','speech.transcribe','model.load','memory.search','memory.read','dialogue.plan','dialogue.compact','dialogue.read','text.transform','memory.propose_correction','knowledge.answer'] as const;
+export const activityTools=['image.read','ocr.prepare','model.prepare','model.unload','speech.prepare','pdf.read','speech.transcribe','model.load','memory.search','memory.read','dialogue.plan','dialogue.compact','dialogue.read','text.transform','memory.propose_correction','knowledge.answer'] as const;
 export type ActivityTool=typeof activityTools[number];
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Activity={schema:1;id:string;tool:ActivityTool;input:Json;startedAt:string;status:'running'|'succeeded'|'failed'|'stopped';finishedAt?:string;output?:Json;error?:{code:string;message:string}};
@@ -26,7 +26,7 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
  // A final record failure must not run the tool again or invent a tool failure.
  try{const reported=failureOf(result);await persist(finishActivity(started,{output:project(result),...(reported!==undefined?{error:reported}:{})}));}catch{throw Error('Operation completed · activity record unavailable');}return result;
 }
-export function activityLabel(tool:ActivityTool){return {'model.prepare':'Prepare text model','model.unload':'Unload model','speech.prepare':'Prepare speech model','pdf.read':'Read PDF','speech.transcribe':'Transcribe','model.load':'Load model','memory.search':'Search','memory.read':'Read file','dialogue.plan':'Select action','dialogue.compact':'Context','dialogue.read':'Read earlier message','text.transform':'Text operation','memory.propose_correction':'Review changes','knowledge.answer':'Answer'}[tool];}
+export function activityLabel(tool:ActivityTool){return {'image.read':'Read image','ocr.prepare':'Prepare image reader','model.prepare':'Prepare text model','model.unload':'Unload model','speech.prepare':'Prepare speech model','pdf.read':'Read PDF','speech.transcribe':'Transcribe','model.load':'Load model','memory.search':'Search','memory.read':'Read file','dialogue.plan':'Select action','dialogue.compact':'Context','dialogue.read':'Read earlier message','text.transform':'Text operation','memory.propose_correction':'Review changes','knowledge.answer':'Answer'}[tool];}
 export function updateActivity(list:Activity[],next:Activity):Activity[]{
  validateActivity(list);validateActivity([next]);const old=list.find(a=>a.id===next.id);
  if(!old){if(next.status!=='running')throw Error('Activity start unavailable');const added=[...list,structuredClone(next)];validateActivity(added);return added;}
