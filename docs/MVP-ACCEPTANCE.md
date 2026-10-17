@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `974958b1c9ca8682`; combined PC evidence extends through Unit125; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `5e41fe61ff848b5e`; combined PC evidence extends through Unit126; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -42,3 +42,5 @@ Unit122 verifies the actual normal ONNX asset-only-to-Load/Unload transition aft
 Unit124 completes the separate Asyncify/memory32 native build and actual PC execution/count agreement. Build54234 is terminal. Normal LFM admission remains open; forced compatibility resources on Chrome do not establish Safari/device acceptance.
 
 Unit125 connects optional fixed LFM350M to normal model controls with packaged verified default/compat CPU runtime. Actual cold offline normal UI lifecycle passes after the prepared-state propagation fix; Hello routing fails with retained invalid operation output. Original observer failures and independent backup revalidation remain explicit. This candidate is not a useful-chat replacement certificate. No default/data/UI layout change; physical devices, useful general routing and full MVP gates remain.
+
+Unit126 conditions planner instructions on the existing allowed scope. Actual fresh LFM count776->509 with unchanged input/context; no LFM quality retry. Current-build native offline prepared Bonsai4B natural knowledge answer16/currentv2 citations passes, preserving notes/settings/old dialogue. General routing, LFM failure and device/full-offline gates remain.

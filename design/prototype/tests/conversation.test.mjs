@@ -367,3 +367,14 @@ test('deferred context failure or a source edit during preparation cannot start 
  await assert.rejects(groundedAnswer(store,port,'test','Question','marker','answer',context,()=>{},[],undefined,async()=>{throw Error('Stopped');}),/Stopped/);
  await assert.rejects(groundedAnswer(store,port,'test','Question','marker','answer',context,()=>{},[],undefined,async()=>{records=[reviseNote(source,{body:'Corrected'},1)];return context;}),/Source changed/);assert.equal(calls,0);
 });
+
+
+test('planner instructions describe only available dialogue/file/input scopes',()=>{
+ const fresh={summary:'',recent:[],refs:[],turnCount:0};const first=planDialogueMessages('hello',fresh)[0].content;
+ assert.doesNotMatch(first,/ZERO_BASED_INDEX|CURRENT RESULT|For a request about the opened file|Saving a current/);
+ assert.match(first,/No write, delete or network permission/);assert.match(first,/untrusted data/);assert.match(first,/exact existing path or filename/);
+ const past=planDialogueMessages('previous message',{...fresh,recent:[{id:'old',user:'prior'}],turnCount:1})[0].content;
+ assert.match(past,/ZERO_BASED_INDEX/);assert.doesNotMatch(past,/CURRENT RESULT|For a request about the opened file/);
+ const attached=planDialogueMessages('read this',fresh,[{name:'a.txt',kind:'text',status:'Read'}])[0].content;
+ assert.match(attached,/CURRENT INPUT SCOPE/);assert.match(attached,/descriptors are not their contents/);assert.doesNotMatch(attached,/For calculate|ACROSS saved knowledge|ZERO_BASED_INDEX/);
+});
