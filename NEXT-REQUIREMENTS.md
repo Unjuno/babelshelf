@@ -12,6 +12,8 @@ Unit48 replaces incidental Latin bigram matching with complete words/codes while
 
 Unit49 adds a reproducible [desktop process-restart storage check](docs/OFFLINE-PROCESS-CHECK.md): three actual Chrome PIDs, two offline-context restarts, persisted capture/import/search/correction/history/reindex and backup/conflict/no-op restore. This closes that bounded PC storage flow only; installed-PWA/OS-isolated/mobile and inference-inclusive restart acceptance remain open.
 
+Unit50 fixes retained running executions showing Paused after their local owner closes. Schedule now shows canonical Running and Check execution; existing lease/Interrupted/explicit Retry authority stays unchanged. PC offline UI verified same-file edits, actual interruption/unprepared failure, pinned notification history and event-only deletion. This adds no successful generation, closed-PWA execution or device guarantee.
+
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.

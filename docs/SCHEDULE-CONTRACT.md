@@ -27,3 +27,10 @@ Measured state-transition and browser evidence is in TEST-RESULTS, including act
 New notification events pin taskRevision, runRevision and attempt. Title/prompt and the result body come from the claimed task and exact terminal execution revision, so later task edits or occurrence retries do not replace the old event's result. Both the claimed notify policy and current task notify flag must allow a new event; disabling notifications during execution is respected. Opening a new notification result shows the retained execution revision and attempt; Open current file deliberately navigates to the live canonical file. Existing legacy notifications remain byte-identical and label their unpinned link Open current result.
 
 Backup verifies new pins against retained task/run revisions, exact body/title, attempt and definition. Missing/forged pins refuse; legacy unpinned records remain readable. Read/unread and notification-only deletion preserve the source task/run. These are in-app outcomes, not a closed-PWA timer or OS push guarantee.
+
+
+## Retained execution display (Unit50)
+
+Schedule status derives from both same-page activity and the canonical execution matching task ID, definition and due instant. A retained running record must not become Paused merely because its original page closed. Its action is Check execution. The existing transactional claim remains authoritative: another live owner refuses; checking an expired running claim records Interrupted without executing. Retry is a separate explicit action. The display does not guess lease expiry or guarantee that a closed process remains alive, and it does not add background execution.
+
+Unit50 native PC evidence covers Memory-edited task reflection, real process interruption, explicit expired-claim check, an actual unprepared-model failure on Retry, historical notification pins and notification-only deletion. That failure is not successful inference or a timed-execution/device acceptance result.
