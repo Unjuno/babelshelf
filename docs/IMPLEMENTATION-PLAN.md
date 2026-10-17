@@ -1,5 +1,11 @@
 # Integration plan — 2026-10-17
 
+## Current execution status
+
+The vertical flows below have since been implemented in the accepted product entry: canonical persistence/search/direct editing; continuous dialogue/compaction; actual local Bonsai generation/Stop; reviewed ordinary-note corrections and finite existing-schedule patches with atomic receipts/Undo; foreground tasks/events; durable originals and state backup; prepared local speech, OCR, PDF text and empty-page OCR; optional isolated Open d1 text decisions. See TEST-RESULTS.txt and each operation's contract for measured PC evidence, failures and exact limits. Earlier “next” and transient-preview paragraphs below are the retained original plan, not current status.
+
+Continue by closing the remaining gates rather than counting test cases: language/summary/compaction fidelity and planner failure reproduction, natural-language task creation and typed settings/tools changes, general scene/video frames and verified container timing, compatible custom adapters, archive/history/storage pressure and divergent restore, physical Android/iPhone and full-process offline acceptance. No baseline, model pins or locked phone runtime may be discarded to simplify integration. No publication or push is authorized.
+
 ## Completed and preserved
 
 - Baseline PWA has path-aware immutable revisions, path/collision validation, literal capture/search/read routes and local file exchange infrastructure.

@@ -4,7 +4,7 @@ The accepted product now exports checksummed schema2 brainpacks from one atomic 
 
 ## Reviewed correction integration
 
-Ordinary-note model proposals now have a bounded adapter, explicit Before/After review, full expected-record checks and notes+runs atomic revision/receipt persistence. History offers revision-based Undo with stale-target rejection. See CORRECTION-CONTRACT.md for exact limits. Dedicated schedule/event persistence is documented in SCHEDULE-CONTRACT.md; older pending statements below are chronological.
+Ordinary-note model proposals and finite typed patches to existing registered schedules use explicit Before/After review, whole-record expected checks and notes+runs atomic revision/receipt persistence. History offers revision-based Undo with stale-target rejection. Task cursor changes also invalidate pending approval/Undo; model patches cannot change activation/timezone or clear restored-task quarantine. See CORRECTION-CONTRACT.md for exact limits. Dedicated schedule/event persistence is documented in SCHEDULE-CONTRACT.md; older pending statements below are chronological.
 
 ## Production engine/shell update — 2026-10-17
 

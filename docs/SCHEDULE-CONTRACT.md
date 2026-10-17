@@ -10,4 +10,6 @@ Scheduled generation is isolated from interactive conversation. It only reads ev
 
 Notifications are separate versioned outcome notes linked to task/run IDs. Read/unread is a canonical revision. Opening links to the actual result/task; deletion withdraws only the event and never deletes the task/run. Recovery is separate. This is an in-app inbox, not push delivery.
 
-Measured state-transition and browser evidence is in TEST-RESULTS. Actual successful scheduled inference, physical-device timing, sleep/resume behavior and full-feature offline acceptance remain pending.
+Existing local-zone schedules also support reviewed model-originated typed patches through CORRECTION-CONTRACT.md. Prompt/condition/notify changes share the dedicated editor's canonical revision/cursor rules; activation and timezone are preserved. A pending review blocks same-page foreground claims. Other clients or execution-cursor changes invalidate approval/Undo through whole-record checks. Memory and Schedule project that same record.
+
+Measured state-transition and browser evidence is in TEST-RESULTS, including actual manual foreground scheduled inference (Unit3). Physical-device timing, sleep/resume behavior, closed-PWA execution and full-feature offline acceptance are separate unverified or unsupported gates.

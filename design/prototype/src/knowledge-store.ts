@@ -15,7 +15,7 @@ import {openDB} from '../../../dist/storage.js';
 import {parsePreference,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath} from './memory-paths.ts';
 import {localDate} from './schedule-time.ts';
-import {parseTask,formatTask,taskDefinition,taskNextAt,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
+import {parseTask,formatTask,taskDefinition,taskNextAt,reviseTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
@@ -150,7 +150,7 @@ export class KnowledgeStore {
   });
  }
  async putTask(task:Task,id?:string,expected?:number){return this.editRecords(records=>{
-  let note;if(id){const old=records.find(n=>n.id===id&&n.state==='active');if(!old||old.ui?.recordType!=='schedule'||latest(old).version!==expected)throw Error('Version conflict · reload schedule');note=reviseNote(old,{body:formatTask(task)},expected);if(note.ui.requiresReview)delete note.taskCursor;note.ui={...note.ui,requiresReview:false};}
+  let note;if(id){const old=records.find(n=>n.id===id&&n.state==='active');if(!old||old.ui?.recordType!=='schedule'||latest(old).version!==expected)throw Error('Version conflict · reload schedule');note=reviseTaskNote(old,task);}
   else{note=createNote({path:'Schedule/'+localDate()+'-'+crypto.randomUUID()+'.md',title:task.prompt.trim().split('\n')[0].slice(0,72),body:formatTask(task)});note.ui={recordType:'schedule'};}
   const definition=taskDefinition(task);if(!note.taskCursor||note.taskCursor.definition!==definition||note.ui.requiresReview)note.taskCursor={definition,nextAt:taskNextAt(task).toISOString()};
   return {put:[note],value:projectNote(note)};

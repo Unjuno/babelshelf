@@ -31,6 +31,13 @@ export function taskNextAt(task:Task,now=new Date()):Date{
  if(task.repeat==='once')return nextScheduleOccurrence(task,new Date(new Date(task.date+'T00:00:00').getTime()-86400000));
  return nextScheduleOccurrence(task,now);
 }
+export function reviseTaskNote(old:any,task:Task,now=new Date()){
+ if(!old||old.state!=='active'||old.ui?.recordType!=='schedule'||old.ui?.protected||old.ui?.managed)throw Error('Schedule target protected or unavailable');
+ const note=reviseNote(old,{body:formatTask(task)},latest(old).version);
+ if(note.ui.requiresReview)delete note.taskCursor;note.ui={...note.ui,requiresReview:false};
+ const definition=taskDefinition(task);if(!note.taskCursor||note.taskCursor.definition!==definition)note.taskCursor={definition,nextAt:taskNextAt(task,now).toISOString()};
+ return note;
+}
 function typedRecord(type:string,path:string,body:string){return {...createNote({path,title:path.split('/').at(-1),body}),ui:{recordType:type}};}
 function runBody(value:RunData){return '# Execution\n\n```json\n'+JSON.stringify(value,null,2)+'\n```\n';}
 export function taskRunView(note:any):RunData{
