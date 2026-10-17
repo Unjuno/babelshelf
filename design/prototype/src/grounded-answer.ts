@@ -11,7 +11,7 @@ export function dialogueAnswerMessages(question:string,context?:DialogueContext)
 export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,model:string,question:string,query=question,mode='answer',context?:DialogueContext,check=()=>{},inputReadings:CurrentInputRef[]=[],workingFile?:WorkingFile){
  check();if(workingFile&&inputReadings.length)throw Error('Conflicting input scopes');
  if(engine.loaded!==model){if(!engine.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await engine.load(model);}
- check();
+ check();engine=engine.pin?.()??engine;
  if(inputReadings.length)mode=mode==='summary'?'summary':'answer';
  let hits=workingFile?workingFileEvidence(await store.all(),workingFile,query):inputReadings.length?readingEvidence(await store.all(),inputReadings,query):mode==='chat'?[]:await store.search(query);if(!hits.length&&!workingFile&&mode!=='chat'&&!inputReadings.length)hits=await store.search(question);
  const records=await store.all(),eligible=new Set(buildIndex(records).docs.map((d:any)=>d.n.id)),pinned=(workingFile||mode==='chat'?[]:context?.refs??[]).filter(ref=>eligible.has(ref.noteId)&&validateRefs(records,[ref],{currentOnly:true}).ok);check();

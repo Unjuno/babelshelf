@@ -23,3 +23,30 @@ test('equivalent live adapter replacement keeps valid results without relying on
  const e=createTextInference(()=>p),pending=e.generate([]);p=fixture();release({text:'same pinned engine'});
  assert.equal((await pending).text,'same pinned engine');
 });
+
+
+test('one harness operation pins count and generation across model changes between calls',async()=>{
+ const p=fixture(),e=createTextInference(()=>p);let generations=0;
+ p.generate=async()=>{generations++;return {text:'wrong revision'};};
+ const operation=e.pin?.()??e;
+ assert.equal((await operation.count([])).prompt_tokens,9);
+ p.manifest.models[0].revision='replacement';
+ await assert.rejects(operation.generate([]),/Model changed/);
+ assert.equal(generations,0);
+ assert.equal((await e.generate([])).text,'wrong revision');
+});
+test('pinned operation cannot resume after Stop or load, while a new operation can',async()=>{
+ const p=fixture(),e=createTextInference(()=>p),operation=e.pin?.()??e;
+ e.stop();await assert.rejects(operation.count([]),/Stopped/);
+ const next=e.pin?.()??e;await e.load('local');
+ await assert.rejects(next.generate([]),/Stopped/);
+ assert.equal((await e.generate([])).text,'actual port output');
+});
+
+test('nested pins retain the same operation and cannot change models',async()=>{
+ const p=fixture(),e=createTextInference(()=>p),bound=e.pin();
+ assert.equal(bound.pin(),bound);let loads=0;p.load=async()=>loads++;
+ await assert.rejects(bound.load('local'),/Pinned inference/);assert.equal(loads,0);
+ p.manifest.contextTokens=4096;assert.equal(bound.manifest.contextTokens,2048);
+ await assert.rejects(bound.count([]),/Model changed/);
+});

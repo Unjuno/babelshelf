@@ -66,3 +66,6 @@ Unit32 replaces normal Unit31 A/B re-selection with harness-owned current-result
 ## Opened-file working target
 
 Unit33 implements persisted currentFile ID/version, serialized focus writes, typed file targets and scoped source/Before-After correction dispatch. Keep generated-output selection distinct; source eligibility, protected-system edit limits and whole-record CAS remain. Continue with model-independent runtime adapter extraction, general semantic-operation scope, typed settings/tools edits and remaining media/storage/device gates. Do not treat this increment as the full MVP.
+
+
+Unit53: shared local inference now binds model/runtime/context/cancellation across count-to-generation operations. Compaction/planning/grounding use it through the adapter. Model-independent lifecycle control; not a model quality benchmark, arbitrary engine compatibility or full-Send transaction. Physical-device and inference-inclusive offline acceptance remain open.

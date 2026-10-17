@@ -15,5 +15,5 @@ export function useBonsai(){
  function stop(){cancelled.current=true;engine.current?.abort();setProgress('Stopping…');}
  const port=useRef<TextRuntime>(null!);port.current={manifest,get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
  const inference=useRef<TextRuntime|null>(null);if(!inference.current)inference.current=createTextInference(()=>port.current);
- return {manifest,busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,unload,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
+ return {manifest,busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,unload,pin:inference.current.pin,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
 }

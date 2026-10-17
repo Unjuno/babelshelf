@@ -99,3 +99,10 @@ Selected, verified Open d1 may classify only the current request and readable at
 Baseline and accepted product share `dist/input-events.js` for Enter submission. Enter submits only without Shift, outside composition and without legacy IME keyCode229. Explicit Send remains unchanged. Shift+Enter retains native multiline editing; no timing delay or model call is added. Native product textarea forwards the original KeyboardEvent, while the protected phone runtime remains untouched.
 
 The229 check follows [MDN keydown/IME guidance](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event#keydown_events_with_ime): composition-boundary ordering can report isComposing=false for an IME event. Unit52 reproduces and verifies synthetic browser events plus ordinary browser Enter/Shift+Enter and exact canonical persistence. These controls do not certify physical OS/mobile IME behavior, dictation or virtual-keyboard layout.
+
+
+## Operation-scoped local inference (Unit53)
+
+The approved text port now exposes optional pin() for a single harness operation. It retains loaded model ID/revision, runtime revision, context capacity and cancellation epoch across token counts and generations, including changes between calls. The manifest is copied for consistent budgeting and result provenance. Stop/load invalidates old handles; new operations can bind the current port. Nested pin() returns the same handle; a bound handle cannot load another model. Equivalent React adapter-object replacement with unchanged pins remains valid.
+
+Conversation compaction, recalled-excerpt budgeting, planning and grounded answering acquire this boundary (grounding after explicit prepared-only load). The common adapter supplies it; plain test/legacy engines without the optional method keep their prior interface and do not gain this guarantee. This is per-operation, not an atomic transaction over an entire multi-stage Send. It grants no downloads, knowledge writes or compatibility for arbitrary models. No prompt, tokenizer, provider or worker format was changed.
