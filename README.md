@@ -88,3 +88,5 @@ Browser storage is origin-specific: 4173, 4180 and 4181 do not automatically sha
 Local speech: Whisper tiny has explicit verified preparation, local WASM recognition and original-linked reviewed transcript notes. See [speech contract](docs/SPEECH-CONTRACT.md) for current bounds, actual evidence and remaining phone/accuracy gates.
 
 - Local PNG/JPEG OCR now has pinned Tesseract runtime/language assets, explicit preparation, reviewed atomic raw/derived storage and region-aware source metadata. Read docs/OCR-CONTRACT.md. Japanese sample recognition had errors; do not claim broad accuracy. Unsaved image-plus-question context, scanned PDF OCR, video vision and physical-device/full-offline acceptance remain pending.
+
+- Reviewed OCR/PDF Use text now stages an attachment without changing the draft; Send imports raw/extracted notes and dialogue together, matching TXT/MD behavior. Current-file grounding includes mixed readable attachments, excludes raw-projection prose and historical pins, and refuses changed/withdrawn or oversized scopes. Read docs/INPUT-READINGS.md. Pending drafts before Send are not durable.

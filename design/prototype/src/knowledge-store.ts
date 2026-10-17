@@ -1,3 +1,4 @@
+import {buildInputReadings,validateInputReadings,type ReviewedText} from './input-readings.ts';
 import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
@@ -111,19 +112,20 @@ export class KnowledgeStore {
    const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
   });
  }
- async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[]){
+ async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');
   const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||!Array.isArray(turn.attachments)||new Set(turn.attachments.map(a=>a.id)).size!==turn.attachments.length||[...ids].some(id=>!turn.attachments!.some(a=>a.id===id))||turn.attachments.some(a=>!a.asset||a.asset.id!==a.id))throw Error('Attachment input mismatch');
-  const db=await this.open();return new Promise<any[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown;
+  const db=await this.open();return new Promise<any[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown,inputNotes=created;
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
     if(created.some(n=>current.notes.some(old=>old.id===n.id))||originals.some(a=>current.runs.some(r=>r.key===originalKey(a.id))))throw Error('Original already saved');
-    const notes=[...current.notes,...created],runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))];checkNotes(notes);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);
+    const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===(n.ocrText?'ocr':'pdf'))))throw Error('Input reading mismatch');checkNotes(notes);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
+    for(const a of turn.attachments!)if(a.reading&&!notes.some(n=>n.id===a.reading?.noteId&&n.state==='active'&&latest(n).version===a.reading?.revision))throw Error('Input source changed');
     for(const a of turn.attachments!)if(!notes.some(n=>n.id===a.id&&n.originalAsset&&n.state==='active'))throw Error('Original withdrawn or unavailable');
     checkAttachmentBatch(turn.attachments!.map(a=>({size:runs.find(r=>r.key===originalKey(a.id))!.value.bytes})));
-    for(const n of created)tx.objectStore('notes').add(n);for(const a of originals)tx.objectStore('runs').add(a,originalKey(a.id));tx.objectStore('settings').put(next,'ui-v1-dialogue');
-   }catch(e){error=e;tx.abort();}});tx.oncomplete=()=>resolve(created);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Original save failed'));
+    for(const n of [...created,...derived])tx.objectStore('notes').add(n);for(const a of originals)tx.objectStore('runs').add(a,originalKey(a.id));tx.objectStore('settings').put(next,'ui-v1-dialogue');
+   }catch(e){error=e;tx.abort();}});tx.oncomplete=()=>resolve(inputNotes);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Original save failed'));
   });
  }
  async corrections(noteId?:string):Promise<CorrectionReceipt[]>{return this.transaction(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').getAll();q.onsuccess=()=>done(q.result.filter(r=>r?.type==='note-correction'&&r.schema===1&&(!noteId||r.noteId===noteId)).sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt)));});}

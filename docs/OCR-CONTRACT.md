@@ -18,7 +18,11 @@ Read/Prepare attempts use the existing on-demand processing ledger. Completion m
 
 ## Current interaction boundary
 
-The current product path is attach/open PNG or JPEG → Read text → review → Save note → search/read/ask about the saved extraction. Direct unsaved photo-plus-question context is still pending. An unread binary attachment may not become evidence from its filename; existing Send guards remain. Reading an image does not currently fill an unsaved OCR input automatically. Scanned PDF remains separate from the image reader.
+The product path supports attach/open PNG or JPEG → Read text → review → Use text → Send with a question. Use text stages the reviewed extraction and keeps the draft unchanged; no knowledge write occurs there. Send atomically persists the original, a separate canonical OCR note and the dialogue reading link, matching TXT/MD import semantics. Explicit Save note remains available. Multiple TXT and reviewed OCR/PDF attachments share current-input grounding. A question is answered from selected excerpts of these files, with bounded history only to clarify intent/format. Unread binary attachments still stop generation; filename metadata never becomes evidence.
+
+The raw image record is eligibility metadata during current OCR grounding; later prose edits to its canonical note are excluded from OCR evidence. Every selected readable file must fit at least one excerpt in the tokenizer budget, otherwise generation refuses. Changed/withdrawn current inputs are checked before and after generation. Explicitly selected earlier dialogue messages take precedence over current attachments. New-note requests are routed normally; attachment-derived capture content is generated from verified excerpts and shown for review, never copied from the planner's invented factual body. See INPUT-READINGS.md.
+
+Scanned PDF OCR remains separate from this image reader. General scene understanding, video frames and unsaved OCR work surviving reload before Send remain pending.
 
 ## Licenses and evidence
 
