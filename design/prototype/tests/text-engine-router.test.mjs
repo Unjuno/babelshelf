@@ -50,3 +50,9 @@ test('adapter accepts harness task and rewrite output budgets and rejects actual
  validateOnnxTextBudget(1000,384);validateOnnxTextBudget(1000,768);
  assert.throws(()=>validateOnnxTextBudget(1500,768),/budget/);assert.throws(()=>validateOnnxTextBudget(0,769),/budget/);
 });
+
+test('structured worker failures retain bounded untrusted diagnostics without returning a result',async()=>{
+ const sent=[],worker={postMessage(m){sent.push(m);},terminate(){}};const client=createOnnxTextClient(worker),pending=client.call('generate');
+ worker.onmessage({data:{id:sent[0].id,type:'error',value:'Invalid model JSON · incomplete structured output',diagnostic:{raw:'{"action":"chat","query":"unfinished',reason:'structured:budget',truncated:false}}});
+ await assert.rejects(pending,error=>error.name==='PlannerOutputError'&&error.diagnostic.reason==='structured:budget'&&error.diagnostic.raw.endsWith('unfinished'));
+});

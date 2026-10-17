@@ -148,7 +148,7 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  engine=engine.pin?.()??engine;
  const messages=planDialogueMessages(question,context,attachments);
  if((await engine.count(messages)).prompt_tokens+160>engine.manifest.contextTokens)throw Error('Input exceeds context limit');
- const generated=await engine.generate(messages,160);if(generated.stopped)throw Error('Stopped');
+ const generated=await engine.generate(messages,160,'dialogue-plan');if(generated.stopped)throw Error('Stopped');
  const invalid=(reason:string,message='Invalid model action'):never=>{throw new PlannerOutputError(message,generated.text,reason);};
  let value;try{value=parseJSON(generated.text);}catch{invalid('json','Invalid model JSON');}
  if(!value||typeof value!=='object'||Array.isArray(value))invalid('object');

@@ -1,6 +1,7 @@
+import {createStructuredTokenFilter} from './structured-decoding';
 import {validateOnnxTextBudget} from './text-model-manifest';
 /// <reference lib="webworker" />
-import {AutoModelForCausalLM,AutoTokenizer,env} from '@huggingface/transformers';
+import {AutoModelForCausalLM,AutoTokenizer,env,LogitsProcessor,LogitsProcessorList} from '@huggingface/transformers';
 import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
 import manifest from './onnx-text-manifest.json';
@@ -38,6 +39,7 @@ self.onmessage=async({data})=>{
  if(data.cmd==='abort'){controller?.abort();return;}
  if(busy){self.postMessage({id:data.id,type:'error',value:'Model busy'});return;}
  busy=true;controller=new AbortController();const progress=(value:string)=>self.postMessage({id:data.id,type:'progress',value});
+ let diagnostic:{raw:string;reason:string;truncated:boolean}|undefined;
  try{let value:any;const args=data.args??{};
   if(['init','status'].includes(data.cmd))value={[manifest.id]:{...await store.status(controller.signal),presenceOnly:true}};
   else if(data.cmd==='prepare'){
@@ -59,10 +61,15 @@ self.onmessage=async({data})=>{
   else if(data.cmd==='generate'){
    const {input,tokens}=encode(args.messages),maxTokens=args.maxTokens??256;
    validateOnnxTextBudget(tokens,maxTokens);
-   progress('Generating');const output=await model.generate({...input,max_new_tokens:maxTokens,do_sample:false});check();
-   value={text:tokenizer.decode(output.tolist()[0].slice(tokens),{skip_special_tokens:true})};
+   const filter=args.format?createStructuredTokenFilter(args.format,tokenizer,model.generation_config?.eos_token_id??tokenizer.eos_token_id):null;
+   const processors=new LogitsProcessorList();
+   if(filter){class FormatProcessor extends LogitsProcessor{_call(ids:bigint[][],logits:any){if(ids.length!==1)throw Error('Structured batch unsupported');try{filter!.mask(ids[0].slice(tokens),logits.data);}catch(error){const raw=ids[0].length>tokens?tokenizer.decode(ids[0].slice(tokens).map(Number),{skip_special_tokens:true}):'';diagnostic={raw:raw.slice(0,8192),reason:ids[0].length-tokens>=maxTokens-1?'structured:budget':'structured:continuation',truncated:raw.length>8192};throw Error('Invalid model JSON · structured generation stopped');}return logits;}}processors.push(new FormatProcessor());}
+   progress('Generating');const output=await model.generate({...input,max_new_tokens:maxTokens,do_sample:false,...(filter?{logits_processor:processors}:{})});check();
+   const generated=output.tolist()[0].slice(tokens);
+   if(filter&&!filter.complete(generated)){const raw=tokenizer.decode(generated,{skip_special_tokens:true});diagnostic={raw:raw.slice(0,8192),reason:'structured:incomplete',truncated:raw.length>8192};throw Error('Invalid model JSON · incomplete structured output');}
+   value={text:tokenizer.decode(generated,{skip_special_tokens:true})};
   }else throw Error('Unknown text operation');
   check();self.postMessage({id:data.id,type:'done',value});
- }catch(error){self.postMessage({id:data.id,type:'error',value:controller.signal.aborted?'Stopped':(error as Error).message});}
+ }catch(error){self.postMessage({id:data.id,type:'error',value:controller.signal.aborted?'Stopped':(error as Error).message,...(!controller.signal.aborted&&diagnostic?{diagnostic}:{})});}
  finally{controller=undefined;busy=false;}
 };

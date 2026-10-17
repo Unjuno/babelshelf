@@ -1,3 +1,4 @@
+import type {StructuredFormat} from './structured-grammar';
 import {TextEngineRouter} from './text-engine-router';
 import {createOnnxTextClient} from './onnx-text-client';
 import {combinedTextManifest} from './text-model-manifest';
@@ -21,7 +22,7 @@ export function useBonsai(models:CustomLocalModel[]=[],ready=true){
  async function importCustom(record:CustomLocalModel,files:File[]){return operation(async check=>{const models=[...records.current.filter(m=>m.id!==record.id),record];await syncRegistry(models,check);check();await engine.current.call('prepare',{model:record.id,allowNetwork:false,modelFile:files.find(f=>f.name.toLowerCase().endsWith('.gguf')),localFiles:files},events);check();const assets=await engine.current.call('status');check();setAssets(assets);setProgress('Verified');});}
  async function load(model:string){return operation(async check=>{await syncRegistry(records.current,check);check();setLoaded('');await engine.current.load(model,events);check();setLoaded(model);setProgress('Loaded');});}
  async function unload(){return operation(async check=>{await initialized.current;check();await engine.current.unload();check();setLoaded('');setProgress('Unloaded');});}
- async function generate(messages:unknown[],maxTokens=256){return operation(async check=>{await syncRegistry(records.current,check);check();if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens);check();if(cancelled.current)throw Error('Stopped');setProgress('');return result;});}
+ async function generate(messages:unknown[],maxTokens=256,format?:StructuredFormat){return operation(async check=>{await syncRegistry(records.current,check);check();if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens,format);check();if(cancelled.current)throw Error('Stopped');setProgress('');return result;});}
  function stop(){cancelEpoch.current++;cancelled.current=true;engine.current?.abort();setProgress('Stopping…');}
 
  const port=useRef<TextRuntime>(null!);port.current={get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};

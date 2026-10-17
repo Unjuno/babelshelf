@@ -32,7 +32,7 @@ export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,mod
  if(inputReadings.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId)))throw Error('Context limit · fewer attachments');
  if(!evidence.length&&(workingFile||!context))throw Error(hits.length?'Context limit':'No matching notes');
  const parse=(text:string)=>answerContext?parseChatAnswer(text,evidence,mode==='chat'):(()=>{const p=parseAnswer(text,evidence);return {answer:p.answer,sources:p.refs};})();
- check();let generated=await engine.generate(messages);check();if(generated.stopped)throw Error('Stopped');
+ check();let generated=await engine.generate(messages,256,mode==='chat'?'dialogue-answer':undefined);check();if(generated.stopped)throw Error('Stopped');
  let parsed:ReturnType<typeof parse>;
  try{parsed=parse(generated.text);}catch(error){
   if(!(error instanceof SyntaxError))throw error;
@@ -40,7 +40,7 @@ export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,mod
   // into a model response or treat malformed output as a successful answer.
   const retry=messages.map((message,index)=>index===0?{...message,content:message.content+' Output valid compact JSON. Escape quotation marks inside strings. No markdown or extra text.'}:message);
   if((await engine.count(retry)).prompt_tokens+256>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
-  generated=await engine.generate(retry);check();if(generated.stopped)throw Error('Stopped');
+  generated=await engine.generate(retry,256,mode==='chat'?'dialogue-answer':undefined);check();if(generated.stopped)throw Error('Stopped');
   try{parsed=parse(generated.text);}catch(retryError){if(retryError instanceof SyntaxError)throw Error('Invalid model JSON · retry');throw retryError;}
  }
  if(mode!=='chat'&&evidence.length&&!parsed.sources.length)throw Error('Answer has no verified source citation');

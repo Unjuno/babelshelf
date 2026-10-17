@@ -1,3 +1,4 @@
+import type {StructuredFormat} from './structured-grammar.ts';
 import {combinedTextManifest,isOnnxText,onnxTextManifest} from './text-model-manifest.ts';
 type Backend={manifest:any;loaded?:string|null;failed?:boolean;init:()=>Promise<any>;call:(cmd:string,args?:any,events?:any)=>Promise<any>;load:(id:string,events?:any)=>Promise<any>;unload:()=>Promise<any>;abort:()=>void;worker:{terminate:()=>void}};
 // One active text engine. Only the app constructs adapters; records cannot supply code.
@@ -34,7 +35,7 @@ export class TextEngineRouter{
   catch(error){if(this.active===backend)this.active=null;throw error;}
  }
  async unload(){this.discardFailed();const epoch=this.epoch,old=this.active;this.active=null;if(old)await old.unload();if(epoch!==this.epoch)throw Error('Stopped');}
- generate(messages:any[],events?:any,maxTokens=256){if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));return this.active.call('generate',{messages,maxTokens},events);}
+ generate(messages:any[],events?:any,maxTokens=256,format?:StructuredFormat){if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));return this.active.call('generate',{messages,maxTokens,...(format?{format}:{})},events);}
  abort(){
   this.epoch++;this.webml.abort();
   // WASM may block its worker event loop. Termination rejects all pending commands.

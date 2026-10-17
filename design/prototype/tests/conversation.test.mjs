@@ -313,3 +313,10 @@ test('one request cannot plan on one revision and answer on its replacement',asy
  await assert.rejects(groundedAnswer({all:async()=>[]},request,'local','Hello','','chat',context),/Model changed/);
  assert.equal(generations,1);assert.deepEqual(prior,emptyDialogue());
 });
+
+// A constrained transport request never replaces semantic/target validation.
+test('planner requests structured generation but still refuses an invalid target',async()=>{
+ let format;
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async(messages,max,requested)=>{format=requested;return {text:'{"action":"chat","query":"","target":"file"}'};}};
+ await assert.rejects(planDialogue(engine,'Hello',{summary:'',recent:[],refs:[],turnCount:0}),/Invalid model/);assert.equal(format,'dialogue-plan');
+});

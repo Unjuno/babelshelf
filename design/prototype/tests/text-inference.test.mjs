@@ -50,3 +50,9 @@ test('nested pins retain the same operation and cannot change models',async()=>{
  p.manifest.contextTokens=4096;assert.equal(bound.manifest.contextTokens,2048);
  await assert.rejects(bound.count([]),/Model changed/);
 });
+
+test('structured format crosses pinned inference without adding authority and late results still stop',async()=>{
+ const p=fixture(),e=createTextInference(()=>p),messages=[{role:'user',content:'Hello'}];let release;
+ p.generate=(received,max,format)=>{assert.equal(received,messages);assert.equal(max,160);assert.equal(format,'dialogue-plan');return new Promise(r=>release=r);};
+ const pending=e.pin().generate(messages,160,'dialogue-plan');e.stop();release({text:'{"action":"chat","query":""}'});await assert.rejects(pending,/Stopped/);assert.equal(e.save,undefined);
+});

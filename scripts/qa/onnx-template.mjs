@@ -1,0 +1,18 @@
+import {createStructuredTokenFilter} from '../../design/prototype/src/structured-decoding.ts';
+import {AutoTokenizer,env} from '../../design/prototype/node_modules/@huggingface/transformers/dist/transformers.node.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import {planDialogueMessages} from '../../design/prototype/src/conversation.ts';
+const [source,output]=process.argv.slice(2);
+env.allowRemoteModels=false;env.allowLocalModels=true;env.localModelPath='/inspection/';env.useBrowserCache=false;env.useFSCache=false;env.useCustomCache=true;
+env.customCache={async match(path){try{return new Response(await readFile(join(source,String(path).split('/').at(-1))));}catch{return new Response('Unavailable',{status:404});}},async put(){throw Error('No writes');}};
+const tokenizer=await AutoTokenizer.from_pretrained('smollm2-360m-instruct',{local_files_only:true});
+const messages=planDialogueMessages('Hello.',{summary:'',recent:[],refs:[],turnCount:0});
+const rendered=tokenizer.apply_chat_template(messages,{tokenize:false,add_generation_prompt:true});const tokens=tokenizer.apply_chat_template(messages,{return_dict:true,add_generation_prompt:true});
+const filter=createStructuredTokenFilter('dialogue-answer',tokenizer,tokenizer.eos_token_id);
+const scores=new Float32Array(tokenizer.model.vocab.length).fill(1);filter.mask([],scores);
+const allowed=[...scores].filter(Number.isFinite).length;
+const sample=tokenizer.encode(JSON.stringify({answer:'水🙂'}),{add_special_tokens:false});
+if(!allowed||!filter.complete(sample))throw Error('Actual tokenizer grammar mismatch');
+const evidence={allowedInitialTokens:allowed,actualMultilingualTokensAccepted:true,scope:'Actual official tokenizer template only, no inference',systemPreserved:rendered.includes(messages[0].content),lastRequestPreserved:rendered.endsWith('Hello.<|im_end|>\n<|im_start|>assistant\n'),promptTokens:tokens.input_ids.dims.at(-1),rendered};
+if(!evidence.systemPreserved||!evidence.lastRequestPreserved)throw Error('Template lost messages');await writeFile(output,JSON.stringify(evidence,null,2));console.log(JSON.stringify({...evidence,rendered:'retained in artifact'},null,2));

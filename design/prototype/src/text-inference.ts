@@ -1,5 +1,6 @@
+import type {StructuredFormat} from './structured-grammar.ts';
 // Local inference only. This port has no preparation, network, knowledge or write API.
-export type TextEngine={pin?:()=>TextEngine;manifest:{contextTokens:number};count:(messages:any[])=>Promise<{prompt_tokens:number}>;generate:(messages:any[],maxTokens?:number)=>Promise<{text:string;stopped?:boolean}>};
+export type TextEngine={pin?:()=>TextEngine;manifest:{contextTokens:number};count:(messages:any[])=>Promise<{prompt_tokens:number}>;generate:(messages:any[],maxTokens?:number,format?:StructuredFormat)=>Promise<{text:string;stopped?:boolean}>};
 export type TextRuntime=Omit<TextEngine,'pin'>&{pin?:()=>TextRuntime;manifest:TextEngine['manifest']&{models:{id:string;revision:string}[];runtime:{revision:string}};readonly loaded:string;readonly assets:Record<string,{filesPresent?:boolean}>;load:(model:string)=>Promise<void>;stop:()=>void};
 export function createTextInference(read:()=>TextRuntime):TextRuntime{
  let epoch=0;
@@ -12,7 +13,7 @@ export function createTextInference(read:()=>TextRuntime):TextRuntime{
    manifest,loaded:s.p.loaded,get assets(){return read().assets;},pin:()=>bound,
    async load(){throw Error('Pinned inference cannot load a model');},stop:()=>api.stop(),
    async count(messages){check(s);const result=await api.count(messages);check(s);return result;},
-   async generate(messages,maxTokens){check(s);const result=await api.generate(messages,maxTokens);check(s);return result;},
+   async generate(messages,maxTokens,format){check(s);const result=await api.generate(messages,maxTokens,format);check(s);return result;},
   };return bound;
  }
  const api:TextRuntime={
@@ -21,6 +22,6 @@ export function createTextInference(read:()=>TextRuntime):TextRuntime{
   async load(model){const p=read();if(!p.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');epoch++;await p.load(model);},
   stop(){epoch++;read().stop();},
   async count(messages){const s=snapshot(),result=await s.p.count(messages);check(s);if(!result||!Number.isSafeInteger(result.prompt_tokens)||result.prompt_tokens<0)throw Error('Invalid token count');return {prompt_tokens:result.prompt_tokens};},
-  async generate(messages,maxTokens=256){if(!Number.isSafeInteger(maxTokens)||maxTokens<1)throw Error('Invalid output budget');const s=snapshot(),result=await s.p.generate(messages,maxTokens);check(s);if(result?.stopped)throw Error('Stopped');if(!result||typeof result.text!=='string')throw Error('Invalid generation result');return {text:result.text};},
+  async generate(messages,maxTokens=256,format){if(!Number.isSafeInteger(maxTokens)||maxTokens<1)throw Error('Invalid output budget');const s=snapshot(),result=await s.p.generate(messages,maxTokens,format);check(s);if(result?.stopped)throw Error('Stopped');if(!result||typeof result.text!=='string')throw Error('Invalid generation result');return {text:result.text};},
  };return api;
 }
