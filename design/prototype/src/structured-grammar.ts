@@ -1,10 +1,12 @@
-import {HARNESS_ACTIONS} from './harness-actions.ts';
-export type StructuredFormat='dialogue-plan'|'dialogue-answer';
+import {HARNESS_ACTIONS,scopedHarnessActions,validatePlannerScope,type PlannerScope} from './harness-actions.ts';
+export type StructuredFormat='dialogue-plan'|'dialogue-answer'|{type:'dialogue-plan';scope:PlannerScope};
 type State={nodes:number[];remaining:number;min:number;max:number};
 type Node={epsilon:number[];edges:{accept:(byte:number)=>boolean;to:number}[]};
 type Fragment={start:number;end:number};
 export function createStructuredGrammar(format:StructuredFormat){
- if(!['dialogue-plan','dialogue-answer'].includes(format))throw Error('Unsupported output format');
+ const kind=typeof format==='string'?format:format?.type;
+ if(!['dialogue-plan','dialogue-answer'].includes(kind))throw Error('Unsupported output format');
+ const scope=typeof format==='object'?validatePlannerScope(format.scope):undefined;
  const nodes:Node[]=[];
  const node=()=>{nodes.push({epsilon:[],edges:[]});return nodes.length-1;};
  const edge=(from:number,to:number,accept:(byte:number)=>boolean)=>nodes[from].edges.push({to,accept});
@@ -19,17 +21,37 @@ export function createStructuredGrammar(format:StructuredFormat){
   return {start,end};
  };
  const integer=():Fragment=>{const start=node(),digits=node(),end=node();edge(start,end,b=>b===48);edge(start,digits,b=>b>=49&&b<=57);edge(digits,digits,b=>b>=48&&b<=57);nodes[digits].epsilon.push(end);return {start,end};};
+ // States scale with decimal width, not turn count; no leading zeroes.
+ const boundedInteger=(max:number):Fragment=>{
+  const branches:Fragment[]=[];
+  for(let length=1;length<=String(max).length;length++){
+   const bound=length===String(max).length?String(max):'9'.repeat(length),start=node(),end=node();
+   let states=new Map([[true,start]]);
+   for(let pos=0;pos<length;pos++){
+    const next=new Map<boolean,number>();
+    for(const [tight,from]of states)for(let digit=pos===0&&length>1?1:0;digit<=(tight?Number(bound[pos]):9);digit++){
+     const nextTight=tight&&digit===Number(bound[pos]);let to=next.get(nextTight);if(to===undefined){to=pos===length-1?end:node();next.set(nextTight,to);}edge(from,to,b=>b===48+digit);
+    }states=next;
+   }branches.push({start,end});
+  }return alt(branches);
+ };
  const field=(name:string,value:Fragment)=>seq(literal(','+JSON.stringify(name)+':'),value);
  let root:Fragment;
- if(format==='dialogue-answer')root=seq(literal('{"answer":'),string(),literal('}'));
+ if(kind==='dialogue-answer')root=seq(literal('{"answer":'),string(),literal('}'));
  else{
   const alternatives:Fragment[]=[];
-  for(const action of HARNESS_ACTIONS){
+  for(const action of scope?scopedHarnessActions(scope):HARNESS_ACTIONS){
    const targets:(string|undefined)[]=[...action.targets];if(!['recall','transform'].includes(action.id))targets.unshift(undefined);
    for(const target of targets){
     const parts=[literal('{"action":'+JSON.stringify(action.id)+',"query":'),string()];
     if(target)parts.push(field('target',literal(JSON.stringify(target))));
-    if(target==='history')parts.push(field('historyIndex',integer()),field('historyPart',alt([literal('"user"'),literal('"assistant"')])));
+    if(target==='history'){
+     if(scope?.assistantIndices){
+      const selectors=[seq(field('historyIndex',boundedInteger(scope.historyCount-1)),field('historyPart',literal('"user"')))];
+      if(scope.assistantIndices.length)selectors.push(seq(field('historyIndex',alt(scope.assistantIndices.map(index=>literal(String(index))))),field('historyPart',literal('"assistant"'))));
+      parts.push(alt(selectors));
+     }else parts.push(field('historyIndex',scope?boundedInteger(scope.historyCount-1):integer()),field('historyPart',alt([literal('"user"'),literal('"assistant"')])));
+    }
     if(action.id==='capture'&&!target)parts.push(field('body',string()));
     parts.push(literal('}'));alternatives.push(seq(...parts));
    }

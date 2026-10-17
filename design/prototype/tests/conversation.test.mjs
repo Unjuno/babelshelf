@@ -318,5 +318,29 @@ test('one request cannot plan on one revision and answer on its replacement',asy
 test('planner requests structured generation but still refuses an invalid target',async()=>{
  let format;
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async(messages,max,requested)=>{format=requested;return {text:'{"action":"chat","query":"","target":"file"}'};}};
- await assert.rejects(planDialogue(engine,'Hello',{summary:'',recent:[],refs:[],turnCount:0}),/Invalid model/);assert.equal(format,'dialogue-plan');
+ await assert.rejects(planDialogue(engine,'Hello',{summary:'',recent:[],refs:[],turnCount:0}),/Invalid model/);assert.deepEqual(format,{type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}});
+});
+
+test('planner advertises the same available scopes it sends to local structured generation',async()=>{
+ const seen=[];
+ const e={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async(messages,max,format)=>{seen.push({messages,format});return {text:'{"action":"chat","query":""}'};}};
+ const context={summary:'',recent:[],refs:[],turnCount:2,currentResult:{turnId:'previous'},currentFile:{noteId:'opened',revision:1}};
+ await planDialogue(e,'Hello',context);
+ await planDialogue(e,'Read this',context,[{name:'recording.wav',kind:'audio',status:'Not prepared'}]);
+ assert.deepEqual(seen[0].format,{type:'dialogue-plan',scope:{inputs:false,file:true,current:true,historyCount:2,assistantIndices:[]}});
+ assert.deepEqual(seen[1].format,{type:'dialogue-plan',scope:{inputs:true,file:false,current:true,historyCount:2,assistantIndices:[]}});
+ const catalog=messages=>JSON.parse(messages[0].content.split('Available actions and their allowed target names: ')[1].split('. ')[0]);
+ assert.ok(catalog(seen[0].messages).find(a=>a.id==='answer').targets.includes('file'));
+ assert.deepEqual(catalog(seen[1].messages).find(a=>a.id==='answer').targets,['inputs']);
+ assert.equal(seen[1].format.scope.permission,undefined);assert.equal(context.currentFile.noteId,'opened');
+});
+
+test('planner assistant selectors come from retained originals across compaction, never failed-turn status',async()=>{
+ const {plannerScope}=await import('../src/conversation.ts');
+ let state=appendTurn(emptyDialogue(),{id:'original',user:'Question',answer:'Original answer'});
+ state=appendTurn(state,{id:'failed',user:'Another question',status:'Stopped'});
+ state={...state,compaction:{through:1,summary:'Untrusted summary mentioning an invented answer'}};
+ const scope=plannerScope(dialogueContext(state));
+ assert.equal(scope.historyCount,2);assert.deepEqual(scope.assistantIndices,[0]);assert.equal(scope.current,true);
+ assert.deepEqual(state.turns[1],{id:'failed',user:'Another question',status:'Stopped'});
 });

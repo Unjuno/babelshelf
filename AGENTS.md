@@ -2,6 +2,8 @@
 
 Use docs/MVP-ACCEPTANCE.md for the current evidence map and remaining gates; chronological unit notes retain detailed scope and supersession. The active goal remains incomplete.
 
+Read docs/PLANNER-SCOPE.md before changing planner output constraints. Request scope is derived from the harness snapshot; unavailable input/file/current targets and absent assistant originals must not become candidates. Exact assistant indices include archived originals, never failed statuses or summaries. Constraints do not establish semantic intent, authorize writes or replace downstream validation. Unit72's Qwen conversation still failed; Bonsai sourced-answer regression passed. Latest user permission allows additional local models without silently replacing existing selections.
+
 Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-PLAN.md, docs/STORAGE-CONTRACT.md and docs/TEST-RESULTS.txt before changing behavior. The user's newest explicit instruction wins.
 
 - docs/PRODUCT-SPEC.md is the accepted design; earlier history and old bottom-toggle tests do not define the new UI.
