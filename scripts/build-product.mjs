@@ -17,7 +17,8 @@ const speech=JSON.parse(await readFile('design/prototype/src/speech-manifest.jso
 const decision=JSON.parse(await readFile('design/prototype/src/decision-manifest.json','utf8'));
 const ocr=JSON.parse(await readFile('design/prototype/src/ocr-manifest.json','utf8'));
 const onnxText=JSON.parse(await readFile('design/prototype/src/onnx-text-manifest.json','utf8'));
-const remote=[...onnxText.files.map(f=>f.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
+const qwenText=JSON.parse(await readFile('design/prototype/src/qwen-text-manifest.json','utf8'));
+const remote=[...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url)];
 const worker=productWorker({build,files,remote});
 await writeFile(path.join(root,'sw.js'),worker);await writeFile(path.join(root,'build.json'),JSON.stringify({build,files},null,2));
 console.log('Product shell '+build+' · '+files.length+' verified assets');

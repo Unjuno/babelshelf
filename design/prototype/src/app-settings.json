@@ -13,6 +13,10 @@
       {
         "value": "smollm2-360m-instruct",
         "label": "SmolLM2 \u00b7 360M \u00b7 English"
+      },
+      {
+        "value": "qwen25-05b-instruct",
+        "label": "Qwen2.5 \u00b7 0.5B"
       }
     ],
     "decision": [

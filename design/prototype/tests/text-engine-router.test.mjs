@@ -56,3 +56,9 @@ test('structured worker failures retain bounded untrusted diagnostics without re
  worker.onmessage({data:{id:sent[0].id,type:'error',value:'Invalid model JSON · incomplete structured output',diagnostic:{raw:'{"action":"chat","query":"unfinished',reason:'structured:budget',truncated:false}}});
  await assert.rejects(pending,error=>error.name==='PlannerOutputError'&&error.diagnostic.reason==='structured:budget'&&error.diagnostic.raw.endsWith('unfinished'));
 });
+
+test('switching between fixed ONNX models reuses adapter but unloads old identity',async()=>{
+ const f=setup(),first=f.router.load(onnxTextManifest.id);f.finish();await first;
+ const second=f.router.load('qwen25-05b-instruct');await Promise.resolve();f.finish();await second;
+ assert.equal(f.router.loaded,'qwen25-05b-instruct');assert.equal(f.calls.filter(x=>x==='onnx:unload').length,1);assert.equal(f.router.manifest.models.find(m=>m.id===f.router.loaded).revision,'22942cb7d7ba4cc81bb4673549ca4d4614469b5e');
+});

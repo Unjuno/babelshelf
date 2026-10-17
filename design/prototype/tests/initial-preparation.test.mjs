@@ -22,3 +22,8 @@ test('additional ONNX preparation pins its own assets and preserves text selecti
  const prefs=initial();prefs.textModel='smollm2-360m-instruct';prefs.textLibrary.push(prefs.textModel);
  const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,366674624);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);
 });
+
+test('Qwen initial preparation uses its own combined files without unrelated runtime capacity',()=>{
+ const prefs=initial();prefs.textModel='qwen25-05b-instruct';prefs.textLibrary.push(prefs.textModel);
+ const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,519137612);assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.steps[0].readyLabel,'Files present');
+});

@@ -6,7 +6,7 @@ import {planDialogueMessages} from '../../design/prototype/src/conversation.ts';
 const [source,output]=process.argv.slice(2);
 env.allowRemoteModels=false;env.allowLocalModels=true;env.localModelPath='/inspection/';env.useBrowserCache=false;env.useFSCache=false;env.useCustomCache=true;
 env.customCache={async match(path){try{return new Response(await readFile(join(source,String(path).split('/').at(-1))));}catch{return new Response('Unavailable',{status:404});}},async put(){throw Error('No writes');}};
-const tokenizer=await AutoTokenizer.from_pretrained('smollm2-360m-instruct',{local_files_only:true});
+const tokenizer=await AutoTokenizer.from_pretrained(process.argv.includes('--qwen')?'qwen25-05b-instruct':'smollm2-360m-instruct',{local_files_only:true});
 const messages=planDialogueMessages('Hello.',{summary:'',recent:[],refs:[],turnCount:0});
 const rendered=tokenizer.apply_chat_template(messages,{tokenize:false,add_generation_prompt:true});const tokens=tokenizer.apply_chat_template(messages,{return_dict:true,add_generation_prompt:true});
 const filter=createStructuredTokenFilter('dialogue-answer',tokenizer,tokenizer.eos_token_id);
