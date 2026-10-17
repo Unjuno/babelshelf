@@ -10,7 +10,7 @@ import {notePath} from '../../../dist/files.js';
 import {validateDialogue} from './conversation.ts';
 import {parsePreference,preferenceGroup,formatPreference} from './preference-records.ts';
 import {parseTask,taskRunView,noticeView} from './task-records.ts';
-import {prepareCorrection} from './note-corrections.ts';
+import {prepareCorrection,correctionOperationRaw} from './note-corrections.ts';
 import {memoryFolderPath} from './memory-paths.ts';
 import {validateOriginalLinks} from './original-assets.ts';
 
@@ -60,8 +60,8 @@ function validateState(state:StateSnapshot){
  for(const {key,value:r} of state.runs)if(key.startsWith('ui-v1-correction-')||r?.type==='note-correction'){
   const n=state.notes.find(n=>n.id===r?.noteId),before=n?.revisions.find((v:any)=>v.version===r?.beforeVersion),after=n?.revisions.find((v:any)=>v.version===r?.afterVersion);
   if(r?.schema!==1||r.type!=='note-correction'||key!=='ui-v1-correction-'+r.id||!before||!after||r.afterVersion!==r.beforeVersion+1||!['applied','undone'].includes(r.status)||typeof r.appliedAt!=='string'||! /^[a-f0-9]{64}$/.test(r.afterHash)||typeof r.path!=='string')throw Error('Invalid correction receipt');
-  const raw={action:r.operation?.name==='text.split_lines'?'split_lines':r.operation?.name==='text.replace'?'replace':'invalid',...r.operation?.arguments};
-  const old={...n,state:'active',revisions:n.revisions.slice(0,r.beforeVersion)},prepared=prepareCorrection(old,r.request,JSON.stringify(raw));
+  const raw=correctionOperationRaw(r.operation,after.body);
+  const old={...n,state:'active',revisions:n.revisions.slice(0,r.beforeVersion)},prepared=prepareCorrection(old,r.request,raw);
   if(prepared.after!==after.body||!equal(prepared.operation,r.operation)||r.path!==notePath(n,r.beforeVersion))throw Error('Invalid correction operation');
   if(r.status==='undone'&&(!Number.isInteger(r.undoVersion)||r.undoVersion<=r.afterVersion||n.revisions[r.undoVersion-1]?.body!==before.body||typeof r.undoneAt!=='string'))throw Error('Invalid correction Undo');
  }
