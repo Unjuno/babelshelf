@@ -85,7 +85,8 @@ export async function parseStateBackup(text:string):Promise<StatePayload>{
  checkBackupText(text);const pack=JSON.parse(text);
  if(pack.payload?.schema===1){const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;}
  if(pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed');
- const payload=structuredClone(pack.payload),paths=payload.undefinedPaths;
+ // JSON.parse owns this graph; restoring optional values cannot mutate caller data.
+ const payload=pack.payload,paths=payload.undefinedPaths;
  if(!Array.isArray(paths)||paths.length>200000)throw Error('Invalid optional value encoding');const seen=new Set<string>();
  for(const path of paths){if(!Array.isArray(path)||path.length<2||!['notes','settings','runs'].includes(path[0])||path.some(k=>typeof k!=='string')||seen.has(JSON.stringify(path)))throw Error('Invalid optional value path');seen.add(JSON.stringify(path));let parent=payload;
   for(const key of path.slice(0,-1)){if(!parent||typeof parent!=='object'||!Object.hasOwn(parent,key))throw Error('Invalid optional value path');parent=parent[key];}

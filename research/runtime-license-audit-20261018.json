@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-18",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "scope": "Pinned Space source metadata; no runtime permission inferred from model or third-party notices",
+  "files": [
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/spaces/webml-community/ternary-bonsai-2-hermes-webgpu/raw/621e20782f208660f4f58283c2ce58430020f243/README.md",
+      "bytes": 560,
+      "sha256": "ccee49b04c5859a5898e0603b0d314cee73be765b1c1db2136b46d7596c3d4aa"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "url": "https://huggingface.co/spaces/webml-community/ternary-bonsai-2-hermes-webgpu/raw/621e20782f208660f4f58283c2ce58430020f243/THIRD_PARTY_NOTICES.md",
+      "bytes": 1439,
+      "sha256": "358505ebe13647c6f1e5215efb8bb3aaed27a7d5c7b2d41429f845f07484c349"
+    }
+  ],
+  "tree": {
+    "url": "https://huggingface.co/api/spaces/webml-community/ternary-bonsai-2-hermes-webgpu/tree/621e20782f208660f4f58283c2ce58430020f243?recursive=true&limit=100",
+    "sha256": "438faf0b9f4bf99deee26d8607b13f1acc93204a4684dd67af23659f85cad417",
+    "paths": [
+      "assets",
+      "fonts",
+      ".gitattributes",
+      "README.md",
+      "THIRD_PARTY_NOTICES.md",
+      "assets/index-625vxx6U.js",
+      "assets/index-HBoPlr2j.css",
+      "assets/qwen35-vision-Kzp5MMIJ.js",
+      "fonts/BrowserBraille.ttf",
+      "fonts/JetBrainsMono-Bold.woff2",
+      "fonts/JetBrainsMono-Regular.woff2",
+      "fonts/NotoSansSymbols2-OFL.txt",
+      "fonts/OFL.txt",
+      "index.html",
+      "sandbox.html"
+    ]
+  },
+  "findings": [
+    "README frontmatter has no license field",
+    "THIRD_PARTY_NOTICES explicitly covers Hermes visual references and fonts",
+    "No standalone runtime LICENSE file in this pinned tree",
+    "Runtime redistribution permission remains unconfirmed; direct preparation policy unchanged"
+  ]
+}
