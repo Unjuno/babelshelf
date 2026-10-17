@@ -1,3 +1,13 @@
+## Harness-owned current result — Unit32
+
+This section supersedes the Unit31 competing-speaker dispatch below. Models are replaceable adapters; current work identity must not depend on a second model selecting A/B after another selected the wrong old instruction.
+
+Dialogue schema1 has optional `currentResult: {turnId}`. Completing a nonempty assistant answer persists this pointer in the same expected-dialogue CAS write. Audit/status-only updates, failed submissions, saving a note and compaction preserve it. The pointer resolves exact retained assistant bytes and references; it does not copy an answer or make generated prose canonical knowledge. Historical records without a pointer derive the latest nonempty answer without rewriting any stored turns. Validation and state-backup validation reject a dangling pointer.
+
+The planner contract separates `target: current` from `target: history`. Current accepts no competing history index/speaker and resolves the stable harness-owned ID from the immutable prior snapshot. History requires explicit bounded index and speaker. Recall/transform without either typed target fail; raw invalid output stays on-demand evidence rather than being repaired into a guessed operation. Indexed capture remains compatible; current-result capture reuses exact original bytes/references in the existing review, without regeneration. This is an adapter protocol change, not a new permission.
+
+Normal Send no longer calls dialogue.subject or performs a competing-speaker generation. Its module and historical receipt validator remain for retained diagnostic evidence and existing backups. text.inspect still selects finite read/split/replace arguments; the harness performs literal operations and checks targets, sources, bounds, Stop and persistence. The model can still choose an incorrect action or explicitly historical target: this architecture does not claim universal intent understanding. Current work currently covers completed dialogue results; canonical-file/task working targets and further adapter extraction remain follow-up work.
+
 # Continuous input context
 
 The Input surface has one continuous local dialogue, with no session picker or New chat concept. Canonical knowledge stays in the notes store; conversation is working context and does not automatically create knowledge notes. Saving a proposed capture or an existing answer still requires the existing review/Save operation.

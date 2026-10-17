@@ -42,3 +42,7 @@ Run baseline Node/Markdown, prototype tests/build, product-shell tests and prote
 
 
 - Optional Open d1 Omni 600M now has a pinned isolated local text-decision adapter, with explicit preparation, native WebGPU execution and worker lifecycle. See [DECISION-CONTRACT.md](docs/DECISION-CONTRACT.md). Text graph preparation does not install media encoders, and finite decisions do not authorize writes. Selected prepared D1 now classifies current intent in ordinary Send; bounded read-only routes can proceed directly, while structured and context-dependent retrieval requests retain Bonsai planning. Full context, source validation and approval stay in the harness; phone/full offline acceptance remains open.
+
+## Latest direction: model-independent harness
+
+Unit32 replaces normal Unit31 A/B re-selection with harness-owned current-result identity and typed current/history targets. Continue toward canonical-file/task working targets and model/runtime adapter boundaries. Real-model tests prove integration/load/generation/Stop/offline compatibility and representative flows; do not center development on Bonsai prompt-variant benchmarking. All broader MVP/device gates remain open.

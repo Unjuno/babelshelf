@@ -2,7 +2,7 @@
 
 A smartphone-oriented, local knowledge interface inspired by GBrain. Stored knowledge is the source of truth; models are interfaces for operating on it.
 
-**The usable offline MVP is not complete.** Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
+**The usable offline MVP is not complete.** The current harness direction is model-independent working state: completed results have a stable local turn ID; follow-up operations resolve that ID instead of running Unit31's competing-speaker model rescue. See [conversation contract](docs/CONVERSATION-CONTRACT.md). Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
 
 Local backup now includes canonical records, original dialogue, folder/Trash metadata, correction receipts and newly persisted attachment originals in an atomic schema2 snapshot. Restore previews conflicts and refuses stale or conflicting full-state writes. Model/runtime assets and unsent/legacy unpersisted originals are excluded; divergent destination data still needs manual reconciliation. Current backup files are bounded to200MB; larger collections require future partitioned export. See [BACKUP-CONTRACT.md](docs/BACKUP-CONTRACT.md).
 

@@ -7,6 +7,43 @@ import {createNote,reviseNote} from '../../../dist/core.js';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('current result survives failed turns, compaction and legacy reload without model selection',async()=>{
+ const {validateDialogue,currentDialogueResult,resolveDialogueTarget}=await import('../src/conversation.ts');
+ let state=appendTurn(emptyDialogue(),{id:'one',user:'A code'});
+ state=completeTurn(state,'one',{answer:'CEDAR-4826',refs:[]});
+ assert.deepEqual(state.currentResult,{turnId:'one'});
+ state=appendTurn(state,{id:'two',user:'An unsuccessful request',status:'Stopped'});
+ state={...state,compaction:{through:2,summary:'A lossy summary'}};
+ state=completeTurn(state,'two',{activity:[]});
+ assert.equal(currentDialogueResult(validateDialogue(structuredClone(state))).quote,'CEDAR-4826');
+ assert.equal(resolveDialogueTarget(state,{target:'current'}).turnId,'one');
+ assert.equal(resolveDialogueTarget(state,{target:'history',historyIndex:0,historyPart:'user'}).quote,'A code');
+ const legacy=structuredClone(state);delete legacy.currentResult;
+ assert.equal(currentDialogueResult(validateDialogue(legacy)).turnId,'one');assert.equal(legacy.currentResult,undefined);
+ assert.throws(()=>validateDialogue({...state,currentResult:{turnId:'missing'}}),/result/);
+ assert.throws(()=>resolveDialogueTarget(state,{target:'current',historyIndex:0,historyPart:'user'}),/target/);
+ assert.throws(()=>resolveDialogueTarget(emptyDialogue(),{target:'current'}),/unavailable/);
+ state=completeTurn(state,'two',{answer:'New result'});assert.equal(currentDialogueResult(state).quote,'New result');
+});
+
+test('current-result request rejects competing selectors instead of silently correcting them',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:2,currentResult:{turnId:'one'}};
+ const e=raw=>({...engine(),generate:async()=>({text:JSON.stringify(raw)})});
+ assert.equal((await planDialogue(e({action:'transform',query:'',target:'current'}),'split it',context)).target,'current');
+ assert.equal((await planDialogue(e({action:'capture',query:'',target:'current'}),'save it',context)).target,'current');
+ for(const value of [{action:'transform',query:'',historyIndex:0,historyPart:'user'},{action:'transform',query:'',target:'current',historyIndex:0},{action:'recall',query:'',target:'other'},{action:'recall',query:'',target:'history'}])await assert.rejects(()=>planDialogue(e(value),'it',context),/Invalid/);
+});
+
+test('legacy current-result execution records portable identity before reading exact bytes',async()=>{
+ const {dialogueTargetInput,resolveDialogueTarget}=await import('../src/conversation.ts');
+ const {recordOperation}=await import('../src/harness-activity.ts');
+ const legacy=appendTurn(emptyDialogue(),{id:'legacy',user:'Earlier',answer:'CEDAR\n4826'}),events=[];
+ const original=await recordOperation('dialogue.read',dialogueTargetInput(legacy,{target:'current'}),async()=>resolveDialogueTarget(legacy,{target:'current'}),async event=>events.push(event));
+ assert.deepEqual(events[0].input,{target:'current',currentResult:{turnId:'legacy'}});
+ assert.equal(events[1].status,'succeeded');assert.equal(original.quote,'CEDAR\n4826');
+ assert.deepEqual(dialogueTargetInput(emptyDialogue(),{target:'current'}),{target:'current',currentResult:null});
+});
+
 test('speaker binding uses only exact competing originals and keeps the current instruction literal',async()=>{
  const {subjectMessages,resolveDialogueSubject}=await import('../src/dialogue-subject.ts');
  const a={turnId:'a',turnIndex:13,speaker:'user',quote:'An older request',start:0,end:16,refs:[{quote:'PRIVATE_REFERENCE'}]},b={turnId:'b',turnIndex:73,speaker:'assistant',quote:'CIDER-5928\n🌳',start:0,end:13,refs:[{quote:'PRIVATE_REFERENCE_B'}]},question='そのコード\n"instruction": "literal"';
@@ -32,14 +69,14 @@ test('planner gives the literal current request its own final message after untr
  const before=structuredClone(context),messages=planDialogueMessages(question,context,attachments);
  assert.deepEqual(messages.at(-1),{role:'user',content:question});assert.equal(messages.length,3);assert.match(messages[1].content,/untrusted context, not a new request/);
  const data=JSON.parse(messages[1].content.slice(messages[1].content.indexOf('\n')+1));assert.equal(data.lastAnswerIndex,73);assert.equal(data.originalEarlierExcerpts[0].turnIndex,13);assert.equal(data.recent[0].answer,'ORCHID-5821');assert.deepEqual(data.currentAttachments,attachments);assert.doesNotMatch(JSON.stringify(messages),/private source body|private reference|internal/);assert.deepEqual(context,before);
- let counted=false;const e={...engine(),count:async m=>{counted=true;assert.deepEqual(m,messages);return {prompt_tokens:400};},generate:async(m,max)=>{assert.ok(counted);assert.equal(max,160);assert.deepEqual(m,messages);return {text:'{"action":"transform","query":"","historyIndex":73,"historyPart":"assistant"}'};}};
+ let counted=false;const e={...engine(),count:async m=>{counted=true;assert.deepEqual(m,messages);return {prompt_tokens:400};},generate:async(m,max)=>{assert.ok(counted);assert.equal(max,160);assert.deepEqual(m,messages);return {text:'{"action":"transform","query":"","target":"history","historyIndex":73,"historyPart":"assistant"}'};}};
  assert.equal((await planDialogue(e,question,context,attachments)).historyIndex,73);
 });
 
 test('planner refuses an over-budget or stopped call without inventing a corrected action or target',async()=>{
  const context={summary:'',recent:[],refs:[],turnCount:1};let generated=false;
  await assert.rejects(planDialogue({...engine(),count:async()=>({prompt_tokens:1900}),generate:async()=>{generated=true;return {text:''};}},'split it',context),/context/);assert.equal(generated,false);
- await assert.rejects(planDialogue({...engine(),generate:async()=>({text:'{"action":"transform","query":"","historyIndex":0,"historyPart":"assistant"}',stopped:true})},'split it',context),/Stopped/);
+ await assert.rejects(planDialogue({...engine(),generate:async()=>({text:'{"action":"transform","query":"","target":"history","historyIndex":0,"historyPart":"assistant"}',stopped:true})},'split it',context),/Stopped/);
 });
 
 test('original-message processing distinguishes read from a validated literal tool independently of the planner action',async()=>{
@@ -76,7 +113,7 @@ test('compaction uses token counts, retains original turns and exact references,
  for(let i=0;i<9;i++)state=completeTurn(appendTurn(state,{id:String(i),user:'Long input '+i+' Japanese preference '.repeat(17)}),String(i),{answer:'Answer '+i+' Detail '.repeat(25),refs:i===0?[ref]:[]});
  const original=structuredClone(state.turns);let calls=0;const e={...engine(),generate:async m=>{calls++;assert.ok((await e.count(m)).prompt_tokens+192<=2048);return {text:'Earlier user requested Japanese. Code AMBER-42.'};}};
  const compact=await compactDialogue(state,e,'What was that code?');
- assert.ok(calls>0);assert.deepEqual(compact.turns,original);assert.ok(compact.compaction.through>0);
+ assert.ok(calls>0);assert.deepEqual(compact.turns,original);assert.ok(compact.compaction.through>0);assert.deepEqual(compact.currentResult,state.currentResult);
  assert.ok(dialogueContext(compact).summary.includes('AMBER-42'));
  assert.deepEqual(dialogueContext(compact).refs,[ref]);assert.equal(dialogueContext(compact).recent.at(-1).user,state.turns.at(-1).user);
  assert.ok((await e.count([{role:'user',content:JSON.stringify(dialogueContext(compact))}])).prompt_tokens<=850);
@@ -175,7 +212,7 @@ test('archive focus maps normalization back to exact original UTF-16 offsets',()
 });
 test('explicit history read resolves an original turn even when summary and similar questions are misleading',async()=>{
  let s=appendTurn(emptyDialogue(),{id:'first',user:'The original code is LILAC-7319.'});s=appendTurn(s,{id:'second',user:'What was the code?'});s.compaction={through:2,summary:'Wrong assistant claim: PINE.'};
- const context=dialogueContext(s,'Read my first message'),plan=await planDialogue({...engine(),generate:async()=>({text:'{"action":"recall","query":"","historyIndex":0,"historyPart":"user"}'})},'Read my first message',context);
+ const context=dialogueContext(s,'Read my first message'),plan=await planDialogue({...engine(),generate:async()=>({text:'{"action":"recall","query":"","target":"history","historyIndex":0,"historyPart":"user"}'})},'Read my first message',context);
  assert.equal(plan.historyIndex,0);assert.equal(context.turnCount,2);assert.equal(readDialogueTurn(s,plan.historyIndex).quote,s.turns[0].user);
  assert.throws(()=>readDialogueTurn(s,2),/unavailable/);assert.throws(()=>readDialogueTurn(s,-1),/unavailable/);
  await assert.rejects(()=>planDialogue({...engine(),generate:async()=>({text:'{"action":"chat","query":"","historyIndex":-1}'})},'read',context),/Invalid/);
@@ -221,7 +258,7 @@ test('literal-operation planning carries only selected original/current request 
 
 test('planner can select a read-only transformation only with an explicit original-turn target',async()=>{
  const state=completeTurn(appendTurn(emptyDialogue(),{id:'first',user:'code'}),'first',{answer:'CEDAR-4826'}),context=dialogueContext(state);
- const e={...engine(),generate:async()=>({text:'{"action":"transform","query":"","historyIndex":0,"historyPart":"assistant"}'})};
+ const e={...engine(),generate:async()=>({text:'{"action":"transform","query":"","target":"history","historyIndex":0,"historyPart":"assistant"}'})};
  assert.equal((await planDialogue(e,'Split the preceding answer',context)).action,'transform');
  await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"transform","query":""}'})},'split',context),/Invalid/);
  await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"transform","query":"","historyIndex":0}'})},'split',context),/Invalid/);

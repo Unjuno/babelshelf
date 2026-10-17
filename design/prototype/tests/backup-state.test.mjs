@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,makeBackup,withdrawNote} from '../../../dist/core.js';
-import {emptyDialogue,appendTurn} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,currentDialogueResult} from '../src/conversation.ts';
 import {prepareCorrection,applyCorrection} from '../src/note-corrections.ts';
 import {formatTask,taskDefinition} from '../src/task-records.ts';
 import {formatPreference} from '../src/preference-records.ts';
@@ -9,6 +9,15 @@ import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeSta
 
 const snapshot=()=>({notes:[createNote({path:'Inbox/原文.md',body:'水 Water 3L 🌳'})],settings:[{key:'ui-v1-dialogue',value:appendTurn(emptyDialogue(),{id:'t1',user:'Remember the exact original',answer:'Retained'})},{key:'ui-v1-folders',value:['Notes/日本語']},{key:'ui-v1-trash',value:[]}],runs:[]});
 const empty=()=>({notes:[],settings:[],runs:[]});
+
+test('working-result identity roundtrips with exact dialogue and rejects dangling backup pointers',async()=>{
+ const state=snapshot();state.settings[0].value=completeTurn(state.settings[0].value,'t1',{answer:'Exact\nresult 🌳'});
+ const before=structuredClone(state),parsed=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ assert.deepEqual(parsed.settings,state.settings);assert.deepEqual(state,before);
+ const restored=planStateRestore(empty(),parsed);assert.equal(restored.conflicts.length,0);
+ assert.equal(currentDialogueResult(restored.writes.settings[0].value).quote,'Exact\nresult 🌳');
+ state.settings[0].value.currentResult.turnId='missing';await assert.rejects(()=>makeStateBackup(state),/result/);
+});
 test('state backup retains exact originals, compaction, recovery metadata and correction receipts; tampering fails',async()=>{
  const state=snapshot(),p=prepareCorrection(state.notes[0],'Replace 3L with 4L','{"action":"replace","find":"3L","with":"4L"}'),a=applyCorrection(state.notes,p);
  state.notes=[a.note];state.runs=[{key:'ui-v1-correction-'+p.id,value:a.receipt}];

@@ -1,3 +1,7 @@
+## Current-result read metadata (Unit32)
+
+Normal Send uses typed current/history dialogue targets and no dialogue.subject re-resolver. dialogue.read input records the resolved current turn identity (including derived legacy identity) or explicit historical index/speaker; it contains only portable JSON. An absent current result is null, never undefined. The result carries the exact retained original and its source links, from the same immutable prior snapshot. Retained dialogue.subject receipts remain readable historical evidence. See CONVERSATION-CONTRACT.md.
+
 # Interactive harness activity
 
 Activity is local audit data on each canonical dialogue turn (`ui-v1-dialogue`). It is not a second knowledge store, a tool registration or execution authority. Older turns without activity remain readable; no records are cleared or retrospectively fabricated.
