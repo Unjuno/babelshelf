@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `b15f10656ef9ad06`; combined PC evidence extends through Unit112; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `b15f10656ef9ad06`; combined PC evidence extends through Unit113; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
