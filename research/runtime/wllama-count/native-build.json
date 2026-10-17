@@ -1,7 +1,7 @@
 {
   "compiled": true,
-  "browserExecuted": false,
-  "exactCountAgreementVerified": false,
+  "browserExecuted": true,
+  "exactCountAgreementVerified": true,
   "backend": "explicit CPU only",
   "variant": "default JSPI memory64; not Safari compat",
   "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
@@ -19,5 +19,16 @@
       "bytes": 6886604,
       "sha256": "8e709bee62b81a1e432f67450956c6e9f2d9a55492de42bc21bc5293c157b03a"
     }
-  ]
+  ],
+  "browserAcceptance": {
+    "scope": "One native PC Chrome multilingual multi-turn fixture with text and json_object output; not universal quality/device/normal harness acceptance",
+    "model": "lfm25-350m-qad-q4-0",
+    "count": 53,
+    "textRuntimeInputTokens": 53,
+    "jsonRuntimeInputTokens": 53,
+    "countAfterGeneration": 53,
+    "oversizedCount": 2310,
+    "requestsAfterWarmOffline": 0,
+    "artifact": "outputs/unit116-count-json-browser/evidence.json"
+  }
 }
