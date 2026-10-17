@@ -92,3 +92,7 @@ Users may bring locally trained/fine-tuned models. Shared strict model declarati
 ## Unit62: custom text-model product path connected
 
 Supersedes previous immediate UI/hook pending item: native Add text model > Choose local model > cancellable inspect > review/Add now connects fixed-runtime worker preparation and canonical registry/library/selection. Persisted selection/hydration and normal Send actual generation passed after offline process restart on PC. Missing assets still require explicit local Import files; no automatic custom acquisition. Additional general-purpose engines, custom Decision/ASR/ONNX graphs, broader fine-tuned compatibility and device/all-feature acceptance remain open. Keep goal active; do not equate one imported official4B file with arbitrary model support.
+
+## Unit65 process-offline media evidence
+
+PreparedWhispertiny/ASR, PDFtext+preparedOCR, original previews and a PDF-grounded actualBonsai answer/save now passed separate offline process starts in the maintained QAprofile with olddata retained. No productbehavior changes. This narrows the earlier missing media cold-start evidence; still open: fulloriginal-rich fresh-profile recovery, video-specific coverage/device tests, broadquality/storage cases and runtime licensing. Do not mark fullMVP complete from this PC sample; see detailed TEST-RESULTS.

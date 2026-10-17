@@ -42,3 +42,7 @@ A pending attachment keeps the same ID through transcription. Use text replaces 
 
 
 Unit19: ordinary Send can transcribe supported audio/video audio tracks with the selected already prepared local Whisper. It creates a separate extracted transcript reading and current-input evidence; it does not inject transcription into the user prompt or claim review. Video coverage remains audio-only with unmapped container timing. See INPUT-READINGS.md. This supersedes the earlier no-automatic-extraction descriptions for this bounded Send route; no Decision adapter or remote speech is added.
+
+## Process-offline integration evidence (Unit65)
+
+After explicit model preparation and DownloadsOFF, a separately started offline PC Chrome process ran the local11second English WAV through Whisper tiny/WASM, presented exact recognition/estimated timing and atomically saved original plus transcript. A further offline process searched the saved transcript and opened the original native audio player. Same maintained profile retained prepared Bonsai/OCR, read a mixed text/OCR PDF offline, and later generated/saved a PDF-grounded answer. This is coexistence/process-restart evidence; it does not verify a physical microphone, audible playback, arbitrary languages, alignment accuracy or phone execution. See TEST-RESULTS.txt.
