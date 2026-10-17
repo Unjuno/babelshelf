@@ -1,3 +1,4 @@
+import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
 import {buildInputReadings,validateInputReadings,type ReviewedText} from './input-readings.ts';
@@ -285,7 +286,20 @@ export class KnowledgeStore {
   if(payload.schema===2&&plan.conflicts.length&&Object.values(plan.added).some(n=>n>0)){try{newOnly=!!planStateRestore(current,payload,'new-only').writes;}catch{newOnlyError='New records conflict with current data';}}
   let settingsRecovery:{group:string;noteId:string;before:string;after:string;beforeVersion:number;sourceVersion:number}[]=[];
   try{settingsRecovery=planSettingsRestore(current,payload).changes.map(({source,...change})=>({...change,sourceVersion:latest(source).version}));}catch{/* Unsupported settings never enable the separate recovery action. */}
-  return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,newOnly,newOnlyError,settingsRecovery,total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
+  return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,newOnly,newOnlyError,settingsRecovery,noteRecovery:noteRestoreCandidates(current,payload).map(({source,...change})=>change),total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
+ async noteRecoveryHistory(noteId:string){
+  const db=await this.open();return new Promise<{id:string;appliedAt:string;source:any}[]>((resolve,reject)=>{
+   const tx=db.transaction(['notes','runs'],'readonly'),notes=tx.objectStore('notes').getAll(),q=tx.objectStore('runs').getAll(IDBKeyRange.bound('ui-v1-note-restore-','ui-v1-note-restore-\uffff'));let rows:{id:string;appliedAt:string;source:any}[]=[],error:unknown;
+   q.onsuccess=()=>{try{for(const receipt of q.result){validateNoteRestoreReceipt('ui-v1-note-restore-'+receipt.id,receipt,notes.result);if(receipt.noteId===noteId)rows.push({id:receipt.id,appliedAt:receipt.appliedAt,source:receipt.source});}rows.sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt));}catch(e){error=e;tx.abort();}};tx.oncomplete=()=>resolve(rows);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery history unavailable'));
+  });
+ }
+ async restoreNote(text:string,expected:string,noteId:string){
+  if(!expected)throw Error('Review note before restoring');const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown;
+   readSnapshot(tx,current=>{try{if(stateHash(current)!==expected)throw Error('Local data changed · review backup again');const {change,write}=planNoteRestore(current,incoming,noteId),id=crypto.randomUUID(),receipt={schema:1,type:'note-restore',id,appliedAt:new Date().toISOString(),backupHash,noteId,beforeVersion:change.beforeVersion,afterVersion:change.beforeVersion+1,source:change.source};validateNoteRestoreReceipt('ui-v1-note-restore-'+id,receipt,current.notes.map(n=>n.id===noteId?write:n));tx.objectStore('notes').put(write);tx.objectStore('runs').add(receipt,'ui-v1-note-restore-'+id);}catch(e){error=e;tx.abort();}});
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Note restore failed'));
+  });
+ }
  async restoreSettings(text:string,expected:string){
   if(!expected)throw Error('Review settings before restoring');
   const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();

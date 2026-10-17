@@ -149,3 +149,13 @@ test('chunked canonical hashing retains the existing payload digest and optional
  }
  assert.notEqual(stateHash({a:undefined}),stateHash({a:null}));
 });
+
+import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from '../src/note-restore.ts';
+import {reviseNote} from '../../../dist/core.js';
+test('reviewed divergent ordinary note recovery appends and retains both histories without adopting source paths',async()=>{
+ const original=createNote({path:'Notes/work.md',body:'base'}),local=reviseNote(original,{body:'local branch'},1),source=reviseNote(original,{body:'backup branch',path:'Notes/old-name.md'},1),current={notes:[local],settings:[],runs:[]},incoming={schema:2,createdAt:new Date().toISOString(),notes:[source],settings:[],runs:[]},before=structuredClone(current);
+ const plan=planNoteRestore(current,incoming,local.id);assert.deepEqual(plan.write.revisions.slice(0,2),local.revisions);assert.equal(plan.write.revisions[2].body,'backup branch');assert.equal(plan.write.revisions[2].path,'Notes/work.md');assert.deepEqual(current,before);
+ const receipt={schema:1,type:'note-restore',id:'restore',appliedAt:new Date().toISOString(),backupHash:'a'.repeat(64),noteId:local.id,beforeVersion:2,afterVersion:3,source};const state={...current,notes:[plan.write],runs:[{key:'ui-v1-note-restore-restore',value:receipt}]};validateNoteRestoreReceipt(state.runs[0].key,receipt,state.notes);const parsed=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(parsed.runs[0].value.source,source);
+ const forged=structuredClone(receipt);forged.source.revisions[1].body='forged';assert.throws(()=>validateNoteRestoreReceipt(state.runs[0].key,forged,state.notes),/source changed/);
+ for(const change of [{state:'withdrawn'},{ui:{protected:true}},{kind:'generated'},{originalAsset:{}},{mediaSource:{}}])assert.equal(noteRestoreCandidates(current,{...incoming,notes:[{...source,...change}]}).length,0);
+});

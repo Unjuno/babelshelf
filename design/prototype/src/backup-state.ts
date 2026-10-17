@@ -1,3 +1,4 @@
+import {validateNoteRestoreReceipt} from './note-restore.ts';
 import {utf8BytesWithin,visitUtf8Chunks} from './utf8-text.ts';
 import {validateWorkingFileLink} from './working-file.ts';
 import {validateOcrLinks} from './ocr-text.ts';
@@ -65,6 +66,7 @@ function validateState(state:StateSnapshot){
   if(key==='ui-v1-trash'){if(!Array.isArray(value))throw Error('Invalid recovery metadata');for(const batch of value){if(!batch||typeof batch.id!=='string'||typeof batch.label!=='string'||!Array.isArray(batch.notes)||!Array.isArray(batch.folders))throw Error('Invalid recovery metadata');for(const n of batch.notes)if(!state.notes.some(x=>x.id===n.id&&x.state==='withdrawn'))throw Error('Recovery target unavailable');}}
  }
  for(const {key,value} of state.runs)if(key.startsWith('ui-v1-processing-')||value?.type==='media-processing')validateProcessing(key,value);
+ for(const {key,value} of state.runs)if(key.startsWith('ui-v1-note-restore-')||value?.type==='note-restore')validateNoteRestoreReceipt(key,value,state.notes);
  for(const {key,value} of state.runs)if(key.startsWith('ui-v1-settings-restore-')||value?.type==='settings-restore')validateSettingsRestoreReceipt(key,value,state.notes);
  for(const {key,value:r} of state.runs)if(key.startsWith('ui-v1-correction-')||r?.type==='note-correction'){
   const n=state.notes.find(n=>n.id===r?.noteId),before=n?.revisions.find((v:any)=>v.version===r?.beforeVersion),after=n?.revisions.find((v:any)=>v.version===r?.afterVersion);
