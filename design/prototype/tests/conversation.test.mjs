@@ -353,3 +353,17 @@ test('planner calculation accepts only bounded arithmetic and refuses hidden tar
  for(const bad of [{...value,target:'current'},{...value,body:'overwrite'}, {...value,query:'eval(1)'},{...value,query:'1/0'}])await assert.rejects(planDialogue(engine(bad),'calculate',context));
  await assert.rejects(planDialogue(engine(value),'calculate this attachment',context,[{name:'a.txt',kind:'text',status:'Text available'}]));
 });
+
+test('fresh evidence can bypass deferred context work while a continuing source requires it',async()=>{
+ const source=createNote({path:'Notes/fresh103.md',body:'The marker is MAPLE-103.'}),ref={noteId:source.id,revision:1,start:0,end:source.revisions[0].body.length,quote:source.revisions[0].body};let prepared=0,messages=[];
+ const port={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async m=>{messages=m;return {text:JSON.stringify({answer:'MAPLE-103',citations:[{id:'S1',quote:'MAPLE-103'}]})};}};
+ const store={all:async()=>[source],search:async()=>[ref]},unbounded={summary:'x'.repeat(20000),recent:[],refs:[]};
+ await groundedAnswer(store,port,'test','Answer: marker?','marker','answer',unbounded,()=>{},[],undefined,async()=>{prepared++;throw Error('Unneeded history preparation');});assert.equal(prepared,0);assert.ok(!JSON.stringify(messages).includes('x'.repeat(100)));
+ await groundedAnswer(store,port,'test','What is it?','marker','answer',{...unbounded,refs:[ref]},()=>{},[],undefined,async()=>{prepared++;return {summary:'Prepared context sentinel',recent:[],refs:[ref]};});assert.equal(prepared,1);assert.match(JSON.stringify(messages),/Prepared context sentinel/);
+});
+test('deferred context failure or a source edit during preparation cannot start answer generation',async()=>{
+ const source=createNote({path:'Notes/stale103.md',body:'The marker is CEDAR-103.'}),ref={noteId:source.id,revision:1,start:0,end:source.revisions[0].body.length,quote:source.revisions[0].body},context={summary:'',recent:[],refs:[ref]};let records=[source],calls=0;
+ const store={all:async()=>records,search:async()=>[ref]},port={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,models:[{id:'test'}],runtime:{revision:'engine1'}},count:async()=>({prompt_tokens:1}),generate:async()=>{calls++;throw Error('Generation must not run');}};
+ await assert.rejects(groundedAnswer(store,port,'test','Question','marker','answer',context,()=>{},[],undefined,async()=>{throw Error('Stopped');}),/Stopped/);
+ await assert.rejects(groundedAnswer(store,port,'test','Question','marker','answer',context,()=>{},[],undefined,async()=>{records=[reviseNote(source,{body:'Corrected'},1)];return context;}),/Source changed/);assert.equal(calls,0);
+});

@@ -44,7 +44,7 @@ import {PreviewSelection} from './preview-selection';
 import {stateBackupBlob,stateHash} from './backup-state';
 import {proposeCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections';
 import {inspectDialogueText,type TextToolReceipt} from './text-transform';
-import {emptyDialogue,validateDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,compactDialogue,planDialogue,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn} from './conversation';
+import {emptyDialogue,validateDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,compactDialogue,planDialogue,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation';
 import {useTasks,type TaskView} from './useTasks';
 import {projectNote,type NoteView} from './knowledge-store';
 import {prepareOriginal,TEXT_ATTACHMENT_ACCEPT,originalKind,originalText,readOriginal,originalRef,checkAttachmentBatch,type OriginalRef,type OriginalAsset} from './original-assets';
@@ -457,9 +457,14 @@ export default function Prototype() {
  }
  async function send(){if(assetGate.current.busy)return toast('Model busy');
   const text=draft;if(!text.trim()&&!attachments.length)return;if(sendLock.current)return;if(bonsai.busy||decision.busy||taskController.active)return toast('Model busy');if(ocrLock.current||pdfLock.current||speechDecodeLock.current||speech.busy||recorder.current||microphoneGate.current.pending)return toast('Reading attachments');if(!storageReady||!dialogueReady||storagePending)return toast('Saving');if(attachments.some(a=>a.status==='Reading'))return toast('Reading attachments');
-  sendLock.current=true;sendCancelled.current=false;setSending(true);const controller=new AbortController();inputReadController.current=controller;const automatic=new Set<string>();const items=attachments.map(a=>({...a})),id=crypto.randomUUID();let inference:import('./text-inference').TextRuntime=bonsai;let prior=dialogue.current;activeInputId.current=id;let submitted:{text:string;attachments:Attachment[]}|null=null;
+  sendLock.current=true;sendCancelled.current=false;setSending(true);const controller=new AbortController();inputReadController.current=controller;const automatic=new Set<string>();const items=attachments.map(a=>({...a})),id=crypto.randomUUID();let inference:import('./text-inference').TextRuntime=bonsai;let prior=dialogue.current;activeInputId.current=id;let submitted:{text:string;attachments:Attachment[]}|null=null;let deferredContext:(()=>Promise<DialogueContext>)|undefined;
   const recoverDraft=()=>{const recovered=recoverSubmittedInput(composerSnapshot.current,submitted);if(recovered){setDraft(recovered.text);setAttachments(recovered.attachments);}};
   async function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(result:T)=>unknown,failureOf?:(result:T)=>unknown){return recordOperation(tool,input,async()=>{checkSend();const result=await work();checkSend();return result;},async activity=>{const turn=dialogue.current.turns.find(t=>t.id===id);if(!turn)throw Error('Input unavailable');await finishTurn(id,{activity:updateActivity(turn.activity??[],activity)});},project,failureOf);}
+  const prepareContext=async()=>{
+   checkSend();const preparedContext=await trace('dialogue.compact',{model,question:text,priorTurns:prior.turns.length,through:prior.compaction?.through??0},async()=>{const compact=await compactDialogue(prior,inference,text,()=>{checkSend();setChatProgress('Compacting…');});return {compact,context:await boundedDialogueContext(compact,inference,text)};},value=>({compaction:value.compact.compaction})),compact=preparedContext.compact;checkSend();
+    if(compact.compaction!==prior.compaction)await saveDialogue({...dialogue.current,revision:dialogue.current.revision+1,compaction:compact.compaction});
+   checkSend();setChatProgress('');return preparedContext.context;
+  };
   try{
    await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();checkSend();prior=dialogue.current;await flushStorage();checkAttachmentBatch(items);setChatProgress(items.length?'Saving originals…':'');
    const originals:OriginalAsset[]=[],raw=new Map<string,OriginalAsset>();for(const item of items){checkSend();const value=item.prepared??(item.file?await prepareOriginal(item.file,item.id):item.asset?await knowledge.original(item.asset):undefined);if(!value)throw Error('Original unavailable');readOriginal(value);raw.set(item.id,value);if(item.prepared||item.file)originals.push(value);}checkSend();
@@ -476,9 +481,7 @@ export default function Prototype() {
    if(text&&(!request||['answer','summary'].includes(request.action))){
     if(!model||bonsai.loaded!==model){await trace('model.load',{model},async()=>{if(!model)throw Error('Model not configured · Settings');if(!bonsai.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await bonsai.load(model);return {loaded:model};});}
     inference=bonsai.pin!();
-    checkSend();const preparedContext=await trace('dialogue.compact',{model,question:text,priorTurns:prior.turns.length,through:prior.compaction?.through??0},async()=>{const compact=await compactDialogue(prior,inference,text,()=>{checkSend();setChatProgress('Compacting…');});return {compact,context:await boundedDialogueContext(compact,inference,text)};},value=>({compaction:value.compact.compaction})),compact=preparedContext.compact;checkSend();
-    if(compact.compaction!==prior.compaction)await saveDialogue({...dialogue.current,revision:dialogue.current.revision+1,compaction:compact.compaction});
-    context=preparedContext.context;checkSend();setChatProgress('');
+    if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else context=await prepareContext();
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    if(!request&&text){
@@ -529,7 +532,7 @@ export default function Prototype() {
    if(request?.action==='search'||request?.action==='read'){
     const searchQuery=request.query,results=await trace('memory.search',{query:searchQuery,...await builtinToolRegistry.identity('memory.search')},()=>builtinToolRegistry.run('memory.search',{query:searchQuery},{search:q=>knowledge.search(q,true),views:refreshSnapshot,check:checkSend}));await finishTurn(id,{results:results.filter(r=>r.kind!=='file'),files:results.filter(r=>r.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes',refs:importedRefs});return;
    }
-   if(text&&request){const answerQuery=request.query||text,answerMode=request.action,parsed=await trace('knowledge.answer',{model,question:text,query:answerQuery,mode:answerMode,...(inputReadings.length?{inputReadings}:{})},()=>groundedAnswer(knowledge,inference,model,text,answerQuery,answerMode,context,checkSend,inputReadings,workingFile));checkSend();await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:request.action==='summary'?'Summary · selected excerpts':undefined});return;}
+   if(text&&request){const answerQuery=request.query||text,answerMode=request.action,parsed=await trace('knowledge.answer',{model,question:text,query:answerQuery,mode:answerMode,...(inputReadings.length?{inputReadings}:{})},()=>groundedAnswer(knowledge,inference,model,text,answerQuery,answerMode,context,checkSend,inputReadings,workingFile,deferredContext));checkSend();await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:request.action==='summary'?'Summary · selected excerpts':undefined});return;}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
   }catch(e){recoverDraft();try{if(dialogue.current.turns.some(t=>t.id===id))await finishTurn(id,{status:(e as Error).message});else toast((e as Error).message);}catch(failure){setDialogueError((failure as Error).message);toast((failure as Error).message);}}
   finally{inputReadController.current=null;setInputReadProgress(null);activeInputId.current=null;sendLock.current=false;setSending(false);setChatProgress('');}
