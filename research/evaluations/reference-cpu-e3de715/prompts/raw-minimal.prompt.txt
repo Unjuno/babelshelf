@@ -1,0 +1,9 @@
+<|im_start|>system
+Follow the last user request. Output only the requested result.<|im_end|>
+<|im_start|>user
+コード CEDAR-4826 をハイフンの前と後に分けて二行で返して。<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+

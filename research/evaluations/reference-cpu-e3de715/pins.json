@@ -1,0 +1,41 @@
+{
+  "purpose": "public-fixture diagnostic reference only, never an app backend",
+  "release": "prism-b10777-e3de715",
+  "commit": "e3de715222b2667c54a267441159a5729f11155e",
+  "zip": {
+    "name": "llama-prism-b10777-e3de715-bin-win-cpu-x64.zip",
+    "bytes": 19530958,
+    "sha256": "cff7eeff19163e6263720618cf98023715b8dac14d0873f5be0918765de323c4",
+    "url": "https://github.com/PrismML-Eng/llama.cpp/releases/download/prism-b10777-e3de715/llama-prism-b10777-e3de715-bin-win-cpu-x64.zip"
+  },
+  "model": {
+    "id": "4B",
+    "name": "Ternary Bonsai 2 4B",
+    "repository": "prism-ml/Ternary-Bonsai-2-4B-gguf",
+    "revision": "8d6557168168f91ea6697a4a49ed2ef622b53adb",
+    "format": "PTQ1_0",
+    "license": "Apache-2.0",
+    "file": {
+      "name": "Ternary-Bonsai-2-4B-PTQ1_0.gguf",
+      "bytes": 949549920,
+      "sha256": "56711263ec9a9ffeaa74a3a0e58dece8127cf9268404746c721113ca76994d60",
+      "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-4B-gguf/resolve/8d6557168168f91ea6697a4a49ed2ef622b53adb/Ternary-Bonsai-2-4B-PTQ1_0.gguf"
+    },
+    "tokenizer": "GGUF metadata",
+    "chatTemplate": "GGUF tokenizer.chat_template metadata",
+    "mmproj": null,
+    "generationVerified": false
+  },
+  "webgpu": {
+    "name": "WebML Community Qwen3.5 WebGPU bundle",
+    "upstream": "webml-community/ternary-bonsai-2-hermes-webgpu",
+    "revision": "621e20782f208660f4f58283c2ce58430020f243",
+    "file": {
+      "name": "runtime.js",
+      "bytes": 2208435,
+      "sha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+      "url": "https://huggingface.co/spaces/webml-community/ternary-bonsai-2-hermes-webgpu/resolve/621e20782f208660f4f58283c2ce58430020f243/assets/qwen35-vision-Kzp5MMIJ.js"
+    },
+    "licenseStatus": "Runtime-specific license not stated in Space metadata. Not redistributed in this build. Explicit preparation fetches directly from upstream for local use."
+  }
+}

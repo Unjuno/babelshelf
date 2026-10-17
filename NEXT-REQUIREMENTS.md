@@ -17,6 +17,8 @@ The accepted UI uses the existing canonical IndexedDB store. Memory, preferences
 
 Remaining work must preserve the full product objective:
 
+Unit29's same-weight official CPU reference reproduces all four retained WebGPU outputs/counts, including wrong old-subject selection. See research/evaluations/reference-cpu.md. Do not assume these failures prove a WebGPU-only defect or change app providers/engines on that basis. Next subject-binding work must pass ordinary retained-context use; no product fix or broad numerical parity follows from matching observations.
+
 Compaction transport now avoids application-added recursive escaping, with three actual public4B comparison cycles retained in research/evaluations/compaction-carry.md. Exact line-break and broader semantic retention still fail in that sample; no summary repair or whole-MVP completion follows from the transport fix.
 
 Immediate reproduction: Unit27 offline normal first-message code recall succeeded, but the next Japanese two-line transform selected recall/index13/user from a similar archived instruction and echoed the current request. D1's transform classification deferred correctly; Bonsai's action/target choice failed. Original82turns and all records remain. Address this current-versus-archived-intent ambiguity using public synthetic fixtures and normal integration; do not erase the failure or infer a fix from isolated operation-selection success.

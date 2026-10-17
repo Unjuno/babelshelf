@@ -1,0 +1,3 @@
+{"action":"recall","query":"直前の回答のコードを、ハイフンの前と後に分けて二行で返して。","body":"直前の回答のコードを、ハイフンの前と後に分けて二行で返して。","historyIndex":13,"historyPart":"user"} [end of text]
+
+

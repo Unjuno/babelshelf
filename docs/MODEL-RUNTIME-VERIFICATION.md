@@ -1,5 +1,7 @@
 # Bonsai and production entry verification — 2026-10-17 JST
 
+Unit29 adds a diagnostic same-weight official CPU reference, not a new PWA build. Four public native generations match the retained WebGPU output and prompt counts, including three instruction/target failures. See [raw evidence and reproducible commands](../research/evaluations/reference-cpu.md). This narrows attribution but proves neither numerical equivalence nor repaired subject selection. No engine/provider/model/runtime/license change follows. Current native product remains5ca20e9c35b7cfc8; the Unit28 ordinary-context failure remains open.
+
 These are Windows PC / Codex in-app Chromium results, not Android or iPhone results. The full goal remains active.
 
 ## Reproduce the production entry
