@@ -1,3 +1,4 @@
+import {exportMarkdownRevision} from './markdown-export.ts';
 import {buildInputReadings,validateInputReadings,type ReviewedText} from './input-readings.ts';
 import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
@@ -236,6 +237,13 @@ export class KnowledgeStore {
     settings.put(plan.folders,'ui-v1-folders');settings.put(plan.trash,'ui-v1-trash');result={folders:plan.folders,trash:plan.trash};
    }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;trash.onsuccess=commit;
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery save failed'));
+  });
+ }
+ async exportMarkdown(id:string,revision:number){
+  const db=await this.open();return new Promise<ReturnType<typeof exportMarkdownRevision>>((resolve,reject)=>{
+   const tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').get(id);let error:unknown,file:ReturnType<typeof exportMarkdownRevision>;
+   q.onsuccess=()=>{try{file=exportMarkdownRevision(q.result,revision);}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(file);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Markdown export failed'));
   });
  }
  async getState<T>(key:string):Promise<T|undefined>{return this.transaction(['settings'],'readonly',(tx,done)=>{const q=tx.objectStore('settings').get('ui-v1-'+key);q.onsuccess=()=>done(q.result);});}

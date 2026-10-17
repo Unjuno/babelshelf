@@ -1,3 +1,9 @@
+## Product selected-revision Markdown export (Unit44)
+
+The accepted product exposes Export Markdown in File actions and each expanded History revision. The action captures the displayed canonical ID/version and reads that exact retained revision through a readonly notes transaction. It never substitutes the latest revision. Protected records may be exported without enabling Edit/Delete. The UTF-8 filename includes `.v<version>.md`.
+
+The single-file projection contains the exact saved body and JSON-valued `babelshelf` front matter: ID, selected version/historical path, current record state/kind/sources, immutable original references and retained extraction/transcription metadata where present. Extraction metadata describes the retained extraction; it does not certify alignment to a subsequently edited body. Raw binary assets, other records and complete revision history are excluded. Missing versions and text that cannot roundtrip UTF-8 fail explicitly. Export has no model/network/write authority. Importing this Markdown remains new literal content, not identity restoration; use schema2 brainpacks for full-state backup.
+
 ## Working file selection
 
 Optional dialogue.currentFile stores only canonical note ID and viewed revision; it is not a disk file or a duplicate body. Focus selection and turn updates share one serialized writer with expected-dialogue CAS, persists across Input navigation/restart and is included in schema2 brainpack. Backup validates the original revision link, including retained withdrawn history. Execution additionally requires the current active version. No notes/revisions are removed or rewritten to introduce this optional field. See CONVERSATION-CONTRACT.md Unit33.
