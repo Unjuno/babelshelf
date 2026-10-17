@@ -27,3 +27,6 @@ Remaining work must preserve the full product objective:
 ## Evidence boundaries
 
 Run baseline Node/Markdown, prototype tests/build, product-shell tests and protected-runtime checks separately. Actual browser storage, actual model generation and physical-device results must name their build and scope. Never clear existing databases, use mock inference as acceptance or mark the whole MVP complete while required gates remain unverified. Historical bwrap/no-adapter results remain historical environment results, not evidence against Bonsai.
+
+
+- Optional Open d1 Omni 600M now has a pinned isolated local text-decision adapter, with explicit preparation, native WebGPU execution and worker lifecycle. See [DECISION-CONTRACT.md](docs/DECISION-CONTRACT.md). Text graph preparation does not install media encoders, and finite decisions do not authorize writes. Ordinary dialogue routing remains on the Bonsai harness pending routing integration; phone/full offline acceptance remains open.

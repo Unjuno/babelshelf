@@ -92,3 +92,6 @@ Local speech: Whisper tiny has explicit verified preparation, local WASM recogni
 - Reviewed OCR/PDF Use text now stages an attachment without changing the draft; Send imports raw/extracted notes and dialogue together, matching TXT/MD behavior. Current-file grounding includes mixed readable attachments, excludes raw-projection prose and historical pins, and refuses changed/withdrawn or oversized scopes. Read docs/INPUT-READINGS.md. Pending drafts before Send are not durable.
 
 Ordinary Send now runs already prepared local PNG/JPEG OCR, PDF text-layer extraction and supported audio/video-audio transcription before atomic raw/extracted/dialogue import. Automatic results are labelled extracted rather than human-reviewed; missing assets never download implicitly. See [INPUT-READINGS.md](docs/INPUT-READINGS.md) for Stop, partial coverage, current-file grounding and remaining limits.
+
+
+- Optional Open d1 Omni 600M now has a pinned isolated local text-decision adapter, with explicit preparation, native WebGPU execution and worker lifecycle. See [DECISION-CONTRACT.md](docs/DECISION-CONTRACT.md). Text graph preparation does not install media encoders, and finite decisions do not authorize writes. Ordinary dialogue routing remains on the Bonsai harness pending routing integration; phone/full offline acceptance remains open.

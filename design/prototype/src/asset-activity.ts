@@ -1,7 +1,8 @@
+import {decisionManifest} from './decision-assets.ts';
 import {ocrManifest,ocrModelPins,type OcrLanguage} from './ocr-assets.ts';
 import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 import {speechManifest} from './speech-assets.ts';
-export type AssetTool='ocr.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare';
+export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare';
 type FileDescriptor={name:string;size:number;type:string};
 const filePin=(f:{name?:string;path?:string;bytes:number;sha256:string})=>({name:f.name??f.path!,bytes:f.bytes,sha256:f.sha256});
 export function textAssetInput(id:string,allowNetwork=false,files?:FileDescriptor[]){
@@ -17,3 +18,5 @@ export class AssetOperationGate{
 }
 
 export function ocrAssetInput(language:OcrLanguage,allowNetwork:boolean){return {source:{name:'Tesseract 7'},role:'ocr',language,model:{id:ocrManifest.id,processor:ocrManifest.processor,files:ocrModelPins(language)},runtime:ocrManifest.runtime,allowNetwork,method:'explicit-preparation'};}
+
+export function decisionAssetInput(allowNetwork:boolean){return {source:{name:"Open d1 Omni 600M"},role:"decision",scope:"text-only",model:{id:decisionManifest.id,source:decisionManifest.source,conversion:decisionManifest.conversion,files:decisionManifest.files.map(filePin)},runtime:decisionManifest.runtime,tokenizer:decisionManifest.tokenizer,allowNetwork,method:allowNetwork?"explicit-preparation":"local-only"};}

@@ -1,0 +1,21 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {DecisionClient} from '../src/decision-control.ts';
+const factory=()=>{const workers=[];return {workers,create(){const w={messages:[],terminated:false,postMessage(m){this.messages.push(m);},terminate(){this.terminated=true;},reply(value){this.onmessage({data:{id:this.messages[0].id,value}});}};workers.push(w);return w;}};};
+test('decision Stop discards inference worker and ignores stale completion on the replacement worker',async()=>{
+ const f=factory(),c=new DecisionClient(()=>f.create(),()=>{}),first=c.call('classify');c.stop();await assert.rejects(first,/Stopped/);assert.ok(f.workers[0].terminated);const second=c.call('status');f.workers[0].reply({loaded:true});f.workers[1].reply({prepared:true});assert.deepEqual(await second,{prepared:true});c.dispose();
+});
+test('preparation Stop waits for writer cleanup acknowledgement and cannot begin a competing command',async()=>{
+ const f=factory(),c=new DecisionClient(()=>f.create(),()=>{}),job=c.call('prepare');c.stop();assert.equal(f.workers[0].messages.at(-1).type,'abort');assert.equal(f.workers[0].terminated,false);await assert.rejects(c.call('load'),/busy/i);f.workers[0].onmessage({data:{id:f.workers[0].messages[0].id,error:'Stopped'}});await assert.rejects(job,/Stopped/);const next=c.call('status');f.workers[0].onmessage({data:{id:f.workers[0].messages.at(-1).id,value:{prepared:false}}});assert.deepEqual(await next,{prepared:false});c.dispose();
+});
+test('worker crash and post failure reject exactly one request and permit a fresh worker retry',async()=>{
+ const f=factory(),c=new DecisionClient(()=>f.create(),()=>{}),p=c.call('load');f.workers[0].onerror();await assert.rejects(p,/runtime failed/i);assert.ok(f.workers[0].terminated);const next=c.call('status');f.workers[1].reply({prepared:false});await next;c.dispose();
+ const throwing=new DecisionClient(()=>({postMessage(){throw Error('Clone failed');},terminate(){}}),()=>{});await assert.rejects(throwing.call('classify'),/Clone failed/);await assert.rejects(throwing.call('status'),/Clone failed/);throwing.dispose();
+});
+
+test('loaded lifecycle resets only when the worker is discarded, preserving a graceful preparation abort',async()=>{
+ const f=factory();let loaded=false,resets=0;const c=new DecisionClient(()=>f.create(),()=>{},()=>{loaded=false;resets++;});
+ const load=c.call('load');f.workers[0].reply({loaded:true});loaded=(await load).loaded;
+ const prep=c.call('prepare');c.stop();assert.equal(loaded,true);assert.equal(resets,0);
+ f.workers[0].onmessage({data:{id:f.workers[0].messages.at(-2).id,error:'Stopped'}});await assert.rejects(prep,/Stopped/);assert.equal(loaded,true);
+ const inference=c.call('classify');f.workers[0].onerror();await assert.rejects(inference,/runtime failed/i);assert.equal(loaded,false);assert.equal(resets,1);
+ c.dispose();
+});

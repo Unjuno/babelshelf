@@ -22,6 +22,7 @@
     "@radix-ui/react-icons": "1.3.2",
     "@use-gesture/react": "10.3.1",
     "motion": "12.42.2",
+    "onnxruntime-web-d1": "npm:onnxruntime-web@1.31.0-dev.20260914-8d85527a0",
     "pdfjs-dist": "6.4.299",
     "react": "19.2.7",
     "react-dom": "19.2.7",

@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "id": "d1-omni-600M",
+  "source": {
+    "id": "LiquidAI/d1-omni-600M",
+    "revision": "02b55d7076f15129e59ab3f94783f32c4b088674",
+    "license": "LFM-Open-1.0"
+  },
+  "conversion": {
+    "id": "onnx-community/d1-omni-600M-ONNX",
+    "revision": "4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0",
+    "format": "ONNX",
+    "dtype": "q8",
+    "scope": "text-only"
+  },
+  "runtime": {
+    "name": "onnxruntime-web",
+    "version": "1.31.0-dev.20260914-8d85527a0",
+    "revision": "8d85527a010e294a26b274749f74294b2a32cec5",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "dist/ort.webgpu.bundle.min.mjs",
+        "bytes": 117929,
+        "sha256": "7c93a51e9906b246af505bbfbfa4e5806ebe70a081ab0ca0d34e1180293f4f8d"
+      },
+      {
+        "path": "dist/ort-wasm-simd-threaded.asyncify.mjs",
+        "bytes": 53057,
+        "sha256": "0966b6105cd936744498aa60df7a22cbd47af3374dbc64a9ab561c08a71e3611"
+      },
+      {
+        "path": "dist/ort-wasm-simd-threaded.asyncify.wasm",
+        "bytes": 26861777,
+        "sha256": "49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082"
+      }
+    ]
+  },
+  "tokenizer": {
+    "runtime": "@huggingface/transformers",
+    "version": "3.8.1"
+  },
+  "contextTokens": 16384,
+  "inputLimit": 2048,
+  "files": [
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/onnx-community/d1-omni-600M-ONNX/resolve/4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0/config.json",
+      "bytes": 2433,
+      "sha256": "6402e50bd64e2d51c5f8dead2067d7873f30ec850f0cf1e732e4264b1576d313"
+    },
+    {
+      "path": "tokenizer.json",
+      "url": "https://huggingface.co/onnx-community/d1-omni-600M-ONNX/resolve/4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0/tokenizer.json",
+      "bytes": 4733371,
+      "sha256": "1efc3a6609abf6b63b1f47188d139f3b59973a6a434dffe970a7261a51ed2711"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "url": "https://huggingface.co/onnx-community/d1-omni-600M-ONNX/resolve/4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0/tokenizer_config.json",
+      "bytes": 259,
+      "sha256": "03efc74b752b899b6292ff7e607738be59e6f206fec9aca32bbc05e9184090fc"
+    },
+    {
+      "path": "onnx/model_quantized.onnx",
+      "url": "https://huggingface.co/onnx-community/d1-omni-600M-ONNX/resolve/4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0/onnx/model_quantized.onnx",
+      "bytes": 445782,
+      "sha256": "e7b2d045b2efcdc38b9595aa5f00ec2c08098f997f136837c97ecad129834d74"
+    },
+    {
+      "path": "onnx/model_quantized.onnx_data",
+      "url": "https://huggingface.co/onnx-community/d1-omni-600M-ONNX/resolve/4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0/onnx/model_quantized.onnx_data",
+      "bytes": 405883392,
+      "sha256": "9b84acb248daac2299df481240f5e6d2cd2f763aa1b8ccf73e7200848fab60da"
+    },
+    {
+      "path": "LICENSE",
+      "url": "https://huggingface.co/onnx-community/d1-omni-600M-ONNX/resolve/4ebc1b97bf1477485371c79d1cf8d5e4e8eebfa0/LICENSE",
+      "bytes": 10572,
+      "sha256": "9953509cbd8c1c6ce7b06ddf74fcc204a892692316201dd8f7400a84790d4120"
+    }
+  ]
+}
