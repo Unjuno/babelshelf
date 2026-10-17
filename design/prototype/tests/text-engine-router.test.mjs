@@ -28,7 +28,7 @@ test('ONNX client Stop rejects pending work, ignores late result and requires a 
 
 test('Stop during optional status permits a fresh explicit configure and load',async()=>{
  const workers=[];
- const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[]},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
+ const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
  const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createOnnxTextClient(worker);});
  await router.init();assert.equal(workers.length,0);
  const first=router.call('configure',{models:[]});await Promise.resolve();await Promise.resolve();assert.equal(workers.length,1);router.abort();await assert.rejects(first,/Stopped/);
@@ -38,7 +38,7 @@ test('Stop during optional status permits a fresh explicit configure and load',a
 
 test('worker failure permits a fresh explicit load; old worker results cannot resurrect identity',async()=>{
  const workers=[];
- const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[]},loaded:null,worker:{terminate(){}},async init(){},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
+ const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
  const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createOnnxTextClient(worker);});
  const first=router.load(onnxTextManifest.id);workers[0].onmessage({data:{id:1,type:'done',value:true}});await first;workers[0].onerror();assert.equal(router.loaded,null);
  const second=router.load(onnxTextManifest.id);assert.equal(workers.length,2);workers[0].onmessage({data:{id:1,type:'done',value:true}});assert.equal(router.loaded,null);
@@ -61,4 +61,17 @@ test('switching between fixed ONNX models reuses adapter but unloads old identit
  const f=setup(),first=f.router.load(onnxTextManifest.id);f.finish();await first;
  const second=f.router.load('qwen25-05b-instruct');await Promise.resolve();f.finish();await second;
  assert.equal(f.router.loaded,'qwen25-05b-instruct');assert.equal(f.calls.filter(x=>x==='onnx:unload').length,1);assert.equal(f.router.manifest.models.find(m=>m.id===f.router.loaded).revision,'22942cb7d7ba4cc81bb4673549ca4d4614469b5e');
+});
+
+test('trusted third engine routes only declared models and keeps separate runtime/context identity',async()=>{
+ const calls=[],base={manifest:{contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,async init(){},async call(cmd){calls.push('base:'+cmd);return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;calls.push('base:unload');},abort(){},worker:{terminate(){}}};let created=0;
+ const models=[{id:'third-a',revision:'a'},{id:'third-b',revision:'b'}],registration={id:'third-engine',modelIds:models.map(m=>m.id),describe:()=>({contextTokens:1024,runtime:{revision:'third-runtime'},models}),create:()=>{created++;return {manifest:{},loaded:null,async init(){},async call(cmd){calls.push('third:'+cmd);return cmd==='count'?{prompt_tokens:17}:{};},async load(id){this.loaded=id;calls.push('third:load');},async unload(){this.loaded=null;calls.push('third:unload');},abort(){calls.push('third:abort');},worker:{terminate(){calls.push('third:terminate');}}};}};
+ const router=new TextEngineRouter(base,()=>{throw Error('unused ONNX factory');},[registration]);assert.equal(created,0);await router.load('4B');await router.load('third-a');assert.equal(router.loaded,'third-a');assert.equal(router.manifest.contextTokens,1024);assert.equal(router.manifest.runtime.revision,'third-runtime');assert.deepEqual(await router.call('count',{messages:[]}),{prompt_tokens:17});assert.ok(calls.indexOf('base:unload')<calls.indexOf('third:load'));
+ router.abort();assert.equal(router.loaded,null);assert.ok(calls.includes('third:terminate'));await router.load('third-b');assert.equal(created,2);assert.equal(router.loaded,'third-b');await assert.rejects(router.load('undeclared'),/Unknown/);assert.equal(router.loaded,'third-b');
+});
+test('duplicate model/engine identities and missing revision contracts fail before any factory starts',()=>{
+ const base={manifest:{models:[{id:'4B',revision:'four'}]}};let starts=0;
+ const r={id:'third-engine',modelIds:['new'],describe:()=>({contextTokens:1024,runtime:{revision:'r'},models:[{id:'new',revision:'v'}]}),create(){starts++;}};
+ for(const extra of [[{...r,modelIds:['4B']}],[r,r],[{...r,describe:()=>({contextTokens:0,runtime:{revision:'r'},models:[{id:'new',revision:'v'}]})}],[{...r,describe:()=>({contextTokens:1024,runtime:{revision:'r'},models:[{id:'new',revision:''}]})}]])assert.throws(()=>new TextEngineRouter(base,()=>{},extra),/Invalid/);
+ assert.equal(starts,0);
 });
