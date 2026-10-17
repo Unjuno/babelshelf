@@ -40,7 +40,7 @@ export function readOriginal(asset:OriginalAsset,ref?:OriginalRef):Uint8Array{
  const bytes=decode(asset.data,asset.bytes);if(hash(bytes)!==asset.sha256)throw Error('Original verification failed');return bytes;
 }
 export function originalText(asset:OriginalAsset,bytes=readOriginal(asset)):{status:string;text?:string}{
- if(asset.kind!=='text')return {status:asset.kind==='file'?'Unsupported':'Analysis not prepared'};
+ if(asset.kind!=='text')return {status:asset.kind==='file'?((asset.mime==='application/pdf'||/\.pdf$/i.test(asset.name))?'PDF original':'Unsupported'):'Analysis not prepared'};
  if(bytes.length>MAX_TEXT_BYTES)return {status:'Text too large'};
  try{const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);if(text.includes('\0'))throw Error();return {status:'Text available',text};}catch{return {status:'Read failed'};}
 }

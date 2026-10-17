@@ -6,6 +6,8 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 
 Local backup now includes canonical records, original dialogue, folder/Trash metadata, correction receipts and newly persisted attachment originals in an atomic schema2 snapshot. Restore previews conflicts and refuses stale or conflicting full-state writes. Model/runtime assets and unsent/legacy unpersisted originals are excluded; divergent destination data still needs manual reconciliation. Current backup files are bounded to200MB; larger collections require future partitioned export. See [BACKUP-CONTRACT.md](docs/BACKUP-CONTRACT.md).
 
+PDF text-layer extraction now preserves exact raw originals, page/range metadata and original-page citation previews. See [PDF-CONTRACT.md](docs/PDF-CONTRACT.md); image-only pages remain unprocessed by OCR.
+
 Continuous Input now persists local dialogue and passes prior context to routing and answering. Long history is compacted with the same local model, retaining original turns and bounded original-excerpt recall. See [CONVERSATION-CONTRACT.md](docs/CONVERSATION-CONTRACT.md). Canonical foreground task/event integration is described in [SCHEDULE-CONTRACT.md](docs/SCHEDULE-CONTRACT.md); whole-MVP acceptance remains pending.
 
 Harness/prompt diagnosis uses fixed public inputs and the actual prepared local model in an explicit developer route, separate from the accepted UI. Reproducible reports, failure boundaries and literal read-only operation design: [HARNESS-EVALUATION.md](docs/HARNESS-EVALUATION.md).
@@ -19,7 +21,7 @@ There are also two development/reference surfaces:
 | Location | Purpose | Current limits |
 | --- | --- | --- |
 | `dist/` | Shared IndexedDB, immutable revisions, sources, search, backup and pinned Bonsai worker; older baseline UI | The accepted production entry is built separately; baseline Node checks are not device acceptance |
-| `design/prototype/` | Accepted UI, canonical records, dialogue, reviewed corrections/Undo, foreground tasks/events, local inference and state brainpack; separate `product/` native PWA entry | Remaining image/video/PDF extraction, system-record edits, broader attempt integration, large archive/device recovery and offline/device acceptance remain pending |
+| `design/prototype/` | Accepted UI, canonical records, dialogue, reviewed corrections/Undo, foreground tasks/events, local inference and state brainpack; separate `product/` native PWA entry | Remaining OCR/video-frame extraction, system-record edits, broader attempt integration, large archive/device recovery and offline/device acceptance remain pending |
 
 Read [the accepted product specification](docs/PRODUCT-SPEC.md) and [integration plan](docs/IMPLEMENTATION-PLAN.md). Do not carry the old bottom-toggle layout into the new UI simply because baseline source checks still cover it.
 

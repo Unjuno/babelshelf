@@ -460,3 +460,5 @@ button.model-picker svg{flex-shrink:0}
 .activity-entry { padding: 14px 0; border-bottom: 1px solid var(--glass-border, rgba(128,150,145,.35)); }
 .activity-entry summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 18px; font-weight: 600; }
 .activity-data { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 16px; line-height: 1.5; margin: 8px 0 16px; }
+
+.pdf-page-scroll{overflow:auto;max-height:60vh;margin-top:12px;background:#fff;border-radius:8px}.original-attachment .pdf-preview img{display:block;max-width:none;max-height:none;height:auto;object-fit:contain;border-radius:0}.pdf-preview .action-row{justify-content:flex-start;flex-wrap:wrap}
