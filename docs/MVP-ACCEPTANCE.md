@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `19ad28d22fe9051a`; combined PC evidence extends through Unit122; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `19ad28d22fe9051a`; combined PC evidence extends through Unit124; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -38,3 +38,5 @@ Unit93 combines the existing selected Bonsai4B/Whisper/OCR/PDF/TXT/MD pipeline i
 Unit121 connects asset-only ONNX startup to the normal product: current-build offline Verify hashes actual prepared files with no ONNX inference worker, preserving notes/settings/prior runs. Original QA receipt-name assertion failure and independent retained-backup revalidation are both recorded in TEST-RESULTS.txt. Unit117/118/120 supply the LFM exact-count/prepared-worker prerequisites; its earlier missing public count dependency is addressed in the isolated patched runtime, while normal LFM admission and compat/device acceptance remain open.
 
 Unit122 verifies the actual normal ONNX asset-only-to-Load/Unload transition after Unit121, offline with unchanged notes/settings and retained runs. It adds lifecycle regression evidence, no new model quality or device acceptance.
+
+Unit124 completes the separate Asyncify/memory32 native build and actual PC execution/count agreement. Build54234 is terminal. Normal LFM admission remains open; forced compatibility resources on Chrome do not establish Safari/device acceptance.

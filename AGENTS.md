@@ -92,3 +92,6 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 
 
 - Unit121 normal useBonsai ONNX registration now uses onnx-text-backend + prepared-text-backend. Keep status/Verify/Prepare outside inference worker startup; Load alone constructs the unchanged verified ONNX worker. Native current-build cold offline Verify retained all notes/settings/prior runs with no ONNX worker. Existing processing tool name for Verify is model.prepare with local-only/verified-assets, not model.verify. Preserve original observer FAIL plus revalidated.json; do not rerun inference to repair observer assertions. Product19ad28d22fe9051a/106, prototype357. Compat54234/optimizer21280 last verified live; normal LFM admission still pending.
+
+
+- Unit124 supersedes all earlier live-build checkpoints: compat54234 TERMINATED exit0 and handle consumed. Do not poll/restart it. Final Asyncify/memory32 JS/WASM hashes are pinned in research/runtime/wllama-count/native-compat-build.json; actual native PC Chrome execution through explicit public worker resources matches exact count53/runtime53 for text/JSON and unloads. Artifact unit124-compat-browser. This is not Safari/phone/normal LFM registration or useful-answer acceptance. Keep default/compat asset identities separate, no CDN/default changes. Normal catalog/router/preparation admission remains next work.

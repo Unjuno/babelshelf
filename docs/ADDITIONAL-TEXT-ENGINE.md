@@ -79,3 +79,6 @@ Native current product19ad28d22fe9051a cold-process offline Settings/Models/Veri
 
 
 Unit122 closes the native Load/Unload regression after Unit121: normal current-build offline Verify starts no ONNX worker, explicit Load starts the actual engine and loads retained Smol weights, and Unload clears loaded state. Canonical notes/settings remain identical and previous runs are retained, with three succeeded local-only lifecycle records. No new generation/quality claim; see TEST-RESULTS.txt and unit122-onnx-load/evidence.json.
+
+
+Unit124 supplies the separately pinned, successfully built Asyncify/memory32 compatibility pair and actual native PC execution with exact count/generation agreement. Both default and compat binaries now have narrow native API evidence. Normal catalog/router/asset-preparation registration and useful structured flow remain to be connected; do not infer Safari/phone acceptance from forced resource selection on Chrome.

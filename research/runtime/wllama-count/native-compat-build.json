@@ -1,0 +1,34 @@
+{
+  "backend": "explicit CPU only",
+  "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "patchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+  "compiled": true,
+  "browserExecuted": true,
+  "exactCountAgreementVerified": true,
+  "variant": "compat Asyncify memory32; not Safari acceptance",
+  "confirmation": "Session54234 cmake --build build-count-compat --target wllama --parallel 4 terminal exit0; original compat-build.txt retained",
+  "assets": [
+    {
+      "name": "wllama.js",
+      "bytes": 128615,
+      "sha256": "978b330aa7d8644e2edbe991415cb39b45d67540ad7d15f68f5a60f4b6147ce7"
+    },
+    {
+      "name": "wllama.wasm",
+      "bytes": 13685530,
+      "sha256": "1f9644d6c42a4106e34a0111d506d5068c84efe5ae5e9225611960cc0a4fec4c"
+    }
+  ],
+  "browserAcceptance": {
+    "scope": "Native PC Chrome app-owned explicit compatibility resources; actual Asyncify memory32 CPU execution, not Safari/phone or normal UI acceptance",
+    "model": "lfm25-350m-qad-q4-0",
+    "count": 53,
+    "textRuntimeInputTokens": 53,
+    "jsonRuntimeInputTokens": 53,
+    "countAfterGeneration": 53,
+    "oversizedCount": 2310,
+    "requestsAfterWarmOffline": 0,
+    "artifact": "outputs/unit124-compat-browser/evidence.json"
+  }
+}
