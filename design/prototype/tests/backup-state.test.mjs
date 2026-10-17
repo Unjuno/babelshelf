@@ -135,3 +135,17 @@ test('new-only restore cannot import Trash snapshots over a kept withdrawn origi
  const current={notes:[note],settings:[],runs:[]},before=structuredClone(current);
  assert.throws(()=>planStateRestore(current,incoming,'new-only'),/recovery.*conflicting/i);assert.deepEqual(current,before);
 });
+
+import {createHash} from 'node:crypto';
+import {utf8BytesWithin,visitUtf8Chunks} from '../src/utf8-text.ts';
+test('bounded UTF8 size and chunked encoding exactly match TextEncoder across surrogate boundaries',()=>{
+ const cases=['','ascii','日本語 العربية🙂','\ud800','\udc00','x'.repeat(65535)+'🙂next','x'.repeat(65536)+'\ud800x','🙂'.repeat(40000)];
+ for(const text of cases){const exact=new TextEncoder().encode(text);assert.equal(utf8BytesWithin(text,exact.length),true);if(exact.length)assert.equal(utf8BytesWithin(text,exact.length-1),false);const parts=[];visitUtf8Chunks(text,part=>parts.push(part));assert.deepEqual(Buffer.concat(parts),Buffer.from(exact));assert.ok(parts.every(part=>part.length<=65536*3));}
+});
+test('chunked canonical hashing retains the existing payload digest and optional-property distinction',()=>{
+ for(const body of ['', 'x'.repeat(65516)+'🙂日本語'.repeat(20000)]){
+  const value={body},encoded=JSON.stringify({data:value,undefinedPaths:[]});
+  assert.equal(stateHash(value),createHash('sha256').update(encoded).digest('hex'));
+ }
+ assert.notEqual(stateHash({a:undefined}),stateHash({a:null}));
+});

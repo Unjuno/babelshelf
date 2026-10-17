@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit81 product is `31ac8e4ab4034c85`; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit88 product is `b5d44c965803b399`; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -24,3 +24,5 @@ Detailed authority: STORAGE-CONTRACT.md, CONVERSATION-CONTRACT.md, CORRECTION-CO
 Next work should close material gaps rather than repeat prompt-variant Bonsai benchmarks: runtime license provenance, a useful compatible multilingual alternative, large-state/quota handling, reviewed restoration of conflicting settings/histories, and remaining video/device/all-function acceptance. Keep current choices and data, local-only execution, explicit acquisition and the accepted UI. No deployment or push is authorized.
 
 Latest user correction: design/implement first and reserve comparative model experiments/tuning for final acceptance. Unit81 LFM QAD runtime/model pins, prepared-file adapter and deferred fixture/scorer groundwork are retained; the running10-case comparison was USER_INTERRUPTED, not a model failure. Normal LFM engine/selection integration and target17air device verification remain pending. Existing Bonsai defaults unchanged. See LFM-BENCHMARK.md; do not restart large experiments automatically.
+
+Recent implementation deltas: Unit82 adds deterministic explicit-expression math.calculate; Unit85 connects natural-language planner dispatch but real4B misinterpreted arithmetic grouping, retained as semantic FAIL. Unit83 shares fixed adapter capability checks with actual media dispatch/settings; unsupported roles remain unsupported. Unit84 includes a selected connected Decision model in reviewed initial preparation without silently selecting one. Unit86 recovers failed submitted input into an empty composer and reuses durable originals; native two attempts/one original proof. Unit87 enforces shared exact context budgets with one bounded count memo; actual current-build offline4B sourced-answer regression passes. Unit88 reduces full UTF8 buffer allocations during backup size/hash stages, with unchanged format/digests and native Unicode import/export/no-op restore; large-state streaming remains incomplete. These updates do not close physical-device, broad semantic quality, arbitrary custom model/engine or runtime licensing gates.

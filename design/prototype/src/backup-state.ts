@@ -1,3 +1,4 @@
+import {utf8BytesWithin,visitUtf8Chunks} from './utf8-text.ts';
 import {validateWorkingFileLink} from './working-file.ts';
 import {validateOcrLinks} from './ocr-text.ts';
 import {validateSettingsRestoreReceipt} from './settings-restore.ts';
@@ -27,14 +28,14 @@ export type RestoreConflict={store:'notes'|'settings'|'runs';key:string;label:st
 export type StateRestorePlan={conflicts:RestoreConflict[];added:{notes:number;settings:number;runs:number};writes:StateSnapshot|null};
 const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments'];
 export const MAX_BACKUP_BYTES=200000000;
-function checkBackupText(text:string,limit=MAX_BACKUP_BYTES){if(text.length>limit||new TextEncoder().encode(text).byteLength>limit)throw Error('Backup too large · 200 MB limit');return text;}
+function checkBackupText(text:string,limit=MAX_BACKUP_BYTES){if(!utf8BytesWithin(text,limit))throw Error('Backup too large · 200 MB limit');return text;}
 export function serializeStateBackup(pack:unknown,limit=MAX_BACKUP_BYTES){return checkBackupText(JSON.stringify(pack),limit);}
 const equal=(a:unknown,b:unknown)=>stateHash(a)===stateHash(b);
 function encode(value:any){const undefinedPaths:string[][]=[];
  const walk=(v:any,path:string[]):any=>{if(v===undefined){undefinedPaths.push(path);return null;}if(Array.isArray(v))return v.map((x,i)=>walk(x,[...path,String(i)]));if(v&&typeof v==='object'){const out=Object.create(null);for(const [key,item] of Object.entries(v))out[key]=walk(item,[...path,key]);return out;}return v;};
  return {data:walk(value,[]),undefinedPaths};
 }
-export const stateHash=(value:unknown):string=>new SHA256().update(new TextEncoder().encode(JSON.stringify(encode(value)))).hex();
+export const stateHash=(value:unknown):string=>{const hash=new SHA256();visitUtf8Chunks(JSON.stringify(encode(value)),bytes=>hash.update(bytes));return hash.hex();};
 function jsonOnly(value:any){
  if(value===undefined||value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return;
  if(Array.isArray(value)){for(const item of value)jsonOnly(item);return;}
