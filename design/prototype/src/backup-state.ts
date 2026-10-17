@@ -14,7 +14,7 @@ import {SHA256} from '../../../dist/sha256.js';
 import {notePath} from '../../../dist/files.js';
 import {validateDialogue} from './conversation.ts';
 import {parsePreference,preferenceGroup,formatPreference} from './preference-records.ts';
-import {parseTask,taskRunView,noticeView} from './task-records.ts';
+import {parseTask,taskRunView,noticeView,validateNoticeLinks} from './task-records.ts';
 import {prepareCorrection,correctionOperationRaw} from './note-corrections.ts';
 import {memoryFolderPath} from './memory-paths.ts';
 import {validateOriginalLinks} from './original-assets.ts';
@@ -55,7 +55,7 @@ function validateState(state:StateSnapshot){
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
   if(n.ui?.recordType==='execution'){const r=taskRunView(n);if(typeof r.startedAt!=='string'||!['running','succeeded','failed','stopped','missed','interrupted','skipped'].includes(r.status)||!state.notes.some(t=>t.id===r.taskId&&t.revisions.some((v:any)=>v.version===r.taskRevision)))throw Error('Invalid execution target');sourceRefs(state.notes,r.sources??[]);}
-  if(n.ui?.recordType==='notification'){const r=noticeView(n);if(typeof r.read!=='boolean'||typeof r.createdAt!=='string'||!state.notes.some(t=>t.id===r.taskId)||!state.notes.some(t=>t.id===r.runId))throw Error('Invalid notification target');}
+  if(n.ui?.recordType==='notification')validateNoticeLinks(state.notes,n);
  }
  for(const {key,value} of state.settings){
   if(key==='ui-v1-dialogue'){const d=validateDialogue(value);if(d.currentFile)validateWorkingFileLink(state.notes,d.currentFile);for(const turn of d.turns){sourceRefs(state.notes,turn.refs??[]);sourceRefs(state.notes,turn.results??[]);if(turn.attachments!==undefined&&(!Array.isArray(turn.attachments)||turn.attachments.some(a=>!a||['id','name','kind','status'].some(k=>typeof (a as any)[k]!=='string'))))throw Error('Invalid dialogue attachments');}}

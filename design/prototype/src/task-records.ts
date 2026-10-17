@@ -6,7 +6,7 @@ import {nextScheduleOccurrence,localDate,type ScheduleRule} from './schedule-tim
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
 export type RunStatus='running'|'succeeded'|'failed'|'stopped'|'missed'|'interrupted'|'skipped';
 export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];model?:{id:string;revision?:string;runtime:string}};
-export type NoticeData={taskId:string;taskRevision:number;runId:string;title:string;body:string;createdAt:string;read:boolean};
+export type NoticeData={taskId:string;taskRevision:number;runId:string;runRevision?:number;attempt?:number;title:string;body:string;createdAt:string;read:boolean};
 const fields=['repeat','time','days','date','monthDay','interval','unit','timezone','enabled','notify','prompt'];
 const asDate=(value:string)=>{const date=new Date(value);if(!Number.isFinite(+date))throw Error('Invalid date');return date;};
 function exactKeys(value:any,keys:string[]){if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!==[...keys].sort().join('|'))throw Error('Unknown or missing task fields');}
@@ -63,9 +63,9 @@ export function noticeBody(value:NoticeData){return '# Notification\n\n```json\n
 export function noticeView(note:any):NoticeData{
  if(note.ui?.recordType!=='notification')throw Error('Not a notification');const m=latest(note).body.match(/^# Notification\n\n```json\n([\s\S]*)\n```\n$/);if(!m)throw Error('Invalid notification');return JSON.parse(m[1]);
 }
-export function taskNotice(task:any,run:any){const data=taskRunView(run),definition=parseTask(latest(task).body);if(!definition.notify)return null;
+export function taskNotice(task:any,run:any){const data=taskRunView(run),original=task.revisions?.find((r:any)=>r.version===data.taskRevision);if(task.id!==data.taskId||!original)throw Error('Notification task revision unavailable');const definition=parseTask(original.body);if(!definition.notify||!parseTask(latest(task).body).notify)return null;
  const title=data.status[0].toUpperCase()+data.status.slice(1)+' · '+definition.prompt.trim().split('\n')[0].slice(0,64);
- const value:NoticeData={taskId:task.id,taskRevision:data.taskRevision,runId:run.id,title,body:data.answer??data.error??'Execution needs attention',createdAt:new Date().toISOString(),read:false};
+ const value:NoticeData={taskId:task.id,taskRevision:data.taskRevision,runId:run.id,runRevision:latest(run).version,attempt:data.attempt,title,body:data.answer??data.error??'Execution needs attention',createdAt:new Date().toISOString(),read:false};
  return typedRecord('notification','Notifications/'+localDate()+'-'+crypto.randomUUID()+'.md',noticeBody(value));
 }
 export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Date(),options:{retry?:boolean;manual?:boolean}={}){
@@ -112,4 +112,16 @@ export function finishTaskRun(records:any[],runId:string,owner:string,result:{st
   updated={...task,taskCursor:{...task.taskCursor,nextAt}};
  }
  return {task:updated,run};
+}
+
+export function validateNoticeLinks(records:any[],note:any){
+ const notice=noticeView(note),task=records.find(n=>n.id===notice.taskId),run=records.find(n=>n.id===notice.runId);
+ if(!task||!run||typeof notice.read!=='boolean'||typeof notice.createdAt!=='string')throw Error('Invalid notification target');
+ if(notice.runRevision===undefined&&notice.attempt===undefined)return;
+ if(!Number.isInteger(notice.runRevision)||notice.runRevision!<1||!Number.isInteger(notice.attempt)||notice.attempt!<0)throw Error('Invalid notification revision');
+ const revision=run.revisions?.find((r:any)=>r.version===notice.runRevision);if(!revision)throw Error('Notification result revision unavailable');
+ const data=taskRunView({...run,revisions:[revision]}),source=task.revisions?.find((r:any)=>r.version===notice.taskRevision);
+ if(!source||data.status==='running'||data.taskId!==task.id||data.taskRevision!==notice.taskRevision||data.attempt!==notice.attempt||notice.body!==(data.answer??data.error??'Execution needs attention'))throw Error('Invalid notification result link');
+ const definition=parseTask(source.body),title=data.status[0].toUpperCase()+data.status.slice(1)+' · '+definition.prompt.trim().split('\n')[0].slice(0,64);
+ if(notice.title!==title||data.prompt!==definition.prompt||data.definition!==taskDefinition(definition))throw Error('Invalid notification task link');
 }

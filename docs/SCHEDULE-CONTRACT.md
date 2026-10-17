@@ -21,3 +21,9 @@ The existing New schedule sheet presents the proposed prompt and conditions, Pau
 `schedule.propose` records start/result/failure/Stop on the Input turn. History/summary/receipts do not authorize execution. Pending review is session-only and cannot auto-save or replay after restart. New tasks remain paused; explicit Enable or Run now uses the existing foreground-only rules. This creation path installs no tools, grants no network access and creates no OS notification timer. Date interpretation and clarification quality require actual model/device evidence in TEST-RESULTS.txt.
 
 Measured state-transition and browser evidence is in TEST-RESULTS, including actual manual foreground scheduled inference (Unit3). Physical-device timing, sleep/resume behavior, closed-PWA execution and full-feature offline acceptance are separate unverified or unsupported gates.
+
+## Notification result snapshots (Unit36)
+
+New notification events pin taskRevision, runRevision and attempt. Title/prompt and the result body come from the claimed task and exact terminal execution revision, so later task edits or occurrence retries do not replace the old event's result. Both the claimed notify policy and current task notify flag must allow a new event; disabling notifications during execution is respected. Opening a new notification result shows the retained execution revision and attempt; Open current file deliberately navigates to the live canonical file. Existing legacy notifications remain byte-identical and label their unpinned link Open current result.
+
+Backup verifies new pins against retained task/run revisions, exact body/title, attempt and definition. Missing/forged pins refuse; legacy unpinned records remain readable. Read/unread and notification-only deletion preserve the source task/run. These are in-app outcomes, not a closed-PWA timer or OS push guarantee.
