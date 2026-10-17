@@ -1,5 +1,6 @@
 import {validateNoteRestoreReceipt} from './note-restore.ts';
 import {utf8BytesWithin,visitUtf8Chunks} from './utf8-text.ts';
+import {visitJsonChunks} from './json-chunks.ts';
 import {validateWorkingFileLink} from './working-file.ts';
 import {validateOcrLinks} from './ocr-text.ts';
 import {validateSettingsRestoreReceipt} from './settings-restore.ts';
@@ -31,12 +32,14 @@ const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-at
 export const MAX_BACKUP_BYTES=200000000;
 function checkBackupText(text:string,limit=MAX_BACKUP_BYTES){if(!utf8BytesWithin(text,limit))throw Error('Backup too large · 200 MB limit');return text;}
 export function serializeStateBackup(pack:unknown,limit=MAX_BACKUP_BYTES){return checkBackupText(JSON.stringify(pack),limit);}
+function backupBytes(pack:unknown,visit:(bytes:Uint8Array)=>void,limit=MAX_BACKUP_BYTES){let count=0;visitJsonChunks(pack,text=>visitUtf8Chunks(text,bytes=>{count+=bytes.length;if(count>limit)throw Error('Backup too large · 200 MB limit');visit(bytes);}));}
+export function stateBackupBlob(pack:unknown,limit=MAX_BACKUP_BYTES){const parts:BlobPart[]=[];backupBytes(pack,bytes=>parts.push(bytes.slice().buffer),limit);return new Blob(parts,{type:'application/json'});}
 const equal=(a:unknown,b:unknown)=>stateHash(a)===stateHash(b);
 function encode(value:any){const undefinedPaths:string[][]=[];
  const walk=(v:any,path:string[]):any=>{if(v===undefined){undefinedPaths.push(path);return null;}if(Array.isArray(v))return v.map((x,i)=>walk(x,[...path,String(i)]));if(v&&typeof v==='object'){const out=Object.create(null);for(const [key,item] of Object.entries(v))out[key]=walk(item,[...path,key]);return out;}return v;};
  return {data:walk(value,[]),undefinedPaths};
 }
-export const stateHash=(value:unknown):string=>{const hash=new SHA256();visitUtf8Chunks(JSON.stringify(encode(value)),bytes=>hash.update(bytes));return hash.hex();};
+export const stateHash=(value:unknown):string=>{const hash=new SHA256();visitJsonChunks(encode(value),text=>visitUtf8Chunks(text,bytes=>hash.update(bytes)));return hash.hex();};
 function jsonOnly(value:any){
  if(value===undefined||value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return;
  if(Array.isArray(value)){for(const item of value)jsonOnly(item);return;}
@@ -77,7 +80,7 @@ function validateState(state:StateSnapshot){
   if(r.status==='undone'&&(!Number.isInteger(r.undoVersion)||r.undoVersion<=r.afterVersion||n.revisions[r.undoVersion-1]?.body!==before.body||typeof r.undoneAt!=='string'))throw Error('Invalid correction Undo');
  }
 }
-export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]},pack={format:'mobile-local-brainpack',sha256:stateHash(payload),payload};serializeStateBackup(pack);return pack;}
+export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]},pack={format:'mobile-local-brainpack',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
 export async function parseStateBackup(text:string):Promise<StatePayload>{
  checkBackupText(text);const pack=JSON.parse(text);
  if(pack.payload?.schema===1){const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;}

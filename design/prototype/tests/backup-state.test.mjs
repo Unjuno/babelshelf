@@ -159,3 +159,20 @@ test('reviewed divergent ordinary note recovery appends and retains both histori
  const forged=structuredClone(receipt);forged.source.revisions[1].body='forged';assert.throws(()=>validateNoteRestoreReceipt(state.runs[0].key,forged,state.notes),/source changed/);
  for(const change of [{state:'withdrawn'},{ui:{protected:true}},{kind:'generated'},{originalAsset:{}},{mediaSource:{}}])assert.equal(noteRestoreCandidates(current,{...incoming,notes:[{...source,...change}]}).length,0);
 });
+
+import {visitJsonChunks} from '../src/json-chunks.ts';
+import {stateBackupBlob} from '../src/backup-state.ts';
+test('chunked JSON matches JSON.stringify for Unicode escapes, ordering and optional values',()=>{
+ const value={z:'x'.repeat(65535)+'😀\ud800\n"\\',a:[undefined,null,1,-0,true,'日本語'],skip:undefined,'__proto__key':'x',nested:{'2':'two','1':'one'}};
+ const parts=[];visitJsonChunks(value,s=>parts.push(s));assert.equal(parts.join(''),JSON.stringify(value));assert.ok(parts.every(s=>s.length<=65536));
+});
+test('chunked backup Blob retains exact format/hash and refuses byte overflow',async()=>{
+ const pack=await makeStateBackup(snapshot()),blob=stateBackupBlob(pack);assert.equal(await blob.text(),serializeStateBackup(pack));assert.equal(blob.type,'application/json');await parseStateBackup(await blob.text());
+ assert.throws(()=>stateBackupBlob({text:'日本語'.repeat(30)},200),/large/i);
+});
+
+ test('multi-megabyte chunked backup keeps exact bytes and parses retained state',async()=>{
+ const state=snapshot();state.settings.push({key:'large-local-data',value:{text:('日本語😀\\\n').repeat(220000)}});
+ const pack=await makeStateBackup(state),expected=serializeStateBackup(pack),blob=stateBackupBlob(pack);assert.ok(blob.size>2000000);assert.equal(await blob.text(),expected);
+ const restored=await parseStateBackup(await blob.text());assert.deepEqual(restored.settings,state.settings);
+ });
