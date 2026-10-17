@@ -46,3 +46,8 @@ Unit19: ordinary Send can transcribe supported audio/video audio tracks with the
 ## Process-offline integration evidence (Unit65)
 
 After explicit model preparation and DownloadsOFF, a separately started offline PC Chrome process ran the local11second English WAV through Whisper tiny/WASM, presented exact recognition/estimated timing and atomically saved original plus transcript. A further offline process searched the saved transcript and opened the original native audio player. Same maintained profile retained prepared Bonsai/OCR, read a mixed text/OCR PDF offline, and later generated/saved a PDF-grounded answer. This is coexistence/process-restart evidence; it does not verify a physical microphone, audible playback, arbitrary languages, alignment accuracy or phone execution. See TEST-RESULTS.txt.
+
+## Native audio playback control evidence (Unit104)
+On current PC product084d9d84cdf5aeec, a new context-offline browser process opens the retained real Unit102 answer citation, then its original retry102.wav. The existing native audio control receives a real pointer click, decoded duration11seconds and currentTime advances from0 to0.277154 with paused=false. Closing the sheet detaches and pauses the retained media element. No product fix was required for this measured close behavior.
+
+The selected citation covers the whole model-estimated0–11second range. This verifies original decoding/control playback and close behavior, not nonzero citation seeking, timestamp alignment accuracy, acoustic output, hardware microphone, phone codecs or video timeline mapping. No new transcription/inference or metadata-only simulated playback. Canonical before/after notes/settings/runs stay identical; the source range remains explicitly Estimated.
