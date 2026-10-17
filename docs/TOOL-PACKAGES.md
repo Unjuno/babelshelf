@@ -19,3 +19,5 @@ Memory code projection, package registration/isolation, custom code installation
 ## Unit76 plan — inspectable bundled source
 
 Project bundled SKILL.md and TypeScript source into protected canonical Tools package records from Vite raw imports of the same compiled inputs. Include the shared host dependency. These are IndexedDB text records, not installed OS files; the application executes bundled modules, never imported text. Add narrow Tools package .ts paths to the storage format, keep ordinary user creation Markdown-only, and export source bytes without Markdown frontmatter. Existing IDs/history remain. Verify tree/read protection, source equality, raw export and backup/reopen. Prior app versions may reject these new source paths; no backward-client compatibility claim. Custom installation/MCP remains pending.
+
+Unit76 implemented and verified this projection on product a962b78724805f0a: exact source display, read-only controls, raw export, backup and new offline PC browser process read. See STORAGE-CONTRACT.md for the narrow .ts path extension and retained-snapshot limitation. Code installation, isolation and MCP remain pending.

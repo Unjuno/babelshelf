@@ -101,3 +101,7 @@ The post-Unload final-backup navigation probe timed out on an incorrect exact `B
 ## Unit68 additional local text engine
 
 Latest user direction allows additional local models. The fixed SmolLM2 360M ONNX/WASM path now shares the same TextRuntime interface as WebML/Bonsai and selected custom GGUF models. PC offline raw generation and native registration/import/load/Stop/reload passed; normal Send on this small model failed structured routing (Invalid model JSON). This is not a general harness quality pass. Current final024e21ba1498045c/98pins and remaining limits are recorded in TEST-RESULTS.txt and ADDITIONAL-TEXT-ENGINE.md. No default model changed and no remote inference was introduced.
+
+## Unit77 — new offline process and lifecycle after tool packaging
+
+Product a962b78724805f0a/99; retained prepared custom official Bonsai4B and unchanged model/runtime hashes, same user-selected local engine. Native UI new answer with exact canonicalv2 source, subsequent generation-stage Stop with stopped receipt/no answer, explicit unload/reload, new actual answer and real compaction/original retention passed. See OFFLINE-WORKFLOW.md and outputs/unit77-offline-lifecycle. No external requests in offline process. No model asset, selection, engine, license or product code changes in this unit. Slow PC latency remains material; no phone/full-function acceptance is inferred.
