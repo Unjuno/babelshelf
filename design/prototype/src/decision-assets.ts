@@ -21,8 +21,9 @@ export async function decisionStatus(signal:AbortSignal,progress:(s:string)=>voi
  catch{check(signal);return {prepared:false,bytes:0};}
 }
 export async function prepareDecisionFile(path:string,allowNetwork:boolean,signal:AbortSignal,progress:(s:string)=>void,io:IO=ioDefault){
- const pin=decisionFile(path);if(!pin)throw Error('Unknown decision asset');check(signal);if(!allowNetwork)throw Error('Downloads are off');
+ const pin=decisionFile(path);if(!pin)throw Error('Unknown decision asset');check(signal);
  try{await readDecisionFile(path,signal,progress,io);check(signal);return;}catch{check(signal);}
+ if(!allowNetwork)throw Error('Downloads are off');
  const response=await io.fetch(pin.url,{signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});check(signal);if(!response.ok||!response.body)throw Error('Decision download failed');
  const reader=response.body.getReader(),hash=new SHA256();let writer:FileSystemWritableFileStream|undefined,count=0,last=0;
  // createWritable commits atomically on close. Abort never deletes/replaces an

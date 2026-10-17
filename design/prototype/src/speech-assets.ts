@@ -17,10 +17,11 @@ export async function speechAssetResponse(path:string){
 }
 export async function speechReady(){try{for(const file of manifest.files)await speechAssetResponse('/asr-model/whisper-tiny/'+file.path);return true;}catch{return false;}}
 export async function prepareSpeech(allowNetwork:boolean,progress:(text:string)=>void){
- if(!allowNetwork)throw Error('Downloads are off');const cache=await caches.open(CACHE);
+ const cache=await caches.open(CACHE);
  for(let i=0;i<manifest.files.length;i++){
   const f=manifest.files[i];progress('Preparing '+(i+1)+'/'+manifest.files.length);
   try{await speechAssetResponse('/asr-model/whisper-tiny/'+f.path);continue;}catch{/* Only explicit preparation can repair missing/corrupt assets. */}
+  if(!allowNetwork)throw Error('Speech model not prepared');
   const response=await fetch(f.url,{credentials:'omit',referrerPolicy:'no-referrer'});if(!response.ok)throw Error('Speech download failed');
   const bytes=verifySpeechBytes(f,new Uint8Array(await response.arrayBuffer()));await cache.put(key(f),new Response(bytes.slice().buffer));
  }

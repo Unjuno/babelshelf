@@ -12,9 +12,9 @@ export function verifyOcrBytes(file:{bytes:number;sha256:string},bytes:Uint8Arra
 export async function readOcrData(language:string){const cache=await caches.open(cacheName);return Promise.all(ocrFiles(language).map(async file=>{const response=await cache.match(cacheKey(file.language));if(!response)throw Error('OCR model not prepared');return {code:file.language,data:verifyOcrBytes(file,new Uint8Array(await response.arrayBuffer()))};}));}
 export async function ocrReady(language:string){try{await readOcrData(language);return true;}catch{return false;}}
 export async function prepareOcr(language:string,allowNetwork:boolean,signal:AbortSignal,progress:(s:string)=>void){
- if(!allowNetwork)throw Error('Downloads are off');const cache=await caches.open(cacheName),files=ocrFiles(language);
+ const cache=await caches.open(cacheName),files=ocrFiles(language);
  for(const [i,file] of files.entries()){signal.throwIfAborted();progress('Preparing '+(i+1)+' / '+files.length);try{const old=await cache.match(cacheKey(file.language));if(old){verifyOcrBytes(file,new Uint8Array(await old.arrayBuffer()));signal.throwIfAborted();continue;}}catch{signal.throwIfAborted();}
-  signal.throwIfAborted();const response=await fetch(file.url,{signal,credentials:'omit',referrerPolicy:'no-referrer'});if(!response.ok)throw Error('OCR download failed');const bytes=verifyOcrBytes(file,new Uint8Array(await response.arrayBuffer()));signal.throwIfAborted();await cache.put(cacheKey(file.language),new Response(bytes.slice().buffer));
+  signal.throwIfAborted();if(!allowNetwork)throw Error('OCR model not prepared');const response=await fetch(file.url,{signal,credentials:'omit',referrerPolicy:'no-referrer'});if(!response.ok)throw Error('OCR download failed');const bytes=verifyOcrBytes(file,new Uint8Array(await response.arrayBuffer()));signal.throwIfAborted();await cache.put(cacheKey(file.language),new Response(bytes.slice().buffer));
  }
  signal.throwIfAborted();if(!await ocrReady(language))throw Error('OCR preparation failed');
 }

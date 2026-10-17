@@ -34,3 +34,8 @@ export function videoCapabilityStatus(model:string,prepared:boolean):string {
  const audio=capabilityState('video.audio',model,prepared);
  return audio.status==='Ready'?'Audio only · frames unsupported':audio.status==='Not configured'?'Speech model required':audio.status+' · audio only';
 }
+// Verify always rechecks local assets; it never authorizes reacquisition.
+export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean){
+ const state=capabilityState(capability,model,ready),verified=state.status==='Ready';
+ return {label:verified?'Verify':'Prepare',enabled:!!state.adapter&&!busy&&(verified||downloads),allowNetwork:!verified&&downloads};
+}

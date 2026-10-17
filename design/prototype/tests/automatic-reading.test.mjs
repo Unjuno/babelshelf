@@ -83,3 +83,27 @@ test('failed submitted input returns only to an empty composer without duplicate
  assert.equal(recoverSubmittedInput({text:'',attachments:[]},null),null);
  for(const extra of [{file:{}},{prepared:{}},{reviewedText:{}},{asset:undefined}])assert.throws(()=>recoverSubmittedInput({text:'',attachments:[]},{...sent,attachments:[{...sent.attachments[0],...extra}]}),/originals/);
 });
+
+import {processorAssetControls} from '../src/local-capabilities.ts';
+test('processor verification stays local even when downloads are enabled; unsupported registrations stay inert',()=>{
+ for(const [capability,model] of [['audio.transcribe','whisper-tiny'],['image.ocr','tesseract-7'],['decision.classify','d1-omni-600M']]){
+  for(const downloads of [false,true])assert.deepEqual(processorAssetControls(capability,model,true,false,downloads),{label:'Verify',enabled:true,allowNetwork:false});
+  assert.equal(processorAssetControls(capability,model,false,false,false).enabled,false);
+  assert.equal(processorAssetControls(capability,model,false,false,true).allowNetwork,true);
+  assert.equal(processorAssetControls(capability,model,true,true,true).enabled,false);
+ }
+ assert.equal(processorAssetControls('audio.transcribe','whisper-base',true,false,true).enabled,false);
+ assert.equal(processorAssetControls('image.describe','d1-omni-600M',true,false,true).enabled,false);
+});
+
+import {prepareSpeech} from '../src/speech-assets.ts';
+import {prepareOcr} from '../src/ocr-assets.ts';
+test('offline processor verification refuses missing or corrupt local bytes without fetch or replacement',async()=>{
+ const saved={caches:globalThis.caches,fetch:globalThis.fetch,location:globalThis.location};let fetches=0,writes=0;
+ try{globalThis.location={origin:'http://localhost'};globalThis.fetch=async()=>{fetches++;throw Error('Unexpected network');};
+ for(const response of [undefined,new Response('corrupt')]){globalThis.caches={open:async()=>({match:async()=>response?.clone(),put:async()=>{writes++;}})};
+ await assert.rejects(prepareSpeech(false,()=>{}),/not prepared/);
+ await assert.rejects(prepareOcr('eng',false,new AbortController().signal,()=>{}),/not prepared/);}
+ assert.equal(fetches,0);assert.equal(writes,0);
+ }finally{for(const [key,value] of Object.entries(saved)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
+});
