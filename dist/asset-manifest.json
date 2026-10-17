@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "./app.js",
-      "bytes": 27618,
-      "sha256": "dd55928d535b80d1db295ba5f0bf61303e551a94f4112429b4dac1925376119e"
+      "bytes": 27772,
+      "sha256": "2e98a637f08168064e33f7865ffa344ca585e27d084b8f3ad8dc4f9d6edaf053"
     },
     {
       "path": "./blank-paper.svg",
@@ -55,6 +55,11 @@
       "path": "./index.html",
       "bytes": 7398,
       "sha256": "c19dae99c6edb62057e074b69d496efca3f7b580785d980c9a7591b1019857f6"
+    },
+    {
+      "path": "./input-events.js",
+      "bytes": 201,
+      "sha256": "e7e782c05f7436cfcfe72e61df4e23e8292dee300bb0a6a392139407e3e7d4e5"
     },
     {
       "path": "./language-fixtures.json",
@@ -114,7 +119,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "51aba0daabd2a4647107ff41c05575e7e6fdd0a158642c87518b2559c3e14f6f"
+      "sha256": "c7f1a750cab9cfe1be09029a1c94c6cfc9c382d6fc611bf1930a9ccffcf7ac77"
     },
     {
       "path": "./ui.js",

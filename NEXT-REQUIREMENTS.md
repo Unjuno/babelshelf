@@ -16,6 +16,8 @@ Unit50 fixes retained running executions showing Paused after their local owner 
 
 Unit51 makes reviewed file creation single-flight through canonical commit and conversation acknowledgement. A post-commit dialogue conflict opens the saved file with a specific warning instead of leaving a retryable New file form; a failed canonical commit retains the draft. Actual two-tab/duplicate-submit/path-conflict and updated offline-process flow passed on PC. Source validation and no-overwrite CAS remain unchanged.
 
+Unit52 shares an IME-aware Enter policy between baseline and product, preventing legacy229 boundary events from submitting while preserving Shift+Enter and explicitSend. Node and native synthetic-event/persistence controls pass; actual OS/phone keyboards remain an acceptance gate.
+
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.

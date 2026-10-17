@@ -92,3 +92,10 @@ Interactive read-only operations now retain structured local activity on the sam
 ## Optional finite decision routing
 
 Selected, verified Open d1 may classify only the current request and readable attachment descriptors before structured planning. Historical instructions are excluded from its intent input after an actual native ambiguity caused by an old correction summary. Full unchanged compacted context remains in the deterministic route guard, Bonsai planner and answering. D1 cannot resolve paths, earlier-message indices, capture bodies or anaphoric retrieval queries. Confident finite answer/summary/chat intents may skip planning only within those parameter boundaries; prior-context answer/summary without a current attachment scope always uses Bonsai query resolution. Exact original-turn reads and correction/save review remain unchanged. See DECISION-CONTRACT.md and Unit21 evidence.
+
+
+## Composer submit keys (Unit52)
+
+Baseline and accepted product share `dist/input-events.js` for Enter submission. Enter submits only without Shift, outside composition and without legacy IME keyCode229. Explicit Send remains unchanged. Shift+Enter retains native multiline editing; no timing delay or model call is added. Native product textarea forwards the original KeyboardEvent, while the protected phone runtime remains untouched.
+
+The229 check follows [MDN keydown/IME guidance](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event#keydown_events_with_ime): composition-boundary ordering can report isComposing=false for an IME event. Unit52 reproduces and verifies synthetic browser events plus ordinary browser Enter/Shift+Enter and exact canonical persistence. These controls do not certify physical OS/mobile IME behavior, dictation or virtual-keyboard layout.

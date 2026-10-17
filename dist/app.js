@@ -1,3 +1,4 @@
+import {isSubmitKey} from './input-events.js';
 import {buildFileTree,notePath,markdownFile} from './files.js';
 import {localRequest} from './requests.js';
 import {appendChatTurn} from './ui.js';
@@ -95,7 +96,7 @@ async function ask(){
   lastAnswer={title:question.slice(0,80),body:parsed.answer,sources:parsed.refs,model:engine.loaded,partial};const answer=lastAnswer;renderAnswer(reply(),answer);chatHistory.push({question,answer,at:new Date().toISOString()});chatHistory=chatHistory.slice(-100);await setSetting('chatHistory',chatHistory);$('ask-status').textContent='';reply().scrollIntoView({block:'end'});
  }catch(e){reply().append(el('div','turn-status',e.message));throw e;}finally{summaryId=null;setBusy(false);currentReply=null;}
 }
-$('chat-form').onsubmit=e=>{e.preventDefault();guard(ask);};$('question').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('chat-form').requestSubmit();}});
+$('chat-form').onsubmit=e=>{e.preventDefault();guard(ask);};$('question').addEventListener('keydown',e=>{if(isSubmitKey(e)){e.preventDefault();$('chat-form').requestSubmit();}});
 $('summarize-note').onclick=()=>guard(async()=>{await flush();summaryId=selected.id;await setView('ask');$('question').value='Summarize this note in its original language.';await ask();});
 function renderAnswer(target,answer){const card=el('div','answer-card');if(answer.partial)card.append(el('span','tag','Partial summary'));card.append(el('div','answer-text',answer.body));const sources=el('details','sources');sources.append(el('summary','',`Sources · ${answer.sources.length}`));answer.sources.forEach(r=>sources.append(evidenceNode(r)));card.append(sources,action('Save note',()=>previewSave(answer),'text-button'));target.append(card);}
 function previewSave(answer){if(!answer)return;const title=el('input','modal-input');title.value=answer.title;title.setAttribute('aria-label','Title');const body=el('textarea','modal-text');body.value=answer.body;body.setAttribute('aria-label','Note');modal('Save note',[title,body,...answer.sources.map(evidenceNode)],[action('Cancel',closeModal),action('Save',async()=>{await refresh();const call=validateTool({name:'create_note',arguments:{title:title.value,body:body.value,source_refs:answer.sources}},notes);const n=createNote({title:call.arguments.title,body:call.arguments.body,kind:answer.kind??'generated',sources:call.arguments.source_refs});if(answer.capturedFrom)n.capturedFrom=answer.capturedFrom;await saveNote(n);await refresh();closeModal();await setView('notes');openNote(n.id);notice('Saved');},'primary')]);}
