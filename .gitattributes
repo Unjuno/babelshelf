@@ -7,3 +7,7 @@ dist/** text eol=lf
 dist/*.png binary
 # Diagnostic raw prompts/stdout include meaningful exact LF/CRLF and terminal blanks.
 research/evaluations/reference-cpu-e3de715/** -text whitespace=-blank-at-eof,-blank-at-eol
+
+# Preserve byte-pinned source patch and upstream license on Windows.
+research/runtime/wllama-count/count.patch -text
+research/runtime/wllama-count/UPSTREAM-LICENCE -text
