@@ -1,8 +1,8 @@
-LATEST VERIFIED UNIT11 — 2026-10-17 JST
-Final product7d0f50843daabe03. Node39 / prototype116 / product2 / Markdown4;
-24 pinned shell hashes and28 protected runtime files PASS. Actual PC4B semantic
-rewrite proposal/Cancel/approval/reload/append-only Undo and exact canonical
-history backup verified. Read Unit11 at the end for builds and limits.
+LATEST VERIFIED UNIT12 — 2026-10-17 JST
+Final product c843564f62ec03a5. Node39 / prototype119 / product2 / Markdown4;
+24 pinned shell hashes and28 protected runtime files PASS. Unit11 actual PC4B
+semantic correction remains verified on7d0f50843daabe03. Unit12 real-IDB8 and
+normal browser update/history/data-preservation/reopen checks PASS.
 Full/device offline MVP remains incomplete. Entries below are chronological.
 
 CURRENT GOAL PROGRESS — 2026-10-17 JST
@@ -311,3 +311,11 @@ No new real-browser or device PASS is claimed.
 - Local UI backup independently parsed37notes/3settings/11runs. Both actual proposal activities are succeeded text.rewrite and preserve exact before/after; first cancelled status retained. One722-byte correction receipt has beforeVersion1/afterVersion2/statusundone/undoVersion3 and bodySHA e50408d3bada306de96a0ffbfd67fe57400658c37e300c70df516d0e239ca5f5. Exact v1/v2/v3 bodies verified against visible original/generated/Undo contents. Public QA files/screenshots outsideGit: semantic-correction-review.png, semantic-correction-saved-v2.png, semantic-correction-undo-history.png, semantic-correction-state.brainpack. Restoration result recorded below when completed.
 - Limits: source+instruction+output must fit the actual2048-token runtime; no partial document rewrite fallback. Proposal review checks bytes/target, not semantic entailment. Generic system-record edits, later Decision/OCR/PDF/video, remaining speech/preparation attempt integration, large/partitioned archives/reconciliation and physical Android/iPhone/OS-isolated full offline cold-start acceptance remain. The whole goal remains active.
 - Native same-file restore reviewed37records/9originals and completed. Re-export independently proved exact notes/settings/runs snapshot equality, SHA256 c5260112151b12ca370ad86d72273dc2160f655f6d8dc37754f745410e1b4f1f (envelope timestamp excluded). After restore, Read and History again opened v1/original, v2/actual-model bullets and v3/original with Undo disabled/Undonev3. Final tab16 console errors none. Screenshot semantic-correction-final-history.png outsideGit; retained old failures and all original data.
+
+
+2026-10-17 Unit12 known built-in Tools definition updates (PC evidence)
+- README/capture/patch now describe connected local adapters, exact reviewed writes and external definitions-only status. Exact untouched compiled oldv1 records receive canonicalv2 in the initialization transaction. Modified/moved/withdrawn/imported/unknown variants stay untouched. Fresh installs seed currentv1. Definitions grant no code execution or permissions. See BUILTIN-DEFINITIONS.md.
+- Windows Node24.6: baseline39/prototype119/product2/Markdown4/check24 PASS. TypeScript/Vite and28 protected files PASS; preview main663.65kB chunk warning remains. Product c843564f62ec03a5, index-C56UpwOj.js, main453.60kB. Bonsai/speech workers unchanged. Reviewer found no Important issue; focused25 checks passed separately.
+- Eight real-IDB checks PASS in retained unique databases: exactoldv1, concurrent init updatesonce, reopen idempotence, exact oldbackup restore, normal-init append afterrestore, oldovernew conflict refusal/no writes, modified protected preservation, fresh seed. Initial harness incorrectly expected restore to throw instead of returning restored:false/conflicts; corrected assertion after inspecting contract, then eight passed. No fake inference.
+- PC native tab16: Downloads ON, Check/Apply/reopen through ordinary UI. Current script index-C56UpwOj.js confirmed. Read: Tools/README.md opened accuratev2; History opened originalv1 verbatim. Screenshot builtin-tools-history.png retained outsideGit. Updated boot returned Downloads OFF. Native exports (11)/(12) independently digest-validated. Against Unit11 export(10), same37noteIDs; only3known Tools definitions and explicitly toggled settings-connection changed. Oldrevision prefixes/metadata preserved, all other note bytes unchanged, all11runs exact. Dialogue additions are the explicit QA Read turns. Normalreload/reexport yielded exact entire notes/settings/runs hash 6bcf977c2ff52a51998715322f8ac12f77802fc2daa178311aba5ccd3f6d8faf, no duplicate migration. Console errors none.
+- No new GPU execution, OS-network cutoff, browser-process restart or physical phone acceptance is claimed. OCR/PDF/video, laterDecision, general model edit/grounding accuracy, speech/preparation activity integration, large archives/conflict reconciliation and full/device offline remain pending. No deploy/push/data reset.

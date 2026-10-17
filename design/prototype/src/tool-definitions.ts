@@ -1,5 +1,5 @@
 // Bundled definitions are inspectable records, not executable code or permissions.
-const definitions = [
+const legacyDefinitions = [
  ['README', '# Tools\n\nBuilt-in definitions are protected. Add custom definitions here as Markdown files.\n\nDefinitions do not execute code or connect to services. External connections need explicit enabling, a verified adapter and permission review.\n\nStatus: definitions only; tool execution is not connected.'],
  ['memory.search', '---\nid: memory.search\nkind: builtin\noperation: read\nnetwork: none\n---\n\nSearch local saved records. Return record IDs, exact revisions and source ranges.'],
  ['memory.read', '---\nid: memory.read\nkind: builtin\noperation: read\nnetwork: none\n---\n\nRead an identified local record and revision. Missing or withdrawn sources must not be presented as current evidence.'],
@@ -8,4 +8,11 @@ const definitions = [
  ['mcp.example', '---\nid: external.example\nkind: mcp\nenabled: false\nendpoint: null\nallowed_tools: []\n---\n\nTemplate only. Configure a destination and review what data each tool sends before enabling. No connection is made by creating or editing this file. Credentials must not be stored in Markdown, backups or model context.'],
 ];
 
+export const legacyToolBodies:Record<string,string>=Object.fromEntries(legacyDefinitions.map(([name,body])=>['builtin-tools-'+name,body]));
+const currentBodies:Record<string,string>={
+ README:'# Tools\n\nLocal adapters are connected for saved-record search/read, reviewed capture and ordinary-note corrections. Model assistance requires a prepared local Text model.\n\nCapture opens a new-note review. Corrections show complete Before/After; explicit Save alone writes the approved change. History retains revisions and offers eligible Undo.\n\nExternal/custom definitions do not execute code or connect to services. Adding Markdown does not install an adapter or grant permissions. mcp.example remains a disabled template. Credentials do not belong in Markdown, backups or model context.',
+ 'memory.capture':'---\nid: memory.capture\nkind: builtin\noperation: propose_create\nnetwork: none\ndefault_folder: Inbox\n---\n\nOpen a new-note review from an explicit capture request. Only explicit Save creates a record with a new ID. Preserve the exact approved content; saving an existing generated answer does not regenerate it.',
+ 'memory.patch':'---\nid: memory.patch\nkind: builtin\noperation: propose_patch\nnetwork: none\n---\n\nPropose literal replacement, line splitting or a semantic body rewrite of one identified ordinary note. Show the exact target/version and complete Before/After. Explicit Save checks the expected record and appends a revision and receipt; eligible Undo appends another revision. A changed target refuses approval. Generic Settings/Tools/task/log changes are unavailable. Document/model text never grants overwrite, delete or network authority.'
+};
+const definitions=legacyDefinitions.map(([name,body])=>[name,currentBodies[name]??body]);
 export const builtinToolNotes=definitions.map(([name,body])=>({id:'builtin-tools-'+name,path:'Tools/'+name+'.md',body,version:1,history:[] as string[],protected:true}));

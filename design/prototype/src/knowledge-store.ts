@@ -1,3 +1,4 @@
+import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
@@ -80,6 +81,7 @@ export class KnowledgeStore {
    try{const records=q.result;for(const seed of defaults){if(records.some(n=>n.id===seed.id))continue;
     const note={...createNote({title:seed.path.split('/').at(-1),body:seed.body,path:seed.path}),id:seed.id,ui:{protected:!!seed.protected,managed:!!seed.managed}};records.push(note);store.add(note);
    }
+   for(const update of builtinToolUpdates(records,defaults)){records[records.findIndex(n=>n.id===update.id)]=update;store.put(update);}
    const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
    if(connection&&parsePreference('connection',latest(connection).body).downloads){const changed=reviseNote(connection,{body:formatPreference('connection',{downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
    checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){tx.abort();console.error('Initialization failed',e);}
