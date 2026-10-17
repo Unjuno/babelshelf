@@ -1,4 +1,4 @@
-const CACHE='mlb-shell-71668bde346a1a86'; // updated by scripts/check.mjs
+const CACHE='mlb-shell-867e898d6806209a'; // updated by scripts/check.mjs
 const base=new URL('./',self.location.href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const res=await fetch(new URL('asset-manifest.json',base),{cache:'no-store'});if(!res.ok)throw Error('asset manifest unavailable');const manifest=await res.clone().json();const staging=await caches.open(CACHE+'-staging');

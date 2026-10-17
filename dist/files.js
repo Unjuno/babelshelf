@@ -1,8 +1,9 @@
 // IndexedDB is canonical. These paths are a faithful projection, not OPFS files.
+export function isToolSourcePath(path){return typeof path==='string'&&(path==='Tools/tool-host.ts'||/^Tools\/[a-z][a-z0-9.-]*\/[a-z][a-z0-9-]*\.ts$/.test(path));}
 export function normalizePath(path){
  if(typeof path!=='string'||path.length>500||path!==path.trim()||/[\\\u0000-\u001f\u007f:*?"<>|%]/.test(path))throw Error('Invalid Markdown path');
  const parts=path.normalize('NFC').split('/');
- if(parts.some(p=>!p||p==='.'||p==='..'||/[. ]$/.test(p)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(p))||!path.endsWith('.md'))throw Error('Invalid Markdown path');
+ if(parts.some(p=>!p||p==='.'||p==='..'||/[. ]$/.test(p)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(p))||(!path.endsWith('.md')&&!isToolSourcePath(path)))throw Error('Invalid Markdown path');
  return parts.join('/');
 }
 export function defaultPath(title,id){const name=title.normalize('NFC').replace(/[\\/:*?"<>|%\u0000-\u001f]/g,'-').replace(/[. ]+$/g,'').trim().slice(0,60)||'Untitled';return normalizePath('inbox/'+name+'-'+id+'.md');}

@@ -18,3 +18,13 @@ test('Stop before host and after awaited result refuses completion',async()=>{
  let stopped=false;
  await assert.rejects(search({query:'給水'},{...host,search:async()=>{stopped=true;return notes},check(){if(stopped)throw Error('Stopped')}}),/Stopped/);
 });
+
+import {normalizePath} from '../../../dist/files.js';
+import {createNote} from '../../../dist/core.js';
+import {exportMarkdownRevision} from '../src/markdown-export.ts';
+test('tool source paths and export preserve actual code without Markdown wrapping',()=>{
+ const path='Tools/memory.search/tool.ts',body="export const label = '原文';\n";
+ assert.equal(normalizePath(path),path);assert.equal(normalizePath('Tools/tool-host.ts'),'Tools/tool-host.ts');
+ for(const bad of ['Inbox/tool.ts','Tools/../tool.ts','Tools/a/b/c.ts','Tools/a/tool.js','Tools/a/evil.ts.exe'])assert.throws(()=>normalizePath(bad));
+ const n=createNote({path,body});const file=exportMarkdownRevision(n,1);assert.equal(file.text,body);assert.equal(file.filename,'tool.v1.ts');
+});

@@ -28,8 +28,8 @@
     },
     {
       "path": "./files.js",
-      "bytes": 2212,
-      "sha256": "03eaf991a0ff68ec7433cb5d6576e49d2f148e1cbd690f61d13e7a727b64401a"
+      "bytes": 2415,
+      "sha256": "2ab175ce6d2e0ef93818dd368e3eac001794db38f417d40ef3e35e3dceff86e6"
     },
     {
       "path": "./gguf-inspect.js",
@@ -139,7 +139,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "3bf0cbb13f09afce9d9b5a4af77a42fcb5338102da4b43c0eb827368b8dcdd11"
+      "sha256": "52ba7e3a325b7b19dfe57b2d7de3e704b7b80c628795345f4a1ef6ff8381509a"
     },
     {
       "path": "./ui.js",

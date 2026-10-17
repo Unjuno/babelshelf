@@ -15,3 +15,7 @@ Plan and acceptance: extract the existing explicit search/read handlers into bun
 `src/tools/memory.search` and `memory.read` now pair tool.ts with SKILL.md. Normal explicit search and exact read dispatch call these implementations, recording package identity/version in activity. Current-file pinned reads retain their separate version validator. These are trusted bundled modules, not installed user code. No new authority or network capability is introduced.
 
 Memory code projection, package registration/isolation, custom code installation and MCP adapters remain unimplemented. Existing Tools Markdown/history is preserved; this step does not represent it as executable source.
+
+## Unit76 plan — inspectable bundled source
+
+Project bundled SKILL.md and TypeScript source into protected canonical Tools package records from Vite raw imports of the same compiled inputs. Include the shared host dependency. These are IndexedDB text records, not installed OS files; the application executes bundled modules, never imported text. Add narrow Tools package .ts paths to the storage format, keep ordinary user creation Markdown-only, and export source bytes without Markdown frontmatter. Existing IDs/history remain. Verify tree/read protection, source equality, raw export and backup/reopen. Prior app versions may reject these new source paths; no backward-client compatibility claim. Custom installation/MCP remains pending.
