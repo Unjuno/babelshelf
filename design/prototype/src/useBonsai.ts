@@ -23,9 +23,10 @@ export function useBonsai(models:CustomLocalModel[]=[],ready=true){
  async function load(model:string){return operation(async check=>{await syncRegistry(records.current,check);check();setLoaded('');await engine.current.load(model,events);check();setLoaded(model);setProgress('Loaded');});}
  async function unload(){return operation(async check=>{await initialized.current;check();await engine.current.unload();check();setLoaded('');setProgress('Unloaded');});}
  async function generate(messages:unknown[],maxTokens=256,format?:StructuredFormat){return operation(async check=>{await syncRegistry(records.current,check);check();if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens,format);check();if(cancelled.current)throw Error('Stopped');setProgress('');return result;});}
+ async function count(messages:unknown[]){return operation(async check=>{await syncRegistry(records.current,check);check();if(!engine.current?.loaded)throw Error('Model not loaded');const result=await engine.current.call('count',{messages});check();return result;});}
  function stop(){cancelEpoch.current++;cancelled.current=true;engine.current?.abort();setProgress('Stopping…');}
 
- const port=useRef<TextRuntime>(null!);port.current={get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
+ const port=useRef<TextRuntime>(null!);port.current={get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count};
  const inference=useRef<TextRuntime|null>(null);if(!inference.current)inference.current=createTextInference(()=>port.current);
  return {get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,importCustom,unload,pin:inference.current.pin,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
 }

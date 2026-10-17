@@ -3,10 +3,19 @@ import type {StructuredFormat} from './structured-grammar.ts';
 export type TextEngine={pin?:()=>TextEngine;manifest:{contextTokens:number};count:(messages:any[])=>Promise<{prompt_tokens:number}>;generate:(messages:any[],maxTokens?:number,format?:StructuredFormat)=>Promise<{text:string;stopped?:boolean}>};
 export type TextRuntime=Omit<TextEngine,'pin'>&{pin?:()=>TextRuntime;manifest:TextEngine['manifest']&{models:{id:string;revision:string}[];runtime:{revision:string}};readonly loaded:string;readonly assets:Record<string,{filesPresent?:boolean}>;load:(model:string)=>Promise<void>;stop:()=>void};
 export function createTextInference(read:()=>TextRuntime):TextRuntime{
- let epoch=0;
+ let epoch=0;let countMemo:{identity:string;epoch:number;key:string;tokens:number}|null=null;
  function identity(p:TextRuntime){return JSON.stringify([p.loaded,p.manifest.models.find(model=>model.id===p.loaded)?.revision,p.manifest.runtime.revision,p.manifest.contextTokens]);}
  function snapshot(){const p=read();if(!p.loaded)throw Error('Model not loaded');return {p,identity:identity(p),epoch};}
  function check(s:ReturnType<typeof snapshot>){if(s.epoch!==epoch)throw Error('Stopped');if(identity(read())!==s.identity)throw Error('Model changed · retry');}
+ // One bounded memo, never persisted. Count and generation share exact cloned messages.
+ async function countSnapshot(s:ReturnType<typeof snapshot>,messages:any[]){
+  check(s);const key=JSON.stringify(messages);
+  if(countMemo?.identity===s.identity&&countMemo.epoch===s.epoch&&countMemo.key===key)return {prompt_tokens:countMemo.tokens};
+  const result=await s.p.count(messages);check(s);
+  if(!result||!Number.isSafeInteger(result.prompt_tokens)||result.prompt_tokens<0)throw Error('Invalid token count');
+  if(key.length<=262144)countMemo={identity:s.identity,epoch:s.epoch,key,tokens:result.prompt_tokens};else countMemo=null;
+  return {prompt_tokens:result.prompt_tokens};
+ }
  function pin():TextRuntime{
   const s=snapshot(),manifest=structuredClone(s.p.manifest);
   const bound:TextRuntime={
@@ -19,9 +28,17 @@ export function createTextInference(read:()=>TextRuntime):TextRuntime{
  const api:TextRuntime={
   pin,
   get manifest(){return read().manifest;},get loaded(){return read().loaded;},get assets(){return read().assets;},
-  async load(model){const p=read();if(!p.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');epoch++;await p.load(model);},
-  stop(){epoch++;read().stop();},
-  async count(messages){const s=snapshot(),result=await s.p.count(messages);check(s);if(!result||!Number.isSafeInteger(result.prompt_tokens)||result.prompt_tokens<0)throw Error('Invalid token count');return {prompt_tokens:result.prompt_tokens};},
-  async generate(messages,maxTokens=256,format){if(!Number.isSafeInteger(maxTokens)||maxTokens<1)throw Error('Invalid output budget');const s=snapshot(),result=await s.p.generate(messages,maxTokens,format);check(s);if(result?.stopped)throw Error('Stopped');if(!result||typeof result.text!=='string')throw Error('Invalid generation result');return {text:result.text};},
+  async load(model){const p=read();if(!p.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');epoch++;countMemo=null;await p.load(model);},
+  stop(){epoch++;countMemo=null;read().stop();},
+  async count(messages){return countSnapshot(snapshot(),structuredClone(messages));},
+  async generate(messages,maxTokens=256,format){
+   if(!Number.isSafeInteger(maxTokens)||maxTokens<1)throw Error('Invalid output budget');
+   const s=snapshot(),input=structuredClone(messages),context=s.p.manifest.contextTokens;
+   if(!Number.isSafeInteger(context)||context<1)throw Error('Invalid context limit');
+   const count=await countSnapshot(s,input);check(s);
+   if(count.prompt_tokens+maxTokens>context)throw Error('Input exceeds context limit');
+   const result=await s.p.generate(input,maxTokens,format);check(s);
+   if(result?.stopped)throw Error('Stopped');if(!result||typeof result.text!=='string')throw Error('Invalid generation result');return {text:result.text};
+  },
  };return api;
 }
