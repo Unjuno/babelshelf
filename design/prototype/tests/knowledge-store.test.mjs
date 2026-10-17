@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,latest} from '../../../dist/core.js';
-import {projectNote,applyKnowledgeChanges} from '../src/knowledge-store.ts';
+import {projectNote,applyKnowledgeChanges,planFolderRename} from '../src/knowledge-store.ts';
 
 test('legacy projection and unchanged save preserve all bytes, IDs, sources and paths',()=>{
  const original=createNote({title:'旧資料',body:'日本語原文 🌳'});original.importedFrom={name:'old.txt'};
@@ -117,4 +117,21 @@ test('correction receipts reference retained revisions instead of duplicating en
  assert.ok(JSON.stringify(applied.receipt).length<2000);assert.equal(applied.receipt.beforeVersion,2);assert.equal(applied.receipt.afterVersion,3);
  const changedMetadata={...applied.note,other:'changed after approval'};assert.throws(()=>edits.undoCorrection([changedMetadata],applied.receipt),/conflict/i);
  assert.equal(edits.undoCorrection([applied.note],applied.receipt).note.revisions.at(-1).body,'old');
+});
+
+test('folder rename preserves canonical identities, source ranges and old paths together with empty descendants',()=>{
+ const note=createNote({path:'Notes/Trip/original.md',body:'Exact original 水'}),generated=createNote({path:'Notes/Trip/answer.md',body:'Answer',kind:'generated',sources:[{noteId:note.id,revision:1,start:0,end:5,quote:'Exact'}]}),records=[note,generated],folders=['Notes/Trip/Empty','Notes/Trip/Empty/Deep'],before=structuredClone({records,folders});
+ const result=planFolderRename(records,folders,'Notes/Trip','Travel',records.map(projectNote));
+ assert.deepEqual({records,folders},before);assert.ok(result.folders.includes('Notes/Travel/Empty/Deep'));assert.ok(!result.folders.some(p=>p.startsWith('Notes/Trip')));
+ for(const old of records){const n=result.records.find(n=>n.id===old.id);assert.deepEqual(n.revisions[0],old.revisions[0]);assert.equal(n.revisions.length,2);assert.equal(n.revisions[1].body,old.revisions[0].body);assert.equal(n.revisions[1].path,old.revisions[0].path.replace('Trip','Travel'));assert.deepEqual(n.sources,old.sources);}
+ const empty=planFolderRename([],folders,'Notes/Trip','Travel',[]);assert.deepEqual(empty.records,[]);assert.ok(empty.folders.includes('Notes/Travel/Empty/Deep'));
+});
+
+test('folder rename refuses stale subtree membership, altered files, collisions and protected roots',()=>{
+ const n=createNote({path:'Notes/Trip/a.md',body:'a'}),expected=[projectNote(n)];
+ assert.throws(()=>planFolderRename([n,createNote({path:'Notes/Trip/new.md',body:'new'})],[],'Notes/Trip','Travel',expected),/changed|conflict/i);
+ assert.throws(()=>planFolderRename([reviseNote(n,{body:'other tab'},1)],[],'Notes/Trip','Travel',expected),/changed|conflict/i);
+ assert.throws(()=>planFolderRename([n],['Notes/Travel'],'Notes/Trip','Travel',expected),/exists/i);
+ assert.throws(()=>planFolderRename([n],[],'Notes','Other',expected),/protected/i);
+ assert.throws(()=>planFolderRename([n],[],'Notes/Missing','Travel',expected),/unavailable/i);
 });

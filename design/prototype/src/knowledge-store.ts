@@ -13,7 +13,7 @@ import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {openDB} from '../../../dist/storage.js';
 import {parsePreference,formatPreference,preferenceGroup} from './preference-records.ts';
-import {validateMemoryFilePath} from './memory-paths.ts';
+import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot,type RestoreMode} from './backup-state.ts';
@@ -67,6 +67,21 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
  checkNotes(result);return result;
 }
 
+export function planFolderRename(records:Canonical[],storedFolders:string[],from:string,name:string,expected:NoteView[]){
+ assertMutableFolder(from);const inside=(path:string)=>path===from||path.startsWith(from+'/');
+ const views=records.filter(n=>n.state==='active').map(projectNote),selected=views.filter(n=>inside(n.path)),prior=expected.filter(n=>inside(n.path));
+ const ordered=(notes:NoteView[])=>[...notes].sort((a,b)=>a.id.localeCompare(b.id));
+ if(!equal(ordered(selected),ordered(prior)))throw Error('Folder changed · reopen before renaming');
+ const folders=[...new Set([...SYSTEM_FOLDERS,...storedFolders,...views.map(n=>n.path.split('/').slice(0,-1).join('/'))].flatMap(path=>path?path.split('/').map((_,i,a)=>a.slice(0,i+1).join('/')):[]))];
+ if(!folders.includes(from))throw Error('Folder unavailable');
+ const parent=from.split('/').slice(0,-1).join('/'),to=memoryFolderPath(parent,name,[...folders.filter(p=>p!==from),...records.map(n=>notePath(n))]);
+ if(to===from)throw Error('No change');const moved=(path:string)=>inside(path)?to+path.slice(from.length):path;
+ const nextFolders=folders.map(moved),nextViews=selected.map(n=>({...n,path:moved(n.path),version:n.version+1,history:[...n.history,n.body]}));
+ if(nextFolders.some(p=>p.split('/').length>MAX_FOLDER_DEPTH))throw Error('Maximum 5 folder levels');
+ const paths=[...views.map(n=>moved(n.path)),...nextFolders];if(new Set(paths.map(p=>p.toLowerCase())).size!==paths.length)throw Error('Name already exists');
+ const updated=applyKnowledgeChanges(records,selected,nextViews);
+ return {records:updated,folders:nextFolders.filter(p=>!isSystemFolder(p)).sort(),from,to};
+}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
  private name:string;
@@ -170,6 +185,18 @@ export class KnowledgeStore {
   const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction('notes','readwrite'),store=tx.objectStore('notes'),q=store.getAll();let error:unknown,views:NoteView[];
    q.onsuccess=()=>{try{const updated=applyKnowledgeChanges(q.result,before,after);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
+  });
+ }
+ async renameFolder(from:string,name:string,expectedNotes:NoteView[],expectedFolders:string[]|undefined){
+  const db=await this.open();return new Promise<{folders:string[];from:string;to:string}>((resolve,reject)=>{
+   const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders');let pending=2,error:unknown,result:{folders:string[];from:string;to:string};
+   const commit=()=>{if(--pending)return;try{
+    if(!equal(folders.result,expectedFolders))throw Error('Folders changed · reopen before renaming');
+    const plan=planFolderRename(rows.result,folders.result??[],from,name,expectedNotes);
+    for(const note of plan.records)if(!equal(rows.result.find(n=>n.id===note.id),note))notes.put(note);
+    settings.put(plan.folders,'ui-v1-folders');result={folders:plan.folders,from:plan.from,to:plan.to};
+   }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder rename failed'));
   });
  }
  async getState<T>(key:string):Promise<T|undefined>{return this.transaction(['settings'],'readonly',(tx,done)=>{const q=tx.objectStore('settings').get('ui-v1-'+key);q.onsuccess=()=>done(q.result);});}

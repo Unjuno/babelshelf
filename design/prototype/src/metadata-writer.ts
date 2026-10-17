@@ -13,5 +13,6 @@ export class MetadataWriter<T>{
   const operation=this.queue.then(async()=>{if(this.error)throw this.error;await this.compare(this.expected,value);this.expected=value;});
   this.queue=operation.catch(e=>{this.error=e;});return operation;
  }
+ async committed(){await this.flush();return structuredClone(this.expected);}
  async flush(){await this.queue;if(this.error)throw this.error;}
 }

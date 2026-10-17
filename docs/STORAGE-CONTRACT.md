@@ -59,3 +59,8 @@ Downloads default OFF on each app boot. Only explicit model preparation and upda
 The build and shell cache can be checked in Settings > Diagnostics. Existing installed workers require explicit update and closing every controlled page before reopening. Reindex only rebuilds derived search data. Browser storage eviction remains possible; export a local backup. This contract does not assert an iPhone or full offline PWA acceptance pass.
 
 Reviewed speech used as a question stays in ui-v1-dialogue as source-linked working input. Sending creates only fresh original/projection records, or reuses an existing active original; it does not create a knowledge transcript automatically. Model provenance and raw-byte identities remain validated in schema2 backup even when no derived transcript note exists. Explicit Save note follows the separate atomic transcript contract.
+
+
+## Atomic folder rename (Unit42)
+
+Memory folder rename appends canonical path revisions and updates explicit/empty descendant folder metadata in one IndexedDB notes/settings transaction. Source IDs, original bodies and earlier paths remain intact. It compares the exact affected projected records and subtree membership plus the committed folder-metadata snapshot, recomputes depth/collision/protection checks, and refuses concurrent changes. Local queues drain first; the rename is reserved before awaiting. Metadata is hydrated only after commit, suppressing a duplicate effect write. A failed transaction leaves both notes and empty folders unchanged. Native forced-write-failure QA is transaction rollback evidence, not a real quota-exhaustion test. File path editing remains versioned through the existing canonical save path.
