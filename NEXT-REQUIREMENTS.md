@@ -14,6 +14,8 @@ Unit49 adds a reproducible [desktop process-restart storage check](docs/OFFLINE-
 
 Unit50 fixes retained running executions showing Paused after their local owner closes. Schedule now shows canonical Running and Check execution; existing lease/Interrupted/explicit Retry authority stays unchanged. PC offline UI verified same-file edits, actual interruption/unprepared failure, pinned notification history and event-only deletion. This adds no successful generation, closed-PWA execution or device guarantee.
 
+Unit51 makes reviewed file creation single-flight through canonical commit and conversation acknowledgement. A post-commit dialogue conflict opens the saved file with a specific warning instead of leaving a retryable New file form; a failed canonical commit retains the draft. Actual two-tab/duplicate-submit/path-conflict and updated offline-process flow passed on PC. Source validation and no-overwrite CAS remain unchanged.
+
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.

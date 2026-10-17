@@ -39,10 +39,10 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  try{
   await phase(false,async(p,entry)=>{
    await p.getByRole('textbox',{name:'Message',exact:true}).fill('Remember '+original);await p.getByRole('button',{name:'Send',exact:true}).click();
-   assert.equal(await p.getByRole('textbox',{name:'New file content'}).inputValue(),original);await p.getByRole('button',{name:'Save',exact:true}).click();await p.getByRole('button',{name:'History',exact:true}).waitFor();
+   assert.equal(await p.getByRole('textbox',{name:'New file content'}).inputValue(),original);await p.getByRole('dialog',{name:'New file'}).locator('form').evaluate(form=>{form.requestSubmit();form.requestSubmit();});await p.getByRole('button',{name:'History',exact:true}).waitFor();
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(inputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text process-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();
-   before=await backup(p,'before.brainpack');entry.savedNote=true;entry.importedOriginals=2;
+   before=await backup(p,'before.brainpack');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body===original).length,1,'Double submit created duplicate notes');entry.savedNote=true;entry.duplicateSubmitControl=true;entry.importedOriginals=2;
   });
   await phase(true,async(p,entry)=>{
    entry.search=await search(p,marker,original);assert.ok(entry.search.includes('18リットル'));

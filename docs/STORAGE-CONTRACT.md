@@ -1,3 +1,9 @@
+## Reviewed file creation (Unit51)
+
+New notes and Save note reuse the exact reviewed body/kind/source references; saving never invokes inference. A synchronous same-page gate spans canonical creation and the originating dialogue acknowledgement. File fields, tabs, dismissal and repeat Save are blocked during that interval, as are new same-page foreground task claims. Canonical source/path/identity validation still rejects cross-tab conflicts.
+
+Creation and dialogue acknowledgement are separate commits. If creation fails, the draft remains editable and no Saved acknowledgement is written. If the canonical note commits but the originating turn's CAS fails, creation is not retried: the review closes, the committed ID opens and a note-specific Saved/conversation-status warning appears. The other tab's dialogue remains authoritative; no overwrite/rebase is attempted. Opening a different file does not inherit that warning. The original turn may retain its prior review status after an acknowledgement conflict; reconciling it is not automatic. Existing canonical history and data are never reset to recover the UI.
+
 ## Product selected-revision Markdown export (Unit44)
 
 The accepted product exposes Export Markdown in File actions and each expanded History revision. The action captures the displayed canonical ID/version and reads that exact retained revision through a readonly notes transaction. It never substitutes the latest revision. Protected records may be exported without enabling Edit/Delete. The UTF-8 filename includes `.v<version>.md`.
