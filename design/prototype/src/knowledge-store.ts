@@ -1,3 +1,4 @@
+import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {createNote,reviseNote,withdrawNote,latest,validateRefs,checkNotes,buildIndex,searchNotes,mergeNotes} from '../../../dist/core.js';
@@ -96,12 +97,14 @@ export class KnowledgeStore {
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[]){
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');
-  const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||turn.attachments?.length!==originals.length||new Set(turn.attachments?.map(a=>a.id)).size!==originals.length||turn.attachments?.some(a=>!ids.has(a.id)))throw Error('Attachment input mismatch');
+  const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||!Array.isArray(turn.attachments)||new Set(turn.attachments.map(a=>a.id)).size!==turn.attachments.length||[...ids].some(id=>!turn.attachments!.some(a=>a.id===id))||turn.attachments.some(a=>!a.asset||a.asset.id!==a.id))throw Error('Attachment input mismatch');
   const db=await this.open();return new Promise<any[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown;
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
     if(created.some(n=>current.notes.some(old=>old.id===n.id))||originals.some(a=>current.runs.some(r=>r.key===originalKey(a.id))))throw Error('Original already saved');
-    const notes=[...current.notes,...created],runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))];checkNotes(notes);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);
+    const notes=[...current.notes,...created],runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))];checkNotes(notes);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);
+    for(const a of turn.attachments!)if(!notes.some(n=>n.id===a.id&&n.originalAsset&&n.state==='active'))throw Error('Original withdrawn or unavailable');
+    checkAttachmentBatch(turn.attachments!.map(a=>({size:runs.find(r=>r.key===originalKey(a.id))!.value.bytes})));
     for(const n of created)tx.objectStore('notes').add(n);for(const a of originals)tx.objectStore('runs').add(a,originalKey(a.id));tx.objectStore('settings').put(next,'ui-v1-dialogue');
    }catch(e){error=e;tx.abort();}});tx.oncomplete=()=>resolve(created);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Original save failed'));
   });

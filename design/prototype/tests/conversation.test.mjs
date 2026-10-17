@@ -169,3 +169,24 @@ test('existing-note edits route to a target proposal rather than capture or dire
  assert.equal((await planDialogue(e,'In Notes/water.md replace 3L with 4L',context)).action,'edit');
  await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"edit","query":""}'})},'fix it',context),/Invalid/);
 });
+
+test('a newly retrieved topic outranks old pinned references and excludes unrelated dialogue facts from grounded generation',async()=>{
+ const old=createNote({path:'Notes/old.md',body:'The old code is PINE-9191.'}),fresh=createNote({path:'Notes/copper.md',body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),oldRef=ref(old),freshRef=ref(fresh);const store={all:async()=>[old,fresh],search:async()=>[freshRef]};const context={summary:'Old code PINE-9191',recent:[{id:'old',user:'old code?',answer:'PINE-9191'}],refs:[oldRef]};
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.evidence[0].noteId,fresh.id);assert.doesNotMatch(JSON.stringify(messages),/PINE-9191/);return {text:JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};const reply=await groundedAnswer(store,e,'4B','What is the copper code?','copper code','answer',context);assert.equal(reply.sources[0].noteId,fresh.id);
+});
+test('a stored-knowledge answer with evidence cannot accept an uncited claim copied from dialogue',async()=>{
+ const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]},context={summary:'',recent:[],refs:[ref]};const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'PINE-9191',citations:[]})})};await assert.rejects(groundedAnswer(store,e,'4B','What is the code?','code','answer',context),/citation|source/i);
+});
+
+test('invalidated current retrieval must reject before unrelated historical pins can replace it',async()=>{
+ const old=createNote({body:'The pine code is PINE-9191.'}),fresh=createNote({body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),changed=reviseNote(fresh,{body:'The copper code is Maple 43.'},1);let generated=false;
+ const store={search:async()=>[ref(fresh)],all:async()=>[old,changed]},context={summary:'PINE-9191',recent:[],refs:[ref(old)]},e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{generated=true;return {text:JSON.stringify({answer:'PINE-9191',citations:[{id:'S1',quote:'PINE-9191'}]})};}};
+ await assert.rejects(groundedAnswer(store,e,'4B','What is the copper code?','copper code','answer',context),/Source changed/);assert.equal(generated,false);
+});
+
+test('malformed grounded JSON gets one bounded retry with the same verified evidence',async()=>{
+ const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0,inputs=[];
+ const e={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{inputs.push(messages);return {text:++calls===1?'{"answer":"bad "quote"}':JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};
+ assert.equal((await groundedAnswer(store,e,'4B','What is the copper code?')).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
+ calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer(store,e,'4B','code?'),/JSON/);assert.equal(calls,2);
+});

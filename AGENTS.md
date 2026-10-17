@@ -14,3 +14,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Do not deploy, merge, purge data, or add services/accounts/telemetry as part of routine UI changes.
 
 - Local speech now has pinned Whisper tiny/Transformers WASM assets, explicit preparation, review and atomic original/transcript storage. Read docs/SPEECH-CONTRACT.md. Never infer accurate transcription, physical microphone support, automatic language detection or whole-device offline acceptance from one PC sample.
+
+- Reviewed speech can now enter the unsaved composer via Use text, retaining original/recognition provenance through Send and backup without an automatic knowledge-transcript save. Valid v1 transcript citations open native audio at an estimated segment start; edited or ambiguous alignment keeps broader coverage. Current retrieval invalidation must fail rather than fall back to unrelated old pins. See SPEECH-CONTRACT.md and Unit9 in TEST-RESULTS.txt; do not infer semantic citation correctness or phone/full-offline acceptance from these PC checks.

@@ -1,3 +1,4 @@
+import {validateVoiceInputs} from './voice-input.ts';
 import {validateTranscriptLinks} from './speech-transcript.ts';
 // Portable local data, never runtime readiness, executable tools or write authority.
 // @ts-expect-error Shared baseline core is JavaScript.
@@ -44,7 +45,7 @@ function sourceRefs(notes:any[],refs:unknown){
  if(!Array.isArray(refs)||!validateRefs(notes.map(n=>({...n,state:'active'})),refs).ok)throw Error('Invalid backup source reference');
 }
 function validateState(state:StateSnapshot){
- jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);
+ jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);
  for(const n of state.notes){const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
