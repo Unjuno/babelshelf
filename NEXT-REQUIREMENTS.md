@@ -96,3 +96,9 @@ Supersedes previous immediate UI/hook pending item: native Add text model > Choo
 ## Unit65 process-offline media evidence
 
 PreparedWhispertiny/ASR, PDFtext+preparedOCR, original previews and a PDF-grounded actualBonsai answer/save now passed separate offline process starts in the maintained QAprofile with olddata retained. No productbehavior changes. This narrows the earlier missing media cold-start evidence; still open: fulloriginal-rich fresh-profile recovery, video-specific coverage/device tests, broadquality/storage cases and runtime licensing. Do not mark fullMVP complete from this PC sample; see detailed TEST-RESULTS.
+
+## Latest user model policy (2026-10-18)
+
+The user explicitly permits other local models; the earlier Bonsai-only/provider restriction is superseded for evaluating and adding local alternatives. This does not authorize cloud/LAN inference, implicit downloads or silently replacing a user's existing selection. Preserve current defaults until an explicit preparation/selection flow changes them.
+
+Prioritize a usable initial capability set, not further Bonsai-only testing. Initial preparation must account for text, local speech-to-text and OCR; distinguish OCR from general image/video understanding. Decision remains a separate optional role and must not stand in for missing media readers. Current runnable adapters: fixedQwen3.5GGUF text, pinnedWhispertiny, pinnedTesseract, experimentalD1text. Catalog entries Whisperbase/D1-3B are not connected execution paths. Additional text engines/models require explicit runtime/tokenizer/template/asset/license compatibility checks. Investigate supported local alternatives and coherent initial preparation with total sizes, explicit network permission and separate registered/filesverified/loaded states. Do not claim arbitrary custom models or multimedia understanding from candidate listings.
