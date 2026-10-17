@@ -10,9 +10,10 @@ async function directory(){return root??=await (await navigator.storage.getDirec
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
 async function meta(id){try{return JSON.parse(await (await file('ready-'+id+'.json')).text());}catch{return null;}}
 async function writeJSON(name,value){const w=await(await(await directory()).getFileHandle(name,{create:true})).createWritable();await w.write(JSON.stringify(value));await w.close();}
-async function hashFile(f,notify=()=>{}){const h=new SHA256(),r=f.stream().getReader();let n=0,last=0;while(true){controller?.signal.throwIfAborted();const {value,done}=await r.read();if(done)break;h.update(value);n+=value.length;if(n-last>8e6){notify(n/f.size);last=n;}}return h.hex();}
+async function hashFile(f,notify=()=>{}){const h=new SHA256(),r=f.stream().getReader();let n=0,last=0;try{while(true){controller?.signal.throwIfAborted();const {value,done}=await r.read();if(done)break;h.update(value);n+=value.length;if(n-last>8e6){notify(n/f.size);last=n;}}return h.hex();}finally{await r.cancel().catch(()=>{});r.releaseLock();}}
 async function storeAsset(entry,id,local=null){
- const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{}
+ const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{controller?.signal.throwIfAborted();}
+ controller?.signal.throwIfAborted();
  const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();const h=new SHA256();let count=0,last=0;let reader;
  try{
   if(local){if(local.size!==entry.bytes)throw Error('File size mismatch');reader=local.stream().getReader();}

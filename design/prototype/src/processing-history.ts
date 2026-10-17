@@ -1,11 +1,12 @@
+import type {AssetTool} from './asset-activity.ts';
 import {recordOperation,validateActivity,updateActivity,type Activity} from './harness-activity.ts';
 // Audit receipts only: unsent media may never have been saved as a knowledge original.
-export type ProcessingTool='pdf.read'|'speech.transcribe';
+export type ProcessingTool='pdf.read'|'speech.transcribe'|AssetTool;
 export type ProcessingRecord={schema:1;type:'media-processing';activity:Activity};
 export const processingKey=(id:string)=>'ui-v1-processing-'+id;
 export function validateProcessing(key:string,value:any):asserts value is ProcessingRecord{
  if(value?.schema!==1||value.type!=='media-processing'||!value.activity||key!==processingKey(value.activity.id))throw Error('Invalid processing receipt');
- validateActivity([value.activity]);if(!['pdf.read','speech.transcribe'].includes(value.activity.tool))throw Error('Invalid processing operation');
+ validateActivity([value.activity]);if(!['pdf.read','speech.transcribe','model.prepare','model.load','model.unload','speech.prepare'].includes(value.activity.tool))throw Error('Invalid processing operation');
 }
 export function processingUpdate(old:ProcessingRecord|undefined,next:Activity):ProcessingRecord{
  const value:ProcessingRecord={schema:1,type:'media-processing',activity:structuredClone(next)};validateProcessing(processingKey(next.id),value);

@@ -35,3 +35,7 @@ test('an incomplete historical attempt is not shown as running just because anot
 test('media extraction attempts share persisted audit lifecycle without entering model history',()=>{
  for(const tool of ['pdf.read','speech.transcribe']){const a=startActivity(tool,{source:{name:'日本語.pdf',bytes:42},language:'ja'});const done=finishActivity(a,{output:{characters:12,reviewRequired:true}});validateActivity([done]);assert.equal(done.tool,tool);assert.equal(done.status,'succeeded');}
 });
+
+test('explicit asset management operations have audit labels and lifecycle without implying readiness',()=>{
+ for(const tool of ['model.prepare','model.unload','speech.prepare']){const a=startActivity(tool,{role:'text',model:'4B',allowNetwork:false});const done=finishActivity(a,{output:{completed:true}});validateActivity([done]);assert.equal(done.status,'succeeded');assert.equal(done.input.allowNetwork,false);}
+});
