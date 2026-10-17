@@ -29,7 +29,7 @@ export class TextEngineRouter{
   if(cmd==='status')return this.status();
   if(cmd==='configure'){const epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of this.registrations){Object.assign(extra,await this.instance(r).call('status'));this.check(epoch);}return {...assets,...extra};}
   if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');return this.active.call(cmd,args,events);}
-  if(cmd==='prepare')return this.backend(args.model).call(cmd,args,events);
+  if(cmd==='prepare'||cmd==='verify')return this.backend(args.model).call(cmd,args,events);
   throw Error('Unknown text operation');
  }
  async load(id:string,events?:any){const epoch=this.epoch,backend=this.backend(id);if(this.active){const old=this.active;this.active=null;if(!old.failed)await old.unload();}this.check(epoch);this.active=backend;

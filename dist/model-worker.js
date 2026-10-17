@@ -28,13 +28,18 @@ async function storeAsset(entry,id,local=null){
  finally{controller.signal.removeEventListener('abort',abort);await cancel();reader?.releaseLock();}
 }
 async function status(){const out={};for(const m of manifest.models){const x=await meta(m.id);if(x){try{const a=await file(x.modelHash),r=await file(x.runtimeHash);out[m.id]={...x,filesPresent:a.size===m.file.bytes&&r.size===manifest.runtime.file.bytes};}catch{out[m.id]={...x,filesPresent:false};}}else out[m.id]=null;}return out;}
-async function load(id,size){
- const m=manifest.models.find(m=>m.id===size);if(!m)throw Error('Unsupported model');const ready=await meta(size);if(!ready)throw Error('Model not downloaded');
- await unload();controller.signal.throwIfAborted();
+async function verifyStored(id,size){
+ const m=manifest.models.find(m=>m.id===size);if(!m)throw Error('Unsupported model');
  const f=await file(m.file.sha256),runtime=await file(manifest.runtime.file.sha256);
  send(id,'progress','Verifying…');
  if(m.localModel)await verifyLocalModelFile(f,m.localModel,{signal:controller.signal,progress:(n,total)=>send(id,'progress','Verifying model · '+Math.round(n/total*100)+'%')});
  if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||(!m.localModel&&(await hashFile(f,p=>send(id,'progress','Verifying model · '+Math.round(p*100)+'%'))!==m.file.sha256))||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
+ controller.signal.throwIfAborted();return {f,runtime};
+}
+async function load(id,size){
+ const m=manifest.models.find(m=>m.id===size);if(!m)throw Error('Unsupported model');const ready=await meta(size);if(!ready)throw Error('Model not downloaded');
+ await unload();controller.signal.throwIfAborted();
+ const {f,runtime}=await verifyStored(id,size);
  send(id,'progress','Loading…');
  const moduleURL=URL.createObjectURL(new Blob([runtime],{type:'text/javascript'}));let api;
  try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}
@@ -55,6 +60,7 @@ onmessage=async({data})=>{
    case 'init':if(baseManifest)throw Error('Worker already initialized');baseManifest=structuredClone(args.manifest);manifest=withLocalModels(baseManifest);result=await status();break;
    case 'configure':{if(!baseManifest)throw Error('Worker not initialized');if(model||session)throw Error('Unload model before registry changes');const next=withLocalModels(baseManifest,args.models);manifest=next;result=await status();break;}
    case 'status':result=await status();break;
+   case 'verify':await verifyStored(id,args.model);result=true;break;
    case 'probe':{if(!navigator.gpu){result={available:false,reason:'WebGPU API unavailable in this Worker'};break;}const adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});result=adapter?adapterSnapshot(adapter):{available:false,reason:'No WebGPU adapter was returned'};break;}
 
    case 'prepare':{

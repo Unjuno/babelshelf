@@ -75,3 +75,5 @@ test('duplicate model/engine identities and missing revision contracts fail befo
  for(const extra of [[{...r,modelIds:['4B']}],[r,r],[{...r,describe:()=>({contextTokens:0,runtime:{revision:'r'},models:[{id:'new',revision:'v'}]})}],[{...r,describe:()=>({contextTokens:1024,runtime:{revision:'r'},models:[{id:'new',revision:''}]})}]])assert.throws(()=>new TextEngineRouter(base,()=>{},extra),/Invalid/);
  assert.equal(starts,0);
 });
+
+test('verification routes to the owning engine without loading or preparation',async()=>{const f=setup();await f.router.call('verify',{model:'4B'});await f.router.call('verify',{model:onnxTextManifest.id});assert.deepEqual(f.calls,['webml:verify','onnx:verify']);assert.equal(f.router.loaded,null);await assert.rejects(f.router.call('verify',{model:'unknown'}),/Unknown/);});

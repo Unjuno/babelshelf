@@ -10,12 +10,12 @@ test('initial preparation uses selected text and fills only unconfigured reader 
 test('Stop or failed preparation cannot commit choices or start a later role',async()=>{
  const plan=initialPreparationPlan(initial(),{text:false,speech:false,ocr:false}),calls=[];let stopped=false;
  await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);stopped=true;},async()=>calls.push('commit'),()=>{if(stopped)throw Error('Stopped');}),/Stopped/);assert.deepEqual(calls,['text']);
- const done=[];await runInitialPreparation(initialPreparationPlan(initial(),{text:true,speech:true,ocr:true}),async role=>done.push(role),async()=>done.push('commit'));assert.deepEqual(done,['commit']);
+ const done=[];await runInitialPreparation(initialPreparationPlan(initial(),{text:true,speech:true,ocr:true}),async role=>done.push(role),async()=>done.push('commit'));assert.deepEqual(done,['text','commit']);
 });
 
-test('reader failure preserves optional decision selection and never commits the initial set',async()=>{
+test('text verification failure preserves optional decision selection and never commits the initial set',async()=>{
  const prefs=initial();prefs.decisionModel='d1-omni-600M';prefs.decisionLibrary=['d1-omni-600M'];const plan=initialPreparationPlan(prefs,{text:true,speech:false,ocr:false});assert.equal(plan.models.decisionModel,'d1-omni-600M');assert.deepEqual(plan.models.decisionLibrary,['d1-omni-600M']);const calls=[];
- await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);throw Error('Asset verification failed');},async()=>calls.push('commit')),/verification/);assert.deepEqual(calls,['speech']);assert.equal(prefs.transcriptionModel,'');
+ await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);throw Error('Asset verification failed');},async()=>calls.push('commit')),/verification/);assert.deepEqual(calls,['text']);assert.equal(prefs.transcriptionModel,'');
 });
 
 test('additional ONNX preparation pins its own assets and preserves text selection',()=>{
@@ -35,7 +35,7 @@ test('selected connected decision role is prepared once without silently adding 
  assert.equal(plan.bytes,decisionManifest.files.reduce((n,f)=>n+f.bytes,0));
  assert.equal(plan.steps.at(-1).role,'decision');const calls=[];
  await runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'));
- assert.deepEqual(calls,['decision','commit']);
+ assert.deepEqual(calls,['text','decision','commit']);
  assert.equal(initialPreparationPlan(prefs,{text:true,speech:true,ocr:true,decision:true}).bytes,0);
  assert.throws(()=>initialPreparationPlan({...prefs,decisionModel:'d1-3B'},{text:true,speech:true,ocr:true}),/Decision runtime not connected/);
  assert.equal(initialPreparationPlan(initial(),{text:true,speech:true,ocr:true}).steps.some(s=>s.role==='decision'),false);

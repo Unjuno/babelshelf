@@ -42,7 +42,11 @@ self.onmessage=async({data})=>{
  let diagnostic:{raw:string;reason:string;truncated:boolean}|undefined;
  try{let value:any;const args=data.args??{};
   if(['init','status'].includes(data.cmd)){value={};for(const [id,store]of stores){check();value[id]={...await store.status(controller.signal),presenceOnly:true};}}
-  else if(data.cmd==='prepare'){
+  else if(data.cmd==='verify'){
+   const manifest=getOnnxTextManifest(args.model),store=stores.get(args.model);if(!manifest||!store)throw Error('Unknown model');
+   for(const pin of manifest.files){check();await store.read(pin.path,controller.signal);}
+   value=true;
+  }else if(data.cmd==='prepare'){
    const store=stores.get(args.model);if(!store)throw Error('Unknown model');
    await store.prepare(args.allowNetwork===true,controller.signal,(done,total)=>progress('Verifying '+Math.round(done/total*100)+'%'),args.localFiles??[]);value=true;
   }else if(data.cmd==='load'){

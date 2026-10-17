@@ -23,5 +23,5 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
 }
 export type InitialPreparation=ReturnType<typeof initialPreparationPlan>;
 export async function runInitialPreparation(plan:InitialPreparation,prepare:(role:Role)=>Promise<unknown>,commit:()=>Promise<unknown>,check=()=>{}){
- check();for(const step of plan.steps){if(step.ready)continue;check();await prepare(step.role);check();}check();await commit();
+ check();for(const step of plan.steps){if(step.ready&&step.role!=='text')continue;check();await prepare(step.role);check();}check();await commit();
 }

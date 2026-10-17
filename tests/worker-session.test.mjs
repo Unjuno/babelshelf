@@ -56,3 +56,16 @@ test('Stop cancels pending asset copy and aborts writer without accepting readin
  const pending=context.copy(local,dir,controller);for(let i=0;i<10&&!settle;i++)await new Promise(resolve=>setTimeout(resolve,0));assert.ok(settle);controller.abort(new DOMException('Stopped','AbortError'));
  await assert.rejects(pending,/Stopped/);assert.equal(cancelled,1);assert.equal(released,1);assert.equal(aborted,1);assert.equal(closed,0);assert.equal(removed,1);
 });
+
+
+test('stored text verification hashes without loading, writing or fetching and rejects same-size corruption',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const {createHash}=await import('node:crypto');const sha=s=>createHash('sha256').update(s).digest('hex');
+ const events=[],bytes=new Map([[sha('model'),new Blob(['model'])],[sha('runtime'),new Blob(['runtime'])]]);let network=0;
+ const context=vm.createContext({fetch:()=>{network++;throw Error('Forbidden network');},postMessage:m=>events.push(m),AbortController,DOMException,hashLocalModel,console});
+ vm.runInContext(source+'\nglobalThis.setup=(m,read)=>{manifest=m;file=read;};',context);
+ context.setup({models:[{id:'4B',file:{bytes:5,sha256:sha('model')}}],runtime:{file:{bytes:7,sha256:sha('runtime')}}},async key=>{if(!bytes.has(key))throw Error('Missing local asset');return bytes.get(key);});
+ await context.onmessage({data:{id:1,cmd:'verify',args:{model:'4B',allowNetwork:true}}});assert.equal(events.at(-1).type,'done');assert.equal(network,0);
+ bytes.set(sha('model'),new Blob(['wrong']));await context.onmessage({data:{id:2,cmd:'verify',args:{model:'4B'}}});assert.equal(events.at(-1).type,'error');assert.match(events.at(-1).value,/verification/);assert.equal(network,0);
+ bytes.delete(sha('model'));await context.onmessage({data:{id:3,cmd:'verify',args:{model:'4B'}}});assert.equal(events.at(-1).type,'error');assert.equal(network,0);
+});
