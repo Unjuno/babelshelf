@@ -1,0 +1,4 @@
+import {chromium} from '../../design/prototype/node_modules/playwright-core/index.mjs';
+import {createDevServer} from '../serve.mjs';import {runOfflineProcessCheck} from './offline-process.mjs';import {writeFile} from 'node:fs/promises';import {join} from 'node:path';
+const [profileDir,outputDir]=process.argv.slice(2),server=createDevServer('design/prototype/dist/app');await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url='http://127.0.0.1:'+server.address().port+'/';let stopped=false;
+try{const result=await runOfflineProcessCheck(chromium,{profileDir,outputDir,url,installedPwa:true,afterBootstrap:async()=>{await new Promise(resolve=>server.close(resolve));stopped=true;}});result.fixtureServerStopped=stopped;await writeFile(join(outputDir,'installed-evidence.json'),JSON.stringify(result,null,2));console.log({pass:result.pass,fixtureServerStopped:stopped});}finally{if(server.listening)await new Promise(resolve=>server.close(resolve));}

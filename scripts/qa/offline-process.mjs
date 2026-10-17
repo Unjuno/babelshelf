@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 
 // Pass a Playwright BrowserType from the caller. No bundled browser/dependency,
 // inference stub, database access, process kill or existing profile reuse.
-export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,url='http://127.0.0.1:4180/',channel='chrome'}){
+export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,url='http://127.0.0.1:4180/',channel='chrome',installedPwa=false,afterBootstrap}){
  assert.ok(isAbsolute(profileDir)&&isAbsolute(outputDir),'Use absolute QA paths');
  assert.equal(new URL(url).hostname,'127.0.0.1','QA uses the local product server');
  for(const path of [profileDir,outputDir]){let exists=false;try{await stat(path);exists=true;}catch(e){if(e.code!=='ENOENT')throw e;}assert.equal(exists,false,'QA path must not already exist: '+path);}
@@ -14,7 +14,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  const marker='LARCH-5738',original='Process restart '+marker+'\n飲料水は18リットル。',edited=original.replace('18','24');
  const inputs=[{name:'process-import.txt',body:'Local import FIR-5263\n飲料水の保管場所は玄関です。'},{name:'process-import.md',body:'# HAZEL-3197\n\n充電器は青い箱にあります。'}];
  for(const input of inputs)await writeFile(join(outputDir,input.name),input.body,'utf8');
- const evidence={scope:'PC headless Chrome persistent profile, Playwright context offline before navigation; not installed/mobile/physical-network acceptance',profileDir,url,phases:[]};
+ const evidence={scope:installedPwa?'Attempted PC headless Chrome CDP-installed PWA with required standalone display; not physical OS/mobile acceptance':'PC headless Chrome persistent profile, Playwright context offline before navigation; not installed/mobile/physical-network acceptance',profileDir,url,phases:[]};
  async function go(p,name){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('menuitem',{name,exact:true}).click();}
  async function input(p){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('button',{name:'Input',exact:true}).click();}
  async function search(p,query,expected){
@@ -26,11 +26,13 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  async function backup(p,name,alreadyLocal=false){if(!alreadyLocal){await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();}const pending=p.waitForEvent('download');await p.getByRole('button',{name:'Export backup',exact:true}).click();const path=join(outputDir,name);await(await pending).saveAs(path);return JSON.parse(await readFile(path,'utf8')).payload;}
  async function phase(offline,work){
   const c=await browserType.launchPersistentContext(profileDir,{channel,headless:true,offline,viewport:{width:360,height:780},acceptDownloads:true});
-  try{c.setDefaultTimeout(7000);const p=c.pages()[0]??await c.newPage();await p.goto(url,{timeout:15000});await p.waitForFunction(()=>!!navigator.serviceWorker.controller,{timeout:30000});
-   const session=await c.browser().newBrowserCDPSession(),info=await session.send('SystemInfo.getProcessInfo');await session.detach();
+  try{c.setDefaultTimeout(7000);let p=c.pages()[0]??await c.newPage();const session=await c.browser().newBrowserCDPSession();let installation,launch;
+   if(!installedPwa||!offline){await p.goto(url,{timeout:15000});await p.waitForFunction(()=>!!navigator.serviceWorker.controller,{timeout:30000});}
+   if(installedPwa){if(!offline){installation=await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});}const result=await Promise.all([c.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);p=result[0];launch=result[1];await p.waitForFunction(()=>!!navigator.serviceWorker.controller,{timeout:30000});const display=await p.evaluate(()=>({url:location.href,standalone:matchMedia('(display-mode: standalone)').matches,browser:matchMedia('(display-mode: browser)').matches}));(evidence.launchAttempts??=[]).push({offline,installation,launch,display});assert.equal(display.standalone,true,'Expected actual standalone display mode');}
+   const info=await session.send('SystemInfo.getProcessInfo');await session.detach();
    const pid=info.processInfo.find(v=>v.type==='browser')?.id;assert.ok(pid);assert.ok(evidence.phases.every(v=>v.pid!==pid),'Each phase uses a different browser process');
    const build=await p.evaluate(()=>new Promise((resolve,reject)=>{const ch=new MessageChannel(),timer=setTimeout(()=>reject(Error('No worker build reply')),3000);ch.port1.onmessage=e=>{clearTimeout(timer);resolve(e.data);};navigator.serviceWorker.controller.postMessage('build',[ch.port2]);}));
-   const entry={pid,offline,version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build};
+   const entry={pid,offline,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build};
    assert.equal(await p.evaluate(()=>!navigator.onLine),offline);if(evidence.phases.length)assert.deepEqual(build,evidence.phases[0].build);
    evidence.phases.push(entry);await work(p,entry);
   }finally{await c.close();}
@@ -44,6 +46,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
    await p.getByRole('button',{name:/Text process-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();
    before=await backup(p,'before.brainpack');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body===original).length,1,'Double submit created duplicate notes');entry.savedNote=true;entry.duplicateSubmitControl=true;entry.importedOriginals=2;
   });
+  await afterBootstrap?.();
   await phase(true,async(p,entry)=>{
    entry.search=await search(p,marker,original);assert.ok(entry.search.includes('18リットル'));
    await p.getByRole('button',{name:'View source',exact:true}).last().click();entry.source=await p.getByRole('dialog').innerText();assert.ok(entry.source.includes('v1 · Original'));
