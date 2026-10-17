@@ -2,15 +2,15 @@
 
 The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It supersedes the earlier bottom-toggle UI brief and chronological design notes.
 
-## Current handoff after Unit46
+## Current handoff after Unit56
 
 Model-independent work has superseded the historical Unit31 source-rescue approach below. Unit34/45 share a local inference port with Stop and model/runtime revision lifecycle guards; this is not arbitrary custom-model compatibility. Unit35 implements finite reviewed appearance/model-selection settings patches; Tools definition model edits remain pending. Unit42/43 make folder rename and delete/Trash recovery atomic with canonical note/history metadata. Unit44 exposes selected-revision Markdown downloads separately from full-state brainpacks.
 
-Unit46 confirms current-build PC offline-context capture/reopen/Japanese search/source/direct edit/history/TXT+MD import/reindex/backup/conflict refusal without inference. Unit47 separates read-only speech startup status from processing busy state; pending speech-worker exclusion and real prepare/transcribe locks remain. Controlled regressions and one immediate native offline-reopen search pass; broader startup timing/device acceptance remains open. Actual browser-process termination, physical devices, broader media/custom adapters and semantic quality remain open. Keep the full objective and historical failures below; see TEST-RESULTS.txt for exact scope.
+Unit46 confirms current-build PC offline-context capture/reopen/Japanese search/source/direct edit/history/TXT+MD import/reindex/backup/conflict refusal without inference. Unit47 separates read-only speech startup status from processing busy state; pending speech-worker exclusion and real prepare/transcribe locks remain. Controlled regressions and one immediate native offline-reopen search pass; broader startup timing/device acceptance remains open. Unit49/55 subsequently add bounded PC process-restart storage/inference evidence; physical devices, broader media/custom adapters and semantic quality remain open. Keep the full objective and historical failures below; see TEST-RESULTS.txt for exact scope.
 
 Unit48 replaces incidental Latin bigram matching with complete words/codes while preserving non-Latin grams and exact source excerpts. Current PC offline code lookup returned1instead of4; see [SEARCH-CONTRACT.md](docs/SEARCH-CONTRACT.md) for bounds. This does not close broad multilingual semantic accuracy or capacity gates.
 
-Unit49 adds a reproducible [desktop process-restart storage check](docs/OFFLINE-PROCESS-CHECK.md): three actual Chrome PIDs, two offline-context restarts, persisted capture/import/search/correction/history/reindex and backup/conflict/no-op restore. This closes that bounded PC storage flow only; installed-PWA/OS-isolated/mobile and inference-inclusive restart acceptance remain open.
+Unit49 adds a reproducible [desktop process-restart storage check](docs/OFFLINE-PROCESS-CHECK.md): three actual Chrome PIDs, two offline-context restarts, persisted capture/import/search/correction/history/reindex and backup/conflict/no-op restore. This closes that bounded PC storage flow only; Unit55 subsequently adds a bounded prepared4B offline-process restart. Installed-PWA/OS-isolated/mobile and all-function acceptance remain open.
 
 Unit50 fixes retained running executions showing Paused after their local owner closes. Schedule now shows canonical Running and Check execution; existing lease/Interrupted/explicit Retry authority stays unchanged. PC offline UI verified same-file edits, actual interruption/unprepared failure, pinned notification history and event-only deletion. This adds no successful generation, closed-PWA execution or device guarantee.
 
@@ -33,7 +33,7 @@ The accepted UI uses the existing canonical IndexedDB store. Memory, preferences
 
 Remaining work must preserve the full product objective:
 
-Unit31 now passes the ordinary retained-context first-code -> anaphoric split -> exact reviewed new-note Save/reload/Memory lookup/backup-restore flow on PC6175aef41bab4fb2. The planner still proposes old14/user; a separate actual4B competing-speaker decision selects latest84/assistant before the original-only deterministic operation. See research/evaluations/subject-original.md. This is not universal chronological/semantic accuracy: the broader resolver failed an older-assistant control and is not used for same-speaker chronology. Capture remains unchanged. Keep all other whole-goal gates below.
+Historical Unit31 (superseded by Unit32 normal dispatch) passed the ordinary retained-context first-code -> anaphoric split -> exact reviewed new-note Save/reload/Memory lookup/backup-restore flow on PC6175aef41bab4fb2. The planner still proposes old14/user; a separate actual4B competing-speaker decision selects latest84/assistant before the original-only deterministic operation. See research/evaluations/subject-original.md. This is not universal chronological/semantic accuracy: the broader resolver failed an older-assistant control and is not used for same-speaker chronology. Capture remains unchanged. Keep all other whole-goal gates below.
 
 Unit29's same-weight official CPU reference reproduces all four retained WebGPU outputs/counts, including wrong old-subject selection. See research/evaluations/reference-cpu.md. Do not assume these failures prove a WebGPU-only defect or change app providers/engines on that basis. Those matching observations did not themselves fix ordinary source binding or prove broad numerical parity; Unit31 above adds the separately tested recovery.
 
@@ -47,10 +47,10 @@ Unit28 separates the current request and adds common audited text.inspect after 
 
 1. Prepared empty-page PDF OCR is connected; broad scanned-layout fidelity, general image/video-frame understanding and verified video-container timing remain open; retain originals, bounded coverage and processor provenance. Current OCR Japanese sample contains errors.
 2. Decision and compatible custom model/runtime adapters require their own pinned artifacts, compatibility and license verification. Candidate registration is not execution support; no provider/cloud fallback.
-3. Existing registered local-zone tasks use typed reviewed patches and whole-record expected snapshots, shared cursor semantics and atomic receipts/Undo. New natural-language tasks use bounded typed proposals/clarification and editable review, stable creation identity and paused Save; broader date/prompt/language fidelity remains under evaluation. Typed settings/tools model edits remain pending. Ordinary-note semantic correction remains source-only; attaching a file does not expand its factual rewriting authority.
+3. Existing registered local-zone tasks use typed reviewed patches and whole-record expected snapshots, shared cursor semantics and atomic receipts/Undo. New natural-language tasks use bounded typed proposals/clarification and editable review, stable creation identity and paused Save; broader date/prompt/language fidelity remains under evaluation. Finite managed appearance/registered-selection settings patches are implemented in Unit35; Tools model edits remain pending. Ordinary-note semantic correction remains source-only; attaching a file does not expand its factual rewriting authority.
 4. Broader multilingual relevance/semantic accuracy, large archives/history retention, divergent-history reconciliation and storage pressure. Current bounded tests are not universal accuracy/capacity evidence.
 5. Physical Android/iPhone touch, microphone/camera, GPU/resource limits and accessibility. PC browser and simulated phone frame are separate evidence.
-6. Whole-browser/installed-PWA process shutdown and fully isolated offline restart across every normal function. Server-unavailable fresh tabs prove only that narrower scope. Closed-PWA timed execution/OS notification delivery is not guaranteed.
+6. Installed-PWA/OS-isolated restart across every normal function remains open. Unit49/55 prove bounded actual PC browser-process storage and approved4B flows with context offline before navigation; this is broader than a fresh tab but not all-function/device acceptance. Closed-PWA timed execution/OS notification delivery is not guaranteed.
 
 ## Evidence boundaries
 
@@ -75,3 +75,6 @@ Unit54: ordinary Send shares its loaded text pin through compaction/planning/pro
 
 
 Unit55 adds actual approved4B Answer/source/exactSave plus offline-before-navigation browser-process reload/Summary/source/Stop/Unload/reload evidence on Unit54 build. No app/prompt changes or model benchmark. One requested quotation was absent from answerbody (source valid); preserve this fidelity limit. PC headless context-offline is not installed/physical-device or all-function offline acceptance. See MODEL-RUNTIME-VERIFICATION.md/TEST-RESULTS.txt for the final-backup script locator error and corrected export.
+
+
+Unit56 verifies current-model-independent Send natural opened-file correction through automaticload/context/planning/source/proposal, reviewedapprovalv3, offlineprocessreopen, historicalv2citation and append-onlyUndov4 onPC. No app/promptchange or benchmark; broaderlanguage/device/all-function gates stay open. README/currenthandoff now distinguish supersededUnit31 rescue and newer process/settings evidence.
