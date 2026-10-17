@@ -3,6 +3,7 @@ import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
+import {deletionContents,canRestore} from './memory-trash.ts';
 import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
@@ -81,6 +82,32 @@ export function planFolderRename(records:Canonical[],storedFolders:string[],from
  const paths=[...views.map(n=>moved(n.path)),...nextFolders];if(new Set(paths.map(p=>p.toLowerCase())).size!==paths.length)throw Error('Name already exists');
  const updated=applyKnowledgeChanges(records,selected,nextViews);
  return {records:updated,folders:nextFolders.filter(p=>!isSystemFolder(p)).sort(),from,to};
+}
+export type RecoveryBatch={id:string;label:string;notes:NoteView[];folders:string[]};
+export type RecoveryAction={kind:'delete';target:{kind:'file'|'folder';value:string};expectedNotes:NoteView[];id:string;label:string}|{kind:'restore';batch:RecoveryBatch};
+export function planMemoryRecovery(records:Canonical[],storedFolders:string[],storedTrash:RecoveryBatch[],action:RecoveryAction){
+ const views=records.filter(n=>n.state==='active').map(projectNote),folders=[...new Set([...SYSTEM_FOLDERS,...storedFolders,...views.map(n=>n.path.split('/').slice(0,-1).join('/'))].flatMap(path=>path?path.split('/').map((_,i,a)=>a.slice(0,i+1).join('/')):[]))];
+ if(action.kind==='delete'){
+  const actual=deletionContents(action.target,views,folders),prior=deletionContents(action.target,action.expectedNotes,folders),ordered=(notes:NoteView[])=>[...notes].sort((a,b)=>a.id.localeCompare(b.id));
+  if(!equal(ordered(actual.notes),ordered(prior.notes)))throw Error('Item changed · reopen before deleting');
+  if(!actual.notes.length&&!actual.folders.length)throw Error('Item unavailable');
+  if(!action.id||storedTrash.some(b=>b.id===action.id))throw Error('Recovery identity conflict');
+  const batch={id:action.id,label:action.label,...structuredClone(actual)},updated=applyKnowledgeChanges(records,actual.notes,[]);
+  return {records:updated,folders:storedFolders.filter(path=>!actual.folders.includes(path)),trash:[...structuredClone(storedTrash),batch]};
+ }
+ if(action.kind!=='restore')throw Error('Invalid recovery action');
+ const batch=action.batch,saved=storedTrash.find(b=>b.id===batch.id);
+ if(saved?!equal(saved,batch):batch.notes.length!==1||batch.folders.length!==0||batch.id!=='recovered-'+batch.notes[0].id)throw Error('Recovery batch changed · reopen Trash');
+ if(!canRestore(batch,views,folders))throw Error('Restore conflict · name already exists');
+ for(const path of batch.folders)assertMutableFolder(path);
+ for(const snapshot of batch.notes){
+  const note=records.find(n=>n.id===snapshot.id),version=note?.revisions.length;
+  if(!note||note.state!=='withdrawn'||!Number.isSafeInteger(snapshot.version)||snapshot.version<1||![snapshot.version,snapshot.version+1].includes(version))throw Error('Recovery snapshot changed · reopen Trash');
+  const expected=projectNote({...note,revisions:note.revisions.slice(0,snapshot.version)}),last=projectNote(note);
+  if(snapshot.body!==expected.body||snapshot.path!==expected.path||!equal(snapshot.history,expected.history)||snapshot.paths&&!equal(snapshot.paths,expected.paths)||last.body!==snapshot.body||last.path!==snapshot.path)throw Error('Recovery snapshot changed · reopen Trash');
+ }
+ const updated=applyKnowledgeChanges(records,[],batch.notes);
+ return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
@@ -197,6 +224,18 @@ export class KnowledgeStore {
     settings.put(plan.folders,'ui-v1-folders');result={folders:plan.folders,from:plan.from,to:plan.to};
    }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder rename failed'));
+  });
+ }
+ async recoverMemory(action:RecoveryAction,expectedFolders:string[]|undefined,expectedTrash:RecoveryBatch[]|undefined){
+  const db=await this.open();return new Promise<{folders:string[];trash:RecoveryBatch[]}>((resolve,reject)=>{
+   const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders'),trash=settings.get('ui-v1-trash');let pending=3,error:unknown,result:{folders:string[];trash:RecoveryBatch[]};
+   const commit=()=>{if(--pending)return;try{
+    if(!equal(folders.result,expectedFolders)||!equal(trash.result,expectedTrash))throw Error('Recovery data changed · reopen app');
+    const plan=planMemoryRecovery(rows.result,folders.result??[],trash.result??[],action);
+    for(const note of plan.records)if(!equal(rows.result.find(n=>n.id===note.id),note))notes.put(note);
+    settings.put(plan.folders,'ui-v1-folders');settings.put(plan.trash,'ui-v1-trash');result={folders:plan.folders,trash:plan.trash};
+   }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;trash.onsuccess=commit;
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery save failed'));
   });
  }
  async getState<T>(key:string):Promise<T|undefined>{return this.transaction(['settings'],'readonly',(tx,done)=>{const q=tx.objectStore('settings').get('ui-v1-'+key);q.onsuccess=()=>done(q.result);});}

@@ -19,9 +19,19 @@ button.addEventListener('click',async()=>{button.disabled=true;const lines:strin
   const fault=await setup('fault');stores.push(fault);const fv=await fault.views(),ff=await fault.getState<string[]>('folders'),fb=await fault.snapshot(),raw=await fault.open(),originalOpen=fault.open.bind(fault);
   // Fault injection is limited to this isolated database. Reads and note writes
   // are native IDB; a synchronous settings write failure aborts that transaction.
-  fault.open=async()=>({transaction(names:string[],mode:IDBTransactionMode){const tx=raw.transaction(names,mode);return new Proxy(tx,{get(target,key){if(key==='objectStore')return(name:string)=>{const object=target.objectStore(name);if(name!=='settings')return object;return new Proxy(object,{get(value,k){if(k==='put')return()=>{throw Error('Injected folder write failure');};const v=Reflect.get(value,k,value);return typeof v==='function'?v.bind(value):v;}});};const v=Reflect.get(target,key,target);return typeof v==='function'?v.bind(target):v;}});}} as IDBDatabase);
-  const rejected=await refused(()=>fault.renameFolder('Notes/Trip','Travel',fv,ff));fault.open=originalOpen;
+  const injectSettingsFailure=(blockedKey?:string)=>async()=>({transaction(names:string[],mode:IDBTransactionMode){const tx=raw.transaction(names,mode);return new Proxy(tx,{get(target,key){if(key==='objectStore')return(name:string)=>{const object=target.objectStore(name);if(name!=='settings')return object;return new Proxy(object,{get(value,k){if(k==='put')return(data:unknown,key:IDBValidKey)=>{if(!blockedKey||key===blockedKey)throw Error('Injected folder write failure');return value.put(data,key);};const v=Reflect.get(value,k,value);return typeof v==='function'?v.bind(value):v;}});};const v=Reflect.get(target,key,target);return typeof v==='function'?v.bind(target):v;}});}} as IDBDatabase);
+  fault.open=injectSettingsFailure();const injectedOpen=fault.open,trashFailure=injectSettingsFailure('ui-v1-trash');const rejected=await refused(()=>fault.renameFolder('Notes/Trip','Travel',fv,ff));fault.open=originalOpen;
   check(rejected&&equal(await fault.snapshot(),fb),'native transaction abort rolls back earlier note put when folder write fails');
-  lines.push('Complete · 5 checks · isolated databases retained');output.textContent=lines.join('\n');
+  const deleteAction={kind:'delete' as const,target:{kind:'folder' as const,value:'Notes/Trip'},expectedNotes:fv,id:'recovery-batch',label:'Trip'};
+  fault.open=trashFailure;const failedDelete=await refused(()=>fault.recoverMemory(deleteAction,ff,undefined));fault.open=originalOpen;
+  check(failedDelete&&equal(await fault.snapshot(),fb),'native failed Trash write rolls back withdrawal and folders');
+  const deleted=await fault.recoverMemory(deleteAction,ff,undefined),withdrawn=await fault.all();
+  check(withdrawn[0].state==='withdrawn'&&withdrawn[0].revisions.length===2&&deleted.folders.length===0&&deleted.trash.length===1,'native delete retains originals and commits Trash/empty folders together');
+  const dbefore=await fault.snapshot();fault.open=trashFailure;const failedRestore=await refused(()=>fault.recoverMemory({kind:'restore',batch:deleted.trash[0]},deleted.folders,deleted.trash));fault.open=originalOpen;
+  check(failedRestore&&equal(await fault.snapshot(),dbefore),'native failed Trash update rolls back restoration and folders');
+  const restored=await fault.recoverMemory({kind:'restore',batch:deleted.trash[0]},deleted.folders,deleted.trash);fault.close();const reopenedRecovery=new KnowledgeStore(prefix+'-fault');stores.push(reopenedRecovery);const revived=await reopenedRecovery.all();
+  check(revived[0].state==='active'&&revived[0].revisions.length===3&&revived[0].revisions[0].body===revived[0].revisions[2].body&&restored.folders.includes('Notes/Trip/Empty/Deep')&&equal(await reopenedRecovery.getState('trash'),[]),'native restore/reopen retains history and restores empty hierarchy');
+  const safe=await reopenedRecovery.snapshot();check(await refused(()=>reopenedRecovery.recoverMemory({kind:'restore',batch:deleted.trash[0]},deleted.folders,deleted.trash))&&equal(await reopenedRecovery.snapshot(),safe),'stale Trash metadata refuses all writes');
+  lines.push('Complete · 10 checks · isolated databases retained');output.textContent=lines.join('\n');
  }catch(e){output.textContent=lines.join('\n')+'\nFAIL · '+(e as Error).message;}finally{stores.forEach(s=>s.close());button.disabled=false;}
 });

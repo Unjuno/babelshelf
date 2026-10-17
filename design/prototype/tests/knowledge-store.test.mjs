@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createNote,reviseNote,latest} from '../../../dist/core.js';
-import {projectNote,applyKnowledgeChanges,planFolderRename} from '../src/knowledge-store.ts';
+import {createNote,reviseNote,withdrawNote,latest} from '../../../dist/core.js';
+import {projectNote,applyKnowledgeChanges,planFolderRename,planMemoryRecovery} from '../src/knowledge-store.ts';
 
 test('legacy projection and unchanged save preserve all bytes, IDs, sources and paths',()=>{
  const original=createNote({title:'旧資料',body:'日本語原文 🌳'});original.importedFrom={name:'old.txt'};
@@ -134,4 +134,25 @@ test('folder rename refuses stale subtree membership, altered files, collisions 
  assert.throws(()=>planFolderRename([n],['Notes/Travel'],'Notes/Trip','Travel',expected),/exists/i);
  assert.throws(()=>planFolderRename([n],[],'Notes','Other',expected),/protected/i);
  assert.throws(()=>planFolderRename([n],[],'Notes/Missing','Travel',expected),/unavailable/i);
+});
+
+test('atomic recovery plans retain exact originals and empty folders across delete and restore',()=>{
+ const n=createNote({path:'Notes/Trip/a.md',body:'Exact 水'}),records=[n],folders=['Notes/Trip','Notes/Trip/Empty'],before=structuredClone({records,folders});
+ const removed=planMemoryRecovery(records,folders,[],{kind:'delete',target:{kind:'folder',value:'Notes/Trip'},expectedNotes:records.map(projectNote),id:'batch',label:'Trip'});
+ assert.equal(removed.records[0].state,'withdrawn');assert.deepEqual(removed.records[0].revisions[0],n.revisions[0]);assert.deepEqual(removed.folders,[]);assert.equal(removed.trash.length,1);
+ const restored=planMemoryRecovery(removed.records,removed.folders,removed.trash,{kind:'restore',batch:removed.trash[0]});assert.equal(restored.records[0].state,'active');assert.equal(restored.records[0].revisions.length,3);assert.equal(restored.records[0].revisions.at(-1).body,n.revisions[0].body);assert.deepEqual(restored.folders,folders);assert.deepEqual(restored.trash,[]);assert.deepEqual({records,folders},before);
+});
+
+test('recovery refuses changed snapshots and a later delete cycle instead of overwriting newer canonical bytes',()=>{
+ const n=createNote({path:'Inbox/a.md',body:'Local'}),removed=planMemoryRecovery([n],[],[],{kind:'delete',target:{kind:'file',value:n.id},expectedNotes:[projectNote(n)],id:'batch',label:'a.md'}),batch=removed.trash[0],forged=structuredClone(batch);forged.notes[0].body='Forged';
+ assert.throws(()=>planMemoryRecovery(removed.records,[],[forged],{kind:'restore',batch:forged}),/recovery.*changed/i);
+ const revived=planMemoryRecovery(removed.records,[],removed.trash,{kind:'restore',batch}).records[0],edited=reviseNote(revived,{body:'Newer withdrawal'},3),later=withdrawNote(edited,4);assert.throws(()=>planMemoryRecovery([later],[],[batch],{kind:'restore',batch}),/recovery.*changed/i);
+ assert.throws(()=>planMemoryRecovery([reviseNote(n,{body:'Other tab'},1)],[],[],{kind:'delete',target:{kind:'file',value:n.id},expectedNotes:[projectNote(n)],id:'batch',label:'a.md'}),/changed/i);
+});
+
+test('canonical-derived recovery works without a stored Trash batch while forged identifiers and roots refuse',()=>{
+ const note=createNote({path:'Inbox/a.md',body:'Original'}),withdrawn=withdrawNote(note,1),projected=projectNote(withdrawn),batch={id:'recovered-'+note.id,label:'Recovered',notes:[projected],folders:[]};
+ const result=planMemoryRecovery([withdrawn],[],[],{kind:'restore',batch});assert.equal(result.records[0].state,'active');assert.equal(result.records[0].revisions.at(-1).body,'Original');
+ assert.throws(()=>planMemoryRecovery([withdrawn],[],[],{kind:'restore',batch:{...batch,id:'unknown'}}),/batch changed/i);
+ const bad={...batch,id:'stored',folders:['Inbox']};assert.throws(()=>planMemoryRecovery([withdrawn],[],[bad],{kind:'restore',batch:bad}),/conflict|protected/i);
 });

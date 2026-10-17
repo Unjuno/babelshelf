@@ -64,3 +64,10 @@ Reviewed speech used as a question stays in ui-v1-dialogue as source-linked work
 ## Atomic folder rename (Unit42)
 
 Memory folder rename appends canonical path revisions and updates explicit/empty descendant folder metadata in one IndexedDB notes/settings transaction. Source IDs, original bodies and earlier paths remain intact. It compares the exact affected projected records and subtree membership plus the committed folder-metadata snapshot, recomputes depth/collision/protection checks, and refuses concurrent changes. Local queues drain first; the rename is reserved before awaiting. Metadata is hydrated only after commit, suppressing a duplicate effect write. A failed transaction leaves both notes and empty folders unchanged. Native forced-write-failure QA is transaction rollback evidence, not a real quota-exhaustion test. File path editing remains versioned through the existing canonical save path.
+
+
+## Atomic deletion and Trash recovery (Unit43)
+
+Memory and notification deletion use one notes/settings transaction to withdraw canonical notes, retain their complete history, store the recovery batch and update empty-folder metadata. Recovery validates the exact stored batch (or a canonical-derived recovered tombstone), compares the retained withdrawal's body/path/history and optional historical paths, then revives canonical records with an appended revision. A later edit/delete cycle invalidates stale batches. Both operations compare affected content/subtree membership and committed folder/Trash metadata before writing. Protected roots, managed/bundled records, running logs, depth/path reservations and collision rules remain authoritative.
+
+Local queues drain before the synchronously reserved operation. Metadata is hydrated after commit, including derived legacy display batches without writing them on hydration. Undo is tied to the committed deletion ID rather than Trash array order. Native injected metadata-write failure after note/folder writes proves real transaction rollback, not a real quota-exhaustion pass. No record/original/history is purged.
