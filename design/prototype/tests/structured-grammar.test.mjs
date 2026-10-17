@@ -55,3 +55,9 @@ test('JSON string controls and multilingual scalar values remain valid at every 
  const prefix=grammar.advance(grammar.initial,enc.encode('{"answer":"'));
  for(const invalid of [[0xed,0xa0,0x80],[0xf4,0x90,0x80,0x80],[0xe0,0x80,0x80],[0x80]])assert.equal(grammar.advance(prefix,Uint8Array.from(invalid)),null);
 });
+
+test('calculation is a targetless tool request and unavailable for current unread inputs',()=>{
+ assert.equal(accepts('dialogue-plan',JSON.stringify({action:'calculate',query:'(1200+800)/4'})),true);
+ assert.equal(accepts('dialogue-plan',JSON.stringify({action:'calculate',query:'2+3',target:'file'})),false);
+ assert.equal(accepts({type:'dialogue-plan',scope:{inputs:true,file:false,current:false,historyCount:0}},JSON.stringify({action:'calculate',query:'2+3'})),false);
+});

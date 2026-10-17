@@ -1,5 +1,6 @@
 // Model-independent action IDs and scopes. Descriptions never grant execution permission.
 export const HARNESS_ACTIONS=[
+ {id:'calculate',purpose:'Calculate an explicit arithmetic expression; query is the expression, no units or code',targets:[]},
  {id:'chat',purpose:'Conversation or semantic rewriting of dialogue',targets:[]},
  {id:'recall',purpose:'Read an exact dialogue original',targets:['current','history']},
  {id:'transform',purpose:'Literal split or replacement of dialogue text',targets:['current','history']},
@@ -24,6 +25,6 @@ export function scopedHarnessActions(scope:PlannerScope){
  return HARNESS_ACTIONS.map(action=>({...action,targets:(action.targets as readonly string[]).filter(target=>
   (!scope.inputs||!['answer','summary'].includes(action.id)||target==='inputs')&&
   (target!=='inputs'||scope.inputs)&&(target!=='file'||scope.file)&&(target!=='current'||scope.current)&&(target!=='history'||scope.historyCount>0)
- )})).filter(action=>!['recall','transform'].includes(action.id)||action.targets.length>0);
+ )})).filter(action=>(action.id!=='calculate'||!scope.inputs)&&(!['recall','transform'].includes(action.id)||action.targets.length>0));
 }
 export const harnessActionCatalog=(currentInputs=false,scope?:PlannerScope)=>JSON.stringify(scope?scopedHarnessActions(scope):HARNESS_ACTIONS.map(action=>currentInputs&&['answer','summary'].includes(action.id)?{...action,targets:['inputs']}:action));

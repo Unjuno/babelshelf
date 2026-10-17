@@ -487,6 +487,9 @@ export default function Prototype() {
     selectedFile=await trace('memory.read',{target:'file',binding:fileBinding?.binding??'explicit',...workingFile},async()=>workingFileNote(await knowledge.all(),workingFile),workingFileMetadata);checkSend();
     if(request.action==='read'){const v=selectedFile.revisions.at(-1),path=workingFileMetadata(selectedFile).path,refs=v.body?[{noteId:selectedFile.id,revision:v.version,start:0,end:Math.min(700,v.body.length),quote:v.body.slice(0,700),title:path}]:[];await finishTurn(id,{status:'Opened · '+path,refs});openNote(selectedFile.id,path);return;}
    }
+   if(request?.action==='calculate'){
+    const expression=request.query;const result=await trace('math.calculate',{expression,...await builtinToolRegistry.identity('math.calculate')},()=>builtinToolRegistry.run('math.calculate',{expression},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}));checkSend();await finishTurn(id,{answer:expression+' = '+String(result[0].result),status:'Calculated',refs:[]});return;
+   }
    if(request?.action==='schedule'){
     const proposal=await trace('schedule.propose',{model,instruction:text},()=>proposeTask(inference,text,context,checkSend),value=>({...value,reviewRequired:!!value.task}));checkSend();
     if(proposal.question){await finishTurn(id,{answer:proposal.question,status:'Schedule details needed'});return;}

@@ -344,3 +344,12 @@ test('planner assistant selectors come from retained originals across compaction
  assert.equal(scope.historyCount,2);assert.deepEqual(scope.assistantIndices,[0]);assert.equal(scope.current,true);
  assert.deepEqual(state.turns[1],{id:'failed',user:'Another question',status:'Stopped'});
 });
+
+test('planner calculation accepts only bounded arithmetic and refuses hidden targets or attachment operands',async()=>{
+ const engine=value=>({manifest:{contextTokens:10000},count:async()=>({prompt_tokens:10}),generate:async()=>({text:JSON.stringify(value)})});
+ const context={recent:[],refs:[],turnCount:0};
+ const value={action:'calculate',query:'(1200+800)/4'};
+ assert.deepEqual(await planDialogue(engine(value),'1200と800を合計して4で割って',context),value);
+ for(const bad of [{...value,target:'current'},{...value,body:'overwrite'}, {...value,query:'eval(1)'},{...value,query:'1/0'}])await assert.rejects(planDialogue(engine(bad),'calculate',context));
+ await assert.rejects(planDialogue(engine(value),'calculate this attachment',context,[{name:'a.txt',kind:'text',status:'Text available'}]));
+});
