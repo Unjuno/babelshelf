@@ -44,3 +44,7 @@ Schema 4 adds Settings to bundled protected roots. No persistent baseline migrat
 
 ## Model library consistency
 All three roles use Add model to register a bundled candidate and select it. Choice sheets contain only registered candidates plus Not configured and Add model. Models records now include textLibrary and decisionLibrary alongside transcriptionLibrary. The existing default Bonsai 4B is initially registered; no other text/decision candidate is implicitly registered. Registration is not download, installation or readiness. Legacy records lacking both new library fields are read by registering their current selections; the next explicit edit appends a revision preserving the legacy body bytes. No record/history is deleted. Unknown models, duplicate library entries and selecting an unregistered model are rejected.
+
+## Tool documentation updates (Unit39)
+
+Protected bundled Tools records describe connected reviewed schedule/settings operations as finite alternatives to ordinary-note rewrites. These descriptions do not register executable tools or permissions. Only exact known app-published historical bodies in increasing order may receive an appended documentation revision. Fresh previous defaults and the earlier original-to-current migration are recognized; modified, reversed, repeated, moved, imported, withdrawn or otherwise non-app records are skipped. Original revisions and unrelated metadata remain intact through the existing canonical initialization transaction. No arbitrary Tools editing/execution is enabled.
