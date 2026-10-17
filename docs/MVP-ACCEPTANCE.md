@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit72 product is `bc7fd4ba25596e18`; Unit70 fresh-media recovery evidence remains scoped to `59901715ce98ffc0`.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit73 product is `92ab25e5e8dc746b`; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -13,7 +13,7 @@ Current implementation and evidence summary, 2026-10-18. This is a navigation ai
 | Initial model preparation | Reviewed selected text + unset Whisper/OCR, explicit acquisition permission, Stop/retry; native Unit66 | Phone capacity/latency; Whisperbase/D1-3B are not connected adapters |
 | OCR, speech, PDF and original citations | Actual PC OCR/ASR/PDF extraction and real generated grounded answers; offline process Units58/65 | OCR/ASR accuracy, hardware capture and general image/video understanding are not established |
 | Original-rich backup recovery | Unit70 fresh profile, Restore new with ten current conflicts kept, five exact originals and derived links retained; offline restart/image/audio/PDF source opening and byte-exact downloads | Keeps current settings; no arbitrary divergent-history reconciliation, full replacement or model assets |
-| Backup integrity and conflicts | Schema2 all-store snapshot, hashes, graph validation, atomic add-only/CAS, bounded200MB; strict conflict refusal; targeted14tests | Streaming/partitioned large archives, quota/storage retention and reviewed settings reconciliation |
+| Backup integrity and conflicts | Schema2 all-store snapshot, hashes, graph validation, add-only/CAS, bounded200MB; strict conflicts; Unit73 settings values append after review, source history readable, native stale/restart checks | Streaming/partitioned archives, quota/storage retention and arbitrary divergent history/dialogue reconciliation |
 | Schedule, execution and notification | Same canonical notes, reviewed proposals/patches, foreground runs and pinned results, notice read/delete; actual PC Unit57 | Closed-PWA timed execution or offline OS delivery is not guaranteed; imported tasks stay quarantined |
 | Structured tool activity and authority | Inputs/results/typed failures/Stop retained; document/model/schedule contents do not grant writes; grammar compliance still passes semantic/source checks | Broader intent/task language quality; optional external MCP execution is not connected |
 | Network OFF normal operation | Exact preparation permission and asset pins; ordinary misses refuse acquisition; repeated PC context-offline process checks | Installed-PWA and OS-isolated all-function run, Android/iPhone and real quota pressure |

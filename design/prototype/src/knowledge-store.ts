@@ -1,4 +1,5 @@
 import {exportMarkdownRevision} from './markdown-export.ts';
+import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
 import {buildInputReadings,validateInputReadings,type ReviewedText} from './input-readings.ts';
 import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
@@ -171,6 +172,14 @@ export class KnowledgeStore {
   });
  }
  async corrections(noteId?:string):Promise<CorrectionReceipt[]>{return this.transaction(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').getAll();q.onsuccess=()=>done(q.result.filter(r=>r?.type==='note-correction'&&r.schema===1&&(!noteId||r.noteId===noteId)).sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt)));});}
+ async settingsRecoveryHistory(noteId:string){
+  const db=await this.open();return new Promise<{id:string;appliedAt:string;source:any}[]>((resolve,reject)=>{
+   const tx=db.transaction(['notes','runs'],'readonly'),notes=tx.objectStore('notes').getAll(),q=tx.objectStore('runs').getAll(IDBKeyRange.bound('ui-v1-settings-restore-','ui-v1-settings-restore-\uffff'));
+   let rows:{id:string;appliedAt:string;source:any}[]=[],error:unknown;
+   q.onsuccess=()=>{try{for(const receipt of q.result){validateSettingsRestoreReceipt('ui-v1-settings-restore-'+receipt.id,receipt,notes.result);const change=receipt.changes.find((c:any)=>c.noteId===noteId);if(change)rows.push({id:receipt.id,appliedAt:receipt.appliedAt,source:change.source});}rows.sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt));}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(rows);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery history unavailable'));
+  });
+ }
  async approveCorrection(proposal:CorrectionProposal){
   const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
    const tx=db.transaction(['notes','runs'],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
@@ -274,7 +283,25 @@ export class KnowledgeStore {
  async checkBackup(text:string){return parseStateBackup(text);}
  async reviewBackup(text:string){const payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);let newOnly=false,newOnlyError='';
   if(payload.schema===2&&plan.conflicts.length&&Object.values(plan.added).some(n=>n>0)){try{newOnly=!!planStateRestore(current,payload,'new-only').writes;}catch{newOnlyError='New records conflict with current data';}}
-  return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,newOnly,newOnlyError,total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
+  let settingsRecovery:{group:string;noteId:string;before:string;after:string;beforeVersion:number;sourceVersion:number}[]=[];
+  try{settingsRecovery=planSettingsRestore(current,payload).changes.map(({source,...change})=>({...change,sourceVersion:latest(source).version}));}catch{/* Unsupported settings never enable the separate recovery action. */}
+  return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,newOnly,newOnlyError,settingsRecovery,total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
+ async restoreSettings(text:string,expected:string){
+  if(!expected)throw Error('Review settings before restoring');
+  const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  return new Promise<number>((resolve,reject)=>{
+   const tx=db.transaction(['notes','settings','runs'],'readwrite');let count=0,error:unknown;
+   readSnapshot(tx,current=>{try{
+    if(stateHash(current)!==expected)throw Error('Local data changed · review backup again');
+    const plan=planSettingsRestore(current,incoming);if(!plan.changes.length)throw Error('No settings changes');
+    const id=crypto.randomUUID(),receipt={schema:1,type:'settings-restore',id,appliedAt:new Date().toISOString(),backupHash,changes:plan.changes.map(c=>({group:c.group,noteId:c.noteId,beforeVersion:c.beforeVersion,afterVersion:c.beforeVersion+1,source:c.source}))};
+    validateSettingsRestoreReceipt('ui-v1-settings-restore-'+id,receipt,current.notes.map(n=>plan.writes.find(w=>w.id===n.id)??n));
+    for(const note of plan.writes)tx.objectStore('notes').put(note);
+    tx.objectStore('runs').add(receipt,'ui-v1-settings-restore-'+id);count=plan.writes.length;
+   }catch(e){error=e;tx.abort();}});
+   tx.oncomplete=()=>resolve(count);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Settings restore failed'));
+  });
+ }
  async restore(text:string,expected?:string,mode:RestoreMode='strict'){
   if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
   if(mode==='new-only'&&!expected)throw Error('Review backup before restoring new records');

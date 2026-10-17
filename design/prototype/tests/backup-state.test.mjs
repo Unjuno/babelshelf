@@ -6,6 +6,33 @@ import {prepareCorrection,applyCorrection} from '../src/note-corrections.ts';
 import {formatTask,taskDefinition,createTaskNote,claimTaskRun,finishTaskRun} from '../src/task-records.ts';
 import {formatPreference} from '../src/preference-records.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeStateBackup} from '../src/backup-state.ts';
+import {planSettingsRestore,validateSettingsRestoreReceipt} from '../src/settings-restore.ts';
+
+test('reviewed settings recovery appends destination history and retains source versions without network permission',async()=>{
+ const pref=(group,value)=>{const n=createNote({path:'Settings/'+group+'.md',body:formatPreference(group,value)});n.id='settings-'+group;n.ui={managed:true};n.unknown={retained:true};return n;};
+ const current={notes:[pref('appearance',{theme:'light',background:'paper',glass:'clear'}),pref('connection',{downloads:false})],settings:[],runs:[]};
+ const incoming={schema:2,createdAt:new Date().toISOString(),notes:[pref('appearance',{theme:'dark',background:'sage',glass:'frosted'}),pref('connection',{downloads:true})],settings:[],runs:[]};
+ const before=structuredClone({current,incoming}),plan=planSettingsRestore(current,incoming);
+ assert.equal(plan.changes.length,1);assert.equal(plan.writes.length,1);
+ assert.deepEqual(plan.writes[0].revisions.slice(0,-1),current.notes[0].revisions);assert.deepEqual(plan.writes[0].unknown,{retained:true});
+ assert.deepEqual(plan.changes[0].source,incoming.notes[0]);assert.deepEqual({current,incoming},before);
+ const receipt={schema:1,type:'settings-restore',id:'recovery',appliedAt:new Date().toISOString(),backupHash:stateHash(incoming),changes:plan.changes.map(c=>({group:c.group,noteId:c.noteId,beforeVersion:c.beforeVersion,afterVersion:c.beforeVersion+1,source:c.source}))};
+ const state={...current,notes:[plan.writes[0],current.notes[1]],runs:[{key:'ui-v1-settings-restore-recovery',value:receipt}]};
+ assert.deepEqual((await parseStateBackup(JSON.stringify(await makeStateBackup(state)))).runs,state.runs);
+ const changed=structuredClone(receipt);changed.changes[0].source.revisions[0].body=formatPreference('appearance',{theme:'light',background:'paper',glass:'clear'});
+ assert.throws(()=>validateSettingsRestoreReceipt('ui-v1-settings-restore-recovery',changed,state.notes),/source changed/);
+ const on={...current,notes:[current.notes[0],pref('connection',{downloads:true})]},offline=planSettingsRestore(on,incoming);
+ assert.match(offline.writes.find(n=>n.id==='settings-connection').revisions.at(-1).body,/"downloads": false/);
+ assert.match(offline.changes.find(c=>c.group==='connection').source.revisions[0].body,/"downloads": true/);
+});
+
+test('settings-only recovery cannot select arbitrary IDs, protected paths or legacy state',()=>{
+ const n=createNote({path:'Settings/appearance.md',body:formatPreference('appearance',{theme:'dark',background:'paper',glass:'clear'})});n.id='settings-appearance';n.ui={managed:true};
+ const current={notes:[structuredClone(n)],settings:[],runs:[]},incoming={schema:2,notes:[n]};
+ current.notes[0].ui.protected=true;assert.throws(()=>planSettingsRestore(current,incoming),/unavailable/);
+ assert.deepEqual(planSettingsRestore({notes:[],settings:[],runs:[]},incoming).changes,[]);
+ assert.deepEqual(planSettingsRestore(current,{schema:1,notes:[n]}).changes,[]);
+});
 
 const snapshot=()=>({notes:[createNote({path:'Inbox/原文.md',body:'水 Water 3L 🌳'})],settings:[{key:'ui-v1-dialogue',value:appendTurn(emptyDialogue(),{id:'t1',user:'Remember the exact original',answer:'Retained'})},{key:'ui-v1-folders',value:['Notes/日本語']},{key:'ui-v1-trash',value:[]}],runs:[]});
 const empty=()=>({notes:[],settings:[],runs:[]});
