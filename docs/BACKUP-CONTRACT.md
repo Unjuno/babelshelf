@@ -26,3 +26,10 @@ Explicit model asset operations also travel as untrusted processing receipts in 
 
 
 Long restore reviews use the same scrollable fields and fixed action row as schedule/media reviews. Conflict paths can scroll independently while Cancel and the disabled Restore remain visible. This changes layout only: any conflict still refuses all writes, and whole-state approval fingerprint checks remain authoritative. Unit40 native checks cover93 conflicting notes at360x780 and320x568; no general device/keyboard acceptance follows.
+
+
+## Explicit Restore new (Unit41)
+
+Strict restore remains the default and refuses all writes on any conflict. For schema2 only, review may offer Restore new when at least one new entry exists and retaining every current conflicting ID/key yields a valid combined graph. This explicitly keeps all existing canonical values and adds only absent records/keys; it does not reconcile skipped versions or restore their conversation/settings. The source backup must be retained for skipped contents. Review shows conflict labels and new record/linked-entry counts. Unresolvable dependencies disable restoration.
+
+New-only commit requires a reviewed whole-state fingerprint, recomputes the plan inside the same three-store readwrite transaction and uses add-only writes. It retains task quarantine/download-OFF guards. It refuses new correction receipts or Trash recovery snapshots targeting conflicting notes, new executions targeting conflicting tasks, and runs matching an existing task's retained pending cursor. Every new execution history revision must match its actual retained task revision's prompt/definition and valid source ranges. Whole merged graph validation then applies. These conservative refusals avoid indirectly rewriting retained data through Undo/Trash or blocking a retained schedule. Existing strict/legacy behavior remains unchanged; arbitrary history reconciliation and fresh-device full-state recovery remain separate unfinished work.

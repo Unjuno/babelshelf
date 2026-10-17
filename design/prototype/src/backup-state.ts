@@ -14,7 +14,7 @@ import {SHA256} from '../../../dist/sha256.js';
 import {notePath} from '../../../dist/files.js';
 import {validateDialogue} from './conversation.ts';
 import {parsePreference,preferenceGroup,formatPreference} from './preference-records.ts';
-import {parseTask,taskRunView,noticeView,validateNoticeLinks} from './task-records.ts';
+import {parseTask,taskDefinition,taskRunView,noticeView,validateNoticeLinks} from './task-records.ts';
 import {prepareCorrection,correctionOperationRaw} from './note-corrections.ts';
 import {memoryFolderPath} from './memory-paths.ts';
 import {validateOriginalLinks} from './original-assets.ts';
@@ -90,12 +90,30 @@ export function guardRestoredNote(note:any){
  if(n.id==='settings-connection'&&n.ui?.managed&&parsePreference('connection',latest(n).body).downloads)n=reviseNote(n,{body:formatPreference('connection',{downloads:false})},latest(n).version);
  return n;
 }
-export function planStateRestore(current:StateSnapshot,incoming:StatePayload):StateRestorePlan{
+export type RestoreMode='strict'|'new-only';
+export function planStateRestore(current:StateSnapshot,incoming:StatePayload,mode:RestoreMode='strict'):StateRestorePlan{
+ if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
+ if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');
  const writes:StateSnapshot={notes:[],settings:[],runs:[]},conflicts:RestoreConflict[]=[];
  for(const n of incoming.notes){const old=current.notes.find(x=>x.id===n.id);if(old){if(!equal(old,n))conflicts.push({store:'notes',key:n.id,label:notePath(n)});}else writes.notes.push(structuredClone(n));}
  for(const store of ['settings','runs'] as const)for(const item of incoming[store]??[]){const old=current[store].find(x=>x.key===item.key);if(old){if(!equal(old.value,item.value))conflicts.push({store,key:item.key,label:item.key});}else writes[store].push(structuredClone(item));}
- const added={notes:writes.notes.length,settings:writes.settings.length,runs:writes.runs.length};if(conflicts.length)return {conflicts,added,writes:null};
+ const added={notes:writes.notes.length,settings:writes.settings.length,runs:writes.runs.length};if(conflicts.length&&mode==='strict')return {conflicts,added,writes:null};
  writes.notes=writes.notes.map(guardRestoredNote);
+ if(mode==='new-only'){
+  const changedNotes=new Set(conflicts.filter(c=>c.store==='notes').map(c=>c.key));
+  for(const entry of writes.settings)if(entry.key==='ui-v1-trash'&&entry.value.some((batch:any)=>batch.notes.some((note:any)=>changedNotes.has(note.id))))throw Error('New recovery data depends on conflicting records');
+  for(const entry of writes.runs)if(entry.value?.type==='note-correction'&&changedNotes.has(entry.value.noteId))throw Error('New correction depends on conflicting records');
+  for(const note of writes.notes.filter(n=>n.ui?.recordType==='execution'))for(const revision of note.revisions){
+   const run=taskRunView({...note,revisions:[revision]}),retained=current.notes.find(n=>n.id===run.taskId);
+   if(changedNotes.has(run.taskId)||retained?.taskCursor?.definition===run.definition&&retained.taskCursor.nextAt===run.dueAt)throw Error('New execution conflicts with retained schedule');
+  }
+ }
+ if(mode==='new-only')for(const note of writes.notes.filter(n=>n.ui?.recordType==='execution'))for(const revision of note.revisions){
+  const run=taskRunView({...note,revisions:[revision]}),task=[...current.notes,...writes.notes].find(n=>n.id===run.taskId&&n.ui?.recordType==='schedule'),source=task?.revisions.find((v:any)=>v.version===run.taskRevision);
+  if(!source)throw Error('New execution source unavailable');const definition=parseTask(source.body);
+  if(run.prompt!==definition.prompt||run.definition!==taskDefinition(definition))throw Error('New execution source changed');
+  sourceRefs([...current.notes,...writes.notes],run.sources??[]);
+ }
  validateState({notes:[...current.notes,...writes.notes],settings:[...current.settings,...writes.settings],runs:[...current.runs,...writes.runs]});
  return {conflicts,added,writes};
 }

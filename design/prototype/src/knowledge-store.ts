@@ -16,7 +16,7 @@ import {parsePreference,formatPreference,preferenceGroup} from './preference-rec
 import {validateMemoryFilePath} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
-import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot} from './backup-state.ts';
+import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot,type RestoreMode} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
@@ -198,19 +198,24 @@ export class KnowledgeStore {
  async snapshot():Promise<StateSnapshot>{return this.transaction(['notes','settings','runs'],'readonly',(tx,done)=>readSnapshot(tx,done));}
  async backup(){return makeStateBackup(await this.snapshot());}
  async checkBackup(text:string){return parseStateBackup(text);}
- async reviewBackup(text:string){const payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
- async restore(text:string,expected?:string){
+ async reviewBackup(text:string){const payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);let newOnly=false,newOnlyError='';
+  if(payload.schema===2&&plan.conflicts.length&&Object.values(plan.added).some(n=>n>0)){try{newOnly=!!planStateRestore(current,payload,'new-only').writes;}catch{newOnlyError='New records conflict with current data';}}
+  return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,newOnly,newOnlyError,total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
+ async restore(text:string,expected?:string,mode:RestoreMode='strict'){
+  if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
+  if(mode==='new-only'&&!expected)throw Error('Review backup before restoring new records');
   const incoming=await parseStateBackup(text);
+  if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');
   if(incoming.schema===1){for(const n of incoming.notes){if(n.ui?.recordType==='schedule')parseTask(latest(n).body);else if(n.ui?.recordType==='execution')taskRunView(n);else if(n.ui?.recordType==='notification')noticeView(n);}}
   const db=await this.open();return new Promise<{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean}>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings','runs'],'readwrite');let result:{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean},error:unknown;
    readSnapshot(tx,current=>{try{
     if(expected&&expected!==stateHash(current))throw Error('Local data changed · review backup again');
     if(incoming.schema===1){const merged=mergeNotes(current.notes,incoming.notes),fresh=merged.notes.filter((n:any)=>!current.notes.some(old=>old.id===n.id));for(const n of fresh)tx.objectStore('notes').add(guardRestoredNote(n));result={conflicts:merged.conflicts,added:{notes:fresh.length,settings:0,runs:0},restored:true};return;}
-    const plan=planStateRestore(current,incoming);if(!plan.writes){result={conflicts:plan.conflicts,added:{notes:0,settings:0,runs:0},restored:false};return;}
+    const plan=planStateRestore(current,incoming,mode);if(!plan.writes){result={conflicts:plan.conflicts,added:{notes:0,settings:0,runs:0},restored:false};return;}
     for(const note of plan.writes.notes)tx.objectStore('notes').add(note);
     for(const store of ['settings','runs'] as const)for(const entry of plan.writes[store])tx.objectStore(store).add(entry.value,entry.key);
-    result={conflicts:[],added:plan.added,restored:true};
+    result={conflicts:plan.conflicts,added:plan.added,restored:true};
    }catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Restore failed'));
   });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createNote,makeBackup,withdrawNote} from '../../../dist/core.js';
 import {emptyDialogue,appendTurn,completeTurn,currentDialogueResult} from '../src/conversation.ts';
 import {prepareCorrection,applyCorrection} from '../src/note-corrections.ts';
-import {formatTask,taskDefinition} from '../src/task-records.ts';
+import {formatTask,taskDefinition,createTaskNote,claimTaskRun,finishTaskRun} from '../src/task-records.ts';
 import {formatPreference} from '../src/preference-records.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeStateBackup} from '../src/backup-state.ts';
 
@@ -70,4 +70,41 @@ test('file working target retains its historical version through backup and reje
  const state=snapshot(),pin={noteId:state.notes[0].id,revision:1};state.settings[0].value.currentFile=pin;
  const pack=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(pack.settings[0].value.currentFile,pin);
  state.settings[0].value.currentFile={noteId:'missing',revision:1};await assert.rejects(()=>makeStateBackup(state),/Working file/);
+});
+
+test('explicit new-only restore keeps every conflicting current entry and validates the merged graph',async()=>{
+ const current=snapshot(),incoming=await parseStateBackup(JSON.stringify(await makeStateBackup(current)));
+ incoming.notes[0].localFixture='conflicting metadata';incoming.settings[0].value=appendTurn(incoming.settings[0].value,{id:'incoming-only',user:'Do not replace current dialogue'});
+ const fresh=createNote({path:'Inbox/new-restore.md',body:'Only this note is new'});incoming.notes.push(fresh);
+ const before=structuredClone({current,incoming});
+ assert.equal(planStateRestore(current,incoming).writes,null);
+ const plan=planStateRestore(current,incoming,'new-only');assert.ok(plan.writes);assert.deepEqual(plan.writes.notes,[fresh]);assert.equal(plan.conflicts.length,2);assert.deepEqual(plan.writes.settings,[]);assert.deepEqual(plan.writes.runs,[]);
+ assert.deepEqual({current,incoming},before);
+ assert.throws(()=>planStateRestore(current,incoming,'unknown'),/restore mode/i);
+ const collision=structuredClone(incoming);collision.notes.at(-1).revisions[0].path=current.notes[0].revisions[0].path;assert.throws(()=>planStateRestore(current,collision,'new-only'));
+});
+
+test('new-only restore refuses dependent source changes instead of using skipped backup bytes',async()=>{
+ const current=snapshot(),incoming=await parseStateBackup(JSON.stringify(await makeStateBackup(current)));
+ const original=incoming.notes[0],quote='Backup-only text';original.revisions[0].body=quote;
+ const generated=createNote({path:'Inbox/dependent.md',body:'Dependent',kind:'generated',sources:[{noteId:original.id,revision:1,start:0,end:quote.length,quote}]});incoming.notes.push(generated);
+ assert.throws(()=>planStateRestore(current,incoming,'new-only'));
+ const legacy={schema:1,createdAt:'test',notes:incoming.notes};assert.throws(()=>planStateRestore(current,legacy,'new-only'),/schema/i);
+});
+
+test('new-only execution history cannot bind to a skipped conflicting task snapshot',async()=>{
+ const now=new Date('2026-10-17T00:00:00Z'),task={repeat:'once',time:'09:00',days:[],date:'2026-10-18',monthDay:1,interval:1,unit:'days',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,enabled:false,notify:false,prompt:'Backup prompt'};
+ const original={...createTaskNote([],task,crypto.randomUUID(),now),taskCursor:{definition:taskDefinition(task),nextAt:'2026-10-18T00:00:00Z'}},claim=claimTaskRun([original],original.id,'owner',now,{manual:true}),failed=finishTaskRun([original,claim.run],claim.run.id,'owner',{status:'failed',error:'Not prepared'},now);
+ const incoming=await parseStateBackup(JSON.stringify(await makeStateBackup({notes:[original,failed.run],settings:[],runs:[]})));
+ const retained={...original,revisions:[{...original.revisions[0],body:formatTask({...task,prompt:'Current prompt'})}]},current={notes:[retained],settings:[],runs:[]};
+ assert.throws(()=>planStateRestore(current,incoming,'new-only'),/execution/i);
+ assert.throws(()=>planStateRestore({...current,notes:[original]},incoming,'new-only'),/retained schedule/i);
+ const advanced={...original,taskCursor:{...original.taskCursor,nextAt:null}};assert.ok(planStateRestore({notes:[],settings:[],runs:[]},incoming,'new-only').writes);assert.throws(()=>planStateRestore({...current,notes:[advanced]},incoming,'new-only'),/retained schedule/i);
+});
+
+test('new-only restore cannot import Trash snapshots over a kept withdrawn original',async()=>{
+ const note=withdrawNote(createNote({path:'Inbox/recovery.md',body:'Local original'}),1),other=structuredClone(note);other.revisions[0].body='Backup original';other.revisions.at(-1).body='Backup original';
+ const incoming=await parseStateBackup(JSON.stringify(await makeStateBackup({notes:[other],settings:[{key:'ui-v1-trash',value:[{id:'batch',label:'Recovery',notes:[{id:other.id,path:'Inbox/recovery.md',body:'Backup original',version:other.revisions.length,history:other.revisions.slice(0,-1).map(r=>r.body)}],folders:[]}]}],runs:[]})));
+ const current={notes:[note],settings:[],runs:[]},before=structuredClone(current);
+ assert.throws(()=>planStateRestore(current,incoming,'new-only'),/recovery.*conflicting/i);assert.deepEqual(current,before);
 });
