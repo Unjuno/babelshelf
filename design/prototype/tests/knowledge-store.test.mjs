@@ -156,3 +156,10 @@ test('canonical-derived recovery works without a stored Trash batch while forged
  assert.throws(()=>planMemoryRecovery([withdrawn],[],[],{kind:'restore',batch:{...batch,id:'unknown'}}),/batch changed/i);
  const bad={...batch,id:'stored',folders:['Inbox']};assert.throws(()=>planMemoryRecovery([withdrawn],[],[bad],{kind:'restore',batch:bad}),/conflict|protected/i);
 });
+
+test('Save rejects stale generated ancestors and a source edit in the same atomic batch',()=>{
+ const original=createNote({path:'Notes/root.md',body:'original evidence'}),ref={noteId:original.id,revision:1,start:0,end:17,quote:'original evidence'},parent=createNote({path:'Notes/parent.md',body:'derived answer',kind:'generated',sources:[ref]}),pin={noteId:parent.id,revision:1,start:0,end:14,quote:'derived answer'},answer={id:'new-answer',path:'Inbox/new-answer.md',body:'exact proposed answer',version:1,history:[],kind:'generated',sources:[pin]};
+ const records=[original,parent],views=records.map(projectNote);assert.equal(applyKnowledgeChanges(records,views,[...views,answer]).at(-1).revisions[0].body,answer.body);
+ const changed=reviseNote(original,{body:'corrected evidence'},1),current=[changed,parent];assert.throws(()=>applyKnowledgeChanges(current,current.map(projectNote),[...current.map(projectNote),answer]),/Source changed/);
+ assert.throws(()=>applyKnowledgeChanges(records,views,[projectNote(changed),projectNote(parent),answer]),/Source changed/);assert.equal(original.revisions.length,1);
+});

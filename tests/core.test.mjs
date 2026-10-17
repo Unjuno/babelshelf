@@ -113,3 +113,13 @@ test('Unicode decimal identifiers are mandatory alongside non-Latin query text',
  assert.equal(core.searchNotes([n],'試験٩٩٩号').length,0);
  assert.equal(core.searchNotes([n],'試験١٢٣号')[0]?.noteId,n.id);
 });
+
+test('new grounded references require an eligible source chain while historical pins remain readable',()=>{
+ const original=core.createNote({body:'original evidence'}),ref={noteId:original.id,revision:1,start:0,end:17,quote:'original evidence'},parent=core.createNote({body:'derived answer',kind:'generated',sources:[ref]}),pin={noteId:parent.id,revision:1,start:0,end:14,quote:'derived answer'};
+ assert.equal(core.validateGroundingRefs([original,parent],[pin]).ok,true);
+ for(const changed of [core.reviseNote(original,{body:'corrected evidence'},1),core.withdrawNote(original,1)]){
+  const records=[changed,parent];assert.equal(core.validateRefs(records,[pin],{currentOnly:true}).ok,true);assert.equal(core.validateGroundingRefs(records,[pin]).ok,false);
+  assert.throws(()=>core.validateTool({name:'create_note',arguments:{title:'new',body:'copy',source_refs:[pin]}},records),/sources/);
+ }
+ assert.equal(core.validateGroundingRefs([original,parent],[]).ok,true);
+});

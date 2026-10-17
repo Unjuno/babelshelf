@@ -47,6 +47,12 @@ function eligible(n,map,seen=new Set()){
  if(n.kind!=='generated')return true;
  seen=new Set([...seen,n.id]);return n.sources.length>0&&n.sources.every(r=>{const parent=map.get(r.noteId);return parent&&validateRefs([...map.values()],[r],{currentOnly:true}).ok&&eligible(parent,map,seen);});
 }
+// Admission for NEW grounded data. Historical citation display keeps validateRefs semantics.
+export function validateGroundingRefs(notes,refs){
+ const checked=validateRefs(notes,refs,{currentOnly:true}),map=new Map(notes.map(n=>[n.id,n])),errors=new Set(checked.errors);
+ for(const ref of refs){const note=map.get(ref.noteId);if(note&&!eligible(note,map))errors.add(ref.noteId);}
+ return {ok:errors.size===0,errors:[...errors]};
+}
 const indexCache=new WeakMap();
 export function buildIndex(notes,{force=false}={}){
  if(!force&&indexCache.has(notes))return indexCache.get(notes);
@@ -97,7 +103,7 @@ export function validateTool(call,notes){
  switch(call.name){
   case 'search_notes':if(typeof a.query!=='string'||a.query.length>2000||a.limit!==undefined&&(!Number.isInteger(a.limit)||a.limit<1||a.limit>20))throw Error('Invalid search');break;
   case 'read_note':if(typeof a.note_id!=='string'||!notes.some(n=>n.id===a.note_id&&n.state==='active'))throw Error('Note unavailable');break;
-  case 'create_note':if(typeof a.title!=='string'||typeof a.body!=='string'||a.body.length>30000||!Array.isArray(a.source_refs)||!validateRefs(notes,a.source_refs,{currentOnly:true}).ok)throw Error('Invalid note or sources');break;
+  case 'create_note':if(typeof a.title!=='string'||typeof a.body!=='string'||a.body.length>30000||!Array.isArray(a.source_refs)||!validateGroundingRefs(notes,a.source_refs).ok)throw Error('Invalid note or sources');break;
   default:throw Error('Action not allowed');
  }return call;
 }

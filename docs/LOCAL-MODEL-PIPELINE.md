@@ -4,6 +4,16 @@ Latest user decision (2026-10-18): provide a coherent standard model set and a w
 
 Dependencies: trusted adapter registration -> verified local assets -> compatible role selection -> original extraction -> source-scoped retrieval/context budget -> generation/tool dispatch -> source/output validation -> reviewed mutations. Completion requires actual normal flows, not catalog entries.
 
+## Product contract for the standard set
+
+The standard set is a recommended compatible bundle, not a requirement to load every model at once. Initial preparation shows the required assets and downloads them only with explicit permission. Ordinary use selects the needed prepared processor for each step and releases workers when appropriate for device memory. Missing assets yield a preparation-required state, never a silent download or remote fallback.
+
+The default user flow is: prepare the set once, submit text or attachments, and let the harness extract readable content, retain original provenance, retrieve relevant knowledge, and answer or propose an action. Deterministic tools such as calculation do not require model inference. A decision model is an optional routing aid; it is not the authority for writes or a substitute for media readers.
+
+Replacing a model changes a role assignment, not stored knowledge, original attachments, citations, or history. Custom and recommended models use the same validated capability boundary. Accept a custom model only when an installed trusted adapter supports its actual architecture and processing contract. Otherwise show an unsupported state; adding an engine remains an application implementation task. A future omni adapter may serve several roles through this boundary.
+
+Settings should present one consistent Add model and compatible-role selection flow. Users need not choose pipeline internals for each request. This contract describes the intended completed behavior; the implementation and acceptance gaps below remain explicit.
+
 The standard set covers text generation, optional decision routing, speech transcription and image OCR. Existing connected choices are Bonsai/WebML, fixed optional ONNX text candidates, D1 text decision, Whisper tiny and Tesseract. These have different evidence/quality limits; their presence does not certify a complete useful standard set. PDF text uses bundled PDF.js rather than an LLM. Video currently contributes audio transcription only; frame/scene understanding is unsupported. Embedding, reranking and speech synthesis are optional future adapters, not installed capabilities. Future omni adapters may implement several capabilities without forcing separate models per role.
 
 User customization uses Add model, compatible role assignment, explicit local import/preparation and verification. File extensions alone do not establish compatibility: architecture, quantization/operators, tokenizer/template or media pre/postprocessing, complete pinned assets and runtime licensing must match a trusted adapter. Existing validated custom GGUF text registration retains its own checks; the new fixed-adapter catalog does not replace it. General custom ONNX/omni installation is still incomplete.

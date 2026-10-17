@@ -539,7 +539,7 @@ export default function Prototype() {
    setNotes(a=>[...a,n]);await flushStorage();return n;
   },async n=>{if(turn)await finishTurn(turn,{status:'Saved · '+n.path,refs:n.body.length?[{noteId:n.id,revision:1,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}]:[]});});
   if(!result)return;const n=result.note;setFileSaveWarningId(result.acknowledgementError!==undefined?n.id:null);setCaptureTurn(null);setPage('memory');setOpened(n.id);setActiveFolder(n.path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setSheet(null);keyboard.hide();toast(result.acknowledgementError!==undefined?'Saved · conversation status unavailable':'Saved');
-  }catch(e){toast((e as Error).message);}finally{setFileSaving(false);}
+  }catch(e){const message=(e as Error).message;try{await refreshStorage();}catch{}toast(message);}finally{setFileSaving(false);}
  }
 
  function createFolder(){try{const path=folderPath(memoryCreationFolder(memoryScope,activeFolder,'folder'),folderName,[...allFolders,...notes.map(n=>n.path)]);setExtraFolders(a=>[...a,path]);setActiveFolder(path);setMemoryScope('folder');setFolderName('');keyboard.hide();setSheet(null);}catch(e){toast((e as Error).message);}}

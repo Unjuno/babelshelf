@@ -11,7 +11,7 @@ import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
-import {createNote,reviseNote,withdrawNote,latest,validateRefs,checkNotes,buildIndex,searchNotes,mergeNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGroundingRefs,checkNotes,buildIndex,searchNotes,mergeNotes} from '../../../dist/core.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
@@ -63,12 +63,12 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
   }else{
    if(next.recordType)throw Error('Register through Schedule');
    if(next.version!==1||next.history.length)throw Error('Invalid new revision');
-   if(next.kind==='generated'&&(!Array.isArray(next.sources)||!validateRefs(records,next.sources,{currentOnly:true}).ok))throw Error('Source changed · review before saving');
+   if(next.kind==='generated'&&(!Array.isArray(next.sources)||!validateGroundingRefs(records,next.sources).ok))throw Error('Source changed · review before saving');
    const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path,kind:next.kind??'original',sources:next.sources??[]});
    result.push({...created,id,...(next.importedFrom?{importedFrom:next.importedFrom}:{})});
   }
  }
- checkNotes(result);return result;
+ checkNotes(result);for(const note of result)if(!records.some(old=>old.id===note.id)&&note.kind==='generated'&&!validateGroundingRefs(result,note.sources).ok)throw Error('Source changed · review before saving');return result;
 }
 
 export function planFolderRename(records:Canonical[],storedFolders:string[],from:string,name:string,expected:NoteView[]){
