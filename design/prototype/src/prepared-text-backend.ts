@@ -18,7 +18,11 @@ export function createPreparedTextBackend({manifest,stores,createClient}:{manife
    if(!['count','generate'].includes(cmd))throw Error('Unknown text operation');
    if(!client?.loaded)throw Error('Model not loaded');return client.call(cmd,args,events);
   });},
-  load(id,events){return operation(async(_signal,check)=>{storeFor(id);if(client?.loaded)throw Error('Unload model first');if(client?.failed)client=null;if(!client){const next=createClient();client=next;await next.init();check();}await client.load(id,events);check();});},
+  load(id,events){return operation(async(_signal,check)=>{
+   storeFor(id);if(client?.loaded)throw Error('Unload model first');if(client?.failed)client=null;let active=client;
+   try{if(!active){active=createClient();client=active;await active.init();check();}await active.load(id,events);check();}
+   catch(error){if(active&&client===active){client=null;active.abort();}throw error;}
+  });},
   unload(){return operation(async()=>{if(client&&!client.failed)await client.unload();});},
  };
 }

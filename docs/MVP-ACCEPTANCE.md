@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `5e41fe61ff848b5e`; combined PC evidence extends through Unit126; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `481be5d7c0b92560`; combined PC evidence extends through Unit127; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -44,3 +44,5 @@ Unit124 completes the separate Asyncify/memory32 native build and actual PC exec
 Unit125 connects optional fixed LFM350M to normal model controls with packaged verified default/compat CPU runtime. Actual cold offline normal UI lifecycle passes after the prepared-state propagation fix; Hello routing fails with retained invalid operation output. Original observer failures and independent backup revalidation remain explicit. This candidate is not a useful-chat replacement certificate. No default/data/UI layout change; physical devices, useful general routing and full MVP gates remain.
 
 Unit126 conditions planner instructions on the existing allowed scope. Actual fresh LFM count776->509 with unchanged input/context; no LFM quality retry. Current-build native offline prepared Bonsai4B natural knowledge answer16/currentv2 citations passes, preserving notes/settings/old dialogue. General routing, LFM failure and device/full-offline gates remain.
+
+Unit127 closes failed init/Load client retention: original error preserved, failed worker disposed, no automatic retry, explicit local restoration stays asset-only and next Load starts fresh. Actual server-stopped cold offline dedicated public-model fixture passes recovery/real generation Stop/reload; no normal UI fault injection, useful LFM/phone/all-function claim.
