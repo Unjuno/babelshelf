@@ -102,5 +102,7 @@ export function validateTool(call,notes){
  }return call;
 }
 export function parseJSON(text){const s=text.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');return JSON.parse(s);}
-export function parseAnswer(text,evidence){const value=parseJSON(text);if(typeof value.answer!=='string'||!value.answer.trim()||!Array.isArray(value.citations)||!value.citations.length)throw Error('Invalid answer or sources');
- const refs=[];for(const c of value.citations){const r=evidence.find(r=>r.label===c.id);if(!r||typeof c.quote!=='string'||!c.quote||!r.quote.includes(c.quote))throw Error('Citation mismatch');refs.push({...r,citedQuote:c.quote});}return {answer:value.answer,refs};}
+export function parseAnswer(text,evidence){const value=parseJSON(text);if(!value||typeof value!=='object'||Array.isArray(value)||value.status!==undefined&&!['answered','insufficient_evidence'].includes(value.status)||typeof value.answer!=='string'||!value.answer.trim()||!Array.isArray(value.citations))throw Error('Invalid answer or sources');
+ if(value.status==='insufficient_evidence'){if(value.citations.length)throw Error('Insufficient evidence cannot carry citations');return {status:value.status,answer:value.answer,refs:[]};}
+ if(!value.citations.length)throw Error('Invalid answer or sources');
+ const refs=[];for(const c of value.citations){const r=evidence.find(r=>r.label===c.id);if(!r||typeof c.quote!=='string'||!c.quote||!r.quote.includes(c.quote))throw Error('Citation mismatch');refs.push({...r,citedQuote:c.quote});}return {...(value.status?{status:value.status}:{}),answer:value.answer,refs};}

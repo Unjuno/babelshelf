@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "./app.js",
-      "bytes": 27772,
-      "sha256": "2e98a637f08168064e33f7865ffa344ca585e27d084b8f3ad8dc4f9d6edaf053"
+      "bytes": 27852,
+      "sha256": "3713ac6a07bb91a109ca000889d32c5f32b71150cfdaede6a72ac7c4b4de8adf"
     },
     {
       "path": "./blank-paper.svg",
@@ -13,8 +13,8 @@
     },
     {
       "path": "./core.js",
-      "bytes": 10452,
-      "sha256": "68d91a5ca117f3baa3bfbb728b21c6470acc6f216861b53e2f440548462e9854"
+      "bytes": 10874,
+      "sha256": "001708762231629de7620036c175bb1a6b12bae2b9da9ff2e7866a0eb6f10f9b"
     },
     {
       "path": "./diagnostics.js",
@@ -72,6 +72,16 @@
       "sha256": "d563277b040846818a50351238f05666903e97b2d6d883cefebae9a81e5a05d9"
     },
     {
+      "path": "./lfm-adapter.js",
+      "bytes": 4679,
+      "sha256": "83001a184be236de4ec08d30bee1fc9d2481b72692b42288c1631ee14bff1cb1"
+    },
+    {
+      "path": "./lfm-model-manifest.json",
+      "bytes": 3417,
+      "sha256": "9087416088b5ee87737bd14fccf17ee5ccec5e052d40e51fe52254ba7626eca0"
+    },
+    {
       "path": "./LICENSES.txt",
       "bytes": 2519,
       "sha256": "bcd930e0f2ce657312958ae174abb1f900881a7a49e66cb45d8e721d7991d2ba"
@@ -98,8 +108,8 @@
     },
     {
       "path": "./model-manifest.json",
-      "bytes": 2308,
-      "sha256": "d51285cd74af779340bb1846dd654cf33dbd8959bbb8e57d0bac8ef3ba32234f"
+      "bytes": 2530,
+      "sha256": "bf9978e6487f0d082cd1774c7f49382eff7f0d460ada0a44cfbbbc6724b665eb"
     },
     {
       "path": "./model-worker.js",
@@ -139,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "52ba7e3a325b7b19dfe57b2d7de3e704b7b80c628795345f4a1ef6ff8381509a"
+      "sha256": "3ac9864f3d146ae0e57c49586f27f12575ee820f8c0da88dc68b8bc30cc3b219"
     },
     {
       "path": "./ui.js",

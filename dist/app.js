@@ -92,7 +92,7 @@ async function ask(){
   if(!evidence.length)throw Error('Context limit reached');
   const partial=summaryId&&evidence.length<hits.length;
   $('ask-status').textContent='Thinking…';const result=await engine.generate(messages,progress,256);
-  let parsed;try{parsed=parseAnswer(result.text,evidence);}catch(e){const detail=el('details');detail.append(el('summary','','Invalid output'),el('pre','source-text',result.text));reply().prepend(detail);throw e;}await refresh();if(!validateRefs(notes,parsed.refs,{currentOnly:true}).ok)throw Error('Source changed. Retry.');
+  let parsed;try{parsed=parseAnswer(result.text,evidence);if(parsed.status==='insufficient_evidence')throw Error('Insufficient evidence');}catch(e){const detail=el('details');detail.append(el('summary','','Invalid output'),el('pre','source-text',result.text));reply().prepend(detail);throw e;}await refresh();if(!validateRefs(notes,parsed.refs,{currentOnly:true}).ok)throw Error('Source changed. Retry.');
   lastAnswer={title:question.slice(0,80),body:parsed.answer,sources:parsed.refs,model:engine.loaded,partial};const answer=lastAnswer;renderAnswer(reply(),answer);chatHistory.push({question,answer,at:new Date().toISOString()});chatHistory=chatHistory.slice(-100);await setSetting('chatHistory',chatHistory);$('ask-status').textContent='';reply().scrollIntoView({block:'end'});
  }catch(e){reply().append(el('div','turn-status',e.message));throw e;}finally{summaryId=null;setBusy(false);currentReply=null;}
 }

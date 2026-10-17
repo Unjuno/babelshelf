@@ -1,0 +1,21 @@
+import {useRef,useState} from 'react';
+import {Wllama} from '@wllama/wllama/esm/index.js';
+import wasm from '@wllama/wllama/esm/wasm/wllama.wasm?url';
+import compatWasm from '@wllama/wllama-compat/wasm/wllama.wasm?url';
+import compatWorker from '@wllama/wllama-compat/wasm/wllama.js?raw';
+// @ts-expect-error Shared static adapter.
+import {LfmAdapter} from '../../../dist/lfm-adapter.js';
+// @ts-expect-error Shared hash helper.
+import {hashLocalModel} from '../../../dist/local-models.js';
+// @ts-expect-error Static benchmark modules.
+import {freezeCase,runCase} from '../../../dist/bench/runner.js';
+import fixtureText from '../../../dist/bench/fixtures.jsonl?raw';
+import fixtureLock from '../../../dist/bench/fixture-lock.json';
+import manifest from './lfm-manifest.json';
+export default function LfmCheck(){
+ const [id,setId]=useState(manifest.models[0].id),[backend,setBackend]=useState('cpu'),[status,setStatus]=useState('Not loaded'),[results,setResults]=useState<any[]>([]),[busy,setBusy]=useState(false),file=useRef<File|null>(null),engine=useRef<any>(null),controller=useRef<AbortController|null>(null);
+ async function run(op:string){setBusy(true);controller.current=new AbortController();try{engine.current??=new LfmAdapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatWorker}},models:manifest.models});setStatus(op);let value;if(op==='Load'){
+ if(file.current){const expected=manifest.models.find(m=>m.id===id)!;if(file.current.size!==expected.file.bytes||await hashLocalModel(file.current,{signal:controller.current.signal})!==expected.file.sha256)throw Error('Model integrity mismatch');const root=await navigator.storage.getDirectory(),dir=await root.getDirectoryHandle('lfm-bench',{create:true}),h=await dir.getFileHandle(id+'.gguf',{create:true}),writer=await h.createWritable();await file.current.stream().pipeTo(writer,{signal:controller.current.signal});}const root=await navigator.storage.getDirectory(),dir=await root.getDirectoryHandle('lfm-bench'),h=await dir.getFileHandle(id+'.gguf');value=await engine.current.load(await h.getFile(),id,{backend,signal:controller.current.signal});
+ }else if(op==='Generate'){value=await engine.current.generate([{role:'system',content:'日本語で短く答えてください。'},{role:'user',content:'こんにちは。何ができますか？'}],{signal:controller.current.signal,json:false,maxTokens:128});}else if(op==='Compatibility 10'){const fixtures=fixtureText.trim().split('\n').map(line=>JSON.parse(line)),records=[];for(const caseId of fixtureLock.compatibilityCaseIds){controller.current.signal.throwIfAborted();const fixture=fixtures.find(f=>f.id===caseId);records.push(await runCase(engine.current,freezeCase(fixture,'A'),{backend,runtimeVersion:manifest.runtime.version,device:navigator.userAgent,scope:'preliminary compatibility only; physical device identity unconfirmed',fixtureSha256:fixtureLock.sha256},{signal:controller.current.signal}));}value={compatible:records.every(r=>r.status==='SUCCEEDED'&&r.score?.jsonValid&&r.score?.citationsValid),records};}else{await engine.current.unload();value={unloaded:true};}setResults(a=>[...a,{op,status:'done',value}]);setStatus('Done');}catch(e){setResults(a=>[...a,{op,status:'failed',error:String(e)}]);setStatus(String(e));}finally{setBusy(false);}}
+ return <main><h1>LFM compatibility</h1><p>Diagnostic · synthetic inputs only · no model adoption</p><label>Model<select aria-label="Model" value={id} disabled={busy} onChange={e=>{setId(e.target.value);file.current=null;}}>{manifest.models.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select></label><label>Backend<select aria-label="Backend" value={backend} disabled={busy} onChange={e=>setBackend(e.target.value)}><option value="cpu">CPU · 1 thread</option><option value="webgpu">WebGPU · requested full offload</option></select></label><input aria-label="Local GGUF" type="file" accept=".gguf" disabled={busy} onChange={e=>{file.current=e.target.files?.[0]??null;}}/>{['Load','Generate','Compatibility 10','Unload'].map(op=><button key={op} disabled={busy} onClick={()=>void run(op)}>{op}</button>)}<button disabled={!busy} onClick={()=>{controller.current?.abort();engine.current?.abort();}}>Stop</button><div role="status">{status}</div><pre data-testid="results">{JSON.stringify(results,null,2)}</pre></main>;
+}

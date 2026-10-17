@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "cases": 100,
+  "sha256": "7271e7e4e699ac34aa6be58c181459e5c48f8ed69c1c0ab9620eab03bc51c744",
+  "regressionSha256": "d563277b040846818a50351238f05666903e97b2d6d883cefebae9a81e5a05d9",
+  "groups": {
+    "injection": 10,
+    "insufficient": 10,
+    "intent": 15,
+    "multi": 20,
+    "multilingual": 10,
+    "single": 20,
+    "summary": 15
+  },
+  "semanticGrading": "blinded human review required; automatic fact flags are observational only",
+  "status": "frozen before primary model runs",
+  "compatibilityCaseIds": [
+    "single-001",
+    "single-003",
+    "multi-001",
+    "multi-004",
+    "summary-001",
+    "intent-001",
+    "insufficient-001",
+    "insufficient-004",
+    "injection-001",
+    "multilingual-001"
+  ],
+  "textHashNormalization": "UTF-8 LF"
+}

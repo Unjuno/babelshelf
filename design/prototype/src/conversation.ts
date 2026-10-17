@@ -177,7 +177,7 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  return value as {action:string;query:string;body?:string;target?:'current'|'history'|'file'|'path'|'knowledge'|'inputs';historyIndex?:number|null;historyPart?:'user'|'assistant'};
 }
 export function parseChatAnswer(text:string,evidence:any[],dialogueOnly=false){
- const value=parseJSON(text);if(typeof value.answer!=='string'||!value.answer.trim()||value.citations===undefined&&!dialogueOnly||value.citations!==undefined&&!Array.isArray(value.citations))throw Error('Invalid answer');
+ const value=parseJSON(text);if(value?.status!==undefined){const parsed=parseAnswer(text,evidence);if(parsed.status==='insufficient_evidence')throw Error('Insufficient evidence');return {answer:parsed.answer as string,sources:parsed.refs as SourceRef[]};}if(typeof value.answer!=='string'||!value.answer.trim()||value.citations===undefined&&!dialogueOnly||value.citations!==undefined&&!Array.isArray(value.citations))throw Error('Invalid answer');
  if(value.citations===undefined)return {answer:value.answer as string,sources:[] as SourceRef[]};
  if(!value.citations.length)return {answer:value.answer as string,sources:[] as SourceRef[]};
  const parsed=parseAnswer(text,evidence);return {answer:parsed.answer as string,sources:parsed.refs as SourceRef[]};

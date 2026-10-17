@@ -31,7 +31,7 @@ export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,mod
  }
  if(inputReadings.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId)))throw Error('Context limit · fewer attachments');
  if(!evidence.length&&(workingFile||!context))throw Error(hits.length?'Context limit':'No matching notes');
- const parse=(text:string)=>answerContext?parseChatAnswer(text,evidence,mode==='chat'):(()=>{const p=parseAnswer(text,evidence);return {answer:p.answer,sources:p.refs};})();
+ const parse=(text:string)=>answerContext?parseChatAnswer(text,evidence,mode==='chat'):(()=>{const p=parseAnswer(text,evidence);if(p.status==='insufficient_evidence')throw Error('Insufficient evidence');return {answer:p.answer,sources:p.refs};})();
  check();let generated=await engine.generate(messages,256,mode==='chat'?'dialogue-answer':undefined);check();if(generated.stopped)throw Error('Stopped');
  let parsed:ReturnType<typeof parse>;
  try{parsed=parse(generated.text);}catch(error){

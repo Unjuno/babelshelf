@@ -4,6 +4,7 @@ import {readFile,writeFile,readdir,mkdir,copyFile} from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 const prototype=path.resolve('design/prototype');
+execFileSync(process.execPath,['scripts/check-lfm.mjs'],{stdio:'inherit'});
 execFileSync(process.execPath,[path.join(prototype,'scripts/prepare-ocr-runtime.mjs')],{stdio:'inherit'});
 execFileSync(process.execPath,[path.join(prototype,'node_modules/typescript/bin/tsc'),'--project',path.join(prototype,'product/tsconfig.json')],{stdio:'inherit'});
 execFileSync(process.execPath,[path.join(prototype,'node_modules/vite/bin/vite.js'),'build','--config',path.join(prototype,'product.vite.config.ts')],{cwd:prototype,stdio:'inherit'});

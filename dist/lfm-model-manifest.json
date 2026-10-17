@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "status": "candidate-not-adopted",
+  "runtime": {
+    "name": "wllama",
+    "version": "3.8.1",
+    "llamaCppVersion": "b11364-46ca246",
+    "license": "MIT",
+    "assets": [
+      {
+        "package": "@wllama/wllama",
+        "path": "esm/index.js",
+        "bytes": 382633,
+        "sha256": "e5506753e41a59c11f61f2c52422045be9fc76e32a7e47f037aaad5df4ec723e"
+      },
+      {
+        "package": "@wllama/wllama",
+        "path": "esm/wasm/wllama.wasm",
+        "bytes": 8763949,
+        "sha256": "551f13439366eff11e057b1b91fe46a7fdac29d56d67372d4c5f19a549dfe70c"
+      },
+      {
+        "package": "@wllama/wllama",
+        "path": "src/workers-code/generated.ts",
+        "bytes": 161332,
+        "sha256": "cf01c3c90168ec409e77084a658ca7d7acc339ddfed56ca370cf41ab9445da15"
+      },
+      {
+        "package": "@wllama/wllama-compat",
+        "path": "wasm/wllama.js",
+        "bytes": 171615,
+        "sha256": "2649eeb408988841c372e54805adfa25aed5d02f850c09add78c2f3ac0f3fce1"
+      },
+      {
+        "package": "@wllama/wllama-compat",
+        "path": "wasm/wllama.wasm",
+        "bytes": 16005007,
+        "sha256": "2db3f67d0bcc19cdf8f14f129e46cab691bff898954808f8a2dc4c586eb5bb68"
+      }
+    ],
+    "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+    "llamaCppLicense": {
+      "url": "https://raw.githubusercontent.com/ggml-org/llama.cpp/46ca246de9bb1c35269722a6240d37d9dfd79cad/LICENSE",
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    }
+  },
+  "configuration": {
+    "n_ctx": 2048,
+    "max_tokens": 256,
+    "temperature": 0,
+    "seed": 0,
+    "n_threads": 1,
+    "n_parallel": 1,
+    "n_batch": 128,
+    "n_ubatch": 128,
+    "cache_prompt": false
+  },
+  "models": [
+    {
+      "id": "lfm25-350m-qad-q4-0",
+      "label": "LFM2.5-350M QAD Q4_0",
+      "repository": "LiquidAI/LFM2.5-350M-GGUF",
+      "revision": "657e078c94084481950a2d555a941481f715536b",
+      "file": {
+        "name": "LFM2.5-350M-QAD-Q4_0.gguf",
+        "bytes": 219312832,
+        "sha256": "3d10b6ab8fc91a919534b9558e266255aca0bbc7f6d015963599aa9e74e05b1d",
+        "url": "https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF/resolve/657e078c94084481950a2d555a941481f715536b/LFM2.5-350M-QAD-Q4_0.gguf"
+      },
+      "license": "LFM Open License v1.0",
+      "licenseUrl": "https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF/blob/657e078c94084481950a2d555a941481f715536b/LICENSE",
+      "licenseSha256": "5188f2b355da20647257a3156db5834c794e5fb5e6d8dc4d4cdbb3180e75b85b"
+    },
+    {
+      "id": "lfm25-230m-qad-q4-0",
+      "label": "LFM2.5-230M QAD Q4_0",
+      "repository": "LiquidAI/LFM2.5-230M-GGUF",
+      "revision": "03502067c64ce32ac4fe87b0cec0310a1a13d3e9",
+      "file": {
+        "name": "LFM2.5-230M-QAD-Q4_0.gguf",
+        "bytes": 149081056,
+        "sha256": "e75f83268de11b2a1bcfab5f3b5c5c0c97569ddbbc0990aad88437e45b8ba292",
+        "url": "https://huggingface.co/LiquidAI/LFM2.5-230M-GGUF/resolve/03502067c64ce32ac4fe87b0cec0310a1a13d3e9/LFM2.5-230M-QAD-Q4_0.gguf"
+      },
+      "license": "LFM Open License v1.0",
+      "licenseUrl": "https://huggingface.co/LiquidAI/LFM2.5-230M-GGUF/blob/03502067c64ce32ac4fe87b0cec0310a1a13d3e9/LICENSE",
+      "licenseSha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit80 product is `aaeb991007f0abab`; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit81 product is `31ac8e4ab4034c85`; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -22,3 +22,5 @@ Current implementation and evidence summary, 2026-10-18. This is a navigation ai
 Detailed authority: STORAGE-CONTRACT.md, CONVERSATION-CONTRACT.md, CORRECTION-CONTRACT.md, MODEL-RUNTIME-VERIFICATION.md, CUSTOM-MODELS-CONTRACT.md, ADDITIONAL-TEXT-ENGINE.md, STRUCTURED-GENERATION.md, MEDIA-HARNESS.md, SPEECH-CONTRACT.md, BACKUP-CONTRACT.md, SCHEDULE-CONTRACT.md and TEST-RESULTS.txt.
 
 Next work should close material gaps rather than repeat prompt-variant Bonsai benchmarks: runtime license provenance, a useful compatible multilingual alternative, large-state/quota handling, reviewed restoration of conflicting settings/histories, and remaining video/device/all-function acceptance. Keep current choices and data, local-only execution, explicit acquisition and the accepted UI. No deployment or push is authorized.
+
+Latest user correction: design/implement first and reserve comparative model experiments/tuning for final acceptance. Unit81 LFM QAD runtime/model pins, prepared-file adapter and deferred fixture/scorer groundwork are retained; the running10-case comparison was USER_INTERRUPTED, not a model failure. Normal LFM engine/selection integration and target17air device verification remain pending. Existing Bonsai defaults unchanged. See LFM-BENCHMARK.md; do not restart large experiments automatically.
