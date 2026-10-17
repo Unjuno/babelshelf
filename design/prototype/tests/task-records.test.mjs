@@ -64,3 +64,13 @@ test('skip consumes an occurrence without inventing an inference attempt',()=>{
  const note=registered(),now=new Date(2026,9,20,10),skipped=skipTaskRun([note],note.id,'user',now);
  assert.equal(taskRunView(skipped.run).attempt,0);assert.equal(taskRunView(skipped.run).status,'skipped');assert.equal(skipped.task.taskCursor.nextAt,null);
 });
+
+test('scheduled success validates the complete current source chain before consuming an occurrence',async()=>{
+ const {reviseNote,searchNotes,validateRefs}=await import('../../../dist/core.js');
+ const task=registered(),now=new Date(2026,9,20,9),{run}=claimTaskRun([task],task.id,'owner',now);
+ const source=createNote({path:'Notes/source101.md',body:'Source marker CEDAR-101.'}),parent=createNote({path:'Notes/summary101.md',body:'A saved summary of CEDAR-101.',kind:'generated',sources:searchNotes([source],'CEDAR-101')});
+ const refs=[{noteId:parent.id,revision:1,start:0,end:latest(parent).body.length,quote:latest(parent).body}];
+ assert.equal(taskRunView(finishTaskRun([task,run,source,parent],run.id,'owner',{status:'succeeded',answer:'controlled contract result',sources:refs},now).run).status,'succeeded');
+ const changed=reviseNote(source,{body:'Corrected marker MAPLE-102.'},1),records=[task,run,changed,parent],before=structuredClone(records);
+ assert.equal(validateRefs(records,refs,{currentOnly:true}).ok,true);assert.throws(()=>finishTaskRun(records,run.id,'owner',{status:'succeeded',answer:'controlled contract result',sources:refs},now),/Source changed/);assert.deepEqual(records,before);
+});

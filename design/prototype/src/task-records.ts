@@ -1,6 +1,6 @@
 // Typed application records stored as ordinary versioned Markdown notes.
 // @ts-expect-error Shared baseline core is JavaScript.
-import {createNote,reviseNote,latest,validateRefs,checkNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,latest,validateRefs,validateGroundingRefs,checkNotes} from '../../../dist/core.js';
 import {nextScheduleOccurrence,localDate,type ScheduleRule} from './schedule-time.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
@@ -103,7 +103,7 @@ export function finishTaskRun(records:any[],runId:string,owner:string,result:{st
  if(data.owner!==owner||data.status!=='running')throw Error('Execution owner conflict');
  const lease=old.runLease?.owner===owner?old.runLease.until:data.leaseUntil;if(asDate(lease)<now)throw Error('Execution owner expired');
  if(!['succeeded','failed','stopped','skipped'].includes(result.status))throw Error('Invalid completion');
- if(result.status==='succeeded'&&(!result.answer?.trim()||!result.sources?.length||!validateRefs(records,result.sources,{currentOnly:true}).ok))throw Error('Source changed or missing result');
+ if(result.status==='succeeded'&&(!result.answer?.trim()||!result.sources?.length||!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
  const completed={...data,...result,finishedAt:now.toISOString()};const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
