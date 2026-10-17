@@ -1,0 +1,9 @@
+# Tool packages — current user direction
+
+The user's latest direction is executable code paired with a SKILL.md usage file, not Markdown-only tool descriptions or JSON-only definitions. The basic package is SKILL.md plus implementation code. Code can export its argument schema and entry points. A separate machine-readable manifest is optional when identity/version/capabilities/assets need it; do not force a third file when two suffice. The model reads usage guidance; the harness invokes real code and returns typed results. MCP connection code can be an adapter inside a package. Protocol/browser/runtime compatibility must be verified rather than assumed.
+
+Current Tools/*.md are protected explanatory records; actual native tool handlers live in application code. Do not represent a new Markdown/JSON document as an installed executable adapter. Keep existing records/history during migration. Preserve the accepted Memory/Settings UI and local canonical data.
+
+Registration, inspection, prepared assets and execution must stay distinct. Model/document/SKILL content does not grant code-installation, writes, network or future execution permission. Initial packages should wrap the actual connected local search/read/reviewed-capture/correction handlers and preserve their typed inputs/results/approval/CAS behavior. Installing new implementation code is different from adding a definition. Ordinary usage remains offline; no implicit fetch, external personal-data upload or cloud/LAN inference.
+
+This records the architectural direction from the conversation. It is not an implemented plugin loader, verified sandbox, MCP server/client or permission boundary. PWA host capabilities, package execution isolation and MCP transport roles need concrete design and verification before claiming support. No legacy data deletion, arbitrary eval of Memory documents or automatic imported-code execution.
