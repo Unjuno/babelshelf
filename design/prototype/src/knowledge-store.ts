@@ -9,6 +9,8 @@ import {parsePreference,formatPreference,preferenceGroup} from './preference-rec
 import {validateMemoryFilePath} from './memory-paths.ts';
 import {localDate} from './schedule-time.ts';
 import {parseTask,formatTask,taskDefinition,taskNextAt,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
+import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
+export {prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
 export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number}};
 type Canonical=ReturnType<typeof createNote>;
@@ -70,6 +72,21 @@ export class KnowledgeStore {
  }
  async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}
  async views(){return (await this.all()).filter(n=>n.state==='active').map(projectNote);}
+ async corrections(noteId?:string):Promise<CorrectionReceipt[]>{return this.transaction(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').getAll();q.onsuccess=()=>done(q.result.filter(r=>r?.type==='note-correction'&&r.schema===1&&(!noteId||r.noteId===noteId)).sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt)));});}
+ async approveCorrection(proposal:CorrectionProposal){
+  const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
+   const tx=db.transaction(['notes','runs'],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
+   prior.onsuccess=()=>{if(prior.result){error=Error('Correction already applied');tx.abort();return;}const q=notes.getAll();q.onsuccess=()=>{try{const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
+   tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Correction save failed'));
+  });
+ }
+ async revertCorrection(id:string){
+  const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
+   const tx=db.transaction(['notes','runs'],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),q=runs.get('ui-v1-correction-'+id);let receipt:CorrectionReceipt,error:unknown;
+   q.onsuccess=()=>{const records=notes.getAll();records.onsuccess=()=>{try{const result=undoCorrection(records.result,q.result);notes.put(result.note);runs.put(result.receipt,'ui-v1-correction-'+id);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
+   tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Undo failed'));
+  });
+ }
  private async editRecords<T>(change:(records:Canonical[])=>{put:Canonical[];value:T}):Promise<T>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite'),s=tx.objectStore('notes'),q=s.getAll();let value:T,error:unknown;
    q.onsuccess=()=>{try{const result=change(q.result);const map=new Map(q.result.map(n=>[n.id,n]));for(const n of result.put)map.set(n.id,n);checkNotes([...map.values()]);for(const n of result.put)s.put(n);value=result.value;}catch(e){error=e;tx.abort();}};

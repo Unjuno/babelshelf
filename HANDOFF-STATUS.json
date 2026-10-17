@@ -20,5 +20,10 @@
   "conversation_contract": "docs/CONVERSATION-CONTRACT.md",
   "conversation_verification": "PC_4B_ORIGINAL_RECALL_TYPED_SPLIT_AND_EXACT_REVIEWED_SAVE_RELOAD_VERIFIED_GENERAL_AND_DEVICE_GATES_REMAIN",
   "schedule_contract": "docs/SCHEDULE-CONTRACT.md",
-  "harness_evaluation": "docs/HARNESS-EVALUATION.md"
+  "harness_evaluation": "docs/HARNESS-EVALUATION.md",
+  "correction_contract": "docs/CORRECTION-CONTRACT.md",
+  "correction_verification": "PC_4B_LITERAL_REVIEW_CANCEL_STALE_APPROVAL_RELOAD_AND_APPEND_ONLY_UNDO_VERIFIED_SEMANTIC_SYSTEM_EDITS_PENDING",
+  "foreground_task_verification": "ONE_PC_4B_EXPLICIT_RUN_SUCCESS_CITATION_NOTIFICATION_READ_DELETE_AND_EXACT_RESULT_SAVE_VERIFIED_NOT_BACKGROUND_DELIVERY",
+  "desktop_navigation": "PC_MOUSE_CLICK_MENU_AND_KEYBOARD_VERIFIED_TOUCH_PEN_DEVICE_ACCEPTANCE_PENDING",
+  "prototype_test_result": {"pass": 62, "fail": 0}
 }

@@ -40,3 +40,81 @@ test('saving an existing generated result preserves exact content and rejects st
  const changed=reviseNote(source,{body:'Changed source'},1);
  assert.throws(()=>applyKnowledgeChanges([changed],[projectNote(changed)],[projectNote(changed),answer]),/Source changed/);
 });
+
+
+// Breaks caught: unreviewed mutation, stale approval/undo, authority from model fields,
+// and loss of original metadata. These exercise pure commit rules, not simulated inference.
+import * as edits from '../src/knowledge-store.ts';
+test('a correction proposal cannot write and approved correction preserves canonical originals',()=>{
+ assert.equal(typeof edits.prepareCorrection,'function');
+ const note=createNote({path:'Notes/water.md',body:'水は3Lです。予備も3Lです。'});note.custom={keep:'legacy'};const before=structuredClone(note);
+ const proposal=edits.prepareCorrection(note,'3Lを4Lに直して', '{"action":"replace","find":"3L","with":"4L"}');
+ assert.deepEqual(note,before);assert.equal(proposal.after,'水は4Lです。予備も4Lです。');
+ const {note:changed,receipt}=edits.applyCorrection([note],proposal);
+ assert.equal(changed.id,note.id);assert.equal(changed.revisions.length,2);assert.equal(changed.revisions[0].body,before.revisions[0].body);assert.deepEqual(changed.custom,{keep:'legacy'});
+ assert.equal(receipt.status,'applied');assert.equal(receipt.operation.result.matches,2);assert.equal(receipt.beforeVersion,1);assert.equal(receipt.afterVersion,2);assert.deepEqual(changed.revisions[0],before.revisions[0]);
+});
+test('stale/tampered approvals and protected targets cannot become writes',()=>{
+ assert.equal(typeof edits.prepareCorrection,'function');
+ const note=createNote({path:'Notes/a.md',body:'old'}),proposal=edits.prepareCorrection(note,'replace', '{"action":"replace","find":"old","with":"new"}');
+ assert.throws(()=>edits.applyCorrection([reviseNote(note,{body:'other tab'},1)],proposal),/conflict/i);
+ assert.throws(()=>edits.applyCorrection([note],{...proposal,after:'forged'}),/invalid/i);
+ assert.throws(()=>edits.prepareCorrection(note,'replace','{"action":"replace","find":"old","with":"new","path":"Settings/models.md"}'),/Invalid/);
+ for(const blocked of [{...note,ui:{protected:true}},{...note,ui:{managed:true}},{...note,ui:{recordType:'schedule'}},createNote({path:'Settings/custom.md',body:'old'})])assert.throws(()=>edits.prepareCorrection(blocked,'replace','{"action":"replace","find":"old","with":"new"}'),/unsupported|protected/i);
+ assert.throws(()=>edits.prepareCorrection(note,'replace','{"action":"replace","find":"missing","with":"new"}'),/not found/);
+});
+test('undo appends a revision and refuses a changed target or repeated undo',()=>{
+ assert.equal(typeof edits.undoCorrection,'function');
+ const note=createNote({path:'Notes/a.md',body:'original'}),proposal=edits.prepareCorrection(note,'correct','{"action":"replace","find":"original","with":"corrected"}');
+ const applied=edits.applyCorrection([note],proposal),undone=edits.undoCorrection([applied.note],applied.receipt);
+ assert.equal(latest(undone.note).body,'original');assert.equal(undone.note.revisions.length,3);assert.equal(undone.note.revisions[1].body,'corrected');assert.equal(undone.receipt.status,'undone');
+ assert.throws(()=>edits.undoCorrection([reviseNote(applied.note,{body:'later edit'},2)],applied.receipt),/conflict/i);
+ assert.throws(()=>edits.undoCorrection([undone.note],undone.receipt),/already|unavailable/i);
+});
+test('correction target requires an exact path or a single filename match',()=>{
+ assert.equal(typeof edits.resolveCorrectionTarget,'function');
+ const a=createNote({path:'Notes/a.md',body:'one'}),b=createNote({path:'Inbox/a.md',body:'two'});
+ assert.equal(edits.resolveCorrectionTarget([a,b],'Notes/a.md').id,a.id);
+ assert.equal(edits.resolveCorrectionTarget([a],'a.md').id,a.id);
+ assert.throws(()=>edits.resolveCorrectionTarget([a,b],'a.md'),/ambiguous/i);assert.throws(()=>edits.resolveCorrectionTarget([a,b],'one'),/matching/i);
+});
+
+
+test('correction inference remains read-only and cancellation rejects a proposed patch',async()=>{
+ const {proposeCorrection}=await import('../src/note-corrections.ts');const note=createNote({path:'Notes/a.md',body:'Water 3L'}),before=structuredClone(note);let seen;
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:50}),generate:async messages=>{seen=JSON.stringify(messages);return {text:'{"action":"replace","find":"3L","with":"4L"}'};}};
+ const proposal=await proposeCorrection(engine,'Replace 3L with 4L',note);assert.equal(proposal.after,'Water 4L');assert.match(seen,/Water 3L/);assert.deepEqual(note,before);
+ await assert.rejects(()=>proposeCorrection({...engine,generate:async()=>({text:'partial',stopped:true})},'correct',note),/Stopped/);
+ await assert.rejects(()=>proposeCorrection({...engine,count:async()=>({prompt_tokens:2048})},'correct',note),/context limit/);
+});
+
+
+test('legacy correction review retains its canonical fallback path and rejects a forged display path',()=>{
+ const note=createNote({title:'Legacy',body:'old'});note.id='legacy-123';delete note.revisions[0].path;
+ const proposal=edits.prepareCorrection(note,'replace','{"action":"replace","find":"old","with":"new"}');
+ assert.equal(proposal.path,'inbox/Legacy-legacy-123.md');
+ assert.throws(()=>edits.applyCorrection([note],{...proposal,path:'Notes/other.md'}),/Invalid/);
+});
+test('History discards results after navigation and Undo requires the visible note identity',async()=>{
+ assert.equal(typeof edits.loadCorrectionHistory,'function');const note=createNote({path:'Notes/a.md',body:'old'}),applied=edits.applyCorrection([note],edits.prepareCorrection(note,'replace','{"action":"replace","find":"old","with":"new"}'));
+ assert.equal(edits.canUndoCorrection(applied.receipt,{id:'another-note',version:2}),false);
+ assert.equal(edits.canUndoCorrection(applied.receipt,{id:note.id,version:2}),true);
+ let resolve;const pending=new Promise(r=>resolve=r);let current=true;
+ const loading=edits.loadCorrectionHistory(()=>pending,note.id,()=>current);current=false;resolve([applied.receipt]);assert.equal(await loading,null);
+ const rows=await edits.loadCorrectionHistory(async()=>[applied.receipt], 'another-note',()=>true);assert.deepEqual(rows,[]);
+});
+test('post-commit refresh failure reports a committed correction while precommit failure stays rejected',async()=>{
+ assert.equal(typeof edits.runReviewedCorrection,'function');const note=createNote({path:'Notes/a.md',body:'old'}),applied=edits.applyCorrection([note],edits.prepareCorrection(note,'replace','{"action":"replace","find":"old","with":"new"}'));
+ let saved;const result=await edits.runReviewedCorrection(async()=>{saved=edits.undoCorrection([applied.note],applied.receipt);return saved.receipt;},async()=>{throw Error('Read failed');});
+ assert.equal(result.receipt.status,'undone');assert.equal(latest(saved.note).body,'old');assert.match(result.refreshError.message,/Read failed/);
+ let refreshed=false;await assert.rejects(()=>edits.runReviewedCorrection(async()=>{throw Error('Write failed');},async()=>{refreshed=true;}),/Write failed/);assert.equal(refreshed,false);
+});
+
+
+test('correction receipts reference retained revisions instead of duplicating entire histories',()=>{
+ let note=createNote({path:'Notes/long-history.md',body:'OLD_ARCHIVE_'.repeat(10000)});note=reviseNote(note,{body:'old'},1);
+ const proposal=edits.prepareCorrection(note,'replace','{"action":"replace","find":"old","with":"new"}'),applied=edits.applyCorrection([note],proposal);
+ assert.ok(JSON.stringify(applied.receipt).length<2000);assert.equal(applied.receipt.beforeVersion,2);assert.equal(applied.receipt.afterVersion,3);
+ const changedMetadata={...applied.note,other:'changed after approval'};assert.throws(()=>edits.undoCorrection([changedMetadata],applied.receipt),/conflict/i);
+ assert.equal(edits.undoCorrection([applied.note],applied.receipt).note.revisions.at(-1).body,'old');
+});

@@ -161,3 +161,11 @@ test('planner can select a read-only transformation only with an explicit origin
  const ref={noteId:'assistant-source',revision:1,start:0,end:5,quote:'other'};state.turns[0].refs=[ref];
  assert.deepEqual(readDialogueTurn(state,0,'user').refs,[]);assert.deepEqual(readDialogueTurn(state,0,'assistant').refs,[ref]);
 });
+
+
+test('existing-note edits route to a target proposal rather than capture or direct execution',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};
+ const e={...engine(),generate:async()=>({text:'{"action":"edit","query":"Notes/water.md","historyIndex":null}'})};
+ assert.equal((await planDialogue(e,'In Notes/water.md replace 3L with 4L',context)).action,'edit');
+ await assert.rejects(()=>planDialogue({...e,generate:async()=>({text:'{"action":"edit","query":""}'})},'fix it',context),/Invalid/);
+});

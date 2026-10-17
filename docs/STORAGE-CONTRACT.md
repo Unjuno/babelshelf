@@ -1,3 +1,7 @@
+## Reviewed correction integration
+
+Ordinary-note model proposals now have a bounded adapter, explicit Before/After review, full expected-record checks and notes+runs atomic revision/receipt persistence. History offers revision-based Undo with stale-target rejection. See CORRECTION-CONTRACT.md for exact limits and auxiliary-backup exclusion. Dedicated schedule/event persistence is documented in SCHEDULE-CONTRACT.md; older pending statements below are chronological.
+
 ## Production engine/shell update — 2026-10-17
 
 The separate product entry uses native browser controls with the same UI and canonical adapter. The protected phone runtime is unchanged. Shell install verifies bundled assets; ordinary missing resources return503 without fallback. Inference uses OPFS and denies default fetch; explicit preparation alone can fetch pinned assets. Downloads reset OFF at boot via a retained connection-record revision. App updates verify a new cache and preserve IDB/OPFS; they ask to reopen rather than discarding a live draft automatically.

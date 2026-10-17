@@ -8,6 +8,8 @@ Continuous Input now persists local dialogue and passes prior context to routing
 
 Harness/prompt diagnosis uses fixed public inputs and the actual prepared local model in an explicit developer route, separate from the accepted UI. Reproducible reports, failure boundaries and literal read-only operation design: [HARNESS-EVALUATION.md](docs/HARNESS-EVALUATION.md).
 
+Ordinary-note model corrections now open a Before/After review. Explicit Save checks the expected canonical record and atomically appends a revision and receipt; History Undo appends another revision. Actual PC4B review, Cancel, competing-tab conflict rejection, reload and Undo have been exercised. The adapter supports bounded literal replacements/splitting; semantic rewrites and system/task model edits remain pending. See [CORRECTION-CONTRACT.md](docs/CORRECTION-CONTRACT.md). One manual foreground scheduled generation, citation, notification and exact-result save also passed; closed-PWA wakeup is not supported.
+
 Run `npm run build:app`, then `node scripts/serve-product.mjs 4180` for the native-browser PWA at http://127.0.0.1:4180/. This static server never runs inference. The protected phone preview remains independently runnable. Downloads reset OFF on boot; explicit model preparation is required. The production shell uses verified caches and explicit update controls. Older surface descriptions below are retained for development reference; the linked verification document takes precedence.
 
 There are also two development/reference surfaces:
@@ -15,7 +17,7 @@ There are also two development/reference surfaces:
 | Location | Purpose | Current limits |
 | --- | --- | --- |
 | `dist/` | Shared IndexedDB, immutable revisions, sources, search, backup and pinned Bonsai worker; older baseline UI | The accepted production entry is built separately; baseline Node checks are not device acceptance |
-| `design/prototype/` | Accepted UI, shared canonical adapter, dialogue, foreground tasks/events and local inference; separate `product/` native PWA entry | Durable media/extraction, model correction review/undo, full-state backup and complete offline/device acceptance remain pending |
+| `design/prototype/` | Accepted UI, shared canonical adapter, dialogue, reviewed literal corrections/Undo, foreground tasks/events and local inference; separate `product/` native PWA entry | Durable media/extraction, semantic/system model edits, typed failed-attempt ledger, full-state backup and complete offline/device acceptance remain pending |
 
 Read [the accepted product specification](docs/PRODUCT-SPEC.md) and [integration plan](docs/IMPLEMENTATION-PLAN.md). Do not carry the old bottom-toggle layout into the new UI simply because baseline source checks still cover it.
 

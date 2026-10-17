@@ -17,7 +17,7 @@ The user may later choose external tools/MCP/frontier models as an optional sepa
 - Main input/results surface supports natural-language record/search/read/summarize/answer/save. No sessions or New chat; no branding heading, Chat/Notes tab split, sidebar, hamburger, bottom navigation, explanatory paragraphs or marketing copy.
 - UI labels are English; stored content, inputs and generation are multilingual.
 - Glass control material inspired by iOS 26, upright recognizable icons, readable opaque text and short status/error labels. This is a web interpretation, not native Apple Liquid Glass.
-- Input button upper-left. Pointer tap returns to input; 50ms hold displays a curved four-item menu. Sliding to an item and releasing switches destination. Returning to center/outside cancels after movement. Stationary release closes and returns to Input. No decorative line in the button.
+- Input button upper-left. Touch/pen tap returns to input; 50ms hold displays a curved four-item menu. Mouse/trackpad click opens a persistent menu; click a destination to navigate, or click Input again to return to input. Sliding to an item and releasing switches destination. Returning to center/outside cancels after movement. Stationary release closes and returns to Input. No decorative line in the button.
 - Menu: Memory, Schedule, Notifications, Settings. Keyboard activation/arrows/Escape and assistive access must remain. Actual 50ms touch discrimination still needs device testing.
 - Photo, voice and Send are compact. Current attachments/audio are previews only.
 - Answers show a small source mark near the relevant text; source details and the exact original remain available on demand. No automatic filename clutter in ordinary answers.

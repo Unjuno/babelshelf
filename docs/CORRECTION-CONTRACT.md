@@ -1,0 +1,19 @@
+# Reviewed model corrections
+
+Ordinary saved Markdown notes can be targeted by exact ID/path or one unambiguous filename. Model routing may select `edit`; it cannot commit. Ambiguous/missing targets ask for a full path rather than selecting the first search hit. Settings, Tools, registered schedules, execution/notification logs, managed/protected/withdrawn records are unavailable to this bounded adapter. Their metadata needs distinct permission schemas; existing direct editors are unchanged.
+
+The current local model chooses only a literal `text.replace` or `text.split_lines` operation. The existing exact-match, Unicode, match-count and output-size limits apply. A no-op, absent substring, empty output, unsupported tool or unknown argument fails visibly. Semantic/full-document rewrites are not implemented by this adapter. No regex, code, path change or deletion is accepted from model output.
+
+A proposal holds a fresh ID, current request, complete canonical expected record, before/after body and structured operation result. Preparing it writes no knowledge record. Review shows path, version, complete Before and After, Cancel and Save. Only explicit Save calls the approval adapter. A pending review is session-only: reopening preserves the request/status but requires a new proposal, never automatic execution.
+
+Approval uses one IndexedDB read/write transaction over existing schema1 `notes` and `runs` stores. It checks the entire current target against the expected snapshot, replays/validates the exact operation and verifies displayed before/after. A single revision and receipt commit together. The receipt key is `ui-v1-correction-<proposal ID>`, type `note-correction`, with target ID/path, request, operation/arguments/match count, before/after revision numbers and SHA-256 of the complete after record, timestamp and applied status. Duplicate approvals cannot append twice. IDs, paths, original revisions, aliases, sources and unknown legacy fields are retained. Nothing grants blanket future edit authority.
+
+History reads persisted receipts alongside canonical revision bodies. Explicit Undo requires the complete current record SHA-256 to match the after-record hash, restores the previous body by appending another revision, and updates the receipt to undone in the same notes+runs transaction. Later edits/renames/withdrawal invalidate Undo. Undo never removes a correction revision. It is not an automatic rollback or a permanent delete.
+
+Receipt storage is auxiliary, currently outside the note-only brainpack; full-state backup/restore must include and validate it before whole-MVP completion. A note can remain committed if a later UI/conversation refresh fails; the persisted receipt/history is authoritative and duplicate approval still refuses. Runtime assets and user data are never sent remotely by this adapter. Model/document text is untrusted; it cannot bypass review.
+
+Tests distinguish pure control rules, real IndexedDB atomicity/concurrency and actual local4B generation. Results and build identifiers are recorded in TEST-RESULTS.txt. This contract does not claim mobile-device, full offline restart or general model-language acceptance.
+
+Receipts reference original bodies through immutable canonical revisions rather than copying all historical revisions into every receipt. This avoids quadratic receipt growth. Full expected-record snapshots remain session-only for approval CAS; no historical revision is removed. Hashing reuses the existing local SHA-256 implementation.
+
+Current applied/undo receipts are structured and atomic. Failed attempts before a valid proposal are retained as dialogue statuses; the common typed attempt/failure ledger remains an integration gate for the broader harness.

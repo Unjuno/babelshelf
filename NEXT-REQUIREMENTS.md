@@ -5,7 +5,7 @@ The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It s
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.
-- Upper-left glass Input button. Short pointer tap returns to Input. A 50ms hold reveals a curved Memory / Schedule / Notifications / Settings menu; slide and release selects. Stationary release closes the menu and returns to Input. No release-then-tap pointer menu. Keyboard/screen-reader alternatives remain.
+- Upper-left glass Input button. Touch/pen tap returns to Input. Mouse/trackpad click opens a persistent menu, a destination click selects, and clicking Input again returns to Input. A touch/pen 50ms hold reveals a curved Memory / Schedule / Notifications / Settings menu; slide and release selects. Stationary release closes the menu and returns to Input. Touch/pen has no release-then-tap menu; mouse navigation intentionally stays open after click. Keyboard/screen-reader alternatives remain.
 - Memory starts at Home: Inbox, Notes, Files. Navigate folders and breadcrumb ancestors. Internal Schedule/Notifications storage is visible only on explicit upper-level navigation.
 - Protected storage roots, at most five stored folder levels, direct correction and retained history. Home is a display grouping; Files labels Attachments.
 - English controls, multilingual content, readable text, large targets, glass model-choice sheets, no instructional paragraphs.
