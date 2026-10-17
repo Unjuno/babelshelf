@@ -1,7 +1,7 @@
 import {hashLocalModel} from './local-models.js';
 // App-owned prepared-file adapter. Never uses URL/HF download methods.
 export class LfmAdapter {
- constructor({Wllama,paths,compat,models,clock=()=>performance.now(),logger=console}){if(!paths?.default||!compat?.wasm||!compat?.worker)throw Error('Local runtime assets required');this.Wllama=Wllama;this.paths=paths;this.compat=compat;this.models=models;this.clock=clock;this.logger=logger;this.runtime=null;this.busy=false;this.epoch=0;}
+ constructor({Wllama,paths,compat,models,clock=()=>performance.now(),logger=console,maxReplyTokens=256}){if(!paths?.default||!compat?.wasm||!compat?.worker)throw Error('Local runtime assets required');if(!Number.isSafeInteger(maxReplyTokens)||maxReplyTokens<1||maxReplyTokens>768)throw Error('Invalid output budget');Object.defineProperty(this,'maxReplyTokens',{value:maxReplyTokens});this.Wllama=Wllama;this.paths=paths;this.compat=compat;this.models=models;this.clock=clock;this.logger=logger;this.runtime=null;this.busy=false;this.epoch=0;}
  async load(file,id,{backend,signal}={}){
   if(this.busy||this.runtime)throw Error('Unload model first');if(!['cpu','webgpu'].includes(backend))throw Error('Select explicit backend');const model=this.models.find(m=>m.id===id);if(!model)throw Error('Unknown LFM model');this.busy=true;const loadStart=this.clock(),epoch=this.epoch,check=()=>{signal?.throwIfAborted();if(epoch!==this.epoch)throw Error('Stopped');};let runtime;
   try{check();if(file.size!==model.file.bytes||await hashLocalModel(file,{signal})!==model.file.sha256)throw Error('Model integrity mismatch');check();
@@ -12,6 +12,7 @@ export class LfmAdapter {
    this.loaded=id;this.info={model:id,backend,actualGpuLayers:backend==='cpu'?0:null,loadMs:this.clock()-loadStart,runtimeLoadMs:this.clock()-start,verificationMs:start-loadStart,context,template,workerResources:{compat:runtime.getWorkerResources().compat,wasmPath:runtime.getWorkerResources().wasmPath},runtimeVersion:this.Wllama.getLibllamaVersion()};return this.info;
   }catch(error){await runtime?.exit().catch(()=>{});this.runtime=null;this.loaded=null;if(signal?.aborted||epoch!==this.epoch)throw Error('Stopped');throw error;}finally{this.busy=false;}
  }
+ get supportsExactCount(){return typeof this.runtime?.countChatTokens==='function';}
  async count(messages,{signal,json=true}={}){
   if(this.busy||!this.runtime||!this.loaded)throw Error('Model not ready');
   if(!Array.isArray(messages)||messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))throw Error('Invalid messages');
@@ -20,7 +21,7 @@ export class LfmAdapter {
   try{const count=await this.runtime.countChatTokens({messages,...(json?{response_format:{type:'json_object'}}:{})});check();if(!Number.isSafeInteger(count)||count<0)throw Error('Invalid prompt token count');return count;}finally{this.busy=false;}
  }
  async generate(messages,{signal,maxTokens=256,onContent=()=>{},json=true}={}){
-  if(this.busy||!this.runtime||!this.loaded)throw Error('Model not ready');if(!Number.isInteger(maxTokens)||maxTokens<1||maxTokens>256)throw Error('Output budget exceeded');if(!Array.isArray(messages)||messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))throw Error('Invalid messages');
+  if(this.busy||!this.runtime||!this.loaded)throw Error('Model not ready');if(!Number.isInteger(maxTokens)||maxTokens<1||maxTokens>this.maxReplyTokens)throw Error('Output budget exceeded');if(!Array.isArray(messages)||messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))throw Error('Invalid messages');
   signal?.throwIfAborted();this.busy=true;const runtime=this.runtime,epoch=this.epoch,controller=new AbortController();this.controller=controller;const stop=()=>controller.abort();signal?.addEventListener('abort',stop,{once:true});const check=()=>{if(signal?.aborted||controller.signal.aborted||epoch!==this.epoch)throw Error('Stopped');};const start=this.clock();let first=null,text='',usage=null,timings=null;
   try{check();const stream=await runtime.createChatCompletion({messages,max_tokens:maxTokens,temperature:0,seed:0,cache_prompt:false,stream:true,return_tokens:true,...(json?{response_format:{type:'json_object'}}:{}),abortSignal:controller.signal});
    for await(const chunk of stream){check();const content=chunk.choices?.[0]?.delta?.content;if(typeof content==='string'&&content.length){if(first===null&&content.trim())first=this.clock();text+=content;onContent(content);}if(chunk.usage)usage=chunk.usage;if(chunk.timings)timings=chunk.timings;}
