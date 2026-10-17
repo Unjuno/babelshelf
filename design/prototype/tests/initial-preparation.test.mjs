@@ -17,3 +17,8 @@ test('reader failure preserves optional decision selection and never commits the
  const prefs=initial();prefs.decisionModel='d1-3B';prefs.decisionLibrary=['d1-3B'];const plan=initialPreparationPlan(prefs,{text:true,speech:false,ocr:false});assert.equal(plan.models.decisionModel,'d1-3B');assert.deepEqual(plan.models.decisionLibrary,['d1-3B']);const calls=[];
  await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);throw Error('Asset verification failed');},async()=>calls.push('commit')),/verification/);assert.deepEqual(calls,['speech']);assert.equal(prefs.transcriptionModel,'');
 });
+
+test('additional ONNX preparation pins its own assets and preserves text selection',()=>{
+ const prefs=initial();prefs.textModel='smollm2-360m-instruct';prefs.textLibrary.push(prefs.textModel);
+ const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,366674624);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);
+});

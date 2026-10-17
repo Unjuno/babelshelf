@@ -1,3 +1,6 @@
+import {TextEngineRouter} from './text-engine-router';
+import {createOnnxTextClient} from './onnx-text-client';
+import {combinedTextManifest} from './text-model-manifest';
 import {createTextInference,type TextRuntime} from './text-inference';
 import {useEffect,useRef,useState} from 'react';
 // @ts-expect-error Shared baseline worker controller is JavaScript.
@@ -9,7 +12,7 @@ import baseManifest from '../../../dist/model-manifest.json';
 export function useBonsai(models:CustomLocalModel[]=[],ready=true){
  const records=useRef(models);records.current=models;const manifest=withLocalModels(baseManifest,models);const registryKey=JSON.stringify(models),configured=useRef(''),observed=useRef(''),initialized=useRef<Promise<unknown>|null>(null);
  const cancelEpoch=useRef(0),cancelled=useRef(false),operationLock=useRef(false);const engine=useRef<any>(null),[busy,setBusy]=useState(false),[progress,setProgress]=useState(''),[,setLoaded]=useState(''),[assets,setAssets]=useState<Record<string,any>>({});
- useEffect(()=>{const worker=new Worker(new URL('./bonsai-worker.ts',import.meta.url),{type:'module'});const e=new Engine(baseManifest,(error:string)=>{setProgress(error);setLoaded('');},worker);engine.current=e;const init:Promise<unknown>=e.init();initialized.current=init;init.catch((err:Error)=>setProgress(err.message));return()=>{e.abort();e.worker.terminate();if(engine.current===e)engine.current=null;};},[]);
+ useEffect(()=>{const worker=new Worker(new URL('./bonsai-worker.ts',import.meta.url),{type:'module'});const webml=new Engine(baseManifest,(error:string)=>{setProgress(error);setLoaded('');},worker);const e=new TextEngineRouter(webml,()=>createOnnxTextClient(new Worker(new URL('./onnx-text-worker.ts',import.meta.url),{type:'module'})));engine.current=e;const init:Promise<unknown>=e.init();initialized.current=init;init.catch((err:Error)=>setProgress(err.message));return()=>{e.abort();e.worker.terminate();if(engine.current===e)engine.current=null;};},[]);
  async function syncRegistry(nextRecords=records.current,check=()=>{}){check();if(!ready||!engine.current)throw Error('Storage not ready');await initialized.current;check();const key=JSON.stringify(nextRecords);if(configured.current!==key){if(engine.current.loaded){await engine.current.unload();check();setLoaded('');}const next=withLocalModels(baseManifest,nextRecords);const assets=await engine.current.call('configure',{models:nextRecords});check();setAssets(assets);engine.current.manifest=next;configured.current=key;setProgress('');}}
  useEffect(()=>{if(!ready||operationLock.current||observed.current===registryKey)return;observed.current=registryKey;void operation(check=>syncRegistry(records.current,check)).catch(()=>{});},[ready,registryKey,busy]);
  const events=(type:string,value:string)=>{if(type==='progress')setProgress(String(value));};
@@ -21,7 +24,7 @@ export function useBonsai(models:CustomLocalModel[]=[],ready=true){
  async function generate(messages:unknown[],maxTokens=256){return operation(async check=>{await syncRegistry(records.current,check);check();if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens);check();if(cancelled.current)throw Error('Stopped');setProgress('');return result;});}
  function stop(){cancelEpoch.current++;cancelled.current=true;engine.current?.abort();setProgress('Stopping…');}
 
- const port=useRef<TextRuntime>(null!);port.current={manifest,get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
+ const port=useRef<TextRuntime>(null!);port.current={get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
  const inference=useRef<TextRuntime|null>(null);if(!inference.current)inference.current=createTextInference(()=>port.current);
- return {manifest,busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,importCustom,unload,pin:inference.current.pin,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
+ return {get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,importCustom,unload,pin:inference.current.pin,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
 }

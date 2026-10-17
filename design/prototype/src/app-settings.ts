@@ -2,7 +2,7 @@ import defaults from './app-settings.json' with { type: 'json' };
 
 type Settings = typeof defaults;
 const roots = ['Inbox','Notes','Schedule','Notifications','Attachments','Tools','Settings'];
-const allowedText = ['4B','2B'];
+const allowedText = ['4B','2B','smollm2-360m-instruct'];
 const allowedDecision = ['', 'd1-omni-600M','d1-3B'];
 
 function record(value:unknown):asserts value is Record<string,unknown> {

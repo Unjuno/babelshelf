@@ -7,3 +7,7 @@ test('custom records without assets offer local import and never network Prepare
 test('verification and load are separate and preparation respects explicit network setting',()=>{
  const state={selected:true,custom:false,present:false,loaded:false,busy:false,downloads:false};assert.equal(textModelControls(state).prepare,false);assert.equal(textModelControls({...state,downloads:true}).prepare,true);assert.equal(textModelControls({...state,present:true}).load,true);assert.equal(textModelControls({...state,present:true,loaded:true}).status,'Loaded');assert.equal(textModelControls({...state,selected:false}).importFiles,false);assert.equal(textModelControls({...state,present:true,busy:true}).load,false);
 });
+
+test('ONNX asset presence is not labelled fresh verification or loaded inference',()=>{
+ assert.equal(textModelControls({selected:true,custom:false,present:true,presenceOnly:true,loaded:false,busy:false,downloads:false}).status,'Files present');
+});

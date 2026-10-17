@@ -9,6 +9,10 @@
       {
         "value": "2B",
         "label": "Bonsai 2 \u00b7 2B"
+      },
+      {
+        "value": "smollm2-360m-instruct",
+        "label": "SmolLM2 \u00b7 360M \u00b7 English"
       }
     ],
     "decision": [

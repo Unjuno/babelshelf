@@ -8,7 +8,7 @@
   "license": "Apache-2.0",
   "runtime": {
     "name": "Transformers.js / ONNX Runtime Web",
-    "revision": "@huggingface/transformers@3.8.1",
+    "revision": "@huggingface/transformers@3.8.1 + onnxruntime-web@1.22.0-dev.20250409-89f8206ba4",
     "licenses": {
       "transformers": "Apache-2.0",
       "onnxruntime-web": "MIT"
@@ -18,7 +18,7 @@
   "dtype": "q8",
   "device": "wasm",
   "contextTokens": 2048,
-  "maxReplyTokens": 256,
+  "maxReplyTokens": 768,
   "files": [
     {
       "path": "config.json",
