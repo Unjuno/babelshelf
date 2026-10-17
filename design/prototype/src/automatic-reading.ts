@@ -1,3 +1,4 @@
+import {capabilityState} from './local-capabilities.ts';
 import {buildInputReadings,readingStatus,type ReviewedText} from './input-readings.ts';
 import {isOcrImage,type OcrText} from './ocr-text.ts';
 import {isPdf,type PdfText} from './pdf-text.ts';
@@ -17,8 +18,8 @@ export async function readInputOriginal(asset:OriginalAsset,policy:ReadingPolicy
  const tool=kind==='ocr'?'image.read':kind==='pdf'?'pdf.read':'speech.transcribe';
  try{
   const reading=await record(tool,{source:{...originalRef(asset),name:asset.name},automatic:true,...(kind==='ocr'?{language:policy.ocrLanguage,model:policy.ocrModel}:kind==='speech'?{language:policy.speechLanguage,model:policy.speechModel}:kind==='pdf'?{ocrPolicy:{model:policy.ocrModel,prepared:policy.ocrReady,language:policy.ocrLanguage}}:{})},async()=>{try{
-   check();if(kind==='ocr'&&(policy.ocrModel!=='tesseract-7'||!policy.ocrReady))throw Error('Image text not prepared');
-   if(kind==='speech'&&(policy.speechModel!=='whisper-tiny'||!policy.speechReady))throw Error('Speech to text not prepared');
+   check();if(kind==='ocr'&&capabilityState('image.ocr',policy.ocrModel,policy.ocrReady).status!=='Ready')throw Error('Image text not prepared');
+   if(kind==='speech'&&capabilityState(asset.kind==='video'?'video.audio':'audio.transcribe',policy.speechModel,policy.speechReady).status!=='Ready')throw Error('Speech to text not prepared');
    const adapter=adapters[kind];if(!adapter)throw Error('Reader unsupported');progress(kind==='speech'?'Transcribing':'Reading');
    const value=await adapter(asset,signal,progress);check();if(!value.text?.trim())throw Error(kind==='pdf'&&!(value as PdfText).pages.some(p=>p.ocr)?'No text layer · OCR required':'No text found');
    const result={kind,id:crypto.randomUUID(),value} as ReviewedText;buildInputReadings([result],[{key:originalKey(asset.id),value:asset}]);return result;

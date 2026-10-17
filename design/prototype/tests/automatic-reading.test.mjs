@@ -45,3 +45,29 @@ test('processing ledger write failure aborts Send instead of silently degrading 
  const asset=await raw(),controller=new AbortController();
  for(const phase of ['start','completion','failure']){let count=0;await assert.rejects(readInputOriginal(asset,policy,{ocr:async a=>{if(phase==='failure')throw Error('reader failed');return makeOcrText(a,'eng',image,'Text.',[]);}},controller.signal,()=>{},(tool,input,work,project)=>recordProcessingOperation(tool,input,work,async()=>{count++;if(phase==='start'||count===2)throw Error('disk full');},project,()=>false)),/disk full|activity record unavailable/);}
 });
+
+import {capabilityState,localAdapters,requireCapability,videoCapabilityStatus} from '../src/local-capabilities.ts';
+test('shared capability dispatch separates role, engine support and verified assets',()=>{
+ assert.equal(capabilityState('image.ocr','tesseract-7',false).status,'Not prepared');
+ assert.equal(requireCapability('image.ocr','tesseract-7',true).engine,'tesseract-wasm');
+ assert.equal(capabilityState('audio.transcribe','whisper-base',true).status,'Runtime not connected');
+ assert.equal(capabilityState('audio.transcribe','d1-omni-600M',true).status,'Runtime not connected');
+ assert.equal(capabilityState('decision.classify','d1-omni-600M',true).status,'Ready');
+ assert.equal(capabilityState('image.describe','d1-omni-600M',true).status,'Unsupported');
+ assert.equal(capabilityState('audio.transcribe','',true).status,'Not configured');
+ assert.equal(capabilityState('video.frames','whisper-tiny',true).status,'Unsupported');
+ assert.equal(videoCapabilityStatus('whisper-tiny',true),'Audio only · frames unsupported');
+ assert.equal(videoCapabilityStatus('',true),'Speech model required');
+ assert.equal(capabilityState('pdf.text','',false).status,'Ready');
+ for(const c of ['text.embed','text.rerank','audio.synthesize'])assert.equal(capabilityState(c,'4B',true).status,'Unsupported');
+ assert.throws(()=>localAdapters[0].capabilities.push('image.describe'),TypeError);
+ assert.throws(()=>requireCapability('video.frames','whisper-tiny',true),/Unsupported/);
+});
+test('a different selected role or unsupported model cannot reach a prepared media adapter',async()=>{
+ const asset=await raw(),controller=new AbortController();let called=0;
+ for(const bad of ['d1-omni-600M','custom-ocr','whisper-tiny']){
+  const value=await readInputOriginal(asset,{...policy,ocrModel:bad,ocrReady:true},{ocr:async()=>{called++;throw Error('must not run');}},controller.signal,()=>{},record([],controller.signal));
+  assert.equal(value.reading,undefined);assert.match(value.status,/not prepared/);
+ }
+ assert.equal(called,0);
+});

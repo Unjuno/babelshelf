@@ -1,0 +1,36 @@
+// App-owned executable adapter declarations. Saved settings/model labels cannot add capabilities.
+export type LocalCapability='text.generate'|'decision.classify'|'image.ocr'|'audio.transcribe'|'video.audio'|'video.frames'|'pdf.text'|'image.describe'|'text.embed'|'text.rerank'|'audio.synthesize';
+export type LocalAdapter={id:string;engine:string;models:readonly string[];capabilities:readonly LocalCapability[]};
+const adapters:readonly LocalAdapter[]=[
+ {id:'webml-text',engine:'webml',models:['4B','2B'],capabilities:['text.generate']},
+ {id:'onnx-text',engine:'transformers-onnx',models:['smollm2-360m-instruct','qwen25-05b-instruct'],capabilities:['text.generate']},
+ {id:'d1-text',engine:'onnx-d1',models:['d1-omni-600M'],capabilities:['decision.classify']},
+ {id:'whisper',engine:'transformers-onnx',models:['whisper-tiny'],capabilities:['audio.transcribe','video.audio']},
+ {id:'tesseract',engine:'tesseract-wasm',models:['tesseract-7'],capabilities:['image.ocr']},
+ {id:'pdf-text',engine:'pdfjs',models:[],capabilities:['pdf.text']},
+];
+// Copy/freeze all nested collections: consumers cannot mutate authority through references.
+export const localAdapters=Object.freeze(adapters.map(a=>Object.freeze({...a,models:Object.freeze([...a.models]),capabilities:Object.freeze([...a.capabilities])})));
+export type CapabilityState={status:'Unsupported'|'Not configured'|'Runtime not connected'|'Not prepared'|'Ready';adapter?:LocalAdapter;model:string;capability:LocalCapability};
+// Prepared is a live result supplied by the owning verifier, never a persisted preference.
+// Ready means dispatchable, not loaded, accurate, or device acceptance.
+export function capabilityState(capability:LocalCapability,model:string,prepared:boolean):CapabilityState {
+ const candidates=localAdapters.filter(a=>a.capabilities.includes(capability));
+ const base={capability,model};
+ if(!candidates.length)return {...base,status:'Unsupported'};
+ const builtin=candidates.find(a=>!a.models.length);
+ if(builtin)return {...base,adapter:builtin,status:'Ready'};
+ if(!model)return {...base,status:'Not configured'};
+ const adapter=candidates.find(a=>a.models.includes(model));
+ if(!adapter)return {...base,status:'Runtime not connected'};
+ return {...base,adapter,status:prepared===true?'Ready':'Not prepared'};
+}
+export function requireCapability(capability:LocalCapability,model:string,prepared:boolean):LocalAdapter {
+ const state=capabilityState(capability,model,prepared);
+ if(state.status!=='Ready'||!state.adapter)throw Error(state.status);
+ return state.adapter;
+}
+export function videoCapabilityStatus(model:string,prepared:boolean):string {
+ const audio=capabilityState('video.audio',model,prepared);
+ return audio.status==='Ready'?'Audio only · frames unsupported':audio.status==='Not configured'?'Speech model required':audio.status+' · audio only';
+}
