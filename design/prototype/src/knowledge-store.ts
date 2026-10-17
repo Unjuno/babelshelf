@@ -1,3 +1,5 @@
+import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
+import type {Activity} from './harness-activity.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
 import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
@@ -173,6 +175,18 @@ export class KnowledgeStore {
  }
  async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
  async search(query:string){const all=await this.all(),explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));return searchNotes(records,query,12);}
+ async processingHistory():Promise<Activity[]>{
+  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
+   q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(items.sort((a,b)=>b.startedAt.localeCompare(a.startedAt)||b.id.localeCompare(a.id)));tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Processing history unavailable'));
+  });
+ }
+ async recordProcessing(next:Activity):Promise<void>{
+  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readwrite'),store=tx.objectStore('runs'),key=processingKey(next.id),q=store.get(key);let error:unknown;
+   q.onsuccess=()=>{try{store.put(processingUpdate(q.result as ProcessingRecord|undefined,next),key);}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Processing record unavailable'));
+  });
+ }
  async snapshot():Promise<StateSnapshot>{return this.transaction(['notes','settings','runs'],'readonly',(tx,done)=>readSnapshot(tx,done));}
  async backup(){return makeStateBackup(await this.snapshot());}
  async checkBackup(text:string){return parseStateBackup(text);}

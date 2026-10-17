@@ -31,3 +31,7 @@ test('a tool-returned failure retains its exact result without pretending succes
 test('an incomplete historical attempt is not shown as running just because another request is active',async()=>{
  const {activityStatus}=await import('../src/harness-activity.ts'),a=startActivity('memory.search',input);assert.equal(activityStatus(a,false),'Incomplete');assert.equal(activityStatus(a,true),'Running');assert.equal(activityStatus(finishActivity(a,{error:Error('Stopped')}),false),'Stopped');
 });
+
+test('media extraction attempts share persisted audit lifecycle without entering model history',()=>{
+ for(const tool of ['pdf.read','speech.transcribe']){const a=startActivity(tool,{source:{name:'日本語.pdf',bytes:42},language:'ja'});const done=finishActivity(a,{output:{characters:12,reviewRequired:true}});validateActivity([done]);assert.equal(done.tool,tool);assert.equal(done.status,'succeeded');}
+});
