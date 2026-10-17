@@ -8,6 +8,8 @@ Model-independent work has superseded the historical Unit31 source-rescue approa
 
 Unit46 confirms current-build PC offline-context capture/reopen/Japanese search/source/direct edit/history/TXT+MD import/reindex/backup/conflict refusal without inference. Unit47 separates read-only speech startup status from processing busy state; pending speech-worker exclusion and real prepare/transcribe locks remain. Controlled regressions and one immediate native offline-reopen search pass; broader startup timing/device acceptance remains open. Actual browser-process termination, physical devices, broader media/custom adapters and semantic quality remain open. Keep the full objective and historical failures below; see TEST-RESULTS.txt for exact scope.
 
+Unit48 replaces incidental Latin bigram matching with complete words/codes while preserving non-Latin grams and exact source excerpts. Current PC offline code lookup returned1instead of4; see [SEARCH-CONTRACT.md](docs/SEARCH-CONTRACT.md) for bounds. This does not close broad multilingual semantic accuracy or capacity gates.
+
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.

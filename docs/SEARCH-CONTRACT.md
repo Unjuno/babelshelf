@@ -1,0 +1,9 @@
+# Local lexical retrieval
+
+Canonical notes and revisions remain the source of truth. `dist/core.js` builds an in-memory derived index from current eligible originals/generated records. Withdrawal, stale-derived sources and missing media originals keep their existing eligibility rules. Reindexing or searching never rewrites bodies, IDs, paths or history.
+
+Unit48 uses NFKC/lowercase query normalization. Latin words and Unicode decimal numbers are complete lexical tokens; hyphen/underscore compounds stay together. Query tokens containing a decimal digit, hyphen or underscore must occur completely in the candidate excerpt or title/aliases. Other keywords retain OR ranking, not semantic or all-word matching. A wrong code cannot be replaced by a partial code. Punctuation alone is not evidence. Non-Latin letters/marks retain character grams and single-character lookup. This is bounded lexical retrieval, not language understanding, stemming or universal relevance.
+
+Search excerpts retain UTF-16 start/end into the exact original body. At normal700-unit chunk boundaries, complete lexical spans of up to700units extend adjacent excerpts rather than becoming partial-word evidence. Overlap is possible. Expansion is bounded to2098units; callers still enforce their real token budgets. A single lexical span longer than700units is omitted where it crosses chunks, while surrounding text remains searchable. This bound is a retrieval limitation, not truncation/mutation of stored originals. It does not establish large-archive/mobile resource acceptance.
+
+Tests cover code prefix/suffix confusion, width/case normalization, word versus incidental bigram matches, CJK single-character lookup, Hindi/Arabic marks, Unicode decimal codes, aliases and exact long-document source ranges. Native PC offline-context evidence is in TEST-RESULTS.txt Unit48. No model, network fallback, persistent schema migration or execution authority is introduced.

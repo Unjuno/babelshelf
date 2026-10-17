@@ -21,6 +21,20 @@ export function chunks(body,max=700){
  }return out;
 }
 function grams(s){s=norm(s);const c=Array.from(s);return c.length<2?c:[...new Set(c.slice(0,-1).map((v,i)=>v+c[i+1]))];}
+// Latin words/codes use lexical boundaries; unsegmented scripts retain character grams.
+const wordPattern=/(?:[\p{Script=Latin}\p{Nd}]\p{M}*)+(?:[-_](?:[\p{Script=Latin}\p{Nd}]\p{M}*)+)*/gu;
+const words=s=>[...s.matchAll(wordPattern)].map(m=>m[0]);
+function searchTerms(s){return [...words(s),...[...s.replace(wordPattern,' ').matchAll(/[\p{L}\p{N}\p{M}\p{Extended_Pictographic}]+/gu)].flatMap(m=>grams(m[0]))];}
+function searchChunks(body,max=700){
+ const spans=[...body.matchAll(wordPattern)].map(m=>({start:m.index,end:m.index+m[0].length})),out=[],seen=new Set();let a=0,b=0;
+ for(const c of chunks(body,max)){
+  while(spans[a]?.end<=c.start)a++;while(spans[b]?.end<c.end)b++;
+  let {start,end}=c;const left=spans[a],right=spans[b];
+  if(left&&left.start<start&&left.end>start)start=left.end-left.start<=max?left.start:left.end;
+  if(right&&right.start<end&&right.end>end)end=right.end-right.start<=max?right.end:right.start;
+  const key=start+':'+end;if(end>start&&!seen.has(key)){seen.add(key);out.push({start,end,quote:body.slice(start,end)});}
+ }return out;
+}
 function mediaAvailable(n,map){if(!n?.mediaSource)return true;const source=map.get(n.mediaSource.id);return source?.state==='active'&&source.originalAsset?.id===n.mediaSource.id&&source.originalAsset.revision===n.mediaSource.revision&&source.originalAsset.sha256===n.mediaSource.sha256;}
 export function validateRefs(notes,refs,{currentOnly=false}={}){
  const map=new Map(notes.map(n=>[n.id,n]));const errors=[];
@@ -37,19 +51,20 @@ const indexCache=new WeakMap();
 export function buildIndex(notes,{force=false}={}){
  if(!force&&indexCache.has(notes))return indexCache.get(notes);
  const map=new Map(notes.map(n=>[n.id,n])),docs=[],postings=new Map();
- for(const n of notes){if(!eligible(n,map))continue;const v=latest(n);for(const c of chunks(v.body)){
-  const text=norm(c.quote),head=norm(v.title+' '+n.aliases.join(' ')),tokens=grams(text),i=docs.length;docs.push({n,v,c,text,head,tokens});
-  for(const term of new Set([...tokens,...grams(head),...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
+ for(const n of notes){if(!eligible(n,map))continue;const v=latest(n);for(const c of searchChunks(v.body)){
+  const text=norm(c.quote),head=norm(v.title+' '+n.aliases.join(' ')),tokens=searchTerms(text),textWords=words(text),headWords=words(head),i=docs.length;docs.push({n,v,c,text,head,tokens,textWords,headWords});
+  for(const term of new Set([...tokens,...searchTerms(head),...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
  }}
  const index={docs,postings,avg:docs.reduce((s,d)=>s+d.tokens.length,0)/Math.max(1,docs.length)};indexCache.set(notes,index);return index;
 }
 export function searchNotes(notes,query,limit=8){
  const q=norm(query);if(!q)return [];
- const terms=grams(q),{docs,postings,avg}=buildIndex(notes),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
- return [...candidates].map(i=>{const d=docs[i];let score=0;for(const t of terms){const count=d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(d.head.includes(t))score+=idf*2;}
+ const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),{docs,postings,avg}=buildIndex(notes),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
+ return [...candidates].map(i=>{const d=docs[i];if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return null;let score=0;for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
+  if(!score)return null;
   if(d.text.includes(q))score+=20;if(d.head.includes(q))score+=30;
   return {noteId:d.n.id,revision:d.v.version,title:d.v.title,...d.c,score};
- }).filter(h=>h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,Math.max(1,Math.min(20,limit)));
+ }).filter(h=>h&&h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,Math.max(1,Math.min(20,limit)));
 }
 export function resolveLinks(note,notes){
  const text=latest(note).body;const matches=[...text.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((note:[a-zA-Z0-9-]+)\)/g)];

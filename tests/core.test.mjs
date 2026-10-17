@@ -63,3 +63,53 @@ test('generated answer rejects missing or forged citation IDs and quotes',()=>{
  assert.throws(()=>core.parseAnswer(JSON.stringify({answer:'東京',citations:[{id:'S1',quote:'東京'}]}),[ref]));
  assert.throws(()=>core.parseAnswer(JSON.stringify({answer:'京都',citations:[]}),[ref]));
 });
+
+
+test('literal Latin words and identifiers do not retrieve incidental bigram overlaps',()=>{
+ const wanted=core.createNote({body:'備蓄検証 CEDAR-8642\nWater reserve: 18 litres.'});
+ const noise=core.createNote({body:'Offline Markdown HAZEL-3197. Restored independent MAPLE-4127.'});
+ const prefix=core.createNote({body:'XCEDAR-8642 and CEDAR-86420 are different codes.'});
+ const notes=[noise,prefix,wanted];
+ assert.deepEqual(core.searchNotes(notes,'CEDAR-8642').map(h=>h.noteId),[wanted.id]);
+ assert.deepEqual(core.searchNotes(notes,'ＣＥＤＡＲ－８６４２').map(h=>h.noteId),[wanted.id]);
+ assert.deepEqual(core.searchNotes(notes,'reserve').map(h=>h.noteId),[wanted.id]);
+ assert.equal(core.searchNotes(notes,'missing-9876').length,0);
+ assert.equal(core.searchNotes(notes,'a').length,0);
+ assert.deepEqual(core.searchNotes(notes,'Water CEDAR-8642').map(h=>h.noteId),[wanted.id]);
+});
+test('hybrid lexical search retains multilingual aliases and exact UTF-16 citation ranges',()=>{
+ const n=core.createNote({body:'🪴備蓄。\n\n'.repeat(150)+'台帳 ABC_7294 を確認。',aliases:['Aurora Ledger']});
+ const distractor=core.createNote({body:'台帳 ABC_72940 を確認。'});
+ const h=core.searchNotes([distractor,n],'台帳 ABC_7294')[0];
+ assert.equal(h.noteId,n.id);assert.ok(h.start>700);assert.equal(n.revisions[0].body.slice(h.start,h.end),h.quote);
+ assert.equal(core.searchNotes([n],'Aurora')[0].noteId,n.id);
+});
+
+test('hybrid search retains single-character CJK recall and ignores punctuation-only overlap',()=>{
+ const n=core.createNote({body:'飲料水を18リットル備蓄。白米は五キロ。Cats. Help?'});
+ for(const query of ['水','米'])assert.equal(core.searchNotes([n],query)[0]?.noteId,n.id);
+ for(const query of ['quux.','quux?'])assert.equal(core.searchNotes([n],query).length,0);
+});
+test('whole lexical tokens crossing fixed chunk boundaries remain searchable without partial-code evidence',()=>{
+ for(const term of ['CEDAR-8642','aurora','ＣＥＤＡＲ－８６４２']){
+  const n=core.createNote({body:'x'.repeat(695)+' '+term+' belongs here.'});
+  const hits=core.searchNotes([n],term);assert.ok(hits.length,term);
+  for(const h of hits){assert.ok(h.quote.includes(term));assert.equal(n.revisions[0].body.slice(h.start,h.end),h.quote);}
+ }
+ const n=core.createNote({body:'x'.repeat(695)+' CEDAR-8642 belongs here.'});
+ assert.equal(core.searchNotes([n],'CEDA').length,0);
+});
+
+test('non-Latin combining marks stay with their script rather than matching as Latin words',()=>{
+ for(const [query,body] of [['कला','माल'],['كَتَب','عَلَم']]){
+  assert.equal(core.searchNotes([core.createNote({body})],query).length,0);
+  const n=core.createNote({body:query});assert.equal(core.searchNotes([n],query)[0]?.noteId,n.id);
+ }
+ const n=core.createNote({body:'Café réserve'});assert.equal(core.searchNotes([n],'cafe\u0301')[0]?.noteId,n.id);
+});
+
+test('Unicode decimal identifiers are mandatory alongside non-Latin query text',()=>{
+ const n=core.createNote({body:'試験١٢٣号'});
+ assert.equal(core.searchNotes([n],'試験٩٩٩号').length,0);
+ assert.equal(core.searchNotes([n],'試験١٢٣号')[0]?.noteId,n.id);
+});
