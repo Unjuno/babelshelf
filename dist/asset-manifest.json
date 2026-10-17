@@ -82,9 +82,14 @@
       "sha256": "726390a67044cdefc9dd4815a181528832e685000a39cd90a108d6c023f554a4"
     },
     {
+      "path": "./local-model-manifest.js",
+      "bytes": 1461,
+      "sha256": "a0f6c7dd1c77cc7c9b630203578e53e8f7d11b91b675987b94e2346e9f36896a"
+    },
+    {
       "path": "./local-models.js",
-      "bytes": 3520,
-      "sha256": "abf7f336dcd7e6a659670c3a9af9c2ef6d98b4e1dfa4497043a77339344d6708"
+      "bytes": 3560,
+      "sha256": "6d39861fd6047390a8c35e6a3aff39c6b3429f076a02322f0e4b970ad1ee7b76"
     },
     {
       "path": "./manifest.webmanifest",
@@ -98,8 +103,8 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 8306,
-      "sha256": "43cbfbb1d3266980ed5c8a2fce208e763f850ae0a6b3d74d4ba5996042bc2e4a"
+      "bytes": 10711,
+      "sha256": "07e5825a2d7050999364cddca25a376cc789d7eac37d4dabcaf49d5cbce7ef89"
     },
     {
       "path": "./ranges.js",
@@ -134,7 +139,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "0ed49eb14633e26d3e685cfb21d79c9571ef80584a743b783bf9051231353152"
+      "sha256": "3bf0cbb13f09afce9d9b5a4af77a42fcb5338102da4b43c0eb827368b8dcdd11"
     },
     {
       "path": "./ui.js",

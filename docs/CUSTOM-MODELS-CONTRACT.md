@@ -31,3 +31,15 @@ Node tests cover malformed/truncated tables and payloads, strict records, exact 
 ## Unit60 canonical registry
 
 Preferences/backup now preserve validated customModels with legacy read projection and append-only settings revisions. Registration declarations do not import files or set readiness. Model-proposed patches cannot change registries/libraries. Worker/UI local import and execution remain next; current UI is unchanged. Native PC regression on product36a41e8120bc9759 passed three separate Chrome processes, including offline boot, capture/import/search/direct correction/history and conflict/identical restore. This regression did not execute a custom model.
+
+## Worker registration and local preparation (Unit61)
+
+The shared worker now supports configure({models}) only after init and while unloaded. Each declaration is revalidated and extends a copied built-in manifest; runtime pins, context budget and built-ins cannot come from a custom record. Invalid configuration retains the prior registry. Custom records construct hash-derived GGUF filenames with no download URL and no inferred model license.
+
+Custom prepare requires modelFile and allowNetwork:false. Optional localFiles can contain the fixed runtime.js; otherwise a real cached runtime must independently match its pinned size/hash. Metadata and full model bytes are independently verified before storage. Content-addressed weights can share bytes with an already prepared built-in while retaining separate registration/readiness identity. Load repeats metadata/weight verification and pinned runtime verification, then uses only the existing app-owned Qwen3.5 constructor and local-only fileResponse fetch. No registry field enables network, knowledge writes, arbitrary model code, a larger context window or device compatibility.
+
+All worker cached asset hashing uses the streaming cancellable helper. Fresh copying cancels pending reads on AbortSignal, checks after reads/before close, yields between bounded copy work, aborts incomplete writers and releases readers. Cancellation during valid cached verification never opens a replacement writer or deletes the retained asset. Preparation receipts remain file checks, not generation/offline certifications.
+
+This worker API is not yet connected to the product Add-model UI/hook. scripts/qa/custom-model-worker.mjs explicitly drives the real worker in an isolated native Chrome profile and labels that scope. Importing the official4B file as a custom identity proves that execution path, not an independently trained model's compatibility. Runtime-specific license remains unresolved and runtime is not redistributed.
+
+Unit61 native final evidence: product516da89048c0f9a2, PC Chrome155/Intelgen12lp. Local-only import of the official4B weights under a custom identity, separate offline browser process, verified load, actual hello generation, cancelled separate generation and Unload passed. See TEST-RESULTS.txt and outputs/unit61-worker-final/evidence.json. Canonical registry hydration and Add-model UI were bypassed by explicit QA messages and remain required integration work.

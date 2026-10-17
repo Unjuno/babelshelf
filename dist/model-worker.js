@@ -1,26 +1,31 @@
+import {withLocalModels,verifyLocalModelFile} from './local-model-manifest.js';
+import {hashLocalModel} from './local-models.js';
 import {adapterSnapshot} from './gpu-info.js';
 import {SHA256} from './sha256.js';
 import {fileResponse} from './ranges.js';
 const networkFetch=globalThis.fetch.bind(globalThis);
 // Inference never has a network fallback, even when update permission is ON.
 globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));
-let manifest,model,session,controller,busy=false,root;
+let manifest,baseManifest,model,session,controller,busy=false,root;
 const send=(id,type,value)=>postMessage({id,type,value});
 async function directory(){return root??=await (await navigator.storage.getDirectory()).getDirectoryHandle('mlb-assets-v1',{create:true});}
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
 async function meta(id){try{return JSON.parse(await (await file('ready-'+id+'.json')).text());}catch{return null;}}
 async function writeJSON(name,value){const w=await(await(await directory()).getFileHandle(name,{create:true})).createWritable();await w.write(JSON.stringify(value));await w.close();}
-async function hashFile(f,notify=()=>{}){const h=new SHA256(),r=f.stream().getReader();let n=0,last=0;try{while(true){controller?.signal.throwIfAborted();const {value,done}=await r.read();if(done)break;h.update(value);n+=value.length;if(n-last>8e6){notify(n/f.size);last=n;}}return h.hex();}finally{await r.cancel().catch(()=>{});r.releaseLock();}}
+async function hashFile(f,notify=()=>{}){return hashLocalModel(f,{signal:controller?.signal,progress:(bytes,total)=>notify(bytes/total)});}
 async function storeAsset(entry,id,local=null){
  const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{controller?.signal.throwIfAborted();}
  controller?.signal.throwIfAborted();
- const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();const h=new SHA256();let count=0,last=0;let reader;
+ const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();const h=new SHA256();let count=0,last=0,yieldBytes=0;let reader,cancellation;
+ const cancel=()=>cancellation??=reader?.cancel().catch(()=>{});const abort=()=>{void cancel();};
  try{
   if(local){if(local.size!==entry.bytes)throw Error('File size mismatch');reader=local.stream().getReader();}
   else {const res=await networkFetch(entry.url,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});if(!res.ok||!res.body)throw Error('Download failed · HTTP '+res.status);reader=res.body.getReader();}
-  while(true){controller.signal.throwIfAborted();const {value,done}=await reader.read();if(done)break;count+=value.length;if(count>entry.bytes)throw Error('Unexpected file size');h.update(value);await w.write(value);if(Date.now()-last>300){send(id,'progress',`${entry.name} · ${(count/1e6).toFixed(1)} / ${(entry.bytes/1e6).toFixed(1)} MB`);last=Date.now();}}
-  if(count!==entry.bytes||h.hex()!==entry.sha256)throw Error('Verification failed');await w.close();return name;
- }catch(e){await reader?.cancel().catch(()=>{});await w.abort().catch(()=>{});try{await(await directory()).removeEntry(name);}catch{}throw e;}
+  controller.signal.throwIfAborted();controller.signal.addEventListener('abort',abort,{once:true});
+  while(true){controller.signal.throwIfAborted();const {value,done}=await reader.read();controller.signal.throwIfAborted();if(done)break;count+=value.length;if(count>entry.bytes)throw Error('Unexpected file size');h.update(value);await w.write(value);yieldBytes+=value.length;if(yieldBytes>=1048576){yieldBytes=0;await new Promise(resolve=>setTimeout(resolve,0));controller.signal.throwIfAborted();}if(Date.now()-last>300){send(id,'progress',`${entry.name} · ${(count/1e6).toFixed(1)} / ${(entry.bytes/1e6).toFixed(1)} MB`);last=Date.now();}}
+  controller.signal.throwIfAborted();if(count!==entry.bytes||h.hex()!==entry.sha256)throw Error('Verification failed');await w.close();return name;
+ }catch(e){await cancel();await w.abort().catch(()=>{});try{await(await directory()).removeEntry(name);}catch{}throw e;}
+ finally{controller.signal.removeEventListener('abort',abort);await cancel();reader?.releaseLock();}
 }
 async function status(){const out={};for(const m of manifest.models){const x=await meta(m.id);if(x){try{const a=await file(x.modelHash),r=await file(x.runtimeHash);out[m.id]={...x,filesPresent:a.size===m.file.bytes&&r.size===manifest.runtime.file.bytes};}catch{out[m.id]={...x,filesPresent:false};}}else out[m.id]=null;}return out;}
 async function load(id,size){
@@ -28,7 +33,8 @@ async function load(id,size){
  await unload();controller.signal.throwIfAborted();
  const f=await file(m.file.sha256),runtime=await file(manifest.runtime.file.sha256);
  send(id,'progress','Verifying…');
- if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||await hashFile(f,p=>send(id,'progress','Verifying model · '+Math.round(p*100)+'%'))!==m.file.sha256||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
+ if(m.localModel)await verifyLocalModelFile(f,m.localModel,{signal:controller.signal,progress:(n,total)=>send(id,'progress','Verifying model · '+Math.round(n/total*100)+'%')});
+ if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||(!m.localModel&&(await hashFile(f,p=>send(id,'progress','Verifying model · '+Math.round(p*100)+'%'))!==m.file.sha256))||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
  send(id,'progress','Loading…');
  const moduleURL=URL.createObjectURL(new Blob([runtime],{type:'text/javascript'}));let api;
  try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}
@@ -46,12 +52,23 @@ onmessage=async({data})=>{
  try{
   let result;
   switch(cmd){
-   case 'init':manifest=args.manifest;result=await status();break;
+   case 'init':if(baseManifest)throw Error('Worker already initialized');baseManifest=structuredClone(args.manifest);manifest=withLocalModels(baseManifest);result=await status();break;
+   case 'configure':{if(!baseManifest)throw Error('Worker not initialized');if(model||session)throw Error('Unload model before registry changes');const next=withLocalModels(baseManifest,args.models);manifest=next;result=await status();break;}
    case 'status':result=await status();break;
    case 'probe':{if(!navigator.gpu){result={available:false,reason:'WebGPU API unavailable in this Worker'};break;}const adapter=await navigator.gpu.requestAdapter({powerPreference:'high-performance'});result=adapter?adapterSnapshot(adapter):{available:false,reason:'No WebGPU adapter was returned'};break;}
 
    case 'prepare':{
-    const m=manifest.models.find(m=>m.id===args.model);if(!m)throw Error('Unsupported model');if(!args.localFiles&&!args.allowNetwork)throw Error('Downloads are off');
+    const m=manifest.models.find(m=>m.id===args.model);if(!m)throw Error('Unsupported model');if(!m.localModel&&!args.localFiles&&!args.allowNetwork)throw Error('Downloads are off');
+    if(m.localModel){
+     if(args.allowNetwork)throw Error('Custom models require local files');
+     const local=args.modelFile;if(!local)throw Error('Local model file required');
+     await verifyLocalModelFile(local,m.localModel,{signal:controller.signal,progress:(n,total)=>send(id,'progress','Verifying model · '+Math.round(n/total*100)+'%')});
+     const supplied=(args.localFiles??[]).find(f=>f.name===manifest.runtime.file.name||f.name===manifest.runtime.file.sha256);
+     if(supplied){if(supplied.size!==manifest.runtime.file.bytes||await hashLocalModel(supplied,{signal:controller.signal})!==manifest.runtime.file.sha256)throw Error('Runtime verification failed');await storeAsset(manifest.runtime.file,id,supplied);}
+     else {let cached;try{cached=await file(manifest.runtime.file.sha256);}catch{throw Error('Verified runtime.js required');}if(cached.size!==manifest.runtime.file.bytes||await hashLocalModel(cached,{signal:controller.signal})!==manifest.runtime.file.sha256)throw Error('Verified runtime.js required');}
+     await storeAsset(m.file,id,local);controller.signal.throwIfAborted();
+     const ready={model:m.id,modelHash:m.file.sha256,runtimeHash:manifest.runtime.file.sha256,verifiedAt:new Date().toISOString(),generationVerified:false,offlineVerified:false};await writeJSON('ready-'+m.id+'.json',ready);result=ready;break;
+    }
     const files=args.localFiles??[];const match=e=>files.find(f=>f.name===e.name||f.name===e.sha256);
     if(args.localFiles&&(!match(m.file)||!match(manifest.runtime.file)))throw Error('Model GGUF and runtime.js required');
     await storeAsset(manifest.runtime.file,id,match(manifest.runtime.file));await storeAsset(m.file,id,match(m.file));

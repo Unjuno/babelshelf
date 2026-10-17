@@ -16,7 +16,8 @@ export function validateLocalModel(value){
 export async function hashLocalModel(file,{signal,progress=()=>{}}={}){
  if(!Number.isSafeInteger(file?.size)||file.size<1||file.size>MAX_LOCAL_MODEL_BYTES)throw Error('Local model file size unsupported');
  signal?.throwIfAborted();const reader=file.stream().getReader(),hash=new SHA256();let bytes=0,sinceYield=0;
- const abort=()=>{void reader.cancel().catch(()=>{});};
+ let cancellation;const cancel=()=>cancellation??=reader.cancel().catch(()=>{});
+ const abort=()=>{void cancel();};
  signal?.addEventListener('abort',abort,{once:true});
  try{
   while(true){
@@ -30,7 +31,7 @@ export async function hashLocalModel(file,{signal,progress=()=>{}}={}){
   }
   if(bytes!==file.size)throw Error('Local model file changed');
   await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();return hash.hex();
- }finally{signal?.removeEventListener('abort',abort);await reader.cancel().catch(()=>{});reader.releaseLock();}
+ }finally{signal?.removeEventListener('abort',abort);await cancel();reader.releaseLock();}
 }
 export async function inspectLocalModel(file,{signal,progress,label}={}){
  const inspection=await inspectGGUF(file,{signal}),engine=eligibleTextEngine(inspection);

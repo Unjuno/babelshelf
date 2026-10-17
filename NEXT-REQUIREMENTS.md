@@ -84,3 +84,7 @@ Unit57 verifies currentproduct actual4B paused-task manualforeground success aft
 
 
 Unit58 adds actual preparedOCR/PNGoriginal/extractedv1/search/current4Banswer/originalregion/download/identicalbackuprestore and laterofflineprocess preview evidence. New languageassets acquired only through explicitSettingsPrepare; laternormalflow policyOFF. Englishprintedfixture, notgeneralvision/physicalcamera/device/allmediaacceptance. No app/promptchanges.
+
+## Latest custom-model direction (Units59–61)
+
+Users may bring locally trained/fine-tuned models. Shared strict model declarations, bounded GGUF inspection, cancellable streaming SHA256 and canonical registry/backup preservation are implemented. The worker now has unloaded-only registry configuration and local-only custom GGUF preparation/load through the fixed Qwen3.5 runtime, with independently verified metadata/bytes and no custom URLs/code/runtime permission. Generic ONNX/other architectures and additional general text engines are not implemented. Product Add-model import/review/hook synchronization and custom selection remain the immediate next connection work; do not call custom models usable from Settings yet. Keep the accepted UI/default4B, and distinguish prepared bytes from actual execution/device compatibility. See CUSTOM-MODELS-CONTRACT.md.
