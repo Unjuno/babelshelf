@@ -1,10 +1,13 @@
+// @ts-expect-error Shared strict model declaration validator is JavaScript.
+import {validateLocalModel} from '../../../dist/local-models.js';
 import {OCR_LANGUAGES,type OcrLanguage} from './ocr-assets.ts';
 import speechLanguages from './speech-languages.json' with {type:'json'};
 import {settings} from './app-settings.ts';
 
+export type CustomLocalModel={id:string;label:string;role:'text';engine:'webml-qwen35';revision:string;file:{bytes:number;sha256:string};inspection:{format:'GGUF';version:number;bytes:number;name:string;architecture:string;contextLength:number;tokenizer:string;chatTemplate:boolean;tokenCount:number;tensorCount:number;tensorTypes:number[];tensorExtentsChecked:boolean;dataOffset:number}};
 export type PreferenceGroup='models'|'appearance'|'connection';
 const defaults={
- models:{ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
+ models:{customModels:[] as CustomLocalModel[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
  appearance:{theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass},
  connection:{downloads:settings.defaults.downloads},
 };
@@ -23,11 +26,12 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  }
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('ocrModel' in value)&&!('ocrLibrary' in value)&&!('ocrLanguage' in value)){value.ocrModel='';value.ocrLibrary=[];value.ocrLanguage='eng+jpn';}
+ if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customModels' in value))value.customModels=[];
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!==Object.keys(defaults[group]).sort().join('|'))throw Error('Unknown or missing setting');
  if(group==='models'){
-  const m=value as Preferences['models'];if(!Array.isArray(m.ocrLibrary)||new Set(m.ocrLibrary).size!==m.ocrLibrary.length||m.ocrLibrary.some(id=>id!=='tesseract-7')||m.ocrModel!==''&&!m.ocrLibrary.includes(m.ocrModel)||!OCR_LANGUAGES.includes(m.ocrLanguage))throw Error('Unsupported image reader');if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
+  const m=value as Preferences['models'];if(!Array.isArray(m.customModels)||m.customModels.length>64)throw Error('Unsupported custom model registry');m.customModels=m.customModels.map(validateLocalModel);if(new Set(m.customModels.map(x=>x.id)).size!==m.customModels.length)throw Error('Duplicate custom model');if(!Array.isArray(m.ocrLibrary)||new Set(m.ocrLibrary).size!==m.ocrLibrary.length||m.ocrLibrary.some(id=>id!=='tesseract-7')||m.ocrModel!==''&&!m.ocrLibrary.includes(m.ocrModel)||!OCR_LANGUAGES.includes(m.ocrLanguage))throw Error('Unsupported image reader');if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
   for(const [role,library,selected] of [['text',m.textLibrary,m.textModel],['decision',m.decisionLibrary,m.decisionModel]] as const){
-   if(!Array.isArray(library)||new Set(library).size!==library.length||library.some(id=>!id||!settings.models[role].some(x=>x.value===id)))throw Error('Unsupported model library');
+   if(!Array.isArray(library)||new Set(library).size!==library.length||library.some(id=>!id||!settings.models[role].some(x=>x.value===id)&&!(role==='text'&&m.customModels.some(x=>x.id===id))))throw Error('Unsupported model library');
    if(selected!==''&&!library.includes(selected))throw Error('Add the model before selecting it');
   }
   if(!Array.isArray(m.transcriptionLibrary)||new Set(m.transcriptionLibrary).size!==m.transcriptionLibrary.length||m.transcriptionLibrary.some(id=>!settings.models.transcription.some(x=>x.value===id)))throw Error('Unsupported transcription library');

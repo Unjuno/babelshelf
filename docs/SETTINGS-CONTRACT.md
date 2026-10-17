@@ -48,3 +48,9 @@ All three roles use Add model to register a bundled candidate and select it. Cho
 ## Tool documentation updates (Unit39)
 
 Protected bundled Tools records describe connected reviewed schedule/settings operations as finite alternatives to ordinary-note rewrites. These descriptions do not register executable tools or permissions. Only exact known app-published historical bodies in increasing order may receive an appended documentation revision. Fresh previous defaults and the earlier original-to-current migration are recognized; modified, reversed, repeated, moved, imported, withdrawn or otherwise non-app records are skipped. Original revisions and unrelated metadata remain intact through the existing canonical initialization transaction. No arbitrary Tools editing/execution is enabled.
+
+## Custom model declarations (Unit60)
+
+Canonical models documents now accept customModels, at most64 strict declarations validated by dist/local-models.js. IDs and revisions derive from weightSHA256; role/engine/inspection fields have fixed schemas. No URLs, code, readiness, permissions or credentials. Duplicate identities fail. Text library/selection may reference a matching validated custom text declaration; other roles retain their pinned catalogs. This extends storage validation, not worker execution support.
+
+Legacy bodies missing customModels project an empty array without changing stored bytes; the next explicit settings update appends a revision retaining the exact prior body. Backup/restoration carries declarations and retains model/runtime asset exclusions. Actual files must be independently verified by the engine before use. Model-proposed settings patches cannot edit customModels or libraries. Add-model file import, worker registration and product custom-model UI remain pending; manually declaring/selecting an unsupported model cannot make the current fixed worker execute it.

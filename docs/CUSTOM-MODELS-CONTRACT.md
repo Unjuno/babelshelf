@@ -27,3 +27,7 @@ This is an architectural extension in progress. Step1 alone is not a usable cust
 Bounded GGUF v3 inspection and strict declarative local-model records are implemented. The first16MiB prefix may contain initial payload bytes but payload is not interpreted. Known F32 and Prism PTQ1_0 (type143,128elements/28bytes) tensor extents are checked; unknown layouts remain ineligible. Structural eligibility is not numerical compatibility. Hashing streams bytes with bounded task yields, delivered-abort checks and pending-read cancellation/reader cleanup.
 
 Node tests cover malformed/truncated tables and payloads, strict records, exact hashes and both queued-Stop/pending-read cancellation. Existing949549920byte official4B file independently inspected and hashed to manifestSHA256; this is file inspection evidence only. Canonical preferences, local import, worker integration and product UI remain outstanding. Current accepted product build is unchanged.
+
+## Unit60 canonical registry
+
+Preferences/backup now preserve validated customModels with legacy read projection and append-only settings revisions. Registration declarations do not import files or set readiness. Model-proposed patches cannot change registries/libraries. Worker/UI local import and execution remain next; current UI is unchanged. Native PC regression on product36a41e8120bc9759 passed three separate Chrome processes, including offline boot, capture/import/search/direct correction/history and conflict/identical restore. This regression did not execute a custom model.
