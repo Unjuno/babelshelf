@@ -22,3 +22,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Semantic ordinary-note rewrites use source-only bounded generation and the same full Before/After approval, expected-record CAS and append-only Undo. text.rewrite receipts pin canonical body hashes/counts rather than duplicate full history. Read docs/CORRECTION-CONTRACT.md; never extend this generic body proposal to settings/tools/tasks or claim semantic accuracy from one PC sample.
 
 - Known untouched app-owned v1 Tools documentation receives an append-only v2 during normal initialization. Read docs/BUILTIN-DEFINITIONS.md. Never broaden this finite exact-body migration into generic protected-record overwrite, and never interpret a Markdown definition as adapter installation or permission.
+
+- Local video audio transcription shares the reviewed Whisper path and preserves video identity. Video provenance must retain sourceTrack video-audio/timebase decoded-audio. Segment times are not a verified container timeline: video citations open the whole original without seeking; audio citations retain estimated seek. Read docs/SPEECH-CONTRACT.md before changing this boundary.

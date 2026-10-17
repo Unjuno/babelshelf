@@ -3,6 +3,17 @@ import assert from 'node:assert/strict';
 import {speechFile,verifySpeechBytes,speechManifest,speechRuntimeResponse} from '../src/speech-assets.ts';
 import {makeTranscript,validateTranscript,transcriptNote,validateTranscriptLinks} from '../src/speech-transcript.ts';
 import {prepareOriginal} from '../src/original-assets.ts';
+
+test('video audio transcription retains video identity, explicit audio-only scope and exact backup provenance',async()=>{
+ const {originalNote,originalKey}=await import('../src/original-assets.ts'),{makeStateBackup,parseStateBackup,stateHash}=await import('../src/backup-state.ts');
+ const asset=await prepareOriginal(new File(['video container bytes'],'clip.webm',{type:'video/webm'}),'video-track');
+ const t=makeTranscript(asset,5000,{text:'The blue code is Cedar 27.',chunks:[{text:'The blue code is Cedar 27.',timestamp:[1,4]}]});
+ assert.equal(t.sourceTrack,'video-audio');assert.equal(asset.kind,'video');const n=transcriptNote('video-transcript',asset,t);
+ const pack=await makeStateBackup({notes:[originalNote(asset),n],settings:[],runs:[{key:originalKey(asset.id),value:asset}]});const restored=await parseStateBackup(JSON.stringify(pack));assert.deepEqual(restored.notes[1].transcription,t);
+ for(const mutate of [p=>delete p.payload.notes[1].transcription.sourceTrack,p=>p.payload.notes[1].transcription.sourceTrack='video-frames',p=>p.payload.notes[1].transcription.timebase='video-container']){const bad=structuredClone(pack);mutate(bad);bad.sha256=stateHash(bad.payload);await assert.rejects(parseStateBackup(JSON.stringify(bad)),/transcript/i);}
+ const audio=await prepareOriginal(new File(['audio'],'audio.wav',{type:'audio/wav'}));const a=makeTranscript(audio,1000,{text:'Audio',chunks:[{text:'Audio',timestamp:[0,1]}]});assert.equal(a.sourceTrack,undefined);assert.throws(()=>validateTranscript({...a,sourceTrack:'video-audio'},audio),/transcript/i);
+ const image=await prepareOriginal(new File(['image'],'image.png',{type:'image/png'}));assert.throws(()=>makeTranscript(image,1000,{text:'Invented image words',chunks:[{text:'Invented image words',timestamp:[0,1]}]}),/transcript/i);
+});
 test('speech assets only resolve exact pinned local files; corrupt bytes and unrelated URLs refuse',()=>{
  const f=speechManifest.files[0];assert.equal(speechFile('/asr-model/whisper-tiny/'+f.path)?.sha256,f.sha256);
  for(const path of [f.url,'https://evil.invalid/asr-model/whisper-tiny/'+f.path,'/asr-model/whisper-base/'+f.path,'/asr-model/whisper-tiny/../'+f.path])assert.equal(speechFile(path),undefined);

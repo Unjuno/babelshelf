@@ -2,7 +2,7 @@
 
 ## Scope
 
-The accepted product now persists submitted originals, their Markdown projections and the input turn atomically in the existing database. It reads bounded UTF-8 TXT/Markdown, displays images and offers native audio/video playback after reopening. Local Bonsai can use the actual stored text/source ranges; Whisper tiny audio transcription now has an explicit preparation/review/save path; image/video content extraction remains Not prepared. See SPEECH-CONTRACT.md. Unknown formats and PDF extraction remain Unsupported. Playback success is independent from transcription/OCR/model understanding, and codec support depends on the browser. The earlier transient descriptions below are historical design notes.
+The accepted product now persists submitted originals, their Markdown projections and the input turn atomically in the existing database. It reads bounded UTF-8 TXT/Markdown, displays images and offers native audio/video playback after reopening. Local Bonsai can use the actual stored text/source ranges; Whisper tiny audio transcription now has an explicit preparation/review/save path; video audio tracks can use the same explicit reviewed local transcription path; image and video-frame content extraction remains Not prepared. See SPEECH-CONTRACT.md. Unknown formats and PDF extraction remain Unsupported. Playback success is independent from transcription/OCR/model understanding, and codec support depends on the browser. The earlier transient descriptions below are historical design notes.
 
 ## Current original storage
 
@@ -45,3 +45,5 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 ReferenceCard.tsx is the shared text/image/video/audio file-preview renderer. A future grounded answer must supply verified record ID, exact revision/range/time span separately; a URL/name in this UI is not provenance validation. Current example answers use a pinned bundled note v1. User media is only attached originals, labeled as such. Native playback is independent of transcription/OCR readiness. No test-generated transcript, answer or media-derived citation is substituted for real inference.
 
 Answer citations stay compact inline marks. Filename, revision, original excerpt and media preview belong in the opened source surface, not a permanently visible answer card. User-sent attachment previews remain visible with their input.
+
+Video-audio provenance and its unverified container-time alignment are specified in SPEECH-CONTRACT.md. Video originals stay videos; audio-only recognition never marks frames as processed or enables precise video seeking.

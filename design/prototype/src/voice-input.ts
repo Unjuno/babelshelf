@@ -15,6 +15,7 @@ export function validateVoiceInputs(dialogue:Dialogue|undefined,runs:{key:string
 const time=(ms:number)=>{const ticks=Math.round(ms/100);return String(Math.floor(ticks/600)).padStart(2,'0')+':'+((ticks%600)/10).toFixed(1).padStart(4,'0');};
 export function transcriptCitationRange(t:Transcript,body:string,revision:number,start:number,end:number,citedQuote?:string):AudioRange {
  if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||end>body.length)throw Error('Source range invalid');
+ if(t.sourceTrack==='video-audio')return {startMs:0,endMs:t.durationMs,label:'Whole video · audio timing not mapped'};
  const whole=(reason:string)=>({startMs:0,endMs:t.durationMs,label:'Whole recording · '+reason});
  if(revision!==1||body!==t.text)return whole('edited transcript');
  const excerpt=body.slice(start,end),at=citedQuote?excerpt.indexOf(citedQuote):-1;
