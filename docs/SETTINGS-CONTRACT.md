@@ -1,3 +1,11 @@
+## Current canonical settings correction contract (Unit35)
+
+The current product persists managed preference records in canonical IndexedDB notes; historical session-only descriptions below describe early prototype stages. Settings controls and Memory read the same records and append revisions. The deployed app does not import arbitrary runtime code from a preference document.
+
+Opened appearance/models settings support a finite `settings.patch` proposal through the same full Before/After, expected-record CAS, atomic note/receipt and append-only Undo as ordinary note correction. Canonical managed ID and exact path must match. Allowed appearance fields are theme/background/glass. Allowed model fields are registered text/decision/transcription/OCR selections and validated reading languages. Existing schema/catalog validation remains authoritative. Libraries, downloads/connection, readiness, runtime, URLs, credentials, paths, permission flags and Tools definitions are rejected. Use explicit existing Settings controls for registration/preparation/connection actions.
+
+A proposal does not load a model or change a preference. Only explicit Save writes the reviewed validated body; settings screen values then derive from that revision. Backup validates operation fields/change hashes against retained before/after revisions. Unknown/tampered operations, stale notes and protected/forged targets refuse without overwriting. Broader typed Tools edits remain pending.
+
 # Settings contract
 
 The bundled prototype definition is design/prototype/src/app-settings.json. app-settings.ts validates and copies/freezes it before use. Schema version 4 rejects unknown/missing fields, unsupported models, invalid defaults, unsafe harness policy and oversized text budgets. Invalid bundled settings fail explicitly rather than silently choosing a model/provider.

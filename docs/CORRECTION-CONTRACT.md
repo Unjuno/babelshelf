@@ -1,3 +1,7 @@
+## Managed settings proposals (Unit35)
+
+Finite settings.patch supports canonical managed Settings/appearance.md and Settings/models.md through settings-corrections.ts. It validates ID/path/schema and allowed changes; registered model selections and reader languages do not imply readiness. Libraries/downloads/network/runtime/permissions are outside this patch. All existing review/CAS/history/Undo/backup checks remain; generic rewrite/replace of managed settings stays forbidden. Tools and protected README records remain unsupported.
+
 ## Opened-file targets
 
 Unit33 adds target=file: the model supplies no file identity/path. Harness-owned currentFile pins the rendered canonical ID/version. A read validates that pin before proposing from its exact snapshot. Existing Before/After, immutable expected record, Save/CAS, protected-record restrictions, schedule patch validation and Undo all remain mandatory. A prior file selection is not authorization to save a model edit. See CONVERSATION-CONTRACT.md.
