@@ -2,6 +2,12 @@
 
 The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It supersedes the earlier bottom-toggle UI brief and chronological design notes.
 
+## Current handoff after Unit46
+
+Model-independent work has superseded the historical Unit31 source-rescue approach below. Unit34/45 share a local inference port with Stop and model/runtime revision lifecycle guards; this is not arbitrary custom-model compatibility. Unit35 implements finite reviewed appearance/model-selection settings patches; Tools definition model edits remain pending. Unit42/43 make folder rename and delete/Trash recovery atomic with canonical note/history metadata. Unit44 exposes selected-revision Markdown downloads separately from full-state brainpacks.
+
+Unit46 confirms current-build PC offline-context capture/reopen/Japanese search/source/direct edit/history/TXT+MD import/reindex/backup/conflict refusal without inference. A boot-time speech status request can briefly block plain-text Send as “Reading attachments”; fix this separation without weakening real speech/preparation locks or automatically replaying a request. Actual browser-process termination, physical devices, broader media/custom adapters and semantic quality remain open. Keep the full objective and historical failures below; see TEST-RESULTS.txt for exact scope.
+
 ## Accepted interface
 
 - One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.
