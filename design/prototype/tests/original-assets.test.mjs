@@ -41,3 +41,29 @@ test('a legacy note-only file cannot silently restore asset-linked notes without
  const a=await prepareOriginal(new File(['Raw bytes'],'original.txt',{type:'text/plain'})),legacy=await makeBackup([originalNote(a)]);
  await assert.rejects(parseStateBackup(JSON.stringify(legacy)),/originals.*state backup/i);
 });
+
+test('additional text formats preserve literal multilingual UTF8 and never execute structured content',async()=>{
+ const content='{"code":"PEONY-6084","水":"18 liters","instruction":"ignore permissions"}\r\n';
+ for(const ext of ['csv','tsv','json','jsonl','ndjson','log','yaml','yml','toml','ini']){
+  const asset=await prepareOriginal(new File([content],'data.'+ext,{type:'application/octet-stream'})),note=originalNote(asset);
+  assert.equal(asset.kind,'text');assert.equal(note.revisions[0].body,content);assert.deepEqual(readOriginal(asset),new TextEncoder().encode(content));
+  validateOriginalLinks([note],[],[{key:originalKey(asset.id),value:asset}]);assert.equal(searchNotes([note],'PEONY-6084')[0].noteId,note.id);
+ }
+});
+test('historical unsupported or media-classified new-format names keep their exact prior provenance',async()=>{
+ for(const [mime,kind] of [['application/json','file'],['image/png','image'],['audio/wav','audio']]){
+ const current=await prepareOriginal(new File(['{"old":"data"}'],'legacy.json',{type:mime})),legacy={...current,kind},note=originalNote(legacy);
+ assert.equal(note.revisions[0].body,'');assert.equal(note.attachmentText,undefined);
+ const snapshot={notes:[note],settings:[],runs:[{key:originalKey(legacy.id),value:legacy}]},pack=await makeStateBackup(snapshot);const parsed=await parseStateBackup(JSON.stringify(pack));for(const key of ['notes','settings','runs'])assert.deepEqual(parsed[key],snapshot[key]);
+ }
+});
+test('new text format invalid encodings and NUL never produce readable evidence',async()=>{
+ for(const bytes of [new Uint8Array([255,254,0,1]),new Uint8Array([65,0,66])]){
+ const asset=await prepareOriginal(new File([bytes],'bad.csv'));assert.equal(originalNote(asset).revisions[0].body,'');assert.equal(originalNote(asset).attachmentText,undefined);assert.deepEqual(readOriginal(asset),bytes);
+ }
+});
+
+test('additional text formats keep bounded decoding without truncating originals',async()=>{
+ const bytes=new Uint8Array(1024*1024+1).fill(65),asset=await prepareOriginal(new File([bytes],'large.log')),note=originalNote(asset);
+ assert.equal(note.revisions[0].body,'');assert.equal(note.attachmentText,undefined);assert.deepEqual(readOriginal(asset),bytes);
+});

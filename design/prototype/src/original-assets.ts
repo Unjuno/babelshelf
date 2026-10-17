@@ -12,7 +12,11 @@ export const MAX_ATTACHMENT_BATCH_BYTES=64*1024*1024;
 const MAX_TEXT_BYTES=1024*1024;
 export const originalKey=(id:string)=>'ui-v1-original-'+id;
 export const originalRef=(a:OriginalAsset):OriginalRef=>({id:a.id,revision:a.revision,sha256:a.sha256});
-export function originalKind(name:string,mime:string):OriginalKind{
+export const TEXT_ATTACHMENT_ACCEPT='.txt,.md,.csv,.tsv,.json,.jsonl,.ndjson,.log,.yaml,.yml,.toml,.ini';
+const additionalText=/\.(csv|tsv|json|jsonl|ndjson|log|yaml|yml|toml|ini)$/i;
+export function originalKind(name:string,mime:string):OriginalKind{return additionalText.test(name)?'text':legacyOriginalKind(name,mime);}
+// Historical classification remains valid for immutable retained originals.
+function legacyOriginalKind(name:string,mime:string):OriginalKind{
  if(/\.(txt|md)$/i.test(name))return 'text';
  if(/\.(svgz?|html?|xml)$/i.test(name))return 'file';
  if(['image/png','image/jpeg','image/gif','image/webp','image/avif','image/bmp'].includes(mime))return 'image';
@@ -35,7 +39,7 @@ export async function prepareOriginal(file:File,id:string=crypto.randomUUID()):P
  readOriginal(asset);return asset;
 }
 export function readOriginal(asset:OriginalAsset,ref?:OriginalRef):Uint8Array{
- if(!asset||asset.schema!==1||asset.type!=='original-asset'||typeof asset.id!=='string'||!asset.id||asset.id.length>128||asset.revision!==1||typeof asset.name!=='string'||!asset.name||asset.name.length>1024||typeof asset.mime!=='string'||! /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(asset.mime)||asset.kind!==originalKind(asset.name,asset.mime)||!Number.isSafeInteger(asset.bytes)||asset.bytes<0||asset.bytes>MAX_ORIGINAL_BYTES||typeof asset.data!=='string'||typeof asset.createdAt!=='string'||!Number.isFinite(Date.parse(asset.createdAt))||typeof asset.sha256!=='string'||! /^[a-f0-9]{64}$/.test(asset.sha256))throw Error('Original metadata invalid');
+ if(!asset||asset.schema!==1||asset.type!=='original-asset'||typeof asset.id!=='string'||!asset.id||asset.id.length>128||asset.revision!==1||typeof asset.name!=='string'||!asset.name||asset.name.length>1024||typeof asset.mime!=='string'||! /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(asset.mime)||(asset.kind!==originalKind(asset.name,asset.mime)&&asset.kind!==legacyOriginalKind(asset.name,asset.mime))||!Number.isSafeInteger(asset.bytes)||asset.bytes<0||asset.bytes>MAX_ORIGINAL_BYTES||typeof asset.data!=='string'||typeof asset.createdAt!=='string'||!Number.isFinite(Date.parse(asset.createdAt))||typeof asset.sha256!=='string'||! /^[a-f0-9]{64}$/.test(asset.sha256))throw Error('Original metadata invalid');
  if(ref&&(ref.id!==asset.id||ref.revision!==1||ref.sha256!==asset.sha256))throw Error('Original identity changed');
  const bytes=decode(asset.data,asset.bytes);if(hash(bytes)!==asset.sha256)throw Error('Original verification failed');return bytes;
 }

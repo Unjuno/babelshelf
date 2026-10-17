@@ -1,11 +1,11 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit79 product is `28bc57a32331d358`; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit80 product is `aaeb991007f0abab`; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
 | Canonical notes, immutable IDs/revisions/sources, protected roots, five-folder limit | Shared IndexedDB adapter and validation; direct edits, rename/move, Trash/restore transactions; native PC tests in Units42–49 | Physical-device/storage-pressure acceptance |
-| Capture, TXT/MD import, restart, multilingual search and original reading | PC native and offline process flows, including real Japanese originals; Units49/55/65 | Broader search/language quality and phone behavior |
+| Capture, TXT/MD import, restart, multilingual search and original reading | PC native and offline process flows, including real Japanese originals; Units49/55/65; Unit80 literal CSV/JSON real local answer/exact Save/offline restart/source previews/downloads | Broader search/language quality and phone behavior |
 | Natural input and context/compaction | Shared pinned TextRuntime; retained originals/current-result/current-file; request-specific target grammar and exact assistant-original inventory (PLANNER-SCOPE.md); Unit77 native offline Bonsai answer, Stop, unload/reload and new answer with actual compaction/original retention | Qwen0.5B ordinary conversation still fails; semantic intent/source accuracy is bounded; successful sample is not general reliability |
 | Reviewed model correction and exact answer Save | Source-only proposals, Before/After, CAS, receipts/Undo; Unit74 actual offline capture/file summary/exact Save/correction11→16, historicalv1 citation and newv2 generated summary; cold restart/conflict refusal | Unit77 closes missing native offline Stop/unload/reload/new-answer control evidence; broader multilingual/semantic quality and phone acceptance remain |
 | Local text execution | Pinned WebML/Bonsai4B and compatible Qwen35 GGUF import; ONNX/Transformers adapter supports separate Smol360M/Qwen2.5 0.5B pins, actual offline worker generation and native registration | ONNX360M quality inadequate; Qwen0.5B normal routing/context failed in Unit71; useful multilingual alternative and wider custom formats remain open |
