@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current Unit92 product is `916f27b73f131db7`; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `916f27b73f131db7`; combined PC evidence extends through Unit93; earlier evidence retains its recorded build scope.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
@@ -32,3 +32,5 @@ Unit89 adds relative app text sizing and measured composer reservation; native P
 Unit91 adds reviewed divergent ordinary source-free note content recovery: native two branches, stale review refusal, new destination revision and retained source branch in History/export. It does not merge generated/source-bearing/media/system metadata or dialogue, and does not close those broader recovery gates.
 
 Unit92 exposes measured origin storage estimates in Local files/initial preparation and explicitly requested browser persistence. Native Chrome denied the request and UI truthfully remains Best effort; canonical before/after backups identical. This does not close phone quota/eviction/retention or large-archive gates.
+
+Unit93 combines the existing selected Bonsai4B/Whisper/OCR/PDF/TXT/MD pipeline in one retained QA profile and current-build offline process: five actual inputs, one real sourced answer, exact reviewed Save and index rebuild. Independent backups prove byte-exact originals/current-input citations and preservation of prior knowledge/history. Further offline process proves Japanese search, exact original read, unchanged notes/runs and local backup/no-op restore. Original monolithic Read observer timed out on legitimate navigation and stays FAIL; separately retained native continuation/production-backup verifiers close that scoped observation gap without re-running extraction/generation. D1, hardware capture, OS airplane/installed-PWA and phone gates are excluded, not waived. See TEST-RESULTS Unit93.
