@@ -1,3 +1,4 @@
+import {createTextInference,type TextRuntime} from './text-inference';
 import {useEffect,useRef,useState} from 'react';
 // @ts-expect-error Shared baseline worker controller is JavaScript.
 import {Engine} from '../../../dist/engine.js';
@@ -12,5 +13,7 @@ export function useBonsai(){
  async function unload(){return operation(async()=>{await engine.current.unload();setLoaded('');setProgress('Unloaded');});}
  async function generate(messages:unknown[],maxTokens=256){return operation(async()=>{if(!engine.current?.loaded)throw Error('Model not loaded');cancelled.current=false;setProgress('Generating…');const result=await engine.current.generate(messages,events,maxTokens);if(cancelled.current)throw Error('Stopped');setProgress('');return result;});}
  function stop(){cancelled.current=true;engine.current?.abort();setProgress('Stopping…');}
- return {manifest,busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,load,unload,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
+ const port=useRef<TextRuntime>(null!);port.current={manifest,get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count:(messages:unknown[])=>engine.current.call('count',{messages})};
+ const inference=useRef<TextRuntime|null>(null);if(!inference.current)inference.current=createTextInference(()=>port.current);
+ return {manifest,busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,unload,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
 }

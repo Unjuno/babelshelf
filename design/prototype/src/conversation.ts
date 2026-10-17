@@ -13,7 +13,8 @@ export type SourceRef={noteId:string;revision:number;start:number;end:number;quo
 export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
 export type Dialogue={schema:1;revision:number;turns:DialogueTurn[];compaction:{through:number;summary:string}|null;currentResult?:{turnId:string};currentFile?:WorkingFile};
 export type DialogueContext={summary:string;recent:DialogueTurn[];refs:SourceRef[];turnCount?:number;lastAnswerIndex?:number;currentResult?:{turnId:string};currentFile?:WorkingFile;recalled?:{turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number}[]};
-export type ChatEngine={manifest:{contextTokens:number};count:(m:any[])=>Promise<{prompt_tokens:number}>;generate:(m:any[],maxTokens?:number)=>Promise<{text:string;stopped?:boolean}>};
+export type {TextEngine as ChatEngine} from './text-inference';
+import type {TextEngine as ChatEngine} from './text-inference';
 export const emptyDialogue=():Dialogue=>({schema:1,revision:0,turns:[],compaction:null});
 export function appendTurn(state:Dialogue,turn:DialogueTurn):Dialogue{if(state.turns.some(t=>t.id===turn.id))throw Error('Duplicate turn');return {...state,revision:state.revision+1,turns:[...state.turns,turn]};}
 export function completeTurn(state:Dialogue,id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>):Dialogue{

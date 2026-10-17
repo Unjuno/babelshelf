@@ -1,3 +1,9 @@
+## Local text inference boundary (Unit34)
+
+`text-inference.ts` owns the shared TextEngine/TextRuntime contract; conversation's ChatEngine is a compatibility type alias. Grounded answers no longer depend on the React useBonsai return type. The approved Bonsai hook bridges its existing worker through one stable live adapter; actual messages/token counts/generated text remain runtime-owned. Models, tokenizer/templates, revision pins and permissions are unchanged.
+
+The inference port exposes no preparation/download/network/knowledge-write API. Load accepts only already-present verified model assets. Stop invalidates pending count/generation output; changed loaded identity and malformed counts/results fail. Stopped partial output is never returned as an answer. These checks do not grant tool permission or replace post-await caller cancellation, evidence/CAS validation, model compatibility checks, or token-budget checks. Custom engines still require real adapters and verification; implementing a TypeScript port is not compatibility certification.
+
 ## Harness-owned opened file — Unit33
 
 Dialogue schema1 optionally retains `currentFile: {noteId, revision}` independently of currentResult. This is a local working selection, not write permission. Opening a rendered canonical file stages its displayed ID/version; all local dialogue mutations share a serialized writer before existing whole-dialogue CAS. Turn status and rendered-version focus updates are functional mutations at writer commit time; bulk replacements retain strict expected-snapshot checks. Send waits for them before freezing its prior snapshot. A file selected during generation is deferred until it finishes. Navigating back to Input or restarting does not erase the last selection. Failed focus CAS stops later focus/Send rather than silently overwriting another tab; reopen to reload authoritative dialogue.
