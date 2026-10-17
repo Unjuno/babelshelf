@@ -477,3 +477,5 @@ button.model-picker svg{flex-shrink:0}
 
 .compact-composer textarea{field-sizing:content}
 .conversation{padding-bottom:max(130px,var(--composer-reserve,130px))}
+
+.retrieved-result .result-source-state{display:block;margin-top:6px}

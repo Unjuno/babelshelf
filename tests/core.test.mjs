@@ -123,3 +123,14 @@ test('new grounded references require an eligible source chain while historical 
  }
  assert.equal(core.validateGroundingRefs([original,parent],[]).ok,true);
 });
+
+test('stored-note discovery finds reviewed unsourced and stale generated files without making them grounding evidence',()=>{
+ const source=core.createNote({title:'Original',body:'The marker is CEDAR-2491.'});const ref=core.searchNotes([source],'CEDAR-2491')[0];
+ const generated=core.createNote({title:'Saved summary',body:'CEDAR-2491 saved summary',kind:'generated',sources:[ref]}),calculation=core.createNote({title:'Calculation99',body:'(1200 + 800) / 4 = 500',kind:'generated',sources:[]});
+ const corrected=core.reviseNote(source,{body:'The marker is MAPLE-2492.'},1),notes=[corrected,generated,calculation];
+ assert.equal(core.searchNotes(notes,'Calculation99').length,0);assert.equal(core.searchNotes(notes,'CEDAR-2491').length,0);
+ const found=core.searchStoredNotes(notes,'Calculation99');assert.equal(found[0].noteId,calculation.id);assert.equal(found[0].groundingEligible,false);
+ const stale=core.searchStoredNotes(notes,'CEDAR-2491');assert.equal(stale[0].noteId,generated.id);assert.equal(stale[0].groundingEligible,false);assert.equal(core.validateGroundingRefs(notes,stale).ok,false);
+ assert.equal(core.searchStoredNotes([core.withdrawNote(calculation,1)],'Calculation99').length,0);
+ assert.equal(core.searchNotes(notes,'Calculation99').length,0); // A discovery index cannot pollute evidence caching.
+});

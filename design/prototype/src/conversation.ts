@@ -11,7 +11,7 @@ import type {VoiceInput} from './voice-input.ts';
 import {parseJSON,parseAnswer,searchNotes} from '../../../dist/core.js';
 import type {TextToolReceipt} from './text-transform';
 import type {OriginalRef} from './original-assets';
-export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string;title?:string};
+export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string;title?:string;groundingEligible?:boolean};
 export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
 export type Dialogue={schema:1;revision:number;turns:DialogueTurn[];compaction:{through:number;summary:string}|null;currentResult?:{turnId:string};currentFile?:WorkingFile};
 export type DialogueContext={historyAssistantIndices?:number[];summary:string;recent:DialogueTurn[];refs:SourceRef[];turnCount?:number;lastAnswerIndex?:number;currentResult?:{turnId:string};currentFile?:WorkingFile;recalled?:{turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number}[]};
