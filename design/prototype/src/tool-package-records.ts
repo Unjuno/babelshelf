@@ -1,3 +1,6 @@
+import * as searchTool from './tools/memory.search/tool.ts';
+import * as readTool from './tools/memory.read/tool.ts';
+import {createToolRegistry} from './tools/tool-registry.ts';
 import searchSkill from './tools/memory.search/SKILL.md?raw';
 import searchCode from './tools/memory.search/tool.ts?raw';
 import readSkill from './tools/memory.read/SKILL.md?raw';
@@ -9,3 +12,9 @@ export const builtinPackageNotes = [
  ['memory.read/SKILL.md',readSkill],['memory.read/tool.ts',readCode],
  ['tool-host.ts',hostCode],
 ].map(([relative,body])=>({id:'builtin-package-'+relative,path:'Tools/'+relative,body,version:1,history:[] as string[],protected:true}));
+
+// Trusted module references are app-owned; stored text cannot add an entry.
+export const builtinToolRegistry=createToolRegistry([searchTool,readTool].map(tool=>({
+ definition:tool.definition,entry:'Tools/'+tool.definition.id+'/tool.ts',run:tool.run,
+ sources:builtinPackageNotes.filter(n=>n.path.startsWith('Tools/'+tool.definition.id+'/')||n.path==='Tools/tool-host.ts').map(n=>({path:n.path,body:n.body})),
+})));

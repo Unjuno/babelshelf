@@ -3,7 +3,7 @@ import {chromium} from '../../design/prototype/node_modules/playwright-core/inde
 import {mkdtemp,mkdir,readFile,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-const out='../../outputs/unit76-tool-source';await mkdir(out,{recursive:true});
+const out=process.argv[2]??'../../outputs/unit76-tool-source';await mkdir(out,{recursive:true});
 const profile=await mkdtemp(join(tmpdir(),'babelshelf-tools-'));
 const code=await readFile('design/prototype/src/tools/memory.search/tool.ts','utf8');
 const evidence={scope:'PC Chrome; isolated retained profile; source projection/export and offline new process; no inference or phone claim',profile};

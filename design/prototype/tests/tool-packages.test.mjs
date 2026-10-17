@@ -28,3 +28,22 @@ test('tool source paths and export preserve actual code without Markdown wrappin
  for(const bad of ['Inbox/tool.ts','Tools/../tool.ts','Tools/a/b/c.ts','Tools/a/tool.js','Tools/a/evil.ts.exe'])assert.throws(()=>normalizePath(bad));
  const n=createNote({path,body});const file=exportMarkdownRevision(n,1);assert.equal(file.text,body);assert.equal(file.filename,'tool.v1.ts');
 });
+
+import {createToolRegistry} from '../src/tools/tool-registry.ts';
+const declaration=()=>({definition:{id:'memory.search',version:1,readOnly:true,network:'none'},entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Read only'},{path:'Tools/memory.search/tool.ts',body:'source'}],run:search});
+test('registry dispatches only trusted registrations and fingerprints immutable code/skill identity',async()=>{
+ const pkg=declaration(),registry=createToolRegistry([pkg]),identity=await registry.identity('memory.search');
+ assert.match(identity.packageSha256,/^[a-f0-9]{64}$/);assert.equal(identity.entry,pkg.entry);assert.equal(await registry.run('memory.search',{query:'給水'},host),notes);
+ pkg.sources[0].body='mutated';pkg.definition.version=2;assert.deepEqual(await registry.identity('memory.search'),identity);
+ const changed=createToolRegistry([pkg]);assert.notEqual((await changed.identity('memory.search')).packageSha256,identity.packageSha256);
+ await assert.rejects(registry.run('external.run',{},host),/not registered/);await assert.rejects(registry.identity('external.run'),/not registered/);
+ const reordered=declaration();reordered.sources.reverse();assert.deepEqual(await createToolRegistry([reordered]).identity('memory.search'),identity);
+});
+test('registry refuses invalid authority, duplicate IDs, missing code/skill and unsafe source paths',()=>{
+ const mutations=[p=>p.definition.network='https',p=>p.definition.readOnly=false,p=>p.definition.version=0,p=>p.definition.id='../../run',p=>p.run=null,p=>p.entry='Tools/other/tool.ts',p=>p.sources.pop(),p=>p.sources[0].path='Tools/../SKILL.md',p=>p.sources.push({...p.sources[0]})];
+ for(const mutate of mutations){const pkg=declaration();mutate(pkg);assert.throws(()=>createToolRegistry([pkg]),/Invalid|unavailable/);}
+ assert.throws(()=>createToolRegistry([declaration(),declaration()]),/registration/);
+});
+test('registry cancellation refuses late results even for a handler that omits its own check',async()=>{
+ let stopped=false;const pkg=declaration();pkg.run=async()=>{stopped=true;return notes};const registry=createToolRegistry([pkg]);await assert.rejects(registry.run('memory.search',{}, {...host,check(){if(stopped)throw Error('Stopped')}}),/Stopped/);
+});

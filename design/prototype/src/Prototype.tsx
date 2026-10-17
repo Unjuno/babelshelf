@@ -52,9 +52,7 @@ import { ReferenceCard } from './ReferenceCard';
 import { nextScheduleOccurrence, scheduleSummary, repeatOptions, localDate, type ScheduleRule } from './schedule-time';
 import { initialPreferenceNotes, readPreference, updatePreference, preferenceGroup, parsePreference } from './preference-records';
 import { builtinToolNotes } from './tool-definitions';
-import { builtinPackageNotes } from './tool-package-records';
-import * as searchTool from './tools/memory.search/tool';
-import * as readTool from './tools/memory.read/tool';
+import { builtinPackageNotes,builtinToolRegistry } from './tool-package-records';
 import { settings, mediaStatus } from './app-settings';
 import { deletionContents, canRestore } from './memory-trash';
 import { memoryFilePath as filePath, memoryFolderPath as folderPath, validateMemoryFilePath as validateFilePath, SYSTEM_FOLDERS, isSystemFolder, MAX_FOLDER_DEPTH } from './memory-paths';
@@ -505,11 +503,11 @@ export default function Prototype() {
    }
    if(request?.action==='capture'){const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';if(request.historyIndex==null&&inputReadings.length){const parsed=await trace('knowledge.answer',{model,question:text,mode:'capture',inputReadings},()=>groundedAnswer(knowledge,inference,model,text,request!.query||text,'summary',context,checkSend,inputReadings));checkSend();request.body=parsed.answer;sources=parsed.sources;kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Review before saving',refs:sources});}else await finishTurn(id,{status:'Review before saving',refs:importedRefs});setCaptureTurn(id);setFileSources(sources);setFileKind(kind);setFileName(request.body!.split('\n')[0].replace(/[\\/:*?"<>|%]/g,'-').replace(/[. ]+$/g,'').slice(0,50)||'Note');setFileBody(request.body!);setActiveFolder('Inbox');setMemoryScope('folder');setSheet('file');return;}
    if(request?.action==='read'){
-    const readQuery=request.query,found=await trace('memory.read',{query:readQuery,package:readTool.definition.id,packageVersion:readTool.definition.version},()=>readTool.run({query:readQuery},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}),value=>value.map(n=>({id:n.id,path:n.path,version:n.version,excerpt:n.body.slice(0,700)})));
+    const readQuery=request.query,found=await trace('memory.read',{query:readQuery,...await builtinToolRegistry.identity('memory.read')},()=>builtinToolRegistry.run('memory.read',{query:readQuery},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}),value=>value.map(n=>({id:n.id,path:n.path,version:n.version,excerpt:n.body.slice(0,700)})));
     if(found.length===1){const n=found[0],refs=n.body.length?[{noteId:n.id,revision:n.version,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}]:[];await finishTurn(id,{status:'Opened · '+n.path,refs});openNote(n.id,n.path);return;}
    }
    if(request?.action==='search'||request?.action==='read'){
-    const searchQuery=request.query,results=await trace('memory.search',{query:searchQuery,package:searchTool.definition.id,packageVersion:searchTool.definition.version},()=>searchTool.run({query:searchQuery},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}));await finishTurn(id,{results,status:results.length?'Found · '+results.length:'No matching notes',refs:importedRefs});return;
+    const searchQuery=request.query,results=await trace('memory.search',{query:searchQuery,...await builtinToolRegistry.identity('memory.search')},()=>builtinToolRegistry.run('memory.search',{query:searchQuery},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}));await finishTurn(id,{results,status:results.length?'Found · '+results.length:'No matching notes',refs:importedRefs});return;
    }
    if(text&&request){const answerQuery=request.query||text,answerMode=request.action,parsed=await trace('knowledge.answer',{model,question:text,query:answerQuery,mode:answerMode,...(inputReadings.length?{inputReadings}:{})},()=>groundedAnswer(knowledge,inference,model,text,answerQuery,answerMode,context,checkSend,inputReadings,workingFile));checkSend();await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:request.action==='summary'?'Summary · selected excerpts':undefined});return;}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
