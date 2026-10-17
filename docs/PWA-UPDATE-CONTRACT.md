@@ -19,3 +19,9 @@ New generations store immutable hashed assets in `babelshelf-product-assets-v1`,
 Each build publishes `./.babelshelf-app-manifest-v1` only after all its resources verify. It maps that generation's immutable URLs to pinned shared bytes. Current embedded pins have priority; exact retained historical build metadata can resolve old lazy-module URLs. Metadata validates its owning build, paths, hashes and sizes. Internal pool/metadata URLs are not served as product resources. Legacy flat caches remain compatible and untouched.
 
 A failed install can leave verified reusable pool entries, but cannot publish its completion metadata early or remove previous generations. No pruning or migration occurs. This reduces duplicate immutable binary storage for future generations; accumulated legacy copies and distinct historical modules remain. Logical response counts do not establish physical disk savings, native quota recovery or BFCache acceptance. Those remain separate gates.
+
+## Native update fixture (Unit106)
+
+The isolated Chrome fixture in scripts/qa/update-bfcache.mjs uses the actual productWorker with static assets, not model inference. In live mode, an old visible page retains its unsaved draft after a second generation activates; offline, its old lazy module and actual module Worker both load successfully. The common asset is fetched once across both installs; five unique immutable responses occupy the shared pool, and each generation contains only its shell and completion metadata. These are logical cache counts, not physical storage measurements.
+
+A simpler earlier BFCache fixture retained its page and old lazy module. The expanded Worker/BFCache fixture remains unresolved: observed variants either timed out or reloaded the page. Live-mode success does not close that gate. No cache reclamation, legacy migration, quota-pressure recovery or phone acceptance follows.
