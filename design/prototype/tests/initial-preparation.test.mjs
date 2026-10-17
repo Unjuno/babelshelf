@@ -1,0 +1,19 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialPreparationPlan,runInitialPreparation} from '../src/initial-preparation.ts';
+import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
+const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
+test('initial preparation uses selected text and fills only unconfigured reader roles',()=>{
+ const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.models.transcriptionModel,'whisper-tiny');assert.equal(plan.models.ocrModel,'tesseract-7');assert.equal(prefs.transcriptionModel,'');assert.ok(plan.bytes>950000000);assert.deepEqual(plan.steps.map(s=>s.role),['text','speech','ocr']);
+ assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-base'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/text model/);
+});
+test('Stop or failed preparation cannot commit choices or start a later role',async()=>{
+ const plan=initialPreparationPlan(initial(),{text:false,speech:false,ocr:false}),calls=[];let stopped=false;
+ await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);stopped=true;},async()=>calls.push('commit'),()=>{if(stopped)throw Error('Stopped');}),/Stopped/);assert.deepEqual(calls,['text']);
+ const done=[];await runInitialPreparation(initialPreparationPlan(initial(),{text:true,speech:true,ocr:true}),async role=>done.push(role),async()=>done.push('commit'));assert.deepEqual(done,['commit']);
+});
+
+test('reader failure preserves optional decision selection and never commits the initial set',async()=>{
+ const prefs=initial();prefs.decisionModel='d1-3B';prefs.decisionLibrary=['d1-3B'];const plan=initialPreparationPlan(prefs,{text:true,speech:false,ocr:false});assert.equal(plan.models.decisionModel,'d1-3B');assert.deepEqual(plan.models.decisionLibrary,['d1-3B']);const calls=[];
+ await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);throw Error('Asset verification failed');},async()=>calls.push('commit')),/verification/);assert.deepEqual(calls,['speech']);assert.equal(prefs.transcriptionModel,'');
+});
