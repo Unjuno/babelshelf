@@ -69,3 +69,6 @@ Unit33 implements persisted currentFile ID/version, serialized focus writes, typ
 
 
 Unit53: shared local inference now binds model/runtime/context/cancellation across count-to-generation operations. Compaction/planning/grounding use it through the adapter. Model-independent lifecycle control; not a model quality benchmark, arbitrary engine compatibility or full-Send transaction. Physical-device and inference-inclusive offline acceptance remain open.
+
+
+Unit54: ordinary Send shares its loaded text pin through compaction/planning/proposals/answers; literal capture/search/read remain model-free. This extends Unit53 per-operation binding across text stages, not across Decision/media or canonical storage commits. Full/device/inference-inclusive offline acceptance remains pending.

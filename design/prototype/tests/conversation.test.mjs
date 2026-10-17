@@ -300,3 +300,16 @@ test('malformed grounded JSON gets one bounded retry with the same verified evid
  assert.equal((await groundedAnswer(store,e,'4B','What is the copper code?')).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
  calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer(store,e,'4B','code?'),/JSON/);assert.equal(calls,2);
 });
+
+
+test('one request cannot plan on one revision and answer on its replacement',async()=>{
+ const {createTextInference}=await import('../src/text-inference.ts');
+ let generations=0;
+ const runtime={manifest:{contextTokens:16000,models:[{id:'local',revision:'first'}],runtime:{revision:'runtime'}},loaded:'local',assets:{local:{filesPresent:true}},load:async()=>{},stop:()=>{},count:async()=>({prompt_tokens:10}),generate:async()=>{generations++;return {text:'{"action":"chat","query":""}'};}};
+ const live=createTextInference(()=>runtime),request=live.pin();
+ const prior=emptyDialogue(),context=dialogueContext(await compactDialogue(prior,request,'Hello'));
+ const plan=await planDialogue(request,'Hello',context);assert.equal(plan.action,'chat');
+ runtime.manifest.models[0].revision='replacement';
+ await assert.rejects(groundedAnswer({all:async()=>[]},request,'local','Hello','','chat',context),/Model changed/);
+ assert.equal(generations,1);assert.deepEqual(prior,emptyDialogue());
+});
