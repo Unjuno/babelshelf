@@ -1,0 +1,24 @@
+# MVP acceptance ledger
+
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Unit69 changed product code; Unit70 adds fresh-media recovery evidence on the same `59901715ce98ffc0` build.
+
+| Requirement | Current evidence | Remaining boundary |
+|---|---|---|
+| Canonical notes, immutable IDs/revisions/sources, protected roots, five-folder limit | Shared IndexedDB adapter and validation; direct edits, rename/move, Trash/restore transactions; native PC tests in Units42–49 | Physical-device/storage-pressure acceptance |
+| Capture, TXT/MD import, restart, multilingual search and original reading | PC native and offline process flows, including real Japanese originals; Units49/55/65 | Broader search/language quality and phone behavior |
+| Natural input and context/compaction | Shared pinned TextRuntime across Send stages; retained originals/current-result/current-file; Bonsai PC actual flows | Semantic intent/source accuracy is bounded; successful sample is not general reliability |
+| Reviewed model correction and exact answer Save | Source-only proposals, Before/After, CAS, append-only receipts/Undo; actual PC Units55/56 | Broader multilingual/semantic quality |
+| Local text execution | Pinned WebML/Bonsai4B and compatible Qwen35 GGUF import; ONNX/Transformers adapter added | ONNX360M reply quality inadequate; useful multilingual alternative and wider custom formats remain open |
+| Model/runtime compatibility and license | Pinned artifacts, hashes, tokenizer/template and actual PC execution for connected paths | WebML runtime-specific redistribution license remains unconfirmed; do not copy the model license onto runtime |
+| Initial model preparation | Reviewed selected text + unset Whisper/OCR, explicit acquisition permission, Stop/retry; native Unit66 | Phone capacity/latency; Whisperbase/D1-3B are not connected adapters |
+| OCR, speech, PDF and original citations | Actual PC OCR/ASR/PDF extraction and real generated grounded answers; offline process Units58/65 | OCR/ASR accuracy, hardware capture and general image/video understanding are not established |
+| Original-rich backup recovery | Unit70 fresh profile, Restore new with ten current conflicts kept, five exact originals and derived links retained; offline restart/image/audio/PDF source opening and byte-exact downloads | Keeps current settings; no arbitrary divergent-history reconciliation, full replacement or model assets |
+| Backup integrity and conflicts | Schema2 all-store snapshot, hashes, graph validation, atomic add-only/CAS, bounded200MB; strict conflict refusal; targeted14tests | Streaming/partitioned large archives, quota/storage retention and reviewed settings reconciliation |
+| Schedule, execution and notification | Same canonical notes, reviewed proposals/patches, foreground runs and pinned results, notice read/delete; actual PC Unit57 | Closed-PWA timed execution or offline OS delivery is not guaranteed; imported tasks stay quarantined |
+| Structured tool activity and authority | Inputs/results/typed failures/Stop retained; document/model/schedule contents do not grant writes; grammar compliance still passes semantic/source checks | Broader intent/task language quality; optional external MCP execution is not connected |
+| Network OFF normal operation | Exact preparation permission and asset pins; ordinary misses refuse acquisition; repeated PC context-offline process checks | Installed-PWA and OS-isolated all-function run, Android/iPhone and real quota pressure |
+| Accepted UI | Native product plus protected phone design runtime; source/attachment preview and compact source marks | Physical touch/IME/camera/mic, font enlargement and accessibility acceptance remain separate |
+
+Detailed authority: STORAGE-CONTRACT.md, CONVERSATION-CONTRACT.md, CORRECTION-CONTRACT.md, MODEL-RUNTIME-VERIFICATION.md, CUSTOM-MODELS-CONTRACT.md, ADDITIONAL-TEXT-ENGINE.md, STRUCTURED-GENERATION.md, MEDIA-HARNESS.md, SPEECH-CONTRACT.md, BACKUP-CONTRACT.md, SCHEDULE-CONTRACT.md and TEST-RESULTS.txt.
+
+Next work should close material gaps rather than repeat prompt-variant Bonsai benchmarks: runtime license provenance, a useful compatible multilingual alternative, large-state/quota handling, reviewed restoration of conflicting settings/histories, and remaining video/device/all-function acceptance. Keep current choices and data, local-only execution, explicit acquisition and the accepted UI. No deployment or push is authorized.

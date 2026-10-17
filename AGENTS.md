@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Use docs/MVP-ACCEPTANCE.md for the current evidence map and remaining gates; chronological unit notes retain detailed scope and supersession. The active goal remains incomplete.
+
 Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-PLAN.md, docs/STORAGE-CONTRACT.md and docs/TEST-RESULTS.txt before changing behavior. The user's newest explicit instruction wins.
 
 - docs/PRODUCT-SPEC.md is the accepted design; earlier history and old bottom-toggle tests do not define the new UI.

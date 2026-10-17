@@ -1,5 +1,7 @@
 # Current requirements and next work — 2026-10-17 JST
 
+Current implementation/evidence summary: [MVP acceptance ledger](docs/MVP-ACCEPTANCE.md). Historical entries below retain scope and supersession details; the whole goal remains active.
+
 The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It supersedes the earlier bottom-toggle UI brief and chronological design notes.
 
 ## Current handoff after Unit58
@@ -112,3 +114,5 @@ Additional local text engine (Unit67 foundation): latest human direction explici
 Unit68 supersedes the Unit67 worker/UI pending item: a second fixed ONNX text engine is connected through TextRuntime and Add model/initial preparation, with local import and explicit-only preparation. PC offline real generation and native load/Stop/reload passed. SmolLM2 360M normal Send failed structured routing (Invalid model JSON), so model suitability and a useful multilingual alternative remain open. Do not treat engine lifecycle success as harness/model quality acceptance. General custom ONNX remains separate. See docs/ADDITIONAL-TEXT-ENGINE.md.
 
 Unit69: optional structured token decoding is connected for the fixed ONNX adapter. Actual tokenizer's byte mapping integration defect was fixed and an offline normal turn now reaches a syntactically valid answer, but the360M model replied only"..."; this is not sufficient model/harness quality. Keep defaults and original failedturns. Do not claim instruction/template loss (actual731-token prompt preserved), or completion based on constrained JSON. See docs/STRUCTURED-GENERATION.md and Unit69 TEST-RESULTS.txt. Select/evaluate a useful multilingual alternative or strengthen the general harness without guessed actions/answers.
+
+Unit70: bounded original-rich fresh-profile Restore new now passed on PC, including exact originals/derivedlinks/dialogue/receipts, imported-task quarantine, offline process restart and image/audio/PDF source downloads. Source/settings conflicts remain kept, not reconciled. See BACKUP-CONTRACT.md and the MVP acceptance ledger for remaining gates.
