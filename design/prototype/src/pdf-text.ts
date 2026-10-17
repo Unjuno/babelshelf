@@ -1,19 +1,27 @@
 import {readOriginal,originalRef,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {ocrManifest,ocrModelPins,ocrFiles,type OcrLanguage} from './ocr-assets.ts';
 // @ts-expect-error Canonical baseline is JavaScript.
 import {createNote} from '../../../dist/core.js';
 export const PDF_PROCESSOR='pdfjs-dist-6.4.299';
 export const PDF_MAX_PAGES=40,PDF_MAX_TEXT=100000;
 export type PdfRegion={start:number;end:number;rect:number[]};
-export type PdfPage={page:number;text:string;regions:PdfRegion[]};
-export type PdfText={schema:1;processor:typeof PDF_PROCESSOR;original:OriginalRef;totalPages:number;status:'complete'|'partial';text:string;pages:(PdfPage&{start:number;end:number})[]};
+export type PdfOcr={processor:string;language:OcrLanguage;modelFiles:ReturnType<typeof ocrModelPins>;width:number;height:number};
+export type PdfPage={page:number;text:string;regions:PdfRegion[];ocr?:PdfOcr};
+export type PdfText={schema:1|2;processor:typeof PDF_PROCESSOR;original:OriginalRef;totalPages:number;status:'complete'|'partial';text:string;pages:(PdfPage&{start:number;end:number})[]};
+export function validatePdfOcr(v:PdfOcr){
+ ocrFiles(v?.language);
+ if(!v||Object.keys(v).sort().join(',')!=='height,language,modelFiles,processor,width'||v.processor!==ocrManifest.processor||JSON.stringify(v.modelFiles)!==JSON.stringify(ocrModelPins(v.language))||![v.width,v.height].every(n=>Number.isInteger(n)&&n>0&&n<=4096)||v.width*v.height>8000000)throw Error('PDF OCR metadata invalid');
+}
 export const isPdf=(a:{name:string;mime?:string;kind?:string})=>(!a.kind||a.kind==='file')&&(a.mime==='application/pdf'||/\.pdf$/i.test(a.name));
 export function makePdfText(asset:OriginalAsset,totalPages:number,pages:PdfPage[]):PdfText {
  let cursor=0;const mapped=pages.map((p,i)=>{if(i)cursor+=2;const start=cursor;cursor+=p.text.length;return {...structuredClone(p),start,end:cursor};});
- const value:PdfText={schema:1,processor:PDF_PROCESSOR,original:originalRef(asset),totalPages,status:pages.length===totalPages?'complete':'partial',text:pages.map(p=>p.text).join('\n\n'),pages:mapped};validatePdfText(value,asset);return value;
+ const value:PdfText={schema:pages.some(p=>p.ocr!==undefined)?2:1,processor:PDF_PROCESSOR,original:originalRef(asset),totalPages,status:pages.length===totalPages?'complete':'partial',text:pages.map(p=>p.text).join('\n\n'),pages:mapped};validatePdfText(value,asset);return value;
 }
 export function validatePdfText(v:PdfText,asset:OriginalAsset){
  readOriginal(asset,v?.original);
- if(!isPdf(asset)||v?.schema!==1||v.processor!==PDF_PROCESSOR||!Number.isInteger(v.totalPages)||v.totalPages<1||v.totalPages>5000||!Array.isArray(v.pages)||!v.pages.length||v.pages.length>Math.min(PDF_MAX_PAGES,v.totalPages)||v.status!==(v.pages.length===v.totalPages?'complete':'partial')||typeof v.text!=='string'||/[\uD800-\uDFFF]/u.test(v.text)||v.text.includes('\0')||v.text.length>PDF_MAX_TEXT)throw Error('PDF extraction metadata invalid');
+ if(!isPdf(asset)||![1,2].includes(v?.schema)||v.processor!==PDF_PROCESSOR||!Number.isInteger(v.totalPages)||v.totalPages<1||v.totalPages>5000||!Array.isArray(v.pages)||!v.pages.length||v.pages.length>Math.min(PDF_MAX_PAGES,v.totalPages)||v.status!==(v.pages.length===v.totalPages?'complete':'partial')||typeof v.text!=='string'||/[\uD800-\uDFFF]/u.test(v.text)||v.text.includes('\0')||v.text.length>PDF_MAX_TEXT)throw Error('PDF extraction metadata invalid');
+ if(v.schema===1&&v.pages.some(p=>p.ocr!==undefined)||v.schema===2&&!v.pages.some(p=>p.ocr!==undefined))throw Error('PDF OCR schema invalid');
+ for(const p of v.pages)if(p.ocr!==undefined)validatePdfOcr(p.ocr);
  let cursor=0;for(const [i,p] of v.pages.entries()){if(i)cursor+=2;if(p.page!==i+1||typeof p.text!=='string'||p.start!==cursor||p.end!==cursor+p.text.length||!Array.isArray(p.regions)||p.regions.length>10000)throw Error('PDF page range invalid');cursor=p.end;for(const r of p.regions)if(!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>p.text.length||!Array.isArray(r.rect)||r.rect.length!==4||r.rect.some(x=>!Number.isFinite(x)||x<0||x>1)||r.rect[2]<=0||r.rect[3]<=0||r.rect[0]+r.rect[2]>1.00001||r.rect[1]+r.rect[3]>1.00001)throw Error('PDF text region invalid');}
  if(v.pages.map(p=>p.text).join('\n\n')!==v.text)throw Error('PDF extraction text invalid');
 }
@@ -23,5 +31,5 @@ export function pdfCitationPage(v:PdfText,body:string,revision:number,start:numb
  if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||end>body.length)throw Error('Source range invalid');
  if(revision!==1||body!==v.text)return {page:1,label:'Original PDF · edited text',regions:[] as number[][]};
  const excerpt=body.slice(start,end),at=citedQuote?excerpt.indexOf(citedQuote):-1;if(citedQuote&&at>=0&&excerpt.indexOf(citedQuote,at+1)<0){start+=at;end=start+citedQuote.length;}
- const pages=v.pages.filter(p=>p.start<end&&p.end>start);if(!pages.length)return {page:1,label:'Original PDF · page unavailable',regions:[] as number[][]};const p=pages[0];return {page:p.page,label:pages.length===1?'Page '+p.page:'Pages '+p.page+'–'+pages.at(-1)!.page,regions:p.regions.filter(r=>p.start+r.start<end&&p.start+r.end>start).map(r=>r.rect)};
+ const pages=v.pages.filter(p=>p.start<end&&p.end>start);if(!pages.length)return {page:1,label:'Original PDF · page unavailable',regions:[] as number[][]};const p=pages[0];return {page:p.page,label:(pages.length===1?'Page '+p.page:'Pages '+p.page+'–'+pages.at(-1)!.page)+(p.ocr?' · OCR':''),regions:p.regions.filter(r=>p.start+r.start<end&&p.start+r.end>start).map(r=>r.rect)};
 }

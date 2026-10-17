@@ -16,13 +16,13 @@ export async function readInputOriginal(asset:OriginalAsset,policy:ReadingPolicy
  let workError:unknown;
  const tool=kind==='ocr'?'image.read':kind==='pdf'?'pdf.read':'speech.transcribe';
  try{
-  const reading=await record(tool,{source:{...originalRef(asset),name:asset.name},automatic:true,...(kind==='ocr'?{language:policy.ocrLanguage,model:policy.ocrModel}:kind==='speech'?{language:policy.speechLanguage,model:policy.speechModel}:{})},async()=>{try{
+  const reading=await record(tool,{source:{...originalRef(asset),name:asset.name},automatic:true,...(kind==='ocr'?{language:policy.ocrLanguage,model:policy.ocrModel}:kind==='speech'?{language:policy.speechLanguage,model:policy.speechModel}:kind==='pdf'?{ocrPolicy:{model:policy.ocrModel,prepared:policy.ocrReady,language:policy.ocrLanguage}}:{})},async()=>{try{
    check();if(kind==='ocr'&&(policy.ocrModel!=='tesseract-7'||!policy.ocrReady))throw Error('Image text not prepared');
    if(kind==='speech'&&(policy.speechModel!=='whisper-tiny'||!policy.speechReady))throw Error('Speech to text not prepared');
    const adapter=adapters[kind];if(!adapter)throw Error('Reader unsupported');progress(kind==='speech'?'Transcribing':'Reading');
-   const value=await adapter(asset,signal,progress);check();if(!value.text?.trim())throw Error(kind==='pdf'?'No text layer · OCR required':'No text found');
+   const value=await adapter(asset,signal,progress);check();if(!value.text?.trim())throw Error(kind==='pdf'&&!(value as PdfText).pages.some(p=>p.ocr)?'No text layer · OCR required':'No text found');
    const result={kind,id:crypto.randomUUID(),value} as ReviewedText;buildInputReadings([result],[{key:originalKey(asset.id),value:asset}]);return result;
-  }catch(e){workError=e;throw e;}},r=>({original:originalRef(asset),automatic:true,reviewRequired:false,kind:r.kind,characters:r.value.text.length,textStateHash:stateHash(r.value.text),...(r.kind==='ocr'?{processor:r.value.processor,modelFiles:r.value.modelFiles,language:r.value.language,image:r.value.image,regions:r.value.regions.length}:r.kind==='pdf'?{processor:r.value.processor,totalPages:r.value.totalPages,pagesRead:r.value.pages.length,coverage:r.value.status}:{model:r.value.model,language:r.value.language,durationMs:r.value.durationMs,segments:r.value.segments.length,scope:asset.kind==='video'?'video-audio':'audio'})}));
+  }catch(e){workError=e;throw e;}},r=>({original:originalRef(asset),automatic:true,reviewRequired:false,kind:r.kind,characters:r.value.text.length,textStateHash:stateHash(r.value.text),...(r.kind==='ocr'?{processor:r.value.processor,modelFiles:r.value.modelFiles,language:r.value.language,image:r.value.image,regions:r.value.regions.length}:r.kind==='pdf'?{processor:r.value.processor,totalPages:r.value.totalPages,pagesRead:r.value.pages.length,ocrPages:r.value.pages.filter(p=>p.ocr).map(p=>({page:p.page,...p.ocr})),coverage:r.value.status}:{model:r.value.model,language:r.value.language,durationMs:r.value.durationMs,segments:r.value.segments.length,scope:asset.kind==='video'?'video-audio':'audio'})}));
   check();return {reading,status:readingStatus(reading,false)};
  }catch(e){check();if(e!==workError)throw e;return {status:(e as Error).message||'Reading failed'};}
 }

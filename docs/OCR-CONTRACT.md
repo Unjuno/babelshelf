@@ -22,7 +22,7 @@ The product path supports attach/open PNG or JPEG → Read text → review → U
 
 The raw image record is eligibility metadata during current OCR grounding; later prose edits to its canonical note are excluded from OCR evidence. Every selected readable file must fit at least one excerpt in the tokenizer budget, otherwise generation refuses. Changed/withdrawn current inputs are checked before and after generation. Explicitly selected earlier dialogue messages take precedence over current attachments. New-note requests are routed normally; attachment-derived capture content is generated from verified excerpts and shown for review, never copied from the planner's invented factual body. See INPUT-READINGS.md.
 
-Scanned PDF OCR remains separate from this image reader. General scene understanding, video frames and unsaved OCR work surviving reload before Send remain pending.
+Scanned PDF pages now share the pinned raster recognizer through the PDF adapter; see PDF-CONTRACT.md. They retain the original PDF/page identity rather than creating an image original. General scene understanding, video frames and unsaved OCR work surviving reload before Send remain pending.
 
 ## Licenses and evidence
 

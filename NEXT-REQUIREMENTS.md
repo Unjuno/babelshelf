@@ -17,7 +17,7 @@ The accepted UI uses the existing canonical IndexedDB store. Memory, preferences
 
 Remaining work must preserve the full product objective:
 
-1. Scanned PDF OCR, general image/video-frame understanding and verified video-container timing; retain originals, bounded coverage and processor provenance. Current OCR Japanese sample contains errors.
+1. Prepared empty-page PDF OCR is connected; broad scanned-layout fidelity, general image/video-frame understanding and verified video-container timing remain open; retain originals, bounded coverage and processor provenance. Current OCR Japanese sample contains errors.
 2. Decision and compatible custom model/runtime adapters require their own pinned artifacts, compatibility and license verification. Candidate registration is not execution support; no provider/cloud fallback.
 3. Generic settings/tools/tasks model edits require typed reviewed patches and exact expected versions. Current semantic ordinary-note correction is source-only; attaching a file does not expand its factual rewriting authority.
 4. Broader multilingual relevance/semantic accuracy, large archives/history retention, divergent-history reconciliation and storage pressure. Current bounded tests are not universal accuracy/capacity evidence.
