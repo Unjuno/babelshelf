@@ -5,7 +5,7 @@ import {emptyDialogue,appendTurn} from '../src/conversation.ts';
 import {prepareCorrection,applyCorrection} from '../src/note-corrections.ts';
 import {formatTask,taskDefinition} from '../src/task-records.ts';
 import {formatPreference} from '../src/preference-records.ts';
-import {makeStateBackup,parseStateBackup,planStateRestore,stateHash} from '../src/backup-state.ts';
+import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeStateBackup} from '../src/backup-state.ts';
 
 const snapshot=()=>({notes:[createNote({path:'Inbox/原文.md',body:'水 Water 3L 🌳'})],settings:[{key:'ui-v1-dialogue',value:appendTurn(emptyDialogue(),{id:'t1',user:'Remember the exact original',answer:'Retained'})},{key:'ui-v1-folders',value:['Notes/日本語']},{key:'ui-v1-trash',value:[]}],runs:[]});
 const empty=()=>({notes:[],settings:[],runs:[]});
@@ -52,4 +52,7 @@ test('backup rejects unsupported structured-clone values, duplicate keys, invali
  const duplicates=snapshot();duplicates.settings.push(duplicates.settings[0]);await assert.rejects(makeStateBackup(duplicates),/duplicate/i);
  const broken=snapshot();broken.settings[0].value.turns[0].refs=[{noteId:'missing',revision:1,start:0,end:1,quote:'x'}];await assert.rejects(makeStateBackup(broken),/source/i);
  const orphan=snapshot();orphan.runs=[{key:'ui-v1-correction-x',value:{schema:1,type:'note-correction',id:'x',noteId:'missing'}}];await assert.rejects(makeStateBackup(orphan),/correction/i);
+});
+test('export refuses a file beyond its readable UTF8 byte budget before offering an unusable backup',()=>{
+ const payload={text:'日本語'.repeat(30)},encoded=JSON.stringify(payload);assert.ok(encoded.length<200);assert.throws(()=>serializeStateBackup(payload,200),/large/i);assert.equal(serializeStateBackup(payload,1000),encoded);
 });

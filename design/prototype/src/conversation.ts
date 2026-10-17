@@ -2,8 +2,9 @@
 // @ts-expect-error Shared baseline is JavaScript.
 import {parseJSON,parseAnswer,searchNotes} from '../../../dist/core.js';
 import type {TextToolReceipt} from './text-transform';
+import type {OriginalRef} from './original-assets';
 export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;title?:string};
-export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];attachments?:{id:string;name:string;kind:string;status:string}[]};
+export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef}[]};
 export type Dialogue={schema:1;revision:number;turns:DialogueTurn[];compaction:{through:number;summary:string}|null};
 export type DialogueContext={summary:string;recent:DialogueTurn[];refs:SourceRef[];turnCount?:number;lastAnswerIndex?:number;recalled?:{turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number}[]};
 export type ChatEngine={manifest:{contextTokens:number};count:(m:any[])=>Promise<{prompt_tokens:number}>;generate:(m:any[],maxTokens?:number)=>Promise<{text:string;stopped?:boolean}>};

@@ -10,6 +10,7 @@ import {parsePreference,preferenceGroup,formatPreference} from './preference-rec
 import {parseTask,taskRunView,noticeView} from './task-records.ts';
 import {prepareCorrection} from './note-corrections.ts';
 import {memoryFolderPath} from './memory-paths.ts';
+import {validateOriginalLinks} from './original-assets.ts';
 
 export type Entry={key:string;value:any};
 export type StateSnapshot={notes:any[];settings:Entry[];runs:Entry[]};
@@ -17,6 +18,9 @@ export type StatePayload={schema:1|2;createdAt:string;notes:any[];settings?:Entr
 export type RestoreConflict={store:'notes'|'settings'|'runs';key:string;label:string};
 export type StateRestorePlan={conflicts:RestoreConflict[];added:{notes:number;settings:number;runs:number};writes:StateSnapshot|null};
 const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments'];
+export const MAX_BACKUP_BYTES=200000000;
+function checkBackupText(text:string,limit=MAX_BACKUP_BYTES){if(text.length>limit||new TextEncoder().encode(text).byteLength>limit)throw Error('Backup too large · 200 MB limit');return text;}
+export function serializeStateBackup(pack:unknown,limit=MAX_BACKUP_BYTES){return checkBackupText(JSON.stringify(pack),limit);}
 const equal=(a:unknown,b:unknown)=>stateHash(a)===stateHash(b);
 function encode(value:any){const undefinedPaths:string[][]=[];
  const walk=(v:any,path:string[]):any=>{if(v===undefined){undefinedPaths.push(path);return null;}if(Array.isArray(v))return v.map((x,i)=>walk(x,[...path,String(i)]));if(v&&typeof v==='object'){const out=Object.create(null);for(const [key,item] of Object.entries(v))out[key]=walk(item,[...path,key]);return out;}return v;};
@@ -39,7 +43,7 @@ function sourceRefs(notes:any[],refs:unknown){
  if(!Array.isArray(refs)||!validateRefs(notes.map(n=>({...n,state:'active'})),refs).ok)throw Error('Invalid backup source reference');
 }
 function validateState(state:StateSnapshot){
- jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);
+ jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);
  for(const n of state.notes){const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
@@ -60,10 +64,10 @@ function validateState(state:StateSnapshot){
   if(r.status==='undone'&&(!Number.isInteger(r.undoVersion)||r.undoVersion<=r.afterVersion||n.revisions[r.undoVersion-1]?.body!==before.body||typeof r.undoneAt!=='string'))throw Error('Invalid correction Undo');
  }
 }
-export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]};return {format:'mobile-local-brainpack',sha256:stateHash(payload),payload};}
+export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]},pack={format:'mobile-local-brainpack',sha256:stateHash(payload),payload};serializeStateBackup(pack);return pack;}
 export async function parseStateBackup(text:string):Promise<StatePayload>{
- if(text.length>200000000)throw Error('Backup too large');const pack=JSON.parse(text);
- if(pack.payload?.schema===1)return parseBackup(text);
+ checkBackupText(text);const pack=JSON.parse(text);
+ if(pack.payload?.schema===1){const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset))throw Error('Originals require state backup');return legacy;}
  if(pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed');
  const payload=structuredClone(pack.payload),paths=payload.undefinedPaths;
  if(!Array.isArray(paths)||paths.length>200000)throw Error('Invalid optional value encoding');const seen=new Set<string>();

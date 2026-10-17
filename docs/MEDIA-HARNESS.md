@@ -2,9 +2,21 @@
 
 ## Scope
 
-The prototype now previews multiple local attachments, reads UTF-8 TXT/Markdown up to 1 MiB, displays images and offers browser-native audio/video playback. It preserves attached originals alongside sent input for the current session. It does not persist, index, transcribe, OCR, analyze media or run models. Media capability statuses stay Not prepared; unknown formats and PDF extraction are Unsupported. Browser codec support still determines playback.
+The accepted product now persists submitted originals, their Markdown projections and the input turn atomically in the existing database. It reads bounded UTF-8 TXT/Markdown, displays images and offers native audio/video playback after reopening. Local Bonsai can use the actual stored text/source ranges; image/audio/video content extraction is still Not prepared. Unknown formats and PDF extraction remain Unsupported. Playback success is independent from transcription/OCR/model understanding, and codec support depends on the browser. The earlier transient descriptions below are historical design notes.
 
-## Production record contract (not integrated)
+## Current original storage
+
+Explicit Send prepares immutable original records in the existing runs store under ui-v1-original-ID. Each contains schema/type, stable ID, revision1, original name, MIME, kind, byte count, SHA-256, timestamp and bounded base64 bytes. No database version reset, cross-database half-commit, runtime download or upload is involved. File chooser selection alone remains transient. Original records, new canonical notes and expected-dialogue append commit in one notes/settings/runs transaction; stale input, duplicate IDs or path collisions abort all writes.
+
+Memory/Files is the existing Attachments projection. Every original has a canonical Markdown record with the same ID and an originalAsset reference. TXT/MD up to1MiB use fatal UTF-8 TextDecoder processing (including its normal BOM handling); the raw original bytes stay exact. attachmentText records processor utf-8-textdecoder-v1, exact asset ID/revision/hash, full byte coverage and canonical noteRevision1. Binary/unreadable originals have an empty first body and do not contribute invented searchable evidence. Validation always checks the original first body and required presence/absence of this provenance; later explicit corrections append revisions and do not alter that original projection.
+
+Input descriptors keep the stable asset reference. After reopening, previews resolve originals lazily and verify identity/size/hash before creating a session object URL. Memory Open original and the opened source sheet use the same original. Save original downloads its exact bytes. Preview/navigation epochs prevent obsolete asynchronous reads reopening a closed sheet; pending removals are disabled during submission, and revoked URLs cannot be reused as cache hits. Older descriptors without durable originals remain Preview unavailable and require reselection; no bytes are fabricated to migrate them.
+
+Current budgets:32MiB/file,64MiB per pending batch,16 attachments; text decoding1MiB. These are bounds, not phone memory/performance guarantees. SVG/HTML/XML are opaque files with no active document preview. Previewing is not an execution permission. Withdrawing a file retains its original for history/Trash and existing input references; no silent purge or storage reclamation is performed.
+
+Schema2 brainpacks include these namespaced original records and verify the inner raw-byte hashes as well as outer checksum/provenance. Model/runtime assets and unsent originals remain excluded. Export and import share a200MB UTF-8 file budget; oversized export fails before offering an unrestorable file. Partitioned/streaming archives and explicit storage reclamation remain required for larger collections. See BACKUP-CONTRACT.md.
+
+## Remaining derived-media contract
 
 An original asset needs stable ID, immutable revision, MIME/size/hash, original name and local blob storage identity. Derived representations reference the exact asset revision, extractor/model revision, processed ranges and partial/error status. Text locations use explicit offset encoding; PDF locations use pages and normalized regions; audio/video use start/end milliseconds and optional frame/region. A corrected transcript adds a revision; prior summaries keep their original dependency identities and can be marked stale.
 

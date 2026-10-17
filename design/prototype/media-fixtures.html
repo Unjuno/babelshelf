@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Local media test fixtures</title><body><h1>Local media test fixtures</h1><button id="create">Create fixtures</button><div id="results"></div><script type="module">
+// Public synthetic source files for storage/playback tests, never inference results.
+const result=document.querySelector('#results');
+document.querySelector('#create').onclick=async()=>{try{
+ const add=(label,name,blob)=>{const a=document.createElement('a');a.textContent=label;a.download=name;a.href=URL.createObjectURL(blob);a.style.display='block';result.append(a);};
+ const canvas=document.createElement('canvas');canvas.width=320;canvas.height=180;const ctx=canvas.getContext('2d');
+ function draw(value){ctx.fillStyle='#126b5a';ctx.fillRect(0,0,320,180);ctx.fillStyle='#ffffff';ctx.font='24px sans-serif';ctx.fillText('LOCAL QA '+value,60,96);}draw(0);
+ add('Download image','original-qa-image.png',await new Promise(resolve=>canvas.toBlob(resolve,'image/png')));
+ const rate=8000,length=rate,bytes=new ArrayBuffer(44+length*2),view=new DataView(bytes),text=(at,value)=>{for(let i=0;i<value.length;i++)view.setUint8(at+i,value.charCodeAt(i));};
+ text(0,'RIFF');view.setUint32(4,36+length*2,true);text(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,rate,true);view.setUint32(28,rate*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);text(36,'data');view.setUint32(40,length*2,true);for(let i=0;i<length;i++)view.setInt16(44+i*2,Math.round(Math.sin(2*Math.PI*440*i/rate)*6000),true);
+ add('Download audio','original-qa-audio.wav',new Blob([bytes],{type:'audio/wav'}));
+ const stream=canvas.captureStream(8),type=MediaRecorder.isTypeSupported('video/webm;codecs=vp8')?'video/webm;codecs=vp8':'video/webm',recorder=new MediaRecorder(stream,{mimeType:type}),chunks=[];
+ recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};let frame=0;const animation=setInterval(()=>draw(++frame),125);
+ const stopped=new Promise(resolve=>recorder.onstop=resolve);recorder.start();setTimeout(()=>recorder.stop(),1200);await stopped;clearInterval(animation);stream.getTracks().forEach(t=>t.stop());
+ add('Download video','original-qa-video.webm',new Blob(chunks,{type:'video/webm'}));result.append(document.createTextNode('Fixtures ready · locally generated image, tone and video; no model used.'));
+}catch(e){result.textContent='FAIL · '+e.message;}};
+</script></body></html>

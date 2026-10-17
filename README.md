@@ -4,7 +4,7 @@ A smartphone-oriented, local knowledge interface inspired by GBrain. Stored know
 
 **The usable offline MVP is not complete.** Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
 
-Local backup now includes canonical records, original dialogue, folder/Trash metadata and correction receipts in an atomic schema2 snapshot. Restore previews conflicts and refuses stale or conflicting full-state writes. Model/runtime assets and unpersisted attachment originals are excluded; divergent destination data still needs manual reconciliation. See [BACKUP-CONTRACT.md](docs/BACKUP-CONTRACT.md).
+Local backup now includes canonical records, original dialogue, folder/Trash metadata, correction receipts and newly persisted attachment originals in an atomic schema2 snapshot. Restore previews conflicts and refuses stale or conflicting full-state writes. Model/runtime assets and unsent/legacy unpersisted originals are excluded; divergent destination data still needs manual reconciliation. Current backup files are bounded to200MB; larger collections require future partitioned export. See [BACKUP-CONTRACT.md](docs/BACKUP-CONTRACT.md).
 
 Continuous Input now persists local dialogue and passes prior context to routing and answering. Long history is compacted with the same local model, retaining original turns and bounded original-excerpt recall. See [CONVERSATION-CONTRACT.md](docs/CONVERSATION-CONTRACT.md). Canonical foreground task/event integration is described in [SCHEDULE-CONTRACT.md](docs/SCHEDULE-CONTRACT.md); whole-MVP acceptance remains pending.
 
@@ -79,6 +79,6 @@ See [measured results and outstanding gates](docs/TEST-RESULTS.txt). Node/source
 
 No model weights, downloaded inference runtime, private user notes or credentials are included. Baseline notes/settings are in IndexedDB and model/runtime assets in OPFS. The third-party inference runtime's redistribution license remains unresolved. No deployment is performed by this handoff.
 
-Attachment/decision processing contracts and current UI limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Multi-attachment preview can read bounded TXT/MD originals; media analysis and persistent asset storage remain unconnected.
+Attachment/decision processing contracts and current limits: [MEDIA-HARNESS.md](docs/MEDIA-HARNESS.md). Explicit Send stores original bytes, canonical projections and input atomically; reopening resolves verified originals without file reselection. TXT/MD decoding and raw byte provenance are connected. OCR/transcription/video understanding remain unprepared; native playback does not imply model understanding.
 
 Browser storage is origin-specific: 4173, 4180 and 4181 do not automatically share IndexedDB. Use local backup/restore to transfer between origins. The adapter uses the existing mlb-memory-v1 schema without clearing it. The 4180 development server now serves repository source, not the older outputs copy.
