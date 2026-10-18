@@ -1,118 +1,39 @@
-# Current requirements and next work — 2026-10-17 JST
+# Current requirements and next work
 
-Current implementation/evidence summary: [MVP acceptance ledger](docs/MVP-ACCEPTANCE.md). Historical entries below retain scope and supersession details; the whole goal remains active.
+Updated 2026-10-18 JST. The whole MVP goal is incomplete. Preserve the latest user instructions and accepted UI; do not restart the historical model comparisons or rebuild already connected features as preview state.
 
-The accepted specification is [docs/PRODUCT-SPEC.md](docs/PRODUCT-SPEC.md). It supersedes the earlier bottom-toggle UI brief and chronological design notes.
+## Read in this order
 
-## Current handoff after Unit58
+1. [Accepted product/UI behavior](docs/PRODUCT-SPEC.md).
+2. [Current evidence and exact build scopes](docs/MVP-ACCEPTANCE.md).
+3. [Remaining gates](docs/REMAINING-GATES.md).
+4. [Implementation map](docs/IMPLEMENTATION-PLAN.md), the relevant operation contract, and [original test results](docs/TEST-RESULTS.txt).
 
-Model-independent work has superseded the historical Unit31 source-rescue approach below. Unit34/45 share a local inference port with Stop and model/runtime revision lifecycle guards; this is not arbitrary custom-model compatibility. Unit35 implements finite reviewed appearance/model-selection settings patches; Tools definition model edits remain pending. Unit42/43 make folder rename and delete/Trash recovery atomic with canonical note/history metadata. Unit44 exposes selected-revision Markdown downloads separately from full-state brainpacks.
+Historical unit notes and research reports are observations at their recorded build, not current requirements. Earlier versions of this handoff remain in Git history; detailed failures remain in TEST-RESULTS.txt and research/.
 
-Unit46 confirms current-build PC offline-context capture/reopen/Japanese search/source/direct edit/history/TXT+MD import/reindex/backup/conflict refusal without inference. Unit47 separates read-only speech startup status from processing busy state; pending speech-worker exclusion and real prepare/transcribe locks remain. Controlled regressions and one immediate native offline-reopen search pass; broader startup timing/device acceptance remains open. Unit49/55 subsequently add bounded PC process-restart storage/inference evidence; physical devices, broader media/custom adapters and semantic quality remain open. Keep the full objective and historical failures below; see TEST-RESULTS.txt for exact scope.
+## Connected implementation
 
-Unit48 replaces incidental Latin bigram matching with complete words/codes while preserving non-Latin grams and exact source excerpts. Current PC offline code lookup returned1instead of4; see [SEARCH-CONTRACT.md](docs/SEARCH-CONTRACT.md) for bounds. This does not close broad multilingual semantic accuracy or capacity gates.
+The native product entry shares the accepted UI with a canonical IndexedDB adapter. Notes, settings, tasks, executions, notifications, folder/Trash metadata, dialogue and processing receipts persist locally. The Markdown hierarchy is a projection; explicit exports and backups create separate local files.
 
-Unit49 adds a reproducible [desktop process-restart storage check](docs/OFFLINE-PROCESS-CHECK.md): three actual Chrome PIDs, two offline-context restarts, persisted capture/import/search/correction/history/reindex and backup/conflict/no-op restore. This closes that bounded PC storage flow only; Unit55 subsequently adds a bounded prepared4B offline-process restart. Installed-PWA/OS-isolated/mobile and all-function acceptance remain open.
+Natural input connects capture/search/read/answer/summary, retained dialogue/compaction and reviewed corrections. Exact generated-answer Save does not regenerate. Shared source/record checks refuse stale approvals and unapproved overwrites. Source correctness and semantic intent still have known failures; one successful generated answer is not general reliability.
 
-Unit50 fixes retained running executions showing Paused after their local owner closes. Schedule now shows canonical Running and Check execution; existing lease/Interrupted/explicit Retry authority stays unchanged. PC offline UI verified same-file edits, actual interruption/unprepared failure, pinned notification history and event-only deletion. This adds no successful generation, closed-PWA execution or device guarantee.
+Actual PC evidence exists for Bonsai4B, local Whisper tiny, Tesseract OCR, PDF text/prepared empty-page OCR and video audio transcription. Automatic Send uses only prepared readers. Original bytes, derived results and source locations are distinct. Video frames/general image understanding and decoded-audio-to-video time alignment are unsupported.
 
-Unit51 makes reviewed file creation single-flight through canonical commit and conversation acknowledgement. A post-commit dialogue conflict opens the saved file with a specific warning instead of leaving a retryable New file form; a failed canonical commit retains the draft. Actual two-tab/duplicate-submit/path-conflict and updated offline-process flow passed on PC. Source validation and no-overwrite CAS remain unchanged.
+Text, Decision and Speech registration/preparation are independent. Bonsai4B remains the default; approved additional local adapters do not silently replace it. Optional Open d1-omni-600M supports connected text decisions only. Catalog entries or custom files do not establish engine compatibility or execution. See [custom model contract](docs/CUSTOM-MODELS-CONTRACT.md).
 
-Unit52 shares an IME-aware Enter policy between baseline and product, preventing legacy229 boundary events from submitting while preserving Shift+Enter and explicitSend. Node and native synthetic-event/persistence controls pass; actual OS/phone keyboards remain an acceptance gate.
+Bundled tools execute validated code and expose SKILL.md/source identity. Custom definitions and external MCP remain inactive; the file itself never grants execution/network permission. See [tool packages](docs/TOOL-PACKAGES.md).
 
-## Accepted interface
+## Next work and limits
 
-- One natural-language input/results surface, compact photo/voice/Send controls; no sessions, branding header, sidebar, hamburger or bottom tabs.
-- Upper-left glass Input button. Touch/pen tap returns to Input. Mouse/trackpad click opens a persistent menu, a destination click selects, and clicking Input again returns to Input. A touch/pen 50ms hold reveals a curved Memory / Schedule / Notifications / Settings menu; slide and release selects. Stationary release closes the menu and returns to Input. Touch/pen has no release-then-tap menu; mouse navigation intentionally stays open after click. Keyboard/screen-reader alternatives remain.
-- Memory starts at Home: Inbox, Notes, Files. Navigate folders and breadcrumb ancestors. Internal Schedule/Notifications storage is visible only on explicit upper-level navigation.
-- Protected storage roots, at most five stored folder levels, direct correction and retained history. Home is a display grouping; Files labels Attachments.
-- English controls, multilingual content, readable text, large targets, glass model-choice sheets, no instructional paragraphs.
-- Separate Text and Decision role selection/preparation. Bonsai 2 4B/2B retained; Open d1 Omni 600M/3B are decision candidates, not installed runtimes.
+- Complete Android/iPhone physical PWA acceptance and OS-disconnected cold restart when the devices/environment are available. PC standalone/browser-offline and synthetic touch/media remain separate evidence.
+- Resolve the pinned WebML runtime's own redistribution provenance. Model Apache-2.0 and dependency MIT are not a runtime grant. No publishing or redistribution is authorized here.
+- Address concrete normal-use semantic failures structurally. Do not resume broad model/prompt benchmarking, tune until a fixture passes, fabricate inference or silently select another provider.
+- Verify actual quota/eviction/interruption behavior. The controlled abort tests and ineffective CDP quota override are not real capacity-failure evidence. Do not alter global disk policy or purge knowledge/assets.
+- Keep the documented200MB backup bound, add-only conflict rules and reviewed recovery scope explicit. Streaming/partitioned archives and arbitrary divergent-history/dialogue reconciliation remain absent.
+- Keep foreground scheduling and in-app notifications truthful. Closed/suspended-PWA wakeup or offline OS delivery is not guaranteed.
 
-## Current integration and remaining gates
+Use [REMAINING-GATES.md](docs/REMAINING-GATES.md) for evidence needed and [IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) for flow-level checks. Fix a concrete unmet requirement or demonstrated defect; do not repeat passing samples or add tests merely to increase counts.
 
-The accepted UI uses the existing canonical IndexedDB store. Memory, preferences, foreground schedules/execution records/notification events, continuous dialogue, reviewed ordinary-note correction/Undo, durable originals and full-state brainpacks are connected. Local Bonsai 4B, Whisper tiny, PDF text layers and PNG/JPEG OCR have scoped PC browser evidence in docs/TEST-RESULTS.txt. Unit18 adds reviewed image/PDF Use text and atomic Send alongside TXT/MD, with canonical source marks; see docs/INPUT-READINGS.md. Unit19 adds automatic prepared image/PDF/audio/video-audio reading on Send, with truthful extraction/coverage status and the same atomic storage. The projection is not disk-backed Markdown files.
+## Invariants
 
-Remaining work must preserve the full product objective:
-
-Historical Unit31 (superseded by Unit32 normal dispatch) passed the ordinary retained-context first-code -> anaphoric split -> exact reviewed new-note Save/reload/Memory lookup/backup-restore flow on PC6175aef41bab4fb2. The planner still proposes old14/user; a separate actual4B competing-speaker decision selects latest84/assistant before the original-only deterministic operation. See research/evaluations/subject-original.md. This is not universal chronological/semantic accuracy: the broader resolver failed an older-assistant control and is not used for same-speaker chronology. Capture remains unchanged. Keep all other whole-goal gates below.
-
-Unit29's same-weight official CPU reference reproduces all four retained WebGPU outputs/counts, including wrong old-subject selection. See research/evaluations/reference-cpu.md. Do not assume these failures prove a WebGPU-only defect or change app providers/engines on that basis. Those matching observations did not themselves fix ordinary source binding or prove broad numerical parity; Unit31 above adds the separately tested recovery.
-
-Unit30 verified the approved2B asset and actual PC WebGPU generation/offline-resource reload/Stop, but its first-message, crowded routing, JSON and literal-split controls fail. See research/evaluations/bonsai-2b.md. Normal selection stays4B; Unit30 did not repair source binding. The comparison route model selector is diagnostic only, not a new normal routing policy or evidence of broad2B task/media/device acceptance.
-
-Compaction transport now avoids application-added recursive escaping, with three actual public4B comparison cycles retained in research/evaluations/compaction-carry.md. Exact line-break and broader semantic retention still fail in that sample; no summary repair or whole-MVP completion follows from the transport fix.
-
-Immediate reproduction: Unit27 offline normal first-message code recall succeeded, but the next Japanese two-line transform selected recall/index13/user from a similar archived instruction and echoed the current request. D1's transform classification deferred correctly; Bonsai's action/target choice failed. Original82turns and all records remain. Address this current-versus-archived-intent ambiguity using public synthetic fixtures and normal integration; do not erase the failure or infer a fix from isolated operation-selection success.
-
-Unit28 separates the current request and adds common audited text.inspect after indexed recall/transform. Native5ca first-message recall/read/answer succeeded, but identical follow-up STILL selected old13/user and split that instruction at a comma. All84turns remain; no wrong result was saved as a note. This historical failure precedes the Unit31 recovery above.31 public actual4B comparisons include failed stronger/concise prompts, standalone intent, explicit numeric indices, target-only and relative/role selectors. Do not deploy those failed alternatives or declare source selection fixed. Preserve source-safe deterministic operations; next investigation must account for actual normal-context failures rather than tune only the small public fixture. Compatibility/numerical/template limits and broader semantic fidelity remain unproven as documented.
-
-1. Prepared empty-page PDF OCR is connected; broad scanned-layout fidelity, general image/video-frame understanding and verified video-container timing remain open; retain originals, bounded coverage and processor provenance. Current OCR Japanese sample contains errors.
-2. Decision and compatible custom model/runtime adapters require their own pinned artifacts, compatibility and license verification. Candidate registration is not execution support; no provider/cloud fallback.
-3. Existing registered local-zone tasks use typed reviewed patches and whole-record expected snapshots, shared cursor semantics and atomic receipts/Undo. New natural-language tasks use bounded typed proposals/clarification and editable review, stable creation identity and paused Save; broader date/prompt/language fidelity remains under evaluation. Finite managed appearance/registered-selection settings patches are implemented in Unit35; Tools model edits remain pending. Ordinary-note semantic correction remains source-only; attaching a file does not expand its factual rewriting authority.
-4. Broader multilingual relevance/semantic accuracy, large archives/history retention, divergent-history reconciliation and storage pressure. Current bounded tests are not universal accuracy/capacity evidence.
-5. Physical Android/iPhone touch, microphone/camera, GPU/resource limits and accessibility. PC browser and simulated phone frame are separate evidence.
-6. Installed-PWA/OS-isolated restart across every normal function remains open. Unit49/55 prove bounded actual PC browser-process storage and approved4B flows with context offline before navigation; this is broader than a fresh tab but not all-function/device acceptance. Closed-PWA timed execution/OS notification delivery is not guaranteed.
-
-## Evidence boundaries
-
-Run baseline Node/Markdown, prototype tests/build, product-shell tests and protected-runtime checks separately. Actual browser storage, actual model generation and physical-device results must name their build and scope. Never clear existing databases, use mock inference as acceptance or mark the whole MVP complete while required gates remain unverified. Historical bwrap/no-adapter results remain historical environment results, not evidence against Bonsai.
-
-
-- Optional Open d1 Omni 600M now has a pinned isolated local text-decision adapter, with explicit preparation, native WebGPU execution and worker lifecycle. See [DECISION-CONTRACT.md](docs/DECISION-CONTRACT.md). Text graph preparation does not install media encoders, and finite decisions do not authorize writes. Selected prepared D1 now classifies current intent in ordinary Send; bounded read-only routes can proceed directly, while structured and context-dependent retrieval requests retain Bonsai planning. Full context, source validation and approval stay in the harness; phone/full offline acceptance remains open.
-
-## Latest direction: model-independent harness
-
-Unit32 replaces normal Unit31 A/B re-selection with harness-owned current-result identity and typed current/history targets. Continue toward canonical-file/task working targets and model/runtime adapter boundaries. Real-model tests prove integration/load/generation/Stop/offline compatibility and representative flows; do not center development on Bonsai prompt-variant benchmarking. All broader MVP/device gates remain open.
-
-## Opened-file working target
-
-Unit33 implements persisted currentFile ID/version, serialized focus writes, typed file targets and scoped source/Before-After correction dispatch. Keep generated-output selection distinct; source eligibility, protected-system edit limits and whole-record CAS remain. Continue with model-independent runtime adapter extraction, general semantic-operation scope, typed settings/tools edits and remaining media/storage/device gates. Do not treat this increment as the full MVP.
-
-
-Unit53: shared local inference now binds model/runtime/context/cancellation across count-to-generation operations. Compaction/planning/grounding use it through the adapter. Model-independent lifecycle control; not a model quality benchmark, arbitrary engine compatibility or full-Send transaction. Physical-device and inference-inclusive offline acceptance remain open.
-
-
-Unit54: ordinary Send shares its loaded text pin through compaction/planning/proposals/answers; literal capture/search/read remain model-free. This extends Unit53 per-operation binding across text stages, not across Decision/media or canonical storage commits. Full/device/inference-inclusive offline acceptance remains pending.
-
-
-Unit55 adds actual approved4B Answer/source/exactSave plus offline-before-navigation browser-process reload/Summary/source/Stop/Unload/reload evidence on Unit54 build. No app/prompt changes or model benchmark. One requested quotation was absent from answerbody (source valid); preserve this fidelity limit. PC headless context-offline is not installed/physical-device or all-function offline acceptance. See MODEL-RUNTIME-VERIFICATION.md/TEST-RESULTS.txt for the final-backup script locator error and corrected export.
-
-
-Unit56 verifies current-model-independent Send natural opened-file correction through automaticload/context/planning/source/proposal, reviewedapprovalv3, offlineprocessreopen, historicalv2citation and append-onlyUndov4 onPC. No app/promptchange or benchmark; broaderlanguage/device/all-function gates stay open. README/currenthandoff now distinguish supersededUnit31 rescue and newer process/settings evidence.
-
-
-Unit57 verifies currentproduct actual4B paused-task manualforeground success afterofflineprocessstart, currentv4citation/modelpins, exactnotice result, read/event-onlydelete and laterofflineprocess completion/no-replay retention. Interactive dialogue/priornotes unchanged. No app/promptchange, timed/closedPWA/OSnotification or physical-device claim.
-
-
-Unit58 adds actual preparedOCR/PNGoriginal/extractedv1/search/current4Banswer/originalregion/download/identicalbackuprestore and laterofflineprocess preview evidence. New languageassets acquired only through explicitSettingsPrepare; laternormalflow policyOFF. Englishprintedfixture, notgeneralvision/physicalcamera/device/allmediaacceptance. No app/promptchanges.
-
-## Latest custom-model direction (Units59–61)
-
-Users may bring locally trained/fine-tuned models. Shared strict model declarations, bounded GGUF inspection, cancellable streaming SHA256 and canonical registry/backup preservation are implemented. The worker now has unloaded-only registry configuration and local-only custom GGUF preparation/load through the fixed Qwen3.5 runtime, with independently verified metadata/bytes and no custom URLs/code/runtime permission. Generic ONNX/other architectures and additional general text engines are not implemented. Product Add-model import/review/hook synchronization and custom selection remain the immediate next connection work; do not call custom models usable from Settings yet. Keep the accepted UI/default4B, and distinguish prepared bytes from actual execution/device compatibility. See CUSTOM-MODELS-CONTRACT.md.
-
-## Unit62: custom text-model product path connected
-
-Supersedes previous immediate UI/hook pending item: native Add text model > Choose local model > cancellable inspect > review/Add now connects fixed-runtime worker preparation and canonical registry/library/selection. Persisted selection/hydration and normal Send actual generation passed after offline process restart on PC. Missing assets still require explicit local Import files; no automatic custom acquisition. Additional general-purpose engines, custom Decision/ASR/ONNX graphs, broader fine-tuned compatibility and device/all-feature acceptance remain open. Keep goal active; do not equate one imported official4B file with arbitrary model support.
-
-## Unit65 process-offline media evidence
-
-PreparedWhispertiny/ASR, PDFtext+preparedOCR, original previews and a PDF-grounded actualBonsai answer/save now passed separate offline process starts in the maintained QAprofile with olddata retained. No productbehavior changes. This narrows the earlier missing media cold-start evidence; still open: fulloriginal-rich fresh-profile recovery, video-specific coverage/device tests, broadquality/storage cases and runtime licensing. Do not mark fullMVP complete from this PC sample; see detailed TEST-RESULTS.
-
-## Latest user model policy (2026-10-18)
-
-The user explicitly permits other local models; the earlier Bonsai-only/provider restriction is superseded for evaluating and adding local alternatives. This does not authorize cloud/LAN inference, implicit downloads or silently replacing a user's existing selection. Preserve current defaults until an explicit preparation/selection flow changes them.
-
-Prioritize a usable initial capability set, not further Bonsai-only testing. Initial preparation must account for text, local speech-to-text and OCR; distinguish OCR from general image/video understanding. Decision remains a separate optional role and must not stand in for missing media readers. Current runnable adapters: fixedQwen3.5GGUF text, pinnedWhispertiny, pinnedTesseract, experimentalD1text. Catalog entries Whisperbase/D1-3B are not connected execution paths. Additional text engines/models require explicit runtime/tokenizer/template/asset/license compatibility checks. Investigate supported local alternatives and coherent initial preparation with total sizes, explicit network permission and separate registered/filesverified/loaded states. Do not claim arbitrary custom models or multimedia understanding from candidate listings.
-
-## Unit66 initial preparation connected
-
-Models/Initial preparation now reviews selectedtext +unsetWhispertiny/OCR, sizes/readiness, explicitconnectionpermission, sequentialverification/Stop and atomicfinalmodelchoices. ActualnativeStop/retry/offlineUse passed while preserving a selectedcustomtextmodel. See INITIAL-PREPARATION.md. This addresses initial role setup; alternative general text-engine/model support beyond currentQwen3.5GGUF remains an implementation priority, not a completed capability. Existingmodel/knowledgechoices remain.
-
-Additional local text engine (Unit67 foundation): latest human direction explicitly permits non-Bonsai local models. Official SmolLM2 360M Instruct ONNX assets are pinned and independently downloaded/verified, with a cancellable asset-store foundation. This is not yet registered runtime support. Complete worker, common-port routing, Add model/initial-preparation integration and actual browser offline/Stop checks; preserve defaults. See docs/ADDITIONAL-TEXT-ENGINE.md.
-
-Unit68 supersedes the Unit67 worker/UI pending item: a second fixed ONNX text engine is connected through TextRuntime and Add model/initial preparation, with local import and explicit-only preparation. PC offline real generation and native load/Stop/reload passed. SmolLM2 360M normal Send failed structured routing (Invalid model JSON), so model suitability and a useful multilingual alternative remain open. Do not treat engine lifecycle success as harness/model quality acceptance. General custom ONNX remains separate. See docs/ADDITIONAL-TEXT-ENGINE.md.
-
-Unit69: optional structured token decoding is connected for the fixed ONNX adapter. Actual tokenizer's byte mapping integration defect was fixed and an offline normal turn now reaches a syntactically valid answer, but the360M model replied only"..."; this is not sufficient model/harness quality. Keep defaults and original failedturns. Do not claim instruction/template loss (actual731-token prompt preserved), or completion based on constrained JSON. See docs/STRUCTURED-GENERATION.md and Unit69 TEST-RESULTS.txt. Select/evaluate a useful multilingual alternative or strengthen the general harness without guessed actions/answers.
-
-Unit70: bounded original-rich fresh-profile Restore new now passed on PC, including exact originals/derivedlinks/dialogue/receipts, imported-task quarantine, offline process restart and image/audio/PDF source downloads. Source/settings conflicts remain kept, not reconciled. See BACKUP-CONTRACT.md and the MVP acceptance ledger for remaining gates.
+No cloud/LAN inference, personal-data upload, silent acquisition, account/sync service, database reset or unauthorized model overwrite/delete. Preserve IDs, all original revisions/paths, withdrawal state, protected roots and maximum five stored folder levels. Check the actual SW build without deleting existing browser data. Keep meaningful local commits; no deployment or GitHub push.
