@@ -186,3 +186,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit202 resolves Unit201 HTML injection update failure using exact hashed binary shell transport; publicv7/local a834b3c08c84e2da/113. Same retained public profile Check/Apply then cold browser-offline restart/data retention passes,773-byte companion SHA exact. See PWA-UPDATE-CONTRACT.md. No hash weakening, inference repeat/device or full-MVP claim.
 
 - Unit203 publicv8/local95b9f63a8e38bc1c/113 adds opaque light/dark draft-text backing inside glass composer after observed conversation bleed. Actual public update/cold retention and320px/root32px Light/Dark Save-review reachability/screenshots pass. Layout unchanged; no model repeat/device claim. See TEST-RESULTS.txt.
+
+- Unit204 actual publicv8/95b9f63a8e38bc1c offline Bonsai read/file -> exact memory.read -> read-completion answer -> sourced LINDEN-1997 succeeds. This closes only that real classifier path; retain prior GPU/semantic failures and other branches/device gaps. Do not repeat this now-passing sample. See READ-COMPLETION.md.

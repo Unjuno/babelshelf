@@ -155,3 +155,5 @@ Unit197: public fresh-profile Initial preparation now actually downloads/validat
 
 
 Unit199: current public4c7edb10dfc00ba5/113 prepared-only combined TXT/MD/OCR/PDF/ASR -> actual Bonsai sourced answer -> exact Save -> cold retention and original image/PDF/audio preview checks pass within PC/browser-offline scope. Original timestamp-observer failure remains with independent record revalidation. See MEDIA-HARNESS.md.
+
+Unit204: current publicv8 real read/file-to-answer continuation is now observed with distinct persisted read-completion receipt and validated originalv1 quote. No general routing, summary/open-classifier, phone or latency guarantee. See READ-COMPLETION.md.
