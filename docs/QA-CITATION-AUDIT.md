@@ -21,3 +21,9 @@ Read-only revalidation uses `scripts/qa/verify-retained-answer-refs.mjs OUTPUT_J
 Receipts: outputs/unit220-retained-refs.json (3snapshots), unit221-retained-refs.json (9), unit221-retained-more.json (5), unit221-retained-summaries.json (2). These19snapshots include two saved snapshots of already checked answer turns. All returned `ok:true` and rejected missing-source controls. Paths and exact archive hashes are in the receipts.
 
 Failed Unit161 citation mismatch and Unit181/182 semantic/GPU attempts are not converted to successes. This audit does not claim every historical artifact was checked, that current-build inference reran, or that structurally valid citations prove semantic correctness, exhaustive coverage, phone behavior or whole-MVP completion. It closes the ignored-return evidence gap for the explicitly listed successful flows.
+
+## Product boundary check (Unit222)
+
+All direct validateGroundingRefs/validateRefs call sites under design/prototype/src and dist were inspected. The ignored-return defect was not found in product admission: core create_note, KnowledgeStore generated Save and task completion check `.ok`; grounded-answer checks current source eligibility plus `.ok` before and after generation; backup checks historical references separately. No speculative production patch was made.
+
+The existing input-readings, working-file and knowledge-store suites pass45/45 on current source (outputs/unit222-source-boundaries.txt). Their scope includes changed/withdrawn current inputs, competing file targets, source changes during generation, stale generated ancestors and source edits in the same atomic Save. This targeted rerun addresses the newly discovered QA-validation risk, not fresh model or physical-device acceptance. Further repetition without a new change is unnecessary.
