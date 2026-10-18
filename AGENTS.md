@@ -131,3 +131,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit138 latest aggregate Restore new into independent fresh PC profile retains17initial conflicts, imports19newnotes/31linkedentries including8originals/correction/task; schedules quarantined, OPFSempty. Original observer falsely expected Found1; retained restore and separate offline reopen pass with Found4/originalv2 source. See BACKUP-CONTRACT.md; not whole-state replacement/device guarantee.
 
 - Unit139 search display groups first ranked exact passage by noteID+revision; raw persisted results/tool/model evidence unchanged, versions stay separate. Actual cold PC search4rawhits ->2rows/sourcev2 passes. Product3f314087ceaffa3f/112, prototype367. See TEST-RESULTS.txt.
+
+- Unit140 current-build native PC touch emulation320x640/root32px verifies44px composer, no checked horizontal overflow, synthetic composition/boundary229 guards, real calculator via tap, coarse attachment choices and CDP hold/slide/release navigation. Not hardware IME/phone/OSzoom/camera/installed acceptance. See TEST-RESULTS.txt.
