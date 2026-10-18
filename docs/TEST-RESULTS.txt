@@ -1583,3 +1583,11 @@ Source asset copy verified each length/SHA256, including exact binary shell tran
 node scripts/qa/audio-duration-preflight.mjs ../../outputs/unit206-audio-duration-confirm PASS in real Chrome:180s WAV refused before decoder/transcriber; short WAV reached real decoder; cancellation before decode;3/3 temporary URLs revoked. No transcription result mocked or inferred.
 node scripts/qa/published-update.mjs ../../outputs/unit197-public-preparation ../../outputs/unit206-public-update f4f930b46ccdcb91 PASS: normal UI explicit update; downloads returned OFF; close/reopen browser offline; exact worker build; canonical notes except deliberate connection settings revision, settings and prior runs retained. external requests[].
 Evidence: outputs/unit206-public-update/evidence.json and before/after.brainpack; cold-restart.png visually inspected. This is PC Chrome browser-offline, not OS isolation or physical iPhone/Android. No new inference claim. Full MVP remains incomplete.
+
+
+Unit207 — Public voice admission UI (2026-10-18)
+Public version9/build f4f930b46ccdcb91/113. Native PC Chrome retained profile, browser offline from launch.
+node scripts/qa/published-audio-admission.mjs ../../outputs/unit207-public-audio-admission-verified PASS.
+Normal Message draft -> Voice input -> Choose audio -> synthetic silent180s WAV -> visible Audio too long maximum2minutes -> Choose audio still enabled -> Close -> exact draft retained. Temporary QA draft cleared after assertion. No external requests. No fake transcription/model output and no model-accuracy claim.
+Initial outputs/unit207-public-audio-admission FAIL is retained: strict locator matched both toast and sheet error. Product had correctly refused the file. Selector scoped to bottom-sheet, then rerun verified remaining UI assertions.
+Screenshot audio-error.png visually inspected: inline error and Record/Choose audio/Open settings/Close visible at390x844. This closes normal-UI admission/recovery coverage for Unit205; processor decoder resource assertions remain Unit205/206. Not physical-phone, OS-airplane, video timeline or broad inference acceptance.
