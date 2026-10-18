@@ -44,3 +44,11 @@ Native PC Chrome transcodes the existing delayed spoken WebM into AVC/AAC MP4 us
 PASS: track2 starts at5001000us and ends at13150333us;130390 finite16kHz PCM samples with real audio,8150ms rounded processing duration. Native video metadata duration14.2s and completed seek5.001s, paused. AAC encoding changes the end padding relative to the WebM, so this test does not reuse the WebM end timestamp as a fabricated expectation.
 
 Retained MP4:104749bytes, SHA-256 f73aadc7a05db92dc740a7b27e0cc804c819cc34e23f3b070291abd81474d8a8. Evidence and fixture: outputs/unit212-mp4-decoder/evidence.json and delayed.mp4. This is module/native-codec evidence only: normal MP4 Send/transcription/citation/cold-offline flow and physical-device acceptance remain unverified. No product source or deployed build changed.
+
+## Unit213 installed MP4 flow
+
+Command: `node scripts/qa/installed-video-timeline.mjs ../../outputs/unit211-installed-update ../../outputs/unit213-installed-mp4 ../../outputs/unit212-mp4-decoder/delayed.mp4 ../../outputs/unit212-mp4-decoder/evidence.json`.
+
+PASS in installed native PC Chrome, build fbf531f99ba39ad1/117, local source server stopped, browser offline, two distinct browser processes. Normal file input/Send used prepared Whisper tiny and actual Bonsai4B, yielding a new transcript and sourced answer: "The library opens at 8. The copper code is Maple 42." The new answer refs validate against the new transcript. Original MP4 bytes are exact. Reopening its source after cold restart seeks to5.001s of14.2s, paused, with Estimated/Audio only labels. Existing notes/runs/settings and all prior dialogue turns remain; full post-send state matches after restart. Both phases recorded no external requests. Fixture hash was independently checked after the run; the reusable script now also checks it before Send. Screenshot inspected: video-source.png.
+
+Evidence: outputs/unit213-installed-mp4/evidence.json and before/after-video/after-restart.brainpack. Not physical-device or OS-network-isolation acceptance, video-frame understanding or exact word alignment. A remaining metadata inconsistency was found: answer ref coverage still says container timing unmapped despite valid new mapping; fix that derived description without changing historical refs. No product build/deployment changed in this unit.
