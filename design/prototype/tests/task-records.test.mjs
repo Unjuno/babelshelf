@@ -65,6 +65,21 @@ test('skip consumes an occurrence without inventing an inference attempt',()=>{
  assert.equal(taskRunView(skipped.run).attempt,0);assert.equal(taskRunView(skipped.run).status,'skipped');assert.equal(skipped.task.taskCursor.nextAt,null);
 });
 
+test('explicit retry by the same page uses a fresh lease rather than an expired heartbeat',()=>{
+ const note=registered(),start=new Date(2026,9,20,9),owner='same-page';
+ const claim=claimTaskRun([note],note.id,owner,start);
+ const heartbeat=heartbeatRun([claim.run],claim.run.id,owner,new Date(+start+60000));
+ const now=new Date(+start+160000),interrupted=claimTaskRun([note,heartbeat],note.id,owner,now);
+ assert.equal(interrupted.execute,false);assert.equal(taskRunView(interrupted.run).status,'interrupted');
+ const before=structuredClone(interrupted.run),retried=claimTaskRun([note,interrupted.run],note.id,owner,now,{retry:true});
+ assert.deepEqual(interrupted.run,before);assert.equal(retried.execute,true);assert.equal(retried.run.id,claim.run.id);
+ assert.equal(taskRunView(retried.run).attempt,2);
+ const freshHeartbeat=heartbeatRun([retried.run],retried.run.id,owner,now);
+ const finished=finishTaskRun([note,freshHeartbeat],retried.run.id,owner,{status:'failed',error:'Controlled final failure'},now);
+ assert.equal(taskRunView(finished.run).status,'failed');assert.equal(finished.run.runLease,undefined);
+ assert.deepEqual(finished.run.revisions.slice(0,claim.run.revisions.length),claim.run.revisions);
+});
+
 test('scheduled success validates the complete current source chain before consuming an occurrence',async()=>{
  const {reviseNote,searchNotes,validateRefs}=await import('../../../dist/core.js');
  const task=registered(),now=new Date(2026,9,20,9),{run}=claimTaskRun([task],task.id,'owner',now);

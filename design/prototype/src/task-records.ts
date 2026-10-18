@@ -87,7 +87,8 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
   if(!options.retry||!['failed','stopped','missed','interrupted'].includes(data.status))throw Error('Occurrence already processed');
   const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
   delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;
-  return {task,run:reviseNote(old,{body:runBody(retried)},latest(old).version),execute:true};
+  const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;
+  return {task,run,execute:true};
  }
  const missed=!options.manual&&+now-+due>60000;
  const data:RunData={taskId,taskRevision:latest(task).version,definition:signature,dueAt:cursor.nextAt,attempt:missed?0:1,owner,leaseUntil:new Date(+now+90000).toISOString(),status:missed?'missed':'running',startedAt:now.toISOString(),prompt:definition.prompt,...(missed?{error:'Missed while app was unavailable · run or skip explicitly',finishedAt:now.toISOString()}:{})};
