@@ -149,3 +149,6 @@ Unit193 local product27fd2cd242b21f7e/113: actual installed Chrome standalone PW
 
 
 Unit196: published-domain real local Bonsai integration now passes a bounded credential-free PC browser-offline flow including same-process Unload/Load and fresh summary, exact answer Save and further cold retention. See MODEL-RUNTIME-VERIFICATION.md. This closes that hosted lifecycle slice only; actual read-completion, direct upstream hosted preparation, hosted Stop, device/OS isolation and semantic quality remain unverified.
+
+
+Unit197: public fresh-profile Initial preparation now actually downloads/validates the default text+speech+OCR set from pinned upstream, only after explicit permission; separate-process browser-offline Use models re-verifies retained assets with no network and exact prepared-note retention. This closes direct-upstream hosted preparation, not hosted media extraction or physical/OS-isolated acceptance. See LOCAL-MODEL-PIPELINE.md and TEST-RESULTS.txt.

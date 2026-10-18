@@ -169,3 +169,6 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 
 
 - Unit196 published984769124c99c80b/112: dedicated PC Chrome browser-offline local-file Bonsai4B/runtime import, cold actual answer25/v2 source, exact reviewed Save, SAME-process Unload->Load/new cited summary and third-process saved-original retention pass with zero external requests. Ordinary browser, not standalone/phone/OS isolation; one-line summary not quality certificate. No hosted Stop/direct upstream preparation or read-completion integration claim. See MODEL-RUNTIME-VERIFICATION.md. Preserve separate local620d24121bb7cfc5/113 and Unit194 installed Stop scopes; do not repeat already passed narrow inference samples.
+
+
+- Unit197 published984769124c99c80b/112 fresh-profile standard-set initial Prepare passes direct pinned-upstream text/Whisper/OCR acquisition after explicit downloads permission; second browser-offline process Use models verifies local assets with zero external requests and exact prepared-note retention. No inference/media/phone/OS-isolation, interrupted download or runtime redistribution claim. See LOCAL-MODEL-PIPELINE.md and SITES-DEPLOYMENT.md; do not repeat download merely to increase test counts.
