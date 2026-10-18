@@ -10,6 +10,16 @@ test('immutable original retains exact UTF8/BOM bytes separately from decoded no
  assert.deepEqual(note.attachmentText,{assetId:'asset1',assetRevision:1,sha256:asset.sha256,processor:'utf-8-textdecoder-v1',status:'complete',start:0,end:bytes.length,unit:'bytes',noteRevision:1});
  assert.equal(searchNotes([note],'水')[0].noteId,note.id);
 });
+
+test('new original imports normalize MIME parameters without changing bytes or relaxing stored metadata',async()=>{
+ for(const [name,type,mime,kind] of [['water.txt','text/plain; charset=utf-8','text/plain','text'],['photo.png','image/png; name=photo.png','image/png','image'],['audio.webm','audio/webm; codecs=opus','audio/webm','audio'],['page.pdf','application/pdf; version=1.7','application/pdf','file']]){
+  const bytes=new TextEncoder().encode('Water / 水 / eau.\n'),asset=await prepareOriginal(new File([bytes],name,{type}));
+  assert.equal(asset.mime,mime);assert.equal(asset.kind,kind);assert.deepEqual(readOriginal(asset),bytes);
+  assert.throws(()=>readOriginal({...asset,mime:type}),/metadata/);
+  const note=originalNote(asset),pack=await makeStateBackup({notes:[note],settings:[],runs:[{key:originalKey(asset.id),value:asset}]});
+  const restored=await parseStateBackup(JSON.stringify(pack));assert.deepEqual(readOriginal(restored.runs[0].value),bytes);assert.deepEqual(restored.notes,[note]);
+ }
+});
 test('media and undecodable text retain bytes without becoming invented readable model evidence',async()=>{
  for(const [name,type,kind] of [['photo.png','image/png','image'],['audio.wav','audio/wav','audio'],['video.mp4','video/mp4','video'],['active.svg','image/svg+xml','file'],['page.html','text/html','file'],['bad.txt','text/plain','text']]){
   const a=await prepareOriginal(new File([new Uint8Array([255,0,42])],name,{type}));assert.equal(a.kind,kind);assert.deepEqual(readOriginal(a),new Uint8Array([255,0,42]));const n=originalNote(a);assert.equal(latest(n).body,'');assert.equal(searchNotes([n],name).length,0);

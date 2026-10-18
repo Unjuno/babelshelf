@@ -50,7 +50,7 @@ import {inspectDialogueText,type TextToolReceipt} from './text-transform';
 import {emptyDialogue,validateDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,compactDialogue,planDialogue,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation';
 import {useTasks,type TaskView} from './useTasks';
 import {projectNote,type NoteView} from './knowledge-store';
-import {prepareOriginal,TEXT_ATTACHMENT_ACCEPT,originalKind,originalText,readOriginal,originalRef,checkAttachmentBatch,type OriginalRef,type OriginalAsset} from './original-assets';
+import {prepareOriginal,TEXT_ATTACHMENT_ACCEPT,originalMime,originalKind,originalText,readOriginal,originalRef,checkAttachmentBatch,type OriginalRef,type OriginalAsset} from './original-assets';
 import {taskDefinition,parseTask} from './task-records';
 import {useBonsai} from './useBonsai';
 import {knowledge,useKnowledge} from './useKnowledge';
@@ -239,7 +239,7 @@ export default function Prototype() {
  async function addAttachments(list:File[]){
   if(sendLock.current)return toast('Saving originals');
   try{checkAttachmentBatch([...attachments,...list]);}catch(e){toast((e as Error).message);return;}
-  const added=list.map(file=>{const url=URL.createObjectURL(file);assetURLs.current.add(url);const kind=originalKind(file.name,file.type.toLowerCase());return {file,item:{id:crypto.randomUUID(),name:file.name,mime:file.type.toLowerCase(),url,kind,size:file.size,file,status:kind==='text'?(file.size<=settings.media.maxTextBytes?'Reading':'Text too large'):kind==='file'?(isPdf({name:file.name,mime:file.type,kind})?'PDF original':'Unsupported'):kind==='image'&&['image/png','image/jpeg'].includes(file.type.toLowerCase())?'Image original':'Analysis not prepared'} as Attachment};});
+  const added=list.map(file=>{const url=URL.createObjectURL(file);assetURLs.current.add(url);const mime=originalMime(file.type),kind=originalKind(file.name,mime);return {file,item:{id:crypto.randomUUID(),name:file.name,mime,url,kind,size:file.size,file,status:kind==='text'?(file.size<=settings.media.maxTextBytes?'Reading':'Text too large'):kind==='file'?(isPdf({name:file.name,mime,kind})?'PDF original':'Unsupported'):kind==='image'&&['image/png','image/jpeg'].includes(mime)?'Image original':'Analysis not prepared'} as Attachment};});
   setAttachments(a=>[...a,...added.map(x=>x.item)]);
   await Promise.all(added.filter(x=>x.item.kind==='text'&&x.file.size<=settings.media.maxTextBytes).map(async({file,item})=>{try{const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());if(text.includes('\0'))throw Error('Unsupported text');setAttachments(a=>a.map(x=>x.id===item.id?{...x,text,status:'Text available'}:x));}catch{setAttachments(a=>a.map(x=>x.id===item.id?{...x,status:'Read failed'}:x));}}));
  }

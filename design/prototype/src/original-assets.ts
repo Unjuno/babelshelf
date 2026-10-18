@@ -13,6 +13,9 @@ const MAX_TEXT_BYTES=1024*1024;
 export const originalKey=(id:string)=>'ui-v1-original-'+id;
 export const originalRef=(a:OriginalAsset):OriginalRef=>({id:a.id,revision:a.revision,sha256:a.sha256});
 export const TEXT_ATTACHMENT_ACCEPT='.txt,.md,.csv,.tsv,.json,.jsonl,.ndjson,.log,.yaml,.yml,.toml,.ini';
+// File.type is advisory and can include charset/codecs parameters. New records
+// store the MIME essence; immutable bytes still determine actual readability.
+export const originalMime=(type:string)=>type.split(';',1)[0].trim().toLowerCase()||'application/octet-stream';
 const additionalText=/\.(csv|tsv|json|jsonl|ndjson|log|yaml|yml|toml|ini)$/i;
 export function originalKind(name:string,mime:string):OriginalKind{return additionalText.test(name)?'text':legacyOriginalKind(name,mime);}
 // Historical classification remains valid for immutable retained originals.
@@ -34,7 +37,7 @@ export function checkAttachmentBatch(files:{size:number}[]){
  if(files.length>16)throw Error('Maximum 16 attachments');if(files.some(f=>!Number.isSafeInteger(f.size)||f.size<0||f.size>MAX_ORIGINAL_BYTES)||files.reduce((sum,f)=>sum+f.size,0)>MAX_ATTACHMENT_BATCH_BYTES)throw Error('Attachment too large · 32 MiB per file / 64 MiB total');
 }
 export async function prepareOriginal(file:File,id:string=crypto.randomUUID()):Promise<OriginalAsset>{
- checkAttachmentBatch([file]);const bytes=new Uint8Array(await file.arrayBuffer()),mime=file.type.toLowerCase()||'application/octet-stream';
+ checkAttachmentBatch([file]);const bytes=new Uint8Array(await file.arrayBuffer()),mime=originalMime(file.type);
  const asset:OriginalAsset={schema:1,type:'original-asset',id,revision:1,name:file.name,mime,kind:originalKind(file.name,mime),bytes:bytes.length,sha256:hash(bytes),createdAt:new Date().toISOString(),data:base64(bytes)};
  readOriginal(asset);return asset;
 }
