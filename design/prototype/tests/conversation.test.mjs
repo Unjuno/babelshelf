@@ -394,3 +394,18 @@ test('read completion is a bounded read-only decision from the human request',as
  engine.generate=async()=>({text:'{"completion":"answer"}',stopped:true});await assert.rejects(resolveReadCompletion(engine,'User request'),/Stopped/);
  engine.count=async()=>({prompt_tokens:2048});await assert.rejects(resolveReadCompletion(engine,'User request'),/context limit/i);
 });
+
+test('read intent applies one open-or-answer policy to every selected source',async()=>{
+ const {resolveReadIntent}=await import('../src/read-intent.ts');
+ const target={noteId:'note-1',path:'Inbox/meeting.md',revision:3,body:'Marker: LUMEN-1817.\nReserve: 37 liters.'};
+ const opened=resolveReadIntent('Read this file', 'open', target);
+ assert.equal(opened.kind,'open');assert.equal(opened.status,'Opened · Inbox/meeting.md');
+ assert.deepEqual(opened.refs,[{noteId:'note-1',revision:3,start:0,end:target.body.length,quote:target.body,title:target.path}]);
+ for(const action of ['answer','summary']){
+  const result=resolveReadIntent('What are the marker and reserve?',action,target);
+  assert.deepEqual(result,{kind:'continue',action,query:'What are the marker and reserve?',workingFile:{noteId:'note-1',revision:3}});
+ }
+ assert.deepEqual(resolveReadIntent('Open the empty file','open',{...target,body:''}).refs,[]);
+ assert.throws(()=>resolveReadIntent('  ','answer',target),/question missing/i);
+ assert.throws(()=>resolveReadIntent('Question','open',{...target,revision:0}),/target invalid/i);
+});

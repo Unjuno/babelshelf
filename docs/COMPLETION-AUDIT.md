@@ -1,11 +1,11 @@
-# Completion audit — Unit185
+# Completion audit — Unit188
 
-2026-10-18. Local HEAD before this audit5280b6f; local product70dc36fb2c42bb8a/113. Installed product remains Unit18352eb152e26f69182; published Site remains Unit177776c70a284785c23. Do not mix these builds. Working tree was clean at audit start. Whole goal is not achieved.
+2026-10-18. Local source includes the Unit187 read-completion seam; local product27fd2cd242b21f7e/113. Installed product remains Unit18352eb152e26f69182; published Site remains Unit177776c70a284785c23. Do not mix these builds. Whole goal is not achieved.
 
 | Required outcome | Authoritative evidence | Conclusion |
 |---|---|---|
 | Canonical Memory/settings/tasks/notices, IDs/history/sources, protected roots/depth, direct edits/recovery | STORAGE-CONTRACT.md, SCHEDULE-CONTRACT.md, BACKUP-CONTRACT.md; native transactional/installed receipts summarized in MVP-ACCEPTANCE.md | Connected and scoped PC flows pass; actual quota/eviction and physical behavior not certified. |
-| Capture/TXT-MD import/restart/multilingual search/index/original | Units129/131/148/173; original brainpacks and screenshots referenced in TEST-RESULTS.txt | Scoped PC/installed browser-offline flows pass at their recorded builds, not all-function current-build/OS-airplane acceptance. |
+| Capture/TXT-MD import/restart/multilingual search/index/original | Units129/131/148/173 and current local Unit188; original brainpacks and screenshots referenced in TEST-RESULTS.txt | Capture, index rebuild, marker search, and source reopen have scoped PC evidence. TXT/MD upload was refused by the browser tool before import; no current import result. Not all-function current-build/OS-airplane acceptance. |
 | Natural answer/summary/approval/history/exact answer Save | Units74/135/173, CORRECTION-CONTRACT.md, CONVERSATION-CONTRACT.md | Connected, earlier bounded real-model flows pass. Unit181 current file-question selects read/Open with no answer. Unit182 completion implementation is not yet proved by actual inference. |
 | Real Bonsai new generation/Stop/unload/reload and read completion | MODEL-RUNTIME-VERIFICATION.md, READ-COMPLETION.md, Unit182 original+restart before/answered.brainpacks | Core current acceptance blocked by two real primary-planner DXGI_ERROR_DEVICE_HUNG failures before new completion code. Later display/state-machine fixes do not prove GPU recovery or generated answers. |
 | Model registration/preparation/custom compatibility/pins/licensing | CUSTOM-MODELS-CONTRACT.md, initial-preparation/readiness tests, manifest, Unit178 fixed-revision notices | Compatible local paths connected; model/runtime pins fixed. WebML-specific redistribution grant unresolved; not bundled or silently substituted. |
@@ -22,6 +22,9 @@ GPU verification has remained unresolved across Units182,183,184 and185. Indepen
 
 The active goal must remain incomplete. This audit supports blocked status for the outstanding real-model verification dependency after the repeated-blocker threshold, not completion or an invented all-functions PASS. No process is being waited on; both Unit182 attempts are terminal. Runtime provenance and physical/storage/OS-isolation limits remain separately recorded. No deploy/GitHub push was performed by this audit.
 
+## Unit188 — fresh local offline persistence/index observation
+On the isolated PC Chrome profile, current local product27fd2cd242b21f7e/113, a synthetic unique note created after DevTools Offline reload remained searchable, its v1 source/file reopened, and Settings > Local files rebuilt the index for19records. Requests were loopback-only while the local server stayed running; localhost bypass means this is not a serverless, process-closed, or OS-network-isolated result. Browser upload rejected the local MD fixture path before import, so current TXT/MD import remains unverified. No product code changed. Existing model, mobile, runtime-license, pressure and PWA background gates remain open.
+
 ## Resumed audit — Unit186
 The automatically resumed goal is active; a fresh blocked audit starts here. Current read-only Windows inventory reports Intel Iris Xe Graphics driver31.0.101.5186 dated2024-01-18, StatusOK/errorCode0, last OS boot2026-10-17. No driver, reboot, browser flag or product setting change was performed.
 
@@ -31,4 +34,12 @@ This narrows the blocker: do not describe the entire GPU/adapter as unavailable.
 
 Official Intel driver-family selection/support references were read: https://www.intel.com/content/www/us/en/support/articles/000090440/graphics.html and https://www.intel.com/content/www/us/en/download/864990/intel-11th-14th-gen-processor-graphics-windows.html . Intel recommends checking the computer manufacturer's customized driver first. No installer was downloaded/run and no specific package was chosen without confirmed applicability. These references do not establish a fix for this runtime's failure.
 
-No new product acceptance follows. Local70dc36fb2c42bb8a/113, installed52eb152e26f69182 and Site776c70a284785c23 remain distinct. Physical checks stay deferred. The optional question about external reboot/driver changes is pending; elapsed time is not permission to make those changes.
+No new product acceptance follows. Local27fd2cd242b21f7e/113, installed52eb152e26f69182 and Site776c70a284785c23 remain distinct. Physical checks stay deferred. The optional question about external reboot/driver changes is pending; elapsed time is not permission to make those changes.
+
+## Unit187 — architecture seam and authenticated deployed UI inspection
+
+Local architecture note added at `docs/ARCHITECTURE.md`. Extracted a single read-completion decision seam so open, answer, and summary routes carry the exact request and pinned file revision consistently. The change does not alter the shell, model, runtime, or persisted-data contract. README and implementation map now link the architecture note. `npm test` 89/89, `npm run test:prototype` 393/393, `npm run check` (31 shell asset hashes), and `npm run build:app` pass; local product27fd2cd242b21f7e/113. Existing large-bundle warning remains.
+
+Authenticated Chrome UI inspection of published Site776c70a284785c23/112 was read-only; the existing IndexedDB records and all inspected dialogs were left unchanged. Memory root correctly reveals Home, Schedule, Notifications, Tools, and Settings on explicit navigation; Home shows Inbox, Notes, and Files; New file opens a single name/content form and was canceled. Notifications is empty. Schedule editor supports prompt, repeat, date/time and notification, but the screen explicitly says `Runs while visible`; closed/suspended PWA execution remains unsupported. Clicking Input opens the menu; clicking it again returns to Input on desktop. This is an authenticated PC browser observation, not device or offline acceptance. The current read-completion source changes have not been published.
+
+Sites custom-domain registration for `babelshelf.com` is pending DNS validation. Porkbun DNS has not been changed. Site audience remains owner-private; attaching the custom hostname does not publish the app publicly. See final handoff for required apex A and TXT records.

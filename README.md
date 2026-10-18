@@ -4,6 +4,8 @@ A smartphone-oriented local knowledge interface inspired by GBrain. Stored recor
 
 Current evidence and exact build scopes: [MVP acceptance ledger](docs/MVP-ACCEPTANCE.md). Unresolved requirements: [remaining gates](docs/REMAINING-GATES.md). Intended behavior: [product specification](docs/PRODUCT-SPEC.md). Do not use historical prototype-status paragraphs or old comparison results as the current design.
 
+Current runtime, ownership and dependency boundaries: [application architecture](docs/ARCHITECTURE.md). The original [`ARCHITECTURE.txt`](docs/ARCHITECTURE.txt) is retained as a historical baseline.
+
 ## Run the native PWA locally
 
 Use Node.js **22.18+** or a compatible newer version; development was checked with **24.6.0**. From the repository root:

@@ -4,6 +4,8 @@ Updated 2026-10-18 JST. This maps the implemented flows to their contracts and r
 
 ## Shared architecture
 
+For the current dependency map and the incremental extraction plan, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 The native product entry in design/prototype/product uses the accepted UI and canonical adapter in design/prototype/src, with shared baseline core/worker modules in dist/. Native controls do not modify the protected phone-preview runtime. The browser runs inference locally; the localhost server only serves files.
 
 IndexedDB is the knowledge source of truth. Original media bytes, extracted records, dialogue/receipts and model/runtime assets have separate roles. The Memory tree projects canonical paths; exports/backups are explicit local files. No reset or parallel transient knowledge store is an acceptable migration.
