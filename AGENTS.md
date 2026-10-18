@@ -127,3 +127,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit136 installed PC cold-offline full retained media/history/task36notes/3settings/25runs backup, stale conflict refusal/zero writes, identical restore and further cold exact retention pass. No blank-device/divergent/large/quota/device guarantee. See BACKUP-CONTRACT.md.
 
 - Unit137 installed PC Stop now observed after real Bonsai worker text event (transparent QA forwarding), followed by cold explicit Load/new sourced answer. Planner-generation stage; no final-answer/GPU-driver memory/device guarantee. Original obsolete QA worker-selector failure retained. See TEST-RESULTS.txt.
+
+- Unit138 latest aggregate Restore new into independent fresh PC profile retains17initial conflicts, imports19newnotes/31linkedentries including8originals/correction/task; schedules quarantined, OPFSempty. Original observer falsely expected Found1; retained restore and separate offline reopen pass with Found4/originalv2 source. See BACKUP-CONTRACT.md; not whole-state replacement/device guarantee.
