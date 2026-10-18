@@ -137,3 +137,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit141 reconciles current acceptance table through140 and REMAINING-GATES.md. Read-only evidence inventory preserves11PASS+original138FAIL; root84/markdown4 rerun pass. Hardware/OS-isolation/license/semantic/storage gates remain, goal incomplete. Do not keep re-running narrow passing PC samples as a substitute.
 
 - Unit142 installed actual4B proposal versus second-tab normal direct edit: stale approval refuses with zero all-store writes, cold yellowv3 retained. QA135 fixture nowv3/yellow, v2/blue historical. See CORRECTION-CONTRACT.md; recorded installed build37823..., no universal concurrency/device claim.
+
+- Unit143 typed CorrectionConflictError blocks/guards only stale proposal Save, new proposal resets; other failures retry. Actual updated installedc7598e2dd2e89020 race passes disabledSave/zero writes/coldorangev4, QA135 nowv4. Prototype367/product2/check31/protected28. See CORRECTION-CONTRACT.md.

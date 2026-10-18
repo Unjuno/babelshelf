@@ -11,6 +11,8 @@ import {SHA256} from '../../../dist/sha256.js';
 import {applyTextTransform,textTransformMessages,type TextToolReceipt} from './text-transform.ts';
 import type {ChatEngine} from './conversation';
 
+export class CorrectionConflictError extends Error{constructor(){super('Version conflict · regenerate the proposal');this.name='CorrectionConflictError';}}
+
 type Canonical=any;
 type Operation=SettingsPatch|SchedulePatch|Pick<TextToolReceipt,'name'|'arguments'|'result'>|{name:'text.rewrite';arguments:{bodySha256:string};result:{changed:true;beforeCharacters:number;afterCharacters:number}};
 export type CorrectionProposal={schema:1;id:string;request:string;path:string;expected:Canonical;before:string;after:string;operation:Operation};
@@ -59,7 +61,7 @@ export function resolveCorrectionTarget(records:Canonical[],query:string){
 export function applyCorrection(records:Canonical[],proposal:CorrectionProposal){
  if(proposal?.schema!==1||typeof proposal.id!=='string'||!proposal.id||typeof proposal.request!=='string'||!proposal.request.trim()||!proposal.operation)throw Error('Invalid correction proposal');
  const old=records.find(n=>n.id===proposal.expected?.id);editable(old);
- if(!equal(old,proposal.expected))throw Error('Version conflict · regenerate the proposal');
+ if(!equal(old,proposal.expected))throw new CorrectionConflictError();
  const actual=operationResult(old,correctionOperationRaw(proposal.operation,proposal.after));
  if(proposal.path!==notePath(old)||proposal.before!==latest(old).body||proposal.after!==actual.after||!equal(proposal.operation,actual.operation))throw Error('Invalid correction proposal');
  if(old.ui?.recordType==='schedule')taskCorrectionTarget(old,true);

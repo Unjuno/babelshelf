@@ -57,7 +57,7 @@ test('a correction proposal cannot write and approved correction preserves canon
 test('stale/tampered approvals and protected targets cannot become writes',()=>{
  assert.equal(typeof edits.prepareCorrection,'function');
  const note=createNote({path:'Notes/a.md',body:'old'}),proposal=edits.prepareCorrection(note,'replace', '{"action":"replace","find":"old","with":"new"}');
- assert.throws(()=>edits.applyCorrection([reviseNote(note,{body:'other tab'},1)],proposal),/conflict/i);
+ assert.throws(()=>edits.applyCorrection([reviseNote(note,{body:'other tab'},1)],proposal),error=>{assert.equal(typeof edits.CorrectionConflictError,'function');assert.ok(error instanceof edits.CorrectionConflictError);assert.match(error.message,/conflict/i);return true;});
  assert.throws(()=>edits.applyCorrection([note],{...proposal,after:'forged'}),/invalid/i);
  assert.throws(()=>edits.prepareCorrection(note,'replace','{"action":"replace","find":"old","with":"new","path":"Settings/models.md"}'),/Invalid/);
  for(const blocked of [{...note,ui:{protected:true}},{...note,ui:{managed:true}},{...note,ui:{recordType:'schedule'}},createNote({path:'Settings/custom.md',body:'old'})])assert.throws(()=>edits.prepareCorrection(blocked,'replace','{"action":"replace","find":"old","with":"new"}'),/unsupported|protected/i);

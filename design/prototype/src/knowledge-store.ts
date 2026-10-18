@@ -25,7 +25,7 @@ import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestore
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
-export {prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
+export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
 export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef};
 type Canonical=ReturnType<typeof createNote>;
