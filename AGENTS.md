@@ -125,3 +125,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit135 installed PC offline actual4B literal replacement -> complete review -> read-only preapproval unchanged target -> explicit atomicv2/receipt -> cold original/history pass. No general semantic/stale-race/device guarantee; see CORRECTION-CONTRACT.md.
 
 - Unit136 installed PC cold-offline full retained media/history/task36notes/3settings/25runs backup, stale conflict refusal/zero writes, identical restore and further cold exact retention pass. No blank-device/divergent/large/quota/device guarantee. See BACKUP-CONTRACT.md.
+
+- Unit137 installed PC Stop now observed after real Bonsai worker text event (transparent QA forwarding), followed by cold explicit Load/new sourced answer. Planner-generation stage; no final-answer/GPU-driver memory/device guarantee. Original obsolete QA worker-selector failure retained. See TEST-RESULTS.txt.
