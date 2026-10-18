@@ -22,11 +22,17 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
   if(immutable(file.path)){const saved=await pool.match(poolKey(file));if(saved&&await verified(saved,file)){assets.push(file);continue;}}
   const response=await fetch(absolute(file.path),{cache:'no-store',credentials:'same-origin'});
   if(!response.ok)throw Error('App asset missing');if(!await verified(response,file))throw Error('App asset verification failed');
-  if(immutable(file.path)){await pool.put(poolKey(file),response);assets.push(file);}else await cache.put(absolute(file.path),response);
+  const store=immutable(file.path)?pool:cache,key=immutable(file.path)?poolKey(file):absolute(file.path);
+  await store.put(key,response);
+  if(!await verified(await store.match(key),file))throw Error('App asset storage verification failed');
+  if(immutable(file.path))assets.push(file);
  }
  // Publish references only after all shell/shared responses verify. Older caches
  // and failed-install pool entries remain intact; no implicit pruning occurs.
- await cache.put(absolute(META),new Response(JSON.stringify({schema:1,build:BUILD,assets}),{headers:{'Content-Type':'application/json'}}));
+ const manifest=JSON.stringify({schema:1,build:BUILD,assets});
+ await cache.put(absolute(META),new Response(manifest,{headers:{'Content-Type':'application/json'}}));
+ const savedManifest=await cache.match(absolute(META));
+ if(!savedManifest?.ok||await savedManifest.text()!==manifest)throw Error('App asset storage verification failed');
 })()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
