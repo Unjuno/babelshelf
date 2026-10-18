@@ -1591,3 +1591,7 @@ node scripts/qa/published-audio-admission.mjs ../../outputs/unit207-public-audio
 Normal Message draft -> Voice input -> Choose audio -> synthetic silent180s WAV -> visible Audio too long maximum2minutes -> Choose audio still enabled -> Close -> exact draft retained. Temporary QA draft cleared after assertion. No external requests. No fake transcription/model output and no model-accuracy claim.
 Initial outputs/unit207-public-audio-admission FAIL is retained: strict locator matched both toast and sheet error. Product had correctly refused the file. Selector scoped to bottom-sheet, then rerun verified remaining UI assertions.
 Screenshot audio-error.png visually inspected: inline error and Record/Choose audio/Open settings/Close visible at390x844. This closes normal-UI admission/recovery coverage for Unit205; processor decoder resource assertions remain Unit205/206. Not physical-phone, OS-airplane, video timeline or broad inference acceptance.
+
+
+Unit208 — memory.read identity precedence
+Local build d66f4f72a37333a8/113; public remains version9 f4f930b46ccdcb91. Node test first failed9/10 because ID archive.md also matched Notes/archive.md, then10/10 after precedence fix. node scripts/qa/read-identity.mjs ../../outputs/unit208-read-identity PASS with actual Chrome IndexedDB and production module, unchanged canonical records. npm run build:app PASS; npm run test:app2/2; runtime integrity28/28. No model generation or full product UI/public update acceptance claimed. Custom package installation/MCP remain pending.

@@ -66,3 +66,13 @@ test('ordered calculation requests preserve stated sequence before model plannin
  for(const request of ['Read the note: Add 2 and 3','Remember Calculate the total of 2 and 3','Calculate the total of 1,200 and 800, then divide by 4','Calculate 2 + 3, then save it','Calculate the total of 2 and 3 divided by 4','Calculate 2026-10-18','Calculate 20%, then add 5','Calculate the total of 2 and 3 from the attached file'])assert.equal(orderedCalculationInput(request),null,request);
  assert.equal(orderedCalculationInput('Calculate 1'+', then add 1'.repeat(17)),null);
 });
+
+test('exact record identity is not diluted by a different filename match',async()=>{
+ const exact={id:'archive.md',path:'Inbox/original.md',version:3,body:'Exact original'};
+ const sameName={id:'other',path:'Notes/archive.md',version:1,body:'Different record'};
+ const snapshot=[sameName,exact],h={...host,views:async()=>snapshot};
+ assert.deepEqual(await read({query:'archive.md'},h),[exact]);
+ assert.deepEqual(await read({query:'Notes/archive.md'},h),[sameName]);
+ const duplicate={id:'third',path:'Inbox/archive.md',version:1,body:'Another record'};
+ assert.deepEqual(await read({query:'archive.md'},{...host,views:async()=>[sameName,duplicate]}),[sameName,duplicate]);
+});
