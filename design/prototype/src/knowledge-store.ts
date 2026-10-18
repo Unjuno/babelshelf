@@ -120,43 +120,43 @@ export class KnowledgeStore {
  private name:string;
  constructor(name='mlb-memory-v1'){this.name=name;}
  async open(){if(!this.database)this.database=await openDB(this.name);return this.database!;}
- private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void)=>void):Promise<T>{
+ private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void):Promise<T>{
   const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown;
    const fail=(e:unknown)=>{error=e;tx.abort();};
-   try{run(tx,v=>{value=v;if(guarded){const rows=tx.objectStore('notes').getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2;const check=()=>{if(--pending)return;try{assertFolderNamespace(rows.result,folders.result??[]);}catch(e){fail(e);}};rows.onsuccess=check;folders.onsuccess=check;}});}catch(e){fail(e);}
+   try{run(tx,v=>{value=v;if(guarded){const rows=tx.objectStore('notes').getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2;const check=()=>{if(--pending)return;try{assertFolderNamespace(rows.result,folders.result??[]);}catch(e){fail(e);}};rows.onsuccess=check;folders.onsuccess=check;}},fail);}catch(e){fail(e);}
    tx.addEventListener('error',()=>{error??=tx.error;});
    tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(error??tx.error??Error('Save failed'));
   });
  }
  async initialize(defaults:NoteView[]){
-  return this.transaction<NoteView[]>(['notes'],'readwrite',(tx,done)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
+  return this.transaction<NoteView[]>(['notes'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
    try{const records=q.result;for(const seed of defaults){if(records.some(n=>n.id===seed.id))continue;
     const note={...createNote({title:seed.path.split('/').at(-1),body:seed.body,path:seed.path}),id:seed.id,ui:{protected:!!seed.protected,managed:!!seed.managed}};records.push(note);store.add(note);
    }
    for(const update of builtinToolUpdates(records,defaults)){records[records.findIndex(n=>n.id===update.id)]=update;store.put(update);}
    const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
    if(connection&&parsePreference('connection',latest(connection).body).downloads){const changed=reviseNote(connection,{body:formatPreference('connection',{downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
-   checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){tx.abort();console.error('Initialization failed',e);}
+   checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){fail(e);}
   };});
  }
  async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}
  async views(){return (await this.all()).filter(n=>n.state==='active').map(projectNote);}
  async original(ref:OriginalRef):Promise<OriginalAsset>{const asset=await this.transaction<OriginalAsset>(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').get(originalKey(ref.id));q.onsuccess=()=>done(q.result);});readOriginal(asset,ref);return asset;}
  async saveTranscript(id:string,value:Transcript,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done)=>{
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
    const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Transcript already saved');const asset=newOriginal??raw.result,note=transcriptNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
+   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Transcript already saved');const asset=newOriginal??raw.result,note=transcriptNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
   });
  } async savePdfText(id:string,value:PdfText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done)=>{
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
    const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('PDF text already saved');const asset=newOriginal??raw.result,note=pdfTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
+   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('PDF text already saved');const asset=newOriginal??raw.result,note=pdfTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
   });
  }
  async saveOcrText(id:string,value:OcrText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done)=>{
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
    const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch{tx.abort();}};raw.onsuccess=commit;notes.onsuccess=commit;
+   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
   });
  }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
