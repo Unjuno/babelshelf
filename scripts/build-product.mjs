@@ -12,6 +12,12 @@ const root=path.join(prototype,'dist/app'),files=[];
 async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const full=path.join(folder,entry.name);if(entry.isDirectory())await walk(full);else{const bytes=await readFile(full);files.push({path:'./'+path.relative(root,full).split(path.sep).join('/'),sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});}}}
 await mkdir(path.join(root,'licenses'),{recursive:true});for(const name of await readdir('design/prototype/licenses'))await copyFile(path.join('design/prototype/licenses',name),path.join(root,'licenses',name));
 await walk(root);files.sort((a,b)=>a.path.localeCompare(b.path));
+// A binary transport keeps hosting-side HTML injection out of the offline shell.
+// It carries the exact index bytes, verified against the same manifest entry.
+const shell=files.find(file=>file.path==='./index.html');
+if(!shell)throw Error('Missing app shell');
+shell.downloadPath='./offline-shell-'+shell.sha256+'.bin';
+await copyFile(path.join(root,'index.html'),path.join(root,shell.downloadPath));
 const workerSource=await readFile(new URL('./product-worker.mjs',import.meta.url),'utf8');
 const build=createHash('sha256').update(JSON.stringify(files)).update(workerSource).digest('hex').slice(0,16),models=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
 const speech=JSON.parse(await readFile('design/prototype/src/speech-manifest.json','utf8'));

@@ -20,8 +20,13 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE),pool=await caches.open(SHARED),assets=[];
  for(const file of FILES){
   if(immutable(file.path)){const saved=await pool.match(poolKey(file));if(saved&&await verified(saved,file)){assets.push(file);continue;}}
-  const response=await fetch(absolute(file.path),{cache:'no-store',credentials:'same-origin'});
+  let response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin'});
   if(!response.ok)throw Error('App asset missing');if(!await verified(response,file))throw Error('App asset verification failed');
+  if(file.path==='./index.html'&&file.downloadPath){
+   const headers=new Headers(response.headers);headers.set('Content-Type','text/html; charset=utf-8');
+   headers.delete('Content-Encoding');headers.delete('Content-Length');
+   response=new Response(response.body,{status:200,headers});
+  }
   const store=immutable(file.path)?pool:cache,key=immutable(file.path)?poolKey(file):absolute(file.path);
   await store.put(key,response);
   if(!await verified(await store.match(key),file))throw Error('App asset storage verification failed');

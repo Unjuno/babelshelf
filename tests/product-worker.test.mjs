@@ -10,6 +10,15 @@ test('installation verifies every saved asset before completion and refuses corr
 
 async function install(h){let work;h.handlers.install({waitUntil:p=>work=p});await work;}
 const pinned=(path,body)=>({path,bytes:Buffer.byteLength(body),sha256:createHash('sha256').update(body).digest('hex')});
+
+test('binary shell transport retains exact verified HTML and refuses modified transport bytes',async()=>{
+ const html='<!doctype html><title>Verified shell</title>',file={...pinned('./index.html',html),downloadPath:'./offline-shell-pinned.bin'};
+ const h=await harness(url=>String(url).endsWith('.bin')?html:html+'<script>injected()</script>',{files:[file]});await install(h);
+ assert.deepEqual(h.network,[origin+'/offline-shell-pinned.bin']);
+ const response=await h.request('/','navigate');assert.equal(await response.text(),html);assert.equal(response.headers.get('content-type'),'text/html; charset=utf-8');assert.equal(response.redirected,false);
+ h.network.length=0;assert.equal((await h.request('/offline-shell-pinned.bin')).status,503);assert.deepEqual(h.network,[]);
+ const bad=await harness(html+'<script>injected()</script>',{files:[file]});await assert.rejects(install(bad),/verification/);assert.equal((await bad.request('/','navigate')).status,503);
+});
 test('new generations share identical verified binaries while each keeps its own shell',async()=>{const files=[pinned('./index.html','INDEX'),pinned('./assets/reader-SHARED12.wasm','BINARY')],body=url=>String(url).endsWith('index.html')?'INDEX':'BINARY',first=await harness(body,{files});await install(first);const second=await harness(body,{files,caches:first.caches,build:'3333333333333333'});await install(second);assert.deepEqual(second.network,[origin+'/index.html']);assert.equal(await (await second.request('/assets/reader-SHARED12.wasm')).text(),'BINARY');assert.equal(first.caches.entries.get('babelshelf-product-'+current).has(origin+'/assets/reader-SHARED12.wasm'),false);assert.equal(await (await second.request('/','navigate')).text(),'INDEX');});
 test('old shared-aware lazy modules remain available after a new build removes them',async()=>{const old=await harness('OLD',{files:[pinned('./assets/reader-OLDabc12.js','OLD')]});await install(old);const next=await harness('NEW',{caches:old.caches,build:'3333333333333333'});await install(next);next.network.length=0;assert.equal(await (await next.request('/assets/reader-OLDabc12.js')).text(),'OLD');assert.deepEqual(next.network,[]);});
 
