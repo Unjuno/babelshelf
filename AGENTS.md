@@ -121,3 +121,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit133 installed PC cold-offline actual delayed-video audio transcription/sourced4B answer and another cold original-video preview pass. Metadata14.2s vs decoded audio8119ms stays unmapped/currentTime0 with Audio only. No frame comprehension or completed playback claim. See TEST-RESULTS.txt.
 
 - Unit134 same installed PC offline normal timed once task passes Memoryv2/Schedule projection, actual4B sourced24 generation, cold pinned notification/result, notification-only withdrawal and preserved prior data. Foreground only; no closed-PWA/OS/device/all-recurrence claim. See SCHEDULE-CONTRACT.md.
+
+- Unit135 installed PC offline actual4B literal replacement -> complete review -> read-only preapproval unchanged target -> explicit atomicv2/receipt -> cold original/history pass. No general semantic/stale-race/device guarantee; see CORRECTION-CONTRACT.md.
