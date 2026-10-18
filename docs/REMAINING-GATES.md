@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against local product27fd2cd242b21f7e/113 and evidence through Unit193; installed and published builds plus earlier receipts retain their separate measured scopes (COMPLETION-AUDIT.md). Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against local product620d24121bb7cfc5/113, published984769124c99c80b/112 and evidence through Unit196; installed and published builds plus earlier receipts retain their separate measured scopes (COMPLETION-AUDIT.md). Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
@@ -16,7 +16,7 @@ Current scheduling is visible-foreground execution with an in-app notification i
 
 Next work should target an unmet gate with a concrete implementation or acceptance outcome. Do not repeat successful PC samples, increase test counts for their own sake, silently retune models, delete data or relabel unavailable hardware as emulated success. See MVP-ACCEPTANCE.md and TEST-RESULTS.txt for actual paths, commands, builds and original failures.
 
-Unit193 closes only the current-build real-model inference gap for a representative PC flow: pinned Bonsai 4B loaded and produced an exact cited answer and sourced summary offline, the exact summary was saved without regeneration, and a separate cold offline process found it. The factual question routed through knowledge.answer; the separate read-completion classifier was not exercised. Stop, generation after same-process reload, OS network isolation, physical mobile and all-function acceptance remain open. See TEST-RESULTS.txt and MODEL-RUNTIME-VERIFICATION.md.
+Unit193 closes only the current-build real-model inference gap for a representative PC flow: pinned Bonsai 4B loaded and produced an exact cited answer and sourced summary offline, the exact summary was saved without regeneration, and a separate cold offline process found it. The factual question routed through knowledge.answer; the separate read-completion classifier was not exercised. Unit194 separately passes installed real-generation Stop/cold retry; Unit196 passes hosted same-process unload/reload/new summary. OS network isolation, physical mobile, broader reliability and all-function acceptance remain open. See TEST-RESULTS.txt and MODEL-RUNTIME-VERIFICATION.md.
 
 Unit144 narrows the PC pressure-test route: Chrome CDP reported a1byte origin override but did not reject normal writes in ephemeral or persistent QA profiles. The probe did not reach a genuine quota failure; no recovery certification follows. Keep these failed probe receipts and obtain an actually enforced failure before claiming draft/atomic recovery under quota. Do not repeat arbitrary size variants or alter the user's global disk policy.
 
