@@ -139,3 +139,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit142 installed actual4B proposal versus second-tab normal direct edit: stale approval refuses with zero all-store writes, cold yellowv3 retained. QA135 fixture nowv3/yellow, v2/blue historical. See CORRECTION-CONTRACT.md; recorded installed build37823..., no universal concurrency/device claim.
 
 - Unit143 typed CorrectionConflictError blocks/guards only stale proposal Save, new proposal resets; other failures retry. Actual updated installedc7598e2dd2e89020 race passes disabledSave/zero writes/coldorangev4, QA135 nowv4. Prototype367/product2/check31/protected28. See CORRECTION-CONTRACT.md.
+
+- Unit144 quota probe did not produce actual write refusal despite Chrome reportedquota1/overrideActive in ephemeral/persistent QA. All probe outcomes noncertifying; stop arbitrary size variants, preserve source/runtime/data. No quota recovery claim, no demonstrated product bug. See REMAINING-GATES.md.
