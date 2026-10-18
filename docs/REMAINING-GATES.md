@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against the current product1146a94a322bf06b/112 and evidence through Unit172; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against the current product1146a94a322bf06b/112 and evidence through Unit173; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
@@ -31,3 +31,5 @@ Unit169 now rejects SW installation when persisted shell/shared bytes or manifes
 Unit170 exposes app worker lifecycle/failure in Settings > Connection, separate from model preparation. Actual persistent WebKit shows Preparation failed while Chrome shows Installed;360px screenshot checked. Installed is a lifecycle label, not offline/device certification.
 
 Unit172 explicitly updated the retained installed Chrome PWA to1146a94a322bf06b/112, stopped its source server and cold launched offline standalone with prior data retained. See outputs/unit172-installed-update; actual GPU/all-functions/OS-disconnected/phone acceptance is not implied.
+
+Unit173 actual installed current-build prepared OCR/Bonsai answer, two-source validation, exact Save/Unload and separate cold index/search/original flow pass with prior records retained. This closes the scoped post-SHA/cache-change inference integration check, not physical-device/OS-isolation or general semantic quality gates.
