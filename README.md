@@ -56,3 +56,5 @@ npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4181
 ```
 
 The independent baseline shell runs with npm run dev at http://127.0.0.1:4173/. Neither preview geometry nor baseline Node tests prove native smartphone behavior. Preserve the locked phone runtime and old canonical data when developing the product entry.
+
+Physical-device preparation without public deployment: see [local HTTPS instructions](docs/LOCAL-DEVICE-HTTPS.md). The optional `dev:app:https` server delivers static app files only; inference remains on the device. Device-trusted certificate setup and actual phone acceptance are still required.
