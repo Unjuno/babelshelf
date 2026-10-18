@@ -152,3 +152,6 @@ Unit196: published-domain real local Bonsai integration now passes a bounded cre
 
 
 Unit197: public fresh-profile Initial preparation now actually downloads/validates the default text+speech+OCR set from pinned upstream, only after explicit permission; separate-process browser-offline Use models re-verifies retained assets with no network and exact prepared-note retention. This closes direct-upstream hosted preparation, not hosted media extraction or physical/OS-isolated acceptance. See LOCAL-MODEL-PIPELINE.md and TEST-RESULTS.txt.
+
+
+Unit199: current public4c7edb10dfc00ba5/113 prepared-only combined TXT/MD/OCR/PDF/ASR -> actual Bonsai sourced answer -> exact Save -> cold retention and original image/PDF/audio preview checks pass within PC/browser-offline scope. Original timestamp-observer failure remains with independent record revalidation. See MEDIA-HARNESS.md.

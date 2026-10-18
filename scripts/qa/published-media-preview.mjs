@@ -1,0 +1,20 @@
+import {chromium} from '../../design/prototype/node_modules/playwright-core/index.mjs';
+import {readFile,writeFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import assert from 'node:assert/strict';
+import {parseStateBackup} from '../../design/prototype/src/backup-state.ts';
+const [profileDir,out]=process.argv.slice(2),pack=await parseStateBackup(await readFile(join(out,'restart.brainpack'),'utf8'));
+const question='What is the cobalt marker in the text file and the violet code in the image?';
+const turn=pack.settings.find(r=>r.key==='ui-v1-dialogue').value.turns.find(t=>t.user===question);
+assert.ok(turn?.answer);const imageRef=turn.refs.findIndex(ref=>pack.notes.find(n=>n.id===ref.noteId)?.ocrText);assert.ok(imageRef>=0);
+const evidence={scope:'Public PC cold browser-offline citation image region, original PDF pages and actual native audio playback; no inference rerun or physical audibility claim',external:[]};
+const c=await chromium.launchPersistentContext(profileDir,{channel:'chrome',headless:true,offline:true,viewport:{width:390,height:844},acceptDownloads:true});c.setDefaultTimeout(30000);const p=c.pages()[0];c.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith('https://babelshelf.com/'))evidence.external.push(new URL(r.url()).origin);});
+try{
+ await p.goto('https://babelshelf.com/');await p.getByRole('textbox',{name:'Message',exact:true}).waitFor();
+ const row=p.locator('.sent-message').filter({has:p.locator('.user-bubble').filter({hasText:question})});assert.equal(await row.count(),1);
+ await row.getByRole('button',{name:'View source '+(imageRef+1),exact:true}).click();const dialog=p.getByRole('dialog');assert.match(await dialog.innerText(),/CEDAR-5821/);await dialog.getByRole('button',{name:'Open source ocr-english-qa.png',exact:true}).click();await p.getByRole('img',{name:'Original image',exact:true}).waitFor();await p.waitForFunction(()=>document.querySelector('.ocr-image-frame img')?.naturalWidth>0);evidence.imageRegions=await p.locator('.ocr-image-region').count();assert.ok(evidence.imageRegions>0);await p.screenshot({path:join(out,'image-source.png')});await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ await row.getByRole('button',{name:'Open source pdf-pages-qa.pdf',exact:true}).click();await p.getByRole('img',{name:'PDF page 1',exact:true}).waitFor();await dialog.getByRole('button',{name:'Next',exact:true}).click();await p.getByRole('img',{name:'PDF page 2',exact:true}).waitFor();evidence.pdfPage2=true;await p.screenshot({path:join(out,'pdf-original.png')});await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ await row.getByRole('button',{name:'Open source asr-qa-jfk.wav',exact:true}).click();await p.waitForFunction(()=>Number.isFinite(document.querySelector('audio')?.duration));const audio=p.locator('audio');await audio.evaluate(a=>a.play());await p.waitForFunction(()=>document.querySelector('audio')?.currentTime>0.25);evidence.audio=await audio.evaluate(a=>({duration:a.duration,currentTime:a.currentTime,paused:a.paused}));await audio.evaluate(a=>a.pause());await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('menuitem',{name:'Settings',exact:true}).click();await p.getByRole('button',{name:'Local files',exact:true}).click();const event=p.waitForEvent('download');await p.getByRole('button',{name:'Export backup',exact:true}).click();const file=join(out,'after-previews.brainpack');await(await event).saveAs(file);const after=await parseStateBackup(await readFile(file,'utf8'));for(const key of ['notes','settings','runs'])assert.deepEqual(after[key],pack[key]);assert.equal(evidence.external.length,0);evidence.pass=true;
+}catch(e){evidence.pass=false;evidence.error=String(e);evidence.screen=await p.locator('body').innerText().catch(()=>null);process.exitCode=1;}
+finally{await c.close();await writeFile(join(out,'previews.json'),JSON.stringify(evidence,null,2));console.log(evidence);}

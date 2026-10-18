@@ -66,3 +66,8 @@ New File inputs normalize the advisory File.type to its lowercase MIME essence b
 
 ## Concurrent original previews (Unit164)
 Pending loads share one promise for the complete immutable original ID/revision/SHA256. The loader copies/freezes that identity before asynchronous work, clears pending state on either outcome and never combines distinct pins or retries automatically. Existing original verification, newest-selection epochs and component-unmount checks remain authoritative. Completed preview cache hits also require the complete identity. Concurrent taps therefore do not allocate separate owned URLs for the same pending original; current URL ownership/removal/unmount rules remain. This does not add a global decoded-media eviction policy or establish physical-device memory savings.
+
+
+## Published combined media (Unit199)
+
+Public4c7edb10dfc00ba5/113, prepared-only PC Chrome/browser-offline: one ordinary Send processes TXT/MD/PNG/PDF/WAV using actual OCR/PDF/Whisper, then actual Bonsai answers from the new text and image with validated citations. All5raw originals match input bytes; exact answer Save, index rebuild and separate cold search/original retention pass. Another offline process opens the cited image's region, changes original PDF pages and starts native original-audio playback. Canonical records are unchanged by previews; an export-timestamp comparison error and its read-only revalidation are preserved. See TEST-RESULTS.txt and outputs/unit199-public-media. This is not physical sensors/audibility, video vision, broad accuracy, OS isolation or whole-MVP acceptance.

@@ -175,3 +175,6 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 
 
 - Unit198 initial preparation shows only the active busy adapter's real progress, excluding stale terminal statuses. Local and public version5 now both4c7edb10dfc00ba5/113. Actual retained installed update and public Check/Apply update plus cold offline Use models show verification progress, hide it after completion and retain records/assets. No inference rerun/device acceptance. See SITES-DEPLOYMENT.md; public source includes prior local harness fixes, older inference receipts retain their original build scope.
+
+
+- Unit199 public4c7edb10dfc00ba5/113 combines five actual TXT/MD/PNG/PDF/WAV readers and Bonsai answer with source/byte validation, exact Save, index/cold search/original retention; offline original image region/PDF pages/audio-start preview passes with retained export-timestamp observer failure plus read-only revalidation. See MEDIA-HARNESS.md. No physical sensor/audibility/OS isolation/video vision/general accuracy claim or new download; do not rerun the same successful sample as broad certification.
