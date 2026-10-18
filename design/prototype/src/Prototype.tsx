@@ -1,3 +1,4 @@
+import {resolveReadCompletion} from './read-completion';
 import {readDialogueRecovery} from './dialogue-recovery';
 import {offlineShellStatus,subscribeOfflineShell,appUpdateOutcome} from './offline-shell';
 import {CorrectionConflictError} from './note-corrections';
@@ -521,11 +522,11 @@ export default function Prototype() {
    if(request&&inputReadings.length)request=routeInputRequest(request,inputReadings,!!localRequest(text.trimStart()));
    if(request)request=bindCurrentInputRequest(request,inputReadings.length>0);
    const fileBinding=request?bindWorkingFileRequest(request,prior.currentFile,inputReadings.length>0):undefined;if(fileBinding)request=fileBinding.request;
-   let selectedFile:any;const workingFile=request?.target==='file'?prior.currentFile:undefined;
+   let selectedFile:any;let workingFile=request?.target==='file'?prior.currentFile:undefined;
    if(request?.target==='file'){
-    if(!workingFile)throw Error('No working file · open a file first');
-    selectedFile=await trace('memory.read',{target:'file',binding:fileBinding?.binding??'explicit',...workingFile},async()=>workingFileNote(await knowledge.all(),workingFile),workingFileMetadata);checkSend();
-    if(request.action==='read'){const v=selectedFile.revisions.at(-1),path=workingFileMetadata(selectedFile).path,refs=v.body?[{noteId:selectedFile.id,revision:v.version,start:0,end:Math.min(700,v.body.length),quote:v.body.slice(0,700),title:path}]:[];await finishTurn(id,{status:'Opened · '+path,refs});openNote(selectedFile.id,path);return;}
+    if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;
+    selectedFile=await trace('memory.read',{target:'file',binding:fileBinding?.binding??'explicit',...workingFile},async()=>workingFileNote(await knowledge.all(),filePin),workingFileMetadata);checkSend();
+    if(request.action==='read'){const completion=literalRequest?.action==='read'?'open':await trace('dialogue.plan',{stage:'read-completion',model,question:text,...workingFile},()=>resolveReadCompletion(inference,text,checkSend));checkSend();if(completion!=='open'){request={...request,action:completion,query:text};}else{const v=selectedFile.revisions.at(-1),path=workingFileMetadata(selectedFile).path,refs=v.body?[{noteId:selectedFile.id,revision:v.version,start:0,end:Math.min(700,v.body.length),quote:v.body.slice(0,700),title:path}]:[];await finishTurn(id,{status:'Opened · '+path,refs});openNote(selectedFile.id,path);return;}}
    }
    if(request?.action==='calculate'){
     const expression=request.query;const result=await trace('math.calculate',{expression,...await builtinToolRegistry.identity('math.calculate')},()=>builtinToolRegistry.run('math.calculate',{expression},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}));checkSend();await finishTurn(id,{answer:expression+' = '+String(result[0].result),status:'Calculated',refs:[]});return;
@@ -551,7 +552,7 @@ export default function Prototype() {
    if(request?.action==='capture'){const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';if(request.historyIndex==null&&inputReadings.length){const captureQuery=groundingQuery(text,request.query,true),parsed=await trace('knowledge.answer',{model,question:text,query:captureQuery,mode:'capture',inputReadings},()=>groundedAnswer(knowledge,inference,model,text,captureQuery,'summary',context,checkSend,inputReadings));checkSend();request.body=parsed.answer;sources=parsed.sources;kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Review before saving',refs:sources});}else await finishTurn(id,{status:'Review before saving',refs:importedRefs});setCaptureTurn(id);setFileSources(sources);setFileKind(kind);setFileName(request.body!.split('\n')[0].replace(/[\\/:*?"<>|%]/g,'-').replace(/[. ]+$/g,'').slice(0,50)||'Note');setFileBody(request.body!);setActiveFolder('Inbox');setMemoryScope('folder');setSheet('file');return;}
    if(request?.action==='read'){
     const readQuery=request.query,found=await trace('memory.read',{query:readQuery,...await builtinToolRegistry.identity('memory.read')},()=>builtinToolRegistry.run('memory.read',{query:readQuery},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}),value=>value.map(n=>({id:n.id,path:n.path,version:n.version,excerpt:n.body.slice(0,700)})));
-    if(found.length===1){const n=found[0],refs=n.body.length?[{noteId:n.id,revision:n.version,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}]:[];await finishTurn(id,{status:'Opened · '+n.path,refs});openNote(n.id,n.path);return;}
+    if(found.length===1){const n=found[0],completion=literalRequest?.action==='read'?'open':await trace('dialogue.plan',{stage:'read-completion',model,question:text,noteId:n.id,revision:n.version},()=>resolveReadCompletion(inference,text,checkSend));checkSend();if(completion!=='open'){workingFile={noteId:n.id,revision:n.version};request={...request,action:completion,target:'file',query:text};}else{const refs=n.body.length?[{noteId:n.id,revision:n.version,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}]:[];await finishTurn(id,{status:'Opened · '+n.path,refs});openNote(n.id,n.path);return;}}
    }
    if(request?.action==='search'||request?.action==='read'){
     const searchQuery=request.query,results=await trace('memory.search',{query:searchQuery,...await builtinToolRegistry.identity('memory.search')},()=>builtinToolRegistry.run('memory.search',{query:searchQuery},{search:q=>knowledge.search(q,true),views:refreshSnapshot,check:checkSend}));await finishTurn(id,{results:results.filter(r=>r.kind!=='file'),files:results.filter(r=>r.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes',refs:importedRefs});return;

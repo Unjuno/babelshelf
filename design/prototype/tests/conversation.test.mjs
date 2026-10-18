@@ -385,3 +385,12 @@ test('dialogue CAS revisions reject negative and unsafe integers without mutatin
  for(const revision of [0,1,Number.MAX_SAFE_INTEGER])assert.equal(validateDialogue({...value,revision}).revision,revision);
  assert.deepEqual(value,before);
 });
+
+test('read completion is a bounded read-only decision from the human request',async()=>{
+ const {resolveReadCompletion}=await import('../src/read-completion.ts');let messages;const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async m=>{messages=m;return {text:'{"completion":"answer"}'};}};
+ assert.equal(await resolveReadCompletion(engine,'What are the marker and reserve in this file?'),'answer');assert.equal(messages.at(-1).content,'What are the marker and reserve in this file?');
+ for(const completion of ['open','summary']){engine.generate=async()=>({text:JSON.stringify({completion})});assert.equal(await resolveReadCompletion(engine,'User request'),completion);}
+ for(const text of ['{"completion":"delete"}','{"completion":"answer","query":"invented"}','{"completion":"answer","save":true}']){engine.generate=async()=>({text});await assert.rejects(resolveReadCompletion(engine,'User request'),/Invalid read completion/);}
+ engine.generate=async()=>({text:'{"completion":"answer"}',stopped:true});await assert.rejects(resolveReadCompletion(engine,'User request'),/Stopped/);
+ engine.count=async()=>({prompt_tokens:2048});await assert.rejects(resolveReadCompletion(engine,'User request'),/context limit/i);
+});
