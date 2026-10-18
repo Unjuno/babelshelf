@@ -133,3 +133,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit139 search display groups first ranked exact passage by noteID+revision; raw persisted results/tool/model evidence unchanged, versions stay separate. Actual cold PC search4rawhits ->2rows/sourcev2 passes. Product3f314087ceaffa3f/112, prototype367. See TEST-RESULTS.txt.
 
 - Unit140 current-build native PC touch emulation320x640/root32px verifies44px composer, no checked horizontal overflow, synthetic composition/boundary229 guards, real calculator via tap, coarse attachment choices and CDP hold/slide/release navigation. Not hardware IME/phone/OSzoom/camera/installed acceptance. See TEST-RESULTS.txt.
+
+- Unit141 reconciles current acceptance table through140 and REMAINING-GATES.md. Read-only evidence inventory preserves11PASS+original138FAIL; root84/markdown4 rerun pass. Hardware/OS-isolation/license/semantic/storage gates remain, goal incomplete. Do not keep re-running narrow passing PC samples as a substitute.

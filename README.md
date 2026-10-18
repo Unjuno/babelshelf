@@ -2,6 +2,8 @@
 
 A smartphone-oriented, local knowledge interface inspired by GBrain. Stored knowledge is the source of truth; models are interfaces for operating on it.
 
+Current evidence and unresolved gates: [MVP acceptance ledger](docs/MVP-ACCEPTANCE.md), [remaining gates](docs/REMAINING-GATES.md). Native installed PC evidence includes real text/media/correction/scheduled inference/backup flows; physical Android/iPhone and full OS-isolated acceptance remain unverified.
+
 **The usable offline MVP is not complete.** The current harness direction is model-independent working state: completed results have a stable local turn ID; follow-up operations resolve that ID instead of running Unit31's competing-speaker model rescue. Opened files now have a separate canonical ID/version working target for scoped read/answer/summary and reviewed corrections. See [conversation contract](docs/CONVERSATION-CONTRACT.md). Canonical storage and actual PC Bonsai4B inference are now connected. Current production entry and measured limitations: [MODEL-RUNTIME-VERIFICATION.md](docs/MODEL-RUNTIME-VERIFICATION.md).
 
 The shared local text port now keeps one model/runtime/context/cancellation binding through a model-backed Send. PC Chrome process-restart checks cover persisted capture/import/search/edit/history/backup and, with prepared4B, new grounded answers, exact-result save, offline reload, summary/source, Stop and unload/reload. These scoped checks do not certify every normal function, installed PWA or physical Android/iPhone. See [process check](docs/OFFLINE-PROCESS-CHECK.md) and [measured inference scope](docs/MODEL-RUNTIME-VERIFICATION.md).
