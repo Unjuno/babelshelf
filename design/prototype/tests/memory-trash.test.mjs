@@ -26,3 +26,5 @@ test('bundled tool definitions and their root cannot be deleted; user definition
  assert.throws(()=>deletionContents({kind:'folder',value:'Tools'},[bundled,custom],['Tools']),/protected/);
  assert.deepEqual(deletionContents({kind:'file',value:'custom'},[bundled,custom],['Tools']).notes,[custom]);
 });
+
+test('restore cannot put a folder below a file or a file above an existing folder; normal parents remain usable',()=>{assert.equal(canRestore({notes:[],folders:['Notes/branch.md/deep']},[{id:'new',path:'Notes/branch.md'}],['Notes']),false);assert.equal(canRestore({notes:[{id:'old',path:'Notes/branch.md'}],folders:[]},[],['Notes/branch.md/deep']),false);assert.equal(canRestore({notes:[{id:'old',path:'Notes/work/a.md'}],folders:[]},[],['Notes/work']),true);assert.equal(canRestore({notes:[],folders:['Notes/work/deep']},[],['Notes/work']),true);});

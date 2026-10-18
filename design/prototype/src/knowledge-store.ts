@@ -235,7 +235,7 @@ export class KnowledgeStore {
    const commit=()=>{if(--pending)return;try{
     if(!equal(folders.result,expectedFolders))throw Error('Folders changed · reopen before renaming');
     const plan=planFolderRename(rows.result,folders.result??[],from,name,expectedNotes);
-    for(const note of plan.records)if(!equal(rows.result.find(n=>n.id===note.id),note))notes.put(note);
+    assertFolderNamespace(plan.records,plan.folders);for(const note of plan.records)if(!equal(rows.result.find(n=>n.id===note.id),note))notes.put(note);
     settings.put(plan.folders,'ui-v1-folders');result={folders:plan.folders,from:plan.from,to:plan.to};
    }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder rename failed'));
@@ -247,7 +247,7 @@ export class KnowledgeStore {
    const commit=()=>{if(--pending)return;try{
     if(!equal(folders.result,expectedFolders)||!equal(trash.result,expectedTrash))throw Error('Recovery data changed · reopen app');
     const plan=planMemoryRecovery(rows.result,folders.result??[],trash.result??[],action);
-    for(const note of plan.records)if(!equal(rows.result.find(n=>n.id===note.id),note))notes.put(note);
+    assertFolderNamespace(plan.records,plan.folders);for(const note of plan.records)if(!equal(rows.result.find(n=>n.id===note.id),note))notes.put(note);
     settings.put(plan.folders,'ui-v1-folders');settings.put(plan.trash,'ui-v1-trash');result={folders:plan.folders,trash:plan.trash};
    }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;trash.onsuccess=commit;
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery save failed'));

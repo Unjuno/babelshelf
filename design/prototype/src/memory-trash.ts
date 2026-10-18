@@ -14,7 +14,8 @@ export function deletionContents<T extends {id:string;path:string;protected?:boo
 }
 
 export function canRestore<T extends {id:string;path:string}>(batch:{notes:T[];folders:string[]},notes:T[],folders:string[]){
- const occupied=[...notes.map(n=>n.path),...folders].map(p=>p.toLowerCase());
- return !batch.notes.some(n=>notes.some(active=>active.id===n.id)||occupied.includes(n.path.toLowerCase()))
-  && !batch.folders.some(p=>occupied.includes(p.toLowerCase()));
+ const files=notes.map(n=>n.path.toLowerCase()),directories=folders.map(p=>p.toLowerCase());
+ for(const note of batch.notes){if(notes.some(n=>n.id===note.id))return false;const path=note.path.toLowerCase();if(files.some(p=>p===path||p.startsWith(path+'/')||path.startsWith(p+'/'))||directories.some(p=>p===path||p.startsWith(path+'/')))return false;}
+ for(const folder of batch.folders){const path=folder.toLowerCase();if(directories.includes(path)||files.some(p=>p===path||path.startsWith(p+'/')))return false;}
+ return true;
 }
