@@ -1,4 +1,8 @@
 import type {DialogueContext} from './conversation.ts';
+// Current attachments are already selected by canonical ID/revision. A planner's
+// history-derived search hint cannot introduce prior attachment facts here.
+// Keep that proposal in its activity receipt; this selects the execution query.
+export function groundingQuery(question:string,proposed:string,currentInputs:boolean){return currentInputs?question:proposed||question;}
 // Current submitted originals own this scope. Prior focus remains durable but is
 // not a competing input to the planner for a new attachment request.
 export function planningContextForInputs(context:DialogueContext,currentInputs:boolean):DialogueContext{if(!currentInputs)return context;const {currentFile,...rest}=context;return rest;}

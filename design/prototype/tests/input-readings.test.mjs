@@ -9,6 +9,18 @@ import {emptyDialogue,appendTurn} from '../src/conversation.ts';
 import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts';
 // Metadata fixtures exercise provenance/selection, not real OCR or PDF extraction.
 async function fixture(){const raw=await prepareOriginal(new File(['png'],'page.png',{type:'image/png'}),'image-input');const value=makeOcrText(raw,'eng',{width:100,height:100,processedWidth:100,processedHeight:100,frame:0,orientation:'browser-decoded'},'The violet code is CEDAR-5821.',[]);const review={kind:'ocr',id:'reading-input',value};const runs=[{key:originalKey(raw.id),value:raw}],notes=[originalNote(raw),...buildInputReadings([review],runs)];return {raw,review,runs,notes};}
+
+test('grounded current readings exclude a stale planner fact from retrieval while keeping citation refusal',async()=>{
+ const {groundedAnswer}=await import('../src/grounded-answer.ts'),{review,notes}=await fixture(),question='What is the violet code in this image?',context={summary:'Earlier code OLD-481; respond briefly.',recent:[],refs:[]};
+ const store={all:async()=>notes,search:async()=>{throw Error('Must not search unrelated knowledge');}};
+ const engine={loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[{id:'4B',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1}),generate:async messages=>{
+  const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.retrievalQuery,question);assert.ok(input.evidence.every(r=>r.noteId===review.id));
+  return {text:JSON.stringify({answer:'CEDAR-5821',citations:[{id:input.evidence[0].label,quote:'CEDAR-5821'}]})};
+ }};
+ const answer=await groundedAnswer(store,engine,'4B',question,'Earlier code OLD-481','answer',context,()=>{},[readingRef(review)]);assert.equal(answer.sources[0].noteId,review.id);
+ const invalid={...engine,generate:async()=>({text:JSON.stringify({answer:'OLD-481',citations:[{id:'S1',quote:'OLD-481'}]})})};
+ await assert.rejects(groundedAnswer(store,invalid,'4B',question,'Earlier code OLD-481','answer',context,()=>{},[readingRef(review)]),/Citation mismatch/);
+});
 test('reviewed input produces separate immutable extraction; wrong source, duplicate IDs and blank extraction refuse',async()=>{
  const {raw,review,runs,notes}=await fixture();assert.equal(notes[0].revisions[0].body,'');assert.equal(notes[1].revisions[0].body,review.value.text);assert.deepEqual(notes[1].mediaSource,originalRef(raw));assert.notEqual(notes[1].ocrText,review.value);
  assert.throws(()=>buildInputReadings([review,review],runs),/reading/i);assert.throws(()=>buildInputReadings([{...review,id:raw.id}],runs));assert.throws(()=>buildInputReadings([{...review,value:{...review.value,text:''}}],runs));assert.throws(()=>buildInputReadings([{...review,value:{...review.value,original:{...review.value.original,sha256:'0'.repeat(64)}}}],runs));

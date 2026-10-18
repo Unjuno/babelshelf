@@ -22,6 +22,7 @@ const {before,answered,saved,'after-restart':after}=archives;
 const dialogue=s=>s.settings.find(e=>e.key==='ui-v1-dialogue').value;
 const turn=dialogue(answered).turns.find(t=>t.id===evidence.answer.id);
 assert.deepEqual(JSON.parse(JSON.stringify(turn)),evidence.answer);
+assert.equal(turn.activity.find(a=>a.tool==='knowledge.answer').input.query,turn.user);
 assert.match(turn.answer,new RegExp('NUTMEG-'+caseId+'9'));assert.match(turn.answer,/CEDAR-5821/);
 assert.ok(turn.refs.length>=2);validateGroundingRefs(answered.notes,turn.refs);
 assert.deepEqual(dialogue(saved).turns.find(t=>t.id===turn.id).activity,turn.activity);
