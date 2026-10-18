@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against local product27fd2cd242b21f7e/113 and evidence through Unit188; installed and published builds plus earlier receipts retain their separate measured scopes (COMPLETION-AUDIT.md). Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against local product27fd2cd242b21f7e/113 and evidence through Unit189; installed and published builds plus earlier receipts retain their separate measured scopes (COMPLETION-AUDIT.md). Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
@@ -43,3 +43,5 @@ Unit181 demonstrates a current installed semantic failure after explicit update 
 Unit182 implements finite read completion (READ-COMPLETION.md) on local6978f4e8d96ccc7b/113. Unit tests and literal opening pass, but both installed actual trials fail at the primary planner with DXGI_ERROR_DEVICE_HUNG before the new continuation runs. One fresh process/model reload was tried; no more GPU/backend/prompt variants. Existing52notes and all prior runs/turns retained; actual answer/summary integration remains unverified. This is distinct from Unit181's successfully generated but semantically wrong read action.
 
 Unit188 verifies a local same-profile PC Chrome flow after browser-context Offline emulation: unique synthetic note, marker search, source/file reopen, and index rebuild (“19 records”) on27fd2cd242b21f7e/113. Loopback remained reachable and served the page/assets; this does not satisfy source-server-stopped/process-closed or OS-isolated acceptance. TXT/MD picker import was not reached because the upload tool rejected the fixture path. Original import/cold-offline gate remains open.
+
+Unit189 updates the retained synthetic installed-PWA Chrome profile to27fd2cd242b21f7e/113, stops its origin server, and cold launches standalone/offline with zero external requests. Strict export comparisons retain prior notes, runs, settings and dialogue turns. This closes only the PC installed-shell/data-retention slice; no OS airplane-mode or all-functions/model acceptance. The app still needs TXT/MD import through an actual allowed local picker path, real-model inference/stop/reload, and all required device/offline flows.
