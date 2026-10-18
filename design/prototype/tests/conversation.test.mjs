@@ -378,3 +378,10 @@ test('planner instructions describe only available dialogue/file/input scopes',(
  const attached=planDialogueMessages('read this',fresh,[{name:'a.txt',kind:'text',status:'Read'}])[0].content;
  assert.match(attached,/CURRENT INPUT SCOPE/);assert.match(attached,/descriptors are not their contents/);assert.doesNotMatch(attached,/For calculate|ACROSS saved knowledge|ZERO_BASED_INDEX/);
 });
+
+test('dialogue CAS revisions reject negative and unsafe integers without mutating originals',async()=>{
+ const {validateDialogue}=await import('../src/conversation.ts');const value=emptyDialogue(),before=structuredClone(value);
+ for(const revision of [-1,0.5,NaN,Infinity,Number.MAX_SAFE_INTEGER+1])assert.throws(()=>validateDialogue({...value,revision}),/invalid/i);
+ for(const revision of [0,1,Number.MAX_SAFE_INTEGER])assert.equal(validateDialogue({...value,revision}).revision,revision);
+ assert.deepEqual(value,before);
+});

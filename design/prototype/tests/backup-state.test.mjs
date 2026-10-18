@@ -178,3 +178,10 @@ test('chunked backup Blob retains exact format/hash and refuses byte overflow',a
  });
 
 test('a valid outer checksum cannot import a file/folder collision or use a file as a folder parent',async()=>{const state={notes:[createNote({path:'Notes/held.md',body:'Keep original'})],settings:[],runs:[]},pack=await makeStateBackup(state);for(const folder of ['Notes/held.md','Notes/held.md/child','Notes/HELD.md']){const forged=structuredClone(pack);forged.payload.settings.push({key:'ui-v1-folders',value:[folder]});forged.sha256=stateHash(forged.payload);await assert.rejects(parseStateBackup(JSON.stringify(forged)),/collid/i);}assert.deepEqual((await parseStateBackup(JSON.stringify(pack))).notes,state.notes);});
+
+test('valid outer checksum cannot admit invalid conversation or file-focus revisions',async()=>{
+ const state=snapshot(),pack=await makeStateBackup(state);
+ for(const revision of [-1,Number.MAX_SAFE_INTEGER+1]){const forged=structuredClone(pack);forged.payload.settings[0].value.revision=revision;forged.sha256=stateHash(forged.payload);await assert.rejects(parseStateBackup(JSON.stringify(forged)),/invalid/i);}
+ const forged=structuredClone(pack);forged.payload.settings[0].value.currentFile={noteId:state.notes[0].id,revision:Number.MAX_SAFE_INTEGER+1};forged.sha256=stateHash(forged.payload);await assert.rejects(parseStateBackup(JSON.stringify(forged)),/invalid/i);
+ assert.deepEqual((await parseStateBackup(JSON.stringify(pack))).settings,state.settings);
+});

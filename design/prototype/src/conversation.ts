@@ -25,7 +25,7 @@ export function completeTurn(state:Dialogue,id:string,result:Partial<Omit<Dialog
 }
 export function validateDialogue(value:unknown):Dialogue{
  const s=value as Dialogue;
- if(s?.schema!==1||!Number.isInteger(s.revision)||!Array.isArray(s.turns)||s.turns.some(t=>typeof t.id!=='string'||typeof t.user!=='string'||t.answer!==undefined&&typeof t.answer!=='string'||t.status!==undefined&&typeof t.status!=='string')||new Set(s.turns.map(t=>t.id)).size!==s.turns.length)throw Error('Conversation data invalid');
+ if(s?.schema!==1||(!Number.isSafeInteger(s.revision)||s.revision<0)||!Array.isArray(s.turns)||s.turns.some(t=>typeof t.id!=='string'||typeof t.user!=='string'||t.answer!==undefined&&typeof t.answer!=='string'||t.status!==undefined&&typeof t.status!=='string')||new Set(s.turns.map(t=>t.id)).size!==s.turns.length)throw Error('Conversation data invalid');
  if(s.compaction&&(!Number.isInteger(s.compaction.through)||s.compaction.through<0||s.compaction.through>s.turns.length||typeof s.compaction.summary!=='string'))throw Error('Conversation summary invalid');for(const turn of s.turns){if(turn.activity!==undefined)validateActivity(turn.activity);if(turn.files!==undefined)validateFileResults(turn.files);}if(s.currentResult!==undefined&&(!s.currentResult||Object.keys(s.currentResult).some(k=>k!=='turnId')||typeof s.currentResult.turnId!=='string'||!s.turns.some(t=>t.id===s.currentResult!.turnId&&t.answer?.trim())))throw Error('Conversation current result invalid');if(s.currentFile!==undefined)validateWorkingFile(s.currentFile);return s;
 }
 function focusExcerpt(text:string,question:string,limit:number){
