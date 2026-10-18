@@ -100,3 +100,18 @@ test('an older completion cannot consume a different pending occurrence of the s
  const skipped=finishTaskRun([current,run],run.id,'owner',{status:'skipped',error:'User skipped old occurrence'},now);
  assert.equal(skipped.task.taskCursor.nextAt,pending);
 });
+
+test('retry keeps prior model provenance in history without attributing it to a new attempt',()=>{
+ const note=registered(),now=new Date(2026,9,20,9);
+ const claimed=claimTaskRun([note],note.id,'first',now);
+ const model={id:'previous-model',revision:'previous-revision',runtime:'previous-runtime'};
+ const failed=finishTaskRun([note,claimed.run],claimed.run.id,'first',{status:'failed',error:'Execution failed',model},now);
+ const snapshot=structuredClone(failed.run);
+ const retry=claimTaskRun([failed.task,failed.run],note.id,'second',now,{retry:true});
+ assert.equal(taskRunView(retry.run).model,undefined);
+ assert.deepEqual(retry.run.revisions.slice(0,-1),failed.run.revisions);
+ assert.deepEqual(failed.run,snapshot);
+ const stopped=finishTaskRun([failed.task,retry.run],retry.run.id,'second',{status:'stopped',error:'Stopped'},now);
+ assert.equal(taskRunView(stopped.run).model,undefined);
+ assert.match(stopped.run.revisions[1].body,/previous-model/);
+});

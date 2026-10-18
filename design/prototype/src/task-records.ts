@@ -86,7 +86,7 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
   }
   if(!options.retry||!['failed','stopped','missed','interrupted'].includes(data.status))throw Error('Occurrence already processed');
   const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
-  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;
+  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.model;
   const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;
   return {task,run,execute:true};
  }
