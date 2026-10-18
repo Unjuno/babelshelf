@@ -59,3 +59,10 @@ test('local arithmetic obeys precedence, signs, bounds and never evaluates code'
  await assert.rejects(calculator({expression:'2+3',write:true},host));
  await assert.rejects(calculator({expression:'2+3'},{...host,check(){throw Error('Stopped')}}),/Stopped/);
 });
+test('ordered calculation requests preserve stated sequence before model planning',async()=>{
+ const {orderedCalculationInput}=await import('../src/tools/math.calculate/tool.ts');
+ const cases=[['Calculate the total of 1200 and 800, then divide by 4.',500],['Add 12 and 8, then multiply by 3, then subtract 10',50],['Subtract 3 from 20, then divide by 2',8.5],['Divide 100 by 4, then add 5, then multiply by 2',60],['Calculate (2 + 3) * 4, then divide by -2',-10],['Calculate 1e2, then add .5',100.5],['Calculate the sum of 2 and 3 and 4',9]];
+ for(const [request,result] of cases){const expression=orderedCalculationInput(request);assert.notEqual(expression,null,request);assert.equal(calculate(expression),result,request);}
+ for(const request of ['Read the note: Add 2 and 3','Remember Calculate the total of 2 and 3','Calculate the total of 1,200 and 800, then divide by 4','Calculate 2 + 3, then save it','Calculate the total of 2 and 3 divided by 4','Calculate 2026-10-18','Calculate 20%, then add 5','Calculate the total of 2 and 3 from the attached file'])assert.equal(orderedCalculationInput(request),null,request);
+ assert.equal(orderedCalculationInput('Calculate 1'+', then add 1'.repeat(17)),null);
+});

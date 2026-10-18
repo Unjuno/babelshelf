@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against the current product1146a94a322bf06b/112 and evidence through Unit174; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against the current product776c70a284785c23/112 and evidence through Unit175; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
@@ -35,3 +35,5 @@ Unit172 explicitly updated the retained installed Chrome PWA to1146a94a322bf06b/
 Unit173 actual installed current-build prepared OCR/Bonsai answer, two-source validation, exact Save/Unload and separate cold index/search/original flow pass with prior records retained. This closes the scoped post-SHA/cache-change inference integration check, not physical-device/OS-isolation or general semantic quality gates.
 
 Unit174 adds explicit optional local static HTTPS delivery and device-origin instructions (LOCAL-DEVICE-HTTPS.md), with loopback native TLS/default-untrusted-client checks. No LAN listener, trust-store change or public deployment started. User confirmed prior17air description; exact OS and actual trusted phone origin remain pending.
+
+User explicitly defers physical checks while PC harness/tool work proceeds. Unit175 closes the original ordered arithmetic request using a finite whole-request grammar and actual cold browser tool flow; general model interpretation remains a separate limit. Do not use absent phone hardware as a blocker for independent PC work.

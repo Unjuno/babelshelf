@@ -26,3 +26,21 @@ export async function run(args:unknown,host:ToolHost){
  host.check();const expression=(args as {expression:string}).expression,result=calculate(expression);host.check();
  return [{expression,result,precision:'IEEE-754 binary64'}];
 }
+// A whole-request finite grammar, not a scan of arbitrary prose or a repair of
+// model output. Each explicit "then" folds the previous result as one operand.
+export function orderedCalculationInput(text:string):string|null {
+ if(text.length>1000)return null;
+ const clauses=text.trim().replace(/[.!?]$/,'').split(/\s*,?\s+then\s+/i);if(clauses.length>16)return null;
+ const number='[+−-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?',numeric=new RegExp('^'+number+'$');
+ const first=clauses[0].trim();let expression:string|null=null;
+ const total=first.match(/^(?:calculate\s+(?:the\s+)?(?:sum|total)\s+of|add)\s+(.+)$/i);
+ if(total){const terms=total[1].split(/\s+and\s+/i);if(terms.length<2||terms.length>16||terms.some(term=>!numeric.test(term)))return null;expression='('+terms.join(' + ')+')';}
+ else {
+  const binary=first.match(new RegExp('^(subtract|multiply|divide)\\s+('+number+')\\s+(from|by)\\s+('+number+')$','i'));
+  if(binary){const [,verb,left,link,right]=binary;if(verb.toLowerCase()==='subtract'){if(link.toLowerCase()!=='from')return null;expression='('+right+' - '+left+')';}else{if(link.toLowerCase()!=='by')return null;expression='('+left+(verb.toLowerCase()==='multiply'?' * ':' / ')+right+')';}}
+  else {const calculation=first.match(/^calculate\s+(.+)$/i);if(!calculation)return null;expression=calculatorInput(calculation[1])??(numeric.test(calculation[1])?calculation[1]:null);}
+ }
+ if(expression===null)return null;
+ for(const clause of clauses.slice(1)){const step=clause.trim().match(new RegExp('^(add|subtract|multiply by|divide by)\\s+('+number+')$','i'));if(!step)return null;const op=({'add':'+','subtract':'-','multiply by':'*','divide by':'/'} as Record<string,string>)[step[1].toLowerCase()];expression='('+expression+' '+op+' '+step[2]+')';}
+ return expression;
+}
