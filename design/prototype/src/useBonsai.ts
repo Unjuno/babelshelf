@@ -1,3 +1,4 @@
+import {runtimeStatus} from './runtime-status';
 import type {StructuredFormat} from './structured-grammar';
 import {TextEngineRouter} from './text-engine-router';
 import {createOnnxTextBackend} from './onnx-text-backend';
@@ -34,5 +35,5 @@ export function useBonsai(models:CustomLocalModel[]=[],ready=true){
 
  const port=useRef<TextRuntime>(null!);port.current={get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},get loaded(){return engine.current?.loaded??'';},assets,load,generate,stop,count};
  const inference=useRef<TextRuntime|null>(null);if(!inference.current)inference.current=createTextInference(()=>port.current);
- return {get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},busy,progress,get loaded():string{return engine.current?.loaded??'';},assets,prepare,verify,importCustom,unload,pin:inference.current.pin,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
+ return {get manifest(){return engine.current?.manifest??combinedTextManifest(manifest);},busy,progress:runtimeStatus(progress),get loaded():string{return engine.current?.loaded??'';},assets,prepare,verify,importCustom,unload,pin:inference.current.pin,load:inference.current.load,generate:inference.current.generate,stop:inference.current.stop,count:inference.current.count};
 }

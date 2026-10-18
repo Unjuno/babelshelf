@@ -58,3 +58,10 @@ test('media extraction attempts share persisted audit lifecycle without entering
 test('explicit asset management operations have audit labels and lifecycle without implying readiness',()=>{
  for(const tool of ['model.prepare','model.unload','speech.prepare']){const a=startActivity(tool,{role:'text',model:'4B',allowNetwork:false});const done=finishActivity(a,{output:{completed:true}});validateActivity([done]);assert.equal(done.status,'succeeded');assert.equal(done.input.allowNetwork,false);}
 });
+
+test('GPU failure display stays short while original operation diagnostics remain exact',async()=>{
+ const {runtimeStatus}=await import('../src/runtime-status.ts');const raw='the GPU device was lost (unknown): ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n at CheckHRESULTImpl (...D3DError.cpp:121)';
+ const receipt=finishActivity(startActivity('dialogue.plan',{question:'Read my local file'}),{error:Error(raw)}),before=structuredClone(receipt);
+ assert.equal(runtimeStatus(raw),'GPU unavailable');assert.equal(receipt.error.message,raw);assert.deepEqual(receipt,before);
+ for(const value of ['Stopped','Model not prepared · Settings','Source changed · retry','Generating…','Saved · Inbox/notes.md','Saved · Inbox/DXGI_ERROR_DEVICE_HUNG.md',''])assert.equal(runtimeStatus(value),value);
+});

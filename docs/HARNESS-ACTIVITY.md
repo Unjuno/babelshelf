@@ -59,3 +59,8 @@ Failed interactive `dialogue.plan` retains bounded raw invalid output and a vali
 ## Bundled package identity (Unit79)
 
 Explicit search/read inputs now retain `package`, `packageVersion`, `entry`, `packageSha256`. The SHA-256 covers the executing bundled package's source envelope (identity/version/entry and sorted SKILL/code/shared host bytes), independently of possibly historical canonical source projections. It is provenance, never registration/execution authority or proof of semantic correctness/sandboxing. Old activity remains valid without these optional fields. Current-file pinned reads retain their distinct canonical version validator.
+
+## GPU failure presentation (Unit183)
+Previously recorded real WebGPU device-loss errors remain exact canonical turn statuses and failed-operation diagnostics. The normal Input turn-status display, text-model public progress and transient toast presentation now map recognized device-loss error prefixes to GPU unavailable. Unknown statuses, ordinary errors, source/user content and filenames containing DXGI codes are unchanged. Formatting never supplies an answer, retries a task, clears readiness files, changes a model or edits a saved record. Activity details continue to show the full underlying error when explicitly opened.
+
+Actual installed cold-offline PC Chrome on52eb152e26f69182/113 reads the two existing Unit182 GPU failures, shows two short labels with no driver stack in normal status rows, then opens Select action / Failed details with the original DXGI_ERROR_DEVICE_HUNG text. Before/after brainpacks match notes/settings/runs exactly; screenshots visually inspected. No new generation, synthetic failure injection or GPU-recovery claim. See Unit183 TEST-RESULTS.txt.
