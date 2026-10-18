@@ -262,7 +262,7 @@ export class KnowledgeStore {
  async compareState(key:string,before:unknown,next:unknown){
   if(key==='dialogue')validateDialogue(next);
   const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),s=tx.objectStore('settings'),q=s.get('ui-v1-'+key);let error:unknown;
-   q.onsuccess=()=>{if(!equal(q.result,before)){error=Error('Conversation changed in another tab · reopen to continue');tx.abort();return;}s.put(next,'ui-v1-'+key);};
+   q.onsuccess=()=>{if(!equal(q.result,before)){error=Error(key==='dialogue'?'Conversation changed in another tab · reopen to continue':'Local data changed in another tab · reopen to continue');tx.abort();return;}s.put(next,'ui-v1-'+key);};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
  }

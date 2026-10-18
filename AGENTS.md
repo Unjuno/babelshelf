@@ -143,3 +143,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit144 quota probe did not produce actual write refusal despite Chrome reportedquota1/overrideActive in ephemeral/persistent QA. All probe outcomes noncertifying; stop arbitrary size variants, preserve source/runtime/data. No quota recovery claim, no demonstrated product bug. See REMAINING-GATES.md.
 
 - Unit145 direct editor same-task duplicateSave reproducedv3/fixedv2 with synchronouslock/capturedtarget+version and pending field/Cancel controls. Explicit lateredit worksv3/history. Product0e3efd0c6b6af729/112, prototype367/product2/check31/protected28. No phone/quota guarantee. See STORAGE-CONTRACT.md.
+
+- Unit146 folder creation awaits metadataCAS before publishing/navigation, retains name on failure; File/Folder errors inline so modal cannot hide them. Actual two-tab native CAS RED/hidden-toast intermediate/finalGREEN retained. Product173f8d56fc3ef062/112, prototype367/product2/check31/protected28. See STORAGE-CONTRACT.md.
