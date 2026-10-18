@@ -178,3 +178,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 
 
 - Unit199 public4c7edb10dfc00ba5/113 combines five actual TXT/MD/PNG/PDF/WAV readers and Bonsai answer with source/byte validation, exact Save, index/cold search/original retention; offline original image region/PDF pages/audio-start preview passes with retained export-timestamp observer failure plus read-only revalidation. See MEDIA-HARNESS.md. No physical sensor/audibility/OS isolation/video vision/general accuracy claim or new download; do not rerun the same successful sample as broad certification.
+
+- Unit200 moves post-claim refresh into the execution failure boundary; real React/Chrome IDB injected-refresh RED/GREEN proves failed/no inference, explicit same-ID attempt2 and unchanged task. Localc6b70e91d9f67ab1/113; publication pending, publicv5 remains4c7edb10dfc00ba5. See SCHEDULE-CONTRACT.md.

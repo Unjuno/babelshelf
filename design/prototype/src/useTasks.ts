@@ -22,9 +22,9 @@ export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boo
  async function run(id:string,retry=false,manual=true){
   if(locked.current||isBlocked())throw Error('Model busy');locked.current=true;setActive(id);setError('');let runId:string|undefined,heartbeat:ReturnType<typeof setInterval>|undefined;
   try{
-   const claim=await knowledge.claimRun(id,owner.current,{retry,manual});await latest.current.refresh();if(!claim.execute)return;
+   const claim=await knowledge.claimRun(id,owner.current,{retry,manual});if(!claim.execute)return;
    runId=claim.run.id;heartbeat=setInterval(()=>{knowledge.heartbeat(runId!,owner.current).catch(e=>setError(e.message));},20000);
-   try{const output=await latest.current.execute(taskRunView(claim.run).prompt);await knowledge.finishRun(runId!,owner.current,{status:'succeeded',...output});}
+   try{await latest.current.refresh();const output=await latest.current.execute(taskRunView(claim.run).prompt);await knowledge.finishRun(runId!,owner.current,{status:'succeeded',...output});}
    catch(e){const message=(e as Error).message;await knowledge.finishRun(runId!,owner.current,{status:message==='Stopped'?'stopped':'failed',error:message});if(manual)setError(message);}
   }finally{if(heartbeat)clearInterval(heartbeat);locked.current=false;setActive(null);await latest.current.refresh();}
  }
