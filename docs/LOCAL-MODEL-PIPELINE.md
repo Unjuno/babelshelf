@@ -53,3 +53,6 @@ An optional fixed350M text registration now uses the app-owned CPU count runtime
 ## Public first-time preparation (Unit197)
 
 A fresh credential-free PC Chrome profile on published984769124c99c80b/112 now completes the ordinary Initial preparation flow directly from the pinned upstream assets. Prepare is disabled until explicit downloads permission; review lists the roughly1GB standard set. Bonsai4B/runtime, Whisper tiny and eng+jpn Tesseract prepare in sequence with real size/hash checks. After DownloadsOFF and browser closure, another browser-offline process reads the same shell, shows Files present/Verified and completes Use models with zero external requests. Prepared notes/settings/prior processing receipts are retained. See TEST-RESULTS.txt and outputs/unit197-public-preparation. This supersedes Unit196's direct-upstream preparation gap only; it is not inference/media/device/OS-isolation or interrupted-download acceptance. Runtime redistribution remains unapproved; direct preparation is not redistribution by the Site.
+
+
+Initial preparation shows active adapter progress separately from its role label (Unit198), using actual worker/reader updates. Idle, unrelated and terminal stale adapter statuses are hidden. No simulated overall percentage or completion prediction. The plan still commits only after all actual verifications complete.

@@ -1,0 +1,20 @@
+import {chromium} from '../../design/prototype/node_modules/playwright-core/index.mjs';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {join} from 'node:path';
+import assert from 'node:assert/strict';
+import {parseStateBackup} from '../../design/prototype/src/backup-state.ts';
+const [installationDir,out]=process.argv.slice(2);await mkdir(out,{recursive:false});
+const installation=JSON.parse(await readFile(join(installationDir,'installed-evidence.json'),'utf8'));assert.equal(installation.pass,true);assert.equal(installation.fixtureServerStopped,true);
+const evidence={scope:'Real prepared-only model verification progress in PC Chrome, source server stopped and browser offline; no inference/device claim',external:[]};
+const c=await chromium.launchPersistentContext(installation.profileDir,{channel:'chrome',headless:true,offline:true,viewport:{width:390,height:844},acceptDownloads:true});c.setDefaultTimeout(30000);const p=c.pages()[0];
+c.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith(installation.url))evidence.external.push(new URL(r.url()).origin);});
+async function go(name){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('menuitem',{name,exact:true}).click();}
+async function backup(name){await go('Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();const download=p.waitForEvent('download');await p.getByRole('button',{name:'Export backup',exact:true}).click();const path=join(out,name+'.brainpack');await(await download).saveAs(path);return parseStateBackup(await readFile(path,'utf8'));}
+try{
+ await p.goto(installation.url);await p.getByRole('textbox',{name:'Message',exact:true}).waitFor();
+ evidence.build=await p.evaluate(()=>new Promise(resolve=>{const ch=new MessageChannel();ch.port1.onmessage=e=>resolve(e.data);navigator.serviceWorker.controller.postMessage('build',[ch.port2]);}));assert.equal(evidence.build.build,'4c7edb10dfc00ba5');
+ const before=await backup('before');await go('Settings');await p.getByRole('button',{name:'Models',exact:true}).click();await p.getByRole('button',{name:'Initial preparation',exact:true}).click();const dialog=p.getByRole('dialog');await dialog.getByRole('button',{name:'Use models',exact:true}).waitFor();assert.equal(await dialog.getByRole('switch').isChecked(),false);assert.equal(await dialog.getByRole('status',{name:'Preparation progress',exact:true}).count(),0);
+ await dialog.getByRole('button',{name:'Use models',exact:true}).click();const progress=dialog.getByRole('status',{name:'Preparation progress',exact:true});await progress.filter({hasText:/Verifying model.*\d+%/}).waitFor();evidence.progress=await progress.innerText();await p.screenshot({path:join(out,'progress.png')});await dialog.waitFor({state:'hidden',timeout:180000});assert.equal(await p.getByRole('status',{name:'Preparation progress',exact:true}).count(),0);
+ const after=await backup('after');assert.deepEqual(after.notes,before.notes);assert.deepEqual(after.settings,before.settings);for(const r of before.runs)assert.deepEqual(after.runs.find(v=>v.key===r.key),r);assert.equal(evidence.external.length,0);evidence.pass=true;
+}catch(e){evidence.pass=false;evidence.error=String(e);process.exitCode=1;}
+finally{await c.close();await writeFile(join(out,'evidence.json'),JSON.stringify(evidence,null,2));console.log(evidence);}
