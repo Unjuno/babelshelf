@@ -26,7 +26,7 @@ Bundled tools execute validated code and expose SKILL.md/source identity. Custom
 ## Next work and limits
 
 - Complete Android/iPhone physical PWA acceptance and OS-disconnected cold restart when the devices/environment are available. PC standalone/browser-offline and synthetic touch/media remain separate evidence.
-- Resolve the pinned WebML runtime's own redistribution provenance. Model Apache-2.0 and dependency MIT are not a runtime grant. User-authorized owner-private Sites publication is recorded in SITES-DEPLOYMENT.md; the WebML runtime itself is excluded and acquired directly only through explicit preparation.
+- Resolve the pinned WebML runtime's own redistribution provenance. Model Apache-2.0 and dependency MIT are not a runtime grant. User-authorized public Sites publication is recorded in SITES-DEPLOYMENT.md; the WebML runtime itself is excluded and acquired directly only through explicit preparation.
 - Address concrete normal-use semantic failures structurally. Do not resume broad model/prompt benchmarking, tune until a fixture passes, fabricate inference or silently select another provider.
 - Verify actual quota/eviction/interruption behavior. The controlled abort tests and ineffective CDP quota override are not real capacity-failure evidence. Do not alter global disk policy or purge knowledge/assets.
 - Keep the documented200MB backup bound, add-only conflict rules and reviewed recovery scope explicit. Streaming/partitioned archives and arbitrary divergent-history/dialogue reconciliation remain absent.

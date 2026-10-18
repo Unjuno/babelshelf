@@ -43,7 +43,17 @@ self.addEventListener('fetch',event=>{
   const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);
   const missing=()=>new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain'}});
   if(path===META||path.startsWith('./.babelshelf-app-assets/'))return missing();
-  const hit=await cache.match(absolute(path));if(hit)return hit;
+  const hit=await cache.match(absolute(path));if(hit){
+   // Static hosts may redirect index.html to /. A cached redirected response
+   // cannot satisfy a navigation whose redirect mode is manual. Serve the
+   // already verified body without its network redirect metadata, including
+   // for existing caches. No acquisition or cache/data migration is needed.
+   if(request.mode==='navigate'&&hit.redirected){
+    const headers=new Headers(hit.headers);headers.delete('Content-Encoding');headers.delete('Content-Length');
+    return new Response(hit.body,{status:hit.status,statusText:hit.statusText,headers});
+   }
+   return hit;
+  }
   if(immutable(path)){
    const pool=await caches.open(SHARED),current=FILES.find(file=>file.path===path);
    if(current){const saved=await pool.match(poolKey(current));if(saved)return saved;}

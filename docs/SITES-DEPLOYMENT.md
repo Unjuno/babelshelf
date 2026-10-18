@@ -1,6 +1,20 @@
-# Sites device-check publication
+# Sites publication
 
-Latest user authorization permits Sites deployment for physical-device checks; earlier local-only/no-deploy instructions are superseded for this publication. The original GitHub remote was not pushed.
+Latest user authorization permits public access and continued adjustments on the published Site; earlier local-only/no-deploy instructions are superseded. The original GitHub remote was not pushed.
+
+## Current publication (Unit195)
+
+- Public URL: https://babelshelf.com (original generated hostname remains an alias).
+- Audience: public, Sites access revision2; no login or service token needed.
+- Saved version4: appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_ba6528bb49208191952251a4ff478100.
+- Deployment appgdep_6ad4a2bd0b1081918c89b44c924e5a65: succeeded.
+- Sites source commit4c06403d55df955ba517c8441d3401fa87e13285.
+- Published build984769124c99c80b/112. This release changes only the worker's redirected-shell response handling, retaining the preceding published UI assets. Current local product is separately620d24121bb7cfc5/113.
+- Domain A records162.159.143.30 and172.66.3.26 plus Sites verification TXT; existing MX/SPF/wildcard/ACME records preserved. Custom-domain and TLS status active.
+
+The earlier owner-private access and service-header SW failure below are historical. A credential-free public browser run now installs the worker successfully, but exposed a separate redirected-shell cold-start defect; see PWA-UPDATE-CONTRACT.md and TEST-RESULTS.txt Unit195. No end-user records, downloaded model weights or WebML runtime were deployed.
+
+## Historical initial publication
 
 - URL: https://babelshelf-device-check.unjuno.chatgpt.site
 - Audience: owner-private, confirmed by Sites; access policy unchanged.
@@ -32,3 +46,10 @@ Actual isolated PC Chrome390x844 on the deployed HTTPS origin: reviewed new-note
 Reproducible helper: scripts/qa/deployed-site.mjs ABSOLUTE_NEW_OUTPUT online-only. Supply the official Site service-access JSON through hidden stdin only, never command arguments or tracked files. It uses a fresh isolated browser profile and a CONNECT allowlist for this exact Site, preventing the authorization header from reaching other hosts. Evidence is in task-wrapper outputs/unit177-site-stream-check/evidence.json; original failure retained in outputs/unit177-deployed-online-corrected/evidence.json. No credentials are included in these artifacts.
 
 Important limit: service-access authorization opens the app and regular fetches, but does not accompany Chromium's internal Service Worker registration. /sw.js returns401 and the Offline app status is Preparation failed under this fixture. Normal owner-cookie login is a different condition and has not been verified here. Do not claim hosted cold-offline acceptance or change audience/embed credentials to make the test pass. Live hosted model preparation/generation/stop and physical-device checks also remain unverified in this unit. The user's existing in-app browser login and automated Chrome use separate sessions.
+
+
+## Public custom-domain cold restart verified (Unit195)
+
+Actual `node scripts/qa/deployed-site.mjs ABSOLUTE_OUTPUT public` passes at outputs/unit195-public-fixed/evidence.json. Fresh synthetic persistent Chrome profile, no authorization header/cookie,390x844. Phase1 reports Installed and984769124c99c80b/112, saves Japanese23-litre fixture through reviewed Save. After complete browser-context closure, a new persistent Chrome process starts browser-offline before navigation. It loads the same build, searches the retained marker, opens exact source, edits23->25 litres, displays both v1/v2, calculates500 with the actual local tool and navigates Memory/Schedule/Notifications/Settings. Both phases report no page errors, failed requests or HTTP errors. history.png visually inspected. Earlier public cold-start failure is retained separately in unit195-public-cold-run; native red/green redirect fixtures retain the causal reproduction. This closes only the public shell/storage/tool flow; no hosted real-model, physical device, OS isolation, or full MVP acceptance claim.
+
+Existing visitors need an explicit online app update from Settings > Connection and the prompted reopen to receive the new worker. Do not clear site data or reinstall by deleting local knowledge. The domain's local storage is separate from the old generated hostname and localhost.
