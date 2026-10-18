@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against the current product1146a94a322bf06b/112 and evidence through Unit171; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against the current product1146a94a322bf06b/112 and evidence through Unit172; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
@@ -29,3 +29,5 @@ Unit168 isolates the remaining Windows WebKit offline failure below the product:
 Unit169 now rejects SW installation when persisted shell/shared bytes or manifest cannot be read back exactly. Real Windows WebKit persistent-profile failure leaves no active/controller worker; online UI remains usable. Ephemeral WebKit can differ and did activate, so the observed cache issue is persistent-profile/environment scoped. Actual Chrome cold flow passesfd8c6ee8f72b1cdc/112. This truthfulness fix does not make WebKit cold-offline operation pass.
 
 Unit170 exposes app worker lifecycle/failure in Settings > Connection, separate from model preparation. Actual persistent WebKit shows Preparation failed while Chrome shows Installed;360px screenshot checked. Installed is a lifecycle label, not offline/device certification.
+
+Unit172 explicitly updated the retained installed Chrome PWA to1146a94a322bf06b/112, stopped its source server and cold launched offline standalone with prior data retained. See outputs/unit172-installed-update; actual GPU/all-functions/OS-disconnected/phone acceptance is not implied.
