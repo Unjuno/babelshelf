@@ -1,3 +1,4 @@
+import {videoTimingCoverage} from './speech-transcript.ts';
 import {validHarnessTarget} from './harness-actions.ts';
 import type {Dialogue,SourceRef} from './conversation.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
@@ -21,7 +22,7 @@ export function workingFileNote(records:any[],pin:WorkingFile){
 export function workingFileMetadata(note:any){const v=latest(note);return {id:note.id,path:notePath(note),version:v.version,excerpt:v.body.slice(0,700)};}
 export function workingFileCoverage(note:any){
  const prefix='Selected excerpts of the explicitly opened file; ';
- return prefix+(note.ocrText?'stored OCR text only; scene not processed':note.pdfText?'stored extracted PDF text only; page coverage may be partial':note.transcription?(note.transcription.sourceTrack==='video-audio'?'stored video audio transcript only; frames not processed; container timing unmapped':'stored audio transcript only; timing estimated'):note.originalAsset?'stored text projection only; binary content not decoded here':'stored text');
+ return prefix+(note.ocrText?'stored OCR text only; scene not processed':note.pdfText?'stored extracted PDF text only; page coverage may be partial':note.transcription?(note.transcription.sourceTrack==='video-audio'?'stored video audio transcript only; frames not processed; '+videoTimingCoverage(note.transcription,latest(note).body,latest(note).version):'stored audio transcript only; timing estimated'):note.originalAsset?'stored text projection only; binary content not decoded here':'stored text');
 }
 export function workingFileEvidence(records:any[],pin:WorkingFile,question:string):(SourceRef&{coverage:string})[]{
  const note=workingFileNote(records,pin),version=latest(note);

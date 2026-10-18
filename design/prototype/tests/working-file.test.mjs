@@ -56,7 +56,7 @@ test('working-file audit metadata uses canonical legacy path fallback and remain
 
 test('file scope retains extraction limits instead of implying raw media understanding',()=>{
  assert.match(workingFileCoverage({ocrText:{}}),/scene not processed/);assert.match(workingFileCoverage({pdfText:{}}),/coverage may be partial/);
- assert.match(workingFileCoverage({transcription:{sourceTrack:'video-audio'}}),/frames not processed; container timing unmapped/);
+ assert.match(workingFileCoverage({revisions:[{version:1,body:'Spoken text'}],transcription:{sourceTrack:'video-audio',text:'Spoken text'}}),/frames not processed; container timing unmapped/);
  assert.match(workingFileCoverage({originalAsset:{}}),/binary content not decoded/);
 });
 

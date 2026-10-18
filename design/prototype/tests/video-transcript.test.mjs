@@ -15,3 +15,20 @@ test('mapped video transcript preserves timing through backup and converts citat
  assert.equal(transcriptCitationRange(t,'Edited',2,0,6).seekable,undefined);
  const legacy=makeTranscript(asset,8120,{text:'First.',chunks:[{text:'First.',timestamp:[0,2]}]});assert.equal(transcriptCitationRange(legacy,legacy.text,1,0,6).seekable,undefined);
 });
+
+import {readingEvidence} from '../src/input-readings.ts';
+import {workingFileCoverage} from '../src/working-file.ts';
+test('video evidence describes mapped, legacy and edited timing without mutating originals',async()=>{
+ const asset=await prepareOriginal(new File(['schema fixture'],'source.mp4',{type:'video/mp4'}));
+ const timing={schema:1,processor:'mediabunny-1.61.6',timebase:'container-presentation',trackId:2,startUs:5001000,endUs:13121000};
+ const t=makeTranscript(asset,8120,{text:'First.',chunks:[{text:'First.',timestamp:[0,2]}]},'en',timing);
+ const n=transcriptNote('coverage-test',asset,t),snapshot=structuredClone(n);
+ const refs=readingEvidence([originalNote(asset),n],[{kind:'speech',noteId:n.id,revision:1}],'First');
+ assert.match(refs[0].coverage,/container timing mapped; segment timing estimated/);
+ assert.match(workingFileCoverage(n),/container timing mapped; segment timing estimated/);
+ const legacy=structuredClone(n);delete legacy.transcription.containerTiming;
+ assert.match(workingFileCoverage(legacy),/container timing unmapped/);
+ const edited=structuredClone(n);edited.revisions.push({...edited.revisions[0],version:2,body:'Corrected.'});
+ assert.match(workingFileCoverage(edited),/edited transcript; segment alignment unavailable/);
+ assert.deepEqual(n,snapshot);
+});

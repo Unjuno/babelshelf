@@ -21,3 +21,11 @@ export function transcriptNote(id:string,asset:OriginalAsset,t:Transcript){valid
 export function validateTranscriptLinks(notes:any[],runs:{key:string;value:any}[]){
  for(const n of notes)if(n.transcription||(n.mediaSource&&!n.pdfText&&!n.ocrText)){const asset=runs.find(r=>r.value?.type==='original-asset'&&r.value.id===n.mediaSource?.id)?.value;if(!asset)throw Error('Transcript original unavailable');validateTranscript(n.transcription,asset);if(JSON.stringify(n.mediaSource)!==JSON.stringify(n.transcription.original)||n.revisions[0].body!==n.transcription.text)throw Error('Transcript original text changed');}
 }
+
+// Describes provenance only; this grants neither source eligibility nor seek authority.
+export function videoTimingCoverage(t:Transcript,body:string,revision:number):string {
+ if(revision!==1||body!==t.text)return 'edited transcript; segment alignment unavailable';
+ if(!t.containerTiming)return 'container timing unmapped';
+ validateVideoAudioTiming(t.containerTiming,t.durationMs);
+ return 'container timing mapped; segment timing estimated';
+}
