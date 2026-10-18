@@ -129,3 +129,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit137 installed PC Stop now observed after real Bonsai worker text event (transparent QA forwarding), followed by cold explicit Load/new sourced answer. Planner-generation stage; no final-answer/GPU-driver memory/device guarantee. Original obsolete QA worker-selector failure retained. See TEST-RESULTS.txt.
 
 - Unit138 latest aggregate Restore new into independent fresh PC profile retains17initial conflicts, imports19newnotes/31linkedentries including8originals/correction/task; schedules quarantined, OPFSempty. Original observer falsely expected Found1; retained restore and separate offline reopen pass with Found4/originalv2 source. See BACKUP-CONTRACT.md; not whole-state replacement/device guarantee.
+
+- Unit139 search display groups first ranked exact passage by noteID+revision; raw persisted results/tool/model evidence unchanged, versions stay separate. Actual cold PC search4rawhits ->2rows/sourcev2 passes. Product3f314087ceaffa3f/112, prototype367. See TEST-RESULTS.txt.
