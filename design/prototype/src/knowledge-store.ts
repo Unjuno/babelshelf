@@ -113,6 +113,7 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
  const updated=applyKnowledgeChanges(records,[],batch.notes);
  return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
+export function assertFolderNamespace(records:Canonical[],folders:string[]){for(const folder of folders){if(typeof folder!=='string')throw Error('Invalid folder data');const f=folder.toLowerCase();for(const note of records){const path=notePath(note).toLowerCase();if(f===path||f.startsWith(path+'/'))throw Error('File and folder paths collide');}}}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
  private name:string;
@@ -221,11 +222,12 @@ export class KnowledgeStore {
  });}
  async readNotification(id:string){return this.editRecords(records=>{const old=records.find(n=>n.id===id&&n.state==='active');if(!old)throw Error('Notification unavailable');const data=noticeView(old),note=data.read?old:reviseNote(old,{body:noticeBody({...data,read:true})},latest(old).version);return {put:[note],value:projectNote(note)};});}
  async commit(before:NoteView[],after:NoteView[]){
-  const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction('notes','readwrite'),store=tx.objectStore('notes'),q=store.getAll();let error:unknown,views:NoteView[];
-   q.onsuccess=()=>{try{const updated=applyKnowledgeChanges(q.result,before,after);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};
+  const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2,error:unknown,views:NoteView[];
+   const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;
    tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
   });
  }
+ async createFolder(path:string,expected:string[]|undefined){const db=await this.open();return new Promise<{path:string;folders:string[]}>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('settings'),rows=tx.objectStore('notes').getAll(),folders=store.get('ui-v1-folders');let pending=2,error:unknown,result:{path:string;folders:string[]};const commit=()=>{if(--pending)return;try{if(!equal(folders.result,expected))throw Error('Local data changed in another tab · reopen to continue');const old=folders.result??[],occupied=[...old];for(const n of rows.result){const parts=notePath(n).split('/');while(parts.length){occupied.push(parts.join('/'));parts.pop();}}const parts=path.split('/'),name=parts.pop()??'',clean=memoryFolderPath(parts.join('/'),name,occupied);if(clean!==path)throw Error('Invalid folder path');const next=[...old,clean];assertFolderNamespace(rows.result,next);store.put(next,'ui-v1-folders');result={path:clean,folders:next};}catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder save failed'));});}
  async renameFolder(from:string,name:string,expectedNotes:NoteView[],expectedFolders:string[]|undefined){
   const db=await this.open();return new Promise<{folders:string[];from:string;to:string}>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders');let pending=2,error:unknown,result:{folders:string[];from:string;to:string};

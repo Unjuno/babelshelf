@@ -145,3 +145,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit145 direct editor same-task duplicateSave reproducedv3/fixedv2 with synchronouslock/capturedtarget+version and pending field/Cancel controls. Explicit lateredit worksv3/history. Product0e3efd0c6b6af729/112, prototype367/product2/check31/protected28. No phone/quota guarantee. See STORAGE-CONTRACT.md.
 
 - Unit146 folder creation awaits metadataCAS before publishing/navigation, retains name on failure; File/Folder errors inline so modal cannot hide them. Actual two-tab native CAS RED/hidden-toast intermediate/finalGREEN retained. Product173f8d56fc3ef062/112, prototype367/product2/check31/protected28. See STORAGE-CONTRACT.md.
+
+- Unit147 folder create and ordinary note commit atomically read notes+folders to prevent namespace collisions; UI hydrates folder writer only after commit. Current two-direction Notes same-path native tests retain draft/existing stores exact. Original home Inbox-vs-Notes QA errors not pre-fix collision proof. Product6e4dd31e19914041/112, prototype368/product2/check31/protected28. See STORAGE-CONTRACT.md.

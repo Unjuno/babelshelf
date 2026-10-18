@@ -163,3 +163,5 @@ test('Save rejects stale generated ancestors and a source edit in the same atomi
  const changed=reviseNote(original,{body:'corrected evidence'},1),current=[changed,parent];assert.throws(()=>applyKnowledgeChanges(current,current.map(projectNote),[...current.map(projectNote),answer]),/Source changed/);
  assert.throws(()=>applyKnowledgeChanges(records,views,[projectNote(changed),projectNote(parent),answer]),/Source changed/);assert.equal(original.revisions.length,1);
 });
+
+test('file and folder namespaces reject equal paths and files used as parents without rejecting normal descendants',()=>{const records=[createNote({path:'Notes/reserved.md',body:'original'})];assert.equal(typeof edits.assertFolderNamespace,'function');assert.throws(()=>edits.assertFolderNamespace(records,['Notes/reserved.md']),/collid/i);assert.throws(()=>edits.assertFolderNamespace(records,['Notes/reserved.md/child']),/collid/i);assert.throws(()=>edits.assertFolderNamespace(records,['notes/RESERVED.md']),/collid/i);assert.doesNotThrow(()=>edits.assertFolderNamespace(records,['Notes','Notes/other']));});
