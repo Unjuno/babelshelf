@@ -182,3 +182,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit200 moves post-claim refresh into the execution failure boundary; real React/Chrome IDB injected-refresh RED/GREEN proves failed/no inference, explicit same-ID attempt2 and unchanged task. Localc6b70e91d9f67ab1/113; publication pending, publicv5 remains4c7edb10dfc00ba5. See SCHEDULE-CONTRACT.md.
 
 - Unit201 publishesv6/c6b70e91d9f67ab1 but retained update FAILS: actual served index.html is773->1711bytes with Cloudflare jsd injection;112other assets verify. Oldv5worker remains. Fix exact offline-shell delivery, never weaken hash validation or rerun inference. See SITES-DEPLOYMENT.md and retained outputs/unit201-public-update.
+
+- Unit202 resolves Unit201 HTML injection update failure using exact hashed binary shell transport; publicv7/local a834b3c08c84e2da/113. Same retained public profile Check/Apply then cold browser-offline restart/data retention passes,773-byte companion SHA exact. See PWA-UPDATE-CONTRACT.md. No hash weakening, inference repeat/device or full-MVP claim.
