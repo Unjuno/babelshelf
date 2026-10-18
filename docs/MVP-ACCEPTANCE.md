@@ -1,6 +1,6 @@
 # MVP acceptance ledger
 
-Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `ef0bbd0279ee3c6f` (112 assets); combined PC evidence extends through Unit140; installed native PC flows through Unit137 retain their measured `37823d65e1d45f96` build scope. Unit139 changes search presentation only; earlier evidence retains its recorded build scope.
+Current implementation and evidence summary, 2026-10-18. This is a navigation aid to the contracts and retained results, not a completion certificate. The active goal is not complete. Current product is `ef0bbd0279ee3c6f` (112 assets). Unit153 verifies this build in an installed native PC PWA: cold offline TXT plus actual OCR, actual Bonsai4B answer with both sources, reviewed exact answer save without regeneration, unload, then a separate cold process with index rebuild/search/original display and prior data retained. Earlier correction, Stop, schedule and media checks retain their recorded build scope; Unit153 is not a rerun of every earlier gate or a physical-device/OS-airplane test.
 
 | Requirement | Current evidence | Remaining boundary |
 |---|---|---|
