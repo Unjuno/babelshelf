@@ -4,8 +4,12 @@ const rr=(v,n)=>(v>>>n)|(v<<(32-n));
 export class SHA256{
  constructor(){this.h=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);this.buf=new Uint8Array(64);this.w=new Uint32Array(64);this.n=0;this.len=0;this.done=false;}
  block(b){const w=this.w;for(let i=0;i<16;i++)w[i]=(b[4*i]<<24)|(b[4*i+1]<<16)|(b[4*i+2]<<8)|b[4*i+3];for(let i=16;i<64;i++){const a=w[i-15],c=w[i-2];w[i]=(w[i-16]+(rr(a,7)^rr(a,18)^(a>>>3))+w[i-7]+(rr(c,17)^rr(c,19)^(c>>>10)))>>>0;}
- let [a,b1,c,d,e,f,g,h]=this.h;for(let i=0;i<64;i++){const t1=(h+(rr(e,6)^rr(e,11)^rr(e,25))+((e&f)^(~e&g))+K[i]+w[i])>>>0,t2=((rr(a,2)^rr(a,13)^rr(a,22))+((a&b1)^(a&c)^(b1&c)))>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b1;b1=a;a=(t1+t2)>>>0;}
- for(const [i,v] of [a,b1,c,d,e,f,g,h].entries())this.h[i]=(this.h[i]+v)>>>0;
+ // Direct state access avoids per-block iterator allocations and a Windows
+ // WebKit JIT page crash reproduced by repeated short-message hashing.
+ let a=this.h[0],b1=this.h[1],c=this.h[2],d=this.h[3],e=this.h[4],f=this.h[5],g=this.h[6],h=this.h[7];for(let i=0;i<64;i++){const t1=(h+(rr(e,6)^rr(e,11)^rr(e,25))+((e&f)^(~e&g))+K[i]+w[i])>>>0,t2=((rr(a,2)^rr(a,13)^rr(a,22))+((a&b1)^(a&c)^(b1&c)))>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b1;b1=a;a=(t1+t2)>>>0;}
+
+ this.h[0]=(this.h[0]+a)>>>0;this.h[1]=(this.h[1]+b1)>>>0;this.h[2]=(this.h[2]+c)>>>0;this.h[3]=(this.h[3]+d)>>>0;
+ this.h[4]=(this.h[4]+e)>>>0;this.h[5]=(this.h[5]+f)>>>0;this.h[6]=(this.h[6]+g)>>>0;this.h[7]=(this.h[7]+h)>>>0;
  }
  update(b){if(this.done)throw Error('hash finalized');this.len+=b.length;let i=0;if(this.n){const take=Math.min(64-this.n,b.length);this.buf.set(b.subarray(0,take),this.n);this.n+=take;i=take;if(this.n===64){this.block(this.buf);this.n=0;}}for(;i+64<=b.length;i+=64)this.block(b.subarray(i,i+64));if(i<b.length){this.buf.set(b.subarray(i),0);this.n=b.length-i;}return this;}
  hex(){if(!this.done){this.buf[this.n++]=0x80;if(this.n>56){this.buf.fill(0,this.n);this.block(this.buf);this.n=0;}this.buf.fill(0,this.n,56);const dv=new DataView(this.buf.buffer),bits=this.len*8;dv.setUint32(56,Math.floor(bits/4294967296));dv.setUint32(60,bits>>>0);this.block(this.buf);this.done=true;}return [...this.h].map(x=>x.toString(16).padStart(8,'0')).join('');}
