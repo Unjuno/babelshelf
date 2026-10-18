@@ -172,3 +172,6 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 
 
 - Unit197 published984769124c99c80b/112 fresh-profile standard-set initial Prepare passes direct pinned-upstream text/Whisper/OCR acquisition after explicit downloads permission; second browser-offline process Use models verifies local assets with zero external requests and exact prepared-note retention. No inference/media/phone/OS-isolation, interrupted download or runtime redistribution claim. See LOCAL-MODEL-PIPELINE.md and SITES-DEPLOYMENT.md; do not repeat download merely to increase test counts.
+
+
+- Unit198 initial preparation shows only the active busy adapter's real progress, excluding stale terminal statuses. Local and public version5 now both4c7edb10dfc00ba5/113. Actual retained installed update and public Check/Apply update plus cold offline Use models show verification progress, hide it after completion and retain records/assets. No inference rerun/device acceptance. See SITES-DEPLOYMENT.md; public source includes prior local harness fixes, older inference receipts retain their original build scope.

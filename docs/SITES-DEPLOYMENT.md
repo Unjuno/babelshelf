@@ -2,7 +2,13 @@
 
 Latest user authorization permits public access and continued adjustments on the published Site; earlier local-only/no-deploy instructions are superseded. The original GitHub remote was not pushed.
 
-## Current publication (Unit195)
+## Current publication (Unit198)
+
+Public https://babelshelf.com, audience unchanged public. Version5: appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_361e77b8379481918e5a46778db16b5a. Deployment appgdep_6ad4a66675f0819180f9b6ad4985301b succeeded. Sites sourcec27efa2cc0b681fc990efd869e7f35177ab7910c contains the canonical8e25b5b product4c7edb10dfc00ba5/113. This aligns the published UI/harness with the tested local source, including Unit179-187 corrections and the redirected-shell fix plus visible initial-preparation progress. Earlier inference evidence keeps its original build scope. Old static assets remain for existing pages; no model weights, WebML upstream runtime, notes, backups or browser profiles were packaged. The existing verified gzip delivery adapter remains unchanged.
+
+Actual `node scripts/qa/published-progress.mjs ../../outputs/unit197-public-preparation ../../outputs/unit198-public-progress` passes. It uses the dedicated already-prepared public test profile, explicitly checks/applies the update, disables Downloads and closes Chrome, then cold-opens browser-offline. Exact new build is confirmed. Use models runs actual prepared-only verification with visible Verifying model1% progress; after completion the transient progress disappears. Notes except the explicitly toggled connection record, settings and prior processing receipts are exact. Zero external requests in this flow; screenshot inspected. No repeat model download or inference was used to validate this presentation change. No physical/OS-isolation or whole-MVP claim. Existing users should use Settings > Connection > Check for updates > Apply update; never clear local data.
+
+## Historical publication (Unit195)
 
 - Public URL: https://babelshelf.com (original generated hostname remains an alias).
 - Audience: public, Sites access revision2; no login or service token needed.
