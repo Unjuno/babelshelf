@@ -35,3 +35,12 @@ The PCM assembler positions decoded buffers on their presentation timeline, down
 Transcript containerTiming pins schema1, processor mediabunny-1.61.6, container-presentation timebase, track ID and integer start/end microseconds. Duration must match the span. It is separate from existing model-estimated segment times. Original references/model pins are unchanged. Backup validation retains/rejects this metadata atomically. Exact initial transcript citations add the verified container offset; edited/ambiguous and legacy transcripts retain whole-original fallback. The original video seeks only when the range explicitly carries seekable=true; playback is still user-initiated.
 
 Production-module Chrome evidence:5.001–13.121s becomes8120ms/129920 real16kHz samples; actual PCM present; pre-aborted and interrupted decode return Stopped. Node tests cover padding, gaps, contradictions, metadata, legacy behavior and backup. Normal installed inference/source UI verification is recorded separately in TEST-RESULTS.
+
+## Unit212 MP4 decoder evidence
+
+Command: `node scripts/qa/mp4-audio-decoder.mjs ../../outputs/unit212-mp4-decoder`.
+Native PC Chrome transcodes the existing delayed spoken WebM into AVC/AAC MP4 using pinned Mediabunny and native codecs, refuses discarded tracks, then calls the production `decodeVideoAudio` module on the resulting local Blob. No simulated decoder or model response is used.
+
+PASS: track2 starts at5001000us and ends at13150333us;130390 finite16kHz PCM samples with real audio,8150ms rounded processing duration. Native video metadata duration14.2s and completed seek5.001s, paused. AAC encoding changes the end padding relative to the WebM, so this test does not reuse the WebM end timestamp as a fabricated expectation.
+
+Retained MP4:104749bytes, SHA-256 f73aadc7a05db92dc740a7b27e0cc804c819cc34e23f3b070291abd81474d8a8. Evidence and fixture: outputs/unit212-mp4-decoder/evidence.json and delayed.mp4. This is module/native-codec evidence only: normal MP4 Send/transcription/citation/cold-offline flow and physical-device acceptance remain unverified. No product source or deployed build changed.
