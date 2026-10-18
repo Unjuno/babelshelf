@@ -116,3 +116,12 @@ test('literal user Read and global query routes keep explicit scope instead of i
  assert.equal(scopeLiteralRequest(localRequest('Answer: current attachment'),true).target,undefined);
  assert.equal(scopeLiteralRequest(null),null);
 });
+
+test('explicit dialogue recovery waits for all writers, validates latest state and never replays failed updates',async()=>{
+ const {readDialogueRecovery}=await import('../src/dialogue-recovery.ts');let release,reads=0;const pending=new Promise(r=>release=r),latestState={...emptyDialogue(),revision:4,turns:[{id:'foreign',user:'Foreign retained original'}]};
+ let done=false;const recovery=readDialogueRecovery([Promise.reject(Error('CAS')),pending],async()=>{reads++;return latestState;}).then(value=>{done=true;return value;});
+ await Promise.resolve();assert.equal(reads,0);assert.equal(done,false);release();const result=await recovery;assert.deepEqual(result,{stored:latestState,value:latestState});assert.equal(reads,1);
+ await assert.rejects(readDialogueRecovery([],async()=>({...latestState,schema:9})),/invalid/);
+ await assert.rejects(readDialogueRecovery([],async()=>{throw Error('Read failed');}),/Read failed/);
+ assert.deepEqual(await readDialogueRecovery([],async()=>undefined),{stored:undefined,value:emptyDialogue()});
+});

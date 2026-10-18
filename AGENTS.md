@@ -157,3 +157,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit151 pending creation dismissal covers Folder as well as File in both sheet transition guards. Actual held nativeIDB/read-only-request blocker RED/Green Escape/backdrop protection, onecommit and idleEscape pass. Product8f7031f52e4ae772/112/prototype370/product2/check31/protected28; not quota/device evidence. See STORAGE-CONTRACT.md.
 
 - Unit152 shared namespace check uses one current file-pathSet + folder ancestors instead of N*F recomputation; no folders fast-return, temporarySet only. Productef0bbd0279ee3c6f/112/prototype370/product2/check31/protected28 and native transaction regressions pass; no device latency claim. See STORAGE-CONTRACT.md.
+
+- Unit179 explicit Input Reload conversation drains failed focus/dialogue queues and reads canonical state without writes/replay; unsent composer text/attachments survive. Keep fail-stop/CAS unless user explicitly reloads. Local67eba578837eb96e/113, prototype388/root85/product2/check31/protected28; Sites remains prior776c70a284785c23. See CONVERSATION-CONTRACT.md.
