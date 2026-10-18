@@ -1,3 +1,4 @@
+import {initializeOfflineShell} from '../src/offline-shell';
 import ReactDOM from 'react-dom/client';
 import Prototype from '../src/Prototype';
 import {NativeViewport} from './native-mobile';
@@ -9,4 +10,4 @@ else if(new URLSearchParams(location.search).get('check')==='harness')import('..
 else if(new URLSearchParams(location.search).get('check')==='speech')import('../src/SpeechCheck').then(({default:SpeechCheck})=>root.render(<SpeechCheck/>));
 else if(new URLSearchParams(location.search).get('check')==='decision')import('../src/DecisionCheck').then(({default:DecisionCheck})=>root.render(<DecisionCheck/>));
 else root.render(<div className="device-screen product-screen" id="app-screen" data-testid="device-screen"><div className="mobile-app-viewport"><NativeViewport><Prototype/></NativeViewport></div></div>);
-if('serviceWorker' in navigator)navigator.serviceWorker.getRegistration().then(existing=>existing??navigator.serviceWorker.register('./sw.js')).catch(error=>console.error('Offline preparation failed',error));
+void initializeOfflineShell('serviceWorker' in navigator?navigator.serviceWorker:undefined);

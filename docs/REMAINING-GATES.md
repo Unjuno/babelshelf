@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against the current productfd8c6ee8f72b1cdc/112 and evidence through Unit169; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against the current product97ec141c8544c0ed/112 and evidence through Unit170; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
@@ -27,3 +27,5 @@ Unit167 supersedes the import-crash portion of Units165–166: repeated SHA-256 
 Unit168 isolates the remaining Windows WebKit offline failure below the product: native cache.put resolves but immediate keys/match find no entry, and restart retains only the cache name. Product profile retains20notes/2runs/1setting and active SW registration but empty shell/shared/speech caches; navigation receives explicit503. This Windows WebKit26.5 environment cannot certify cache/offline-shell behavior. Physical Safari remains unverified; no storage redesign, data clearing or network fallback was introduced.
 
 Unit169 now rejects SW installation when persisted shell/shared bytes or manifest cannot be read back exactly. Real Windows WebKit persistent-profile failure leaves no active/controller worker; online UI remains usable. Ephemeral WebKit can differ and did activate, so the observed cache issue is persistent-profile/environment scoped. Actual Chrome cold flow passesfd8c6ee8f72b1cdc/112. This truthfulness fix does not make WebKit cold-offline operation pass.
+
+Unit170 exposes app worker lifecycle/failure in Settings > Connection, separate from model preparation. Actual persistent WebKit shows Preparation failed while Chrome shows Installed;360px screenshot checked. Installed is a lifecycle label, not offline/device certification.
