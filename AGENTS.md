@@ -117,3 +117,5 @@ Read README.md, NEXT-REQUIREMENTS.md, docs/PRODUCT-SPEC.md, docs/IMPLEMENTATION-
 - Unit131: same installed standalone public profile now has prepared Whisper/OCR and actual cold-offline combined TXT/MD/image/PDF/audio extraction, sourced4B answer/exact Save/index and further cold search/original read evidence. Production unchanged. No video/physical sensor/installed Stop/device/OS-airplane or full MVP claim. See PWA-INSTALLATION.md.
 
 - Unit132 same installed PC profile offline Send/Stop during dialogue.plan, cold explicit Load/new actual sourced answer passes with no automatic replay or note changes. Not token-level GPU interruption; keep installed generation-Stop/device/full-function gaps explicit. See TEST-RESULTS.txt.
+
+- Unit133 installed PC cold-offline actual delayed-video audio transcription/sourced4B answer and another cold original-video preview pass. Metadata14.2s vs decoded audio8119ms stays unmapped/currentTime0 with Audio only. No frame comprehension or completed playback claim. See TEST-RESULTS.txt.
