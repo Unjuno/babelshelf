@@ -479,3 +479,5 @@ button.model-picker svg{flex-shrink:0}
 .conversation{padding-bottom:max(130px,var(--composer-reserve,130px))}
 
 .retrieved-result .result-source-state{display:block;margin-top:6px}
+
+.sheet-operation-error{margin:0 0 16px;font-size:1rem;line-height:1.5;overflow-wrap:anywhere}
