@@ -1,5 +1,28 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {voicePrompt,bindVoice,validateVoiceInputs,transcriptCitationRange} from '../src/voice-input.ts';
+import * as recording from '../src/recording-session.ts';
+
+function recordingFixture({startError=false,empty=false}={}){
+ let stopped=0;const track={stop(){stopped++;}},r={state:'inactive',mimeType:'audio/webm',stream:{getTracks:()=>[track]},start(){if(startError)throw Error('start failed');this.state='recording';},stop(){this.state='inactive';queueMicrotask(()=>{this.ondataavailable?.({data:new Blob(empty?[]:['audio'])});this.onstop?.();});}};
+ const completed=[],errors=[];return {r,completed,errors,get stopped(){return stopped;},start:()=>recording.startRecording(r,{complete:(blob)=>completed.push(blob),error:message=>errors.push(message)})};
+}
+test('recording error releases microphone and never submits partial or late audio',async()=>{
+ const f=recordingFixture(),cancel=f.start(),lateStop=f.r.onstop,lateData=f.r.ondataavailable;
+ f.r.ondataavailable({data:new Blob(['partial'])});f.r.onerror({error:new DOMException('Capture interrupted','UnknownError')});
+ lateData({data:new Blob(['late'])});lateStop();cancel();await Promise.resolve();
+ assert.equal(f.stopped,1);assert.equal(f.r.state,'inactive');assert.deepEqual(f.errors,['Capture interrupted']);assert.equal(f.completed.length,0);
+ assert.equal(f.r.onerror,null);assert.equal(f.r.onstop,null);assert.equal(f.r.ondataavailable,null);
+});
+test('explicit recording cancellation discards data while normal stop yields one exact original',async()=>{
+ const cancelled=recordingFixture(),cancel=cancelled.start();cancel();cancel();await Promise.resolve();
+ assert.equal(cancelled.stopped,1);assert.deepEqual(cancelled.errors,[]);assert.equal(cancelled.completed.length,0);
+ const f=recordingFixture(),cleanup=f.start();f.r.ondataavailable({data:new Blob(['first'])});f.r.stop();await Promise.resolve();cleanup();
+ assert.equal(f.stopped,1);assert.deepEqual(f.errors,[]);assert.equal(f.completed.length,1);assert.equal(await f.completed[0].text(),'firstaudio');assert.equal(f.completed[0].type,'audio/webm');
+});
+test('recorder start failure and empty stop release resources without recognition input',async()=>{
+ const bad=recordingFixture({startError:true});assert.throws(()=>bad.start(),/start failed/);assert.equal(bad.stopped,1);assert.equal(bad.completed.length,0);
+ const empty=recordingFixture({empty:true});empty.start();empty.r.stop();await Promise.resolve();assert.equal(empty.stopped,1);assert.deepEqual(empty.errors,['No audio recorded']);assert.equal(empty.completed.length,0);
+});
 import {makeTranscript} from '../src/speech-transcript.ts';import {prepareOriginal,originalRef,originalNote,originalKey} from '../src/original-assets.ts';
 import {appendTurn,emptyDialogue,historyPayload,dialogueContext} from '../src/conversation.ts';
 const fixture=async()=>{const asset=await prepareOriginal(new File(['raw audio'],'voice.wav',{type:'audio/wav'}),'voice1');const t=makeTranscript(asset,6000,{text:'First sentence. Second sentence.',chunks:[{text:'First sentence.',timestamp:[0,2]},{text:'Second sentence.',timestamp:[3,6]}]});return {asset,t};};
