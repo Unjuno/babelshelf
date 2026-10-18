@@ -2,6 +2,36 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote,latest} from '../../../dist/core.js';
 import {projectNote,applyKnowledgeChanges,planFolderRename,planMemoryRecovery} from '../src/knowledge-store.ts';
+import {readFile} from 'node:fs/promises';
+import {stripTypeScriptTypes} from 'node:module';
+
+const knowledgeHookSource=(await readFile(new URL('../src/useKnowledge.ts',import.meta.url),'utf8')).replace(/^import .*\r?\n/gm,'').replace('export const knowledge=new KnowledgeStore();','').replace('export function useKnowledge','function useKnowledge');
+function knowledgeHookProbe(store){
+ const slots=[],effects=[];let cursor=0;
+ const useRef=value=>{const i=cursor++;return slots[i]??(slots[i]={current:value});};
+ const useState=value=>{const i=cursor++;if(!(i in slots))slots[i]=value;return [slots[i],next=>{slots[i]=typeof next==='function'?next(slots[i]):next;}];};
+ const useEffect=effect=>{const i=cursor++;if(!slots[i]){slots[i]=true;effects.push(effect);}};
+ const hook=new Function('knowledge','useRef','useState','useEffect',stripTypeScriptTypes(knowledgeHookSource)+';return useKnowledge;')(store,useRef,useState,useEffect);
+ return {render(){cursor=0;const result=hook([]);while(effects.length)effects.shift()();return result;}};
+}
+const hookDeferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
+test('a queued later edit cannot erase the failed save result awaited by its own caller',async()=>{
+ const entered=hookDeferred(),recovery=hookDeferred();let rows=[{id:'note',body:'other-tab'}],writes=0;
+ const store={initialize:async()=>rows,views:async()=>{entered.resolve();return recovery.promise;},commit:async(before,next)=>{if(++writes===1)throw Error('Version conflict');assert.deepEqual(before,rows);rows=next;return rows;}};
+ const probe=knowledgeHookProbe(store),hook=probe.render();await Promise.resolve();
+ hook.setNotes(all=>all.map(n=>({...n,body:'stale draft'})));const first=hook.flush();await entered.promise;
+ const refused=assert.rejects(first,/Version conflict/);
+ hook.setNotes(all=>[...all,{id:'settings',body:'explicit later setting'}]);const second=hook.flush();recovery.resolve(rows);
+ await refused;await second;assert.equal(writes,2);assert.equal(rows[0].body,'other-tab');assert.equal(rows[1].id,'settings');assert.equal(probe.render().pending,false);
+});
+test('refresh and later edits share one queue so a slow snapshot cannot replace a committed edit',async()=>{
+ const entered=hookDeferred(),snapshot=hookDeferred();let rows=[{id:'note',body:'v1'}],writes=0;
+ const store={initialize:async()=>rows,views:async()=>{entered.resolve();return snapshot.promise;},commit:async(before,next)=>{writes++;assert.deepEqual(before,rows);rows=next;return rows;}};
+ const probe=knowledgeHookProbe(store),hook=probe.render();await Promise.resolve();
+ const refresh=hook.refreshSnapshot();await entered.promise;hook.setNotes(all=>all.map(n=>({...n,body:'v2'})));const flush=hook.flush();
+ try{await Promise.resolve();assert.equal(writes,0,'A write raced the pending refresh');}finally{snapshot.resolve([{id:'note',body:'v1'}]);}
+ await refresh;await flush;assert.equal(writes,1);assert.deepEqual(probe.render().notes,rows);assert.equal(rows[0].body,'v2');
+});
 
 test('legacy projection and unchanged save preserve all bytes, IDs, sources and paths',()=>{
  const original=createNote({title:'旧資料',body:'日本語原文 🌳'});original.importedFrom={name:'old.txt'};
