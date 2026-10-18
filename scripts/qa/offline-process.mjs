@@ -14,7 +14,8 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  await mkdir(outputDir,{recursive:true});
  const marker='LARCH-5738',original='Process restart '+marker+'\n飲料水は18リットル。',edited=original.replace('18','24');
  const inputs=[{name:'process-import.txt',body:'Local import FIR-5263\n飲料水の保管場所は玄関です。'},{name:'process-import.md',body:'# HAZEL-3197\n\n充電器は青い箱にあります。'}];
- for(const input of inputs)await writeFile(join(outputDir,input.name),input.body,'utf8');
+ const offlineInputs=[{name:'offline-import.txt',body:'Offline import IRIS-1901\n連絡先メモは青い封筒。'},{name:'offline-import.md',body:'# Offline HARBOR-8602\n\n防災用電池は台所の棚。'}];
+ for(const input of [...inputs,...offlineInputs])await writeFile(join(outputDir,input.name),input.body,'utf8');
  const evidence={engine,scope:installedPwa?'Attempted PC headless Chrome CDP-installed PWA with required standalone display; not physical OS/mobile acceptance':`PC headless ${engine} persistent profile, Playwright context offline before navigation; not installed/mobile/physical-network acceptance`,profileDir,url,phases:[]};
  async function go(p,name){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('menuitem',{name,exact:true}).click();}
  async function input(p){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('button',{name:'Input',exact:true}).click();}
@@ -54,10 +55,13 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
    await p.getByRole('button',{name:'Open file',exact:true}).click();await p.getByRole('button',{name:'Edit',exact:true}).click();await p.getByRole('textbox',{name:'Markdown content'}).fill(edited);await p.getByRole('button',{name:'Save',exact:true}).click();
    await p.getByRole('button',{name:'History',exact:true}).click();for(const version of ['v1','v2'])await p.getByRole('dialog').getByText(version,{exact:true}).click();entry.history=await p.getByRole('dialog').innerText();assert.ok(entry.history.includes('18リットル')&&entry.history.includes('24リットル'));await p.screenshot({path:join(outputDir,'history.png')});
    await p.getByRole('button',{name:'Close',exact:true}).click();await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();await p.getByRole('button',{name:'Rebuild index',exact:true}).click();await input(p);
-   entry.attachmentSearch=await search(p,'充電器','充電器は青い箱にあります。');assert.ok(entry.attachmentSearch.includes('青い箱'));afterEdit=await backup(p,'after-edit.brainpack');
+   entry.attachmentSearch=await search(p,'充電器','充電器は青い箱にあります。');assert.ok(entry.attachmentSearch.includes('青い箱'));
+   await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(offlineInputs.map(v=>join(outputDir,v.name)));
+   await p.getByRole('button',{name:/Text offline-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();entry.offlineImportedOriginals=2;
+   await input(p);entry.offlineMarkdownSearch=await search(p,'防災用電池','防災用電池は台所の棚。');assert.ok(entry.offlineMarkdownSearch.includes('台所の棚'));afterEdit=await backup(p,'after-edit.brainpack');
   });
   await phase(true,async(p,entry)=>{
-   entry.search=await search(p,marker,edited);assert.ok(entry.search.includes('24リットル'));entry.attachmentSearch=await search(p,'FIR-5263',inputs[0].body);afterRestart=await backup(p,'after-restart.brainpack');
+   entry.search=await search(p,marker,edited);assert.ok(entry.search.includes('24リットル'));entry.attachmentSearch=await search(p,'FIR-5263',inputs[0].body);entry.offlineImportSearch=await search(p,'IRIS-1901',offlineInputs[0].body);afterRestart=await backup(p,'after-restart.brainpack');
    const restore=p.locator('input[type=file][accept=".brainpack,application/json"]');await restore.setInputFiles(join(outputDir,'before.brainpack'));await p.getByRole('dialog').waitFor();assert.ok((await p.getByRole('dialog').innerText()).includes('conflicts'));assert.ok(await p.getByRole('button',{name:'Restore',exact:true}).isDisabled());await p.getByRole('button',{name:'Cancel',exact:true}).click();entry.conflictRefused=true;
    await restore.setInputFiles(join(outputDir,'after-restart.brainpack'));await p.getByRole('dialog').waitFor();await p.getByRole('button',{name:'Restore',exact:true}).click();await p.getByRole('dialog').waitFor({state:'hidden'});const final=await backup(p,'after-restore.brainpack',true);
    for(const key of ['notes','settings','runs'])assert.deepEqual(final[key],afterRestart[key],key+' changed during identical restore');entry.identicalRestore=true;
@@ -71,8 +75,8 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   retainedSettings(before,afterEdit);retainedSettings(afterEdit,afterRestart);
   const originalNote=before.notes.find(n=>n.revisions.at(-1).body===original);assert.ok(originalNote);const current=afterEdit.notes.find(n=>n.id===originalNote.id);assert.deepEqual({...current,revisions:[]},{...originalNote,revisions:[]});assert.equal(current.revisions.length,2);assert.deepEqual(current.revisions[0],originalNote.revisions[0]);assert.equal(current.revisions[1].body,edited);
   for(const n of before.notes)if(n.id!==originalNote.id)assert.deepEqual(afterEdit.notes.find(v=>v.id===n.id),n);
-  assert.deepEqual(afterEdit.notes,afterRestart.notes);assert.deepEqual(before.runs,afterEdit.runs);assert.deepEqual(afterEdit.runs,afterRestart.runs);
-  for(const file of inputs){const raw=before.runs.find(v=>v.value.name===file.name)?.value;assert.ok(raw);const bytes=Buffer.from(raw.data,'base64');assert.equal(bytes.toString('utf8'),file.body);assert.equal(createHash('sha256').update(bytes).digest('hex'),raw.sha256);assert.equal(before.notes.find(n=>n.id===raw.id).revisions[0].body,file.body);}
+  assert.deepEqual(afterEdit.notes,afterRestart.notes);for(const run of before.runs)assert.deepEqual(afterEdit.runs.find(v=>v.key===run.key),run,'Prior run changed');assert.deepEqual(afterEdit.runs,afterRestart.runs);
+  for(const file of [...inputs,...offlineInputs]){const pack=offlineInputs.includes(file)?afterEdit:before;const raw=pack.runs.find(v=>v.value.name===file.name)?.value;assert.ok(raw);const bytes=Buffer.from(raw.data,'base64');assert.equal(bytes.toString('utf8'),file.body);assert.equal(createHash('sha256').update(bytes).digest('hex'),raw.sha256);assert.equal(pack.notes.find(n=>n.id===raw.id).revisions[0].body,file.body);}
   evidence.pass=true;await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));return evidence;
  }catch(e){evidence.pass=false;evidence.error=String(e);await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));throw e;}
 }
