@@ -63,3 +63,10 @@ Actual Chrome production-module RED/GREEN: `node scripts/qa/audio-duration-prefl
 
 
 Unit207 confirms the Unit205 audio-duration refusal through public version9 normal Voice input / Choose audio UI in cold browser-offline PC Chrome. The inline error is visible, choosing another file remains available, and closing preserves the exact draft. Synthetic silent WAV tests admission only; it does not test recognition accuracy or physical microphones. See TEST-RESULTS for the retained initial ambiguous-locator failure and corrected UI verification.
+
+
+## Unit211 — mapped video audio
+
+New WebCodecs video ingestion now uses the pinned local Mediabunny1.61.6 MP4/WebM decoder described in VIDEO-TIMELINE.md. Exact container timing accompanies the existing model-estimated decoded-audio transcript. Legacy/edited/unmapped transcripts retain whole-video fallback. There is no historical timing migration. The decoder rejects multiple audio tracks rather than silently selecting one; no visual frame analysis is added. Browsers without AudioDecoder retain the earlier unmapped decoder path. MPL license, notice and unmodified source archive are in the verified offline shell.
+
+Actual installed PC Chrome, source server stopped and browser offline across two processes: delayed WebM -> prepared Whisper tiny actual transcript -> Bonsai4B sourced answer -> original citation -> cold reopen at5.001s in14.2s native video. Display: Estimated00:05.0–00:13.1 / Audio only. Stored mapped interval5.001–13.121s, processed8120ms. Prior notes/runs/dialogue retained, original bytes exact, no external requests. This supersedes the blanket unmapped-video limit for this verified WebM path only; MP4/device/codec breadth and word alignment accuracy remain unverified.

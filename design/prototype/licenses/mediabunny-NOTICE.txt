@@ -1,0 +1,5 @@
+Mediabunny 1.61.6 by Vanilagy. Mozilla Public License 2.0.
+Unmodified source is included in mediabunny-1.61.6-source.tar.gz.
+Upstream: https://github.com/Vanilagy/mediabunny
+Package: https://www.npmjs.com/package/mediabunny/v/1.61.6
+This license does not apply to the Bonsai model or its separate runtime.

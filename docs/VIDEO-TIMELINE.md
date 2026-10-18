@@ -6,7 +6,7 @@ Connect transcript citations to the original container timeline while preserving
 
 ## Decoder evidence (Unit210)
 
-Mediabunny 1.61.6 is installed only in outputs/unit210-media-runtime for diagnosis, not as a product dependency. Its license is MPL-2.0; any integration must include its license and source availability separately from model/runtime licenses. Official API references: https://mediabunny.dev/guide/media-sinks and https://mediabunny.dev/guide/reading-media-files . AudioBufferSink retains presentation timestamps; Input.dispose closes decoders and cancels reads. Only local Blob sources are proposed.
+Unit210 installed Mediabunny 1.61.6 only in outputs/unit210-media-runtime for diagnosis. Unit211 pins it as a product dependency. Its MPL-2.0 license, notice and unmodified source archive are included in the offline shell, separately from model/runtime licenses. Official API references: https://mediabunny.dev/guide/media-sinks and https://mediabunny.dev/guide/reading-media-files . AudioBufferSink retains presentation timestamps; Input.dispose closes decoders and cancels reads. Only local Blob sources are used.
 
 Command: node scripts/qa/video-timeline-probe.mjs ../../outputs/unit210-video-timeline
 
@@ -25,3 +25,13 @@ Evidence: outputs/unit210-video-timeline/evidence.json. This proves a viable dec
 3. Add versioned processor/track/timeline provenance to transcript validation and backup round trips. Keep model-estimated segments separate. Legacy records retain whole-video fallback; edited transcripts retain no precise segment alignment.
 4. Map validated transcript citations to original video time on demand, with estimated/audio-only labels. No invented frame coverage.
 5. Verify real delayed-video transcription, reviewed save, citation/nonzero seek, backup/cold reopening and Stop/failure controls. Keep module, product PC and physical-device evidence separate.
+
+## Unit211 implemented contract
+
+New video ingestion with WebCodecs uses the lazy local MP4/WebM decoder. Exactly one audio track is required; multiple tracks report selection required rather than claiming all tracks were read. Unsupported codecs/timing fail explicitly. Browsers without AudioDecoder retain the prior decoded-audio path and whole-video source behavior. No data migration or inferred mapping of old transcripts.
+
+The PCM assembler positions decoded buffers on their presentation timeline, downmixes channels, preserves silent gaps, clips padding to the track interval and rejects contradictory overlaps/nonfinite samples. Limits remain32MiB original and120seconds processed audio, with up to8channels and192kHz input. These bounds do not certify phone memory. Native OfflineAudioContext resamples to mono16kHz. Cancellation disposes the demuxer/decoders and refuses late results.
+
+Transcript containerTiming pins schema1, processor mediabunny-1.61.6, container-presentation timebase, track ID and integer start/end microseconds. Duration must match the span. It is separate from existing model-estimated segment times. Original references/model pins are unchanged. Backup validation retains/rejects this metadata atomically. Exact initial transcript citations add the verified container offset; edited/ambiguous and legacy transcripts retain whole-original fallback. The original video seeks only when the range explicitly carries seekable=true; playback is still user-initiated.
+
+Production-module Chrome evidence:5.001–13.121s becomes8120ms/129920 real16kHz samples; actual PCM present; pre-aborted and interrupted decode return Stopped. Node tests cover padding, gaps, contradictions, metadata, legacy behavior and backup. Normal installed inference/source UI verification is recorded separately in TEST-RESULTS.
