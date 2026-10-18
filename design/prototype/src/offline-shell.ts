@@ -17,3 +17,13 @@ export async function initializeOfflineShell(container:ServiceWorkerContainer|un
  if(!container){report('Unavailable');return;}report('Checking');
  try{const registration=await container.getRegistration()??await container.register('./sw.js');observeOfflineRegistration(registration,report);}catch{report('Preparation failed');}
 }
+export async function appUpdateOutcome(registration:ServiceWorkerRegistration):Promise<'Update ready'|'Up to date'>{
+ const worker=registration.installing;
+ if(worker)await new Promise<void>((resolve,reject)=>{
+  const settle=()=>{if(['installed','activated','redundant'].includes(worker.state)){worker.removeEventListener('statechange',settle);if(worker.state==='redundant')reject(Error('Update verification failed'));else resolve();}};
+  worker.addEventListener('statechange',settle);settle();
+ });
+ if(registration.waiting?.state==='installed')return 'Update ready';
+ if(registration.active?.state==='activated')return 'Up to date';
+ throw Error('App cache not prepared');
+}

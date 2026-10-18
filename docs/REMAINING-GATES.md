@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Audited 2026-10-18 against the current product97ec141c8544c0ed/112 and evidence through Unit170; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Audited 2026-10-18 against the current product1146a94a322bf06b/112 and evidence through Unit171; earlier receipts retain their measured build scopes. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 | Gate | Evidence needed | Current limit |
 |---|---|---|
