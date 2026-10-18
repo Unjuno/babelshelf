@@ -477,6 +477,8 @@ button.model-picker svg{flex-shrink:0}
 .action-row{flex-wrap:wrap}
 
 .compact-composer textarea{field-sizing:content}
+.compact-composer textarea{background:var(--composer-text-surface,#f8fcfa);border-radius:14px}
+.device-screen:has(.appearance-dark) .compact-composer{--composer-text-surface:#243830}
 .conversation{padding-bottom:max(130px,var(--composer-reserve,130px))}
 
 .retrieved-result .result-source-state{display:block;margin-top:6px}
