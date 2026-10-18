@@ -1,3 +1,5 @@
+import {assertFolderNamespace} from './storage-namespaces.ts';
+export {assertFolderNamespace} from './storage-namespaces.ts';
 import {findStoredFiles} from './file-discovery.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
@@ -113,16 +115,15 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
  const updated=applyKnowledgeChanges(records,[],batch.notes);
  return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
-export function assertFolderNamespace(records:Canonical[],folders:string[]){for(const folder of folders){if(typeof folder!=='string')throw Error('Invalid folder data');const f=folder.toLowerCase();for(const note of records){const path=notePath(note).toLowerCase();if(f===path||f.startsWith(path+'/'))throw Error('File and folder paths collide');}}}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
  private name:string;
  constructor(name='mlb-memory-v1'){this.name=name;}
  async open(){if(!this.database)this.database=await openDB(this.name);return this.database!;}
  private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void)=>void):Promise<T>{
-  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(stores,mode);let value:T,error:unknown;
+  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown;
    const fail=(e:unknown)=>{error=e;tx.abort();};
-   try{run(tx,v=>{value=v;});}catch(e){fail(e);}
+   try{run(tx,v=>{value=v;if(guarded){const rows=tx.objectStore('notes').getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2;const check=()=>{if(--pending)return;try{assertFolderNamespace(rows.result,folders.result??[]);}catch(e){fail(e);}};rows.onsuccess=check;folders.onsuccess=check;}});}catch(e){fail(e);}
    tx.addEventListener('error',()=>{error??=tx.error;});
    tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(error??tx.error??Error('Save failed'));
   });
@@ -166,7 +167,7 @@ export class KnowledgeStore {
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
     if(created.some(n=>current.notes.some(old=>old.id===n.id))||originals.some(a=>current.runs.some(r=>r.key===originalKey(a.id))))throw Error('Original already saved');
-    const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===(n.ocrText?'ocr':n.pdfText?'pdf':'speech'))))throw Error('Input reading mismatch');checkNotes(notes);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
+    const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===(n.ocrText?'ocr':n.pdfText?'pdf':'speech'))))throw Error('Input reading mismatch');checkNotes(notes);assertFolderNamespace(notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
     for(const a of turn.attachments!)if(a.reading&&!notes.some(n=>n.id===a.reading?.noteId&&n.state==='active'&&latest(n).version===a.reading?.revision))throw Error('Input source changed');
     for(const a of turn.attachments!)if(!notes.some(n=>n.id===a.id&&n.originalAsset&&n.state==='active'))throw Error('Original withdrawn or unavailable');
     checkAttachmentBatch(turn.attachments!.map(a=>({size:runs.find(r=>r.key===originalKey(a.id))!.value.bytes})));
@@ -198,8 +199,8 @@ export class KnowledgeStore {
   });
  }
  private async editRecords<T>(change:(records:Canonical[])=>{put:Canonical[];value:T}):Promise<T>{
-  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite'),s=tx.objectStore('notes'),q=s.getAll();let value:T,error:unknown;
-   q.onsuccess=()=>{try{const result=change(q.result);const map=new Map(q.result.map(n=>[n.id,n]));for(const n of result.put)map.set(n.id,n);checkNotes([...map.values()]);for(const n of result.put)s.put(n);value=result.value;}catch(e){error=e;tx.abort();}};
+  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),s=tx.objectStore('notes'),q=s.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2,value:T,error:unknown;
+   const commit=()=>{if(--pending)return;try{const result=change(q.result);const map=new Map(q.result.map(n=>[n.id,n]));for(const n of result.put)map.set(n.id,n);checkNotes([...map.values()]);assertFolderNamespace([...map.values()],folders.result??[]);for(const n of result.put)s.put(n);value=result.value;}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;
    tx.oncomplete=()=>resolve(value);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
   });
  }
@@ -329,7 +330,7 @@ export class KnowledgeStore {
    const tx=db.transaction(['notes','settings','runs'],'readwrite');let result:{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean},error:unknown;
    readSnapshot(tx,current=>{try{
     if(expected&&expected!==stateHash(current))throw Error('Local data changed · review backup again');
-    if(incoming.schema===1){const merged=mergeNotes(current.notes,incoming.notes),fresh=merged.notes.filter((n:any)=>!current.notes.some(old=>old.id===n.id));for(const n of fresh)tx.objectStore('notes').add(guardRestoredNote(n));result={conflicts:merged.conflicts,added:{notes:fresh.length,settings:0,runs:0},restored:true};return;}
+    if(incoming.schema===1){const merged=mergeNotes(current.notes,incoming.notes);assertFolderNamespace(merged.notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);const fresh=merged.notes.filter((n:any)=>!current.notes.some(old=>old.id===n.id));for(const n of fresh)tx.objectStore('notes').add(guardRestoredNote(n));result={conflicts:merged.conflicts,added:{notes:fresh.length,settings:0,runs:0},restored:true};return;}
     const plan=planStateRestore(current,incoming,mode);if(!plan.writes){result={conflicts:plan.conflicts,added:{notes:0,settings:0,runs:0},restored:false};return;}
     for(const note of plan.writes.notes)tx.objectStore('notes').add(note);
     for(const store of ['settings','runs'] as const)for(const entry of plan.writes[store])tx.objectStore(store).add(entry.value,entry.key);

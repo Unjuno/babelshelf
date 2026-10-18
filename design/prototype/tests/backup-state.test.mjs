@@ -176,3 +176,5 @@ test('chunked backup Blob retains exact format/hash and refuses byte overflow',a
  const pack=await makeStateBackup(state),expected=serializeStateBackup(pack),blob=stateBackupBlob(pack);assert.ok(blob.size>2000000);assert.equal(await blob.text(),expected);
  const restored=await parseStateBackup(await blob.text());assert.deepEqual(restored.settings,state.settings);
  });
+
+test('a valid outer checksum cannot import a file/folder collision or use a file as a folder parent',async()=>{const state={notes:[createNote({path:'Notes/held.md',body:'Keep original'})],settings:[],runs:[]},pack=await makeStateBackup(state);for(const folder of ['Notes/held.md','Notes/held.md/child','Notes/HELD.md']){const forged=structuredClone(pack);forged.payload.settings.push({key:'ui-v1-folders',value:[folder]});forged.sha256=stateHash(forged.payload);await assert.rejects(parseStateBackup(JSON.stringify(forged)),/collid/i);}assert.deepEqual((await parseStateBackup(JSON.stringify(pack))).notes,state.notes);});
