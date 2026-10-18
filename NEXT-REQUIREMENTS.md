@@ -17,7 +17,7 @@ The native product entry shares the accepted UI with a canonical IndexedDB adapt
 
 Natural input connects capture/search/read/answer/summary, retained dialogue/compaction and reviewed corrections. Exact generated-answer Save does not regenerate. Shared source/record checks refuse stale approvals and unapproved overwrites. Source correctness and semantic intent still have known failures; one successful generated answer is not general reliability.
 
-Actual PC evidence exists for Bonsai4B, local Whisper tiny, Tesseract OCR, PDF text/prepared empty-page OCR and video audio transcription. Automatic Send uses only prepared readers. Original bytes, derived results and source locations are distinct. Video frames/general image understanding and decoded-audio-to-video time alignment are unsupported.
+Actual PC evidence exists for Bonsai4B, local Whisper tiny, Tesseract OCR, PDF text/prepared empty-page OCR and video audio transcription. Automatic Send uses only prepared readers. Original bytes, derived results and source locations are distinct. Video frames/general image understanding remain unsupported. Newly processed single-track WebM/MP4 audio has validated container offsets and estimated transcript segments; actual PC installed offline flows are recorded in VIDEO-TIMELINE.md. Legacy transcripts and edited text retain broader source coverage.
 
 Text, Decision and Speech registration/preparation are independent. Bonsai4B remains the default; approved additional local adapters do not silently replace it. Optional Open d1-omni-600M supports connected text decisions only. Catalog entries or custom files do not establish engine compatibility or execution. See [custom model contract](docs/CUSTOM-MODELS-CONTRACT.md).
 
@@ -36,4 +36,4 @@ Use [REMAINING-GATES.md](docs/REMAINING-GATES.md) for evidence needed and [IMPLE
 
 ## Invariants
 
-No cloud/LAN inference, personal-data upload, silent acquisition, account/sync service, database reset or unauthorized model overwrite/delete. Preserve IDs, all original revisions/paths, withdrawal state, protected roots and maximum five stored folder levels. Check the actual SW build without deleting existing browser data. Keep meaningful local commits; no deployment or GitHub push.
+No cloud/LAN inference, personal-data upload, silent acquisition, account/sync service, database reset or unauthorized model overwrite/delete. Preserve IDs, all original revisions/paths, withdrawal state, protected roots and maximum five stored folder levels. Check the actual SW build without deleting existing browser data. Keep meaningful local commits; no GitHub push. The latest user instruction authorizes public Sites updates at babelshelf.com; preserve local data and public audience.
