@@ -104,3 +104,33 @@ test('one optional engine status failure does not block a healthy text engine',a
  assert.equal(recovered['4B'].filesPresent,true);
  for(const model of onnxTextModels)assert.equal(recovered[model.id].filesPresent,true);
 });
+
+test('selected base model checks do not start optional text workers',async()=>{
+ const calls=[];let onnxStarts=0,lfmStarts=0;
+ const base={manifest:{contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){},async call(cmd){calls.push('base:'+cmd);return {'4B':{filesPresent:true}};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
+ const lfm={id:'lfm-text',modelIds:['lfm'],describe:()=>({contextTokens:1024,runtime:{revision:'lfm-runtime'},models:[{id:'lfm',revision:'lfm-model'}]}),create(){lfmStarts++;return {loaded:null,worker:{terminate(){}},async init(){},async call(){return {lfm:{filesPresent:true}};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};}};
+ const router=new TextEngineRouter(base,()=>{onnxStarts++;return {loaded:null,worker:{terminate(){}},async init(){},async call(){return {[onnxTextManifest.id]:{filesPresent:true}};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};},[lfm]);
+ assert.deepEqual(await router.call('configure',{models:[],statusModel:'4B'}),{'4B':{filesPresent:true}});
+ assert.deepEqual(await router.call('status',{model:'4B'}),{'4B':{filesPresent:true}});
+ await router.call('configure',{models:[],statusModel:''});
+ assert.equal(onnxStarts,0);assert.equal(lfmStarts,0);
+ const selected=await router.call('status',{model:'lfm'});
+ assert.equal(selected.lfm.filesPresent,true);assert.equal(lfmStarts,1);assert.equal(onnxStarts,0);
+ assert.deepEqual(calls,['base:configure','base:status','base:configure','base:status']);
+ await assert.rejects(router.call('status',{model:'missing'}),/Unknown text model/);
+ assert.equal(onnxStarts,0);
+});
+test('new custom base model can be selected during its first registry configuration',async()=>{
+ let optionalStarts=0;
+ const base={manifest:{contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){},async call(cmd,args){if(cmd==='configure')return Object.fromEntries(args.models.map(model=>[model.id,{filesPresent:true}]));return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
+ const router=new TextEngineRouter(base,()=>{optionalStarts++;throw Error('unexpected optional worker');});
+ const assets=await router.call('configure',{models:[{id:'local-custom'}],statusModel:'local-custom'});
+ assert.equal(assets['local-custom'].filesPresent,true);
+ assert.equal(optionalStarts,0);
+});
+test('switching away releases an idle optional worker and reselecting starts a fresh one',async()=>{
+ const f=setup();await f.router.call('status',{model:onnxTextManifest.id});
+ const first=f.onnx;assert.ok(first);
+ f.router.releaseInactive('4B');assert.ok(f.calls.includes('onnx:terminate'));
+ await f.router.call('status',{model:onnxTextManifest.id});assert.notEqual(f.onnx,first);
+});

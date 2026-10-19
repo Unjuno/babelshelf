@@ -36,11 +36,12 @@ export class TextEngineRouter{
   try{const assets=await this.instance(r).call('status');this.check(epoch);return assets;}
   catch{this.check(epoch);return Object.fromEntries(r.modelIds.map(id=>[id,{filesPresent:false,presenceOnly:true,statusError:true}]));}
  }
- private async status(){const epoch=this.epoch,base=await this.webml.call('status');this.check(epoch);const assets:Record<string,any>={};for(const r of this.registrations){Object.assign(assets,await this.optionalStatus(r,epoch));this.check(epoch);}return {...base,...assets};}
+ private selectedRegistrations(model?:string,incomingModels:any[]=[]){if(model===undefined)return this.registrations;if(!model)return [];if(!this.base.models?.some((m:any)=>m.id===model)&&!incomingModels.some(m=>m.id===model)&&!this.registration(model))throw Error('Unknown text model');return this.registrations.filter(r=>r.modelIds.includes(model));}
+ private async status(model?:string){const selected=this.selectedRegistrations(model),epoch=this.epoch,base=await this.webml.call('status');this.check(epoch);const assets:Record<string,any>={};for(const r of selected){Object.assign(assets,await this.optionalStatus(r,epoch));this.check(epoch);}return {...base,...assets};}
  async init(){return this.webml.init();}
  async call(cmd:string,args:any={},events?:any):Promise<any>{
-  if(cmd==='status')return this.status();
-  if(cmd==='configure'){const epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of this.registrations){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}
+  if(cmd==='status')return this.status(args.model);
+  if(cmd==='configure'){const selected=this.selectedRegistrations(args.statusModel,args.models),epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of selected){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}
   if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');return this.active.call(cmd,args,events);}
   if(cmd==='prepare'||cmd==='verify')return this.backend(args.model).call(cmd,args,events);
   throw Error('Unknown text operation');
@@ -49,6 +50,7 @@ export class TextEngineRouter{
   try{const result=await backend.load(id,events);this.check(epoch);return result;}catch(error){if(this.active===backend)this.active=null;throw error;}
  }
  async unload(){const epoch=this.epoch,old=this.active;this.active=null;if(old&&!old.failed)await old.unload();this.check(epoch);}
+ releaseInactive(selectedModel:string){for(const r of this.registrations)if(!r.modelIds.includes(selectedModel)&&r.instance&&r.instance!==this.active){const old=r.instance;r.instance=null;old.abort();old.worker.terminate();}}
  generate(messages:any[],events?:any,maxTokens=256,format?:StructuredFormat){if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));return this.active.call('generate',{messages,maxTokens,...(format?{format}:{})},events);}
  abort(){this.epoch++;this.webml.abort();for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;old.abort();old.worker.terminate();}}
  worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;}};
