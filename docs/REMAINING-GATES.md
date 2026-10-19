@@ -60,3 +60,5 @@ Unit204 supersedes the blanket read-completion actual-inference gap: current pub
 
 
 Unit219 inspects the exact pinned upstream tree, README, third-party notices and hash-matched runtime. No runtime-specific grant is established; the MIT notice covers visual references, not inference. See RUNTIME-LICENSE-PROVENANCE.md. This fixed-revision check is exhausted unless new upstream evidence arrives; keep direct preparation and do not redistribute the bundle.
+
+Unit228 verifies the current publicv16 factual `read/file` → exact local read → completion answer → grounded response path with actual prepared Bonsai4B. This closes the present-build evidence gap for this representative branch. Summary/open completion outcomes, path-target behavior, semantic breadth, latency, installed standalone and physical/device-wide offline gates remain distinct. No deployment or product behavior changed in Unit228; see the dated entry in TEST-RESULTS.txt.
