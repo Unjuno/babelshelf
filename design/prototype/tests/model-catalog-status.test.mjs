@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelCatalogStatus} from '../src/model-catalog-status.ts';
+import {modelCatalogStatus,textModelChoiceHint,textModelFileSize} from '../src/model-catalog-status.ts';
+
+test('text choices expose pinned download size without claiming device readiness',()=>{
+ const small=textModelFileSize('2B'),standard=textModelFileSize('4B'),large=textModelFileSize('9B');
+ assert.ok(small>0&&small<standard&&standard<large);
+ assert.match(textModelChoiceHint('9B'),/2\.00 GB · device check required/);
+ assert.match(textModelChoiceHint('4B'),/MB · model files/);
+ assert.equal(textModelFileSize('unknown'),null);
+});
 
 test('only installed app-owned role adapters can be added from model libraries',()=>{
  assert.equal(modelCatalogStatus('decision','d1-omni-600M'),'Not prepared');

@@ -1,5 +1,6 @@
 import {capabilityState,type LocalCapability} from './local-capabilities.ts';
 import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel} from './preference-records.ts';
+import {textAssetInput} from './asset-activity.ts';
 
 export type ModelRole='text'|'decision'|'speech'|'ocr'|'vision';
 const roleCapability:Record<ModelRole,LocalCapability>={
@@ -23,4 +24,21 @@ export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonl
   if(custom)return custom.engine==='transformers-whisper-onnx'?'Not prepared':'Runtime not connected';
  }
  return capabilityState(roleCapability[role],id,false).status;
+}
+
+// The pinned weight/package size is useful before selection. It is not a RAM
+// estimate, a free-space check, or proof that this device can run the model.
+export function textModelFileSize(id:string,customModels:readonly CustomLocalModel[]=[]):number|null{
+ try{
+  const model=textAssetInput(id,false,undefined,[...customModels]).model;
+  if('files' in model&&Array.isArray(model.files))return model.files.reduce((total,file)=>total+file.bytes,0);
+  if('file' in model&&model.file)return model.file.bytes;
+  return null;
+ }catch{return null;}
+}
+export function textModelChoiceHint(id:string,customModels:readonly CustomLocalModel[]=[]):string{
+ const bytes=textModelFileSize(id,customModels);
+ if(bytes===null)return 'Size unavailable';
+ const size=bytes>=1e9?(bytes/1e9).toFixed(2)+' GB':Math.round(bytes/1e6)+' MB';
+ return id==='9B'?size+' · device check required':size+' · model files';
 }
