@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {inspectGGUF} from '../dist/gguf-inspect.js';
 import {localEngine,eligibleTextEngine} from '../dist/local-engines.js';
+import {inspectLocalModel} from '../dist/local-models.js';
 
 const u32=n=>{const b=Buffer.alloc(4);b.writeUInt32LE(n);return b;};
 const u64=n=>{const b=Buffer.alloc(8);b.writeBigUInt64LE(BigInt(n));return b;};
@@ -27,6 +28,12 @@ test('valid container does not mean an architecture or quantization is supported
  const other=await inspectGGUF(new Blob([gguf({arch:'llama'})]));assert.equal(eligibleTextEngine(other),undefined);
  const quant=await inspectGGUF(new Blob([gguf({tensorType:12})]));assert.equal(eligibleTextEngine(quant),undefined);
  assert.equal(localEngine('user-script'),undefined);
+});
+test('Qwen3 Q2_0 is refused before hashing or registering a custom model',async()=>{
+ const bytes=gguf({arch:'qwen3',tensorType:42}),blob=new Blob([bytes]);let read=0;
+ const file={size:blob.size,slice(start,end){read++;return blob.slice(start,end);},stream(){throw Error('Unsupported model must not be hashed');}};
+ await assert.rejects(inspectLocalModel(file),/Qwen3 Q2_0 GGUF cannot run here/);
+ assert.equal(read,1);
 });
 test('an LFM2 GGUF with the pinned CPU engines tokenizer and checked supported block types resolves to its app-owned adapter',async()=>{
  const info=await inspectGGUF(new Blob([gguf({arch:'lfm2',tensorType:2,elements:128})]));

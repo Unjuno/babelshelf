@@ -14,7 +14,8 @@ export async function findHuggingFaceModels(repoInput:string,{signal,fetcher=fet
  const configEntry=info.siblings.find((entry:any)=>entry?.rfilename==='config.json');if(!configEntry||!Number.isSafeInteger(configEntry.size)||configEntry.size<2||configEntry.size>1024*1024)throw Error('Model architecture metadata unavailable');
  const configUrl=`https://huggingface.co/${encoded}/resolve/${info.sha}/config.json`,configResponse=await fetcher(configUrl,{signal,credentials:'omit',referrerPolicy:'no-referrer'});
  if(!configResponse.ok)throw Error('Model architecture could not be checked');const config=await configResponse.json() as any;
- const architecture=config?.model_type==='qwen3_5'?'qwen35':config?.model_type==='lfm2'?'lfm2':undefined;if(!architecture)throw Error('No connected local engine for this Hugging Face model');
+ const architecture=config?.model_type==='qwen3_5'?'qwen35':config?.model_type==='lfm2'?'lfm2':undefined;
+ if(!architecture)throw Error(config?.model_type==='qwen3'?'Qwen3 needs a connected local engine · current GGUF imports support Qwen3.5 and LFM2 only':'No connected local engine for this Hugging Face model');
  const files=info.siblings.filter((entry:any)=>typeof entry?.rfilename==='string'&&entry.rfilename.toLowerCase().endsWith('.gguf')&&!/-\d{5}-of-\d{5}\.gguf$/i.test(entry.rfilename)&&safePath(entry.rfilename)&&Number.isSafeInteger(entry.size)&&entry.size>=24&&entry.size<=MAX_HF_CUSTOM_MODEL_BYTES).map((entry:any)=>({path:entry.rfilename,bytes:entry.size})).sort((a:HuggingFaceModelFile,b:HuggingFaceModelFile)=>a.path.localeCompare(b.path));
  if(!files.length)throw Error('No supported-size GGUF files in this repository');
  const rawLicense=info.cardData?.license,license=typeof rawLicense==='string'&&rawLicense.length<=100?rawLicense:null;

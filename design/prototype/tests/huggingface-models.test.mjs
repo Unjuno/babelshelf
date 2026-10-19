@@ -17,6 +17,7 @@ test('Hugging Face discovery resolves architecture at the repository commit and 
 test('Hugging Face discovery refuses unknown engines and malformed or private repository IDs',async()=>{
  await assert.rejects(findHuggingFaceModels('../owner/model'),/public Hugging Face model ID/);
  await assert.rejects(findHuggingFaceModels('owner/model',{fetcher:async(url)=>url.includes('/api/models/')?jsonResponse(metadata):jsonResponse({model_type:'llama'})}),/No connected local engine/);
+ await assert.rejects(findHuggingFaceModels('owner/model',{fetcher:async(url)=>url.includes('/api/models/')?jsonResponse(metadata):jsonResponse({model_type:'qwen3'})}),/Qwen3 needs a connected local engine/);
 });
 
 test('download uses the pinned commit, verifies exact bytes, and removes its OPFS staging file on request',async()=>{
