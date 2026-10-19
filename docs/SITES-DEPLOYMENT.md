@@ -148,3 +148,7 @@ Public v49 product build 401a2fcab0fd023c / 118 verified assets, Site source f97
 ## v50 model-set acquisition sizes (2026-10-20)
 
 Public v50 product build 27c8ce44c17df147 / 118 verified assets, Site source e61b390193c8abc9b8e33409176ea03645d04f07, saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_3e5eb580c5f08191a1c3fb99953e69a7, deployment appgdep_6ad685b610e081918d4c7731578a7652 succeeded. Audience and https://babelshelf.com/ are unchanged. Site stage/delivery verification passed the exact offline shell and both compressed ONNX WASM assets. Direct public build.json returned 27c8ce44c17df147 / 118, and the served entry contains Full model assets. This is static delivery verification; no current-sidebar click, model download, inference or phone check is claimed. No user data was deleted.
+
+## v51 selected-model file action wording (2026-10-20)
+
+Public v51 product build 9666a5583c72ae04 / 118 verified assets, Site source faf0726e08ce3e8b329d2ab70253855203b9a8cb, saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_bca1edbdae648191acfefa48b55dd07b, deployment appgdep_6ad687558d00819184c0d8291a55186c succeeded. Audience and https://babelshelf.com/ are unchanged. Site stage/delivery verification passed; direct public build.json returned 9666a5583c72ae04 / 118 and the served entry includes Choose model files and Media reading. Static delivery is verified; the existing sidebar PWA, model inference and phone were not interacted with for this release. Existing data was not cleared.

@@ -1923,3 +1923,9 @@ Public Site v49 deployment succeeded; babelshelf.com/build.json returned 401a2fc
 The Model set list now shows a full fixed-manifest asset total for every standard set before selection. It is calculated from the same selected-role initial-preparation plan with all caches assumed absent; it does not read storage, enable downloads, change a selection or claim device fit. Current values: Bonsai 2B 431,391,891 bytes; 4B 951,758,355; 9B 1,999,695,411; compact LFM 149,081,056; expanded LFM 219,312,832; the mixed-role sets include only their selected pinned readers. The 9B detail retains a device-check recommendation. This is acquisition size, not inference RAM or final origin storage usage.
 
 Checks: model-set/preparation 19/19, root Node 101/101, prototype 498/498, product acceptance 4/4, npm run check PASS, prototype TypeScript/build PASS, product build 27c8ce44c17df147 / 118 verified assets. No model was downloaded or executed.
+
+2026-10-20 — selected-model file action wording and public delivery
+
+The custom Decision/Speech preparation actions now read Choose model files, matching their actual behavior: the user supplies assets for the already registered model. Add model remains the separate registration path. The current Models panel already offers compatible custom GGUF Text, D1 text Decision and Whisper Speech; OCR and Vision custom architectures remain unsupported. Media reading has separate PDF, image, audio and video entry points; video frames remain unsupported rather than being presented as prepared.
+
+Checks: focused Decision/model/Vision 33/33, prototype 498/498, npm run check PASS, product acceptance 4/4, product build 9666a5583c72ae04 / 118 verified assets. Site staging and delivery verifier passed. Sites v51 deployed successfully, and direct public build.json plus entry JS contain the new wording. No browser interaction, new model inference, video-frame recognition or phone test was performed for this wording change.
