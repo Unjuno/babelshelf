@@ -25,7 +25,7 @@ export function capabilityState(capability:LocalCapability,model:string,prepared
  if(!model)return {...base,status:'Not configured'};
  const adapter=candidates.find(a=>a.models.includes(model));
  if(!adapter&&capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {...base,adapter:candidates.find(a=>a.id==='d1-text'),status:prepared===true?'Ready':'Not prepared'};
- if(!adapter&&capability==='audio.transcribe'&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {...base,adapter:candidates.find(a=>a.id==='whisper'),status:prepared===true?'Ready':'Not prepared'};
+ if(!adapter&&(capability==='audio.transcribe'||capability==='video.audio')&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {...base,adapter:candidates.find(a=>a.id==='whisper'),status:prepared===true?'Ready':'Not prepared'};
  // A registered Vision adapter does not make unrelated model families
  // image-capable. Keep unsupported models visibly distinct from a missing runtime.
  if(!adapter&&capability==='image.describe')return {...base,status:'Unsupported'};
@@ -37,8 +37,8 @@ export function requireCapability(capability:LocalCapability,model:string,prepar
  if(state.status!=='Ready'||!state.adapter)throw Error(state.status);
  return state.adapter;
 }
-export function videoCapabilityStatus(model:string,prepared:boolean):string {
- const audio=capabilityState('video.audio',model,prepared);
+export function videoCapabilityStatus(model:string,prepared:boolean,customSpeechModels:readonly {id:string;role:string;engine:string}[]=[]):string {
+ const audio=capabilityState('video.audio',model,prepared,[],customSpeechModels);
  return audio.status==='Ready'?'Audio only · frames unsupported':audio.status==='Not configured'?'Speech model required':audio.status+' · audio only';
 }
 // Verify always rechecks local assets; it never authorizes reacquisition.

@@ -2,6 +2,10 @@
 
 ## Decision
 
+The Settings UI distinguishes **Add model** (register a compatible model for a role) from **Import selected model assets** (supply the exact pinned files for the model already selected). A custom text GGUF carries its tokenizer metadata in the GGUF; the D1 and Whisper adapters require their separate tokenizer/configuration files. Importing bytes verifies their identity but does not prove generation on the current device. The existing custom adapters accept Qwen3.5/LFM2 GGUF text, D1 text ONNX decisions, and Whisper ONNX speech; arbitrary OCR, vision, video-frame, and other architectures still need an app-owned execution adapter before import can be enabled.
+
+Media readiness is displayed by operation: PDF text layers are read by bundled PDF.js; scanned PDF pages and images need prepared OCR; image questions need a separate prepared Vision model; video audio can use prepared speech transcription. Video frames remain unsupported. A verified model asset is distinct from successful content extraction, inference, and phone acceptance.
+
 Do not add a generic `Media model` role. It hides distinct capabilities and can make a model label look like support for every media type. Register models against the work they can actually perform. A media task may compose several independently verified local capabilities.
 
 | Role/capability | Purpose | MVP policy |

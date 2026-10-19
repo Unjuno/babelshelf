@@ -60,6 +60,9 @@ test('shared capability dispatch separates role, engine support and verified ass
  assert.equal(capabilityState('video.frames','whisper-tiny',true).status,'Unsupported');
  assert.equal(videoCapabilityStatus('whisper-tiny',true),'Audio only · frames unsupported');
  assert.equal(videoCapabilityStatus('',true),'Speech model required');
+ const customSpeech=[{id:'local-whisper',role:'speech',engine:'transformers-whisper-onnx'}];
+ assert.equal(videoCapabilityStatus('local-whisper',false,customSpeech),'Not prepared · audio only');
+ assert.equal(videoCapabilityStatus('local-whisper',true,customSpeech),'Audio only · frames unsupported');
  assert.equal(capabilityState('pdf.text','',false).status,'Ready');
  for(const c of ['text.embed','text.rerank','audio.synthesize'])assert.equal(capabilityState(c,'4B',true).status,'Unsupported');
  assert.throws(()=>localAdapters[0].capabilities.push('image.describe'),TypeError);
