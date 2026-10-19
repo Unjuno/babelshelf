@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {canAddModel,modelCatalogStatus,textModelChoiceHint,textModelFileSize} from '../src/model-catalog-status.ts';
 import {settings} from '../src/app-settings.ts';
 import {selectedTextFileGuidance,selectedDecisionFileGuidance} from '../src/model-file-guidance.ts';
+import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
+import {initialPreparationPlan} from '../src/initial-preparation.ts';
+import {textAssetInput} from '../src/asset-activity.ts';
 
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
@@ -48,6 +51,24 @@ test('the standard add list contains at least three prepared-path text choices a
  assert.equal(canAddModel('decision','d1-3B'),false);
  assert.equal(canAddModel('speech','whisper-tiny'),true);
  assert.equal(canAddModel('speech','whisper-base'),false);
+});
+
+test('every fresh-library text choice has an explicit pinned preparation route',()=>{
+ const prefs=readPreference('models',structuredClone(initialPreferenceNotes));
+ assert.ok(prefs.textLibrary.length>=3);
+ for(const id of prefs.textLibrary){
+  assert.equal(canAddModel('text',id),true);
+  const selection={...prefs,textModel:id};
+  const plan=initialPreparationPlan(selection,{text:false,speech:false,ocr:false},'text');
+  const audit=textAssetInput(id,true);
+  const pins='files' in audit.model?audit.model.files:[audit.model.file];
+  assert.deepEqual(plan.steps.map(step=>step.role),['text']);
+  assert.ok(plan.bytes>=pins.reduce((total,file)=>total+file.bytes,0));
+  assert.equal(audit.allowNetwork,true);
+  assert.equal(audit.method,'explicit-preparation');
+  assert.ok(pins.length>0);
+  for(const pin of pins)assert.match(pin.sha256,/^[a-f0-9]{64}$/);
+ }
 });
 
 test('only installed app-owned role adapters can be added from model libraries',()=>{
