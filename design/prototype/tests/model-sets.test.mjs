@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {initialPreferenceNotes,readPreference,updatePreference} from '../src/preference-records.ts';
-import {modelSets,applyModelSet,matchingModelSet} from '../src/model-sets.ts';
+import {modelSets,applyModelSet,matchingModelSet,modelSetAssetBytes} from '../src/model-sets.ts';
 import {localAdapters} from '../src/local-capabilities.ts';
 import {initialPreparationPlan} from '../src/initial-preparation.ts';
 
@@ -84,4 +84,16 @@ test('Bonsai 2 9B set selects a pinned text-only asset without claiming device v
  const plan=initialPreparationPlan(selected,{text:false,speech:true,ocr:true});
  assert.equal(plan.steps[0].label,'Ternary Bonsai 2 9B');
  assert.equal(plan.steps[0].bytes,model.file.bytes+manifest.runtime.file.bytes);
+});
+
+test('every visible standard set reports its cold model asset bytes before selection',()=>{
+ const before=readPreference('models',initialPreferenceNotes),snapshot=structuredClone(before);
+ const sizes=new Map(modelSets.map(set=>[set.id,modelSetAssetBytes(before,set.id)]));
+ assert.equal(sizes.size,modelSets.length);
+ for(const [id,bytes] of sizes)assert.ok(Number.isSafeInteger(bytes)&&bytes>0,`${id} needs a pinned asset total`);
+ assert.ok(sizes.get('bonsai-9b-text')>sizes.get('bonsai-4b-text'));
+ assert.ok(sizes.get('bonsai-4b-text')>sizes.get('bonsai-2b-text'));
+ assert.ok(sizes.get('local-full')>sizes.get('bonsai-4b-text'));
+ assert.deepEqual(before,snapshot);
+ assert.equal(readPreference('connection',initialPreferenceNotes).downloads,false);
 });

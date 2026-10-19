@@ -1,5 +1,6 @@
 import {settings} from './app-settings.ts';
 import {localAdapters} from './local-capabilities.ts';
+import {initialPreparationPlan} from './initial-preparation.ts';
 import type {Preferences} from './preference-records.ts';
 
 export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'bonsai-9b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'text-vision'|'local-text-media'|'local-full';
@@ -10,7 +11,7 @@ export type ModelSet={id:ModelSetId;label:string;detail:string;models:{textModel
 export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'bonsai-2b-text',label:'Bonsai 2 · 2B',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-4b-text',label:'Bonsai 2 · 4B',detail:'Text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
- {id:'bonsai-9b-text',label:'Bonsai 2 · 9B',detail:'Text only · 2 GB · device check recommended',models:{textModel:'9B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
+ {id:'bonsai-9b-text',label:'Bonsai 2 · 9B',detail:'Text only · device check recommended',models:{textModel:'9B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-compact',label:'Compact text',detail:'LFM2.5 230M · text only',models:{textModel:'lfm25-230m-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-expanded',label:'Expanded text',detail:'LFM2.5 350M · text only',models:{textModel:'lfm25-350m-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-speech',label:'Text + speech',detail:'Bonsai 2 · 4B · Whisper tiny',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'',visionModel:''}},
@@ -39,4 +40,11 @@ export function applyModelSet(value:Preferences['models'],id:string):Preferences
   ocrLibrary:set.models.ocrModel?[...new Set([...value.ocrLibrary,set.models.ocrModel])]:value.ocrLibrary,
   visionLibrary:set.models.visionModel?[...new Set([...value.visionLibrary,set.models.visionModel])]:value.visionLibrary,
  };
+}
+
+// Cold acquisition total for the selected roles, before any existing local
+// cache is considered. This is a manifest byte count, not a device-fit claim.
+export function modelSetAssetBytes(value:Preferences['models'],id:string):number{
+ const selected=applyModelSet(value,id);
+ return initialPreparationPlan(selected,{text:false,speech:false,ocr:false,decision:false,vision:false}).bytes;
 }
