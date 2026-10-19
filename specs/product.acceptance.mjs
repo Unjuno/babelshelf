@@ -26,3 +26,30 @@ test('published worker permits every pinned Vision preparation URL and no neighb
  }
  assert.equal(allowed.has(`https://huggingface.co/${vision.repository}/resolve/main/${vision.files[0].path}`),false);
 });
+test('published worker permits every pinned built-in model asset',async()=>{
+ const read=async file=>JSON.parse(await fs.readFile(file,'utf8'));
+ const [bonsai,lfm,smol,qwen,decision,ocr,speech,vision]=await Promise.all([
+  read('dist/model-manifest.json'),read('dist/lfm-model-manifest.json'),
+  read('design/prototype/src/onnx-text-manifest.json'),read('design/prototype/src/qwen-text-manifest.json'),
+  read('design/prototype/src/decision-manifest.json'),read('design/prototype/src/ocr-manifest.json'),
+  read('design/prototype/src/speech-manifest.json'),read('design/prototype/src/vision-manifest.json')
+ ]);
+ const sw=await fs.readFile(root+'sw.js','utf8');
+ const declaration=sw.match(/\bREMOTE=(\[[^;]*\]);/);
+ assert.ok(declaration,'Worker remote allowlist missing');
+ const actual=JSON.parse(declaration[1]);
+ const required=[
+  ...lfm.models.map(model=>model.file.url),...smol.files.map(file=>file.url),
+  ...qwen.files.map(file=>file.url),...decision.files.map(file=>file.url),
+  ...ocr.data.map(file=>file.url),bonsai.runtime.file.url,
+  ...bonsai.models.map(model=>model.file.url),...speech.files.map(file=>file.url),
+  ...vision.files.map(file=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${file.path}`)
+ ];
+ assert.deepEqual([...actual].sort(),[...required].sort(),'Service Worker remote asset list differs from pinned model manifests');
+ assert.equal(new Set(actual).size,actual.length,'Duplicate model asset URL');
+ for(const url of actual){
+  assert.match(url,/^https:\/\/(?:huggingface\.co|cdn\.jsdelivr\.net)\//);
+  assert.doesNotMatch(url,/\/resolve\/(?:main|master)\//);
+  if(url.startsWith('https://huggingface.co/'))assert.match(url,/\/resolve\/[a-f0-9]{40}\//,'Hugging Face assets must use an immutable revision');
+ }
+});
