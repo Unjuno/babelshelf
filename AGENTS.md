@@ -1,6 +1,6 @@
 # Repository handoff instructions
 
-Use docs/MVP-ACCEPTANCE.md for the current evidence map and remaining gates; chronological unit notes retain detailed scope and supersession. The active goal remains incomplete.
+As of 2026-10-19, the user accepts the current published product as the completed baseline. The new active goal is architecture rationalization while preserving that UI, data and local execution. Use docs/ARCHITECTURE-RATIONALIZATION.md for scope and decisions. Historical incomplete-MVP statements below do not override this acceptance; unverified capabilities remain unverified. Use docs/MVP-ACCEPTANCE.md for the evidence map; chronological unit notes retain their original scope.
 
 Read docs/SETTINGS-RESTORE.md for explicit settings recovery from a local backup. This is a user-only reviewed append of values, not a model tool or branch replacement. Preserve current versions/metadata and source histories in atomic receipts; keep downloads OFF, readiness independent, no preparation/loading/execution. History opens imported versions separately. Whole-state stale review must fail without writes. General divergent history reconciliation remains open.
 

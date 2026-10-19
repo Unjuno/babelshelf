@@ -1,6 +1,6 @@
 # Current application architecture
 
-Updated 2026-10-18. This document describes the runnable product and its real boundaries. `ARCHITECTURE.txt` is retained as a historical 0.1 baseline.
+Updated 2026-10-19. See [architecture rationalization](ARCHITECTURE-RATIONALIZATION.md) for the accepted baseline, evidence-backed findings and active refactor scope. This document describes the runnable product and its real boundaries. `ARCHITECTURE.txt` is retained as a historical 0.1 baseline.
 
 ## Runtime and ownership
 

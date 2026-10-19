@@ -1,6 +1,6 @@
 # BabelShelf — local knowledge PWA
 
-A smartphone-oriented local knowledge interface inspired by GBrain. Stored records and originals are the source of truth; models operate on them. The accepted UI is connected to canonical persistence and actual local inference. The whole MVP is **not complete** and is not certified for professional or emergency use.
+A smartphone-oriented local knowledge interface inspired by GBrain. Stored records and originals are the source of truth; models operate on them. The accepted UI is connected to canonical persistence and actual local inference. On 2026-10-19 the user accepted the published product as the completed baseline. The next objective is [architecture rationalization](docs/ARCHITECTURE-RATIONALIZATION.md); acceptance does not turn unverified capabilities or device behavior into verified results.
 
 Current evidence and exact build scopes: [MVP acceptance ledger](docs/MVP-ACCEPTANCE.md). Unresolved requirements: [remaining gates](docs/REMAINING-GATES.md). Intended behavior: [product specification](docs/PRODUCT-SPEC.md). Do not use historical prototype-status paragraphs or old comparison results as the current design.
 
