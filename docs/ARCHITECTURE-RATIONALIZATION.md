@@ -11,7 +11,8 @@ Keep the accepted UI, local knowledge, existing model choices, source provenance
 | Responsibility | Current code | Ownership and boundary |
 |---|---|---|
 | UI and interaction | `design/prototype/src/Prototype.tsx`, `product/` | Composer, review sheets, navigation and transient display state |
-| Input orchestration | `Prototype.tsx` `send()` | Copies input, records originals, prepares context, routes actions, calls tools, presents reviews, records results and recovers drafts |
+| Input submission | `input-submission.ts` | One attempt owns copied inputs, original verification, extraction sequencing, prior/expected dialogue snapshot, commit acknowledgement and recovery references |
+| Input orchestration | `Prototype.tsx` `send()` | Supplies adapters, adopts committed state, prepares context, routes actions, calls tools and presents review/results |
 | Context and intent | `conversation.ts`, `read-intent.ts`, current-input/working-file rules | Original turns and versioned source targets; compaction is a derived context representation |
 | Text execution | `text-inference.ts`, `text-engine-router.ts` | Pinned runtime identity, token budget, cancellation and trusted backend selection |
 | Canonical knowledge | `useKnowledge` and knowledge-store adapters | IndexedDB records/revisions; Memory is their path projection, not an OS filesystem |
@@ -47,4 +48,21 @@ Use existing controlled tests to cover lifecycle races, then exercise the change
 - Goal created; current implementation and accepted release inspected.
 - Acceptance wording updated without discarding historical verification limits.
 - Incorrect WebGPU observation corrected in the evidence ledger.
-- Lifecycle extraction and its integration verification remain pending. This document is a design decision, not a claim that the refactor has shipped.
+- `input-submission.ts` now implements the submission boundary and is called by the actual product Send flow. Its ports are snapshot, original read, extraction and commit; it has no React dependency, model selection, download permission or UI writes.
+- Commit acknowledgement is retained before UI projection/refresh. Stop during an atomic commit cannot pretend it was rolled back. Recovery only stages durable original references into an empty composer. Each attempt runs once; operation ID and AbortSignal checks reject stale continuation.
+- The UI supplies existing persistence adapters, adopts the committed dialogue and renders it; planning, review sheets, compaction and inference remain in their existing locations. This is deliberate bounded restructuring, not a claim that all orchestration has moved out of the component.
+- Published Site v22/build `09913024bec5dcaa`, canonical code commit `8d2cb7b`. Details and evidence: TEST-RESULTS Unit44 and SITES-DEPLOYMENT.md.
+
+## Completion audit
+
+| Requirement | Evidence |
+|---|---|
+| Preserve accepted product UI/local data | No JSX/CSS/schema changes; public calculation, reviewed Save, attachment preview and reload succeed; all 17 pre-existing canonical notes compare equal |
+| Factual responsibilities and ownership | Table above and actual `createInputSubmission` call in `Prototype.tsx`; future configurable harness remains explicitly a design direction |
+| Reduce a concrete coupling | Preparation/commit/recovery no longer capture component state; UI receives a committed result through typed ports rather than constructing storage payloads itself |
+| Failure before/after commit, Stop, stale operation | Seven lifecycle tests include failed commit, Stop during extraction/commit, stale snapshot, recovery and pinned-reference validation; current public unprepared-model failure/retry preserves one original |
+| No new draft overwrite | Recovery test refuses both a nonempty replacement draft and newly added attachments; existing conditional composer clearing retained |
+| Preserve exact Save/review/history contracts | Existing prototype suite464 passes; public reviewed calculator-result Save retains exact `391`; no generation was used for that check |
+| Relevant regressions and current public delivery | Baseline100, prototype464, product2, TypeScript/runtime lock/check/build pass; public served JS and manifest match build09913024bec5dcaa |
+
+The architecture goal's bounded refactor is complete. Physical devices, model semantic quality, and existing unsupported adapters retain their prior evidence limits; they are not certified by this refactor. No broad restructuring or additional model comparison is required to close this objective.

@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-10-19 JST. The user accepts the published product as the completed baseline. The active work is [architecture rationalization](docs/ARCHITECTURE-RATIONALIZATION.md), not an open-ended completion campaign. Preserve the accepted UI and stored data; do not restart historical model comparisons or rebuild connected features as preview state. Remaining evidence gaps below retain their scope, but are not additional acceptance conditions imposed on this refactor.
+Updated 2026-10-19 JST. The user accepts the published product as the completed baseline. The bounded [architecture rationalization](docs/ARCHITECTURE-RATIONALIZATION.md) is implemented and published in Unit44/v22. Any further restructuring should have a concrete benefit rather than restart an open-ended completion campaign. Preserve the accepted UI and stored data; do not restart historical model comparisons or rebuild connected features as preview state. Remaining evidence gaps below retain their scope, but are not additional acceptance conditions imposed on this refactor.
 
 ## Read in this order
 

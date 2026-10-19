@@ -35,6 +35,8 @@ Files, extracted text, history, and model output are data. They never grant tool
 
 ## Current orchestration seam
 
+`input-submission.ts` now owns one Send submission attempt through explicit snapshot/original/read/commit ports. It prepares and verifies originals, sequences optional extraction, builds the dialogue turn and remembers the acknowledged commit before any UI projection. It cannot select a model or grant tools. Recovery stages pinned durable references only into an empty composer. Stop before commit prevents submission; Stop during commit preserves its receipt and prevents subsequent inference. `Prototype.tsx` adopts that result, renders it and continues the existing routing/review flow. It also owns the attempt ID and AbortSignal used by the coordinator's checks.
+
 `Prototype.tsx` owns the accepted layered UI shell and currently coordinates the Send transaction, media preparation, user review sheets, memory navigation, and task/settings actions. Domain rules are separate modules, but several feature workflows still originate in this component. In particular, a selected working file and a search-discovered file had separate branches for deciding whether a read should open the source or continue to an answer/summary.
 
 `read-intent.ts` is the first shared application seam for that workflow: both branches now produce the same explicit `open` result or a pinned `answer`/`summary` continuation. It creates no model output, storage writes, or new authority. Its unit coverage is in `design/prototype/tests/conversation.test.mjs`.

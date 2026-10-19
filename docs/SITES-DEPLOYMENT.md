@@ -1,3 +1,7 @@
+## Current publication — Unit44, 2026-10-19
+
+Public Site v22 serves product `09913024bec5dcaa` /118 assets from canonical source `8d2cb7b`. Site source `a2abefd5a71bceba749e49d87700ffe98d566416`; deployment `appgdep_6ad62729eaa48191983cb4f0030646f6` succeeded. The input submission coordinator separates preparation/commit/recovery from UI. Public PC interaction and data-preservation checks passed with the limits in TEST-RESULTS Unit44. Earlier publication sections below are historical.
+
 # Sites publication
 
 Latest user authorization permits public access and continued adjustments on the published Site; earlier local-only/no-deploy instructions are superseded. The canonical repository is pushed to branch `codex/ui-design-handoff`; `main` is unchanged.
