@@ -36,12 +36,20 @@ test('model selections reference the library and managed settings cannot be dele
  assert.throws(()=>deletionContents({kind:'file',value:'settings-models'},original,['Settings']),/protected/);
 });
 
+test('fresh settings expose three downloadable text choices while selecting only one',()=>{
+ const models=readPreference('models',initialPreferenceNotes);
+ assert.deepEqual(models.textLibrary,['4B','2B','lfm25-230m-qad-q4-0']);
+ assert.equal(models.textModel,'4B');
+ assert.equal(models.decisionModel,'');
+ assert.equal(models.customModels.length,0);
+});
+
 test('all roles require registration; old model records migrate without losing history',()=>{
  const original=structuredClone(initialPreferenceNotes),before=original.find(n=>n.id==='settings-models');
- assert.throws(()=>updatePreference('models',original,m=>({...m,textModel:'2B'})),/before selecting/);
+ assert.throws(()=>updatePreference('models',original,m=>({...m,textModel:'smollm2-360m-instruct'})),/before selecting/);
  assert.throws(()=>updatePreference('models',original,m=>({...m,decisionModel:'d1-3B'})),/before selecting/);
- const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'2B'],textModel:'2B',decisionLibrary:['d1-3B'],decisionModel:'d1-3B'}));
- assert.equal(readPreference('models',registered).textModel,'2B');
+ const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'smollm2-360m-instruct'],textModel:'smollm2-360m-instruct',decisionLibrary:['d1-3B'],decisionModel:'d1-3B'}));
+ assert.equal(readPreference('models',registered).textModel,'smollm2-360m-instruct');
  assert.deepEqual(registered.find(n=>n.id===before.id).history,[before.body]);
  const legacy={...readPreference('models',original)};delete legacy.textLibrary;delete legacy.decisionLibrary;
  const body=formatPreference('models',legacy),parsed=parsePreference('models',body);

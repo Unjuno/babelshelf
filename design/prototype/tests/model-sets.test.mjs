@@ -58,7 +58,7 @@ test('applying a set changes only model selections and adds their registered cat
 });
 
 test('applying a text-only set preserves registered libraries, custom declarations and every non-model record',()=>{
- const start=structuredClone(initialPreferenceNotes),registered=updatePreference('models',start,m=>({...m,textLibrary:[...m.textLibrary,'lfm25-230m-qad-q4-0'],decisionLibrary:['d1-omni-600M'],transcriptionLibrary:['whisper-tiny'],ocrLibrary:['tesseract-7'],decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7'}));
+ const start=structuredClone(initialPreferenceNotes),registered=updatePreference('models',start,m=>({...m,textLibrary:[...m.textLibrary,'smollm2-360m-instruct'],decisionLibrary:['d1-omni-600M'],transcriptionLibrary:['whisper-tiny'],ocrLibrary:['tesseract-7'],decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7'}));
  const snapshot=structuredClone(registered),next=updatePreference('models',registered,m=>applyModelSet(m,'text-compact'));
  const before=readPreference('models',snapshot),after=readPreference('models',next);
  assert.equal(after.textModel,'lfm25-230m-qad-q4-0');assert.equal(after.decisionModel,'');assert.equal(after.transcriptionModel,'');assert.equal(after.ocrModel,'');
