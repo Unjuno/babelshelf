@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TextEngineRouter} from '../src/text-engine-router.ts';
-import {onnxTextManifest} from '../src/text-model-manifest.ts';
+import {onnxTextManifest,onnxTextModels} from '../src/text-model-manifest.ts';
 import {createOnnxTextClient} from '../src/onnx-text-client.ts';
 function setup(){const calls=[];let finish;
  const backend=name=>({manifest:{contextTokens:4096,runtime:{revision:'webml-test'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){calls.push(name+':terminate');}},async init(){return{};},async call(cmd){calls.push(name+':'+cmd);return cmd==='status'?{[name]:{filesPresent:true}}:{};},async load(id){calls.push(name+':load');if(name==='onnx')await new Promise(r=>finish=r);this.loaded=id;},async unload(){calls.push(name+':unload');this.loaded=null;},abort(){calls.push(name+':abort');this.loaded=null;}});
@@ -89,3 +89,18 @@ test('duplicate model/engine identities and missing revision contracts fail befo
 });
 
 test('verification routes to the owning engine without loading or preparation',async()=>{const f=setup();await f.router.call('verify',{model:'4B'});await f.router.call('verify',{model:onnxTextManifest.id});assert.deepEqual(f.calls,['webml:verify','onnx:verify']);assert.equal(f.router.loaded,null);await assert.rejects(f.router.call('verify',{model:'unknown'}),/Unknown/);});
+
+test('one optional engine status failure does not block a healthy text engine',async()=>{
+ let optionalBroken=true;
+ const base={manifest:{contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){return{};},async call(cmd){return cmd==='status'||cmd==='configure'?{'4B':{filesPresent:true}}:{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
+ const optional={loaded:null,worker:{terminate(){}},async init(){},async call(cmd){if(cmd==='status'&&optionalBroken)throw Error('Optional asset store unavailable');return Object.fromEntries(onnxTextModels.map(model=>[model.id,{filesPresent:true}]));},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
+ const router=new TextEngineRouter(base,()=>optional);
+ const first=await router.call('configure',{models:[]});
+ assert.equal(first['4B'].filesPresent,true);
+ for(const model of onnxTextModels)assert.deepEqual(first[model.id],{filesPresent:false,presenceOnly:true,statusError:true});
+ await router.load('4B');assert.equal(router.loaded,'4B');
+ optionalBroken=false;
+ const recovered=await router.call('status');
+ assert.equal(recovered['4B'].filesPresent,true);
+ for(const model of onnxTextModels)assert.equal(recovered[model.id].filesPresent,true);
+});

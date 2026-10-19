@@ -15,9 +15,9 @@ export function mediaReadingStatus(input:{ocrSelected:boolean;ocrReady:boolean;v
  const state=(selected:boolean,ready:boolean)=>!selected?'model not selected':ready?'files verified':'not prepared';
  const speech=input.speechStatus==='Ready'?'files verified':input.speechStatus==='Speech model required'?'model not selected':input.speechStatus==='Speech model not prepared'?'not prepared':input.speechStatus;
  return {
-  pdf:'Text layer: ready · Scanned pages: OCR '+state(input.ocrSelected,input.ocrReady),
-  image:'Text: OCR '+state(input.ocrSelected,input.ocrReady)+' · Description: '+state(input.visionSelected,input.visionReady),
-  audio:'Speech to text: '+speech,
-  video:'Playback: ready · Audio transcription: '+speech+' · Frames: unsupported',
+  pdf:['Text layer · ready','Scanned pages · OCR '+state(input.ocrSelected,input.ocrReady)],
+  image:['Text · OCR '+state(input.ocrSelected,input.ocrReady),'Description · '+state(input.visionSelected,input.visionReady)],
+  audio:['Transcription · '+speech],
+  video:['Playback · ready','Audio transcription · '+speech,'Frames · unsupported'],
  };
 }

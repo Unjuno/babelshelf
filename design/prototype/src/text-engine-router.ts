@@ -32,11 +32,15 @@ export class TextEngineRouter{
  private instance(r:Registered){if(r.instance?.failed){if(this.active===r.instance)this.active=null;r.instance=null;}return r.instance??=r.create();}
  private backend(id:string){const r=this.registration(id);if(r)return this.instance(r);if(!this.base.models?.some((m:any)=>m.id===id))throw Error('Unknown text model');return this.webml;}
  private check(epoch:number){if(epoch!==this.epoch)throw Error('Stopped');}
- private async status(){const epoch=this.epoch,assets:Record<string,any>={};for(const r of this.registrations){Object.assign(assets,await this.instance(r).call('status'));this.check(epoch);}const base=await this.webml.call('status');this.check(epoch);return {...base,...assets};}
+ private async optionalStatus(r:Registered,epoch:number){
+  try{const assets=await this.instance(r).call('status');this.check(epoch);return assets;}
+  catch{this.check(epoch);return Object.fromEntries(r.modelIds.map(id=>[id,{filesPresent:false,presenceOnly:true,statusError:true}]));}
+ }
+ private async status(){const epoch=this.epoch,base=await this.webml.call('status');this.check(epoch);const assets:Record<string,any>={};for(const r of this.registrations){Object.assign(assets,await this.optionalStatus(r,epoch));this.check(epoch);}return {...base,...assets};}
  async init(){return this.webml.init();}
  async call(cmd:string,args:any={},events?:any):Promise<any>{
   if(cmd==='status')return this.status();
-  if(cmd==='configure'){const epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of this.registrations){Object.assign(extra,await this.instance(r).call('status'));this.check(epoch);}return {...assets,...extra};}
+  if(cmd==='configure'){const epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of this.registrations){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}
   if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');return this.active.call(cmd,args,events);}
   if(cmd==='prepare'||cmd==='verify')return this.backend(args.model).call(cmd,args,events);
   throw Error('Unknown text operation');

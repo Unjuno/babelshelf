@@ -22,11 +22,10 @@ test('selected-file guidance follows the executable model format, including LFM 
 test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{
  const {mediaReadingStatus}=await import('../src/model-file-guidance.ts');
  const status=mediaReadingStatus({ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Speech model not prepared'});
- assert.match(status.pdf,/Text layer: ready.*Scanned pages: OCR model not selected/);
- assert.match(status.image,/Text: OCR model not selected.*Description: model not selected/);
- assert.match(status.audio,/Speech to text: not prepared/);
- assert.match(status.video,/Playback: ready.*Audio transcription: not prepared/);
- assert.match(status.video,/Frames: unsupported/);
+ assert.deepEqual(status.pdf,['Text layer · ready','Scanned pages · OCR model not selected']);
+ assert.deepEqual(status.image,['Text · OCR model not selected','Description · model not selected']);
+ assert.deepEqual(status.audio,['Transcription · not prepared']);
+ assert.deepEqual(status.video,['Playback · ready','Audio transcription · not prepared','Frames · unsupported']);
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
