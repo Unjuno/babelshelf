@@ -7,6 +7,7 @@ import {selectedTextFileGuidance} from '../src/model-file-guidance.ts';
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
   assert.match(selectedTextFileGuidance(id),/matching GGUF with tokenizer and chat template inside/);
+  assert.match(selectedTextFileGuidance(id),/Selected model only/);
   assert.match(selectedTextFileGuidance(id),/No new model is added/);
   assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
  }
@@ -25,7 +26,7 @@ test('media statuses separate supported text and audio paths from unsupported vi
  assert.match(status.image,/Text: OCR model not selected.*Description: model not selected/);
  assert.match(status.audio,/Speech to text: not prepared/);
  assert.match(status.video,/Playback: ready.*Audio transcription: not prepared/);
- assert.doesNotMatch(status.video,/frames.*ready/i);
+ assert.match(status.video,/Frames: unsupported/);
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
