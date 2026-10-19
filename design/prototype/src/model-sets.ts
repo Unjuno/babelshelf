@@ -2,7 +2,7 @@ import {settings} from './app-settings.ts';
 import {localAdapters} from './local-capabilities.ts';
 import type {Preferences} from './preference-records.ts';
 
-export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'text-vision'|'local-text-media'|'local-full';
+export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'bonsai-9b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'text-vision'|'local-text-media'|'local-full';
 export type ModelSet={id:ModelSetId;label:string;detail:string;models:{textModel:string;decisionModel:string;transcriptionModel:string;ocrModel:string;visionModel:string}};
 
 // These are selection presets over connected local adapters, not downloadable
@@ -10,6 +10,7 @@ export type ModelSet={id:ModelSetId;label:string;detail:string;models:{textModel
 export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'bonsai-2b-text',label:'Bonsai 2 · 2B',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-4b-text',label:'Bonsai 2 · 4B',detail:'Text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
+ {id:'bonsai-9b-text',label:'Bonsai 2 · 9B',detail:'Text only · 2 GB · device check required',models:{textModel:'9B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-compact',label:'Compact text',detail:'LFM2.5 230M · text only',models:{textModel:'lfm25-230m-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-expanded',label:'Expanded text',detail:'LFM2.5 350M · text only',models:{textModel:'lfm25-350m-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-speech',label:'Text + speech',detail:'Bonsai 2 · 4B · Whisper tiny',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'',visionModel:''}},

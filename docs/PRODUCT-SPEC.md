@@ -60,7 +60,7 @@ Scheduled tasks, execution records and notification events use the same canonica
 
 ## Models and extensibility
 
-Text candidate: PrismML Ternary Bonsai 2 4B first, 2B fallback after validation. Decision candidates: Liquid AI Open d1-omni-600M and d1-3B. Model roles are independent and replaceable; one future model may fill multiple roles only if capabilities are verified.
+Text candidate: PrismML Ternary Bonsai 2 4B first, 2B fallback after validation; 9B is an optional larger text candidate with device execution still unverified. Decision candidates: Liquid AI Open d1-omni-600M and d1-3B. Model roles are independent and replaceable; one future model may fill multiple roles only if capabilities are verified.
 
 Open d1 produces typed decisions/probabilities; it does not replace text generation. Omni is not a promise of arbitrary transcription, OCR, video analysis or simultaneous image/audio support. See MODEL-CANDIDATES.md for sources and limitations.
 

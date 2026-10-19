@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {initialPreferenceNotes,readPreference,updatePreference} from '../src/preference-records.ts';
 import {modelSets,applyModelSet,matchingModelSet} from '../src/model-sets.ts';
 import {localAdapters} from '../src/local-capabilities.ts';
+import {initialPreparationPlan} from '../src/initial-preparation.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['bonsai-2b-text','bonsai-4b-text','text-compact','text-expanded','text-speech','text-image','text-vision','local-text-media','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-compact','text-expanded','text-speech','text-image','text-vision','local-text-media','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -22,6 +24,7 @@ test('the added sets vary supported roles without implying device verification o
  const expected={
   'bonsai-2b-text':['2B','','','',''],
   'bonsai-4b-text':['4B','','','',''],
+  'bonsai-9b-text':['9B','','','',''],
   'text-compact':['lfm25-230m-qad-q4-0','','','',''],
   'text-expanded':['lfm25-350m-qad-q4-0','','','',''],
   'text-speech':['4B','','whisper-tiny','',''],
@@ -62,4 +65,23 @@ test('applying a text-only set preserves registered libraries, custom declaratio
  for(const key of ['textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary','customModels','customDecisionModels','customSpeechModels'])assert.deepEqual(after[key],before[key]);
  assert.deepEqual(next.filter(n=>n.id!=='settings-models'),snapshot.filter(n=>n.id!=='settings-models'));
  assert.throws(()=>applyModelSet(after,'unknown'),/Unknown model set/);
+});
+
+test('Bonsai 2 9B set selects a pinned text-only asset without claiming device verification',async()=>{
+ const manifest=JSON.parse(await readFile(new URL('../../../dist/model-manifest.json',import.meta.url),'utf8'));
+ const model=manifest.models.find(item=>item.id==='9B');
+ assert.equal(model.repository,'prism-ml/Ternary-Bonsai-2-9B-gguf');
+ assert.equal(model.revision,'5b2abb02362efbed46bbe204014b02837778b2c2');
+ assert.equal(model.file.bytes,1997486976);
+ assert.equal(model.file.sha256,'3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b');
+ assert.equal(model.format,'PTQ1_0');
+ assert.equal(model.mmproj,null);
+ assert.equal(model.generationVerified,false);
+ const selected=applyModelSet(readPreference('models',initialPreferenceNotes),'bonsai-9b-text');
+ assert.equal(selected.textModel,'9B');
+ assert.equal(readPreference('connection',initialPreferenceNotes).downloads,false);
+ assert.equal(matchingModelSet(selected)?.id,'bonsai-9b-text');
+ const plan=initialPreparationPlan(selected,{text:false,speech:true,ocr:true});
+ assert.equal(plan.steps[0].label,'Ternary Bonsai 2 9B');
+ assert.equal(plan.steps[0].bytes,model.file.bytes+manifest.runtime.file.bytes);
 });

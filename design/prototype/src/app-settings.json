@@ -11,6 +11,10 @@
         "label": "Bonsai 2 \u00b7 2B"
       },
       {
+        "value": "9B",
+        "label": "Bonsai 2 \u00b7 9B"
+      },
+      {
         "value": "smollm2-360m-instruct",
         "label": "SmolLM2 \u00b7 360M \u00b7 English"
       },
