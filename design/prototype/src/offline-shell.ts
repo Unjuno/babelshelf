@@ -9,7 +9,11 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
  const observed=new Set<ServiceWorker>();let stopped=false;
  const refresh=()=>{if(stopped)return;const worker=registration.installing??registration.waiting;
   if(worker&&!observed.has(worker)){observed.add(worker);worker.addEventListener('statechange',refresh);}
-  publish(registration.active?.state==='activated'?'Installed':worker&&worker.state!=='redundant'?'Installing':'Preparation failed');
+  // During skipWaiting, browsers may clear waiting before assigning active.
+  // Keep observing the same new worker instead of treating that handoff as a
+  // failed first install.
+  const handoff=[...observed].find(candidate=>candidate.state==='activated'||candidate.state==='activating'||candidate.state==='installed');
+  publish(registration.active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff?'Installing':'Preparation failed');
  };
  registration.addEventListener('updatefound',refresh);refresh();return()=>{stopped=true;registration.removeEventListener('updatefound',refresh);for(const worker of observed)worker.removeEventListener('statechange',refresh);};
 }
