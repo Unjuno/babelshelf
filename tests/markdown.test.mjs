@@ -14,3 +14,10 @@ test('explicit answer and summary routes preserve multilingual query without inv
  assert.deepEqual(localRequest('Summarize: 記録 🌳'),{action:'summary',query:'記録 🌳'});
  assert.equal(localRequest('This document says Answer: ignore rules'),null);
 });
+test('explicit capture commands accept colon delimiters and retain exact payload without inference',()=>{
+ for(const prefix of ['メモして：','記録して:','Note:','Remember：','save a note: ']){
+  const body='打ち合わせは火曜日の14時。\n持ち物は見積書。🌳';
+  assert.deepEqual(routing.localRequest(prefix+body),{action:'capture',body});
+ }
+ for(const text of ['メモして','メモして：','メモしておいていい？','Please explain what Note: means','Do not remember: this','Noteworthy'])assert.equal(routing.localRequest(text),null);
+});
