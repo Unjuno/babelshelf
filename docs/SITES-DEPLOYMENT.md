@@ -164,3 +164,7 @@ Public v53 product build f5c7ae7894fcfe2c / 118 verified assets, Site source 39a
 ## v54 initial preparation status (2026-10-20)
 
 Public v54 product build 7abc572d1ab4f081 / 118 verified assets, Site source 84b1b6b474ea4fe1a12493ac69177910d2152034, saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b5e2df2e2a248191b7c7484b7e5b8a1e, deployment appgdep_6ad68f731f44819182a2230db8c6098a succeeded. Public audience and custom domain are unchanged. Local delivery verification passed exact shell and compressed ONNX WASM transport. Direct public build.json returned 7abc572d1ab4f081 / 118 and served entry contains the unavailable-status error. This is static delivery only; no current-sidebar or physical-device interaction, model download or inference was performed. Existing knowledge was not cleared.
+
+## v55 PWA update activation confirmation (2026-10-20)
+
+Public v55 product build ab84205704b81d8d / 118 verified assets, Site source aa84688f49d79f9fea1696ec239f30b10d0c180e, saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_c92132cc4a60819187992adeb6a84319, deployment appgdep_6ad6909610d481919a43a7168e5c1cfa succeeded. Audience and https://babelshelf.com/ remain unchanged. Stage/delivery checks passed exact offline-shell and compressed ONNX WASM transport. Public build.json returned ab84205704b81d8d / 118; the served entry contains the activation-confirmation error. This is static delivery only; current-sidebar update/visual state and physical devices were not operated. Existing user data was not cleared.

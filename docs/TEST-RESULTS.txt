@@ -1961,3 +1961,7 @@ Checks: prototype 500/500, npm run check PASS, prototype TypeScript/build PASS w
 2026-10-20 — unknown text asset status cannot become a false download plan
 
 Initial preparation now refuses to turn an optional Text engine status failure into a missing-files estimate. It reports Text file status unavailable and directs the user to Retry check in Models; preparation of another selected role remains independent. This complements v53's per-engine status isolation. Focused tests 19/19, prototype 501/501, npm run check PASS, product build 7abc572d1ab4f081 / 118 and product acceptance 4/4 PASS. Site v54 was published, and direct public build.json/entry checks matched. No new browser/phone or real inference test was performed for this change.
+
+2026-10-20 — app update completion requires current-page control
+
+Apply update previously posted to an optional waiting worker and immediately displayed Updated, including when no worker existed. It now requires an installed waiting worker and waits for activation plus controllerchange of the current page. Missing, redundant and unconfirmed handoffs report errors instead of false success; the successful message still instructs reopening the old compiled page. Focused offline-shell lifecycle tests 8/8, prototype 503/503, npm run check PASS, prototype runtime/build PASS, product build ab84205704b81d8d / 118 and product acceptance 4/4 PASS. Sites v55 deployed and public build.json/entry checks matched. Current-sidebar Apply update and physical-device lifecycle remain unverified for this release.
