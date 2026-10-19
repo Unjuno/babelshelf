@@ -1,4 +1,8 @@
-## Current publication — Bonsai 2 9B set, 2026-10-20
+## Current publication — pinned Vision file import, 2026-10-20
+
+Public Site v37 serves product `6632659ba2238abd` /118 verified assets from canonical source `5584cab`. Site source `09cd950e2b5340047c29ca4d9136a9e0f23b6a69`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f54f2f7690388191948e3cdf2974ae41`; deployment `appgdep_6ad666c4e84c81919fef31580bbace13` succeeded. `https://babelshelf.com/build.json` returned the exact build. In the Codex sidebar, the retained public PWA completed Check/Apply update and reload displayed the Vision fixed-package import action. No browser file import, full Vision inference, offline cold reload or phone operation was tested on this release. The archive is `outputs/unit-vision-import-site.tar.gz` in the task wrapper. Older static assets remain to support retained clients; no canonical data was cleared.
+
+## Previous publication — Bonsai 2 9B set, 2026-10-20
 
 Public Site v25 serves product `28745382126db9ac` /118 verified assets from canonical source `b828d1b`. Site source `9808faac54d290483cfb178c05d59a31c10eb90b`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_fd750c43d3648191a7c60ed6e8fed815`; deployment `appgdep_6ad64c2a70fc819180bf76c3d1ad9995` succeeded. Public `https://babelshelf.com/build.json` returned the exact new build and the served entry contains `bonsai-9b-text`. Packaging archive: `outputs/bonsai-2-9b-site.tar.gz`. Existing client data and older static assets were preserved. The user must apply an available PWA update to replace an already controlled old worker; no site data clearing. This is publication and catalog evidence, not 9B weight download, WebGPU generation, offline reload or iPhone acceptance.
 
