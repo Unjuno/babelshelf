@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-10-18 JST. The whole MVP goal is incomplete. Preserve the latest user instructions and accepted UI; do not restart the historical model comparisons or rebuild already connected features as preview state.
+Updated 2026-10-19 JST. The whole MVP goal is incomplete. Preserve the latest user instructions and accepted UI; do not restart the historical model comparisons or rebuild already connected features as preview state.
 
 ## Read in this order
 
@@ -17,9 +17,9 @@ The native product entry shares the accepted UI with a canonical IndexedDB adapt
 
 Natural input connects capture/search/read/answer/summary, retained dialogue/compaction and reviewed corrections. Exact generated-answer Save does not regenerate. Shared source/record checks refuse stale approvals and unapproved overwrites. Source correctness and semantic intent still have known failures; one successful generated answer is not general reliability.
 
-Actual PC evidence exists for Bonsai4B, local Whisper tiny, Tesseract OCR, PDF text/prepared empty-page OCR and video audio transcription. Automatic Send uses only prepared readers. Original bytes, derived results and source locations are distinct. Video frames/general image understanding remain unsupported. Newly processed single-track WebM/MP4 audio has validated container offsets and estimated transcript segments; actual PC installed offline flows are recorded in VIDEO-TIMELINE.md. Legacy transcripts and edited text retain broader source coverage.
+Actual PC evidence exists for Bonsai4B, local Whisper tiny, Tesseract OCR, PDF text/prepared empty-page OCR and video audio transcription. Automatic Send uses only prepared readers. Original bytes, derived results and source locations are distinct. A pinned LFM2.5-VL 450M WebGPU adapter and Text + vision preset exist for single-image description, but actual asset preparation/generation and image quality are not verified; video-frame understanding remains unsupported. Newly processed single-track WebM/MP4 audio has validated container offsets and estimated transcript segments; actual PC installed offline flows are recorded in VIDEO-TIMELINE.md. Legacy transcripts and edited text retain broader source coverage.
 
-Text, Decision and Speech registration/preparation are independent. Bonsai4B remains the default. Supported custom Qwen3.5/LFM2 GGUF text models and fixed-contract D1 text-ONNX models can be added through app-owned adapters. A bounded eight-file Whisper ONNX package was loaded and transcribed in PC Chrome with browser networking disabled, including after a page reload. The one short synthetic sample produced text whose accuracy was not established. Custom OCR/image-description/video-frame models and arbitrary GGUF/ONNX or D1-3B multimodal support remain absent. Extensions alone do not prove compatibility. See [custom model contract](docs/CUSTOM-MODELS-CONTRACT.md).
+Text, Decision, Speech, OCR and Vision are independent roles. Bonsai4B remains the default. Supported custom Qwen3.5/LFM2 GGUF text models and fixed-contract D1 text-ONNX models can be added through app-owned adapters. A bounded eight-file Whisper ONNX package was loaded and transcribed in PC Chrome with browser networking disabled, including after a page reload. The one short synthetic sample produced text whose accuracy was not established. Custom OCR/image-description/video-frame model imports and arbitrary GGUF/ONNX or D1-3B multimodal support remain absent. Extensions alone do not prove compatibility. See [custom model contract](docs/CUSTOM-MODELS-CONTRACT.md).
 
 Bundled tools execute validated code and expose SKILL.md/source identity. Custom definitions and external MCP remain inactive; the file itself never grants execution/network permission. See [tool packages](docs/TOOL-PACKAGES.md).
 
@@ -36,4 +36,4 @@ Use [REMAINING-GATES.md](docs/REMAINING-GATES.md) for evidence needed and [IMPLE
 
 ## Invariants
 
-No cloud/LAN inference, personal-data upload, silent acquisition, account/sync service, database reset or unauthorized model overwrite/delete. Preserve IDs, all original revisions/paths, withdrawal state, protected roots and maximum five stored folder levels. Check the actual SW build without deleting existing browser data. Keep meaningful local commits; no GitHub push. The latest user instruction authorizes public Sites updates at babelshelf.com; preserve local data and public audience.
+No cloud/LAN inference, personal-data upload, silent acquisition, account/sync service, database reset or unauthorized model overwrite/delete. Preserve IDs, all original revisions/paths, withdrawal state, protected roots and maximum five stored folder levels. Check the actual SW build without deleting existing browser data. Keep meaningful local commits and push only to the existing `codex/ui-design-handoff` branch; `main` remains unchanged. The latest user instruction authorizes public Sites updates at babelshelf.com; preserve local data and public audience.
