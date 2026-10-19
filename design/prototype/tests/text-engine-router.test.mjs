@@ -74,6 +74,13 @@ test('idle trusted registration can add validated local models and replaces its 
  const make=(ids)=>({id:'local-lfm',modelIds:ids,describe:()=>({contextTokens:2048,runtime:{revision:'wllama-fixed'},models:ids.map(id=>({id,revision:'sha:'+id}))}),create:()=>{created++;const instance=created;return {loaded:null,async init(){},async call(){return{};},async load(id){this.loaded=id;calls.push('load:'+instance+':'+id);},async unload(){this.loaded=null;},abort(){calls.push('abort:'+instance);},worker:{terminate(){calls.push('terminate:'+instance);}}};}});
  const router=new TextEngineRouter(base,()=>{throw Error('unused');},[make(['fixed'])]);await router.load('fixed');await router.unload();router.replaceRegistration('local-lfm',make(['fixed','local-custom']));assert.ok(calls.includes('terminate:1'));assert.equal(router.manifest.models.find(m=>m.id==='local-custom').revision,'sha:local-custom');await router.load('local-custom');assert.equal(created,2);assert.equal(router.loaded,'local-custom');assert.ok(calls.includes('load:2:local-custom'));
 });
+test('uninstantiated inactive registration can be replaced before first status check',()=>{
+ const base={manifest:{contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,async init(){},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){},worker:{terminate(){}}};
+ const make=(ids)=>({id:'local-lfm',modelIds:ids,describe:()=>({contextTokens:2048,runtime:{revision:'wllama-fixed'},models:ids.map(id=>({id,revision:'sha:'+id}))}),create(){throw Error('must stay lazy');}});
+ const router=new TextEngineRouter(base,()=>{throw Error('unused');},[make(['fixed'])]);
+ assert.doesNotThrow(()=>router.replaceRegistration('local-lfm',make(['fixed','local-custom'])));
+ assert.equal(router.manifest.models.some(model=>model.id==='local-custom'),true);
+});
 test('duplicate model/engine identities and missing revision contracts fail before any factory starts',()=>{
  const base={manifest:{models:[{id:'4B',revision:'four'}]}};let starts=0;
  const r={id:'third-engine',modelIds:['new'],describe:()=>({contextTokens:1024,runtime:{revision:'r'},models:[{id:'new',revision:'v'}]}),create(){starts++;}};

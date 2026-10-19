@@ -19,7 +19,7 @@ export class TextEngineRouter{
  replaceRegistration(id:string,replacement:TextBackendRegistration){
   const index=this.registrations.findIndex(r=>r.id===id),current=this.registrations[index];
   if(!current||replacement.id!==id||!Array.isArray(replacement.modelIds)||!replacement.modelIds.length||new Set(replacement.modelIds).size!==replacement.modelIds.length||typeof replacement.describe!=='function'||typeof replacement.create!=='function')throw Error('Invalid text engine registration');
-  if(this.active===current.instance)throw Error('Unload model first');
+  if(current.instance&&this.active===current.instance)throw Error('Unload model first');
   const occupied=new Set<string>((this.base.models??[]).map((m:any)=>m.id));for(let i=0;i<this.registrations.length;i++)if(i!==index)for(const model of this.registrations[i].modelIds)occupied.add(model);
   for(const modelId of replacement.modelIds){if(typeof modelId!=='string'||!modelId||occupied.has(modelId))throw Error('Invalid text engine registration');const described=replacement.describe(modelId);if(!described||!Number.isSafeInteger(described.contextTokens)||described.contextTokens<1||!described.runtime?.revision||!Array.isArray(described.models)||described.models.length!==replacement.modelIds.length||described.models.some((m:any)=>!replacement.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(described.models.map((m:any)=>m.id)).size!==replacement.modelIds.length)throw Error('Invalid text engine registration');occupied.add(modelId);}
   if(current.instance){current.instance.abort();current.instance.worker.terminate();}
