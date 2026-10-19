@@ -2,6 +2,12 @@
 
 Updated 2026-10-19. Users can add supported models to the same role-specific libraries as built-ins. A model file is data, never an executable plugin. Local inference remains the default; no provider, cloud, LAN or PC fallback is authorized.
 
+## Two different file actions in Models
+
+**Add another text model** registers a new supported model identity. A local Qwen3.5 or LFM2 GGUF contains its tokenizer metadata and chat template; the app inspects the file before the user confirms Add. This does not make arbitrary GGUF architectures compatible. **Import files for this model** supplies or repairs the exact files for the *already selected* model and does not create a new model entry or change its identity. Built-in ONNX text models instead require their matching weights, configuration, and tokenizer package files. These actions remain separate so that importing bytes cannot silently switch the active model.
+
+Decision has an explicit **Add custom D1 model** entry. It accepts only the five-file D1 text-adapter package listed below, including tokenizer files. Adding a model and proving it loads or produces useful decisions are separate checks. Speech has the analogous fixed Whisper package flow. OCR and image understanding currently have no custom-model adapter; selecting a generic ONNX file cannot turn them into one.
+
 ## Current implementation
 
 - **Text:** local GGUF import through app-owned Qwen3.5/WebML or LFM2/wllama adapters. These accept only their inspected formats and do not imply arbitrary GGUF/fine-tune compatibility. LFM2.5-230M has a recorded PC offline generation/save flow at Unit258.
