@@ -11,9 +11,10 @@ import {ocrFiles} from './ocr-assets.ts';
 import {visionManifest} from './vision-assets.ts';
 export type PreparationRole='text'|'speech'|'ocr'|'decision'|'vision';
 type Role=PreparationRole;
-export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean},onlyRole?:PreparationRole){
+export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
  const models=structuredClone(value),text=combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel);
  if(!text)throw Error('Choose a text model');
+ if(ready.textStatusError&&(!onlyRole||onlyRole==='text'))throw Error('Text file status unavailable · retry check in Models');
  const selectedSpeech=value.customSpeechModels.find(model=>model.id===value.transcriptionModel);
  if((!onlyRole||onlyRole==='speech')&&value.transcriptionModel&&value.transcriptionModel!=='whisper-tiny'&&!selectedSpeech)throw Error('Speech runtime not connected');
  if((!onlyRole||onlyRole==='ocr')&&value.ocrModel&&value.ocrModel!=='tesseract-7')throw Error('Image text runtime not connected');

@@ -72,6 +72,14 @@ test('standard-set presence is not reported as text verification',()=>{
  assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.bytes,0);
 });
 
+test('an unavailable selected text status cannot be treated as missing downloadable files',()=>{
+ const prefs=initial();
+ assert.throws(()=>initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false}),/Text file status unavailable/);
+ assert.throws(()=>initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'text'),/retry check/);
+ prefs.transcriptionModel='whisper-tiny';prefs.transcriptionLibrary=['whisper-tiny'];
+ assert.deepEqual(initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'speech').steps.map(step=>step.role),['speech']);
+});
+
 
 test('LFM initial preparation budgets only selected weights; packaged runtime is independent',()=>{
  const prefs=initial();prefs.textModel='lfm25-350m-qad-q4-0';prefs.textLibrary.push(prefs.textModel);
