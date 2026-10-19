@@ -6,15 +6,16 @@ import {selectedTextFileGuidance} from '../src/model-file-guidance.ts';
 
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
-  assert.match(selectedTextFileGuidance(id),/Matching GGUF \(tokenizer and chat template inside\)/);
+  assert.match(selectedTextFileGuidance(id),/matching GGUF with tokenizer and chat template inside/);
   assert.match(selectedTextFileGuidance(id),/No new model is added/);
   assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
  }
  for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct']){
-  assert.match(selectedTextFileGuidance(id),/Matching ONNX weights, config and tokenizer files/);
+  assert.match(selectedTextFileGuidance(id),/matching ONNX weights, config and tokenizer files/);
   assert.match(selectedTextFileGuidance(id),/No new model is added/);
  }
  assert.match(selectedTextFileGuidance('unknown'),/No compatible import package/);
+ assert.match(selectedTextFileGuidance(''),/Choose a model before importing/);
 });
 
 test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{

@@ -2,11 +2,11 @@ import {textAssetInput} from './asset-activity.ts';
 import type {CustomLocalModel} from './preference-records.ts';
 
 export function selectedTextFileGuidance(modelId:string,customModels:readonly CustomLocalModel[]=[]):string {
- if(!modelId)return 'Select a text model first.';
+ if(!modelId)return 'Choose a model before importing its files.';
  try{
   const {model}=textAssetInput(modelId,false,undefined,[...customModels]);
-  if(model.format==='GGUF'||('file' in model&&/\.gguf$/i.test(model.file?.name??'')))return 'Selected model only · Matching GGUF (tokenizer and chat template inside); runtime file if required. No new model is added.';
-  if(model.format==='ONNX')return 'Selected model only · Matching ONNX weights, config and tokenizer files. No new model is added.';
+  if(model.format==='GGUF'||('file' in model&&/\.gguf$/i.test(model.file?.name??'')))return 'For this selected model: matching GGUF with tokenizer and chat template inside; pinned runtime file if required. Files are verified locally. No new model is added.';
+  if(model.format==='ONNX')return 'For this selected model: matching ONNX weights, config and tokenizer files. Files are verified locally. No new model is added.';
  }catch{/* An unknown selection must not be presented as an importable package. */}
  return 'No compatible import package for this selection.';
 }
