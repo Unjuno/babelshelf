@@ -5,12 +5,12 @@ export function selectedTextFileGuidance(modelId:string,custom:boolean):string {
 }
 
 export function mediaReadingStatus(input:{ocrSelected:boolean;ocrReady:boolean;visionSelected:boolean;visionReady:boolean;speechStatus:string}){
- const state=(selected:boolean,ready:boolean)=>!selected?'Model off':ready?'Files verified':'Not prepared';
- const speech=input.speechStatus==='Ready'?'Files verified':input.speechStatus;
+ const state=(selected:boolean,ready:boolean)=>!selected?'off':ready?'files verified':'not prepared';
+ const speech=input.speechStatus==='Ready'?'files verified':input.speechStatus==='Speech model required'?'off':input.speechStatus==='Speech model not prepared'?'not prepared':input.speechStatus;
  return {
   pdf:'Text layer ready · Scanned pages: OCR '+state(input.ocrSelected,input.ocrReady),
   image:'OCR '+state(input.ocrSelected,input.ocrReady)+' · Image understanding '+state(input.visionSelected,input.visionReady),
   audio:'Transcription '+speech,
-  video:'Playback ready · Audio '+speech+' · Frames unavailable',
+  video:'Playback ready · Audio transcription '+speech+' · Frames unavailable',
  };
 }
