@@ -7,6 +7,17 @@ import {createNote,reviseNote} from '../../../dist/core.js';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('plain original writing stays a conversation even when a small planner would search notes',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};
+ const shouldNotPlan={...engine(),generate:async()=>{throw Error('planner must not run');}};
+ assert.deepEqual(await planDialogue(shouldNotPlan,'Write one short original sentence about a quiet garden.',context),{action:'chat',query:''});
+ assert.deepEqual(await planDialogue(shouldNotPlan,'Compose a poem about rain.',context),{action:'chat',query:''});
+ const planned={...engine(),generate:async()=>({text:'{"action":"answer","query":"garden","target":"knowledge"}'})};
+ assert.equal((await planDialogue(planned,'Write a note about our meeting',context)).target,'knowledge');
+ assert.equal((await planDialogue(planned,'Write a poem about my notes',context)).target,'knowledge');
+ assert.equal((await planDialogue(planned,'Write a poem about this file',{...context,currentFile:{noteId:'n',revision:1}})).target,'knowledge');
+});
+
 test('new capture without body preserves the rejected planner receipt and cannot become a save proposal',async()=>{
  const raw='{"action":"capture","query":"QA224の打ち合わせは火曜日の14時。持ち物は見積書。"}';
  const port={...engine(),generate:async()=>({text:raw})};

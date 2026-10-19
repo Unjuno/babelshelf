@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {canAddModel,modelCatalogStatus,textModelChoiceHint,textModelFileSize} from '../src/model-catalog-status.ts';
 import {settings} from '../src/app-settings.ts';
+import {selectedTextFileGuidance} from '../src/model-file-guidance.ts';
+
+test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
+ for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
+  assert.match(selectedTextFileGuidance(id),/GGUF\? Import it here/);
+  assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
+ }
+ for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct'])assert.match(selectedTextFileGuidance(id),/ONNX weights, config and tokenizer files/);
+ assert.match(selectedTextFileGuidance('unknown'),/No compatible import package/);
+});
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
  const small=textModelFileSize('2B'),standard=textModelFileSize('4B'),large=textModelFileSize('9B');

@@ -1,7 +1,14 @@
-export function selectedTextFileGuidance(modelId:string,custom:boolean):string {
+import {textAssetInput} from './asset-activity.ts';
+import type {CustomLocalModel} from './preference-records.ts';
+
+export function selectedTextFileGuidance(modelId:string,customModels:readonly CustomLocalModel[]=[]):string {
  if(!modelId)return 'Select a text model first.';
- if(custom||['4B','2B','9B'].includes(modelId))return 'GGUF includes tokenizer data. Import matches this selected model; some models also need a compatible runtime file.';
- return 'Import the ONNX weights, config and tokenizer files for this selected model.';
+ try{
+  const {model}=textAssetInput(modelId,false,undefined,[...customModels]);
+  if(model.format==='GGUF'||('file' in model&&/\.gguf$/i.test(model.file?.name??'')))return 'Have this model’s GGUF? Import it here with any required runtime file. The tokenizer is inside; Prepare downloads verified files.';
+  if(model.format==='ONNX')return 'Have the ONNX weights, config and tokenizer files? Import them here; Prepare downloads verified files.';
+ }catch{/* An unknown selection must not be presented as an importable package. */}
+ return 'No compatible import package for this selection.';
 }
 
 export function mediaReadingStatus(input:{ocrSelected:boolean;ocrReady:boolean;visionSelected:boolean;visionReady:boolean;speechStatus:string}){

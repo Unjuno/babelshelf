@@ -196,13 +196,17 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
  messages.push({role:'user',content:question});return messages;
 }
 const plainGreetings=new Set(['hello','hi','hey','hiya','good morning','good afternoon','good evening','hi there','hello there','hey there','how are you','what\'s up','こんにちは','こんばんは','おはよう','おはようございます','やあ','どうも','もしもし']);
-function plainConversationRoute(question:string,attachments:{name:string;kind:string;status:string}[]){
- if(attachments.length||question.length>64)return null;
+function plainConversationRoute(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
+ if(attachments.length)return null;
+ // Small text models can misroute a plainly original writing request into a
+ // knowledge search. This narrow grammar contains no file or memory verbs.
+ if(!context.currentFile&&!/\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?)\b/i.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|original|creative)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
+ if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;
 }
 export async function planDialogue(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext):Promise<DialoguePlan>{
- const direct=plainConversationRoute(question,attachments);if(direct)return direct as DialoguePlan;
+ const direct=plainConversationRoute(question,attachments,context);if(direct)return direct as DialoguePlan;
  engine=engine.pin?.()??engine;
  const scope=plannerScope(context,attachments.length>0,question);if(agent)scope.toolIds=agent.allowedTools.filter(tool=>tool.readOnly===true&&tool.network==='none').map(tool=>tool.id);
  const messages=planDialogueMessages(question,context,attachments,agent);
