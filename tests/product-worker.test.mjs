@@ -44,3 +44,13 @@ test('redirected cached navigation returns verified bytes without redirect metad
  assert.equal(result.redirected,false);assert.equal(await result.text(),'Verified shell');
  assert.equal(result.headers.get('content-type'),'text/html');assert.equal(result.headers.get('content-encoding'),null);assert.equal(result.headers.get('content-length'),null);assert.deepEqual(h.network,[]);
 });
+
+test('cache read rejection returns a local failure response and the same cache can recover without network acquisition',async()=>{
+ const caches=storage(),originalOpen=caches.open;let failed=true;
+ caches.open=async name=>{if(failed)throw Error('read unavailable');return originalOpen(name);};
+ const h=await harness('NEW',{caches});
+ const result=await h.request('/','navigate');assert.equal(result.status,503);assert.match(await result.text(),/Local app unavailable/);
+ assert.equal((await h.request('/assets/main-NEWabc12.js')).status,503);assert.deepEqual(h.network,[]);
+ failed=false;await h.put('babelshelf-product-'+current,'/index.html','Retained shell');
+ assert.equal(await(await h.request('/','navigate')).text(),'Retained shell');assert.deepEqual(h.network,[]);
+});

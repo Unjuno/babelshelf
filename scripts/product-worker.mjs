@@ -70,7 +70,7 @@ self.addEventListener('fetch',event=>{
    }
   }
   return missing();
- })());
+ })().catch(()=>new Response('Local app unavailable. Reload to retry.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})));
 });
 self.addEventListener('message',event=>{if(event.data?.type==='activate-update')self.skipWaiting();if(event.data==='build')event.ports[0]?.postMessage({build:BUILD,cache:CACHE,assets:FILES.length});});
 `;}
