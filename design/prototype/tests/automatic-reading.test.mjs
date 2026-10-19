@@ -99,16 +99,16 @@ test('failed submitted input returns only to an empty composer without duplicate
 import {processorAssetControls} from '../src/local-capabilities.ts';
 test('processor verification stays local even when downloads are enabled; unsupported registrations stay inert',()=>{
  for(const [capability,model] of [['audio.transcribe','whisper-tiny'],['image.ocr','tesseract-7'],['decision.classify','d1-omni-600M']]){
-  for(const downloads of [false,true])assert.deepEqual(processorAssetControls(capability,model,true,false,downloads),{label:'Verify',enabled:true,allowNetwork:false});
-  assert.equal(processorAssetControls(capability,model,false,false,false).enabled,false);
+  for(const downloads of [false,true])assert.deepEqual(processorAssetControls(capability,model,true,false,downloads),{label:'Verify',enabled:true,allowNetwork:false,setup:false});
+  assert.deepEqual(processorAssetControls(capability,model,false,false,false),{label:'Set up',enabled:true,allowNetwork:false,setup:true});
   assert.equal(processorAssetControls(capability,model,false,false,true).allowNetwork,true);
   assert.equal(processorAssetControls(capability,model,true,true,true).enabled,false);
  }
  assert.equal(processorAssetControls('audio.transcribe','whisper-base',true,false,true).enabled,false);
  assert.equal(processorAssetControls('image.describe','d1-omni-600M',true,false,true).enabled,false);
  const localDecision=[{id:'local-d1',role:'decision',engine:'onnx-d1-text'}];
- assert.deepEqual(processorAssetControls('decision.classify','local-d1',false,false,false,localDecision),{label:'Import files',enabled:true,allowNetwork:false});
- assert.deepEqual(processorAssetControls('decision.classify','local-d1',true,false,true,localDecision),{label:'Verify',enabled:true,allowNetwork:false});
+ assert.deepEqual(processorAssetControls('decision.classify','local-d1',false,false,false,localDecision),{label:'Import files',enabled:true,allowNetwork:false,setup:false});
+ assert.deepEqual(processorAssetControls('decision.classify','local-d1',true,false,true,localDecision),{label:'Verify',enabled:true,allowNetwork:false,setup:false});
 });
 
 import {prepareSpeech} from '../src/speech-assets.ts';

@@ -44,7 +44,8 @@ export function videoCapabilityStatus(model:string,prepared:boolean,customSpeech
 // Verify always rechecks local assets; it never authorizes reacquisition.
 export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[],customSpeechModels:readonly {id:string;role:string;engine:string}[]=[]){
  const state=capabilityState(capability,model,ready,customDecisionModels,customSpeechModels),verified=state.status==='Ready';
- if(capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {label:verified?'Verify':'Import files',enabled:!busy,allowNetwork:false};
- if(capability==='audio.transcribe'&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {label:verified?'Verify':'Import files',enabled:!busy,allowNetwork:false};
- return {label:verified?'Verify':'Prepare',enabled:!!state.adapter&&!busy&&(verified||downloads),allowNetwork:!verified&&downloads};
+ if(capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {label:verified?'Verify':'Import files',enabled:!busy,allowNetwork:false,setup:false};
+ if(capability==='audio.transcribe'&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {label:verified?'Verify':'Import files',enabled:!busy,allowNetwork:false,setup:false};
+ const setup=!!state.adapter&&!verified&&!downloads;
+ return {label:setup?'Set up':verified?'Verify':'Prepare',enabled:!!state.adapter&&!busy&&(verified||downloads||setup),allowNetwork:!verified&&downloads,setup};
 }
