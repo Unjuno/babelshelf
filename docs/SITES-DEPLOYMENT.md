@@ -1,4 +1,8 @@
-## Current publication — Unit45, 2026-10-19
+## Current publication — Bonsai 2 9B set, 2026-10-20
+
+Public Site v25 serves product `28745382126db9ac` /118 verified assets from canonical source `b828d1b`. Site source `9808faac54d290483cfb178c05d59a31c10eb90b`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_fd750c43d3648191a7c60ed6e8fed815`; deployment `appgdep_6ad64c2a70fc819180bf76c3d1ad9995` succeeded. Public `https://babelshelf.com/build.json` returned the exact new build and the served entry contains `bonsai-9b-text`. Packaging archive: `outputs/bonsai-2-9b-site.tar.gz`. Existing client data and older static assets were preserved. The user must apply an available PWA update to replace an already controlled old worker; no site data clearing. This is publication and catalog evidence, not 9B weight download, WebGPU generation, offline reload or iPhone acceptance.
+
+## Previous publication — Unit45, 2026-10-19
 
 Public Site v23 serves product `20fdc87873f1aa11` /118 assets from canonical source `ec4d213`. Site source `0a48f5c97fe424b12cefa86b01ce5ef244ded7b4`; deployment `appgdep_6ad6295251a48191a29952786aaa234f` succeeded. The Video reading settings row now opens the existing Speech to text model chooser and identifies audio-only video handling. Browser interaction verified without changing model settings or preparing assets. See TEST-RESULTS Unit45.
 
