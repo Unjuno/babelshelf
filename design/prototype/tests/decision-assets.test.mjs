@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {createHash} from 'node:crypto';
-import {decisionManifest,decisionFile,readDecisionFile,prepareDecisionFile,inspectCustomDecisionModel,importCustomDecisionModel,readCustomDecisionFile,decisionModelDescriptor} from '../src/decision-assets.ts';
+import {decisionManifest,decisionFile,readDecisionFile,prepareDecisionFile,prepareDecision,inspectCustomDecisionModel,importCustomDecisionModel,readCustomDecisionFile,decisionModelDescriptor} from '../src/decision-assets.ts';
 const bytes=new TextEncoder().encode(fs.readFileSync(new URL('../src/decision-manifest.json',import.meta.url),'utf8'));
 const config=new TextEncoder().encode('{\n  "backend": "tokenizers",\n  "bos_token": "<|startoftext|>",\n  "eos_token": "<|im_end|>",\n  "pad_token": "<|pad|>",\n  "mask_token": "<|mask|>",\n  "clean_up_tokenization_spaces": false,\n  "model_max_length": 16384,\n  "tokenizer_class": "TokenizersBackend"\n}\n');
 const fixture=(cached,controller,abortReading=false)=>{
@@ -22,6 +22,16 @@ test('missing/corrupt runtime reads cannot repair/download; explicit preparation
  const missing=fixture(undefined,controller);await assert.rejects(readDecisionFile('tokenizer_config.json',controller.signal,()=>{},missing.io));await assert.rejects(prepareDecisionFile('tokenizer_config.json',false,controller.signal,()=>{},missing.io),/Downloads/);assert.ok(!missing.events.includes('fetch'));
  const prepared=fixture(undefined,controller);await prepareDecisionFile('tokenizer_config.json',true,controller.signal,()=>{},prepared.io);assert.ok(prepared.events.includes('committed'));
  const corrupt=fixture(undefined,controller);corrupt.io.fetch=async()=>new Response('wrong');await assert.rejects(prepareDecisionFile('tokenizer_config.json',true,controller.signal,()=>{},corrupt.io),/verification/i);assert.ok(corrupt.events.includes('writer aborted'));assert.ok(!corrupt.events.includes('committed'));
+});
+
+test('selected built-in Decision files import offline only after exact pin verification',async()=>{
+ const controller=new AbortController(),valid=fixture(undefined,controller),file=new File([config],'tokenizer_config.json');
+ await prepareDecisionFile('tokenizer_config.json',false,controller.signal,()=>{},valid.io,file);
+ assert.ok(valid.events.includes('committed'));assert.ok(!valid.events.includes('fetch'));
+ const corrupt=fixture(undefined,controller);
+ await assert.rejects(prepareDecisionFile('tokenizer_config.json',false,controller.signal,()=>{},corrupt.io,new File([new Uint8Array(config.length).fill(7)],'tokenizer_config.json')),/verification/i);
+ assert.ok(corrupt.events.includes('writer aborted'));assert.ok(!corrupt.events.includes('committed')&&!corrupt.events.includes('fetch'));
+ await assert.rejects(prepareDecision(false,controller.signal,()=>{},async()=>{throw Error('Network used');},decisionManifest.id,[new File(['x'],'arbitrary.json')]),/Unknown or duplicate Decision file/);
 });
 
 

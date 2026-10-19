@@ -36,7 +36,7 @@ self.onmessage=async({data})=>{
  const progress=(text:string)=>self.postMessage({id:data.id,progress:text});
  try{let value:any;
   if(data.type==='status')value={...await decisionStatus(controller.signal,progress,data.model??decisionManifest.id),loaded:!!session&&activeModel?.id===decisionModelDescriptor(data.model??decisionManifest.id).id,...(session?{device,model:activeModel?.id}:{})};
-  else if(data.type==='prepare')value=await prepareDecision(data.allowNetwork===true,controller.signal,progress,networkFetch,data.model??decisionManifest.id);
+  else if(data.type==='prepare')value=await prepareDecision(data.allowNetwork===true,controller.signal,progress,networkFetch,data.model??decisionManifest.id,data.localFiles);
   else if(data.type==='load')value=await load(data.model??decisionManifest.id,progress);
   else if(data.type==='unload'){await unload();value={loaded:false};}
   else if(data.type==='classify'){const requested=decisionModelDescriptor(data.model??decisionManifest.id);if(activeModel?.id!==requested.id)throw Error('Selected Decision model is not loaded');value=await classify(data.state,data.question);}
