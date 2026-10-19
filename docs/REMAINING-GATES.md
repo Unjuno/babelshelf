@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Current local/public product is a92625a5ee269875/117, Sitesv14. The separate installed-PWA profile last measured d94013c16fd1968f/117. Unit223 reviewed the evidence through Unit222; earlier receipts keep their original measured builds. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Current local/public product is 0502cc98fb69d7bc/117, Sitesv15. The separate installed-PWA profile last measured d94013c16fd1968f/117. Unit223 reviewed the evidence through Unit222; earlier receipts keep their original measured builds. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 Unit224: user requested more ordinary public-site operation while deferring phones. Found and fixed explicit capture delimiter/imperative routing and missing-model settings navigation; public normal-use and retained update evidence are in TEST-RESULTS.txt. Generic model capture without required body remains rejected, not repaired or broadly certified.
 
