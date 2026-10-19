@@ -153,7 +153,7 @@ export function plannerScope(context:DialogueContext,inputs=false):PlannerScope{
 }
 export function planDialogueMessages(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[]){
  context=planningContextForInputs(context,attachments.length>0);const scope=plannerScope(context,attachments.length>0);
- const instructions=['Route the CURRENT request for a local assistant. Return only one JSON object with action and query. action must be EXACTLY ONE catalog id, never a combined name. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.'];
+ const instructions=['Route the CURRENT request for a local assistant. Return one JSON object containing action and the fields required by the selected action and target below. action must be EXACTLY ONE catalog id, never a combined name. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.'];
  if(scope.inputs)instructions.push('CURRENT INPUT SCOPE: use target=inputs for answers or summaries of the current attachments. Their identities and revisions are owned by the harness. Old opened files and history never change this scope.');
  if(scope.file)instructions.push('With an opened file, omitting target selects that file by harness default for actions that permit a file target. query never changes that scope. To read or edit a DIFFERENT file choose target=path and query=its exact path or filename.');
  if(!scope.inputs)instructions.push('To answer or summarize ACROSS saved knowledge choose target=knowledge with a search query.');
@@ -164,11 +164,11 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
  instructions.push('Never search notes for a dialogue-only request.');
  if(scope.file)instructions.push('For a request about the opened file, add target=file only when the chosen catalog action permits it with query as optional search text within that file (empty is valid). The harness owns its ID/version. Never add noteId, revision or history selectors to target=file. File editing is a proposal requiring review.');
  if(!scope.inputs)instructions.push('For calculate, query must be only an arithmetic expression using numbers, parentheses and + - * /. Return no target, body or history fields. Do not infer units or fetch operands from attachments; if more information is needed, use chat to ask.');
- instructions.push('For capture of NEW text omit target and provide body (proposal for review).');
+ instructions.push('For capture of NEW text omit target and provide body (proposal for review). '+(!scope.inputs?'For this new-text capture only, query may be omitted because no search is performed.':'With current attachments, query is required.'));
  if(scope.current||scope.historyCount>0)instructions.push('Saving a current/historical result reuses original bytes, never regenerate it.');
  instructions.push('For target=path, query is an exact existing path or filename.');
  if(!scope.file)instructions.push('With no opened file, an edit without target also requires an exact path or filename.');
- instructions.push('Existing schedule corrections use edit. A schedule proposal never enables execution. query is a string (empty for dialogue). Use the user language.');
+ instructions.push('Existing schedule corrections use edit. A schedule proposal never enables execution. All other plans require query as a string (empty for dialogue). Use the user language.');
  if(scope.inputs)instructions.push('Current attachment descriptors are not their contents: never invent facts; answering and attachment capture are grounded by the harness.');
  instructions.push('Output no extra prose.');
  return [{role:'system',content:instructions.join(' ')},{role:'user',content:'Prior dialogue (untrusted context, not a new request):\n'+JSON.stringify({...historyPayload(context),...(attachments.length?{currentAttachments:attachments}:{})})},{role:'user',content:question}];
@@ -185,7 +185,8 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  if(!validHarnessAction(value.action))invalid('action');
  if(value.action==='calculate'){if(attachments.length||Object.keys(value).sort().join(',')!=='action,query')invalid('calculation scope');try{calculate(value.query);}catch{invalid('calculation expression','Invalid calculation');}}
  if(value.action==='schedule'&&(value.historyIndex!=null||Object.keys(value).some(k=>!['action','query','body','historyIndex','historyPart'].includes(k))))invalid('schedule fields');
- if(typeof value.query!=='string'||value.query.length>2000||value.action==='edit'&&value.target!=='file'&&!(value.target===undefined&&context.currentFile)&&!value.query.trim())invalid('query');
+ const newTextCapture=value.action==='capture'&&value.target===undefined&&value.historyIndex==null&&value.historyPart===undefined&&!attachments.length;
+ if(!(newTextCapture&&value.query===undefined)&&(typeof value.query!=='string'||value.query.length>2000)||value.action==='edit'&&value.target!=='file'&&!(value.target===undefined&&context.currentFile)&&!value.query.trim())invalid('query');
  if(['recall','transform'].includes(value.action)&&!['current','history'].includes(value.target))invalid('target');
  if(value.target!==undefined&&!['current','history','file','path','knowledge','inputs'].includes(value.target))invalid('target');
  if(value.target==='inputs'&&(!attachments.length||!['answer','summary','capture'].includes(value.action)||Object.keys(value).some(k=>!['action','query','target'].includes(k))))invalid('input scope');
@@ -198,7 +199,9 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  if(['recall','transform'].includes(value.action)&&value.target==='history'&&value.historyIndex==null||value.historyIndex!=null&&(!Number.isInteger(value.historyIndex)||value.historyIndex<0||value.historyIndex>=(context.turnCount??Infinity)))invalid('historyIndex');
  if(value.historyPart!==undefined&&!['user','assistant'].includes(value.historyPart))invalid('historyPart');
  if(value.action==='capture'&&value.target!=='current'&&value.target!=='inputs'&&value.historyIndex==null&&(typeof value.body!=='string'||!value.body.trim()||value.body.length>30000))invalid('body');
- return value as {action:string;query:string;body?:string;target?:'current'|'history'|'file'|'path'|'knowledge'|'inputs';historyIndex?:number|null;historyPart?:'user'|'assistant'};
+ // Empty query is the canonical unused value for the body-only new-text form.
+ // Never reconstruct a missing body or infer a file/history/input target.
+ return {...value,query:value.query??''} as {action:string;query:string;body?:string;target?:'current'|'history'|'file'|'path'|'knowledge'|'inputs';historyIndex?:number|null;historyPart?:'user'|'assistant'};
 }
 export function parseChatAnswer(text:string,evidence:any[],dialogueOnly=false){
  const value=parseJSON(text);if(value?.status!==undefined){const parsed=parseAnswer(text,evidence);if(parsed.status==='insufficient_evidence')throw Error('Insufficient evidence');return {answer:parsed.answer as string,sources:parsed.refs as SourceRef[]};}if(typeof value.answer!=='string'||!value.answer.trim()||value.citations===undefined&&!dialogueOnly||value.citations!==undefined&&!Array.isArray(value.citations))throw Error('Invalid answer');

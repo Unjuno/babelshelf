@@ -7,6 +7,22 @@ import {createNote,reviseNote} from '../../../dist/core.js';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('new capture without body preserves the rejected planner receipt and cannot become a save proposal',async()=>{
+ const raw='{"action":"capture","query":"QA224の打ち合わせは火曜日の14時。持ち物は見積書。"}';
+ const port={...engine(),generate:async()=>({text:raw})};
+ await assert.rejects(planDialogue(port,'新しいメモとして残して',{summary:'',recent:[],refs:[],turnCount:0}),error=>{
+  assert.equal(error.name,'PlannerOutputError');assert.equal(error.diagnostic.reason,'body');assert.equal(error.diagnostic.raw,raw);return true;
+ });
+});
+
+test('new text capture needs body, not an unused search query; scoped operations still require query',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0},body='QA227の図書返却は金曜日の16時。持ち物は図書カード。';
+ const port=raw=>({...engine(),generate:async()=>({text:JSON.stringify(raw)})});
+ assert.deepEqual(await planDialogue(port({action:'capture',body}),'メモを残して',context),{action:'capture',body,query:''});
+ for(const value of [{action:'search'},{action:'answer',target:'knowledge'},{action:'capture',target:'inputs'}, {action:'capture',body,query:7}])await assert.rejects(planDialogue(port(value),'request',context),/Invalid model action/);
+ await assert.rejects(planDialogue(port({action:'capture',body}),'read current input',context,[{name:'a.txt',kind:'text',status:'Text available'}]),/Invalid model action/);
+});
+
 test('current result survives failed turns, compaction and legacy reload without model selection',async()=>{
  const {validateDialogue,currentDialogueResult,resolveDialogueTarget}=await import('../src/conversation.ts');
  let state=appendTurn(emptyDialogue(),{id:'one',user:'A code'});

@@ -41,6 +41,7 @@ export function createStructuredGrammar(format:StructuredFormat){
  else{
   const alternatives:Fragment[]=[];
   for(const action of scope?scopedHarnessActions(scope):HARNESS_ACTIONS){
+   if(action.id==='capture'&&!scope?.inputs)alternatives.push(seq(literal('{"action":"capture","body":'),string(),literal('}')));
    const targets:(string|undefined)[]=[...action.targets];if(!['recall','transform'].includes(action.id))targets.unshift(undefined);
    for(const target of targets){
     const parts=[literal('{"action":'+JSON.stringify(action.id)+',"query":'),string()];

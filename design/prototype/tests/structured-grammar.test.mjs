@@ -4,6 +4,13 @@ import {createStructuredGrammar} from '../src/structured-grammar.ts';
 const enc=new TextEncoder();
 function accepts(format,text){const grammar=createStructuredGrammar(format),state=grammar.advance(grammar.initial,enc.encode(text));return !!state&&grammar.complete(state);}
 
+test('body-only capture is a complete new-text plan, never an attachment or historical selector',()=>{
+ const scope={inputs:false,file:false,current:false,historyCount:0},format={type:'dialogue-plan',scope};
+ assert.equal(accepts(format,JSON.stringify({action:'capture',body:'原文'})),true);
+ assert.equal(accepts({type:'dialogue-plan',scope:{...scope,inputs:true}},JSON.stringify({action:'capture',body:'原文'})),false);
+ for(const v of [{action:'capture'},{action:'capture',target:'current',body:'原文'},{action:'answer',body:'原文'}])assert.equal(accepts(format,JSON.stringify(v)),false);
+});
+
 test('request scope excludes absent inputs/file/current/history while retaining new capture and exact paths',()=>{
  const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0}};
  for(const value of [{action:'chat',query:''},{action:'capture',query:'',body:'New original'},{action:'read',query:'Home/a.md',target:'path'},{action:'search',query:'水',target:'knowledge'}])assert.equal(accepts(format,JSON.stringify(value)),true);
