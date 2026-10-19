@@ -1,4 +1,8 @@
-## Current publication — pinned Vision file import, 2026-10-20
+## Current publication — model import and media status, 2026-10-20
+
+Public Site v39 serves product `02cce605d18f1246` / 118 verified assets from canonical source `9ce11ac`. Site source `c58e3f5f6cf7e1601d0ee80a5b710d92e8296bdb`, saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_1397fada2030819183d0544f29b018ed`, deployment `appgdep_6ad66c2067fc8191b3645e5ce6ffedb0` succeeded. `https://babelshelf.com/build.json` returned the exact build. The Codex sidebar public PWA completed explicit Check/Apply update, reload, and showed the concise PDF/Image/Audio/Video capability rows. Downloads & updates was returned to OFF. The v38 predecessor contained the model-import controls; v39 adds the concise processor wording. No browser model file submission, D1 generation, video-frame reading, phone operation, or offline cold restart was verified for this release. Archive: `outputs/model-import-media-final-site.tar.gz` in the task wrapper. Older static assets and existing local records were retained.
+
+## Previous publication — pinned Vision file import, 2026-10-20
 
 Public Site v37 serves product `6632659ba2238abd` /118 verified assets from canonical source `5584cab`. Site source `09cd950e2b5340047c29ca4d9136a9e0f23b6a69`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f54f2f7690388191948e3cdf2974ae41`; deployment `appgdep_6ad666c4e84c81919fef31580bbace13` succeeded. `https://babelshelf.com/build.json` returned the exact build. In the Codex sidebar, the retained public PWA completed Check/Apply update and reload displayed the Vision fixed-package import action. No browser file import, full Vision inference, offline cold reload or phone operation was tested on this release. The archive is `outputs/unit-vision-import-site.tar.gz` in the task wrapper. Older static assets remain to support retained clients; no canonical data was cleared.
 
