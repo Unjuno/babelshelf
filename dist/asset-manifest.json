@@ -128,8 +128,8 @@
     },
     {
       "path": "./requests.js",
-      "bytes": 885,
-      "sha256": "8f9981fecd1a04496f9e2329c36d962bf235dcbc4c0c925e026109d88ff2532e"
+      "bytes": 862,
+      "sha256": "78c8821276b29deb4f67cfd28c03cfad5c5788ef7cf19a1ede8bd1e6e4ee1ccc"
     },
     {
       "path": "./sha256.js",
@@ -149,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "d34a126bc80a009a31d90e18d40fbb252933fb9e0107f6e30d7ff12c3fb3eb9c"
+      "sha256": "3093aa4e4bd5b3e102cc2ceec829587b8ee713ebf25ea7a2b01945fd68ed2ce7"
     },
     {
       "path": "./ui.js",
