@@ -31,3 +31,19 @@ export async function appUpdateOutcome(registration:ServiceWorkerRegistration):P
  if(registration.active?.state==='activated')return 'Up to date';
  throw Error('App cache not prepared');
 }
+
+export async function activateWaitingUpdate(registration:ServiceWorkerRegistration,container:ServiceWorkerContainer,timeoutMs=30000):Promise<void>{
+ const worker=registration.waiting;
+ if(!worker||worker.state!=='installed')throw Error('Update no longer ready · check again');
+ await new Promise<void>((resolve,reject)=>{
+  let timer:ReturnType<typeof setTimeout>;
+  const finish=(error?:Error)=>{clearTimeout(timer);worker.removeEventListener('statechange',check);container.removeEventListener('controllerchange',check);error?reject(error):resolve();};
+  const check=()=>{
+   if(worker.state==='redundant')finish(Error('Update activation failed'));
+   else if(worker.state==='activated'&&container.controller===worker)finish();
+  };
+  worker.addEventListener('statechange',check);container.addEventListener('controllerchange',check);
+  timer=setTimeout(()=>finish(Error('Update activation not confirmed · reopen app to check')),timeoutMs);
+  try{worker.postMessage({type:'activate-update'});check();}catch(error){finish(error instanceof Error?error:Error('Update activation failed'));}
+ });
+}

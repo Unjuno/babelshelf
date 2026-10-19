@@ -3,7 +3,7 @@ import {diagnoseModelIssues,modelIssueAction,type ModelRole} from './model-diagn
 import {resolveReadCompletion} from './read-completion';
 import {resolveReadIntent} from './read-intent';
 import {readDialogueRecovery} from './dialogue-recovery';
-import {offlineShellStatus,subscribeOfflineShell,appUpdateOutcome} from './offline-shell';
+import {offlineShellStatus,subscribeOfflineShell,appUpdateOutcome,activateWaitingUpdate} from './offline-shell';
 import {CorrectionConflictError} from './note-corrections';
 import {searchResultRows,searchDisplayStatus} from './search-display';
 import type {FileResult} from './file-discovery';
@@ -258,7 +258,7 @@ export default function Prototype() {
  useEffect(()=>{if(metadataReady)folderWriter.current.save(extraFolders).catch(e=>toast(e.message));},[metadataReady,extraFolders]);
  useEffect(()=>{if(metadataReady)trashWriter.current.save(trash).catch(e=>toast(e.message));},[metadataReady,trash]);
  async function checkAppUpdate(){try{if(!downloads)throw Error('Downloads are off');const registration=await navigator.serviceWorker.getRegistration();if(!registration)throw Error('App cache not prepared');await registration.update();const outcome=await appUpdateOutcome(registration);setAppUpdateReady(outcome==='Update ready');toast(outcome);}catch(e){toast((e as Error).message);}}
- async function applyAppUpdate(){const registration=await navigator.serviceWorker.getRegistration();registration?.waiting?.postMessage({type:'activate-update'});setAppUpdateReady(false);toast('Updated · reopen app');}
+ async function applyAppUpdate(){try{const registration=await navigator.serviceWorker.getRegistration();if(!registration)throw Error('App cache not prepared');await activateWaitingUpdate(registration,navigator.serviceWorker);setAppUpdateReady(false);toast('Updated · reopen app');}catch(error){setAppUpdateReady(false);toast((error as Error).message);}}
  async function protectStorage(){if(storageProtectionBusy)return;setStorageProtectionBusy(true);try{const result=await requestStorageProtection();setDeviceStorage(result.state);setStorageProtectionMessage(result.outcome==='unsupported'?'Unsupported':result.outcome==='not-granted'?'Not granted':'Request completed');}finally{setStorageProtectionBusy(false);}}
  async function exportBackup(){if(backupLock.current)return;backupLock.current=true;setBackupBusy(true);try{await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();await flushStorage();await flushMetadata();const pack=await knowledge.backup(),url=URL.createObjectURL(stateBackupBlob(pack)),link=document.createElement('a');link.href=url;link.download='babelshelf-'+localDate()+'.brainpack';link.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}catch(e){toast((e as Error).message);}finally{backupLock.current=false;setBackupBusy(false);}}
  async function previewRestore(file:File){if(backupLock.current)return;if(sending||bonsai.busy||taskController.active)return toast('Stop generation first');backupLock.current=true;setBackupBusy(true);try{if(file.size>200000000)throw Error('Backup too large');await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();await flushStorage();await flushMetadata();const text=await file.text(),review=await knowledge.reviewBackup(text);setRestoreText(text);setRestoreReview(review);setReviewingSettings(false);setReviewingNote(null);keyboard.hide();setSheet('restore-backup');}catch(e){toast((e as Error).message);}finally{backupLock.current=false;setBackupBusy(false);}}
