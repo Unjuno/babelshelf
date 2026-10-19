@@ -106,6 +106,9 @@ test('processor verification stays local even when downloads are enabled; unsupp
  }
  assert.equal(processorAssetControls('audio.transcribe','whisper-base',true,false,true).enabled,false);
  assert.equal(processorAssetControls('image.describe','d1-omni-600M',true,false,true).enabled,false);
+ const localDecision=[{id:'local-d1',role:'decision',engine:'onnx-d1-text'}];
+ assert.deepEqual(processorAssetControls('decision.classify','local-d1',false,false,false,localDecision),{label:'Import files',enabled:true,allowNetwork:false});
+ assert.deepEqual(processorAssetControls('decision.classify','local-d1',true,false,true,localDecision),{label:'Verify',enabled:true,allowNetwork:false});
 });
 
 import {prepareSpeech} from '../src/speech-assets.ts';

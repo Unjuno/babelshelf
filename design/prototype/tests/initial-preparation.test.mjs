@@ -63,3 +63,16 @@ test('a registered custom D1 decision model stays in the app-owned local runtime
  const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true,decision:false});assert.equal(plan.steps.at(-1).label,'My D1 · text decisions');assert.equal(plan.steps.at(-1).bytes,0);assert.equal(plan.bytes,0);assert.equal(plan.models.decisionModel,custom.id);
  assert.equal(initialPreparationPlan(prefs,{text:true,speech:true,ocr:true,decision:true}).bytes,0);
 });
+test('local speech and decision verification does not require model downloads',async()=>{
+ const prefs=initial(),speech={id:'local-speech',label:'My Whisper',role:'speech',engine:'transformers-whisper-onnx',revision:'sha256:test',files:[{path:'tokenizer.json',bytes:12,sha256:'a'.repeat(64)}]};
+ prefs.customSpeechModels=[speech];prefs.transcriptionModel=speech.id;prefs.transcriptionLibrary=[speech.id];
+ const decision={id:'local-d1',label:'My D1',role:'decision',engine:'onnx-d1-text',revision:'sha256:test',files:[{path:'tokenizer.json',bytes:12,sha256:'b'.repeat(64)}]};
+ prefs.customDecisionModels=[decision];prefs.decisionModel=decision.id;prefs.decisionLibrary=[decision.id];
+ const plan=initialPreparationPlan(prefs,{text:true,speech:false,ocr:true,decision:false});
+ assert.equal(plan.bytes,0);
+ assert.equal(plan.steps.find(step=>step.role==='speech').ready,false);
+ assert.equal(plan.steps.find(step=>step.role==='speech').bytes,0);
+ assert.equal(plan.steps.find(step=>step.role==='decision').bytes,0);
+ const calls=[];await runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'));
+ assert.deepEqual(calls,['text','speech','decision','commit']);
+});

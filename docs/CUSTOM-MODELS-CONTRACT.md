@@ -28,6 +28,8 @@ A role registry describes trusted app-owned adapters and their actual formats/ca
 
 Imported weights are explicit local files. Preparation and verification never fetch custom model bytes. Built-in network acquisition is separate, user-controlled and off by default. Backups preserve validated model declarations and selected role, but exclude model/runtime assets; restore never manufactures local readiness.
 
+Initial preparation budgets only assets that its built-in adapters can acquire. A selected custom Whisper or D1 package contributes zero download bytes and is reverified locally even with Downloads & updates OFF. Missing custom files require explicit reimport; toggling network access cannot supply them. The displayed operation and the actual worker call use the same allowNetwork value. This estimate is a transfer budget, not a RAM or storage guarantee.
+
 ## Extension and acceptance rules
 
 Add a role/engine only when BabelShelf has app-owned adapter code and pinned runtime/license/assets for it. Tests should cover registry role isolation, hash verification, offline behavior, cancellation, selection and honest error states. A real model load is required before calling the model runnable; real task quality and device acceptance are separate evidence. Do not broaden support by filename, catalog label, successful parsing, synthetic tensors or a model's own capability claims.
