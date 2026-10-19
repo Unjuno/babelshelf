@@ -19,7 +19,7 @@ import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGrounding
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {openDB} from '../../../dist/storage.js';
-import {parsePreference,formatPreference,preferenceGroup} from './preference-records.ts';
+import {parsePreference,readPreferenceWithFallback,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
@@ -135,7 +135,9 @@ export class KnowledgeStore {
    }
    for(const update of builtinToolUpdates(records,defaults)){records[records.findIndex(n=>n.id===update.id)]=update;store.put(update);}
    const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
-   if(connection&&parsePreference('connection',latest(connection).body).downloads){const changed=reviseNote(connection,{body:formatPreference('connection',{downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
+   // A malformed preference must not lock the user out of Memory/recovery.
+   // The safe fallback is downloads OFF; retain invalid bytes until explicit restore.
+   if(connection&&readPreferenceWithFallback('connection',[projectNote(connection)]).value.downloads){const changed=reviseNote(connection,{body:formatPreference('connection',{downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
    checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){fail(e);}
   };});
  }
@@ -222,6 +224,19 @@ export class KnowledgeStore {
   return {put:[completed.task,completed.run,...(notice?[notice]:[])],value:projectNote(completed.run)};
  });}
  async readNotification(id:string){return this.editRecords(records=>{const old=records.find(n=>n.id===id&&n.state==='active');if(!old)throw Error('Notification unavailable');const data=noticeView(old),note=data.read?old:reviseNote(old,{body:noticeBody({...data,read:true})},latest(old).version);return {put:[note],value:projectNote(note)};});}
+ async restoreDefaults(expected:NoteView[]){
+  return this.transaction<void>(['notes'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
+   try{const before=q.result.filter(n=>n.state==='active').map(projectNote);
+    for(const id of ['settings-models','settings-appearance','settings-connection']){
+     const reviewed=expected.filter(n=>n.id===id),current=before.find(n=>n.id===id);
+     if(reviewed.length!==1||!current||!equal(current,reviewed[0]))throw Error('Settings changed · cancel and reopen');
+    }
+    const updated=applyKnowledgeChanges(q.result,before,restoreDefaultPreferences(before));
+    for(const note of updated)if(!equal(q.result.find(n=>n.id===note.id),note))store.put(note);
+    done();
+   }catch(e){fail(e);}
+  };});
+ }
  async commit(before:NoteView[],after:NoteView[]){
   const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2,error:unknown,views:NoteView[];
    const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;

@@ -58,6 +58,20 @@ export function readPreference<G extends PreferenceGroup>(group:G,records:Prefer
  if(!record)throw Error('Required settings record missing');
  return parsePreference(group,record.body);
 }
+export function readPreferenceWithFallback<G extends PreferenceGroup>(group:G,records:PreferenceRecord[]){
+ try{return {value:readPreference(group,records),valid:true as const};}
+ catch{return {value:readPreference(group,initialPreferenceNotes),valid:false as const};}
+}
+export function restoreDefaultPreferences<T extends PreferenceRecord>(records:T[]):T[]{
+ const groups=['models','appearance','connection'] as const;let next=[...records];
+ for(const group of groups){
+  const current=next.find(record=>record.id==='settings-'+group),fallback=initialPreferenceNotes.find(record=>record.id==='settings-'+group)!;
+  if(!current||current.path!==preferencePath(group)||current.managed!==true||current.protected)throw Error('Settings record unavailable · restore was not applied');
+  const body=fallback.body;parsePreference(group,body);if(current.body===body)continue;
+  const history=current.history??[];next=next.map(record=>record.id!==current.id?record:{...record,body,version:current.version+1,history:[...history,current.body],paths:[...(current.paths??history.map(()=>current.path)),current.path]});
+ }
+ return next;
+}
 export function updatePreference<G extends PreferenceGroup,T extends PreferenceRecord>(group:G,records:T[],change:(value:Preferences[G])=>Preferences[G]):T[]{
  const current=records.find(n=>n.id==='settings-'+group);
  if(!current)throw Error('Required settings record missing');

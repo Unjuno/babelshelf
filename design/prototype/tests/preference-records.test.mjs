@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {initialPreferenceNotes,readPreference,updatePreference,parsePreference,formatPreference} from '../src/preference-records.ts';
+import {initialPreferenceNotes,readPreference,readPreferenceWithFallback,restoreDefaultPreferences,updatePreference,parsePreference,formatPreference} from '../src/preference-records.ts';
 import {createNote} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
 import {settingsPatchResult} from '../src/settings-corrections.ts';
@@ -84,4 +84,21 @@ test('custom declarations survive backup without assets and model proposals cann
  assert.deepEqual(pack.payload.excluded,['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments']);
  assert.throws(()=>settingsPatchResult(note,JSON.stringify({action:'patch',changes:{customModels:[]}})),/Invalid settings patch/);
  assert.throws(()=>settingsPatchResult(note,JSON.stringify({action:'patch',changes:{textLibrary:[model.id]}})),/Invalid settings patch/);
+});
+
+
+test('corrupt settings fall back safely and restore defaults with a versioned history while preserving memory',()=>{
+ const notes=structuredClone(initialPreferenceNotes);const appearance=notes.find(n=>n.id==='settings-appearance');appearance.body='not valid settings';
+ const read=readPreferenceWithFallback('appearance',notes);assert.equal(read.valid,false);assert.equal(read.value.background,readPreference('appearance',initialPreferenceNotes).background);
+ const customized=structuredClone(notes);const models=customized.find(n=>n.id==='settings-models');models.body=formatPreference('models',{...readPreference('models',customized),textModel:'lfm2.5-230m-q4_0',textLibrary:['lfm2.5-230m-q4_0']});models.version=4;models.history=['v1','v2','v3'];models.paths=['Settings/models.md','Settings/models.md','Settings/models.md'];
+ const unrelated={id:'user-note',path:'Projects/a.md',body:'keep me',version:2,history:['old'],paths:['Projects/a.md','Projects/a.md']};customized.push(unrelated);
+ const before=structuredClone(customized),restored=restoreDefaultPreferences(customized),newModels=restored.find(n=>n.id==='settings-models'),newAppearance=restored.find(n=>n.id==='settings-appearance');
+ assert.equal(newModels.version,5);assert.equal(newModels.history.at(-1),before.find(n=>n.id==='settings-models').body);assert.equal(newAppearance.history.at(-1),'not valid settings');
+ assert.equal(readPreference('models',restored).textModel,readPreference('models',initialPreferenceNotes).textModel);assert.deepEqual(restored.find(n=>n.id==='user-note'),unrelated);
+});
+
+test('settings recovery refuses missing or tampered managed records without changing the input',()=>{
+ for(const mutate of [records=>records.splice(records.findIndex(n=>n.id==='settings-models'),1),records=>{records.find(n=>n.id==='settings-models').path='Elsewhere/models.md';},records=>{records.find(n=>n.id==='settings-models').managed=false;}]){
+  const records=structuredClone(initialPreferenceNotes);mutate(records);const before=structuredClone(records);assert.throws(()=>restoreDefaultPreferences(records),/Settings record unavailable/);assert.deepEqual(records,before);
+ }
 });
