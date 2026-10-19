@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialPreferenceNotes,readPreference,updatePreference} from '../src/preference-records.ts';
+import {modelSets,applyModelSet,matchingModelSet} from '../src/model-sets.ts';
+
+test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
+ assert.deepEqual(modelSets.map(set=>set.id),['text-compact','local-text-media','local-full']);
+ for(const set of modelSets){
+  assert.ok(set.models.textModel);
+  assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
+  assert.ok(['','whisper-tiny'].includes(set.models.transcriptionModel));
+  assert.ok(['','tesseract-7'].includes(set.models.ocrModel));
+ }
+ assert.equal(matchingModelSet(readPreference('models',initialPreferenceNotes))?.id,undefined);
+});
+
+test('applying a set changes only model selections and adds their registered catalog IDs',()=>{
+ const original=structuredClone(initialPreferenceNotes),before=readPreference('models',original);
+ const next=updatePreference('models',original,current=>applyModelSet(current,'local-full'));
+ const after=readPreference('models',next);
+ assert.deepEqual({text:after.textModel,decision:after.decisionModel,speech:after.transcriptionModel,ocr:after.ocrModel},{text:'4B',decision:'d1-omni-600M',speech:'whisper-tiny',ocr:'tesseract-7'});
+ assert.ok(after.textLibrary.includes('4B'));assert.ok(after.decisionLibrary.includes('d1-omni-600M'));
+ assert.ok(after.transcriptionLibrary.includes('whisper-tiny'));assert.ok(after.ocrLibrary.includes('tesseract-7'));
+ for(const key of Object.keys(before))if(!['textModel','decisionModel','transcriptionModel','ocrModel','textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary'].includes(key))assert.deepEqual(after[key],before[key],key);
+ assert.equal(next.find(n=>n.id==='settings-models').version,2);
+ assert.equal(matchingModelSet(after)?.id,'local-full');
+});
+
+test('applying a text-only set preserves registered libraries, custom declarations and every non-model record',()=>{
+ const start=structuredClone(initialPreferenceNotes),registered=updatePreference('models',start,m=>({...m,textLibrary:[...m.textLibrary,'lfm25-230m-qad-q4-0'],decisionLibrary:['d1-omni-600M'],transcriptionLibrary:['whisper-tiny'],ocrLibrary:['tesseract-7'],decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7'}));
+ const snapshot=structuredClone(registered),next=updatePreference('models',registered,m=>applyModelSet(m,'text-compact'));
+ const before=readPreference('models',snapshot),after=readPreference('models',next);
+ assert.equal(after.textModel,'lfm25-230m-qad-q4-0');assert.equal(after.decisionModel,'');assert.equal(after.transcriptionModel,'');assert.equal(after.ocrModel,'');
+ for(const key of ['textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary','customModels','customDecisionModels','customSpeechModels'])assert.deepEqual(after[key],before[key]);
+ assert.deepEqual(next.filter(n=>n.id!=='settings-models'),snapshot.filter(n=>n.id!=='settings-models'));
+ assert.throws(()=>applyModelSet(after,'unknown'),/Unknown model set/);
+});
