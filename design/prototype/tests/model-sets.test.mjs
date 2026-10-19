@@ -7,7 +7,7 @@ import {localAdapters} from '../src/local-capabilities.ts';
 import {initialPreparationPlan} from '../src/initial-preparation.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-compact','text-expanded','text-speech','text-image','text-vision','local-text-media','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-compact','text-expanded','text-speech','text-image','text-vision','local-text-media','text-image-audio','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -31,6 +31,7 @@ test('the added sets vary supported roles without implying device verification o
   'text-image':['4B','','','tesseract-7',''],
   'text-vision':['4B','','','','lfm25-vl-450m-q4f16'],
   'local-text-media':['4B','','whisper-tiny','tesseract-7',''],
+  'text-image-audio':['4B','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
   'local-full':['4B','d1-omni-600M','whisper-tiny','tesseract-7',''],
  };
  for(const set of modelSets){
@@ -94,6 +95,16 @@ test('every visible standard set reports its cold model asset bytes before selec
  assert.ok(sizes.get('bonsai-9b-text')>sizes.get('bonsai-4b-text'));
  assert.ok(sizes.get('bonsai-4b-text')>sizes.get('bonsai-2b-text'));
  assert.ok(sizes.get('local-full')>sizes.get('bonsai-4b-text'));
+ assert.ok(sizes.get('text-image-audio')>sizes.get('local-text-media'));
  assert.deepEqual(before,snapshot);
  assert.equal(readPreference('connection',initialPreferenceNotes).downloads,false);
+});
+
+test('image and audio set prepares only its selected local readers',()=>{
+ const selected=applyModelSet(readPreference('models',initialPreferenceNotes),'text-image-audio');
+ assert.equal(matchingModelSet(selected)?.id,'text-image-audio');
+ const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,vision:false});
+ assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','vision']);
+ assert.equal(plan.steps.some(step=>step.role==='decision'),false);
+ assert.equal(plan.bytes,modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'text-image-audio'));
 });

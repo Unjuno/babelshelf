@@ -3,7 +3,7 @@ import {localAdapters} from './local-capabilities.ts';
 import {initialPreparationPlan} from './initial-preparation.ts';
 import type {Preferences} from './preference-records.ts';
 
-export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'bonsai-9b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'text-vision'|'local-text-media'|'local-full';
+export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'bonsai-9b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'text-vision'|'local-text-media'|'text-image-audio'|'local-full';
 export type ModelSet={id:ModelSetId;label:string;detail:string;models:{textModel:string;decisionModel:string;transcriptionModel:string;ocrModel:string;visionModel:string}};
 
 // These are selection presets over connected local adapters, not downloadable
@@ -18,6 +18,7 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'text-image',label:'Text + OCR',detail:'Bonsai 2 · 4B · Tesseract 7 · image text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'tesseract-7',visionModel:''}},
  {id:'text-vision',label:'Text + vision',detail:'Bonsai 2 · 4B · LFM2.5-VL 450M',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'lfm25-vl-450m-q4f16'}},
  {id:'local-text-media',label:'Text + capture',detail:'Bonsai 2 · 4B · Whisper tiny · Tesseract 7 · no image understanding',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
+ {id:'text-image-audio',label:'Text + image + audio',detail:'Bonsai 2 · 4B · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · no video frames',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
  {id:'local-full',label:'Local pipeline',detail:'Bonsai 2 · 4B · Open d1 · Omni 600M · Whisper tiny · Tesseract 7',models:{textModel:'4B',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
 ]);
 

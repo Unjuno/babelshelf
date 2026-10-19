@@ -22,6 +22,8 @@ The Add model list only offers models with an app-owned preparation path. Discon
 
 Prism ML's earlier [Ternary Bonsai 8B](https://huggingface.co/prism-ml/Ternary-Bonsai-8B-gguf) is Qwen3-based Q2_0 at about 2.18 GB and calls for the Prism `llama.cpp` fork. [Bonsai 2 9B](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf) is Qwen3.5-based with a 2.00 GB PTQ1_0 language pack and a separate optional vision projector. They are different model structures and runtime contracts. The current pinned WebML Community path lists the 9B text pack; that does not prove mobile load, generation, cancellation, or cold offline restart. Adding the older 8B as a preset would require its own validated browser engine and memory evidence, rather than passing its GGUF to the current WebML worker.
 
+[WebKit reports WebGPU in Safari 26 on iOS](https://webkit.org/blog/16993/news-from-wwdc25-web-technology-coming-this-fall-in-safari-26-beta/), so API availability alone is no longer the deciding objection on an updated iPhone. The older 8B still lacks the Qwen3/Q2_0 browser kernel and adapter in this app. A 2.18 GB model file is only a lower bound for acquisition/storage, not resident GPU/CPU memory, context cache or execution headroom. The 9B has a plausible app-owned Qwen3.5/PTQ1_0 path but remains a candidate until its actual browser and target-phone execution pass. Do not equate a positive WebGPU probe with model fit.
+
 Do not add a generic `Media model` role. It hides distinct capabilities and can make a model label look like support for every media type. Register models against the work they can actually perform. A media task may compose several independently verified local capabilities.
 
 | Role/capability | Purpose | MVP policy |
@@ -80,7 +82,7 @@ Registration and asset integrity are implemented. Remaining gates are to validat
 
 ## Model sets
 
-Sets remain reviewed preference presets, not executable workflows or device-fit claims. The present text/speech/OCR/decision sets must not be relabeled “full media.” A **Text + Vision** set may select the Vision model; **Local media** combines Text, Vision, OCR and Speech-to-text. Applying a set only changes role selections, preserves other registrations and settings, and never fetches or prepares assets. Selecting Vision does not claim that model files are prepared or that the device supports WebGPU.
+Sets remain reviewed preference presets, not executable workflows or device-fit claims. The text/speech/OCR/decision sets must not be relabeled “full media.” **Text + Vision** selects image understanding alone alongside Text; **Text + image + audio** selects Text, Vision, OCR and Speech-to-text, with video frames explicitly excluded. Applying a set only changes role selections, preserves other registrations and settings, and never fetches or prepares assets. Selecting Vision does not claim that model files are prepared or that the device supports WebGPU.
 
 The standard installation should be modular: text is required; decision, speech, OCR and vision are independently selectable/prepareable according to the user's needs and storage. Vision is a strong standard catalog candidate but should not be forced into first-run preparation. TTS and embeddings remain optional extensions rather than blockers for the first local knowledge workflow.
 
