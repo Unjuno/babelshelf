@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelCatalogStatus,textModelChoiceHint,textModelFileSize} from '../src/model-catalog-status.ts';
+import {canAddModel,modelCatalogStatus,textModelChoiceHint,textModelFileSize} from '../src/model-catalog-status.ts';
+import {settings} from '../src/app-settings.ts';
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
  const small=textModelFileSize('2B'),standard=textModelFileSize('4B'),large=textModelFileSize('9B');
@@ -8,6 +9,15 @@ test('text choices expose pinned download size without claiming device readiness
  assert.match(textModelChoiceHint('9B'),/2\.00 GB · device check required/);
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
  assert.equal(textModelFileSize('unknown'),null);
+});
+test('the standard add list contains at least three prepared-path text choices and hides disconnected candidates',()=>{
+ const available=settings.models.text.filter(model=>canAddModel('text',model.value));
+ assert.ok(available.length>=3);
+ for(const model of available)assert.ok(textModelFileSize(model.value)>0);
+ assert.equal(canAddModel('decision','d1-omni-600M'),true);
+ assert.equal(canAddModel('decision','d1-3B'),false);
+ assert.equal(canAddModel('speech','whisper-tiny'),true);
+ assert.equal(canAddModel('speech','whisper-base'),false);
 });
 
 test('only installed app-owned role adapters can be added from model libraries',()=>{

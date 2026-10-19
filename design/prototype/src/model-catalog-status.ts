@@ -26,6 +26,10 @@ export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonl
  return capabilityState(roleCapability[role],id,false).status;
 }
 
+export function canAddModel(role:ModelRole,id:string,customModels:readonly CustomLocalModel[]=[],customDecisionModels:readonly CustomDecisionModel[]=[],customSpeechModels:readonly CustomSpeechModel[]=[]):boolean{
+ return modelCatalogStatus(role,id,customModels,customDecisionModels,customSpeechModels)==='Not prepared';
+}
+
 // The pinned weight/package size is useful before selection. It is not a RAM
 // estimate, a free-space check, or proof that this device can run the model.
 export function textModelFileSize(id:string,customModels:readonly CustomLocalModel[]=[]):number|null{
