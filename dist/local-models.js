@@ -25,9 +25,11 @@ export function validateLocalModel(value){
   const i=value.inspection;if(total>MAX_LOCAL_DECISION_BYTES||i.format!=='D1-ONNX'||i.architecture!=='d1_omni'||i.contextTokens!==16384||i.inputLimit!==2048||i.scope!=='text-only'||value.id!==localDecisionModelId(value.files)||value.revision!=='sha256:'+value.id.slice('local-decision-'.length))fail();
   return structuredClone(value);
  }
- if(!exact(value,['id','label','role','engine','revision','file','inspection'])||!exact(value.file,['bytes','sha256']))fail();
+  const textKeys=['id','label','role','engine','revision','file','inspection'];if(Object.hasOwn(value??{},'source'))textKeys.push('source');
+  if(!exact(value,textKeys)||!exact(value.file,['bytes','sha256']))fail();
  const {file,inspection:i}=value;
  if(typeof file.sha256!=='string'||!/^[a-f0-9]{64}$/.test(file.sha256)||value.id!=='local-'+file.sha256||value.revision!=='sha256:'+file.sha256||!safeText(value.label)||value.role!=='text'||!Number.isSafeInteger(file.bytes)||file.bytes<24||file.bytes>MAX_LOCAL_MODEL_BYTES)fail();
+  if(value.source!==undefined){const s=value.source,repoPattern=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/,safePath=p=>typeof p==='string'&&p.length<=512&&!p.startsWith('/')&&!p.includes('\\')&&p.split('/').every(part=>!!part&&part!=='.'&&part!=='..'&&/^[A-Za-z0-9_.-]+$/.test(part));if(!exact(s,['provider','repo','revision','file','license'])||s.provider!=='huggingface'||!repoPattern.test(s.repo)||!/^[a-f0-9]{40}$/.test(s.revision)||!safePath(s.file)||s.license!==null&&(!safeText(s.license)||s.license.length>100))fail();}
  if(!exact(i,['format','version','bytes','name','architecture','contextLength','tokenizer','chatTemplate','tokenCount','tensorCount','tensorTypes','tensorExtentsChecked','dataOffset'])||i.bytes!==file.bytes||typeof i.name!=='string'||i.name.length>4096||eligibleTextEngine(i)?.id!==value.engine||!Number.isSafeInteger(i.tensorCount)||i.tensorCount<1||i.tensorCount>20000||i.tokenCount>2000000||i.tensorTypes.length>i.tensorCount||new Set(i.tensorTypes).size!==i.tensorTypes.length||i.tensorTypes.some((n,j)=>j>0&&n<=i.tensorTypes[j-1])||!Number.isSafeInteger(i.dataOffset)||i.dataOffset<24||i.dataOffset>=file.bytes)fail();
  return structuredClone(value);
 }

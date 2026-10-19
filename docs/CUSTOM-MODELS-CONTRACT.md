@@ -14,6 +14,12 @@ The Text, Decision, and Speech selectors include user-added declarations in thei
 
 The model settings present standard and custom entries through the same role selector. An Add model sheet offers file import only for roles with an app-owned compatible adapter. Unsupported model candidates remain disabled with the actual runtime limitation. Users may replace their selection explicitly; importing never silently changes another role. The default text model remains Bonsai2 4B.
 
+### Public Hugging Face source
+
+Settings > Models > Text > Add model > Find on Hugging Face accepts a public `owner/model` repository ID. The feature is unavailable while Downloads & updates is OFF. When ON, repository metadata and `config.json` are read without credentials or a referrer; the repository `sha` is pinned and shown as a commit prefix. Only `qwen3_5` (Qwen3.5 adapter) and `lfm2` (LFM2 adapter) configurations are offered. Only single-file `.gguf` candidates up to 8 GiB are listed; split GGUF parts are not offered. The chosen file is downloaded by its pinned commit into a private OPFS staging directory, then passed through the ordinary local GGUF inspection and adapter compatibility checks. A mismatch, cancellation or failure removes the staged file. Add still opens the existing local model review; only explicit Add copies it into model storage and selects it.
+
+The custom model record retains the public repository ID, full commit SHA, selected relative file path and reported license label alongside the content SHA-256. A missing/unknown license is kept as unknown; no model card license is inferred, and model licensing does not establish runtime redistribution rights. No prompts, notes, attachments or other user data are sent. Inference remains local. This path does not guarantee a model will load or generate successfully on a given device, and listing a repository does not certify its license or quality. The local custom-file flow remains available independently of Hugging Face.
+
 ## Trust and lifecycle
 
 The lifecycle is: choose local files → inspect bounded metadata → show accepted role/format and app-owned engine → explicitly import and hash → register in canonical settings → locally verify → load through that engine → report actual execution identity. Each stage has a distinct state. Readiness cannot be written into a settings file or restored from a backup. App-owned runtime, model and runtime-license pins remain separate; model licenses do not grant redistribution rights for the engine.

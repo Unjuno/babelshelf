@@ -45,3 +45,9 @@ test('Stop cancels a pending local weight read',async()=>{
  const pending=hashLocalModel(file,{signal:controller.signal});controller.abort();
  await assert.rejects(pending,{name:'AbortError'});assert.ok(cancelled&&released);
 });
+
+test('custom text model can retain a validated public Hugging Face source pin',()=>{
+ const value=record();value.source={provider:'huggingface',repo:'publisher/model-name',revision:'b'.repeat(40),file:'model-q4.gguf',license:'apache-2.0'};
+ assert.deepEqual(validateLocalModel(value),value);
+ for(const change of [r=>r.source.provider='other',r=>r.source.repo='https://example.com/model',r=>r.source.revision='main',r=>r.source.file='../weights.gguf',r=>r.source.license='x'.repeat(101)]){const bad=record();bad.source={provider:'huggingface',repo:'publisher/model-name',revision:'b'.repeat(40),file:'model-q4.gguf',license:'apache-2.0'};change(bad);assert.throws(()=>validateLocalModel(bad),/model/i);}
+});

@@ -4,7 +4,7 @@ import {initialPreferenceNotes,readPreference,updatePreference} from '../src/pre
 import {modelSets,applyModelSet,matchingModelSet} from '../src/model-sets.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['text-compact','local-text-media','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['text-compact','text-expanded','text-speech','text-image','local-text-media','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -12,6 +12,27 @@ test('model sets only reference adapters already connected to app-owned local ru
   assert.ok(['','tesseract-7'].includes(set.models.ocrModel));
  }
  assert.equal(matchingModelSet(readPreference('models',initialPreferenceNotes))?.id,undefined);
+});
+
+test('the added sets vary supported roles without implying device verification or downloading assets',()=>{
+ const expected={
+  'text-compact':['lfm25-230m-qad-q4-0','','',''],
+  'text-expanded':['lfm25-350m-qad-q4-0','','',''],
+  'text-speech':['4B','','whisper-tiny',''],
+  'text-image':['4B','','','tesseract-7'],
+  'local-text-media':['4B','','whisper-tiny','tesseract-7'],
+  'local-full':['4B','d1-omni-600M','whisper-tiny','tesseract-7'],
+ };
+ for(const set of modelSets){
+  const model=set.models;
+  assert.deepEqual([model.textModel,model.decisionModel,model.transcriptionModel,model.ocrModel],expected[set.id]);
+  assert.match(set.detail,/·/);
+  assert.equal('deviceVerified' in set,false);
+  const before=readPreference('models',initialPreferenceNotes),after=applyModelSet(before,set.id);
+  assert.equal(after.downloads,before.downloads);
+ }
+ assert.equal(modelSets.some(set=>set.models.decisionModel==='d1-3B'),false);
+ assert.equal(modelSets.some(set=>set.models.transcriptionModel==='whisper-base'),false);
 });
 
 test('applying a set changes only model selections and adds their registered catalog IDs',()=>{

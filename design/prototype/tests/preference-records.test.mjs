@@ -77,9 +77,9 @@ test('custom Whisper declarations register in Speech library and retain history 
 });
 
 test('custom declarations survive backup without assets and model proposals cannot register them',async()=>{
- const model=custom(),notes=updatePreference('models',structuredClone(initialPreferenceNotes),m=>({...m,customModels:[model],textLibrary:[...m.textLibrary,model.id]}));
+ const model=custom();model.source={provider:'huggingface',repo:'publisher/model-name',revision:'b'.repeat(40),file:'model-q4.gguf',license:'apache-2.0'};const notes=updatePreference('models',structuredClone(initialPreferenceNotes),m=>({...m,customModels:[model],textLibrary:[...m.textLibrary,model.id]}));
  const view=notes.find(n=>n.id==='settings-models'),note=createNote({path:view.path,body:view.body});note.id=view.id;note.ui={managed:true};
- const state={notes:[note],settings:[],runs:[]},pack=await makeStateBackup(state),parsed=await parseStateBackup(JSON.stringify(pack));assert.deepEqual(parsed.notes,state.notes);
+ const state={notes:[note],settings:[],runs:[]},pack=await makeStateBackup(state),parsed=await parseStateBackup(JSON.stringify(pack));assert.deepEqual(parsed.notes,state.notes);assert.deepEqual(readPreference('models',notes).customModels[0].source,model.source);
  const plan=planStateRestore({notes:[],settings:[],runs:[]},parsed);assert.equal(plan.conflicts.length,0);assert.deepEqual(parsePreference('models',plan.writes.notes[0].revisions.at(-1).body).customModels,[model]);
  assert.deepEqual(pack.payload.excluded,['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments']);
  assert.throws(()=>settingsPatchResult(note,JSON.stringify({action:'patch',changes:{customModels:[]}})),/Invalid settings patch/);
