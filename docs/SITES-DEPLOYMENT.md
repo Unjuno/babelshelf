@@ -1,8 +1,12 @@
 # Sites publication
 
-Latest user authorization permits public access and continued adjustments on the published Site; earlier local-only/no-deploy instructions are superseded. The original GitHub remote was not pushed.
+Latest user authorization permits public access and continued adjustments on the published Site; earlier local-only/no-deploy instructions are superseded. The canonical repository is pushed to branch `codex/ui-design-handoff`; `main` is unchanged.
 
-## Current publication (Unit198)
+## Current publication (Unit40, 2026-10-19)
+
+Public https://babelshelf.com, audience unchanged public. Version21: `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_e7161337e09c819190eaf294078289fa`. Deployment `appgdep_6ad623a00dc88191b39f10130d525a0d` succeeded. Site source `a64d8e6fbc3f69f3f805ec0576fcc4dcb081dfbf` contains canonical source `ea7a40064c2f6ff457ddc98ee370cb3e97cf1428`, product build `55b466cb7c95a837` / 118 verified assets. Touch navigation opens after an 80 ms hold; sliding to a destination and releasing selects it. Releasing without a destination leaves the menu open for tap selection. Desktop click navigation remains unchanged. Public PC browser pointer simulation passed; this is not phone or physical-touch acceptance. No model weights, WebML runtime, notes, backups or browser profiles are included. Runtime and model licenses remain separate.
+
+## Historical publication (Unit198)
 
 Public https://babelshelf.com, audience unchanged public. Version5: appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_361e77b8379481918e5a46778db16b5a. Deployment appgdep_6ad4a66675f0819180f9b6ad4985301b succeeded. Sites sourcec27efa2cc0b681fc990efd869e7f35177ab7910c contains the canonical8e25b5b product4c7edb10dfc00ba5/113. This aligns the published UI/harness with the tested local source, including Unit179-187 corrections and the redirected-shell fix plus visible initial-preparation progress. Earlier inference evidence keeps its original build scope. Old static assets remain for existing pages; no model weights, WebML upstream runtime, notes, backups or browser profiles were packaged. The existing verified gzip delivery adapter remains unchanged.
 
