@@ -35,6 +35,7 @@ import {createDialogueWriter} from './dialogue-writer';
 import {createFileFocusQueue,workingFileNote,workingFileMetadata,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,scopeLiteralRequest,withWorkingFile,type WorkingFile} from './working-file';
 import {proposeTask} from './task-proposals';
 import type {Task} from './task-records';
+import {resolveTurnRoute} from './turn-router';
 import {routeWithDecision} from './decision-routing';
 import {useDecision} from './useDecision';
 import {readInputOriginal} from './automatic-reading';
@@ -601,14 +602,15 @@ export default function Prototype() {
     if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else context=await prepareContext();
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
-   if(!request&&text){
-    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
-    if(decision.enabled&&decision.ready){
+   const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
+   const resolution=await resolveTurnRoute({current:request,question:text,check:checkSend,
+    select:decision.enabled&&decision.ready?async()=>{
      if(!decision.loaded){setChatProgress('Loading decision model…');await trace('decision.load',decisionAssetInput(false,modelPreferences.customDecisionModels.find(m=>m.id===decisionModel)),()=>decision.load());}
-     checkSend();setChatProgress('Selecting action…');const routed=await routeWithDecision(decision,text,context,descriptors,trace,checkSend);request=routed.request;checkSend();
-    }
-    if(!request)request=await trace('dialogue.plan',{model,question:text},()=>planDialogue(inference,text,context,descriptors));checkSend();setChatProgress('');
-   }
+     checkSend();setChatProgress('Selecting action…');return routeWithDecision(decision,text,context,descriptors,trace,checkSend);
+    }:undefined,
+    plan:async()=>trace('dialogue.plan',{model,question:text},()=>planDialogue(inference,text,context,descriptors))
+   });
+   request=resolution.request;if(resolution.source==='decision'||resolution.source==='planner')setChatProgress('');
    if(!literalRequest&&request&&!inputReadings.length)request=bindExplicitCurrentFileQuestion(request,text,prior.currentFile);
    if(literalRequest&&['read','search'].includes(literalRequest.action))inputReadings=[];
    if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputReadings.length)throw Error('Choose the opened file or current attachments');

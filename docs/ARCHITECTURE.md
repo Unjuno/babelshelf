@@ -41,6 +41,8 @@ Files, extracted text, history, and model output are data. They never grant tool
 
 `read-intent.ts` is the first shared application seam for that workflow: both branches now produce the same explicit `open` result or a pinned `answer`/`summary` continuation. It creates no model output, storage writes, or new authority. Its unit coverage is in `design/prototype/tests/conversation.test.mjs`.
 
+`turn-router.ts` now owns the per-turn route precedence: keep a deterministic literal request, otherwise ask the optional selected Decision adapter, then call the selected Text planner once when Decision has no safe route. It owns neither model loading nor inference, receipts, context construction, tool execution, approval, or persistence; those remain injected by the current caller. Cancellation is checked before and between stages, and a Decision error never degrades into a planner retry. This is a single route resolution, not yet a multi-step agent/tool loop.
+
 Future restructuring should extract one transaction boundary at a time from `Prototype.tsx` into application coordinators with explicit dependencies and outputs. Keep domain modules independent of React; keep UI sheets responsible for review and user intent; keep persistence and worker lifecycle behind adapters. Preserve the same canonical records and UI surface while moving code. Do not make a broad file move whose only result is different paths.
 
 ## Acceptance boundary

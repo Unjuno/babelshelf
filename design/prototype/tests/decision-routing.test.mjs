@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {decisionRoutingQuestion,decisionRoutingState,decisionRoute as route,routeWithDecision} from '../src/decision-routing.ts';
+import {resolveTurnRoute} from '../src/turn-router.ts';
 import {decisionManifest} from '../src/decision-assets.ts';
 const identity={model:decisionManifest.id,revision:decisionManifest.conversion.revision,inputLimit:decisionManifest.inputLimit,scope:'text-only'};
 const decisionRoute=(value,q,c,attachments=[])=>route(value,q,c,identity,attachments);
@@ -41,4 +42,27 @@ test('routing uses the pinned adapter identity independently of D1 or media role
  assert.equal((await routeWithDecision(engine,'q',empty,[],trace,()=>{})).request.action,'answer');assert.equal(receipts[0].model,other.model);assert.equal(receipts[0].scope,'text-only');assert.equal(receipts[0].inputLimit,512);
  engine.classify=async()=>{engine.identity={...other,revision:'changed'};return answer;};await assert.rejects(routeWithDecision(engine,'q',empty,[],trace,()=>{}),/selection changed/);
  assert.throws(()=>route(answer,'q',empty,{...other,inputLimit:0}),/runtime identity/);assert.throws(()=>route({...answer,scope:'omni'},'q',empty,other),/Invalid decision route/);
+});
+
+test('explicit local requests bypass both optional decision routing and text planning',async()=>{
+ const calls=[];const explicit={action:'read',query:'Notes/one.md'};
+ const result=await resolveTurnRoute({current:explicit,question:'Open Notes/one.md',select:async()=>{calls.push('decision');return {request:null,reason:'structured-request'};},plan:async()=>{calls.push('planner');return {action:'chat',query:'wrong'};},check:()=>calls.push('check')});
+ assert.deepEqual(result,{request:explicit,source:'explicit'});assert.deepEqual(calls,['check']);
+});
+
+test('confident decision request skips planning; inconclusive decision falls back exactly once',async()=>{
+ const calls=[],answer={action:'answer',query:'What is saved?'},plan={action:'chat',query:'Fallback'};
+ const confident=await resolveTurnRoute({current:null,question:'What is saved?',select:async()=>{calls.push('decision');return {request:answer,reason:'confident-read-only'};},plan:async()=>{calls.push('planner');return plan;},check:()=>calls.push('check')});
+ assert.deepEqual(confident,{request:answer,source:'decision',reason:'confident-read-only'});assert.deepEqual(calls,['check','decision','check']);
+ calls.length=0;
+ const fallback=await resolveTurnRoute({current:null,question:'Change the file',select:async()=>{calls.push('decision');return {request:null,reason:'structured-request'};},plan:async()=>{calls.push('planner');return plan;},check:()=>calls.push('check')});
+ assert.deepEqual(fallback,{request:plan,source:'planner',decisionReason:'structured-request'});assert.deepEqual(calls,['check','decision','check','planner','check']);
+});
+
+test('decision failure or cancellation never falls through to planner',async()=>{
+ const stopped=Error('Stopped');let planned=0;
+ await assert.rejects(resolveTurnRoute({current:null,question:'Do work',select:async()=>{throw stopped;},plan:async()=>{planned++;return {};},check:()=>{}}),error=>error===stopped);
+ let checks=0;
+ await assert.rejects(resolveTurnRoute({current:null,question:'Do work',select:async()=>({request:null,reason:'ambiguous'}),plan:async()=>{planned++;return {};},check:()=>{if(++checks===2)throw stopped;}}),error=>error===stopped);
+ assert.equal(planned,0);
 });
