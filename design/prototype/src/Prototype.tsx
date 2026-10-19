@@ -24,7 +24,7 @@ import {scheduleStatus,scheduleRunAction} from './task-status';
 import {planningContextForInputs,bindCurrentInputRequest,groundingQuery} from './current-input-scope.ts';
 import {executionAtRevision} from './execution-selection.ts';
 import {createDialogueWriter} from './dialogue-writer';
-import {createFileFocusQueue,workingFileNote,workingFileMetadata,bindWorkingFileRequest,scopeLiteralRequest,withWorkingFile,type WorkingFile} from './working-file';
+import {createFileFocusQueue,workingFileNote,workingFileMetadata,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,scopeLiteralRequest,withWorkingFile,type WorkingFile} from './working-file';
 import {proposeTask} from './task-proposals';
 import type {Task} from './task-records';
 import {routeWithDecision} from './decision-routing';
@@ -521,6 +521,7 @@ export default function Prototype() {
     }
     if(!request)request=await trace('dialogue.plan',{model,question:text},()=>planDialogue(inference,text,context,descriptors));checkSend();setChatProgress('');
    }
+   if(!literalRequest&&request&&!inputReadings.length)request=bindExplicitCurrentFileQuestion(request,text,prior.currentFile);
    if(literalRequest&&['read','search'].includes(literalRequest.action))inputReadings=[];
    if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputReadings.length)throw Error('Choose the opened file or current attachments');
    if(request&&inputReadings.length)request=routeInputRequest(request,inputReadings,!!localRequest(text.trimStart()));

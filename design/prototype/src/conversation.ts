@@ -145,14 +145,28 @@ export async function compactDialogue(state:Dialogue,engine:ChatEngine,question:
  }
  throw Error('Context limit · original retained');
 }
-export function plannerScope(context:DialogueContext,inputs=false):PlannerScope{
+export function requestNamesWorkingFile(question:string){
+ return /\b(?:(?:in|from|about|within|inside|on)\s+)?(?:(?:this|that|the|current|opened)\s+)?(?:file|note|document|memo)\b/i.test(question)
+  ||/(?:この|その|当該|今(?:開いている)?|現在の|開いた)?(?:ファイル|メモ|ノート|文書|資料)(?:の|に|で|から|について|を|内|中)/.test(question)
+  ||/(?:这(?:个|份|篇)?(?:文件|文档|笔记)|(?:文件|文档|笔记)(?:中|里|内))/.test(question)
+  ||/\b(?:en|dentro de|sobre|desde)\s+(?:(?:este|esta|ese|esa|el|la|actual)\s+)?(?:archivo|documento|nota)\b/i.test(question)
+  ||/\b(?:dans|sur|depuis)\s+(?:(?:ce|cette|le|la)\s+)?(?:fichier|document|note)\b/i.test(question)
+  ||/\b(?:aus|über)\s+(?:(?:dieser|diese|dieses|der|die|das|aktuellen)\s+)?(?:datei|dokument|notiz)\b/i.test(question);
+}
+export function requestNamesEarlierDialogue(question:string){
+ return /\b(?:earlier|previous(?:ly)?|last time|before|prior|past conversation|conversation history|earlier message|previous message|what did (?:i|we|you) (?:say|ask|tell|decide|mention)|our conversation|chat history|my first message)\b/i.test(question)
+  ||/(?:前に|以前|さっき|先ほど|前回|過去の会話|会話履歴|前のメッセージ|以前の発言|私が(?:言った|聞いた|話した)|話した内容|決めたこと)/.test(question)
+  ||/(?:之前|以前|刚才|上次|以前的对话|历史对话|之前我说|我们讨论)/.test(question);
+}
+export function plannerScope(context:DialogueContext,inputs=false,question=''):PlannerScope{
  const planning=planningContextForInputs(context,inputs);
- const historyCount=planning.turnCount??planning.recent.length;
- const assistantIndices=planning.historyAssistantIndices??planning.recent.flatMap((turn,index)=>turn.answer?.trim()?[historyCount-planning.recent.length+index]:[]);
+ const fileTakesPrecedence=!!planning.currentFile&&requestNamesWorkingFile(question)&&!requestNamesEarlierDialogue(question);
+ const historyCount=fileTakesPrecedence?0:planning.turnCount??planning.recent.length;
+ const assistantIndices=fileTakesPrecedence?[]:planning.historyAssistantIndices??planning.recent.flatMap((turn,index)=>turn.answer?.trim()?[historyCount-planning.recent.length+index]:[]);
  return {inputs,file:!!planning.currentFile,current:!!planning.currentResult,historyCount,assistantIndices:[...assistantIndices]};
 }
 export function planDialogueMessages(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[]){
- context=planningContextForInputs(context,attachments.length>0);const scope=plannerScope(context,attachments.length>0);
+ context=planningContextForInputs(context,attachments.length>0);const scope=plannerScope(context,attachments.length>0,question);
  const instructions=['Route the CURRENT request for a local assistant. Return one JSON object containing action and the fields required by the selected action and target below. action must be EXACTLY ONE catalog id, never a combined name. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.'];
  if(scope.inputs)instructions.push('CURRENT INPUT SCOPE: use target=inputs for answers or summaries of the current attachments. Their identities and revisions are owned by the harness. Old opened files and history never change this scope.');
  if(scope.file)instructions.push('With an opened file, omitting target selects that file by harness default for actions that permit a file target. query never changes that scope. To read or edit a DIFFERENT file choose target=path and query=its exact path or filename.');
@@ -175,7 +189,7 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
 }
 export async function planDialogue(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[]){
  engine=engine.pin?.()??engine;
- const scope=plannerScope(context,attachments.length>0);
+ const scope=plannerScope(context,attachments.length>0,question);
  const messages=planDialogueMessages(question,context,attachments);
  if((await engine.count(messages)).prompt_tokens+160>engine.manifest.contextTokens)throw Error('Input exceeds context limit');
  const generated=await engine.generate(messages,160,{type:'dialogue-plan',scope});if(generated.stopped)throw Error('Stopped');
@@ -192,6 +206,7 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  if(value.target==='inputs'&&(!attachments.length||!['answer','summary','capture'].includes(value.action)||Object.keys(value).some(k=>!['action','query','target'].includes(k))))invalid('input scope');
  if(value.target==='file'&&(!validHarnessTarget(value.action,'file')||Object.keys(value).some(k=>!['action','query','target'].includes(k))))invalid('file target');
  if(['path','knowledge'].includes(value.target)&&(Object.keys(value).some(k=>!['action','query','target'].includes(k))||value.target==='path'&&!value.query.trim()))invalid('explicit scope');
+ if((value.target==='history'||value.historyIndex!=null||value.historyPart!==undefined)&&scope.historyCount===0)invalid('history scope','Earlier dialogue was not selected by the current request');
  if(value.target!==undefined&&!validHarnessTarget(value.action,value.target))invalid('target action');
  if(value.target==='current'&&(value.historyIndex!=null||value.historyPart!==undefined))invalid('competing target');
  if(value.target==='history'&&(value.historyIndex==null||!['user','assistant'].includes(value.historyPart)))invalid('history target');

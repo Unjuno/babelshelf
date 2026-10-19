@@ -351,6 +351,20 @@ test('planner advertises the same available scopes it sends to local structured 
  assert.equal(seen[1].format.scope.permission,undefined);assert.equal(context.currentFile.noteId,'opened');
 });
 
+test('an explicitly current-file question cannot be routed to coincidentally matching old dialogue',async()=>{
+ const {plannerScope}=await import('../src/conversation.ts');
+ const context={summary:'Earlier user question also mentions a marker and reserve.',recent:[{id:'open',user:'Read: Inbox/QA181-summary-source.md'}],refs:[],turnCount:54,currentFile:{noteId:'opened',revision:1},historyAssistantIndices:[3,22],recalled:[{turnId:'old',turnIndex:0,speaker:'user',quote:'What are the marker and reserve?',start:0,end:40}]};
+ const question='What are the marker and reserve in this file?';
+ const scope=plannerScope(context,false,question);assert.equal(scope.historyCount,0);assert.deepEqual(scope.assistantIndices,[]);assert.equal(scope.file,true);
+ let format,messages;const e={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async(m,max,f)=>{messages=m;format=f;return {text:'{"action":"answer","query":"marker and reserve","target":"file"}'};}};
+ assert.deepEqual(await planDialogue(e,question,context),{action:'answer',query:'marker and reserve',target:'file'});
+ assert.equal(format.scope.historyCount,0);assert.deepEqual(format.scope.assistantIndices,[]);
+ const catalog=JSON.parse(messages[0].content.split('Available actions and their allowed target names: ')[1].split('. ')[0]);assert.equal(catalog.some(a=>a.id==='recall'),false);assert.ok(catalog.find(a=>a.id==='answer').targets.includes('file'));
+ const historical=plannerScope(context,false,'What did we decide in our previous conversation?');assert.equal(historical.historyCount,54);assert.deepEqual(historical.assistantIndices,[3,22]);
+ const japanese=plannerScope(context,false,'前回の会話でこのメモについて何を話した？');assert.equal(japanese.historyCount,54);assert.deepEqual(japanese.assistantIndices,[3,22]);
+ const invalid={...e,generate:async()=>({text:'{"action":"recall","query":"marker and reserve","target":"history","historyIndex":0,"historyPart":"user"}'})};await assert.rejects(planDialogue(invalid,question,context),/not selected by the current request/i);
+});
+
 test('planner assistant selectors come from retained originals across compaction, never failed-turn status',async()=>{
  const {plannerScope}=await import('../src/conversation.ts');
  let state=appendTurn(emptyDialogue(),{id:'original',user:'Question',answer:'Original answer'});

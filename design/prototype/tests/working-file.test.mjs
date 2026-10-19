@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {emptyDialogue,validateDialogue,dialogueContext,historyPayload,planDialogue} from '../src/conversation.ts';
-import {withWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
+import {withWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
 
 const note=()=>createNote({path:'Notes/focus.md',body:'The inventory code is COPPER-2816. Water is 3L.'});
 test('file working target retains ID/version and refuses stale, withdrawn or missing originals',()=>{
@@ -79,6 +79,17 @@ test('unscoped file-capable requests use the harness file default while explicit
  assert.throws(()=>bindWorkingFileRequest({...raw,noteId:'invented'},pin));assert.throws(()=>bindWorkingFileRequest({...raw,historyIndex:0},pin));
  const context={summary:'',recent:[],refs:[],currentFile:pin},engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'{"action":"edit","query":""}'})};
  const parsed=await planDialogue(engine,'correct this file',context);assert.equal(parsed.target,undefined);assert.equal(bindWorkingFileRequest(parsed,pin).request.target,'file');
+});
+test('explicit current-file questions cannot broaden evidence to knowledge or older dialogue',()=>{
+ const pin={noteId:'chosen',revision:2};
+ assert.deepEqual(bindExplicitCurrentFileQuestion({action:'answer',query:'marker and reserve',target:'knowledge'},'What are the marker and reserve in this file?',pin),{action:'read',query:'What are the marker and reserve in this file?',target:'file'});
+ assert.deepEqual(bindExplicitCurrentFileQuestion({action:'summary',query:'this file'},'このファイルを要約して',pin),{action:'read',query:'このファイルを要約して',target:'file'});
+ const previous={action:'answer',query:'earlier',target:'knowledge'};
+ assert.deepEqual(bindExplicitCurrentFileQuestion(previous,'What did we say about this file in the previous conversation?',pin),previous);
+ const attachment={action:'answer',query:'marker',target:'inputs'};
+ assert.deepEqual(bindExplicitCurrentFileQuestion(attachment,'What is in this file?',pin,true),attachment);
+ const edit={action:'edit',query:'rename this file',target:'file'};
+ assert.deepEqual(bindExplicitCurrentFileQuestion(edit,'Rename this file',pin),edit);
 });
 
 test('media-derived file scope finds a late relevant excerpt while retaining raw-source eligibility',()=>{
