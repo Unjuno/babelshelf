@@ -152,3 +152,7 @@ Public v50 product build 27c8ce44c17df147 / 118 verified assets, Site source e61
 ## v51 selected-model file action wording (2026-10-20)
 
 Public v51 product build 9666a5583c72ae04 / 118 verified assets, Site source faf0726e08ce3e8b329d2ab70253855203b9a8cb, saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_bca1edbdae648191acfefa48b55dd07b, deployment appgdep_6ad687558d00819184c0d8291a55186c succeeded. Audience and https://babelshelf.com/ are unchanged. Site stage/delivery verification passed; direct public build.json returned 9666a5583c72ae04 / 118 and the served entry includes Choose model files and Media reading. Static delivery is verified; the existing sidebar PWA, model inference and phone were not interacted with for this release. Existing data was not cleared.
+
+## v52 model library choices (2026-10-20)
+
+Public v52 product build df2062252cec3e0d / 118 verified assets, Site source 1be4ecf0feba5f8b29a195933a6bfdd19a26b0b9, saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_735c115aad788191be77bb6dc3d274c0, deployment appgdep_6ad689d30ab08191aadaad2a03446228 succeeded. Audience and https://babelshelf.com/ are unchanged. Stage/delivery verification passed exact shell and adapter transport. Direct public build.json returned df2062252cec3e0d / 118 and the served entry contains the Add-sheet empty state and corrected selection message. This is static delivery, not current-sidebar interaction, inference or phone verification; no user data was cleared.
