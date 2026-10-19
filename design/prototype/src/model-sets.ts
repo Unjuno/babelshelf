@@ -1,12 +1,15 @@
 import {settings} from './app-settings.ts';
+import {localAdapters} from './local-capabilities.ts';
 import type {Preferences} from './preference-records.ts';
 
-export type ModelSetId='text-compact'|'text-expanded'|'text-speech'|'text-image'|'local-text-media'|'local-full';
+export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'local-text-media'|'local-full';
 export type ModelSet={id:ModelSetId;label:string;detail:string;models:{textModel:string;decisionModel:string;transcriptionModel:string;ocrModel:string}};
 
 // These are selection presets over connected local adapters, not downloadable
 // bundles, capability declarations, executable plans, or device-fit guarantees.
 export const modelSets:readonly ModelSet[]=Object.freeze([
+ {id:'bonsai-2b-text',label:'Bonsai 2 · 2B',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:''}},
+ {id:'bonsai-4b-text',label:'Bonsai 2 · 4B',detail:'Text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:''}},
  {id:'text-compact',label:'Compact text',detail:'LFM2.5 230M · text only',models:{textModel:'lfm25-230m-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:''}},
  {id:'text-expanded',label:'Expanded text',detail:'LFM2.5 350M · text only',models:{textModel:'lfm25-350m-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:''}},
  {id:'text-speech',label:'Text + speech',detail:'Bonsai 2 · 4B · Whisper tiny',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:''}},
@@ -16,8 +19,8 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
 ]);
 
 const connected=(set:ModelSet)=>{
- const roles=[['textModel','text'],['decisionModel','decision'],['transcriptionModel','transcription'],['ocrModel','ocr']] as const;
- for(const [selection,role] of roles){const id=set.models[selection];if(id&&!settings.models[role].some(model=>model.value===id))throw Error('Model set contains an unsupported model');}
+ const roles=[['textModel','text','text.generate'],['decisionModel','decision','decision.classify'],['transcriptionModel','transcription','audio.transcribe'],['ocrModel','ocr','image.ocr']] as const;
+ for(const [selection,role,capability] of roles){const id=set.models[selection];if(!id)continue;if(!settings.models[role].some(model=>model.value===id)||!localAdapters.some(adapter=>adapter.models.includes(id)&&adapter.capabilities.includes(capability)))throw Error('Model set contains a model without a connected role adapter');}
 };
 for(const set of modelSets)connected(set);
 

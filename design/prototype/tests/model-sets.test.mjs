@@ -2,20 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialPreferenceNotes,readPreference,updatePreference} from '../src/preference-records.ts';
 import {modelSets,applyModelSet,matchingModelSet} from '../src/model-sets.ts';
+import {localAdapters} from '../src/local-capabilities.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['text-compact','text-expanded','text-speech','text-image','local-text-media','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['bonsai-2b-text','bonsai-4b-text','text-compact','text-expanded','text-speech','text-image','local-text-media','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
   assert.ok(['','whisper-tiny'].includes(set.models.transcriptionModel));
   assert.ok(['','tesseract-7'].includes(set.models.ocrModel));
+  const roles=[['textModel','text.generate'],['decisionModel','decision.classify'],['transcriptionModel','audio.transcribe'],['ocrModel','image.ocr']];
+  for(const [key,capability] of roles){const id=set.models[key];if(id)assert.ok(localAdapters.some(adapter=>adapter.models.includes(id)&&adapter.capabilities.includes(capability)),`${id} must have a connected ${capability} adapter`);}
  }
- assert.equal(matchingModelSet(readPreference('models',initialPreferenceNotes))?.id,undefined);
+ assert.equal(matchingModelSet(readPreference('models',initialPreferenceNotes))?.id,'bonsai-4b-text');
 });
 
 test('the added sets vary supported roles without implying device verification or downloading assets',()=>{
  const expected={
+  'bonsai-2b-text':['2B','','',''],
+  'bonsai-4b-text':['4B','','',''],
   'text-compact':['lfm25-230m-qad-q4-0','','',''],
   'text-expanded':['lfm25-350m-qad-q4-0','','',''],
   'text-speech':['4B','','whisper-tiny',''],
@@ -26,7 +31,7 @@ test('the added sets vary supported roles without implying device verification o
  for(const set of modelSets){
   const model=set.models;
   assert.deepEqual([model.textModel,model.decisionModel,model.transcriptionModel,model.ocrModel],expected[set.id]);
-  assert.match(set.detail,/·/);
+  assert.ok(set.detail.length>0);
   assert.equal('deviceVerified' in set,false);
   const before=readPreference('models',initialPreferenceNotes),after=applyModelSet(before,set.id);
   assert.equal(after.downloads,before.downloads);
