@@ -11,3 +11,19 @@ test('offline range responses cover HEAD, bounded, open and suffix requests',asy
  assert.equal(range.fileResponse(file,{headers:{Range:'bytes=11-12'}}).status,416);
  assert.equal(range.fileResponse(file,{method:'HEAD'}).headers.get('Content-Length'),'10');
 });
+
+test('local model range reads keep exact offsets near and beyond the 9B file size',async()=>{
+ assert.equal(typeof range.fileResponse,'function');
+ for(const size of [1997486976,2**31+4096]){
+  let sliced;
+  const file={size,slice(start,end){sliced=[start,end];return new Blob(['0123456789']);}};
+  const start=size-10,response=range.fileResponse(file,{headers:{Range:`bytes=${start}-${size-1}`}});
+  assert.equal(response.status,206);
+  assert.equal(response.headers.get('Content-Range'),`bytes ${start}-${size-1}/${size}`);
+  assert.equal(response.headers.get('Content-Length'),'10');
+  assert.deepEqual(sliced,[start,size]);
+  assert.equal(await response.text(),'0123456789');
+  const head=range.fileResponse(file,{method:'HEAD'});
+  assert.equal(head.headers.get('Content-Length'),String(size));
+ }
+});
