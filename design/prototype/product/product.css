@@ -3,3 +3,8 @@
 #app-screen::before,#app-screen::after{display:none!important}#app-screen .chat-home{top:calc(env(safe-area-inset-top) + 14px)}#app-screen .glass-nav{top:calc(env(safe-area-inset-top) + 22px)}#app-screen .arc-choice{top:calc(env(safe-area-inset-top) + 51px)}
 
 .product-screen .conversation{padding-bottom:max(calc(env(safe-area-inset-bottom) + 140px),var(--composer-reserve,140px))}
+
+/* Keep the fixed Input control in its own top band while the page scrolls. */
+.product-screen{background:var(--app-bg,#fff)}
+.product-screen .native-scroll{top:calc(env(safe-area-inset-top) + 96px)}
+.product-screen .conversation,.product-screen .secondary-screen{padding-top:30px}
