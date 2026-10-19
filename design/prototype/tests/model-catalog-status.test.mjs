@@ -29,3 +29,8 @@ test('custom Whisper registrations use the fixed local speech adapter',()=>{
  assert.equal(modelCatalogStatus('speech',record.id,[],[],[record]),'Not prepared');
  assert.equal(modelCatalogStatus('speech',record.id,[],[],[{...record,engine:'untrusted'}]),'Runtime not connected');
 });
+test('the pinned Vision model is selectable only through its app-owned local image adapter',()=>{
+ assert.equal(modelCatalogStatus('vision','lfm25-vl-450m-q4f16'),'Not prepared');
+ assert.equal(modelCatalogStatus('vision','unknown-vision'),'Runtime not connected');
+ assert.equal(modelCatalogStatus('ocr','lfm25-vl-450m-q4f16'),'Runtime not connected');
+});

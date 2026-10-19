@@ -22,7 +22,7 @@ export function validateTranscript(t:Transcript,asset:OriginalAsset){
 }
 export function transcriptNote(id:string,asset:OriginalAsset,t:Transcript){validateTranscript(t,asset);return {...createNote({path:'Attachments/Transcript-'+id+'.md',title:asset.name+' transcript',body:t.text}),id,mediaSource:originalRef(asset),transcription:structuredClone(t)};}
 export function validateTranscriptLinks(notes:any[],runs:{key:string;value:any}[]){
- for(const n of notes)if(n.transcription||(n.mediaSource&&!n.pdfText&&!n.ocrText)){const asset=runs.find(r=>r.value?.type==='original-asset'&&r.value.id===n.mediaSource?.id)?.value;if(!asset)throw Error('Transcript original unavailable');validateTranscript(n.transcription,asset);if(JSON.stringify(n.mediaSource)!==JSON.stringify(n.transcription.original)||n.revisions[0].body!==n.transcription.text)throw Error('Transcript original text changed');}
+ for(const n of notes)if(n.transcription||(n.mediaSource&&!n.pdfText&&!n.ocrText&&!n.visionText)){const asset=runs.find(r=>r.value?.type==='original-asset'&&r.value.id===n.mediaSource?.id)?.value;if(!asset)throw Error('Transcript original unavailable');validateTranscript(n.transcription,asset);if(JSON.stringify(n.mediaSource)!==JSON.stringify(n.transcription.original)||n.revisions[0].body!==n.transcription.text)throw Error('Transcript original text changed');}
 }
 
 // Describes provenance only; this grants neither source eligibility nor seek authority.

@@ -5,6 +5,7 @@ import {utf8BytesWithin,visitUtf8Chunks} from './utf8-text.ts';
 import {visitJsonChunks} from './json-chunks.ts';
 import {validateWorkingFileLink} from './working-file.ts';
 import {validateOcrLinks} from './ocr-text.ts';
+import {validateVisionLinks} from './vision-text.ts';
 import {validateSettingsRestoreReceipt} from './settings-restore.ts';
 import {validateProcessing} from './processing-history.ts';
 import {validatePdfLinks} from './pdf-text.ts';
@@ -58,7 +59,7 @@ function sourceRefs(notes:any[],refs:unknown){
  if(!Array.isArray(refs)||!validateRefs(notes.map(n=>({...n,state:'active'})),refs).ok)throw Error('Invalid backup source reference');
 }
 function validateState(state:StateSnapshot){
- jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);
+ jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);
  for(const n of state.notes){const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
@@ -98,7 +99,7 @@ export async function parseStateBackup(text:string):Promise<StatePayload>{
 }
 export function guardRestoredNote(note:any){
  let n=structuredClone(note);if(n.ui?.recordType==='schedule')n.ui={...n.ui,requiresReview:true};
- if(n.id==='settings-connection'&&n.ui?.managed&&parsePreference('connection',latest(n).body).downloads)n=reviseNote(n,{body:formatPreference('connection',{downloads:false})},latest(n).version);
+ if(n.id==='settings-connection'&&n.ui?.managed){const current=parsePreference('connection',latest(n).body);if(current.downloads||current.diagnosticLogs)n=reviseNote(n,{body:formatPreference('connection',{downloads:false,diagnosticLogs:false})},latest(n).version);}
  return n;
 }
 export type RestoreMode='strict'|'new-only';

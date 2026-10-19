@@ -9,7 +9,8 @@ import {decisionManifest} from './decision-assets.ts';
 import {ocrManifest,ocrModelPins,type OcrLanguage} from './ocr-assets.ts';
 import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 import {speechManifest} from './speech-assets.ts';
-export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare';
+import {visionManifest} from './vision-assets.ts';
+export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'vision.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare';
 type FileDescriptor={name:string;size:number;type:string};
 const filePin=(f:{name?:string;path?:string;bytes:number;sha256:string})=>({name:f.name??f.path!,bytes:f.bytes,sha256:f.sha256});
 export function textAssetInput(id:string,allowNetwork=false,files?:FileDescriptor[],customModels:CustomLocalModel[]=[]){
@@ -27,5 +28,7 @@ export class AssetOperationGate{
 }
 
 export function ocrAssetInput(language:OcrLanguage,allowNetwork:boolean){return {source:{name:'Tesseract 7'},role:'ocr',language,model:{id:ocrManifest.id,processor:ocrManifest.processor,files:ocrModelPins(language)},runtime:ocrManifest.runtime,allowNetwork,method:'explicit-preparation'};}
+export function visionAssetInput(allowNetwork:boolean){return {source:{name:'LFM2.5-VL 450M'},role:'vision',model:{id:visionManifest.id,repository:visionManifest.repository,revision:visionManifest.revision,dtype:visionManifest.dtype,license:visionManifest.license,files:visionManifest.files.map(filePin)},runtime:{name:'@huggingface/transformers',revision:visionManifest.runtime},device:visionManifest.device,allowNetwork,method:allowNetwork?'explicit-preparation':'local-only'};}
+export function visionDescriptionInput(modelId:string,asset:{id:string;revision:number;sha256:string;name:string},prompt:string){if(modelId!==visionManifest.id||!asset||asset.revision!==1||!/^[a-f0-9]{64}$/.test(asset.sha256)||!Number.isInteger(prompt?.length)||prompt.length<1||prompt.length>2000)throw Error('Vision request metadata invalid');return {source:{id:asset.id,revision:asset.revision,sha256:asset.sha256,name:asset.name},model:{id:visionManifest.id,revision:visionManifest.revision},runtime:visionManifest.runtime,scope:'single-image',promptCharacters:prompt.length,allowNetwork:false,method:'local-only'};}
 
 export function decisionAssetInput(allowNetwork:boolean,custom?:CustomDecisionModel){return custom?{source:{name:custom.label},role:'decision',scope:'text-only',model:{id:custom.id,revision:custom.revision,format:'D1-ONNX',files:custom.files.map(filePin)},runtime:{name:'onnxruntime-web-d1',revision:decisionManifest.runtime.revision},allowNetwork:false,method:'local-files'}:{source:{name:"Open d1 Omni 600M"},role:"decision",scope:"text-only",model:{id:decisionManifest.id,source:decisionManifest.source,conversion:decisionManifest.conversion,files:decisionManifest.files.filter(f=>f.path!=='LICENSE').map(filePin)},runtime:decisionManifest.runtime,tokenizer:decisionManifest.tokenizer,allowNetwork,method:allowNetwork?"explicit-preparation":"local-only"};}

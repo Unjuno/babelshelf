@@ -33,6 +33,13 @@ test('validated defaults are copied and immutable and preserve protected roots',
 test('OCR registry cannot claim installation or select an unregistered custom runtime',()=>{
  const candidate=structuredClone(settings);candidate.models.ocr[0].installed=true;assert.throws(()=>validateSettings(candidate),/Unknown/);candidate.models.ocr=[{value:'remote-ocr',label:'Remote'}];assert.throws(()=>validateSettings(candidate),/Unsupported/);
 });
+test('Vision catalog separates image understanding from OCR and remains unprepared by default',()=>{
+ assert.equal(settings.models.vision[0].value,'lfm25-vl-450m-q4f16');
+ assert.equal(settings.defaults.visionModel,'');
+ assert.equal(mediaStatus('image.describe'),'Not prepared');
+ const candidate=structuredClone(settings);candidate.models.vision[0].ready=true;
+ assert.throws(()=>validateSettings(candidate),/Unknown/);
+});
 
 import {readDeviceStorage,requestStorageProtection,storageBytes} from '../src/device-storage.ts';
 test('device storage reports only measured browser values and never asks permission while reading',async()=>{

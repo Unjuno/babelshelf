@@ -21,7 +21,12 @@ test('file edits reject malformed values and execution/readiness fields without 
  assert.equal(readPreference('appearance',original).theme,'system');
  assert.throws(()=>parsePreference('connection','# Connection\n\n```json\n{"downloads":true,"remoteInference":true}\n```'),/Unknown/);
  assert.throws(()=>parsePreference('models',formatPreference('models',{...readPreference('models',original),ready:true})),/Unknown/);
- const edited=formatPreference('connection',{downloads:true});assert.equal(parsePreference('connection',edited).downloads,true);
+ const edited=formatPreference('connection',{downloads:true,diagnosticLogs:false});assert.equal(parsePreference('connection',edited).downloads,true);assert.equal(parsePreference('connection',edited).diagnosticLogs,false);
+});
+test('diagnostic logging defaults off and legacy connection preferences migrate without rewriting their bytes',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(n=>n.id==='settings-connection'),legacy='# Connection\n\n```json\n{"downloads":false}\n```\n';record.body=legacy;
+ assert.equal(readPreference('connection',records).diagnosticLogs,false);assert.equal(record.body,legacy);
+ const enabled=updatePreference('connection',records,value=>({...value,diagnosticLogs:true}));assert.equal(readPreference('connection',enabled).diagnosticLogs,true);assert.equal(enabled.find(n=>n.id===record.id).history[0],legacy);
 });
 test('model selections reference the library and managed settings cannot be deleted',()=>{
  const original=structuredClone(initialPreferenceNotes);
@@ -48,6 +53,17 @@ test('all roles require registration; old model records migrate without losing h
 
 test('legacy model settings project OCR defaults without rewriting bytes; explicit registration appends history',()=>{
  const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);delete value.ocrModel;delete value.ocrLibrary;delete value.ocrLanguage;old.body=formatPreference('models',value);const bytes=old.body,parsed=readPreference('models',notes);assert.equal(old.body,bytes);assert.equal(parsed.ocrModel,'');assert.deepEqual(parsed.ocrLibrary,[]);assert.equal(parsed.ocrLanguage,'eng+jpn');const next=updatePreference('models',notes,m=>({...m,ocrLibrary:['tesseract-7'],ocrModel:'tesseract-7'}));assert.equal(next.find(n=>n.id===old.id).history[0],bytes);assert.equal(readPreference('models',next).textModel,parsed.textModel);assert.throws(()=>parsePreference('models',formatPreference('models',{...parsed,ocrModel:'remote-ocr'})),/Unsupported/);
+});
+test('Vision selection is independently registered, defaults off, and legacy settings migrate without rewriting bytes',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);
+ assert.equal(value.visionModel,'');assert.deepEqual(value.visionLibrary,[]);
+ delete value.visionModel;delete value.visionLibrary;record.body=formatPreference('models',value);const old=record.body;
+ const migrated=readPreference('models',notes);assert.equal(migrated.visionModel,'');assert.deepEqual(migrated.visionLibrary,[]);assert.equal(record.body,old);
+ assert.throws(()=>updatePreference('models',notes,m=>({...m,visionModel:'lfm25-vl-450m-q4f16'})),/Unsupported vision model/);
+ const registered=updatePreference('models',notes,m=>({...m,visionLibrary:['lfm25-vl-450m-q4f16'],visionModel:'lfm25-vl-450m-q4f16'}));
+ assert.equal(readPreference('models',registered).visionModel,'lfm25-vl-450m-q4f16');
+ assert.equal(registered.find(n=>n.id==='settings-models').history.at(-1),old);
+ assert.throws(()=>parsePreference('models',formatPreference('models',{...migrated,visionLibrary:['unknown']})),/Unsupported vision model/);
 });
 
 const custom=()=>{const sha256='b'.repeat(64);return {id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'Custom',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};};

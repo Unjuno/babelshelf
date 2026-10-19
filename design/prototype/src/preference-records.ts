@@ -9,9 +9,9 @@ export type CustomDecisionModel={id:string;label:string;role:'decision';engine:'
 export type CustomSpeechModel={id:string;label:string;role:'speech';engine:'transformers-whisper-onnx';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'Whisper-ONNX';architecture:'whisper';device:'wasm';dtype:'q8';maxDurationSeconds:120}};
 export type PreferenceGroup='models'|'appearance'|'connection';
 const defaults={
- models:{customModels:[] as CustomLocalModel[],customDecisionModels:[] as CustomDecisionModel[],customSpeechModels:[] as CustomSpeechModel[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
+ models:{customModels:[] as CustomLocalModel[],customDecisionModels:[] as CustomDecisionModel[],customSpeechModels:[] as CustomSpeechModel[],visionModel:'',visionLibrary:[] as string[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
  appearance:{theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass},
- connection:{downloads:settings.defaults.downloads},
+ connection:{downloads:settings.defaults.downloads,diagnosticLogs:false},
 };
 export type Preferences=typeof defaults;
 export type PreferenceRecord={id:string;path:string;body:string;version:number;history:string[];paths?:string[];managed?:boolean;protected?:boolean};
@@ -28,12 +28,14 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  }
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('ocrModel' in value)&&!('ocrLibrary' in value)&&!('ocrLanguage' in value)){value.ocrModel='';value.ocrLibrary=[];value.ocrLanguage='eng+jpn';}
+ if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('visionModel' in value)&&!('visionLibrary' in value)){value.visionModel='';value.visionLibrary=[];}
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customModels' in value))value.customModels=[];
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customDecisionModels' in value))value.customDecisionModels=[];
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customSpeechModels' in value))value.customSpeechModels=[];
+ if(group==='connection'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!==Object.keys(defaults[group]).sort().join('|'))throw Error('Unknown or missing setting');
  if(group==='models'){
-  const m=value as Preferences['models'];if(!Array.isArray(m.customModels)||m.customModels.length>64||!Array.isArray(m.customDecisionModels)||m.customDecisionModels.length>32||!Array.isArray(m.customSpeechModels)||m.customSpeechModels.length>32)throw Error('Unsupported custom model registry');m.customModels=m.customModels.map(validateLocalModel);m.customDecisionModels=m.customDecisionModels.map(validateLocalModel);m.customSpeechModels=m.customSpeechModels.map(validateLocalModel);if(m.customModels.some(x=>x.role!=='text')||m.customDecisionModels.some(x=>x.role!=='decision')||m.customSpeechModels.some(x=>x.role!=='speech')||new Set([...m.customModels,...m.customDecisionModels,...m.customSpeechModels].map(x=>x.id)).size!==m.customModels.length+m.customDecisionModels.length+m.customSpeechModels.length)throw Error('Duplicate or mismatched custom model');if(!Array.isArray(m.ocrLibrary)||new Set(m.ocrLibrary).size!==m.ocrLibrary.length||m.ocrLibrary.some(id=>id!=='tesseract-7')||m.ocrModel!==''&&!m.ocrLibrary.includes(m.ocrModel)||!OCR_LANGUAGES.includes(m.ocrLanguage))throw Error('Unsupported image reader');if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
+  const m=value as Preferences['models'];if(!Array.isArray(m.customModels)||m.customModels.length>64||!Array.isArray(m.customDecisionModels)||m.customDecisionModels.length>32||!Array.isArray(m.customSpeechModels)||m.customSpeechModels.length>32)throw Error('Unsupported custom model registry');m.customModels=m.customModels.map(validateLocalModel);m.customDecisionModels=m.customDecisionModels.map(validateLocalModel);m.customSpeechModels=m.customSpeechModels.map(validateLocalModel);if(m.customModels.some(x=>x.role!=='text')||m.customDecisionModels.some(x=>x.role!=='decision')||m.customSpeechModels.some(x=>x.role!=='speech')||new Set([...m.customModels,...m.customDecisionModels,...m.customSpeechModels].map(x=>x.id)).size!==m.customModels.length+m.customDecisionModels.length+m.customSpeechModels.length)throw Error('Duplicate or mismatched custom model');if(!Array.isArray(m.visionLibrary)||new Set(m.visionLibrary).size!==m.visionLibrary.length||m.visionLibrary.some(id=>id!==settings.models.vision[0].value)||m.visionModel!==''&&!m.visionLibrary.includes(m.visionModel))throw Error('Unsupported vision model');if(!Array.isArray(m.ocrLibrary)||new Set(m.ocrLibrary).size!==m.ocrLibrary.length||m.ocrLibrary.some(id=>id!=='tesseract-7')||m.ocrModel!==''&&!m.ocrLibrary.includes(m.ocrModel)||!OCR_LANGUAGES.includes(m.ocrLanguage))throw Error('Unsupported image reader');if(!speechLanguages.includes(m.transcriptionLanguage))throw Error('Unsupported transcription language');
   for(const [role,library,selected] of [['text',m.textLibrary,m.textModel],['decision',m.decisionLibrary,m.decisionModel]] as const){
    if(!Array.isArray(library)||new Set(library).size!==library.length||library.some(id=>!id||!settings.models[role].some(x=>x.value===id)&&!(role==='text'&&m.customModels.some(x=>x.id===id))&&!(role==='decision'&&m.customDecisionModels.some(x=>x.id===id))))throw Error('Unsupported model library');
    if(selected!==''&&!library.includes(selected))throw Error('Add the model before selecting it');
@@ -43,7 +45,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  }else if(group==='appearance'){
   const a=value as Preferences['appearance'];
   if(!settings.appearance.themes.includes(a.theme)||!settings.appearance.backgrounds.includes(a.background)||!settings.appearance.glass.includes(a.glass))throw Error('Unsupported appearance value');
- }else if(typeof value.downloads!=='boolean')throw Error('Downloads must be true or false');
+ }else if(typeof value.downloads!=='boolean'||typeof value.diagnosticLogs!=='boolean')throw Error('Invalid connection preference');
  return value;
 }
 
@@ -67,7 +69,7 @@ export function restoreDefaultPreferences<T extends PreferenceRecord>(records:T[
  for(const group of groups){
   const current=next.find(record=>record.id==='settings-'+group),fallback=initialPreferenceNotes.find(record=>record.id==='settings-'+group)!;
   if(!current||current.path!==preferencePath(group)||current.managed!==true||current.protected)throw Error('Settings record unavailable · restore was not applied');
-  const body=fallback.body;parsePreference(group,body);if(current.body===body)continue;
+  const body=group==='connection'?formatPreference('connection',{downloads:false,diagnosticLogs:false}):fallback.body;parsePreference(group,body);if(current.body===body)continue;
   const history=current.history??[];next=next.map(record=>record.id!==current.id?record:{...record,body,version:current.version+1,history:[...history,current.body],paths:[...(current.paths??history.map(()=>current.path)),current.path]});
  }
  return next;

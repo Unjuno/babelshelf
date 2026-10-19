@@ -4,7 +4,7 @@ import type {TextEngine} from './text-inference.ts';
 import {latest,parseJSON} from '../../../dist/core.js';
 // @ts-expect-error Shared incremental hash is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
-const allowed={appearance:['theme','background','glass'],models:['textModel','decisionModel','transcriptionModel','ocrModel','transcriptionLanguage','ocrLanguage']};
+const allowed={appearance:['theme','background','glass'],models:['textModel','decisionModel','transcriptionModel','ocrModel','visionModel','transcriptionLanguage','ocrLanguage']};
 type EditableGroup=keyof typeof allowed;
 export type SettingsPatch={name:'settings.patch';arguments:{group:EditableGroup;fields:string[];changesSha256:string};result:{changed:true}};
 const hash=(v:unknown)=>new SHA256().update(new TextEncoder().encode(JSON.stringify(v))).hex();

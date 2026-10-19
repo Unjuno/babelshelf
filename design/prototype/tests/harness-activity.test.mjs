@@ -56,7 +56,7 @@ test('media extraction attempts share persisted audit lifecycle without entering
 });
 
 test('explicit asset management operations have audit labels and lifecycle without implying readiness',()=>{
- for(const tool of ['model.prepare','model.unload','speech.prepare']){const a=startActivity(tool,{role:'text',model:'4B',allowNetwork:false});const done=finishActivity(a,{output:{completed:true}});validateActivity([done]);assert.equal(done.status,'succeeded');assert.equal(done.input.allowNetwork,false);}
+ for(const tool of ['model.prepare','model.unload','speech.prepare','vision.prepare']){const a=startActivity(tool,{role:tool==='vision.prepare'?'vision':'text',model:tool==='vision.prepare'?'lfm25-vl-450m-q4f16':'4B',allowNetwork:false});const done=finishActivity(a,{output:{completed:true}});validateActivity([done]);assert.equal(done.status,'succeeded');assert.equal(done.input.allowNetwork,false);}
 });
 
 test('GPU failure display stays short while original operation diagnostics remain exact',async()=>{

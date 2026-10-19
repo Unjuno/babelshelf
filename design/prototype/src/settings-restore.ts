@@ -9,7 +9,7 @@ function checked(note:any,group:PreferenceGroup){
  checkNotes([{...note,sources:[]}]);
  return parsePreference(group,latest(note).body);
 }
-function effective(source:any,group:PreferenceGroup){const value=checked(source,group);return formatPreference(group,group==='connection'?{downloads:false}:value);}
+function effective(source:any,group:PreferenceGroup){const value=checked(source,group);return formatPreference(group,group==='connection'?{...value,downloads:false}:value);}
 export function planSettingsRestore(current:StateSnapshot,incoming:StatePayload){
  if(incoming.schema!==2)return {changes:[],writes:[]};
  const changes:{group:PreferenceGroup;noteId:string;before:string;after:string;beforeVersion:number;source:any}[]=[],writes:any[]=[];
@@ -17,7 +17,7 @@ export function planSettingsRestore(current:StateSnapshot,incoming:StatePayload)
   const source=incoming.notes.find(n=>n.id==='settings-'+group);if(!source)continue;
   const note=current.notes.find(n=>n.id===source.id);if(!note)continue;checked(note,group);
   const after=effective(source,group),before=latest(note);
-  if(before.body===after)continue;
+  if(before.body===after||group==='connection'&&JSON.stringify(parsePreference('connection',before.body))===JSON.stringify(parsePreference('connection',after)))continue;
   changes.push({group,noteId:note.id,before:before.body,after,beforeVersion:before.version,source:structuredClone(source)});
   writes.push(reviseNote(note,{body:after},before.version));
  }

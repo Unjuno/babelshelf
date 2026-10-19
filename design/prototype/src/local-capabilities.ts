@@ -8,6 +8,7 @@ const adapters:readonly LocalAdapter[]=[
  {id:'d1-text',engine:'onnx-d1',models:['d1-omni-600M'],capabilities:['decision.classify']},
  {id:'whisper',engine:'transformers-onnx',models:['whisper-tiny'],capabilities:['audio.transcribe','video.audio']},
  {id:'tesseract',engine:'tesseract-wasm',models:['tesseract-7'],capabilities:['image.ocr']},
+ {id:'lfm-vision',engine:'transformers-onnx-webgpu',models:['lfm25-vl-450m-q4f16'],capabilities:['image.describe']},
  {id:'pdf-text',engine:'pdfjs',models:[],capabilities:['pdf.text']},
 ];
 // Copy/freeze all nested collections: consumers cannot mutate authority through references.
@@ -25,6 +26,9 @@ export function capabilityState(capability:LocalCapability,model:string,prepared
  const adapter=candidates.find(a=>a.models.includes(model));
  if(!adapter&&capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {...base,adapter:candidates.find(a=>a.id==='d1-text'),status:prepared===true?'Ready':'Not prepared'};
  if(!adapter&&capability==='audio.transcribe'&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {...base,adapter:candidates.find(a=>a.id==='whisper'),status:prepared===true?'Ready':'Not prepared'};
+ // A registered Vision adapter does not make unrelated model families
+ // image-capable. Keep unsupported models visibly distinct from a missing runtime.
+ if(!adapter&&capability==='image.describe')return {...base,status:'Unsupported'};
  if(!adapter)return {...base,status:'Runtime not connected'};
  return {...base,adapter,status:prepared===true?'Ready':'Not prepared'};
 }

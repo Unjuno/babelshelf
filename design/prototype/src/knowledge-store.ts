@@ -6,6 +6,7 @@ import {exportMarkdownRevision} from './markdown-export.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
 import {buildInputReadings,validateInputReadings,type ReviewedText} from './input-readings.ts';
 import {ocrTextNote,type OcrText} from './ocr-text.ts';
+import {visionTextNote,type VisionText} from './vision-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
@@ -29,10 +30,10 @@ import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
 export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
-export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef};
+export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
 type Canonical=ReturnType<typeof createNote>;
 export function projectNote(n:Canonical):NoteView {
- const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{})};
+ const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{}),...(n.visionText?{vision:{model:n.visionText.model,revision:n.visionText.revision,prompt:n.visionText.prompt}}:{})};
 }
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 function readSnapshot(tx:IDBTransaction,done:(value:StateSnapshot)=>void){
@@ -137,7 +138,7 @@ export class KnowledgeStore {
    const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
    // A malformed preference must not lock the user out of Memory/recovery.
    // The safe fallback is downloads OFF; retain invalid bytes until explicit restore.
-   if(connection&&readPreferenceWithFallback('connection',[projectNote(connection)]).value.downloads){const changed=reviseNote(connection,{body:formatPreference('connection',{downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
+   if(connection&&readPreferenceWithFallback('connection',[projectNote(connection)]).value.downloads){const safe=readPreferenceWithFallback('connection',[projectNote(connection)]).value;const changed=reviseNote(connection,{body:formatPreference('connection',{...safe,downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
    checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){fail(e);}
   };});
  }
@@ -159,6 +160,12 @@ export class KnowledgeStore {
   return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
    const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
    const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
+  });
+ }
+ async saveVisionText(id:string,value:VisionText,newOriginal?:OriginalAsset){
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
+   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
+   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Vision note already saved');const asset=newOriginal??raw.result,note=visionTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
   });
  }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
