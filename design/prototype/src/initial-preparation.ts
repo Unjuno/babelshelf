@@ -8,21 +8,25 @@ import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 import {withLocalModels} from '../../../dist/local-model-manifest.js';
 import {speechManifest} from './speech-assets.ts';
 import {ocrFiles} from './ocr-assets.ts';
-type Role='text'|'speech'|'ocr'|'decision';
-export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean}){
+import {visionManifest} from './vision-assets.ts';
+type Role='text'|'speech'|'ocr'|'decision'|'vision';
+export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean}){
  const models=structuredClone(value),text=combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel);
  if(!text)throw Error('Choose a text model');
  const selectedSpeech=value.customSpeechModels.find(model=>model.id===value.transcriptionModel);
  if(value.transcriptionModel&&value.transcriptionModel!=='whisper-tiny'&&!selectedSpeech)throw Error('Speech runtime not connected');
  if(value.ocrModel&&value.ocrModel!=='tesseract-7')throw Error('Image text runtime not connected');
  if(value.decisionModel&&capabilityState('decision.classify',value.decisionModel,false,value.customDecisionModels).status==='Runtime not connected')throw Error('Decision runtime not connected');
+ if(value.visionModel&&capabilityState('image.describe',value.visionModel,false).status==='Unsupported')throw Error('Vision runtime not connected');
  if(text.localModel&&!ready.text)throw Error('Import local text model files first');
- models.transcriptionModel||='whisper-tiny';models.ocrModel||='tesseract-7';
- models.transcriptionLibrary=[...new Set([...models.transcriptionLibrary,models.transcriptionModel])];models.ocrLibrary=[...new Set([...models.ocrLibrary,models.ocrModel])];
- // Custom packages are imported locally. Their file size is not a network
- // preparation budget, and verifying cached bytes must work with downloads off.
- const steps=[{role:'text' as Role,label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+((isOnnxText(text.id)||isLfmText(text.id,value.customModels))?0:textManifest.runtime.file.bytes)},{role:'speech' as Role,label:selectedSpeech?.label??'Whisper tiny',readyLabel:'Verified',ready:ready.speech,bytes:selectedSpeech?0:speechManifest.files.reduce((n,f)=>n+f.bytes,0)},{role:'ocr' as Role,label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)}];
+ // A reviewed model set may deliberately select text alone. Preparation must
+ // never add readers or spend storage on roles that were left unselected.
+ // Custom packages are imported locally and contribute no network bytes.
+ const steps=[{role:'text' as Role,label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+((isOnnxText(text.id)||isLfmText(text.id,value.customModels))?0:textManifest.runtime.file.bytes)}];
+ if(models.transcriptionModel)steps.push({role:'speech',label:selectedSpeech?.label??'Whisper tiny',readyLabel:'Verified',ready:ready.speech,bytes:selectedSpeech?0:speechManifest.files.reduce((n,f)=>n+f.bytes,0)});
+ if(models.ocrModel)steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
  if(models.decisionModel){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
+ if(models.visionModel)steps.push({role:'vision',label:'LFM2.5-VL 450M · image understanding',readyLabel:'Verified',ready:ready.vision===true,bytes:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
  return {expected:JSON.stringify(value),models,steps,bytes:steps.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0)};
 }
 export type InitialPreparation=ReturnType<typeof initialPreparationPlan>;

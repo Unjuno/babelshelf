@@ -75,6 +75,7 @@ When any text-entry control loses focus, dismiss the simulated keyboard. If the 
 Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is the accepted surface reference, not a persistent knowledge engine.
 
 - No branding header, sessions, sidebar, hamburger, bottom navigation or instructional paragraphs. English controls; multilingual user content.
+- Model-set review shows all five role changes, including image understanding. Initial preparation follows the selected roles exactly: text-only never adds speech/OCR, while selected Vision has its own pinned, optional asset step. Selection and preparation do not claim phone compatibility or inference success.
 - Main input with compact photo, microphone and Send. The initial exchange is a static design example; do not fabricate inference.
 - Upper-left clear glass Input button. Touch/pen tap returns to Input. Mouse/trackpad click opens a persistent menu; destination click selects, second Input click returns to Input. Touch/pen hold 50ms to reveal curved Memory / Schedule / Notifications / Settings. Slide and release selects; stationary release closes and returns to Input. Returning to center/outside cancels after movement. Keep keyboard/screen-reader alternatives and no decorative line.
 - Memory defaults to Home (Inbox, Notes, Files); Files labels Attachments. Click folder rows and breadcrumb ancestors. Explicit Memory ancestor reveals internal Schedule/Notifications. Initial canonical roots are protected and stored depth is at most five; Home adds no stored level.

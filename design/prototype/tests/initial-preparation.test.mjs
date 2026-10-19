@@ -4,9 +4,23 @@ import {createHash} from 'node:crypto';
 import {initialPreparationPlan,runInitialPreparation} from '../src/initial-preparation.ts';
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
-test('initial preparation uses selected text and fills only unconfigured reader roles',()=>{
- const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.models.transcriptionModel,'whisper-tiny');assert.equal(plan.models.ocrModel,'tesseract-7');assert.equal(prefs.transcriptionModel,'');assert.ok(plan.bytes>950000000);assert.deepEqual(plan.steps.map(s=>s.role),['text','speech','ocr']);
+test('initial preparation respects text-only selection without acquiring unselected readers',()=>{
+ const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.models.transcriptionModel,'');assert.equal(plan.models.ocrModel,'');assert.equal(prefs.transcriptionModel,'');assert.ok(plan.bytes>950000000);assert.deepEqual(plan.steps.map(s=>s.role),['text']);
  assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-base'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/text model/);
+});
+
+test('only explicitly selected readers enter preparation, including vision',async()=>{
+ const {visionManifest}=await import('../src/vision-assets.ts');
+ const prefs=initial();prefs.transcriptionModel='whisper-tiny';prefs.transcriptionLibrary=['whisper-tiny'];prefs.visionModel=visionManifest.id;prefs.visionLibrary=[visionManifest.id];
+ const plan=initialPreparationPlan(prefs,{text:true,speech:false,ocr:false,vision:false});
+ assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','vision']);
+ assert.equal(plan.models.ocrModel,'');
+ assert.equal(plan.steps.at(-1).bytes,visionManifest.files.reduce((total,file)=>total+file.bytes,0));
+ const calls=[];await runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'));
+ assert.deepEqual(calls,['text','speech','vision','commit']);
+ const verified=initialPreparationPlan(prefs,{text:true,speech:true,ocr:false,vision:true});
+ assert.equal(verified.bytes,0);
+ assert.deepEqual(verified.steps.map(step=>step.role),['text','speech','vision']);
 });
 test('Stop or failed preparation cannot commit choices or start a later role',async()=>{
  const plan=initialPreparationPlan(initial(),{text:false,speech:false,ocr:false}),calls=[];let stopped=false;
