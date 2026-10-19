@@ -39,7 +39,7 @@ export function requireCapability(capability:LocalCapability,model:string,prepar
 }
 export function videoCapabilityStatus(model:string,prepared:boolean,customSpeechModels:readonly {id:string;role:string;engine:string}[]=[]):string {
  const audio=capabilityState('video.audio',model,prepared,[],customSpeechModels);
- return audio.status==='Ready'?'Audio only · frames unsupported':audio.status==='Not configured'?'Speech model required':audio.status+' · audio only';
+ return audio.status==='Ready'?'Ready':audio.status==='Not configured'?'Speech model required':audio.status==='Not prepared'?'Speech model not prepared':audio.status;
 }
 // Verify always rechecks local assets; it never authorizes reacquisition.
 export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[],customSpeechModels:readonly {id:string;role:string;engine:string}[]=[]){
