@@ -73,8 +73,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 5995,
-      "sha256": "ba41ad4fe2bde107f029ec057c0e938851b29c20aaaf7e87d0d922b6e6bbf9a8"
+      "bytes": 6195,
+      "sha256": "290b624ac64339cf29bb92b2174d48a4bc7f80db1691006e40d24e0823a27d39"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -149,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "e3de43ee60ff04953cb2a1d2c4eeea0691da38bfcada4ac4b3e6c6207ce547b2"
+      "sha256": "ed3e0b98d397888b9ddd989374de6ae7ec243c23eb4c149aeddd61418335326d"
     },
     {
       "path": "./ui.js",
