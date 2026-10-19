@@ -22,6 +22,17 @@ test('only explicitly selected readers enter preparation, including vision',asyn
  assert.equal(verified.bytes,0);
  assert.deepEqual(verified.steps.map(step=>step.role),['text','speech','vision']);
 });
+test('a model card prepares only its own role while initial preparation keeps the full set',async()=>{
+ const prefs=initial();prefs.transcriptionModel='whisper-tiny';prefs.transcriptionLibrary=['whisper-tiny'];prefs.decisionModel='d1-omni-600M';prefs.decisionLibrary=['d1-omni-600M'];
+ const ready={text:false,speech:false,ocr:false,decision:false};
+ const all=initialPreparationPlan(prefs,ready),text=initialPreparationPlan(prefs,ready,'text'),decision=initialPreparationPlan(prefs,ready,'decision');
+ assert.deepEqual(all.steps.map(step=>step.role),['text','speech','decision']);
+ assert.deepEqual(text.steps.map(step=>step.role),['text']);assert.equal(text.bytes,text.steps[0].bytes);
+ assert.deepEqual(decision.steps.map(step=>step.role),['decision']);assert.equal(decision.bytes,decision.steps[0].bytes);
+ const calls=[];await runInitialPreparation(decision,async role=>calls.push(role),async()=>calls.push('commit'));
+ assert.deepEqual(calls,['decision','commit']);
+ assert.throws(()=>initialPreparationPlan(prefs,ready,'ocr'),/Choose a ocr model/);
+});
 test('Stop or failed preparation cannot commit choices or start a later role',async()=>{
  const plan=initialPreparationPlan(initial(),{text:false,speech:false,ocr:false}),calls=[];let stopped=false;
  await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);stopped=true;},async()=>calls.push('commit'),()=>{if(stopped)throw Error('Stopped');}),/Stopped/);assert.deepEqual(calls,['text']);
