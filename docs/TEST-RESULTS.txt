@@ -1943,3 +1943,7 @@ The upstream pinned GGUF served the exact first 16,777,216-byte range with 206 a
 The Add model sheet now lists only choices not already registered in that role. Registered models remain selectable in the normal model picker. Re-selecting a model no longer produces the inaccurate `Model added · files not prepared` message; the selected role card owns preparation status. An exhausted built-in list states `All listed models added` while compatible custom import remains available where connected.
 
 Checks: prototype 498/498, npm run check PASS, product acceptance 4/4, product build df2062252cec3e0d / 118 verified assets. Site staging and delivery verifier passed, v52 deployed successfully, and direct public build.json plus entry JS match the new build. The existing sidebar PWA was not operated or visually verified for this release. No model files or user knowledge were changed.
+
+2026-10-20 — complete fixed 9B weight identity
+
+`node scripts/check-pinned-model-full.mjs 9B` streamed all 1,997,486,976 bytes from the pinned PrismML revision with the public site Origin and returned the manifest SHA-256 `3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b` (exit 0). The weights were not stored in the PWA or run through WebGPU. This closes the full-file hash check left open by the earlier 16 MiB header inspection, while app preparation, browser storage, load/generation/Stop, cold offline reload and iPhone fit remain unverified. No product code or public Site version changed.
