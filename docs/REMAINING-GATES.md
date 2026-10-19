@@ -1,6 +1,6 @@
 # Remaining MVP acceptance gates
 
-Latest local product build is 24ded63562803444/117 (Unit268 model-set stale-review guard). Its model-set checks are isolated local PC Chrome UI/storage checks; installed-PWA/inference evidence below retains the listed older builds. No deployment was made for this work; the public site remains at the previously recorded build. Earlier receipts keep their original measured builds. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
+Current published product build is 4f8729d8e10f2e72/118 (Sites v32, 2026-10-20). Fresh settings directly register three text choices while selecting only 4B; older profiles keep their own libraries. This is a source, build and public-delivery check, not a new browser-interaction, model-generation or physical-device result. Installed-PWA/inference evidence below retains its listed measured builds; earlier receipts keep their original scope. Whole objective remains incomplete. Passing scoped PC flows does not establish professional production suitability.
 
 Unit224: user requested more ordinary public-site operation while deferring phones. Found and fixed explicit capture delimiter/imperative routing and missing-model settings navigation; public normal-use and retained update evidence are in TEST-RESULTS.txt. Generic model capture without required body remains rejected, not repaired or broadly certified.
 
