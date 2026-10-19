@@ -21,6 +21,10 @@
       {
         "value": "lfm25-350m-qad-q4-0",
         "label": "LFM2.5 \u00b7 350M \u00b7 QAD"
+      },
+      {
+        "value": "lfm25-230m-qad-q4-0",
+        "label": "LFM2.5 \u00b7 230M \u00b7 QAD"
       }
     ],
     "decision": [

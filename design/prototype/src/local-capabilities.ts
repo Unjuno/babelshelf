@@ -2,7 +2,7 @@
 export type LocalCapability='text.generate'|'decision.classify'|'image.ocr'|'audio.transcribe'|'video.audio'|'video.frames'|'pdf.text'|'image.describe'|'text.embed'|'text.rerank'|'audio.synthesize';
 export type LocalAdapter={id:string;engine:string;models:readonly string[];capabilities:readonly LocalCapability[]};
 const adapters:readonly LocalAdapter[]=[
- {id:'lfm-text',engine:'wllama-cpu-count',models:['lfm25-350m-qad-q4-0'],capabilities:['text.generate']},
+ {id:'lfm-text',engine:'wllama-cpu-count',models:['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'],capabilities:['text.generate']},
  {id:'webml-text',engine:'webml',models:['4B','2B'],capabilities:['text.generate']},
  {id:'onnx-text',engine:'transformers-onnx',models:['smollm2-360m-instruct','qwen25-05b-instruct'],capabilities:['text.generate']},
  {id:'d1-text',engine:'onnx-d1',models:['d1-omni-600M'],capabilities:['decision.classify']},

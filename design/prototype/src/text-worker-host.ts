@@ -2,15 +2,15 @@ import type {TextRuntime} from './text-inference.ts';
 type Runtime=TextRuntime&{unload:()=>Promise<void>};
 type Message={id:number;cmd:string;args?:any};
 // Host receives only an app-owned prepared runtime. It has no acquisition or write command.
-export function createTextWorkerHost(readRuntime:(progress:(value:string)=>void)=>Promise<Runtime>,send:(message:any)=>void,disposeChildren:()=>void=()=>{}){
+export function createTextWorkerHost(readRuntime:(progress:(value:string)=>void,configuration?:any)=>Promise<Runtime>,send:(message:any)=>void,disposeChildren:()=>void=()=>{}){
  let disposed=false,busy=false,activeId:number|null=null,current:Runtime|undefined,ready:Promise<Runtime>|undefined;
  const progress=(value:string)=>{if(busy&&activeId!==null)send({id:activeId,type:'progress',value:String(value).slice(0,2000)});};
- const getRuntime=async()=>{try{return await(ready??=Promise.resolve().then(()=>readRuntime(progress)));}catch(error){ready=undefined;throw error;}};
+ const getRuntime=async(configuration?:any)=>{try{return await(ready??=Promise.resolve().then(()=>readRuntime(progress,configuration)));}catch(error){ready=undefined;throw error;}};
  return async({data}:{data:Message})=>{
   const {id,cmd,args={}}=data;if(id===0&&cmd==='dispose'){disposed=true;current?.stop();disposeChildren();send({id:0,type:'disposed'});return;}if(!Number.isSafeInteger(id)||id<1)return;if(disposed){send({id,type:'error',value:'Stopped'});return;}
   if(!['init','status','load','unload','count','generate'].includes(cmd)){send({id,type:'error',value:'Unknown text operation'});return;}
   if(busy){send({id,type:'error',value:'Model busy'});return;}busy=true;activeId=id;
-  try{const runtime=await getRuntime();if(disposed)throw Error('Stopped');current=runtime;let value:any;
+  try{const runtime=await getRuntime(cmd==='init'?args:undefined);if(disposed)throw Error('Stopped');current=runtime;let value:any;
    if(cmd==='init'||cmd==='status')value=runtime.assets;
    else if(cmd==='load'){await runtime.load(args.model);value=true;}
    else if(cmd==='unload'){await runtime.unload();value=true;}

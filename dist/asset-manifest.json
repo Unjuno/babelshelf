@@ -33,8 +33,8 @@
     },
     {
       "path": "./gguf-inspect.js",
-      "bytes": 5221,
-      "sha256": "e2cfa4982365a5c38f7b9c29800e3667bd411e79026c252302f2c7a9324030ed"
+      "bytes": 5397,
+      "sha256": "864556743e39e096000c656b391e6962ddbc222fc19f03df023fad78a18cbed7"
     },
     {
       "path": "./gpu-info.js",
@@ -88,18 +88,18 @@
     },
     {
       "path": "./local-engines.js",
-      "bytes": 1143,
-      "sha256": "726390a67044cdefc9dd4815a181528832e685000a39cd90a108d6c023f554a4"
+      "bytes": 1635,
+      "sha256": "df73ae06b0c2c0f9a4bed7d3309bcd11e1d447cf1eb7a57d78dfe1502af60ba5"
     },
     {
       "path": "./local-model-manifest.js",
-      "bytes": 1461,
-      "sha256": "a0f6c7dd1c77cc7c9b630203578e53e8f7d11b91b675987b94e2346e9f36896a"
+      "bytes": 1508,
+      "sha256": "7de3c5155526ad7f4898d2eacc4777a49b5a4cc2f22a56af2d45a2d382412eb2"
     },
     {
       "path": "./local-models.js",
-      "bytes": 3560,
-      "sha256": "6d39861fd6047390a8c35e6a3aff39c6b3429f076a02322f0e4b970ad1ee7b76"
+      "bytes": 3547,
+      "sha256": "c655a0f5995475028238213bbdfff2a21d3a3d8d7499bc34bfbf21100e6d390f"
     },
     {
       "path": "./manifest.webmanifest",
@@ -149,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "3093aa4e4bd5b3e102cc2ceec829587b8ee713ebf25ea7a2b01945fd68ed2ce7"
+      "sha256": "9fa461e54de8834e4bce58276e6df4f2fe57b6be689cf80e8529c9ee3041ef7c"
     },
     {
       "path": "./ui.js",

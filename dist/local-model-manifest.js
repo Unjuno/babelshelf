@@ -3,7 +3,7 @@ import {inspectGGUF} from './gguf-inspect.js';
 export function withLocalModels(base,records=[]){
  if(!Array.isArray(records)||records.length>64)throw Error('Invalid local model registry');
  const checked=records.map(validateLocalModel),ids=new Set(base.models.map(m=>m.id));
- const custom=checked.map(record=>{
+ const custom=checked.filter(record=>record.engine==='webml-qwen35').map(record=>{
   if(ids.has(record.id))throw Error('Duplicate local model');ids.add(record.id);
   return {id:record.id,name:record.label,revision:record.revision,format:'GGUF',file:{name:record.file.sha256+'.gguf',bytes:record.file.bytes,sha256:record.file.sha256},tokenizer:'GGUF metadata',chatTemplate:'GGUF tokenizer.chat_template metadata',mmproj:null,generationVerified:false,localModel:record};
  });

@@ -39,6 +39,8 @@ export async function inspectGGUF(file,{signal}={}){
   const type=u32(),offset=u64();types.add(type);let size=null;
   if(type===0)size=elements*4;
   if(type===143){if(elements%128)fail('Invalid PTQ1_0 block shape');size=elements/128*28;}
+  if(type===2){if(elements%32)fail('Invalid Q4_0 block shape');size=elements/32*18;}
+  if(type===14){if(elements%256)fail('Invalid Q6_K block shape');size=elements/256*210;}
   if(size!==null&&!Number.isSafeInteger(size))fail('Tensor size exceeds safe range');
   offsets.push({offset,size});
  }

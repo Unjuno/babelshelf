@@ -9,6 +9,10 @@ test('custom model records are strict declarative identity, never runtime code o
  const value=record();assert.deepEqual(validateLocalModel(value),value);
  for(const change of [r=>r.engine='remote',r=>r.role='decision',r=>r.id='4B',r=>r.file.url='https://example.com/weights',r=>r.runtime='script.js',r=>r.ready=true,r=>r.inspection.architecture='llama',r=>r.file.bytes=999,r=>r.inspection.tensorTypes=[143,143],r=>r.label='bad\0name']){const r=record();change(r);assert.throws(()=>validateLocalModel(r),/model/i);}
 });
+test('LFM2 custom records must match the inspected wllama adapter contract',()=>{
+ const value=record();value.engine='wllama-lfm2';value.inspection.architecture='lfm2';value.inspection.tensorTypes=[0,2,14];value.inspection.tensorCount=3;assert.deepEqual(validateLocalModel(value),value);
+ for(const change of [r=>r.inspection.tokenizer='sentencepiece',r=>r.inspection.chatTemplate=false,r=>r.inspection.tensorTypes=[0,2,143],r=>r.inspection.tensorExtentsChecked=false]){const bad=record();bad.engine='wllama-lfm2';bad.inspection.architecture='lfm2';bad.inspection.tensorTypes=[0,2,14];bad.inspection.tensorCount=3;change(bad);assert.throws(()=>validateLocalModel(bad),/model/i);}
+});
 test('local weight hashing streams exact bytes and cancellation cannot return a verified digest',async()=>{
  const bytes=new Uint8Array(200000).fill(73),blob=new Blob([bytes]);
  assert.equal(await hashLocalModel(blob),createHash('sha256').update(bytes).digest('hex'));

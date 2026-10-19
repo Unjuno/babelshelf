@@ -1,6 +1,19 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createLfmTextRuntime} from '../src/lfm-text-runtime.ts';
+import {lfmTextModels,describeLfmText} from '../src/lfm-text-manifest.ts';
 // Controlled adapter/asset contract checks, not inference evidence.
+test('LFM2.5 230M and 350M are distinct pinned text choices on the same local runtime',()=>{
+ const ids=lfmTextModels.map(m=>m.id);assert.deepEqual(ids,['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0']);
+ const models=describeLfmText().models;const smaller=models[1],larger=models[0];
+ assert.equal(smaller.engine,'wllama-cpu-count');assert.equal(smaller.runtime.revision,larger.runtime.revision);
+ assert.equal(smaller.revision,'03502067c64ce32ac4fe87b0cec0310a1a13d3e9');assert.equal(smaller.file.bytes,149081056);
+ assert.equal(smaller.file.sha256,'e75f83268de11b2a1bcfab5f3b5c5c0c97569ddbbc0990aad88437e45b8ba292');
+ assert.equal(smaller.contextTokens,2048);assert.equal(smaller.files[0].path,smaller.file.name);
+});
+test('a validated custom LFM2 record becomes a hash-pinned local-only model on the fixed runtime',()=>{
+ const sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2 fine tune',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},inspection:{format:'GGUF',version:3,bytes:149081056,name:'My model',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};
+ const m=describeLfmText([custom]).models.at(-1);assert.equal(m.id,custom.id);assert.equal(m.file.sha256,sha);assert.equal(m.engine,'wllama-cpu-count');assert.equal(m.contextTokens,2048);assert.equal(m.runtime.revision,describeLfmText().runtime.revision);assert.equal(m.url,undefined);
+});
 function fixture(){const calls=[],file=new Blob(['weights']),adapter={loaded:null,supportsExactCount:true,maxReplyTokens:768,async load(_f,id,{backend}){calls.push(['load',backend]);this.loaded=id;},async unload(){calls.push(['unload']);this.loaded=null;},abort(){calls.push(['stop']);},async count(){calls.push(['count']);return 20;},async generate(_m,o){calls.push(['generate',o.maxTokens]);return {text:'{"answer":"valid"}'};}};const manifest={contextTokens:2048,runtime:{revision:'fixed-count-runtime'},models:[{id:'local',revision:'weights-sha',file:{name:'local.gguf',bytes:file.size}}]},runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>file,readAssets:()=>({local:{filesPresent:true}})});return {runtime,adapter,calls,manifest};}
 test('prepared text bridge pins CPU and enforces exact combined context before inference',async()=>{const f=fixture();await f.runtime.load('local');assert.deepEqual(f.calls[1],['load','cpu']);const bound=f.runtime.pin();assert.equal((await bound.count([])).prompt_tokens,20);assert.equal((await bound.generate([],768,'dialogue-answer')).text,'{"answer":"valid"}');f.adapter.count=async()=>2040;await assert.rejects(f.runtime.generate([{role:'user',content:'different'}],16),/context limit/);assert.equal(f.calls.filter(c=>c[0]==='generate').length,1);f.manifest.runtime.revision='forged';assert.equal(f.runtime.manifest.runtime.revision,'fixed-count-runtime');await f.runtime.unload();await assert.rejects(bound.count([]),/Stopped/);assert.equal(f.runtime.loaded,'');});
 test('old runtime and incomplete structured outputs never become usable answers',async()=>{const f=fixture();f.adapter.supportsExactCount=false;await assert.rejects(f.runtime.load('local'),/Exact pre-generation/);assert.equal(f.runtime.loaded,'');f.adapter.supportsExactCount=true;await f.runtime.load('local');f.adapter.generate=async()=>({text:'{"answer":'});await assert.rejects(f.runtime.generate([],64,'dialogue-answer'),/structured output/);await assert.rejects(f.runtime.generate([],769),/Output budget/);});

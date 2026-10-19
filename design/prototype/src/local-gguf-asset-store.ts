@@ -1,0 +1,32 @@
+// @ts-expect-error Shared streaming verifier is JavaScript.
+import {hashLocalModel} from '../../../dist/local-models.js';
+type Model={id:string;engine:string;file:{bytes:number;sha256:string}};
+type Progress=(bytes:number,total:number)=>void;
+// Custom weights have no acquisition URL: only the explicitly selected local file can fill this store.
+export function createLocalGgufAssetStore(model:Model,io:{directory:()=>Promise<FileSystemDirectoryHandle>}){
+ const pin=structuredClone(model);
+ if(pin.engine!=='wllama-lfm2'||pin.id!=='local-'+pin.file.sha256||!Number.isSafeInteger(pin.file.bytes)||pin.file.bytes<24||!/^[a-f0-9]{64}$/.test(pin.file.sha256))throw Error('Invalid local GGUF pin');
+ const check=(signal:AbortSignal)=>signal.throwIfAborted();
+ async function read(signal:AbortSignal,progress:Progress=()=>{}){
+  check(signal);const dir=await io.directory();check(signal);const file=await(await dir.getFileHandle(pin.file.sha256)).getFile();check(signal);
+  if(file.size!==pin.file.bytes||await hashLocalModel(file,{signal,progress})!==pin.file.sha256)throw Error('Local GGUF verification failed');
+  check(signal);return file;
+ }
+ return {
+  async status(signal:AbortSignal){check(signal);const dir=await io.directory();check(signal);try{const file=await(await dir.getFileHandle(pin.file.sha256)).getFile();check(signal);return {filesPresent:file.size===pin.file.bytes};}catch(error){check(signal);return {filesPresent:false};}},
+  async verify(signal:AbortSignal,progress:Progress=()=>{}){await read(signal,progress);},
+  read,
+  async prepare(_allowNetwork:boolean,signal:AbortSignal,progress:Progress=()=>{},files:File[]=[]){
+   if((await this.status(signal)).filesPresent){try{await read(signal,progress);return;}catch{check(signal);}}
+   const local=files.filter(file=>file.name.toLowerCase().endsWith('.gguf'));if(local.length!==1)throw Error('Choose one local GGUF file');
+   if(local[0].size!==pin.file.bytes||await hashLocalModel(local[0],{signal,progress})!==pin.file.sha256)throw Error('Local GGUF verification failed');check(signal);
+   const dir=await io.directory();check(signal);const handle=await dir.getFileHandle(pin.file.sha256,{create:true});check(signal);const writer=await handle.createWritable();check(signal);const source=local[0].stream().getReader();let closed=false;
+   const streamed={size:local[0].size,stream:()=>({getReader:()=>({
+    async read(){check(signal);const chunk=await source.read();check(signal);if(!chunk.done){await writer.write(chunk.value.slice().buffer);check(signal);}return chunk;},
+    cancel:()=>source.cancel(),releaseLock:()=>source.releaseLock()
+   })})};
+   try{const hash=await hashLocalModel(streamed,{signal,progress});if(hash!==pin.file.sha256)throw Error('Local GGUF verification failed');check(signal);await writer.close();closed=true;check(signal);await read(signal,progress);}
+   finally{if(!closed)await writer.abort().catch(()=>{});if(!source.closed)await source.cancel().catch(()=>{});try{source.releaseLock();}catch{/* the hash helper may already have released it */}}
+  }
+ };
+}

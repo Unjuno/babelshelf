@@ -4,7 +4,7 @@ import {OCR_LANGUAGES,type OcrLanguage} from './ocr-assets.ts';
 import speechLanguages from './speech-languages.json' with {type:'json'};
 import {settings} from './app-settings.ts';
 
-export type CustomLocalModel={id:string;label:string;role:'text';engine:'webml-qwen35';revision:string;file:{bytes:number;sha256:string};inspection:{format:'GGUF';version:number;bytes:number;name:string;architecture:string;contextLength:number;tokenizer:string;chatTemplate:boolean;tokenCount:number;tensorCount:number;tensorTypes:number[];tensorExtentsChecked:boolean;dataOffset:number}};
+export type CustomLocalModel={id:string;label:string;role:'text';engine:'webml-qwen35'|'wllama-lfm2';revision:string;file:{bytes:number;sha256:string};inspection:{format:'GGUF';version:number;bytes:number;name:string;architecture:string;contextLength:number;tokenizer:string;chatTemplate:boolean;tokenCount:number;tensorCount:number;tensorTypes:number[];tensorExtentsChecked:boolean;dataOffset:number}};
 export type PreferenceGroup='models'|'appearance'|'connection';
 const defaults={
  models:{customModels:[] as CustomLocalModel[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},

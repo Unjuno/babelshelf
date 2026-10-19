@@ -53,6 +53,8 @@ test('shared capability dispatch separates role, engine support and verified ass
  assert.equal(capabilityState('audio.transcribe','whisper-base',true).status,'Runtime not connected');
  assert.equal(capabilityState('audio.transcribe','d1-omni-600M',true).status,'Runtime not connected');
  assert.equal(capabilityState('decision.classify','d1-omni-600M',true).status,'Ready');
+ assert.equal(capabilityState('text.generate','lfm25-230m-qad-q4-0',false).status,'Not prepared');
+ assert.equal(requireCapability('text.generate','lfm25-230m-qad-q4-0',true).engine,'wllama-cpu-count');
  assert.equal(capabilityState('image.describe','d1-omni-600M',true).status,'Unsupported');
  assert.equal(capabilityState('audio.transcribe','',true).status,'Not configured');
  assert.equal(capabilityState('video.frames','whisper-tiny',true).status,'Unsupported');

@@ -16,6 +16,15 @@ export class TextEngineRouter{
    engines.add(r.id);this.registrations.push({...r,modelIds:Object.freeze([...r.modelIds]),instance:null});
   }
  }
+ replaceRegistration(id:string,replacement:TextBackendRegistration){
+  const index=this.registrations.findIndex(r=>r.id===id),current=this.registrations[index];
+  if(!current||replacement.id!==id||!Array.isArray(replacement.modelIds)||!replacement.modelIds.length||new Set(replacement.modelIds).size!==replacement.modelIds.length||typeof replacement.describe!=='function'||typeof replacement.create!=='function')throw Error('Invalid text engine registration');
+  if(this.active===current.instance)throw Error('Unload model first');
+  const occupied=new Set<string>((this.base.models??[]).map((m:any)=>m.id));for(let i=0;i<this.registrations.length;i++)if(i!==index)for(const model of this.registrations[i].modelIds)occupied.add(model);
+  for(const modelId of replacement.modelIds){if(typeof modelId!=='string'||!modelId||occupied.has(modelId))throw Error('Invalid text engine registration');const described=replacement.describe(modelId);if(!described||!Number.isSafeInteger(described.contextTokens)||described.contextTokens<1||!described.runtime?.revision||!Array.isArray(described.models)||described.models.length!==replacement.modelIds.length||described.models.some((m:any)=>!replacement.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(described.models.map((m:any)=>m.id)).size!==replacement.modelIds.length)throw Error('Invalid text engine registration');occupied.add(modelId);}
+  if(current.instance){current.instance.abort();current.instance.worker.terminate();}
+  this.registrations[index]={...replacement,modelIds:Object.freeze([...replacement.modelIds]),instance:null};
+ }
  private registration(id:string){return this.registrations.find(r=>r.modelIds.includes(id));}
  get manifest(){const id=this.loaded??'',selected=this.registration(id)?.describe(id);return {...this.base,...(selected?{contextTokens:selected.contextTokens,runtime:selected.runtime}:{}),models:[...this.base.models,...this.registrations.flatMap(r=>r.describe(r.modelIds.includes(id)?id:r.modelIds[0]).models)]};}
  set manifest(value:any){if(value.models?.some((m:any)=>this.registration(m.id)))throw Error('Text model belongs to a registered engine');this.base=value;this.webml.manifest=value;}

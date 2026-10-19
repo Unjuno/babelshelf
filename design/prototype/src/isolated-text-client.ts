@@ -1,6 +1,6 @@
 import {PlannerOutputError} from './planner-error.ts';
 // A dedicated client for hard-stoppable WASM inference. No automatic replay after Stop.
-export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false}:{disposeHandshake?:boolean}={}){
+export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={}}:{disposeHandshake?:boolean;initArgs?:any}={}){
  let seq=0,loaded:string|null=null,fault:Error|null=null;
  let disposeTimer:ReturnType<typeof setTimeout>|undefined,disposing=false;
  const terminate=()=>{if(disposeTimer)clearTimeout(disposeTimer);worker.terminate();};
@@ -13,7 +13,7 @@ export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false}:
   return new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject,events});try{worker.postMessage({id,cmd,args});}catch(error){pending.delete(id);reject(error);}});
  };
  function abort(){if(fault)return;fail(Error('Stopped'));if(disposeHandshake){disposing=true;disposeTimer=setTimeout(terminate,1000);try{worker.postMessage({id:0,cmd:'dispose'});}catch{terminate();}}else terminate();}
- return {manifest:{},worker:{terminate:abort},get failed(){return !!fault;},get loaded(){return loaded;},init:()=>call('init'),call,
+ return {manifest:{},worker:{terminate:abort},get failed(){return !!fault;},get loaded(){return loaded;},init:()=>call('init',initArgs),call,
  async load(id:string,events?:any){loaded=null;await call('load',{model:id},events);if(fault)throw fault;loaded=id;},
  async unload(){await call('unload');loaded=null;},abort};
 }

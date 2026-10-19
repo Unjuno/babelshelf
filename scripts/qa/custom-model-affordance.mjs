@@ -15,9 +15,9 @@ try{
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Models',exact:true}).click();
- const add=page.getByRole('button',{name:'Add compatible Qwen3.5 GGUF',exact:true});
+ const add=page.getByRole('button',{name:'Add compatible local GGUF',exact:true});
  await add.waitFor({state:'visible'});
- assert.match(await add.innerText(),/Qwen3\.5/);
+ assert.equal((await add.innerText()).trim(),'Add local GGUF');
  await page.screenshot({path:join(output,'models.png'),fullPage:true});
  const chooser=page.waitForEvent('filechooser');
  await add.click();

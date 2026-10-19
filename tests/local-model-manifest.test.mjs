@@ -11,6 +11,10 @@ test('custom manifest extends builtins with data only and preserves fixed runtim
  const model=out.models.at(-1);assert.equal(model.id,r.id);assert.equal(model.revision,r.revision);assert.equal(model.file.url,undefined);assert.equal(model.file.name,sha256+'.gguf');assert.equal(model.license,undefined);assert.equal(model.localModel.engine,'webml-qwen35');
  assert.throws(()=>withLocalModels(base,[r,r]),/Duplicate/);assert.throws(()=>withLocalModels(base,[{...r,runtime:{url:'https://example.com'}}]),/model/);assert.throws(()=>withLocalModels(base,Array(65).fill(r)),/registry/);
 });
+test('an LFM2 custom model never enters the WebML Qwen3.5 registry',()=>{
+ const value=record();value.engine='wllama-lfm2';value.inspection.architecture='lfm2';value.inspection.tensorTypes=[0,2,14];value.inspection.tensorCount=3;
+ const out=withLocalModels(base,[value]);assert.equal(out.models.length,2);assert.ok(!out.models.some(model=>model.id===value.id));
+});
 test('registered declaration cannot verify unrelated local bytes',async()=>{
  await assert.rejects(verifyLocalModelFile(new Blob([new Uint8Array(1000)]),record()),/GGUF|verification/i);
 });
