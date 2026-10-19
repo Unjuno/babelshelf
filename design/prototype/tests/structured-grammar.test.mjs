@@ -1,8 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createStructuredGrammar} from '../src/structured-grammar.ts';
+import {createStructuredGrammar,createStructuredSchema} from '../src/structured-grammar.ts';
 const enc=new TextEncoder();
 function accepts(format,text){const grammar=createStructuredGrammar(format),state=grammar.advance(grammar.initial,enc.encode(text));return !!state&&grammar.complete(state);}
+
+test('LFM JSON schema mirrors the scoped planner grammar and rejects undeclared actions/targets',()=>{
+ const format={type:'dialogue-plan',scope:{inputs:false,file:true,current:true,historyCount:3,assistantIndices:[0,2]}};
+ const schema=createStructuredSchema(format);
+ assert.equal(schema.type,'object');assert.ok(Array.isArray(schema.anyOf));assert.ok(schema.anyOf.length>0);
+ const branches=schema.anyOf;
+ const find=(action,target)=>branches.some(branch=>branch.properties.action.enum.includes(action)&&(!target||branch.properties.target?.enum.includes(target)));
+ assert.equal(find('chat'),true);assert.equal(find('read','file'),true);assert.equal(find('read','path'),true);
+ assert.equal(find('recall','history'),true);assert.equal(find('read','knowledge'),false);assert.equal(find('delete'),false);
+ const history=branches.find(branch=>branch.properties.action.enum.includes('recall')&&branch.properties.target?.enum.includes('history'));
+ assert.deepEqual(history.properties.historyIndex,{type:'integer',minimum:0,maximum:2});
+ assert.equal(history.additionalProperties,false);
+ const answer=createStructuredSchema('dialogue-answer');assert.deepEqual(answer,{type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false});
+});
 
 test('body-only capture is a complete new-text plan, never an attachment or historical selector',()=>{
  const scope={inputs:false,file:false,current:false,historyCount:0},format={type:'dialogue-plan',scope};
@@ -52,6 +66,12 @@ test('incomplete or extended output cannot become a successful structured result
  assert.ok(prefix);assert.equal(grammar.complete(prefix),false);
  assert.equal(accepts('dialogue-answer','{"answer":"hello"} prose'),false);assert.equal(accepts('dialogue-answer','{"answer":true}'),false);
  assert.throws(()=>createStructuredGrammar('arbitrary-code'),/format/);
+});
+
+test('planner grammar accepts insignificant JSON whitespace while retaining exact scoped fields',()=>{
+ const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}};
+ for(const text of [' { "action" : "chat" , "query" : "hello" }\n','{\n"action"\t:\t"calculate",\r\n"query":"(2 + 2)"\n}'])assert.equal(accepts(format,text),true,text);
+ for(const text of ['{ "action":"delete", "query":"all" }','{ "action":"chat", "query":"", "target":"file" }','{ "action":"chat", "query":"", "extra":true }'])assert.equal(accepts(format,text),false,text);
 });
 
 test('JSON string controls and multilingual scalar values remain valid at every byte boundary',()=>{

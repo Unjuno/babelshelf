@@ -323,25 +323,33 @@ test('one request cannot plan on one revision and answer on its replacement',asy
  let generations=0;
  const runtime={manifest:{contextTokens:16000,models:[{id:'local',revision:'first'}],runtime:{revision:'runtime'}},loaded:'local',assets:{local:{filesPresent:true}},load:async()=>{},stop:()=>{},count:async()=>({prompt_tokens:10}),generate:async()=>{generations++;return {text:'{"action":"chat","query":""}'};}};
  const live=createTextInference(()=>runtime),request=live.pin();
- const prior=emptyDialogue(),context=dialogueContext(await compactDialogue(prior,request,'Hello'));
- const plan=await planDialogue(request,'Hello',context);assert.equal(plan.action,'chat');
+ const prior=emptyDialogue(),context=dialogueContext(await compactDialogue(prior,request,'Can we talk?'));
+ const plan=await planDialogue(request,'Can we talk?',context);assert.equal(plan.action,'chat');
  runtime.manifest.models[0].revision='replacement';
- await assert.rejects(groundedAnswer({all:async()=>[]},request,'local','Hello','','chat',context),/Model changed/);
+ await assert.rejects(groundedAnswer({all:async()=>[]},request,'local','Can we talk?','','chat',context),/Model changed/);
  assert.equal(generations,1);assert.deepEqual(prior,emptyDialogue());
+});
+
+test('plain greetings take the model-backed conversation route without asking a small planner to invent a tool',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};let calls=0;
+ const engine={manifest:{contextTokens:2048},count:async()=>{calls++;return {prompt_tokens:1};},generate:async()=>{calls++;return {text:'{"action":"search","query":"travel","target":"knowledge"}'};}};
+ for(const greeting of ['Hello.','HI!','こんにちは。','おはようございます'])assert.deepEqual(await planDialogue(engine,greeting,context),{action:'chat',query:''});
+ assert.equal(calls,0);
+ assert.deepEqual(await planDialogue(engine,'Hello. Search my notes about travel.',context),{action:'search',query:'travel',target:'knowledge'});assert.equal(calls,2);
 });
 
 // A constrained transport request never replaces semantic/target validation.
 test('planner requests structured generation but still refuses an invalid target',async()=>{
  let format;
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async(messages,max,requested)=>{format=requested;return {text:'{"action":"chat","query":"","target":"file"}'};}};
- await assert.rejects(planDialogue(engine,'Hello',{summary:'',recent:[],refs:[],turnCount:0}),/Invalid model/);assert.deepEqual(format,{type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}});
+ await assert.rejects(planDialogue(engine,'Find the note about the marker',{summary:'',recent:[],refs:[],turnCount:0}),/Invalid model/);assert.deepEqual(format,{type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}});
 });
 
 test('planner advertises the same available scopes it sends to local structured generation',async()=>{
  const seen=[];
  const e={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async(messages,max,format)=>{seen.push({messages,format});return {text:'{"action":"chat","query":""}'};}};
  const context={summary:'',recent:[],refs:[],turnCount:2,currentResult:{turnId:'previous'},currentFile:{noteId:'opened',revision:1}};
- await planDialogue(e,'Hello',context);
+ await planDialogue(e,'What did we decide before?',context);
  await planDialogue(e,'Read this',context,[{name:'recording.wav',kind:'audio',status:'Not prepared'}]);
  assert.deepEqual(seen[0].format,{type:'dialogue-plan',scope:{inputs:false,file:true,current:true,historyCount:2,assistantIndices:[]}});
  assert.deepEqual(seen[1].format,{type:'dialogue-plan',scope:{inputs:true,file:false,current:true,historyCount:2,assistantIndices:[]}});

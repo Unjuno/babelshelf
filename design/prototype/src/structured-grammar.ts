@@ -1,5 +1,41 @@
 import {HARNESS_ACTIONS,scopedHarnessActions,validatePlannerScope,type PlannerScope} from './harness-actions.ts';
 export type StructuredFormat='dialogue-plan'|'dialogue-answer'|{type:'dialogue-plan';scope:PlannerScope};
+type JsonSchema=Record<string,unknown>;
+export function createStructuredSchema(format:StructuredFormat):JsonSchema{
+ const kind=typeof format==='string'?format:format?.type;
+ if(kind==='dialogue-answer')return {type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false};
+ if(kind!=='dialogue-plan')throw Error('Unsupported output format');
+ const scope=typeof format==='object'?validatePlannerScope(format.scope):undefined;
+ const actions=scope?scopedHarnessActions(scope):HARNESS_ACTIONS;
+ const branches:JsonSchema[]=[];
+ const add=(action:string,target?:string,historyPart?:'user'|'assistant')=>{
+  const properties:Record<string,unknown>={action:{type:'string',enum:[action]},query:{type:'string'}};
+  const required=['action','query'];
+  if(target){properties.target={type:'string',enum:[target]};required.push('target');}
+  if(historyPart){
+   const count=scope?.historyCount;
+   let index:JsonSchema={type:'integer',minimum:0,...(count===undefined?{}:{maximum:count-1})};
+   if(historyPart==='assistant'&&scope?.assistantIndices)index={type:'integer',enum:scope.assistantIndices};
+   properties.historyIndex=index;properties.historyPart={type:'string',enum:[historyPart]};required.push('historyIndex','historyPart');
+  }
+  if(action==='capture'&&!target){properties.body={type:'string'};required.push('body');}
+  branches.push({type:'object',properties,required,additionalProperties:false});
+ };
+ for(const action of actions){
+  if(action.id==='capture'&&!scope?.inputs){
+   branches.push({type:'object',properties:{action:{type:'string',enum:['capture']},body:{type:'string'}},required:['action','body'],additionalProperties:false});
+  }
+  const targets:(string|undefined)[]=[...action.targets];if(!['recall','transform'].includes(action.id))targets.unshift(undefined);
+  for(const target of targets){
+   if(target==='history'){
+    add(action.id,target,'user');
+    if(!scope?.assistantIndices||scope.assistantIndices.length)add(action.id,target,'assistant');
+   }else add(action.id,target);
+  }
+ }
+ if(!branches.length)throw Error('Empty structured output schema');
+ return {type:'object',anyOf:branches};
+}
 type State={nodes:number[];remaining:number;min:number;max:number};
 type Node={epsilon:number[];edges:{accept:(byte:number)=>boolean;to:number}[]};
 type Fragment={start:number;end:number};
@@ -10,7 +46,7 @@ export function createStructuredGrammar(format:StructuredFormat){
  const nodes:Node[]=[];
  const node=()=>{nodes.push({epsilon:[],edges:[]});return nodes.length-1;};
  const edge=(from:number,to:number,accept:(byte:number)=>boolean)=>nodes[from].edges.push({to,accept});
- const literal=(value:string):Fragment=>{const start=node();let end=start;for(const byte of new TextEncoder().encode(value)){const next=node();edge(end,next,b=>b===byte);end=next;}return {start,end};};
+ const literal=(value:string):Fragment=>{const start=node();let end=start;for(const byte of new TextEncoder().encode(value)){if([123,125,91,93,58,44].includes(byte)){for(const space of [9,10,13,32])edge(end,end,b=>b===space);}const next=node();edge(end,next,b=>b===byte);end=next;if([123,125,91,93,58,44].includes(byte))for(const space of [9,10,13,32])edge(end,end,b=>b===space);}return {start,end};};
  const seq=(...parts:Fragment[]):Fragment=>{for(let i=1;i<parts.length;i++)nodes[parts[i-1].end].epsilon.push(parts[i].start);return {start:parts[0].start,end:parts.at(-1)!.end};};
  const alt=(parts:Fragment[]):Fragment=>{const start=node(),end=node();for(const p of parts){nodes[start].epsilon.push(p.start);nodes[p.end].epsilon.push(end);}return {start,end};};
  const string=():Fragment=>{
