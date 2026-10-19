@@ -31,7 +31,7 @@ self.onmessage=async({data}:MessageEvent<any>)=>{
  try{
   let value:any;
   if(data.type==='status')value={ready:await visionReady(),model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime};
-  else if(data.type==='prepare'){await prepareVision(data.allowNetwork===true,data.signal??new AbortController().signal,progress);value={ready:true,model:visionManifest.id,revision:visionManifest.revision};}
+  else if(data.type==='prepare'){await prepareVision(data.allowNetwork===true,data.signal??new AbortController().signal,progress,data.localFiles);value={ready:true,model:visionManifest.id,revision:visionManifest.revision};}
   else if(data.type==='describe'){
    if(!(data.image instanceof Blob)||!data.image.type.startsWith('image/')||data.image.size<1||data.image.size>32*1024*1024)throw Error('Image file unsupported · maximum 32 MB');
    const prompt=typeof data.prompt==='string'?data.prompt.trim():'';if(!prompt||prompt.length>2000)throw Error('Image question required · maximum 2,000 characters');

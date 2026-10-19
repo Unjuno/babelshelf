@@ -17,26 +17,51 @@ export function verifyVisionBytes(file:{bytes:number;sha256:string},bytes:Uint8A
  if(bytes.length!==file.bytes||new SHA256().update(bytes).hex()!==file.sha256)throw Error('Vision asset verification failed');
  return bytes;
 }
+export async function verifyVisionStream(file:{bytes:number;sha256:string},response:Response,signal?:AbortSignal){
+ const reader=response.body?.getReader();if(!reader)throw Error('Vision asset response unavailable');
+ const hash=new SHA256();let count=0;
+ try{while(true){signal?.throwIfAborted();const {value,done}=await reader.read();if(done)break;count+=value.length;if(count>file.bytes)throw Error('Vision asset verification failed');hash.update(value);}}
+ catch(error){await reader.cancel().catch(()=>{});throw error;}
+ finally{reader.releaseLock();}
+ signal?.throwIfAborted();if(count!==file.bytes||hash.hex()!==file.sha256)throw Error('Vision asset verification failed');
+}
+async function cacheVerified(cache:Cache,file:Asset,response:Response,signal:AbortSignal){
+ const results=await Promise.allSettled([verifyVisionStream(file,response.clone(),signal),cache.put(key(file),response)]);
+ const failed=results.find(result=>result.status==='rejected');
+ if(failed){await cache.delete(key(file));throw failed.reason;}
+}
 export async function visionAssetResponse(path:string){
  const file=visionAsset(path);if(!file)throw Error('Unknown local vision asset');
- const response=await (await caches.open(CACHE)).match(key(file));
+ const cache=await caches.open(CACHE),response=await cache.match(key(file));
  if(!response)throw Error('Vision model not prepared');
- verifyVisionBytes(file,new Uint8Array(await response.clone().arrayBuffer()));return response;
+ await verifyVisionStream(file,response);
+ const verified=await cache.match(key(file));if(!verified)throw Error('Vision model not prepared');return verified;
 }
 export async function visionReady(){
  try{for(const file of manifest.files)await visionAssetResponse(base+file.path);return true;}catch{return false;}
 }
-export async function prepareVision(allowNetwork:boolean,signal:AbortSignal,progress:(text:string)=>void){
+export async function prepareVision(allowNetwork:boolean,signal:AbortSignal,progress:(text:string)=>void,localFiles?:File[]){
  const cache=await caches.open(CACHE);
+ const supplied=new Map<string,File>();
+ if(localFiles){if(!localFiles.length||allowNetwork)throw Error('Local vision files required');
+  const names=new Map(manifest.files.map(file=>[file.path.split('/').at(-1)!,file]));
+  for(const file of localFiles){const pin=names.get(file.name);if(!pin)throw Error('Unknown vision file · '+file.name);if(supplied.has(file.name))throw Error('Duplicate vision file · '+file.name);if(file.size!==pin.bytes)throw Error('Vision file size mismatch · '+file.name);supplied.set(file.name,file);}
+ }
+ let missing=0;
  for(let i=0;i<manifest.files.length;i++){
   const file=visionAsset(base+manifest.files[i].path)!;signal.throwIfAborted();progress('Verifying vision model · '+(i+1)+' / '+manifest.files.length);
   try{await visionAssetResponse(base+file.path);continue;}catch{signal.throwIfAborted();}
+  if(localFiles){const local=supplied.get(file.path.split('/').at(-1)!);if(!local){missing++;continue;}
+   try{await cacheVerified(cache,file,new Response(local),signal);}catch(error){signal.throwIfAborted();throw Error('Vision verification · '+file.path+' · '+(error instanceof Error?error.message:String(error)));}continue;}
   if(!allowNetwork)throw Error('Vision model not prepared');
-  const response=await fetch(file.url,{signal,credentials:'omit',referrerPolicy:'no-referrer'});
-  if(!response.ok)throw Error('Vision model download failed');
-  const bytes=verifyVisionBytes(file,new Uint8Array(await response.arrayBuffer()));signal.throwIfAborted();
-  await cache.put(key(file),new Response(bytes.slice().buffer));
+  let response:Response;
+  try{response=await fetch(file.url,{signal,credentials:'omit',referrerPolicy:'no-referrer'});}
+  catch(error){signal.throwIfAborted();throw Error('Vision download · '+file.path+' · '+(error instanceof Error?error.message:String(error)));}
+  if(!response.ok)throw Error('Vision download · '+file.path+' · HTTP '+response.status);
+  try{await cacheVerified(cache,file,response,signal);}
+  catch(error){signal.throwIfAborted();throw Error('Vision verification or storage · '+file.path+' · '+(error instanceof Error?error.message:String(error)));}
  }
+ if(missing)throw Error('Vision files still missing · '+missing);
  signal.throwIfAborted();if(!await visionReady())throw Error('Vision model preparation failed');
 }
 // Transformers must receive a terminal 404 on cache misses; otherwise a local
