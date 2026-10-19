@@ -8,20 +8,20 @@ test('selected-file guidance follows the executable model format, including LFM 
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
   assert.match(selectedTextFileGuidance(id),/matching GGUF with tokenizer and chat template inside/);
   assert.match(selectedTextFileGuidance(id),/Selected model only/);
-  assert.match(selectedTextFileGuidance(id),/No new model is added/);
+  assert.match(selectedTextFileGuidance(id),/does not add a model/);
   assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
  }
  for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct']){
   assert.match(selectedTextFileGuidance(id),/matching ONNX weights, config and tokenizer files/);
-  assert.match(selectedTextFileGuidance(id),/No new model is added/);
+  assert.match(selectedTextFileGuidance(id),/does not add a model/);
  }
  assert.match(selectedTextFileGuidance('unknown'),/No compatible import package/);
- assert.match(selectedTextFileGuidance(''),/Choose a model before importing/);
+ assert.match(selectedTextFileGuidance(''),/Choose a model before supplying/);
 });
 
 test('decision file guidance distinguishes a new custom package from files for the selected model',()=>{
- assert.match(selectedDecisionFileGuidance(false),/Selected built-in D1.*six pinned files.*tokenizer.*No new model is added/);
- assert.match(selectedDecisionFileGuidance(true),/Selected custom D1.*five matching ONNX, config and tokenizer files.*No new model is added/);
+ assert.match(selectedDecisionFileGuidance(false),/Selected built-in D1.*six pinned files.*tokenizer.*does not add a model/);
+ assert.match(selectedDecisionFileGuidance(true),/Selected custom D1.*five matching ONNX, config and tokenizer files.*does not add a model/);
 });
 
 test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{
@@ -30,7 +30,7 @@ test('media statuses separate supported text and audio paths from unsupported vi
  assert.deepEqual(status.pdf,['Text layer · ready','Scanned pages · OCR model not selected']);
  assert.deepEqual(status.image,['Text · OCR model not selected','Description · model not selected']);
  assert.deepEqual(status.audio,['Transcription · not prepared']);
- assert.deepEqual(status.video,['Original preview · browser-dependent','Audio transcription · not prepared','Frame understanding · unavailable']);
+ assert.deepEqual(status.video,['Original preview · browser-dependent','Audio transcription · not prepared','Frame understanding · unsupported']);
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
