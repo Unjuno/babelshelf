@@ -1947,3 +1947,7 @@ Checks: prototype 498/498, npm run check PASS, product acceptance 4/4, product b
 2026-10-20 — complete fixed 9B weight identity
 
 `node scripts/check-pinned-model-full.mjs 9B` streamed all 1,997,486,976 bytes from the pinned PrismML revision with the public site Origin and returned the manifest SHA-256 `3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b` (exit 0). The weights were not stored in the PWA or run through WebGPU. This closes the full-file hash check left open by the earlier 16 MiB header inspection, while app preparation, browser storage, load/generation/Stop, cold offline reload and iPhone fit remain unverified. No product code or public Site version changed.
+
+2026-10-20 — older Bonsai 8B header and current adapter boundary
+
+`node scripts/check-bonsai8b-header.mjs` returned exit 0 after reading the pinned 16 MiB GGUF header: complete declared size 2,182,184,672 bytes; qwen3 architecture; gpt2 tokenizer; tensor types F32/Q2_0 (0/42); Q2_0 tensor extents not checked by the current inspector. The production engine eligibility returned null because the current browser WebML adapter is Qwen3.5/PTQ1_0. Thus the older 8B cannot be admitted as a current built-in or custom model merely by supplying its GGUF. No full 8B hash, load, generation, Stop, offline reload or phone test was performed. The distinct Bonsai 2 9B PTQ1_0 file remains an optional pinned text candidate; its complete hash now matches, but execution remains unverified. Product code and public Site version did not change.
