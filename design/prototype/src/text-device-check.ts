@@ -5,6 +5,12 @@ import type {CustomLocalModel} from './preference-records.ts';
 type GpuPort={requestAdapter:()=>Promise<unknown>};
 export type TextDeviceCheck={modelId:string;modelBytes:number|null;availableBytes:number|null;storage:'already-present'|'below-file-size'|'estimate-covers-file'|'unknown';backend:'webgpu'|'cpu-wasm';webgpu:'available'|'unavailable'|'unknown'|'not-needed'};
 
+export function describeTextDeviceCheck(check:TextDeviceCheck):string {
+ const storage=check.storage==='below-file-size'?'Reported storage below model file size':check.storage==='estimate-covers-file'?'Storage estimate covers model file':check.storage==='already-present'?'Model files already present':'Storage estimate unavailable';
+ const runtime=check.backend==='webgpu'?(check.webgpu==='available'?'WebGPU adapter detected':check.webgpu==='unavailable'?'WebGPU adapter unavailable':'WebGPU check inconclusive'):'CPU/WASM path';
+ return `${storage} · ${runtime} · Loading and generation untested`;
+}
+
 // A user-initiated, read-only preflight. Quota is not physical free space and
 // an adapter is not proof of enough GPU memory, model loading or generation.
 export async function checkTextDevice(modelId:string,customModels:readonly CustomLocalModel[]=[],filesPresent=false,ports:{storage?:StoragePort;gpu?:GpuPort}={}):Promise<TextDeviceCheck>{
