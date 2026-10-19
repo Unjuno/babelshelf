@@ -27,6 +27,12 @@ test('reviewed transcript pins exact original, model and bounded time segments w
  assert.throws(()=>makeTranscript(asset,1000,{text:'Hallucinated',chunks:[{text:'Hallucinated',timestamp:[2,3]}]}),/transcript/i);
 });
 
+test('custom Whisper transcript records its exact local model revision and rejects lookalikes',async()=>{
+ const asset=await prepareOriginal(new File(['audio bytes'],'voice.wav',{type:'audio/wav'}),'custom-audio'),id='local-speech-'+'a'.repeat(64),model={id,revision:'sha256:'+'a'.repeat(64),runtime:speechManifest.runtime,dtype:'q8'},result={text:'Custom model words',chunks:[{text:'Custom model words',timestamp:[0,1]}]};
+ const transcript=makeTranscript(asset,1000,result,'en',undefined,model);assert.deepEqual(transcript.model,model);validateTranscript(transcript,asset);
+ for(const change of [{...model,revision:'main'},{...model,runtime:'remote-api'},{...model,id:'whisper-base'}])assert.throws(()=>validateTranscript({...transcript,model:change},asset),/transcript/i);
+});
+
 test('transcript backup preserves raw source and segment identity; tampered original text or model revision refuses',async()=>{
  const {originalNote,originalKey}=await import('../src/original-assets.ts'),{makeStateBackup,parseStateBackup,stateHash}=await import('../src/backup-state.ts');
  const asset=await prepareOriginal(new File(['raw audio'],'source.wav',{type:'audio/wav'}),'source1'),t=makeTranscript(asset,2000,{text:'Water four liters.',chunks:[{text:'Water four liters.',timestamp:[0,2]}]}),n=transcriptNote('transcript1',asset,t),runs=[{key:originalKey(asset.id),value:asset}];

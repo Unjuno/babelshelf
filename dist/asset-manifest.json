@@ -98,8 +98,8 @@
     },
     {
       "path": "./local-models.js",
-      "bytes": 4959,
-      "sha256": "c0e37f26ca9fa03e693f1c52b6a9bfab42e77e537c1ca439a6150cc7043616cc"
+      "bytes": 6415,
+      "sha256": "4e29839b5ed8a74a3016524057f8cf55c829244666fd5263d77120d75f891a1a"
     },
     {
       "path": "./manifest.webmanifest",
@@ -149,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "c18b1f63d0b0503c502194c6ee0748628a8688196890e5799bec16ded19db1a2"
+      "sha256": "00396a5923624d77727d043376a8b93595f71c025bbdd8fbf8842716acf98478"
     },
     {
       "path": "./ui.js",

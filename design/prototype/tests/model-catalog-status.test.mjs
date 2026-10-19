@@ -24,3 +24,8 @@ test('custom decision registrations are addable only through the owned D1 text a
  assert.equal(modelCatalogStatus('decision',record.id,[],[{...record,engine:'untrusted'}]),'Runtime not connected');
  assert.equal(modelCatalogStatus('text',record.id,[],[record]),'Runtime not connected');
 });
+test('custom Whisper registrations use the fixed local speech adapter',()=>{
+ const record={id:'local-speech-'+'a'.repeat(64),role:'speech',engine:'transformers-whisper-onnx'};
+ assert.equal(modelCatalogStatus('speech',record.id,[],[],[record]),'Not prepared');
+ assert.equal(modelCatalogStatus('speech',record.id,[],[],[{...record,engine:'untrusted'}]),'Runtime not connected');
+});

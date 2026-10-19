@@ -1,6 +1,8 @@
 import manifest from './speech-manifest.json' with {type:'json'};
 // @ts-expect-error Shared verified hash implementation is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
+import type {CustomSpeechModel} from './preference-records.ts';
+import {readCustomSpeechFile} from './custom-speech-assets.ts';
 export const speechManifest=manifest;
 type Asset=typeof manifest.files[number];
 const CACHE='babelshelf-speech-'+manifest.revision;
@@ -9,14 +11,19 @@ export function speechFile(path:string):Asset|undefined {
 }
 export function verifySpeechBytes(file:Asset,bytes:Uint8Array){if(bytes.length!==file.bytes||new SHA256().update(bytes).hex()!==file.sha256)throw Error('Speech asset verification failed');return bytes;}
 const key=(f:Asset)=>new URL('/asr-model/whisper-tiny/'+f.path,globalThis.location.origin).href;
-export async function speechAssetResponse(path:string){
+export async function speechAssetResponse(path:string,customModels:readonly CustomSpeechModel[]=[]){
  const file=speechFile(path);if(!file)return new Response('Unknown local asset',{status:404});
  const response=await (await caches.open(CACHE)).match(key(file));
  if(!response)throw Error('Speech model not prepared');
  verifySpeechBytes(file,new Uint8Array(await response.clone().arrayBuffer()));return response;
 }
-export async function speechReady(){try{for(const file of manifest.files)await speechAssetResponse('/asr-model/whisper-tiny/'+file.path);return true;}catch{return false;}}
-export async function prepareSpeech(allowNetwork:boolean,progress:(text:string)=>void){
+export async function speechReady(model:string|CustomSpeechModel='whisper-tiny'){
+ if(typeof model==='object'){try{for(const file of model.files)await readCustomSpeechFile(model,file.path,new AbortController().signal);return true;}catch{return false;}}
+ try{for(const file of manifest.files)await speechAssetResponse('/asr-model/whisper-tiny/'+file.path);return model==='whisper-tiny';}catch{return false;}
+}
+export async function prepareSpeech(allowNetwork:boolean,progress:(text:string)=>void,model:string|CustomSpeechModel='whisper-tiny',signal=new AbortController().signal){
+ if(typeof model==='object'){if(allowNetwork)throw Error('Custom speech weights are local files only');for(const [i,file] of model.files.entries()){if(signal.aborted)throw Error('Stopped');progress('Verifying local model · '+(i+1)+' / '+model.files.length);await readCustomSpeechFile(model,file.path,signal,progress);}return {prepared:true,bytes:model.files.reduce((n,f)=>n+f.bytes,0)};}
+ if(model!=='whisper-tiny')throw Error('Speech runtime not connected');
  const cache=await caches.open(CACHE);
  for(let i=0;i<manifest.files.length;i++){
   const f=manifest.files[i];progress('Preparing '+(i+1)+'/'+manifest.files.length);

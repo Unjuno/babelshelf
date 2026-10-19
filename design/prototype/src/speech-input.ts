@@ -20,18 +20,18 @@ async function checkAudioDuration(bytes:ArrayBuffer,mime:string,signal:AbortSign
   media.onloadedmetadata=null;media.onerror=null;media.removeAttribute('src');media.load();URL.revokeObjectURL(url);
  }
 }
-export async function transcribeOriginal(asset:OriginalAsset,language:string,signal:AbortSignal,transcribe:(samples:Float32Array,language:string)=>Promise<unknown>){
+export async function transcribeOriginal(asset:OriginalAsset,language:string,signal:AbortSignal,transcribe:(samples:Float32Array,language:string)=>Promise<unknown>,model?:import('./speech-transcript.ts').SpeechModelProvenance){
  const check=()=>{if(signal.aborted)throw Error('Stopped');};check();
  const bytes=readOriginal(asset).slice().buffer;
  if(asset.kind==='video'&&typeof AudioDecoder!=='undefined'){
   const {decodeVideoAudio}=await import('./video-audio.ts');check();
   const decoded=await decodeVideoAudio(new Blob([bytes],{type:asset.mime}),signal);check();
   const result=await transcribe(decoded.samples,language);check();
-  return makeTranscript(asset,decoded.durationMs,result,language,decoded.timing);
+  return makeTranscript(asset,decoded.durationMs,result,language,decoded.timing,model);
  }
  if(asset.kind==='audio')await checkAudioDuration(bytes,asset.mime,signal);check();
  const audio=new AudioContext();let decoded:AudioBuffer;try{decoded=await audio.decodeAudioData(bytes);}finally{await audio.close();}check();
  if(decoded.duration<=0||decoded.duration>120)throw Error('Audio too long · maximum 2 minutes');
  const offline=new OfflineAudioContext(1,Math.ceil(decoded.duration*16000),16000),node=offline.createBufferSource();node.buffer=decoded;node.connect(offline.destination);node.start();const mono=await offline.startRendering();check();
- const result=await transcribe(mono.getChannelData(0),language);check();return makeTranscript(asset,Math.ceil(decoded.duration*1000),result,language);
+ const result=await transcribe(mono.getChannelData(0),language);check();return makeTranscript(asset,Math.ceil(decoded.duration*1000),result,language,undefined,model);
 }

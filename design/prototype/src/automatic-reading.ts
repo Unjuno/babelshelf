@@ -6,7 +6,7 @@ import type {Transcript} from './speech-transcript.ts';
 import {originalKey,originalRef,type OriginalAsset} from './original-assets.ts';
 import {stateHash} from './backup-state.ts';
 import type {ProcessingTool} from './processing-history.ts';
-export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string};
+export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string;customSpeechModels?:readonly {id:string;role:string;engine:string}[]};
 type Adapter<T>=(asset:OriginalAsset,signal:AbortSignal,progress:(s:string)=>void)=>Promise<T>;
 export type ReadingAdapters={ocr?:Adapter<OcrText>;pdf?:Adapter<PdfText>;speech?:Adapter<Transcript>};
 type RecordRead=<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown)=>Promise<T>;
@@ -19,7 +19,7 @@ export async function readInputOriginal(asset:OriginalAsset,policy:ReadingPolicy
  try{
   const reading=await record(tool,{source:{...originalRef(asset),name:asset.name},automatic:true,...(kind==='ocr'?{language:policy.ocrLanguage,model:policy.ocrModel}:kind==='speech'?{language:policy.speechLanguage,model:policy.speechModel}:kind==='pdf'?{ocrPolicy:{model:policy.ocrModel,prepared:policy.ocrReady,language:policy.ocrLanguage}}:{})},async()=>{try{
    check();if(kind==='ocr'&&capabilityState('image.ocr',policy.ocrModel,policy.ocrReady).status!=='Ready')throw Error('Image text not prepared');
-   if(kind==='speech'&&capabilityState(asset.kind==='video'?'video.audio':'audio.transcribe',policy.speechModel,policy.speechReady).status!=='Ready')throw Error('Speech to text not prepared');
+   if(kind==='speech'&&capabilityState(asset.kind==='video'?'video.audio':'audio.transcribe',policy.speechModel,policy.speechReady,[],policy.customSpeechModels).status!=='Ready')throw Error('Speech to text not prepared');
    const adapter=adapters[kind];if(!adapter)throw Error('Reader unsupported');progress(kind==='speech'?'Transcribing':'Reading');
    const value=await adapter(asset,signal,progress);check();if(!value.text?.trim())throw Error(kind==='pdf'&&!(value as PdfText).pages.some(p=>p.ocr)?'No text layer · OCR required':'No text found');
    const result={kind,id:crypto.randomUUID(),value} as ReviewedText;buildInputReadings([result],[{key:originalKey(asset.id),value:asset}]);return result;

@@ -4,12 +4,21 @@ import {eligibleTextEngine} from './local-engines.js';
 
 export const MAX_LOCAL_MODEL_BYTES=8*1024*1024*1024;
 export const MAX_LOCAL_DECISION_BYTES=2*1024*1024*1024;
+export const MAX_LOCAL_SPEECH_BYTES=2*1024*1024*1024;
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===[...keys].sort().join('|');
 const fail=()=>{throw Error('Invalid local model record');};
 const safeText=s=>typeof s==='string'&&s.trim().length>0&&s.length<=100&&!s.includes('\0')&&!Array.from(s).some(c=>c.length===1&&c.charCodeAt(0)>=0xd800&&c.charCodeAt(0)<=0xdfff);
 const decisionPaths=['config.json','tokenizer.json','tokenizer_config.json','onnx/model_quantized.onnx','onnx/model_quantized.onnx_data'];
+export const localSpeechModelId=files=>'local-speech-'+new SHA256().update(new TextEncoder().encode(JSON.stringify(files.map(({path,bytes,sha256})=>({path,bytes,sha256}))))).hex();
 export function localDecisionModelId(files){const pins=files.map(({path,bytes,sha256})=>({path,bytes,sha256}));return 'local-decision-'+new SHA256().update(new TextEncoder().encode(JSON.stringify(pins))).hex();}
 export function validateLocalModel(value){
+ if(value?.role==='speech'){
+  const paths=['config.json','generation_config.json','preprocessor_config.json','tokenizer.json','tokenizer_config.json','special_tokens_map.json','onnx/encoder_model_quantized.onnx','onnx/decoder_model_merged_quantized.onnx'];
+  if(!exact(value,['id','label','role','engine','revision','files','inspection'])||value.engine!=='transformers-whisper-onnx'||!safeText(value.label)||!Array.isArray(value.files)||value.files.length!==paths.length||!exact(value.inspection,['format','architecture','device','dtype','maxDurationSeconds']))fail();
+  let total=0;for(const [index,file] of value.files.entries()){if(!exact(file,['path','bytes','sha256'])||file.path!==paths[index]||!Number.isSafeInteger(file.bytes)||file.bytes<1||file.bytes>MAX_LOCAL_SPEECH_BYTES||typeof file.sha256!=='string'||!/^[a-f0-9]{64}$/.test(file.sha256))fail();total+=file.bytes;}
+  const i=value.inspection;if(total>MAX_LOCAL_SPEECH_BYTES||i.format!=='Whisper-ONNX'||i.architecture!=='whisper'||i.device!=='wasm'||i.dtype!=='q8'||i.maxDurationSeconds!==120||value.id!==localSpeechModelId(value.files)||value.revision!=='sha256:'+value.id.slice('local-speech-'.length))fail();
+  return structuredClone(value);
+ }
  if(value?.role==='decision'){
   if(!exact(value,['id','label','role','engine','revision','files','inspection'])||value.engine!=='onnx-d1-text'||!safeText(value.label)||!Array.isArray(value.files)||value.files.length!==decisionPaths.length||!exact(value.inspection,['format','architecture','contextTokens','inputLimit','scope']))fail();
   let total=0;for(const [index,file] of value.files.entries()){if(!exact(file,['path','bytes','sha256'])||file.path!==decisionPaths[index]||!Number.isSafeInteger(file.bytes)||file.bytes<1||file.bytes>MAX_LOCAL_DECISION_BYTES||typeof file.sha256!=='string'||!/^[a-f0-9]{64}$/.test(file.sha256))fail();total+=file.bytes;}
