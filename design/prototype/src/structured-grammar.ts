@@ -6,7 +6,7 @@ export function createStructuredSchema(format:StructuredFormat):JsonSchema{
  if(kind==='dialogue-answer')return {type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false};
  if(kind!=='dialogue-plan')throw Error('Unsupported output format');
  const scope=typeof format==='object'?validatePlannerScope(format.scope):undefined;
- const actions=scope?scopedHarnessActions(scope):HARNESS_ACTIONS;
+ const actions=scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool');
  const branches:JsonSchema[]=[];
  const add=(action:string,target?:string,historyPart?:'user'|'assistant')=>{
   const properties:Record<string,unknown>={action:{type:'string',enum:[action]},query:{type:'string'}};
@@ -22,6 +22,10 @@ export function createStructuredSchema(format:StructuredFormat):JsonSchema{
   branches.push({type:'object',properties,required,additionalProperties:false});
  };
  for(const action of actions){
+  if(action.id==='tool'){
+   if(scope?.toolIds?.length)branches.push({type:'object',properties:{action:{type:'string',enum:['tool']},query:{type:'string',enum:scope.toolIds},body:{type:'string'}},required:['action','query','body'],additionalProperties:false});
+   continue;
+  }
   if(action.id==='capture'&&!scope?.inputs){
    branches.push({type:'object',properties:{action:{type:'string',enum:['capture']},body:{type:'string'}},required:['action','body'],additionalProperties:false});
   }
@@ -76,7 +80,11 @@ export function createStructuredGrammar(format:StructuredFormat){
  if(kind==='dialogue-answer')root=seq(literal('{"answer":'),string(),literal('}'));
  else{
   const alternatives:Fragment[]=[];
-  for(const action of scope?scopedHarnessActions(scope):HARNESS_ACTIONS){
+  for(const action of scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool')){
+   if(action.id==='tool'){
+    if(scope?.toolIds?.length)alternatives.push(seq(literal('{"action":"tool","query":'),alt(scope.toolIds.map(id=>literal(JSON.stringify(id)))),field('body',string()),literal('}')));
+    continue;
+   }
    if(action.id==='capture'&&!scope?.inputs)alternatives.push(seq(literal('{"action":"capture","body":'),string(),literal('}')));
    const targets:(string|undefined)[]=[...action.targets];if(!['recall','transform'].includes(action.id))targets.unshift(undefined);
    for(const target of targets){

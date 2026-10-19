@@ -88,3 +88,16 @@ test('calculation is a targetless tool request and unavailable for current unrea
  assert.equal(accepts('dialogue-plan',JSON.stringify({action:'calculate',query:'2+3',target:'file'})),false);
  assert.equal(accepts({type:'dialogue-plan',scope:{inputs:true,file:false,current:false,historyCount:0}},JSON.stringify({action:'calculate',query:'2+3'})),false);
 });
+
+test('tool-call envelope exposes only the request-local registered IDs and stays strictly shaped',()=>{
+ const base={inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]},selected={type:'dialogue-plan',scope:{...base,toolIds:['memory.search','memory.read']}};
+ const call={action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})};
+ assert.equal(accepts(selected,JSON.stringify(call)),true);
+ assert.equal(accepts(selected,JSON.stringify({...call,query:'filesystem.delete'})),false);
+ assert.equal(accepts(selected,JSON.stringify({...call,target:'file'})),false);
+ assert.equal(accepts(selected,JSON.stringify({...call,extra:true})),false);
+ assert.equal(accepts({type:'dialogue-plan',scope:base},JSON.stringify(call)),false);
+ const schema=createStructuredSchema(selected),tool=schema.anyOf.find(branch=>branch.properties?.action?.enum?.[0]==='tool');
+ assert.deepEqual(tool.properties.query.enum,['memory.search','memory.read']);assert.equal(tool.properties.body.type,'string');
+ assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...base,toolIds:['memory.search','memory.search']}}),/planner tool IDs/i);
+});

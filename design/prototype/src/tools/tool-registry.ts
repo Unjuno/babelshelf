@@ -1,5 +1,6 @@
 import type {ToolHost} from './tool-host.ts';
-export type PackageDefinition={id:string;version:number;readOnly:boolean;network:string};
+export type PackageDefinition={id:string;version:number;readOnly:true;network:'none'};
+export type ToolCapability=PackageDefinition&{usage:string};
 export type PackageSource={path:string;body:string};
 export type ToolPackage={definition:PackageDefinition;entry:string;sources:PackageSource[];run:(args:unknown,host:ToolHost)=>Promise<any[]>};
 export type PackageIdentity={package:string;packageVersion:number;packageSha256:string;entry:string};
@@ -21,5 +22,5 @@ export function createToolRegistry(packages:ToolPackage[]){
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return {package:pkg.definition.id,packageVersion:pkg.definition.version,packageSha256:[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join(''),entry:pkg.entry};
  }
- return Object.freeze({identity,async run(id:string,args:unknown,host:ToolHost){host.check();const result=await get(id).run(args,host);host.check();return result;}});
+ return Object.freeze({identity,capabilities:()=>Object.freeze([...registry.values()].map(pkg=>{const skill=pkg.sources.find(source=>source.path==='Tools/'+pkg.definition.id+'/SKILL.md');if(!skill)throw Error('Tool usage guide unavailable');return Object.freeze({...structuredClone(pkg.definition),usage:skill.body});})),async run(id:string,args:unknown,host:ToolHost){host.check();const result=await get(id).run(args,host);host.check();return result;}});
 }
