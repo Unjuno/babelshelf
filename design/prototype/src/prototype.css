@@ -320,6 +320,8 @@ button.model-picker svg{flex-shrink:0}
 .model-option:hover{background:rgba(223,241,231,.8)}
 .model-option:focus-visible{outline:2px solid #006142;outline-offset:3px}
 .model-option svg{flex-shrink:0}
+.model-option:disabled{cursor:not-allowed;opacity:1;background:rgba(234,239,236,.76);color:#58665f;border-color:rgba(116,132,123,.24)}
+.model-option-status{display:block;margin-top:3px;color:#5a675f;font-size:.8125rem;font-weight:500;line-height:1.25}
 @media(prefers-reduced-transparency:reduce){.model-option{background:#f4f8f6}.model-option[aria-pressed=true]{background:#e3f1e9}}
 
 /* Long press and explicit accessible actions share the same glass sheet. */
@@ -368,6 +370,8 @@ button.model-picker svg{flex-shrink:0}
 .device-screen:has(.appearance-dark) :is(.file-tree,.file-search,.settings-screen section,.schedule-group,.media-card,.user-bubble,.compact-composer,.bottom-sheet,.quiet-button,.chat-home,.arc-choice,.edit-form input,.edit-form textarea){background:#243830;color:#eff8f3;border-color:#587367}
 .device-screen:has(.appearance-dark) :is(.quiet-button,.memory-breadcrumbs button,.model-picker,.model-option,.media-kind){color:#b8edcf!important}
 .device-screen:has(.appearance-dark) :is(.model-picker,.model-option,.appearance-options button){background:#1b2d25;border-color:#587367;color:#eff8f3}
+.device-screen:has(.appearance-dark) .model-option-status{color:#d0ded5}
+.device-screen:has(.appearance-dark) .model-option:disabled{background:#293b32;color:#e0e8e3;border-color:#65766d}
 .device-screen:has(.appearance-dark) :is(.model-option[aria-pressed=true],.appearance-options button[aria-pressed=true]){background:#385947;color:#fff!important}
 .device-screen:has(.appearance-dark) :is(.settings-screen h2,.media-info small,.capability-status,.notification-open small,.attachment-status,.file-heading,.file-footer,.empty-state,.notification-detail small){color:#c0d1c7}
 .device-screen:has(.appearance-dark) .sheet-title{color:#eff8f3}.device-screen:has(.appearance-dark) .danger-button{color:#ffb3ac!important}.device-screen:has(.appearance-dark) .nav-scrim{background:rgba(12,23,17,.7)}
