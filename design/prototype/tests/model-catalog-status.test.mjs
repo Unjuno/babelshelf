@@ -6,11 +6,25 @@ import {selectedTextFileGuidance} from '../src/model-file-guidance.ts';
 
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
-  assert.match(selectedTextFileGuidance(id),/GGUF\? Import it here/);
+  assert.match(selectedTextFileGuidance(id),/Matching GGUF \(tokenizer and chat template inside\)/);
+  assert.match(selectedTextFileGuidance(id),/No new model is added/);
   assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
  }
- for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct'])assert.match(selectedTextFileGuidance(id),/ONNX weights, config and tokenizer files/);
+ for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct']){
+  assert.match(selectedTextFileGuidance(id),/Matching ONNX weights, config and tokenizer files/);
+  assert.match(selectedTextFileGuidance(id),/No new model is added/);
+ }
  assert.match(selectedTextFileGuidance('unknown'),/No compatible import package/);
+});
+
+test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{
+ const {mediaReadingStatus}=await import('../src/model-file-guidance.ts');
+ const status=mediaReadingStatus({ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Speech model not prepared'});
+ assert.match(status.pdf,/Text layer: ready.*Scanned pages: OCR model not selected/);
+ assert.match(status.image,/Text: OCR model not selected.*Description: model not selected/);
+ assert.match(status.audio,/Speech to text: not prepared/);
+ assert.match(status.video,/Playback: ready.*Audio transcription: not prepared/);
+ assert.doesNotMatch(status.video,/frames.*ready/i);
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
