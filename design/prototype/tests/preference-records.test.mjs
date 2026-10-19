@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {initialPreferenceNotes,readPreference,updatePreference,parsePreference,formatPreference} from '../src/preference-records.ts';
 import {createNote} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
@@ -50,6 +51,7 @@ test('legacy model settings project OCR defaults without rewriting bytes; explic
 });
 
 const custom=()=>{const sha256='b'.repeat(64);return {id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'Custom',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};};
+const customDecision=()=>{const files=[{path:'config.json',bytes:1000,sha256:'1'.repeat(64)},{path:'tokenizer.json',bytes:1000,sha256:'2'.repeat(64)},{path:'tokenizer_config.json',bytes:1000,sha256:'3'.repeat(64)},{path:'onnx/model_quantized.onnx',bytes:1000,sha256:'4'.repeat(64)},{path:'onnx/model_quantized.onnx_data',bytes:1000,sha256:'5'.repeat(64)}],sha256=createHash('sha256').update(JSON.stringify(files)).digest('hex');return {id:'local-decision-'+sha256,label:'Fine-tuned D1',role:'decision',engine:'onnx-d1-text',revision:'sha256:'+sha256,files,inspection:{format:'D1-ONNX',architecture:'d1_omni',contextTokens:16384,inputLimit:2048,scope:'text-only'}};};
 test('custom model declarations persist through canonical revisions without inventing readiness',()=>{
  const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customModels;old.body=formatPreference('models',legacy);const body=old.body;
  assert.deepEqual(readPreference('models',notes).customModels,[]);assert.equal(old.body,body);
@@ -58,6 +60,13 @@ test('custom model declarations persist through canonical revisions without inve
  for(const change of [m=>m.customModels.push(model),m=>m.customModels[0].ready=true,m=>m.customModels[0].file.url='https://example.com',m=>m.customModels=[],m=>m.customModels[0].engine='unknown']){
   const value=structuredClone(readPreference('models',updated));change(value);assert.throws(()=>parsePreference('models',formatPreference('models',value)));
  }
+});
+
+test('custom D1 declarations register only in the decision library and preserve old settings',()=>{
+ const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customDecisionModels;old.body=formatPreference('models',legacy);const before=old.body;assert.deepEqual(readPreference('models',notes).customDecisionModels,[]);assert.equal(old.body,before);
+ const model=customDecision(),updated=updatePreference('models',notes,m=>({...m,customDecisionModels:[model],decisionLibrary:[model.id],decisionModel:model.id}));
+ assert.equal(readPreference('models',updated).decisionModel,model.id);assert.deepEqual(readPreference('models',updated).customDecisionModels,[model]);assert.deepEqual(updated.find(n=>n.id===old.id).history,[before]);
+ for(const change of [m=>m.textLibrary.push(model.id),m=>m.customDecisionModels[0].ready=true,m=>m.customDecisionModels[0].files[0].url='https://example.com',m=>m.customModels.push(model)]){const invalid=structuredClone(readPreference('models',updated));change(invalid);assert.throws(()=>parsePreference('models',formatPreference('models',invalid)));}
 });
 
 test('custom declarations survive backup without assets and model proposals cannot register them',async()=>{

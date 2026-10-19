@@ -1,34 +1,31 @@
-# User supplied models and local engine adapters
+# User-supplied models and local engine adapters
 
-Latest user direction: users may import their own trained models. Local execution remains the default; no provider change or external inference is authorized. Models are data, not executable plugins. Keep the current accepted UI and default Bonsai4B selection.
+Updated 2026-10-19. Users can add supported models to the same role-specific libraries as built-ins. A model file is data, never an executable plugin. Local inference remains the default; no provider, cloud, LAN or PC fallback is authorized.
 
-## Current scope and user-facing contract
+## Current implementation
 
-“Custom models” is broader than the feature currently implemented. The product can import only GGUF families for which BabelShelf owns and pins a compatible adapter. Current custom text paths are Qwen3.5 GGUF and LFM2 GGUF; LFM2.5-230M has one successful actual normal-Send integration sample (Unit250). This does not establish arbitrary GGUF, independently trained fine-tune, alternate role, or general response quality. Decision, Speech, OCR/Image and media custom model import/execution are not connected. Their built-in selectors/catalogs are not custom support.
+- **Text:** local GGUF import through app-owned Qwen3.5/WebML or LFM2/wllama adapters. These accept only their inspected formats and do not imply arbitrary GGUF/fine-tune compatibility. LFM2.5-230M has a recorded PC offline generation/save flow at Unit258.
+- **Decision:** custom local ONNX registration now accepts only the fixed D1 text-adapter package: `config.json`, `tokenizer.json`, `tokenizer_config.json`, `onnx/model_quantized.onnx`, and `onnx/model_quantized.onnx_data`. The config must declare `d1_omni` with 16,384 context; imports are capped at 2 GiB and stored by verified SHA-256 in OPFS. The app-owned Decision worker retains its pinned ONNX Runtime, tokenizer/marker contract, input cap and fixed graph I/O checks. Custom weights must load successfully through that adapter before they can be considered runnable. Arbitrary ONNX, D1-3B multimodal graphs, user-supplied code, and new Decision architectures remain unsupported.
+- **Speech and OCR/Image:** only the app-owned Whisper tiny and Tesseract paths are connected; custom model-file import is not implemented.
+- **Media understanding:** custom image-description and video-frame models are not connected. Audio extraction uses the speech role and does not make a model multimodal.
 
-The model settings should present standard entries and user-added entries through the same role selector and preparation/load status, with an explicit **Add custom model** action for a role only when that role has a functioning app-owned adapter. The add flow must state the accepted formats/architectures and reject unsupported files before registration. Keep role-specific contracts: a text GGUF is not an OCR or decision model. Custom declarations bind model bytes to a trusted engine ID/revision, role, inspected format/family, tokenizer/template or preprocessing metadata, context/resource bounds, and a verified local digest. Engine code and licenses stay app-owned; no model bundle can provide executable code, arbitrary MCP tools, network permissions or write authority. A user-trained checkpoint is supported only when it is structurally and numerically compatible with an implemented adapter and passes actual load/generation checks.
+The Text and Decision selectors include user-added declarations in their corresponding libraries. A compatible package may be registered and locally verified without claiming successful model loading or useful output. Import review labels execution as untested; Decision load checks the real ONNX graph and tokenizer contract. Model and conversion revisions are content-pinned. Model weights stay in origin-local OPFS and are excluded from knowledge backups.
 
-The default text model remains Bonsai2 4B. Adding a custom model must not silently replace it or any other selected role. Registration, file verification, runtime compatibility, device load and useful task behavior are separate states. Offline custom import uses only user-selected files and already-packaged app engines; it must never trigger an implicit download.
+The model settings present standard and custom entries through the same role selector. An Add model sheet offers file import only for roles with an app-owned compatible adapter. Unsupported model candidates remain disabled with the actual runtime limitation. Users may replace their selection explicitly; importing never silently changes another role. The default text model remains Bonsai2 4B.
 
-## Structure
+## Trust and lifecycle
 
-The harness consumes the common text port. An engine catalog describes app-owned adapters and their actual roles/formats; it does not install code. A model record pins engine ID, role, weight bytes/SHA256, file-format metadata and effective context capacity. Runtime code/revision/license come from the app-owned engine, never from a model package. Tokenizer/chat template and media preprocessing are model assets with their own compatibility checks. ONNX and GGUF are containers, not universal interoperability promises.
+The lifecycle is: choose local files → inspect bounded metadata → show accepted role/format and app-owned engine → explicitly import and hash → register in canonical settings → locally verify → load through that engine → report actual execution identity. Each stage has a distinct state. Readiness cannot be written into a settings file or restored from a backup. App-owned runtime, model and runtime-license pins remain separate; model licenses do not grant redistribution rights for the engine.
 
-## Import lifecycle and trust
+A role registry describes trusted app-owned adapters and their actual formats/capabilities. A model record binds bytes to an engine ID/revision, role, inspected metadata and SHA-256 pins. Tokenizers, chat templates, preprocessing, context and resource bounds are part of the compatibility contract. ONNX and GGUF are containers, not universal runtime promises. Model input/output cannot grant network access, arbitrary MCP/tools, knowledge writes or runtime code execution.
 
-Add model -> local file selection -> bounded metadata inspection -> engine/asset review -> explicit import and hash verification -> registered selection -> actual device load/test. Inspection is not execution/readiness. Existing built-ins and record histories remain. Registration/selection is canonical data; weights/runtime are separate verified local assets excluded from state brainpacks. Restore cannot manufacture readiness. File/model text never grants network, knowledge writes or arbitrary script execution.
+Imported weights are explicit local files. Preparation and verification never fetch custom model bytes. Built-in network acquisition is separate, user-controlled and off by default. Backups preserve validated model declarations and selected role, but exclude model/runtime assets; restore never manufactures local readiness.
 
-The first custom execution path will reuse the existing pinned WebML Qwen3.5 text worker for structurally eligible GGUFs. It cannot claim all GGUF architectures, quantizations or fine-tunes work. Additional app-owned engines can be added without changing harness/storage authority. Existing D1, Whisper and OCR adapters remain independent role-specific engines; their current fixed graphs/assets do not imply arbitrary custom ONNX support.
+## Extension and acceptance rules
 
-## Implementation sequence and acceptance
+Add a role/engine only when BabelShelf has app-owned adapter code and pinned runtime/license/assets for it. Tests should cover registry role isolation, hash verification, offline behavior, cancellation, selection and honest error states. A real model load is required before calling the model runnable; real task quality and device acceptance are separate evidence. Do not broaden support by filename, catalog label, successful parsing, synthetic tensors or a model's own capability claims.
 
-1. Implement shared engine descriptors and bounded GGUF metadata/tensor-table inspection. Reject malformed/truncated/duplicate/oversized counts; never read a multiGB model wholesale or execute its strings. Test real existing GGUF separately from synthetic parser controls.
-2. Add strict declarative custom model records and canonical model-preference integration, preserving old JSON/revisions. Validate backup links without importing asset code or readiness claims.
-3. Connect explicit local import, worker manifest registration, prepared-only load and stable inference pins. The worker must independently validate custom metadata/bytes and retain the fixed runtime/fetch deny policy. No custom remote acquisition.
-4. Add local model entry/review to existing Add model sheets, same cancellation/storage gates; prove registration/restart/local load/new generation/Stop through actual product. Keep unsupported cases explicit and no disconnected Load buttons.
-5. Add further general-purpose engine adapters only with pinned runtime/license/assets, model-specific tokenizer/template/preprocessing support and actual execution evidence. No automatic cloud/PC fallback.
-
-This is an architectural extension in progress. Step1 alone is not a usable custom-model feature. A parser or catalog does not certify numerical compatibility, device capacity or training quality.
+No general-purpose custom runtime/plugin loader is planned. Custom checkpoints are usable only when structurally and numerically compatible with an existing trusted adapter. New architectures require an explicit engine implementation and separate review. Preserve prior preference bytes and histories when schema fields are added.
 
 ## Unit59 foundation evidence
 

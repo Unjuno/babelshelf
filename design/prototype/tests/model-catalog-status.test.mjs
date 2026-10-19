@@ -18,3 +18,9 @@ test('validated supported custom text engines share the text role but unknown mo
  assert.equal(modelCatalogStatus('text','custom-model'), 'Runtime not connected');
  assert.equal(modelCatalogStatus('decision','custom-model',[record]), 'Runtime not connected');
 });
+test('custom decision registrations are addable only through the owned D1 text adapter',()=>{
+ const record={id:'local-decision-a'.padEnd(78,'a'),role:'decision',engine:'onnx-d1-text'};
+ assert.equal(modelCatalogStatus('decision',record.id,[],[record]),'Not prepared');
+ assert.equal(modelCatalogStatus('decision',record.id,[],[{...record,engine:'untrusted'}]),'Runtime not connected');
+ assert.equal(modelCatalogStatus('text',record.id,[],[record]),'Runtime not connected');
+});

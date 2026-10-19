@@ -3,6 +3,7 @@ import {isOnnxText,getOnnxTextManifest} from './text-model-manifest.ts';
 // @ts-expect-error Shared strict manifest builder is JavaScript.
 import {withLocalModels} from '../../../dist/local-model-manifest.js';
 import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomDecisionModel} from './preference-records.ts';
 import {decisionManifest} from './decision-assets.ts';
 import {ocrManifest,ocrModelPins,type OcrLanguage} from './ocr-assets.ts';
 import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
@@ -26,4 +27,4 @@ export class AssetOperationGate{
 
 export function ocrAssetInput(language:OcrLanguage,allowNetwork:boolean){return {source:{name:'Tesseract 7'},role:'ocr',language,model:{id:ocrManifest.id,processor:ocrManifest.processor,files:ocrModelPins(language)},runtime:ocrManifest.runtime,allowNetwork,method:'explicit-preparation'};}
 
-export function decisionAssetInput(allowNetwork:boolean){return {source:{name:"Open d1 Omni 600M"},role:"decision",scope:"text-only",model:{id:decisionManifest.id,source:decisionManifest.source,conversion:decisionManifest.conversion,files:decisionManifest.files.map(filePin)},runtime:decisionManifest.runtime,tokenizer:decisionManifest.tokenizer,allowNetwork,method:allowNetwork?"explicit-preparation":"local-only"};}
+export function decisionAssetInput(allowNetwork:boolean,custom?:CustomDecisionModel){return custom?{source:{name:custom.label},role:'decision',scope:'text-only',model:{id:custom.id,revision:custom.revision,format:'D1-ONNX',files:custom.files.map(filePin)},runtime:{name:'onnxruntime-web-d1',revision:decisionManifest.runtime.revision},allowNetwork:false,method:'local-files'}:{source:{name:"Open d1 Omni 600M"},role:"decision",scope:"text-only",model:{id:decisionManifest.id,source:decisionManifest.source,conversion:decisionManifest.conversion,files:decisionManifest.files.filter(f=>f.path!=='LICENSE').map(filePin)},runtime:decisionManifest.runtime,tokenizer:decisionManifest.tokenizer,allowNetwork,method:allowNetwork?"explicit-preparation":"local-only"};}

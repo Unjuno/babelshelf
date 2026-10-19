@@ -65,6 +65,13 @@ test('shared capability dispatch separates role, engine support and verified ass
  assert.throws(()=>localAdapters[0].capabilities.push('image.describe'),TypeError);
  assert.throws(()=>requireCapability('video.frames','whisper-tiny',true),/Unsupported/);
 });
+test('only the app-owned D1 text adapter accepts a validated custom Decision registration',()=>{
+ const custom=[{id:'local-decision-example',role:'decision',engine:'onnx-d1-text'}];
+ assert.equal(capabilityState('decision.classify',custom[0].id,false,custom).status,'Not prepared');
+ assert.equal(capabilityState('decision.classify',custom[0].id,true,custom).adapter.engine,'onnx-d1');
+ assert.equal(capabilityState('audio.transcribe',custom[0].id,true,custom).status,'Runtime not connected');
+ assert.equal(capabilityState('decision.classify','custom-unknown',true,custom).status,'Runtime not connected');
+});
 test('a different selected role or unsupported model cannot reach a prepared media adapter',async()=>{
  const asset=await raw(),controller=new AbortController();let called=0;
  for(const bad of ['d1-omni-600M','custom-ocr','whisper-tiny']){

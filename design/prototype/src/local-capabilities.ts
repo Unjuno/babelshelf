@@ -15,7 +15,7 @@ export const localAdapters=Object.freeze(adapters.map(a=>Object.freeze({...a,mod
 export type CapabilityState={status:'Unsupported'|'Not configured'|'Runtime not connected'|'Not prepared'|'Ready';adapter?:LocalAdapter;model:string;capability:LocalCapability};
 // Prepared is a live result supplied by the owning verifier, never a persisted preference.
 // Ready means dispatchable, not loaded, accurate, or device acceptance.
-export function capabilityState(capability:LocalCapability,model:string,prepared:boolean):CapabilityState {
+export function capabilityState(capability:LocalCapability,model:string,prepared:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[]):CapabilityState {
  const candidates=localAdapters.filter(a=>a.capabilities.includes(capability));
  const base={capability,model};
  if(!candidates.length)return {...base,status:'Unsupported'};
@@ -23,6 +23,7 @@ export function capabilityState(capability:LocalCapability,model:string,prepared
  if(builtin)return {...base,adapter:builtin,status:'Ready'};
  if(!model)return {...base,status:'Not configured'};
  const adapter=candidates.find(a=>a.models.includes(model));
+ if(!adapter&&capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {...base,adapter:candidates.find(a=>a.id==='d1-text'),status:prepared===true?'Ready':'Not prepared'};
  if(!adapter)return {...base,status:'Runtime not connected'};
  return {...base,adapter,status:prepared===true?'Ready':'Not prepared'};
 }
@@ -36,7 +37,7 @@ export function videoCapabilityStatus(model:string,prepared:boolean):string {
  return audio.status==='Ready'?'Audio only · frames unsupported':audio.status==='Not configured'?'Speech model required':audio.status+' · audio only';
 }
 // Verify always rechecks local assets; it never authorizes reacquisition.
-export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean){
- const state=capabilityState(capability,model,ready),verified=state.status==='Ready';
+export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[]){
+ const state=capabilityState(capability,model,ready,customDecisionModels),verified=state.status==='Ready';
  return {label:verified?'Verify':'Prepare',enabled:!!state.adapter&&!busy&&(verified||downloads),allowNetwork:!verified&&downloads};
 }

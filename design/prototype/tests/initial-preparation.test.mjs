@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {initialPreparationPlan,runInitialPreparation} from '../src/initial-preparation.ts';
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
@@ -55,4 +56,10 @@ test('custom LFM2 preparation uses the trusted runtime budget and keeps the defa
  const prefs=initial(),sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},inspection:{format:'GGUF',version:3,bytes:149081056,name:'My LFM2',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};
  prefs.customModels=[custom];prefs.textLibrary.push(custom.id);prefs.textModel=custom.id;
  const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true});assert.equal(plan.steps[0].label,'My LFM2');assert.equal(plan.steps[0].bytes,custom.file.bytes);assert.equal(plan.models.textModel,custom.id);assert.equal(plan.bytes,0);assert.equal(initial().textModel,'4B');
+});
+test('a registered custom D1 decision model stays in the app-owned local runtime during initial preparation',()=>{
+ const prefs=initial(),files=[{path:'config.json',bytes:1,sha256:'1'.repeat(64)},{path:'tokenizer.json',bytes:1,sha256:'2'.repeat(64)},{path:'tokenizer_config.json',bytes:1,sha256:'3'.repeat(64)},{path:'onnx/model_quantized.onnx',bytes:1,sha256:'4'.repeat(64)},{path:'onnx/model_quantized.onnx_data',bytes:1,sha256:'5'.repeat(64)}],sha=createHash('sha256').update(JSON.stringify(files)).digest('hex'),custom={id:'local-decision-'+sha,label:'My D1',role:'decision',engine:'onnx-d1-text',revision:'sha256:'+sha,files,inspection:{format:'D1-ONNX',architecture:'d1_omni',contextTokens:16384,inputLimit:2048,scope:'text-only'}};
+ prefs.customDecisionModels=[custom];prefs.decisionLibrary=[custom.id];prefs.decisionModel=custom.id;
+ const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true,decision:false});assert.equal(plan.steps.at(-1).label,'My D1 · text decisions');assert.equal(plan.steps.at(-1).bytes,0);assert.equal(plan.bytes,0);assert.equal(plan.models.decisionModel,custom.id);
+ assert.equal(initialPreparationPlan(prefs,{text:true,speech:true,ocr:true,decision:true}).bytes,0);
 });

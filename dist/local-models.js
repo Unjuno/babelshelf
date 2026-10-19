@@ -3,10 +3,19 @@ import {inspectGGUF} from './gguf-inspect.js';
 import {eligibleTextEngine} from './local-engines.js';
 
 export const MAX_LOCAL_MODEL_BYTES=8*1024*1024*1024;
+export const MAX_LOCAL_DECISION_BYTES=2*1024*1024*1024;
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===[...keys].sort().join('|');
 const fail=()=>{throw Error('Invalid local model record');};
 const safeText=s=>typeof s==='string'&&s.trim().length>0&&s.length<=100&&!s.includes('\0')&&!Array.from(s).some(c=>c.length===1&&c.charCodeAt(0)>=0xd800&&c.charCodeAt(0)<=0xdfff);
+const decisionPaths=['config.json','tokenizer.json','tokenizer_config.json','onnx/model_quantized.onnx','onnx/model_quantized.onnx_data'];
+export function localDecisionModelId(files){const pins=files.map(({path,bytes,sha256})=>({path,bytes,sha256}));return 'local-decision-'+new SHA256().update(new TextEncoder().encode(JSON.stringify(pins))).hex();}
 export function validateLocalModel(value){
+ if(value?.role==='decision'){
+  if(!exact(value,['id','label','role','engine','revision','files','inspection'])||value.engine!=='onnx-d1-text'||!safeText(value.label)||!Array.isArray(value.files)||value.files.length!==decisionPaths.length||!exact(value.inspection,['format','architecture','contextTokens','inputLimit','scope']))fail();
+  let total=0;for(const [index,file] of value.files.entries()){if(!exact(file,['path','bytes','sha256'])||file.path!==decisionPaths[index]||!Number.isSafeInteger(file.bytes)||file.bytes<1||file.bytes>MAX_LOCAL_DECISION_BYTES||typeof file.sha256!=='string'||!/^[a-f0-9]{64}$/.test(file.sha256))fail();total+=file.bytes;}
+  const i=value.inspection;if(total>MAX_LOCAL_DECISION_BYTES||i.format!=='D1-ONNX'||i.architecture!=='d1_omni'||i.contextTokens!==16384||i.inputLimit!==2048||i.scope!=='text-only'||value.id!==localDecisionModelId(value.files)||value.revision!=='sha256:'+value.id.slice('local-decision-'.length))fail();
+  return structuredClone(value);
+ }
  if(!exact(value,['id','label','role','engine','revision','file','inspection'])||!exact(value.file,['bytes','sha256']))fail();
  const {file,inspection:i}=value;
  if(typeof file.sha256!=='string'||!/^[a-f0-9]{64}$/.test(file.sha256)||value.id!=='local-'+file.sha256||value.revision!=='sha256:'+file.sha256||!safeText(value.label)||value.role!=='text'||!Number.isSafeInteger(file.bytes)||file.bytes<24||file.bytes>MAX_LOCAL_MODEL_BYTES)fail();

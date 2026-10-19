@@ -19,7 +19,7 @@ Natural input connects capture/search/read/answer/summary, retained dialogue/com
 
 Actual PC evidence exists for Bonsai4B, local Whisper tiny, Tesseract OCR, PDF text/prepared empty-page OCR and video audio transcription. Automatic Send uses only prepared readers. Original bytes, derived results and source locations are distinct. Video frames/general image understanding remain unsupported. Newly processed single-track WebM/MP4 audio has validated container offsets and estimated transcript segments; actual PC installed offline flows are recorded in VIDEO-TIMELINE.md. Legacy transcripts and edited text retain broader source coverage.
 
-Text, Decision and Speech registration/preparation are independent. Bonsai4B remains the default; approved additional local adapters do not silently replace it. Optional Open d1-omni-600M supports connected text decisions only. Catalog entries or custom files do not establish engine compatibility or execution. See [custom model contract](docs/CUSTOM-MODELS-CONTRACT.md).
+Text, Decision and Speech registration/preparation are independent. Bonsai4B remains the default. Supported custom Qwen3.5/LFM2 GGUF text models and fixed-contract D1-ONNX text-decision models can be added through app-owned adapters; import does not prove model load or task quality. Speech/OCR/media custom imports remain unimplemented. Arbitrary GGUF/ONNX or D1-3B multimodal files are not compatible by extension alone. See [custom model contract](docs/CUSTOM-MODELS-CONTRACT.md).
 
 Bundled tools execute validated code and expose SKILL.md/source identity. Custom definitions and external MCP remain inactive; the file itself never grants execution/network permission. See [tool packages](docs/TOOL-PACKAGES.md).
 
