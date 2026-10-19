@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {initialPreparationPlan,runInitialPreparation} from '../src/initial-preparation.ts';
+import {initialPreparationPlan,runInitialPreparation,textPreparationStatus} from '../src/initial-preparation.ts';
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
+test('fresh selected Text status controls preparation without treating missing status as missing files',()=>{
+ const prefs=initial(),present=textPreparationStatus({'4B':{filesPresent:true}},'4B');
+ assert.equal(initialPreparationPlan(prefs,{...present,speech:false,ocr:false}).bytes,0);
+ assert.throws(()=>textPreparationStatus({'2B':{filesPresent:true}},'4B'),/status unavailable/);
+ const failed=textPreparationStatus({'4B':{filesPresent:true,statusError:true}},'4B');
+ assert.throws(()=>initialPreparationPlan(prefs,{...failed,speech:false,ocr:false}),/status unavailable/);
+ prefs.decisionModel='d1-omni-600M';prefs.decisionLibrary=['d1-omni-600M'];
+ assert.deepEqual(initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false,decision:false},'decision').steps.map(step=>step.role),['decision']);
+});
 test('initial preparation respects text-only selection without acquiring unselected readers',()=>{
  const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.models.transcriptionModel,'');assert.equal(plan.models.ocrModel,'');assert.equal(prefs.transcriptionModel,'');assert.ok(plan.bytes>950000000);assert.deepEqual(plan.steps.map(s=>s.role),['text']);
  assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-base'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/text model/);

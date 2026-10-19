@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {canAddModel,modelCatalogStatus,textModelChoiceHint,textModelFileSize} from '../src/model-catalog-status.ts';
 import {settings} from '../src/app-settings.ts';
-import {selectedTextFileGuidance} from '../src/model-file-guidance.ts';
+import {selectedTextFileGuidance,selectedDecisionFileGuidance} from '../src/model-file-guidance.ts';
 
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
@@ -19,13 +19,18 @@ test('selected-file guidance follows the executable model format, including LFM 
  assert.match(selectedTextFileGuidance(''),/Choose a model before importing/);
 });
 
+test('decision file guidance distinguishes a new custom package from files for the selected model',()=>{
+ assert.match(selectedDecisionFileGuidance(false),/Selected built-in D1.*six pinned files.*tokenizer.*No new model is added/);
+ assert.match(selectedDecisionFileGuidance(true),/Selected custom D1.*five matching ONNX, config and tokenizer files.*No new model is added/);
+});
+
 test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{
  const {mediaReadingStatus}=await import('../src/model-file-guidance.ts');
  const status=mediaReadingStatus({ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Speech model not prepared'});
  assert.deepEqual(status.pdf,['Text layer · ready','Scanned pages · OCR model not selected']);
  assert.deepEqual(status.image,['Text · OCR model not selected','Description · model not selected']);
  assert.deepEqual(status.audio,['Transcription · not prepared']);
- assert.deepEqual(status.video,['Playback · ready','Audio transcription · not prepared','Frames · unsupported']);
+ assert.deepEqual(status.video,['Original preview · browser-dependent','Audio transcription · not prepared','Frame understanding · unavailable']);
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{

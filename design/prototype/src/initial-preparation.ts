@@ -11,6 +11,10 @@ import {ocrFiles} from './ocr-assets.ts';
 import {visionManifest} from './vision-assets.ts';
 export type PreparationRole='text'|'speech'|'ocr'|'decision'|'vision';
 type Role=PreparationRole;
+export function textPreparationStatus(assets:Record<string,{filesPresent?:boolean;statusError?:boolean}>,model:string){
+ const status=assets[model];if(!status)throw Error('Text file status unavailable · retry check in Models');
+ return {text:status.filesPresent===true,textStatusError:status.statusError===true};
+}
 export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
  const models=structuredClone(value),text=combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel);
  if(!text)throw Error('Choose a text model');
