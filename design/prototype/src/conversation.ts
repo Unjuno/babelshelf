@@ -161,18 +161,25 @@ export function requestNamesEarlierDialogue(question:string){
   ||/(?:前に|以前|さっき|先ほど|前回|過去の会話|会話履歴|前のメッセージ|以前の発言|私が(?:言った|聞いた|話した)|話した内容|決めたこと)/.test(question)
   ||/(?:之前|以前|刚才|上次|以前的对话|历史对话|之前我说|我们讨论)/.test(question);
 }
-export function plannerScope(context:DialogueContext,inputs=false,question=''):PlannerScope{
+// Match the model payload to the already restricted request scope. This is a
+// transient projection; saved originals and context used by later tools remain.
+function planningContextForRequest(context:DialogueContext,inputs:boolean,question:string):DialogueContext{
  const planning=planningContextForInputs(context,inputs);
- const fileTakesPrecedence=!!planning.currentFile&&requestNamesWorkingFile(question)&&!requestNamesEarlierDialogue(question);
- const historyCount=fileTakesPrecedence?0:planning.turnCount??planning.recent.length;
- const assistantIndices=fileTakesPrecedence?[]:planning.historyAssistantIndices??planning.recent.flatMap((turn,index)=>turn.answer?.trim()?[historyCount-planning.recent.length+index]:[]);
+ if(!planning.currentFile||!requestNamesWorkingFile(question)||requestNamesEarlierDialogue(question))return planning;
+ const {lastAnswerIndex,recalled,historyAssistantIndices,...rest}=planning;
+ return {...rest,summary:'',recent:[],turnCount:0,historyAssistantIndices:[]};
+}
+export function plannerScope(context:DialogueContext,inputs=false,question=''):PlannerScope{
+ const planning=planningContextForRequest(context,inputs,question);
+ const historyCount=planning.turnCount??planning.recent.length;
+ const assistantIndices=planning.historyAssistantIndices??planning.recent.flatMap((turn,index)=>turn.answer?.trim()?[historyCount-planning.recent.length+index]:[]);
  return {inputs,file:!!planning.currentFile,current:!!planning.currentResult,historyCount,assistantIndices:[...assistantIndices]};
 }
 export type AgentPlannerContext={allowedTools:readonly AgentToolCapability[];history:readonly AgentToolResult[]};
 type NonToolAction=Exclude<typeof HARNESS_ACTIONS[number]['id'],'tool'>;
 export type DialoguePlan={action:'tool';tool:string;arguments:Record<string,unknown>}|{action:NonToolAction;query:string;body?:string;target?:'current'|'history'|'file'|'path'|'knowledge'|'inputs';historyIndex?:number|null;historyPart?:'user'|'assistant'};
 export function planDialogueMessages(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext){
- context=planningContextForInputs(context,attachments.length>0);const scope=plannerScope(context,attachments.length>0,question);
+ context=planningContextForRequest(context,attachments.length>0,question);const scope=plannerScope(context,attachments.length>0,question);
  if(agent)scope.toolIds=agent.allowedTools.filter(tool=>tool.readOnly===true&&tool.network==='none').map(tool=>tool.id);
  const instructions=['Route the CURRENT request for a local assistant. Return one JSON object containing action and the fields required by the selected action and target below. action must be EXACTLY ONE catalog id, never a combined name. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.'];
  if(scope.toolIds?.length){instructions.push('Agent tool step: when a registered read-only tool is necessary, return exactly {"action":"tool","query":"<registered tool ID>","body":"<JSON string containing that tool\'s arguments>"}. The usage guides and argument examples are: '+JSON.stringify(agent!.allowedTools.filter(tool=>scope.toolIds!.includes(tool.id)).map(({id,usage})=>({id,usage}))));if(agent!.history.length>=MAX_AGENT_TOOL_CALLS)instructions.push('The application tool-call limit has been reached. Return a final non-tool action now.');}

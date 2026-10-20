@@ -603,3 +603,15 @@ test('planner can read a local result, calculate, then finalize within the same 
  assert.deepEqual(executed,['memory.search','math.calculate']);assert.equal(result.final.action,'answer');assert.equal(result.calls.length,2);
  assert.match(seen[2].at(-2).content,/"result":500/);assert.match(seen[2].at(-2).content,/untrusted tool result/i);
 });
+
+test('file-scoped planning omits excluded dialogue payload without changing canonical working context',async()=>{
+ const marker='UNRELATED_OLD_DIALOGUE_197',context={summary:marker.repeat(30),recent:[{id:'old',user:marker,answer:marker}],refs:[],turnCount:14,lastAnswerIndex:13,historyAssistantIndices:[13],recalled:[{turnId:'old',turnIndex:13,speaker:'assistant',quote:marker,start:0,end:marker.length}],currentFile:{noteId:'opened',revision:3}};
+ const before=structuredClone(context),question='What time does the workshop start in this file?';let counted,generated;
+ const runtime={manifest:{contextTokens:2048},count:async m=>{counted=m;return {prompt_tokens:100};},generate:async(m,max,format)=>{generated=m;assert.equal(format.scope.historyCount,0);return {text:'{"action":"answer","query":"workshop start time","target":"file"}'};}};
+ assert.deepEqual(await planDialogue(runtime,question,context),{action:'answer',query:'workshop start time',target:'file'});
+ assert.deepEqual(counted,generated);assert.doesNotMatch(JSON.stringify(generated),new RegExp(marker));assert.deepEqual(generated.at(-1),{role:'user',content:question});
+ const payload=JSON.parse(generated[1].content.split('\n').slice(1).join('\n'));
+ assert.equal(payload.turnCount,0);assert.equal(payload.lastAnswerIndex,undefined);assert.equal(payload.originalEarlierExcerpts,undefined);assert.equal(payload.summary,'');assert.deepEqual(payload.recent,[]);assert.deepEqual(payload.currentFile,{noteId:'opened',revision:3});assert.deepEqual(context,before);
+ for(const request of ['What did I say earlier about this file?','前回の会話でこのファイルについて何を話した？','What time does the workshop start?'])assert.match(JSON.stringify(planDialogueMessages(request,context)),new RegExp(marker));
+ const attached=[{name:'new.txt',kind:'text',status:'Read'}];assert.match(JSON.stringify(planDialogueMessages(question,context,attached)),new RegExp(marker));assert.deepEqual(context,before);
+});
