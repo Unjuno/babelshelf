@@ -8,6 +8,20 @@ import {explicitSavedKnowledgeQuestion} from '../src/turn-router.ts';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('model dialogue distinguishes application outcomes from assistant originals without dropping closed requests',()=>{
+ const context={summary:'Retain the preferred language.',refs:[],recent:[
+  {id:'saved',user:'Save a note: The workshop starts at 15:30.',status:'Saved · Inbox/workshop.md'},
+  {id:'stopped',user:'What time does the workshop start?',status:'Stopped'},
+  {id:'search',user:'Find the workshop',results:[{noteId:'workshop',title:'Workshop'}]},
+  {id:'answer',user:'Say hello in Japanese.',answer:'こんにちは。',status:'Completed'}
+ ]};
+ const before=structuredClone(context),messages=historyMessages(context);
+ assert.deepEqual(messages.filter(m=>m.role==='assistant').map(m=>m.content),['こんにちは。']);
+ for(const marker of ['Save a note: The workshop starts at 15:30.','What time does the workshop start?','Saved · Inbox/workshop.md','Stopped','workshop'])assert.ok(messages.some(m=>m.role==='user'&&m.content.includes(marker)),marker);
+ assert.match(JSON.stringify(messages),/application outcome/i);
+ assert.deepEqual(context,before);assert.equal(historyPayload(context).recent[1].status,'Stopped');
+});
+
 test('plain original writing stays a conversation even when a small planner would search notes',async()=>{
  const context={summary:'',recent:[],refs:[],turnCount:0};
  const shouldNotPlan={...engine(),generate:async()=>{throw Error('planner must not run');}};
