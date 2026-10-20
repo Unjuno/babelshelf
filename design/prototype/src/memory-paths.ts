@@ -6,6 +6,14 @@ function available(path:string,occupied:string[]){if(occupied.some(p=>p.toLowerC
 export function folderPath(parent:string,name:string,occupied:string[]=[]){return available(folder([folder(parent),segment(name)].filter(Boolean).join('/')),occupied);}
 export function validateFilePath(path:string){const parts=path.split('/');const name=segment(parts.pop()??'');if(!name.toLowerCase().endsWith('.md'))throw Error('Use a .md file name');const parent=folder(parts.join('/'));return [parent,name].filter(Boolean).join('/');}
 export function filePath(parent:string,name:string,occupied:string[]=[]){const clean=segment(name);return available(validateFilePath([folder(parent),clean.toLowerCase().endsWith('.md')?clean:clean+'.md'].filter(Boolean).join('/')),occupied);}
+export function suggestedNoteName(body:string){
+ const first=(body.split(/\r?\n/,1)[0]??'').replace(/[\\/:*?"<>|%\u0000-\u001f]/g,'-').trim().replace(/[. ]+$/g,'');
+ if(!first)return 'Note';
+ const max=80,points=Array.from(first);
+ if(points.length<=max)return first;
+ const prefix=points.slice(0,max).join(''),boundary=prefix.lastIndexOf(' ');
+ return (boundary>=32?prefix.slice(0,boundary):prefix).replace(/[. ]+$/g,'')||'Note';
+}
 
 export const SYSTEM_FOLDERS:readonly string[]=settings.storage.protectedRoots;
 export function isSystemFolder(path:string){return SYSTEM_FOLDERS.some(name=>name.toLowerCase()===path.toLowerCase());}

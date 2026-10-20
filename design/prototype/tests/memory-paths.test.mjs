@@ -16,3 +16,9 @@ test('Memory has immutable system folders and creates only inside them',()=>{
  assert.throws(()=>paths.assertMutableFolder('inbox'),/protected/i);
  assert.doesNotThrow(()=>paths.assertMutableFolder('Notes/Projects'));
 });
+
+test('captured note names keep the complete first sentence when it fits',()=>{
+ const body='The blue lantern meeting is on 19 November at 14:40 in Cedar Room.\nExtra details';
+ assert.equal(paths.suggestedNoteName(body),'The blue lantern meeting is on 19 November at 14-40 in Cedar Room');
+ assert.equal(paths.suggestedNoteName('Long '.repeat(30)).length<=80,true);
+});
