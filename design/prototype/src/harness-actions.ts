@@ -32,7 +32,7 @@ export function scopedHarnessActions(scope:PlannerScope){
 export const harnessActionCatalog=(currentInputs=false,scope?:PlannerScope)=>JSON.stringify(scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool').map(action=>currentInputs&&['answer','summary'].includes(action.id)?{...action,targets:['inputs']}:action));
 // The native transport already supplies scoped target enums through function
 // schemas. Share the exact owned prefix so no arbitrary policy text is removed.
-export function plannerRoutingInstruction(scope:PlannerScope,native=false){
- if(native)return 'Route the CURRENT request for a local assistant. Offered functions define allowed arguments and targets. Action purposes: '+scopedHarnessActions(scope).map(action=>action.id+': '+action.purpose).join('; ')+'.';
+export function plannerRoutingInstruction(scope:PlannerScope,native?:readonly {id:string;purpose:string}[]){
+ if(native)return 'Route the CURRENT request for a local assistant. Offered functions define allowed arguments and targets. Function purposes:\n'+native.map(action=>action.id+': '+action.purpose).join('\n')+'.';
  return 'Route the CURRENT request for a local assistant. Return one JSON object containing action and the fields required by the selected action and target below. action must be EXACTLY ONE catalog id, never a combined name. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.';
 }

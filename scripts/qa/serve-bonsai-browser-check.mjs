@@ -7,7 +7,7 @@ import {createReadStream} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const root=path.resolve(fileURLToPath(new URL('../../',import.meta.url))),[output,modelFile,runtimeFile,port='4219',mode='baseline']=process.argv.slice(2);
-if(!['baseline','harness','scoped','file'].includes(mode))throw Error('Unknown QA mode');
+if(!['baseline','harness','scoped','file','history'].includes(mode))throw Error('Unknown QA mode');
 if(!output||!modelFile||!runtimeFile||!/^\d{4,5}$/.test(port))throw Error('Use NEW_OUTPUT PINNED_2B_GGUF PINNED_RUNTIME [PORT]');
 const out=path.resolve(output),app=path.join(root,'design/prototype/dist/app'),build=JSON.parse(await readFile(path.join(app,'build.json'),'utf8')),manifest=JSON.parse(await readFile(path.join(root,'dist/model-manifest.json'),'utf8'));
 const model=manifest.models.find(m=>m.id==='2B'),worker=build.files.find(f=>/^\.\/assets\/bonsai-worker-[\w-]+\.js$/.test(f.path));

@@ -1,12 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueAgent,planDialogueMessages,readDialogueTurn} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueAgent,planDialogueMessages,readDialogueTurn,resolveDialogueTarget} from '../src/conversation.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
 import {createNote,reviseNote,searchNotes} from '../../../dist/core.js';
 import {explicitSavedKnowledgeQuestion} from '../src/turn-router.ts';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
+
+test('history routing distinguishes a zero-based turn from its human message and model answer',()=>{
+ const s=appendTurn(appendTurn(emptyDialogue(),{id:'first',user:'first human',answer:'first model'}),{id:'last',user:'last human',answer:'last model'}),context=dialogueContext(s);
+ const messages=planDialogueMessages('Save your FIRST answer as a new note.',context);
+ assert.match(messages[0].content,/historyPart=user for human messages or assistant for model answers/);
+ assert.match(messages[0].content,/Index 0 is the first turn/);
+ assert.ok(!messages[0].content.includes('First user message is index 0'));
+ assert.equal(resolveDialogueTarget(s,{target:'history',historyIndex:0,historyPart:'assistant'}).quote,'first model');
+ assert.equal(resolveDialogueTarget(s,{target:'history',historyIndex:0,historyPart:'user'}).quote,'first human');
+});
 
 test('planner budgets the exact scoped generation format before starting inference',async()=>{
  let generated=false;const formats=[],context={summary:'',refs:[],recent:[],turnCount:0};

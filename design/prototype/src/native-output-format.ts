@@ -1,6 +1,6 @@
 import {createStructuredSchema} from './structured-grammar.ts';
 import type {GenerationFormat} from './text-inference.ts';
-import {plannerRoutingInstruction} from './harness-actions.ts';
+import {HARNESS_ACTIONS,plannerRoutingInstruction} from './harness-actions.ts';
 // @ts-expect-error Shared browser transport is a plain JavaScript module.
 import {nativeActionBinding} from '../../../dist/native-response.js';
 
@@ -24,6 +24,14 @@ function compact(branches:any[],omit:string[]=[]){
  const required=branches[0].required.filter((key:string)=>!omit.includes(key)&&branches.every(b=>b.required.includes(key)));
  return {type:'object',properties,required,additionalProperties:false};
 }
+function nativePurpose(name:string){
+ const binding=nativeActionBinding(name),action=HARNESS_ACTIONS.find(action=>action.id===binding.action);
+ if(!action)throw Error('Unknown native action purpose');
+ if(action.id!=='capture')return action.purpose;
+ if(!binding.target)return action.purpose+' from new content only, never existing dialogue';
+ if(binding.target==='history')return 'Propose saving ONE earlier '+binding.historyPart+' message by historyIndex using original bytes';
+ return binding.target==='current'?'Propose saving the latest assistant result using original bytes':'Propose saving current attachments using original bytes';
+}
 export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
  if(!format||format==='prose')return {messages};
  const schema:any=createStructuredSchema(format),branches:any[]=schema.anyOf??[schema],parameters=compact(branches);
@@ -39,11 +47,12 @@ export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
  }
  const actions=schema.anyOf?Object.fromEntries([...groups].map(([name,group])=>[name,compact(group,Object.keys(nativeActionBinding(name)))])):undefined;
  const name=(typeof format==='string'?format:format.type)==='dialogue-answer'?'babelshelf_answer':'babelshelf_plan';
- const copy=structuredClone(messages),instruction=actions?'Choose one offered function. capturetext creates new text; capturecurrent, captureinputs, captureuser and captureassistant select originals without rewriting them. Supply only its argument fields; no assistant prose. All original scope and authorization rules still apply.':`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
+ const purposes=actions?Object.keys(actions).map(id=>({id,purpose:nativePurpose(id)})):undefined;
+ const copy=structuredClone(messages),instruction=actions?'Call exactly one offered function with only its argument fields and no assistant text. Original selectors reuse stored bytes, never supply a body. All original scope and authorization rules still apply.':`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
  const system=copy.find(m=>m.role==='system'&&typeof m.content==='string');
  if(system&&typeof format==='object'&&format.type==='dialogue-plan'){
   const prefix=plannerRoutingInstruction(format.scope);
-  if(system.content.startsWith(prefix))system.content=plannerRoutingInstruction(format.scope,true)+system.content.slice(prefix.length);
+  if(system.content.startsWith(prefix))system.content=plannerRoutingInstruction(format.scope,purposes)+system.content.slice(prefix.length);
  }
  if(system)system.content+='\n'+instruction;else copy.unshift({role:'system',content:instruction});
  return {messages:copy,responseTool:{name,parameters,...(actions?{actions}:{})}};

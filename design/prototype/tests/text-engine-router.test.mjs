@@ -69,6 +69,20 @@ test('native planner omits duplicate catalog syntax but retains purposes and eve
  assert.deepEqual(nativeOutputRequest(messages,'prose').messages,messages);
 });
 
+test('native purposes advertise exactly the functions offered, including source-specific capture names',()=>{
+ const scope={inputs:false,file:false,current:true,historyCount:2,assistantIndices:[0,1]},format={type:'dialogue-plan',scope};
+ const context={summary:'',refs:[],recent:[{id:'a',user:'one',answer:'A'},{id:'b',user:'two',answer:'B'}],turnCount:2,historyAssistantIndices:[0,1],currentResult:{turnId:'b'}};
+ const request=nativeOutputRequest(planDialogueMessages('Save your FIRST answer as a new note.',context),format);
+ const advertised=[...request.messages[0].content.matchAll(/^([a-z]+): /gm)].map(match=>match[1]);
+ assert.deepEqual(advertised,Object.keys(request.responseTool.actions));
+ assert.ok(!advertised.includes('capture'));
+ assert.match(request.messages[0].content,/captureassistant: .*ONE.*assistant.*historyIndex/);
+ assert.match(request.messages[0].content,/capturetext: .*new.*never.*dialogue/i);
+ const empty={inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]};
+ const r=nativeOutputRequest(planDialogueMessages('hello',{summary:'',refs:[],recent:[],turnCount:0}),{type:'dialogue-plan',scope:empty});
+ assert.ok(!r.messages[0].content.includes('captureassistant'));
+});
+
 test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{
  const worker={postMessage(m){this.sent=m;},terminate(){}},manifest={contextTokens:2048,runtime:{revision:'r'},models:[{id:'4B',revision:'v'}]},base=new Engine(manifest,()=>{},worker);
  const router=new TextEngineRouter(base,()=>{throw Error('unused');},[],undefined,true),loading=router.load('4B');worker.onmessage({data:{id:worker.sent.id,type:'done',value:true}});await loading;

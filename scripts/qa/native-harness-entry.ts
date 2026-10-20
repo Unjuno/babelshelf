@@ -7,7 +7,7 @@ import {bindWorkingFileRequest,bindExplicitCurrentFileQuestion} from '../../desi
 import {nativeOutputRequest} from '../../design/prototype/src/native-output-format.ts';
 
 export async function checkNativeHarness(engine:any,notify:(item:any)=>void,suite='basic'){
- if(!['basic','scoped','file'].includes(suite))throw Error('Unknown harness suite');
+ if(!['basic','scoped','file','history'].includes(suite))throw Error('Unknown harness suite');
  const history=appendTurn(appendTurn(emptyDialogue(),{id:'qa-first',user:'Give a short marker.',answer:'Keep these original bytes: BLUE-42.'}),{id:'qa-last',user:'Give another marker.',answer:'A different latest answer: GREEN-53.'});
  const router=new TextEngineRouter(engine,()=>{throw Error('Optional worker must stay idle');},[],undefined,true);
  const load=await router.load('2B');const cases:any[]=[];
@@ -20,7 +20,7 @@ export async function checkNativeHarness(engine:any,notify:(item:any)=>void,suit
   {name:'Arithmetic plan',question:'Calculate 7 * 8.',accept:(p:any)=>p.action==='calculate'&&p.query.replace(/\s/g,'')==='7*8'},
   {name:'New note proposal',question:'Save a new note: The workshop starts at 15:30.',accept:(p:any)=>p.action==='capture'&&!p.target&&/workshop/i.test(p.body??'')&&/15:30/.test(p.body??'')}
  ];
- const selected=suite==='file'?requests.filter(request=>request.name==='Opened file summary scope'):requests;
+ const selected=suite==='file'?requests.filter(request=>request.name==='Opened file summary scope'):suite==='history'?requests.filter(request=>request.name==='Save first assistant original'):requests;
  for(const request of selected){
   const item:any={name:request.name,question:request.question,context:request.context??{summary:'',refs:[],recent:[],turnCount:0},counts:[],generations:[],passed:false};cases.push(item);notify(item);
   const port=createTextInference(()=>({
