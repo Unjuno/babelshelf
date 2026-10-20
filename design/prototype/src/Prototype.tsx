@@ -419,13 +419,13 @@ export default function Prototype() {
    const input=tool.startsWith('decision.')?decisionAssetInput(tool==='decision.prepare'&&downloads&&!verifyOnly&&!files,customDecision,files):tool==='ocr.prepare'?ocrAssetInput(ocrLanguage,downloads&&!verifyOnly):tool==='vision.prepare'?visionAssetInput(downloads&&!verifyOnly&&!files,files):tool==='speech.prepare'?speechAssetInput(downloads&&!verifyOnly,selectedCustomSpeech,speechModel):textAssetInput(selected,tool==='model.prepare'&&!verifyOnly&&!files&&downloads&&!modelPreferences.customModels.some(m=>m.id===selected),files,modelPreferences.customModels);
    await assetGate.current.run(async()=>{assetCancelled.current=false;setAssetAction(tool);try{await traceProcessing(tool,input,async()=>{
     if(tool==='decision.prepare')return {...await decision.prepare(input.allowNetwork,files),effect:'verified-assets',role:'decision'};
-    if(tool==='decision.load')return {...await decision.load(),effect:'loaded',role:'decision'};
+    if(tool==='decision.load'){await releaseIdleInference([bonsai],()=>{if(assetCancelled.current)throw Error('Stopped');});return {...await decision.load(),effect:'loaded',role:'decision'};}
     if(tool==='decision.unload')return {...await decision.unload(),effect:'unloaded',role:'decision'};
     if(tool==='ocr.prepare'){await ocr.prepare(input.allowNetwork,ocrLanguage);return {completed:true,effect:'verified-assets',role:'ocr'};}
     if(tool==='vision.prepare'){await vision.prepare(input.allowNetwork,files);return {completed:true,effect:'verified-assets',role:'vision'};}
     if(tool==='speech.prepare'){await speech.prepare(input.allowNetwork);return {completed:true,effect:'verified-assets',role:'speech'};}
     if(tool==='model.prepare'){if(verifyOnly)await bonsai.verify(selected);else await bonsai.prepare(selected,input.allowNetwork,files);return {completed:true,effect:'verified-assets',role:'text'};}
-    if(tool==='model.load'){await bonsai.load(selected);return {completed:true,effect:'loaded',loadedModel:bonsai.loaded};}
+    if(tool==='model.load'){await releaseIdleInference([decision],()=>{if(assetCancelled.current)throw Error('Stopped');});await bonsai.load(selected);return {completed:true,effect:'loaded',loadedModel:bonsai.loaded};}
     await bonsai.unload();return {completed:true,effect:'unloaded',loadedModel:bonsai.loaded};
    },r=>r,()=>assetCancelled.current);}finally{setAssetAction(null);}});
   }catch(e){toast((e as Error).message);}
@@ -602,6 +602,11 @@ export default function Prototype() {
   const submission=createInputSubmission(id,text,items,checkSend);
   const recoverDraft=()=>{const recovered=submission.recover(composerSnapshot.current);if(recovered){setDraft(recovered.text);setAttachments(recovered.attachments);}};
   async function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(result:T)=>unknown,failureOf?:(result:T)=>unknown){return recordOperation(tool,input,async()=>{checkSend();const result=await work();checkSend();return result;},async activity=>{const turn=dialogue.current.turns.find(t=>t.id===id);if(!turn)throw Error('Input unavailable');await finishTurn(id,{activity:updateActivity(turn.activity??[],activity)});if(connectionPreferences.diagnosticLogs&&(activity.status==='failed'||activity.status==='stopped'))try{appendDiagnosticLog(localStorage,{tool:activity.tool,status:activity.status,code:activity.error?.code??activity.status,message:activity.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}},project,failureOf);}
+  const ensureText=async()=>{
+   checkSend();await releaseIdleInference([decision],checkSend);
+   if(!model||bonsai.loaded!==model)await trace('model.load',{model},async()=>{checkSend();if(!model)throw Error('Model not configured · Settings');if(!bonsai.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await bonsai.load(model);checkSend();return {loaded:model};});
+   checkSend();inference=bonsai.pin!();
+  };
   const prepareContext=async()=>{
    checkSend();const preparedContext=await trace('dialogue.compact',{model,question:text,priorTurns:prior.turns.length,through:prior.compaction?.through??0},async()=>{const compact=await compactDialogue(prior,inference,text,()=>{checkSend();setChatProgress('Compacting…');});return {compact,context:await boundedDialogueContext(compact,inference,text)};},value=>({compaction:value.compact.compaction})),compact=preparedContext.compact;checkSend();
     if(compact.compaction!==prior.compaction)await saveDialogue({...dialogue.current,revision:dialogue.current.revision+1,compaction:compact.compaction});
@@ -622,16 +627,21 @@ export default function Prototype() {
    const unread=sent.find(a=>a.status!=='Text available'&&!a.voice&&!a.reading);if(unread&&text&&(!request||['answer','summary'].includes(request.action)||request.action==='capture'&&inputReadings.length>0)){await finishTurn(id,{refs:importedRefs,status:'Original saved · '+unread.status});recoverDraft();return;}
    const orderedExpression=items.length?null:orderedCalculationInput(text);const expression=items.length?null:calculatorInput(text)??orderedExpression;
    if(expression!==null){const result=await trace('math.calculate',{expression,...await builtinToolRegistry.identity('math.calculate')},()=>builtinToolRegistry.run('math.calculate',{expression},{search:q=>knowledge.search(q),views:refreshSnapshot,check:checkSend}));checkSend();await finishTurn(id,{answer:orderedExpression!==null?expression+' = '+String(result[0].result):String(result[0].result),status:'Calculated',refs:[]});return;}
-   if(text&&(!request||['answer','summary'].includes(request.action))){
-    if(!model||bonsai.loaded!==model){await trace('model.load',{model},async()=>{if(!model)throw Error('Model not configured · Settings');if(!bonsai.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await bonsai.load(model);return {loaded:model};});}
-    inference=bonsai.pin!();
+   const decisionFirst=!request&&decision.enabled&&decision.ready;
+   if(text&&!decisionFirst&&(!request||['answer','summary'].includes(request.action))){
+    await ensureText();
     if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else if(!explicitSavedRequest&&!inputQuestion)context=await prepareContext();
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
    let agentToolCalls:{tool:string;arguments:Record<string,unknown>;result:unknown}[]=[];
    const resolution=await resolveTurnRoute({current:request,question:text,check:checkSend,
+    prepareContinuation:decisionFirst?async()=>{
+     await ensureText();const prepared=await prepareContext();checkSend();
+     context=planningContextForInputs({...prepared,refs:[...prepared.refs,...importedRefs]},inputReadings.length>0);
+    }:undefined,
     select:decision.enabled&&decision.ready?async()=>{
+     await releaseIdleInference([bonsai],checkSend);
      if(!decision.loaded){setChatProgress('Loading decision model…');await trace('decision.load',decisionAssetInput(false,modelPreferences.customDecisionModels.find(m=>m.id===decisionModel)),()=>decision.load());}
      checkSend();setChatProgress('Selecting action…');return routeWithDecision(decision,text,context,descriptors,trace,checkSend);
     }:undefined,

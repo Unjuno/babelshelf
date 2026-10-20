@@ -86,3 +86,14 @@ test('decision failure or cancellation never falls through to planner',async()=>
  await assert.rejects(resolveTurnRoute({current:null,question:'Do work',select:async()=>({request:null,reason:'ambiguous'}),plan:async()=>{planned++;return {};},check:()=>{if(++checks===2)throw stopped;}}),error=>error===stopped);
  assert.equal(planned,0);
 });
+
+test('decision-first routing prepares its continuation only after selection and once before fallback planning',async()=>{
+ const calls=[];const check=()=>{};
+ const decision=await resolveTurnRoute({current:null,question:'Question',check,select:async()=>{calls.push('decision');return {request:{action:'chat'},reason:'selected'};},prepareContinuation:async()=>{calls.push('text');},plan:async()=>{calls.push('plan');return {action:'answer'};}});
+ assert.equal(decision.source,'decision');assert.deepEqual(calls,['decision','text']);calls.length=0;
+ const fallback=await resolveTurnRoute({current:null,question:'Question',check,select:async()=>{calls.push('decision');return {request:null,reason:'contextual-query'};},prepareContinuation:async()=>{calls.push('text');},plan:async()=>{calls.push('plan');return {action:'answer'};}});
+ assert.equal(fallback.source,'planner');assert.deepEqual(calls,['decision','text','plan']);calls.length=0;
+ await resolveTurnRoute({current:{action:'read'},question:'Question',check,prepareContinuation:async()=>{throw Error('Must not prepare explicit route');},plan:async()=>{throw Error('Must not plan');}});
+ await assert.rejects(resolveTurnRoute({current:null,question:'Question',check,prepareContinuation:async()=>{throw Error('Release failed');},plan:async()=>{calls.push('plan');return {action:'answer'};}}),/Release failed/);assert.deepEqual(calls,[]);
+ let stopped=false;await assert.rejects(resolveTurnRoute({current:null,question:'Question',check:()=>{if(stopped)throw Error('Stopped');},prepareContinuation:async()=>{stopped=true;},plan:async()=>{calls.push('late plan');return {action:'answer'};}}),/Stopped/);assert.deepEqual(calls,[]);
+});

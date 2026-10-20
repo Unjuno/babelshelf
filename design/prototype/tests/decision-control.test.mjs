@@ -25,3 +25,13 @@ test('worker context-limit code is typed but cancelled requests never inherit a 
  const limit=c.call('classify');assert.equal(c.working,true);f.workers[0].onmessage({data:{id:f.workers[0].messages.at(-1).id,error:'Decision context limit',code:'decision_context_limit'}});await assert.rejects(limit,e=>e.code==='decision_context_limit');assert.equal(c.working,false);
  const stopped=c.call('classify');c.stop();await assert.rejects(stopped,e=>e.message==='Stopped'&&!e.code);assert.equal(c.working,false);c.dispose();
 });
+
+test('classification retires the decision worker before success or typed failure reaches text continuation',async()=>{
+ const f=factory();let resets=0;const c=new DecisionClient(()=>f.create(),()=>{},()=>resets++);
+ const first=c.call('classify');f.workers[0].reply({answer:'observed'});const result=await first;
+ assert.deepEqual(result,{answer:'observed'});assert.equal(f.workers[0].terminated,true);assert.equal(c.active,false);assert.equal(c.working,false);assert.equal(resets,1);
+ const load=c.call('load');assert.equal(f.workers.length,2);f.workers[0].reply({answer:'late'});f.workers[1].reply({loaded:true});await load;
+ const failed=c.call('classify');f.workers[1].onmessage({data:{id:f.workers[1].messages.at(-1).id,error:'too long',code:'decision_context_limit'}});
+ await assert.rejects(failed,e=>e.code==='decision_context_limit');assert.equal(f.workers[1].terminated,true);assert.equal(c.active,false);assert.equal(resets,2);
+ const status=c.call('status');f.workers[2].reply({prepared:true,loaded:false});assert.deepEqual(await status,{prepared:true,loaded:false});assert.equal(f.workers[2].terminated,false);c.dispose();
+});

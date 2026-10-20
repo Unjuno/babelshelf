@@ -36,6 +36,7 @@ export async function resolveTurnRoute<Request>(input:{
  question:string;
  select?:()=>Promise<TurnSelection<Request>>;
  plan?:()=>Promise<Request>;
+ prepareContinuation?:()=>Promise<void>;
  check:()=>void;
 }):Promise<TurnRoute<Request>>{
  input.check();
@@ -44,8 +45,9 @@ export async function resolveTurnRoute<Request>(input:{
  let decisionReason:string|undefined;
  if(input.select){
   const selected=await input.select();input.check();decisionReason=selected.reason;
-  if(selected.request!==null)return {request:selected.request,source:'decision',reason:selected.reason};
+  if(selected.request!==null){if(input.prepareContinuation){await input.prepareContinuation();input.check();}return {request:selected.request,source:'decision',reason:selected.reason};}
  }
  if(!input.plan)return {request:null,source:'none',...(decisionReason?{decisionReason}:{})};
+ if(input.prepareContinuation){await input.prepareContinuation();input.check();}
  const request=await input.plan();input.check();return {request,source:'planner',...(decisionReason?{decisionReason}:{})};
 }
