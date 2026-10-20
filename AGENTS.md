@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Explicit native head-activation diagnostics are in scripts/qa/trace-bonsai-activations.mjs. Exact-hash local instrumentation retains hidden/rotated/logits graph outputs and synchronous readback; this changes allocation/timing and must never become a product import, benchmark or shipped runtime. Read the activation-trace section of INFERENCE-OPTIMIZATION.md. Real compiled-graph plumbing self-check passes; the full9B attempt refused before loading due low available memory. Session compile-hook/full-checkpoint execution remain unverified until a real run records snapshots.
+
 Token-selection isolation follows the actual Prism head path: normalized/rotated hidden -> LlamaPrefillMatmul logits -> SampleNextToken, not absent generic fused LmHeadArgmax operators. Controlled full-vocabulary selectors pass on Intel; deliberately all-NaN logits produce token0 (the real9B header token0 is !). This is a hypothesis boundary, not proof that full9B logits are NaN or a fixed generation result. Read the latest INFERENCE-OPTIMIZATION.md section before adding instrumentation or changing sampling.
 
 Bounded embedding isolation now covers actual LlamaEmbed LUT2 inverse-rotation auto/portable kernels and prefill lookup, with independent scalar/FP64 references; see INFERENCE-OPTIMIZATION.md and embedding-parity.json. These are constructed arithmetic vectors, not a real checkpoint/tokenizer/sign-map or 9B generation pass. Keep private QA exports outside deployment and require the exact runtime hash.
