@@ -84,6 +84,8 @@ test('explicit current-file questions cannot broaden evidence to knowledge or ol
  const pin={noteId:'chosen',revision:2};
  assert.deepEqual(bindExplicitCurrentFileQuestion({action:'answer',query:'marker and reserve',target:'knowledge'},'What are the marker and reserve in this file?',pin),{action:'read',query:'What are the marker and reserve in this file?',target:'file'});
  assert.deepEqual(bindExplicitCurrentFileQuestion({action:'summary',query:'this file'},'このファイルを要約して',pin),{action:'read',query:'このファイルを要約して',target:'file'});
+ const saved={action:'answer',query:'In the saved blue lantern meeting note, what time and room are recorded?',target:'knowledge'};
+ assert.deepEqual(bindExplicitCurrentFileQuestion(saved,saved.query,pin),saved);
  const previous={action:'answer',query:'earlier',target:'knowledge'};
  assert.deepEqual(bindExplicitCurrentFileQuestion(previous,'What did we say about this file in the previous conversation?',pin),previous);
  const attachment={action:'answer',query:'marker',target:'inputs'};

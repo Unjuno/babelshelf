@@ -1,5 +1,21 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
+import {requestNamesEarlierDialogue} from './conversation.ts';
+import {namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
+
+// A question explicitly anchored to saved knowledge needs only the read-only
+// answer path. This narrow route is independent of the selected text engine:
+// small models need not choose between unrelated dialogue and write actions.
+// The user's full words remain the retrieval query and the grounded answer
+// still needs a current source citation. Ambiguous requests keep the planner.
+export function explicitSavedKnowledgeQuestion(question:string,currentInputs=false,workingFile=false){
+ const text=question.trim();
+ if(currentInputs||workingFile&&(!namesExplicitSavedKnowledge(text)||namesDeicticFile(text))||text.length>500||requestNamesEarlierDialogue(text))return null;
+ const englishQuestion=/\b(?:what|when|where|who|which|how\s+(?:many|much))\b/i;
+ const japaneseQuestion=/(?:何|いつ|どこ|誰|どれ|いくつ|何時|何日|何件|何について)/u;
+ if(namesSavedKnowledge(text)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:question,target:'knowledge' as const};
+ return null;
+}
 export type TurnSelection<Request>={request:Request|null;reason:string};
 export type TurnRoute<Request>=
  |{request:Request;source:'explicit'}

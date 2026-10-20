@@ -1,6 +1,7 @@
 import {videoTimingCoverage} from './speech-transcript.ts';
 import {validHarnessTarget} from './harness-actions.ts';
 import {requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type SourceRef} from './conversation.ts';
+import {namesExplicitSavedKnowledge} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {latest,buildIndex,searchNotes,chunks} from '../../../dist/core.js';
 // @ts-expect-error Shared canonical path contract is JavaScript.
@@ -52,6 +53,7 @@ export function bindWorkingFileRequest<T extends {action:string;query:string;tar
 /** Explicit references to the currently opened file must use its pinned revision as evidence. */
 export function bindExplicitCurrentFileQuestion<T extends {action:string;query:string;target?:string}>(request:T,question:string,pin:WorkingFile|undefined,currentInputs=false):T{
  if(currentInputs||!pin||!['answer','summary','search','read'].includes(request.action))return request;
+ if(request.target==='knowledge'&&namesExplicitSavedKnowledge(question))return request;
  if(!requestNamesWorkingFile(question)||requestNamesEarlierDialogue(question))return request;
  return {...request,action:'read',target:'file',query:question};
 }
