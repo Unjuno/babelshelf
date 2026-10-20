@@ -127,3 +127,28 @@ test('local speech and decision verification does not require model downloads',a
  const calls=[];await runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'));
  assert.deepEqual(calls,['text','speech','decision','commit']);
 });
+
+test('preparation rereads its reviewed selection before any asset operation and refuses a changed model',async()=>{
+ const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false}),calls=[];
+ const {assertPreparationSettings}=await import('../src/initial-preparation.ts');
+ await assert.rejects(runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'),()=>{},async step=>assertPreparationSettings(plan,{models:{...prefs,textModel:'2B'},connection:{downloads:true}},step)),/Model settings changed/);
+ assert.deepEqual(calls,[]);
+});
+
+test('a changed selection between roles prevents the next acquisition and completion',async()=>{
+ const prefs=initial();prefs.transcriptionModel='whisper-tiny';prefs.transcriptionLibrary=['whisper-tiny'];const plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false}),calls=[];let changed=false;
+ const {assertPreparationSettings}=await import('../src/initial-preparation.ts');
+ await assert.rejects(runInitialPreparation(plan,async role=>{calls.push(role);changed=true;},async()=>calls.push('commit'),()=>{},async step=>assertPreparationSettings(plan,{models:changed?{...prefs,textModel:'2B'}:prefs,connection:{downloads:true}},step)),/Model settings changed/);
+ assert.deepEqual(calls,['text']);
+});
+
+test('fresh downloads OFF refuses acquisition but allows local verification and completion',async()=>{
+ const {assertPreparationSettings}=await import('../src/initial-preparation.ts');const prefs=initial(),calls=[],missing=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});
+ await assert.rejects(runInitialPreparation(missing,async role=>calls.push(role),async()=>calls.push('commit'),()=>{},async step=>assertPreparationSettings(missing,{models:prefs,connection:{downloads:false}},step)),/Downloads are off/);assert.deepEqual(calls,[]);
+ const present=initialPreparationPlan(prefs,{text:true,speech:false,ocr:false});await runInitialPreparation(present,async role=>calls.push(role),async()=>calls.push('commit'),()=>{},async step=>assertPreparationSettings(present,{models:prefs,connection:{downloads:false}},step));assert.deepEqual(calls,['text','commit']);
+});
+
+test('Stop during a fresh settings read cannot start preparation',async()=>{
+ const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false}),calls=[];let stopped=false;
+ await assert.rejects(runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'),()=>{if(stopped)throw Error('Stopped');},async()=>{stopped=true;}),/Stopped/);assert.deepEqual(calls,[]);
+});

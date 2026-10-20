@@ -20,7 +20,7 @@ import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGrounding
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {openDB} from '../../../dist/storage.js';
-import {parsePreference,readPreferenceWithFallback,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
+import {parsePreference,readPreference,readPreferenceWithFallback,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
@@ -144,6 +144,16 @@ export class KnowledgeStore {
  }
  async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}
  async views(){return (await this.all()).filter(n=>n.state==='active').map(projectNote);}
+ // Preparation needs only these two canonical records, even with a large diary.
+ async preparationSettings(){
+  return this.transaction<{models:ReturnType<typeof readPreference<'models'>>;connection:ReturnType<typeof readPreference<'connection'>>}>(['notes'],'readonly',(tx,done,fail)=>{
+   const records:NoteView[]=[];let pending=2;
+   for(const group of ['models','connection'] as const){const request=tx.objectStore('notes').get('settings-'+group);request.onsuccess=()=>{try{
+    if(!request.result||request.result.state!=='active')throw Error('Settings unavailable · reopen Models');
+    records.push(projectNote(request.result));if(!--pending)done({models:readPreference('models',records),connection:readPreference('connection',records)});
+   }catch(error){fail(error);}};}
+  });
+ }
  async original(ref:OriginalRef):Promise<OriginalAsset>{const asset=await this.transaction<OriginalAsset>(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').get(originalKey(ref.id));q.onsuccess=()=>done(q.result);});readOriginal(asset,ref);return asset;}
  async saveTranscript(id:string,value:Transcript,newOriginal?:OriginalAsset){
   return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{

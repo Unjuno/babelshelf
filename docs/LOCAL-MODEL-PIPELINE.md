@@ -56,3 +56,25 @@ A fresh credential-free PC Chrome profile on published984769124c99c80b/112 now c
 
 
 Initial preparation shows active adapter progress separately from its role label (Unit198), using actual worker/reader updates. Idle, unrelated and terminal stale adapter statuses are hidden. No simulated overall percentage or completion prediction. The plan still commits only after all actual verifications complete.
+
+## Reviewed preparation and current settings (2026-10-20)
+
+Preparation is a reviewed plan over the selected model roles, not a command to
+prepare every catalog model. Before each actual role operation and before the
+completion boundary, it rereads the canonical models and connection records in
+one readonly IndexedDB transaction. These are two keyed reads; no diary, original
+or full knowledge snapshot is scanned. A changed model record invalidates the
+review before the next adapter operation. Missing or malformed settings fail;
+they do not silently substitute defaults or enable downloads. A missing package
+with nonzero acquisition bytes requires current Downloads ON. Existing verified
+files may still be checked/completed with Downloads OFF. Stop is checked on both
+sides of the awaited settings read.
+
+The existing completion compare-and-save remains in place. The check is an
+operation boundary, not a cross-tab lock held during a network download; already
+completed asset operations are not rolled back and model preferences are not
+overwritten to match an old review. On selection conflict the UI refreshes its
+saved settings, invalidates the old plan, and offers Review again with the same
+role scope. It never automatically retries acquisition or silently switches a
+reviewed selection. Mid-file cancellation/eviction and OS-isolated full offline
+acceptance remain separate gates.

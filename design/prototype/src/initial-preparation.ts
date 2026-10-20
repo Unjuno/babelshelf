@@ -42,6 +42,12 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  return {expected:JSON.stringify(value),models,steps:selected,bytes:selected.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0)};
 }
 export type InitialPreparation=ReturnType<typeof initialPreparationPlan>;
-export async function runInitialPreparation(plan:InitialPreparation,prepare:(role:Role)=>Promise<unknown>,commit:()=>Promise<unknown>,check=()=>{}){
- check();for(const step of plan.steps){if(step.ready&&step.role!=='text')continue;check();await prepare(step.role);check();}check();await commit();
+type PreparationStep=InitialPreparation['steps'][number];
+export function assertPreparationSettings(plan:InitialPreparation,current:{models:Preferences['models'];connection:Pick<Preferences['connection'],'downloads'>},step?:PreparationStep){
+ if(JSON.stringify(current.models)!==plan.expected)throw Error('Model settings changed · review again');
+ if(step&&!step.ready&&step.bytes>0&&!current.connection.downloads)throw Error('Downloads are off');
+}
+export async function runInitialPreparation(plan:InitialPreparation,prepare:(role:Role)=>Promise<unknown>,commit:()=>Promise<unknown>,check=()=>{},review:(step?:PreparationStep)=>Promise<void>=async()=>{}){
+ const reviewed=async(step?:PreparationStep)=>{check();await review(step);check();};
+ check();for(const step of plan.steps){if(step.ready&&step.role!=='text')continue;await reviewed(step);await prepare(step.role);check();}await reviewed();await commit();
 }
