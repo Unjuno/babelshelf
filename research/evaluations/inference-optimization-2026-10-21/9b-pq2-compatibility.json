@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "scope": "Node/Dawn header and adapter check only; not model loading, generation or browser/phone acceptance",
+  "at": "2026-10-20T18:43:44.106Z",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "runtime": "v24.6.0",
+  "browser": null,
+  "model": "9B",
+  "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+  "quantization": "PQ2_0",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "backend": "d3d12",
+  "inputTokens": null,
+  "outputTokens": null,
+  "weightsVerified": false,
+  "headerOnly": true,
+  "header": {
+    "repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+    "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+    "format": "PQ2_0",
+    "file": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+    "bytes": 2416851840,
+    "sha256": "7a89ab48f5038c704480f60781f9b8d4035351f5f6beb7d11fad80001fde23f9",
+    "headerBytes": 16777216,
+    "headerSha256": "e767ff1fb24c7a17ae862c5f5732fdf8af7c95d0399814c7e77ca8d778725175",
+    "contentRange": "bytes 0-16777215/2416851840",
+    "weightsVerified": false
+  },
+  "requests": [
+    {
+      "method": "HEAD",
+      "range": null
+    },
+    {
+      "method": "GET",
+      "range": "bytes=0-4194303"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=4194304-5242879"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=5242880-6553599"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=6553600-10860838"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=10860839-13576048"
+    }
+  ],
+  "compatibility": {
+    "ok": true
+  },
+  "elapsedMs": 1450.5221000000001
+}

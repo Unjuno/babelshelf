@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "scope": "Node CPU streaming file verification; no model inference or phone evidence",
+  "at": "2026-10-20T18:37:38.933Z",
+  "device": "12th Gen Intel(R) Core(TM) i7-1250U",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "runtime": "v24.6.0",
+  "browser": null,
+  "model": "9B",
+  "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+  "quantization": "PTQ1_0",
+  "bytes": 1997486976,
+  "backend": "hash-wasm-4.12.0",
+  "inputTokens": null,
+  "outputTokens": null,
+  "conditions": {
+    "fileCache": "uncontrolled",
+    "streaming": true,
+    "network": false
+  },
+  "verificationMs": 18193.4874,
+  "MiBPerSecond": 104.70516094496469,
+  "cpuUserMs": 8844,
+  "cpuSystemMs": 2359,
+  "peakProcessRssBytes": 114659328,
+  "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+  "expectedSha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+  "verified": true
+}

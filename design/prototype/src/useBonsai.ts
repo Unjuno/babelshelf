@@ -1,4 +1,5 @@
 import {runtimeStatus} from './runtime-status';
+import './fast-hash';
 import type {GenerationFormat} from './text-inference';
 import {TextEngineRouter} from './text-engine-router';
 import {createOnnxTextBackend} from './onnx-text-backend';

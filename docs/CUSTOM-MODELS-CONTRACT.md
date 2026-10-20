@@ -1,5 +1,7 @@
 # User-supplied models and local engine adapters
 
+2026-10-21: checked qwen35 custom intake now admits F32 with PTQ1_0(type143), PQ2_0(type142,128/34) and current Q2_0(type42,64/18). Full tensor extents, GPT-2 tokenizer, chat template, whole-file SHA and explicit review remain required. Only architecture/layout admission and actual Node/Dawn header preflight were verified for9B alternatives; complete weights/generation/device fit are unverified. Old Qwen3 and legacy type42/group128 remain refused. See [INFERENCE-OPTIMIZATION.md](INFERENCE-OPTIMIZATION.md); earlier PTQ1-only descriptions below are historical.
+
 Updated 2026-10-19. Users can add supported models to the same role-specific libraries as built-ins. A model file is data, never an executable plugin. Local inference remains the default; no provider, cloud, LAN or PC fallback is authorized.
 
 ## Two different file actions in Models

@@ -1,0 +1,49 @@
+{
+  "environment": "Node/Dawn compute only; not a browser or phone",
+  "node": "v24.6.0",
+  "platform": "win32",
+  "arch": "x64",
+  "package": "webgpu@0.6.2",
+  "requestedBackend": "d3d12",
+  "at": "2026-10-20T18:29:35.762Z",
+  "available": true,
+  "info": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "intel-r-iris-r-xe-graphics",
+    "description": "D3D12 driver version 31.0.101.5186",
+    "backend": null,
+    "adapterType": null,
+    "isFallbackAdapter": false
+  },
+  "features": [
+    "timestamp-query",
+    "core-features-and-limits",
+    "indirect-first-instance",
+    "depth-clip-control",
+    "shader-f16",
+    "depth32float-stencil8",
+    "texture-compression-bc",
+    "texture-compression-bc-sliced-3d",
+    "rg11b10ufloat-renderable",
+    "bgra8unorm-storage",
+    "float32-filterable",
+    "float32-blendable",
+    "clip-distances",
+    "dual-source-blending",
+    "subgroups",
+    "texture-formats-tier1",
+    "texture-formats-tier2",
+    "primitive-index",
+    "texture-component-swizzle",
+    "subgroup-size-control",
+    "texture-compression-unaligned"
+  ],
+  "limits": {
+    "maxBufferSize": 2147483648,
+    "maxStorageBufferBindingSize": 2147483648,
+    "maxComputeWorkgroupStorageSize": 32768,
+    "maxComputeInvocationsPerWorkgroup": 1024
+  },
+  "deviceCreated": true
+}

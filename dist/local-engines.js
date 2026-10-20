@@ -11,6 +11,6 @@ export const localEngine=id=>LOCAL_ENGINES.find(engine=>engine.id===id);
 // Eligible to attempt this adapter; never proof of successful execution or quality.
 export function eligibleTextEngine(info){
  if(info?.format==='GGUF'&&info.version===3&&info.architecture==='lfm2'&&info.tokenizer==='gpt2'&&info.chatTemplate===true&&info.tensorExtentsChecked===true&&Number.isSafeInteger(info.contextLength)&&info.contextLength>=2048&&Number.isSafeInteger(info.tokenCount)&&info.tokenCount>0&&Array.isArray(info.tensorTypes)&&info.tensorTypes.length>0&&info.tensorTypes.every(type=>[0,2,14].includes(type)))return localEngine('wllama-lfm2');
- if(info?.format!=='GGUF'||info.version!==3||info.architecture!=='qwen35'||info.tokenizer!=='gpt2'||info.chatTemplate!==true||info.tensorExtentsChecked!==true||!Number.isSafeInteger(info.contextLength)||info.contextLength<2048||!Number.isSafeInteger(info.tokenCount)||info.tokenCount<1||!Array.isArray(info.tensorTypes)||!info.tensorTypes.length||info.tensorTypes.some(type=>![0,143].includes(type)))return undefined;
+ if(info?.format!=='GGUF'||info.version!==3||info.architecture!=='qwen35'||info.tokenizer!=='gpt2'||info.chatTemplate!==true||info.tensorExtentsChecked!==true||!Number.isSafeInteger(info.contextLength)||info.contextLength<2048||!Number.isSafeInteger(info.tokenCount)||info.tokenCount<1||!Array.isArray(info.tensorTypes)||!info.tensorTypes.length||info.tensorTypes.some(type=>![0,42,142,143].includes(type)))return undefined;
  return localEngine('webml-qwen35');
 }

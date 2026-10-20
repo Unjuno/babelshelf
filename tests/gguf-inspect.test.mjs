@@ -48,7 +48,12 @@ test('an LFM2 GGUF with the pinned CPU engines tokenizer and checked supported b
  assert.equal(info.tensorExtentsChecked,true);assert.equal(eligibleTextEngine(info).id,'wllama-lfm2');
 });
 test('known tensor byte extents reject truncated payload, not just out-of-file starting offsets',async()=>{
- for(const [tensorType,elements] of [[0,128],[143,128],[42,128],[2,128],[14,256]]){const bytes=gguf({tensorType,elements}),info=await inspectGGUF(new Blob([bytes]));await assert.equal(info.tensorExtentsChecked,true);await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);}
+ for(const [tensorType,elements] of [[0,128],[143,128],[142,128],[42,128],[2,128],[14,256]]){const bytes=gguf({tensorType,elements}),info=await inspectGGUF(new Blob([bytes]));await assert.equal(info.tensorExtentsChecked,true);await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);}
+});
+
+test('Qwen3.5 ternary alternatives require checked packing and do not admit Qwen3 or malformed blocks',async()=>{
+ for(const tensorType of [42,142]){const blob=new Blob([gguf({tensorType})]),info=await inspectGGUF(blob);assert.equal(info.tensorExtentsChecked,true);assert.equal(eligibleTextEngine(info)?.id,'webml-qwen35');const registered=await inspectLocalModel(blob);assert.equal(registered.engine,'webml-qwen35');assert.deepEqual(registered.inspection.tensorTypes,[tensorType]);const other=await inspectGGUF(new Blob([gguf({arch:'qwen3',tensorType})]));assert.equal(eligibleTextEngine(other),undefined);}
+ await assert.rejects(inspectGGUF(new Blob([gguf({tensorType:142,elements:96})])),/PQ2_0/);
 });
 test('official Q2_0 group-64 offsets fit while the legacy group-128 layout is refused',async()=>{
  const current=await inspectGGUF(new Blob([q2Pair(576)]));

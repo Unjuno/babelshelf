@@ -5,7 +5,7 @@ export type TextBackendRegistration={id:string;modelIds:readonly string[];descri
 type Registered=TextBackendRegistration&{instance:TextBackend|null};
 // Trusted factories come from application code. Stored models/config cannot supply code.
 export class TextEngineRouter{
- private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;
+ private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';
  constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[]){
   this.webml=webml;this.base=webml.manifest;
   const defaults:TextBackendRegistration={id:'onnx-text',modelIds:onnxTextModels.map(m=>m.id),describe:id=>combinedTextManifest({...this.base,models:[]},id),create:createOnnx};
@@ -46,8 +46,10 @@ export class TextEngineRouter{
   if(cmd==='prepare'||cmd==='verify')return this.backend(args.model).call(cmd,args,events);
   throw Error('Unknown text operation');
  }
- async load(id:string,events?:any){const epoch=this.epoch,backend=this.backend(id);if(this.active){const old=this.active;this.active=null;if(!old.failed)await old.unload();}this.check(epoch);this.active=backend;
-  try{const result=await backend.load(id,events);this.check(epoch);return result;}catch(error){if(this.active===backend)this.active=null;throw error;}
+ async load(id:string,events?:any){const epoch=this.epoch,backend=this.backend(id),manifest=this.registration(id)?.describe(id)??this.base,identity=JSON.stringify([id,manifest.models.find((m:any)=>m.id===id)?.revision,manifest.runtime?.revision,manifest.contextTokens]);
+  if(this.active===backend&&backend.loaded===id&&!backend.failed&&this.residentIdentity===identity)return {model:id,reused:true};
+  this.residentIdentity='';if(this.active){const old=this.active;this.active=null;if(!old.failed)await old.unload();}this.check(epoch);this.active=backend;
+  try{const result=await backend.load(id,events);this.check(epoch);this.residentIdentity=identity;return result;}catch(error){if(this.active===backend)this.active=null;throw error;}
  }
  async unload(){const epoch=this.epoch,old=this.active;this.active=null;if(old&&!old.failed)await old.unload();this.check(epoch);}
  releaseInactive(selectedModel:string){for(const r of this.registrations)if(!r.modelIds.includes(selectedModel)&&r.instance&&r.instance!==this.active){const old=r.instance;r.instance=null;old.abort();old.worker.terminate();}}

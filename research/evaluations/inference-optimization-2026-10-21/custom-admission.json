@@ -1,0 +1,59 @@
+{
+  "scope": "Production intake on actual bounded remote prefixes; not full weights, loading or generation",
+  "results": [
+    {
+      "repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+      "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+      "quantization": "PQ2_0",
+      "headerSha256": "e767ff1fb24c7a17ae862c5f5732fdf8af7c95d0399814c7e77ca8d778725175",
+      "inspection": {
+        "format": "GGUF",
+        "version": 3,
+        "bytes": 2416851840,
+        "name": "Ternary-Bonsai-2-9B",
+        "architecture": "qwen35",
+        "contextLength": 262144,
+        "tokenizer": "gpt2",
+        "chatTemplate": true,
+        "tokenCount": 248320,
+        "tensorCount": 427,
+        "tensorTypes": [
+          0,
+          142
+        ],
+        "tensorExtentsChecked": true,
+        "dataOffset": 11039616
+      },
+      "adapter": "webml-qwen35",
+      "weightsVerified": false,
+      "generationVerified": false
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+      "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+      "quantization": "Q2_0",
+      "headerSha256": "719656a63f39da07bb1d7d9bbce1c8a617e9cb899db848fd6eca1b573902c597",
+      "inspection": {
+        "format": "GGUF",
+        "version": 3,
+        "bytes": 2556640128,
+        "name": "Ternary-Bonsai-2-9B",
+        "architecture": "qwen35",
+        "contextLength": 262144,
+        "tokenizer": "gpt2",
+        "chatTemplate": true,
+        "tokenCount": 248320,
+        "tensorCount": 427,
+        "tensorTypes": [
+          0,
+          42
+        ],
+        "tensorExtentsChecked": true,
+        "dataOffset": 11039616
+      },
+      "adapter": "webml-qwen35",
+      "weightsVerified": false,
+      "generationVerified": false
+    }
+  ]
+}

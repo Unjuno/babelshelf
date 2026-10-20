@@ -16,6 +16,13 @@ test('cross-engine load releases previous engine and pins active runtime identit
  assert.equal(f.router.loaded,onnxTextManifest.id);assert.equal(f.router.manifest.runtime.revision,onnxTextManifest.runtime.revision);
  await f.router.unload();assert.equal(f.router.loaded,null);
 });
+
+test('reloading the same healthy pinned model preserves its resident session, while changed identity reloads',async()=>{
+ const f=setup();await f.router.load('4B');await f.router.load('4B');
+ assert.equal(f.calls.filter(c=>c==='webml:load').length,1);assert.equal(f.calls.filter(c=>c==='webml:unload').length,0);
+ f.router.manifest={...f.router.manifest,models:f.router.manifest.models.filter(m=>m.id==='4B'),runtime:{revision:'new-runtime'}};await f.router.load('4B');
+ assert.equal(f.calls.filter(c=>c==='webml:load').length,2);assert.equal(f.calls.filter(c=>c==='webml:unload').length,1);
+});
 test('Stop during ONNX load discards worker and rejects late completion without replay',async()=>{
  const f=setup(),pending=f.router.load(onnxTextManifest.id);f.router.abort();f.finish();await assert.rejects(pending,/Stopped/);
  assert.equal(f.router.loaded,null);assert.ok(f.calls.includes('onnx:terminate'));assert.equal(f.calls.filter(x=>x==='onnx:load').length,1);

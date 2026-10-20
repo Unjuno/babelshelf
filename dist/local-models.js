@@ -1,4 +1,5 @@
 import {SHA256} from './sha256.js';
+import {createStreamingSHA256} from './streaming-sha256.js';
 import {inspectGGUF} from './gguf-inspect.js';
 import {eligibleTextEngine} from './local-engines.js';
 
@@ -35,17 +36,18 @@ export function validateLocalModel(value){
 }
 export async function hashLocalModel(file,{signal,progress=()=>{}}={}){
  if(!Number.isSafeInteger(file?.size)||file.size<1||file.size>MAX_LOCAL_MODEL_BYTES)throw Error('Local model file size unsupported');
- signal?.throwIfAborted();const reader=file.stream().getReader(),hash=new SHA256();let bytes=0,sinceYield=0;
+ signal?.throwIfAborted();const reader=file.stream().getReader();let bytes=0,sinceYield=0,lastYield=performance.now();
  let cancellation;const cancel=()=>cancellation??=reader.cancel().catch(()=>{});
  const abort=()=>{void cancel();};
  signal?.addEventListener('abort',abort,{once:true});
  try{
+  const hash=await createStreamingSHA256();signal?.throwIfAborted();
   while(true){
    signal?.throwIfAborted();const result=await reader.read();signal?.throwIfAborted();if(result.done)break;
    bytes+=result.value.length;if(bytes>file.size)throw Error('Local model file changed');
    for(let offset=0;offset<result.value.length;offset+=65536){
     const part=result.value.subarray(offset,offset+65536);hash.update(part);sinceYield+=part.length;
-    if(sinceYield>=1048576){sinceYield=0;await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();}
+    if(sinceYield>=1048576&&(sinceYield>=4194304||performance.now()-lastYield>=8)){sinceYield=0;await new Promise(resolve=>setTimeout(resolve,0));signal?.throwIfAborted();lastYield=performance.now();}
    }
    progress(bytes,file.size);
   }

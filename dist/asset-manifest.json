@@ -38,8 +38,8 @@
     },
     {
       "path": "./gguf-inspect.js",
-      "bytes": 6060,
-      "sha256": "1538f0ed3df4a8b5fd0009f882a6ce4e3dbb4985e6cedd07990d60036bf75910"
+      "bytes": 6221,
+      "sha256": "5a0f7a25fa67f20cf4417c460e8a4f1f686b3deeb6c1e03522bc170ff03f96fe"
     },
     {
       "path": "./gpu-info.js",
@@ -93,8 +93,8 @@
     },
     {
       "path": "./local-engines.js",
-      "bytes": 1635,
-      "sha256": "df73ae06b0c2c0f9a4bed7d3309bcd11e1d447cf1eb7a57d78dfe1502af60ba5"
+      "bytes": 1642,
+      "sha256": "c8937db72821950e6f107e0525715b34813a56433a93b221d4ba3d5a824d1a92"
     },
     {
       "path": "./local-model-manifest.js",
@@ -103,8 +103,8 @@
     },
     {
       "path": "./local-models.js",
-      "bytes": 7358,
-      "sha256": "5aa42b9933ee73f11ae8948b6f9b569cd2b6252a94bebe14115598baac27df8f"
+      "bytes": 7581,
+      "sha256": "439bedb836464ea9b185925fccc1a1f5fe17beed33878cb809a424e6fdc1e6f0"
     },
     {
       "path": "./manifest.webmanifest",
@@ -118,8 +118,8 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 10958,
-      "sha256": "f13577a0684df7a31ce2131f41562fe728ee0e7fa9df60d9a3ab36857db7d51a"
+      "bytes": 12888,
+      "sha256": "d792db382f1783d1bdb471158d585818b380bd1279cc46463a57186e0fd352cc"
     },
     {
       "path": "./ranges.js",
@@ -147,6 +147,11 @@
       "sha256": "efff6ceca589175a64132f34d4d3a59f0743a7fc1520f5beef5a80bd87f16a17"
     },
     {
+      "path": "./streaming-sha256.js",
+      "bytes": 1581,
+      "sha256": "a05654866fc9b7259fc3bd3582e709f94670707031dd988c125ad42dcfaff1c7"
+    },
+    {
       "path": "./style.css",
       "bytes": 6088,
       "sha256": "fe325fffcf444003cca1ce9770e7197f156b6dd0388c39d7769b291e25fb1190"
@@ -154,7 +159,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "2e187c294fb5fcb31e5d2230841a9e37f01f73c2043e073ae370dc7e576080a2"
+      "sha256": "c2bbbf3f2eb3551b63ebe741d572be219734c22c6a8315a6a087e80aeaf51dba"
     },
     {
       "path": "./ui.js",

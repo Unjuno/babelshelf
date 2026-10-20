@@ -1,12 +1,12 @@
 import {withLocalModels,verifyLocalModelFile} from './local-model-manifest.js';
 import {hashLocalModel} from './local-models.js';
 import {adapterSnapshot} from './gpu-info.js';
-import {SHA256} from './sha256.js';
+import {createStreamingSHA256,streamingSHA256Backend} from './streaming-sha256.js';
 import {fileResponse} from './ranges.js';
 const networkFetch=globalThis.fetch.bind(globalThis);
 // Inference never has a network fallback, even when update permission is ON.
 globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));
-let manifest,baseManifest,model,session,controller,busy=false,root;
+let manifest,baseManifest,model,session,controller,busy=false,root,loadedModelInfo=null;
 const send=(id,type,value)=>postMessage({id,type,value});
 async function directory(){return root??=await (await navigator.storage.getDirectory()).getDirectoryHandle('mlb-assets-v1',{create:true});}
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
@@ -16,7 +16,8 @@ async function hashFile(f,notify=()=>{}){return hashLocalModel(f,{signal:control
 async function storeAsset(entry,id,local=null){
  const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{controller?.signal.throwIfAborted();}
  controller?.signal.throwIfAborted();
- const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();const h=new SHA256();let count=0,last=0,yieldBytes=0;let reader,cancellation;
+ const h=await createStreamingSHA256();controller?.signal.throwIfAborted();
+ const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();let count=0,last=0,yieldBytes=0;let reader,cancellation;
  const cancel=()=>cancellation??=reader?.cancel().catch(()=>{});const abort=()=>{void cancel();};
  try{
   if(local){if(local.size!==entry.bytes)throw Error('File size mismatch');reader=local.stream().getReader();}
@@ -37,19 +38,20 @@ async function verifyStored(id,size){
  controller.signal.throwIfAborted();return {f,runtime};
 }
 async function load(id,size){
+ const started=performance.now();
  const m=manifest.models.find(m=>m.id===size);if(!m)throw Error('Unsupported model');const ready=await meta(size);if(!ready)throw Error('Model not downloaded');
  await unload();controller.signal.throwIfAborted();
- const {f,runtime}=await verifyStored(id,size);
+ const verifyStarted=performance.now(),{f,runtime}=await verifyStored(id,size),verificationMs=performance.now()-verifyStarted;
  send(id,'progress','Loading…');
  const moduleURL=URL.createObjectURL(new Blob([runtime],{type:'text/javascript'}));let api;
- try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}
+ const importStarted=performance.now();try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}const importMs=performance.now()-importStarted;
  const localURL=new URL('__model/'+m.file.name,self.location.href).href;
  const localFetch=async(url,options={})=>{if(String(url)!==localURL)throw Error('Blocked resource: '+url);return fileResponse(f,options);};
- model=await api.Qwen3_5ForConditionalGeneration.from_pretrained(localURL,{mmproj:null,fetch:localFetch,cache:false,maxLength:manifest.contextTokens,prefixSnapshotStore:null,decodePipelineDepth:1,signal:controller.signal,chatTemplateArgs:{enable_thinking:false},onProgress:p=>send(id,'progress',p.message??p.status)});
- session=model.create_session();const loadedModel=model;model.lost.then(e=>{if(model!==loadedModel)return;send(0,'lost',String(e?.message??e));model=null;session=null;});
- return {model:size,contextTokens:model.contextLength,device:model.deviceInfo(),memory:model.memoryStats()};
+ const loadStarted=performance.now();model=await api.Qwen3_5ForConditionalGeneration.from_pretrained(localURL,{mmproj:null,fetch:localFetch,cache:false,maxLength:manifest.contextTokens,prefixSnapshotStore:null,decodePipelineDepth:1,signal:controller.signal,chatTemplateArgs:{enable_thinking:false},onProgress:p=>send(id,'progress',p.message??p.status)});const runtimeLoadMs=performance.now()-loadStarted;
+ session=model.create_session();loadedModelInfo={model:size,revision:m.revision,runtimeRevision:manifest.runtime.revision,quantization:m.localModel?{container:'GGUF',tensorTypes:m.localModel.inspection.tensorTypes}:m.format,contextTokens:model.contextLength};const loadedModel=model;model.lost.then(e=>{if(model!==loadedModel)return;send(0,'lost',String(e?.message??e));model=null;session=null;loadedModelInfo=null;});
+ return {...loadedModelInfo,device:model.deviceInfo(),memory:model.memoryStats(),timings:{verificationMs,importMs,runtimeLoadMs,totalLoadMs:performance.now()-started,hashBackend:streamingSHA256Backend(),decodePipelineDepth:1}};
 }
-async function unload(){await session?.dispose();session=null;await model?.dispose();model=null;}
+async function unload(){await session?.dispose();session=null;await model?.dispose();model=null;loadedModelInfo=null;}
 onmessage=async({data})=>{
  const {id,cmd,args={}}=data;
  if(cmd==='abort'){controller?.abort(new DOMException('Stopped','AbortError'));return;}
@@ -87,13 +89,16 @@ onmessage=async({data})=>{
     if(!session)throw Error('Model not loaded');
     if(args.profile!==undefined&&!['greedy','bonsai-nonthinking'].includes(args.profile))throw Error('Unsupported generation profile');
     if(args.seed!==undefined&&(!Number.isSafeInteger(args.seed)||args.seed<0||args.seed>4294967295))throw Error('Invalid sampling seed');
+    if(args.decodePipelineDepth!==undefined&&![1,4].includes(args.decodePipelineDepth))throw Error('Unsupported diagnostic decode pipeline');
     if(args.resetSession===true)session.reset();
-    const count=session.count_tokens(args.messages,{enable_thinking:false});if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
+    const countStarted=performance.now(),count=session.count_tokens(args.messages,{enable_thinking:false}),countMs=performance.now()-countStarted;if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
     const start=performance.now();let first=null,last=null,text='',chunks=0;
     const sampling=args.profile==='bonsai-nonthinking'?{do_sample:true,temperature:.7,top_p:.8,top_k:20,min_p:0,seed:args.seed??0}:{do_sample:false};
-    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,...sampling,signal:controller.signal});
+    const memoryBefore=model.memoryStats?.()??null;
+    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,...sampling,...(args.decodePipelineDepth!==undefined?{decode_pipeline_depth:args.decodePipelineDepth}:{}),signal:controller.signal});
     for await(const event of stream){if(event.type==='text'){text+=event.text;first??=performance.now();last=performance.now();chunks++;send(id,'text',event.text);}else if(event.type==='prefill')send(id,'progress',`Prefill · ${event.done} / ${event.total}`);}
-    const raw=await stream.result;result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs:performance.now()-start,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],finishReason:raw?.finish_reason,outputTokens:raw?.usage?.completion_tokens,usage:raw?.usage,stopped:controller.signal.aborted};break;
+    const raw=await stream.result,elapsedMs=performance.now()-start,outputTokens=raw?.usage?.completion_tokens,reported=key=>Number.isFinite(raw?.timings?.[key])&&raw.timings[key]>=0?raw.timings[key]:null;
+    result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],finishReason:raw?.finish_reason,outputTokens,usage:raw?.usage,stopped:controller.signal.aborted,metrics:{identity:loadedModelInfo,device:model.deviceInfo?.()??null,countMs,visibleTextTtftMs:first===null?null:first-start,lastVisibleTextMs:last===null?null:last-start,generationMs:elapsedMs,outputTokens:Number.isSafeInteger(outputTokens)?outputTokens:null,generationTokensPerSecond:Number.isSafeInteger(outputTokens)&&outputTokens>0&&elapsedMs>0?outputTokens*1000/elapsedMs:null,runtimeTtftMs:reported('ttft_ms'),runtimeDecodeMs:reported('decode_ms'),runtimeDecodeTokensPerSecond:reported('tokens_per_second'),memoryBefore,memoryAfter:model.memoryStats?.()??null,decodePipelineDepth:args.decodePipelineDepth??1,samplingProfile:args.profile??'greedy'}};break;
    }
    default:throw Error('Unknown action');
   }

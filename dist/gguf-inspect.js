@@ -39,6 +39,8 @@ export async function inspectGGUF(file,{signal}={}){
   const type=u32(),offset=u64();types.add(type);let size=null;
   if(type===0)size=elements*4;
   if(type===143){if(elements%128)fail('Invalid PTQ1_0 block shape');size=elements/128*28;}
+  // Prism-private PQ2_0 (142): 128 two-bit values and one FP16 scale.
+  if(type===142){if(elements%128)fail('Invalid PQ2_0 block shape');size=elements/128*34;}
   // Type 42 is the current official Q2_0 layout: 64 values in 18 bytes.
   // Older Prism files reused this type ID for 128 values in 34 bytes.
   // Checking extents and adjacent offsets must reject that legacy layout.
