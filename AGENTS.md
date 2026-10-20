@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Follow-up native numerical evidence now includes12 LUT2/2 recurrent/2 transpose checks plus a full9B finite-scalar/hash audit. The optional allocation plan reports static weights only; it is not a phone-fit or peak-memory claim. See the latest INFERENCE-OPTIMIZATION.md section. Historical9B prose failure remains unresolved; do not change production kernels or label9B usable from these bounded QA checks.
+
 The optional scripts/qa/check-bonsai-hadamard.mjs instruments only an exact-hash local runtime copy for real native-Dawn numerical tests. Never ship that copy or expose its private QA exports in the app. Its14 transform/6 exact-Q4 checks are bounded Intel float32 evidence, not LUT2/matmul/full9B/phone acceptance; see INFERENCE-OPTIMIZATION.md before changing kernels.
 
 Read docs/INFERENCE-OPTIMIZATION.md for streaming WASM verification, identity-checked resident reloads, raw performance metrics and checked qwen35 PQ2_0/current-Q2_0 intake. Full hashes, Stop, source/review guards and prepared-only loading remain mandatory. The measured9B file-verification gain is Windows/Node CPU evidence, not GPU generation, phone performance or a fix for the historical9B prose failure. Diagnostic pipeline4 is opt-in; default stays1 until output/Stop/memory/device evidence supports changing it.

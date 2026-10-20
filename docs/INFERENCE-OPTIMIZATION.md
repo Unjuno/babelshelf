@@ -86,3 +86,41 @@ Actual Windows11 build26200 / Node24.6.0 / webgpu0.6.2 / Intel Iris Xe gen-12lp 
 This evidence narrows the failure investigation: do not replace the tested float32 transform/Q4 codec merely on the basis of the prose collapse. Next inspect the actual selected LUT2 packing and matrix products, then recurrent/prefill-vs-decode state and logits. The historical9B failure is still unresolved. Current physical memory was417,644KiB free at the follow-up observation, so no new full9B residency was attempted.
 
 Reproduce with `node scripts/qa/check-bonsai-hadamard.mjs PINNED_RUNTIME_FILE OUTPUT.json d3d12` after setting BABELSHELF_GPU_MODULE to an explicitly installed optional webgpu module entrypoint. Keep OUTPUT.json and its instrumented `.runtime.mjs` sibling outside the source/package. The tool refuses any different runtime hash before internal-name instrumentation. GPU/driver-specific results must remain scoped to that device. This follow-up changes QA/evidence only; the public product remains v102/build29ed0f58ab9d059d.
+
+
+## Follow-up: LUT2, recurrent state and the real9B payload
+
+Additional native checks use the same Windows/Intel/Dawn setup and exact runtime SHA, with no browser launch, product changes or full9B allocation. New QA commands are `check-bonsai-lut2.mjs PINNED_RUNTIME_FILE OUTPUT.json [backend]` and `check-bonsai-recurrent.mjs PINNED_RUNTIME_FILE OUTPUT.json [backend]`, both with an explicit BABELSHELF_GPU_MODULE. Private exports exist only in their local instrumented output copy. Generated test vectors are arithmetic inputs, never model answers. Final evidence JSON is retained beside the earlier evidence.
+
+| Actual check | Evidence and limits |
+|---|---|
+|LUT2 packing and matrix products|12/12pass, PTQ1/PQ2/Q2, K4096/N256, M1/3/32, exact-f32 route. Nine nonuniform matrices have256distinct first-row reference outputs; block offsets0/8 cover packed placement. Selected actual kernels are lut2_decode_gemv_mr2 and lut2_tiled_exact_register_rows. Maximum absolute error0.0004060844294144772, below0.001. No packing/scales mismatches. This does not cover all fused decode projections, shapes, approximate/int8 or other adapters.|
+|Small scale boundary|Three of the12cases use known positive weights and seven exact FP16 scales including0x0001 (5.960464477539063e-8),0x03ff/0x0400 boundary and non-power-of-two normal scale. Relative as well as absolute error is checked so an all-zero answer cannot pass merely because the values are small. All three have zero error on this adapter.|
+|GatedDeltaNet|17-token sequence,32value/16key heads, key/value head dimensions128, nonzero initial float32 state. Actual prefill_vec4_gather and17sequential decode_vec4_gather calls agree with a double-precision gated-delta reference; maximum output error8.673035224032732e-9, state error1.6030084194068595e-8, tolerance1e-5. F16 state, other variants, checkpoint projection layout and arbitrary lengths remain separate.|
+|Tiled/grouped permutation|Actual ai.onnx.Transpose inner_vec4 with [1or17,2,16,128] to [1or17,16,2,128] has zero mismatches. This tests the fallback transpose used before a folded output projection; it does not validate the trained checkpoint's projections.|
+|Full9B tensor scalar audit|Entire1,997,486,976-byte pinned PTQ1 file hashed again and matched3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b. All427tensors covered:7,352,832F32 scalars and69,894,144FP16 quantization scales (77,246,976total), none NaN/Infinity, no missing scalar ranges. FP16 scale extrema5.960464477539063e-8..0.267822265625. Finite weights do not establish correct trit order, layer numerics or useful generation.|
+
+The audit is `node scripts/qa/audit-bonsai-tensors.mjs 9B PINNED_LOCAL_GGUF OUTPUT.json`. It validates the production GGUF container, uses bounded8MiB streaming chunks, scans F32 values/FP16 quantization scales and hashes the full byte stream. It neither allocates tensors on the GPU nor decodes all quantized values into a dense model. Its elapsed8,874.54ms includes scalar inspection and hashing under different file-cache conditions; it is not a new before/after benchmark and must not replace the earlier measured pair.
+
+The pinned [Prism conversion source](https://github.com/PrismML-Eng/llama.cpp/blob/73bfe6cc485554822f80c473a3c0c4f25e80f41b/conversion/qwen.py#L406) documents tiled value-head ordering and retention of grouped input order for Hadamard-folded out projections. The real9B header has `prism.hadamard.gdn_v_grouped=true`; the inspected runtime explicitly transposes that folded projection's input. The recurrence reference uses the operator's tiled internal order. The [Transformers recurrence](https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen3_5/modeling_qwen3_5.py) was consulted for the mathematical state update, not used as a remotely executed inference engine. These observations do not prove all checkpoint-to-graph mappings correct.
+
+### Static weight allocation plan, not peak memory
+
+`BABELSHELF_NUMERICAL_PLAN=1` adds an optional exact-hash QA plan inspection to `probe-bonsai-webgpu.mjs`. The real header and actual device limits drive the pinned runtime's own support planner, without loading weights. Errors or rejected plans now produce a nonzero exit even if the preceding public compatibility check was positive. The local instrumented bundle remains outside source/deployment. The plan records its native package version and device limits.
+
+On this Intel adapter (maxBufferSize/maxStorageBufferBindingSize2,147,483,648), the9B support plan accepts these weight buffers:
+
+| Planned buffer | Bytes |
+|---|---:|
+|lut2_128Bits|1,728,053,248|
+|lmHeadQ4|254,279,680|
+|embedBits|254,279,680|
+|lut2_128Scales|108,003,328|
+|weights|29,411,328|
+|lmHeadQ4Scales|15,892,480|
+|embedScales|15,892,480|
+|Total|2,405,812,224|
+
+Here lut2_128 names the group128 metadata route; the matmul API uses format lut2_32 with codebook9, while current Q2_0 uses codebook8. The visible lmHeadQ4 label does not by itself establish the underlying bit width. The plan excludes or does not establish actual cache/activation/tokenizer/readback/temporary-upload/browser/driver peaks and thermals. It is not a phone memory requirement or available-memory check. OS free physical memory at the later observation was960,848KiB; no full9B load/generation was attempted.
+
+The historical isolated9B punctuation collapse is still open. Bounded float32 transforms, the tested LUT2 products, the recurrence operator, the tested transpose and finite source scalars did not reproduce it. The next useful boundary is actual selected fused projections/embedding/logits during an isolated full-model run with adequate available memory. Preserve the failure and find the first divergent/nonfinite activation before changing working kernels. Product remains v102/build29ed0f58ab9d059d; these QA/evidence-only changes need no new app deployment.
