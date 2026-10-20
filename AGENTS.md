@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Native2B QA now shows a single real calculate call with the runtime tools interface where plain JSON duplicates objects. Read latest INFERENCE-OPTIMIZATION.md/2b-native-tool-format.json before wiring it: native tool definitions must enter both count and generate, output needs strict single expected-call/error/text checks and unchanged downstream scope/review guards. This is not product integration, general quality or9B acceptance; publicv108 unchanged.
+
 WebML Load now reuses one hash-verified runtime module identity per Worker, separately from resident model reuse. Every load still verifies files and creates fresh model/session/GPU; pin changes require Worker restart. Read latest INFERENCE-OPTIMIZATION.md for controlled Stop/failure/hash tests and actual sidebar2B same/fresh Worker generation. Do not claim measured heap reclamation or9B repair; raw duplicate JSON remains a failure.
 
 Actual sidebar Chrome1552B product-Worker check now covers local verified preparation, English/Japanese generation, Stop and fresh-Worker reload. Single-object JSON prompt produced duplicate objects, so combined check is FAIL; core.parseJSON rejects the actual output. Read latest INFERENCE-OPTIMIZATION.md/2b-sidebar-browser.json; do not call this full harness, PWA/phone/offline acceptance. QA server must stay loopback-only/outside deployment. Publicv107 unchanged.

@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "at": "2026-10-20T21:37:40.354Z",
+  "scope": "Native Dawn real model plain-JSON/native-tool-format probe; no tool execution, product harness, browser, phone or broad quality acceptance",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "browser": null,
+  "backend": "d3d12",
+  "model": "2B",
+  "revision": "683f7be2629342a50987627b40881e54761a2430",
+  "quantization": "PTQ1_0",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "freeMemoryBytes": 1172471808,
+  "minimumFreeMemoryBytes": 805306368,
+  "contextTokens": 512,
+  "decodePipelineDepth": 1,
+  "profile": "greedy",
+  "cases": [
+    {
+      "name": "plain-json",
+      "prompt": "Return only a JSON object with operation set to calculate and expression set to 7*8. Do not include Markdown or explanations.",
+      "inputTokens": 38,
+      "outputTokens": 45,
+      "text": "{\n  \"operation\": \"calculate\",\n  \"expression\": \"7*8\"\n}\n\n\n{\n  \"operation\": \"calculate\",\n  \"expression\": \"7*8\"\n}",
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"operation\": \"calculate\",\n  \"expression\": \"7*8\"\n}\n\n\n{\n  \"operation\": \"calculate\",\n  \"expression\": \"7*8\"\n}"
+      },
+      "toolEvents": [],
+      "finishReason": "stop",
+      "timings": {
+        "ttft_ms": 650.1926000000003,
+        "decode_ms": 2198.844000000001,
+        "tokens_per_second": 20.01051461586178
+      },
+      "singleExpectedObject": false
+    },
+    {
+      "name": "native-tool",
+      "prompt": "Use the calculate tool to compute 7*8.",
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "calculate",
+            "description": "Calculate a mathematical expression.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "expression": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "expression"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "inputTokens": 283,
+      "outputTokens": 27,
+      "text": "",
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_1hnvf36",
+            "type": "function",
+            "function": {
+              "name": "calculate",
+              "arguments": {
+                "expression": "7*8"
+              }
+            }
+          }
+        ]
+      },
+      "toolEvents": [
+        {
+          "id": "call_1hnvf36",
+          "type": "function",
+          "function": {
+            "name": "calculate",
+            "arguments": {
+              "expression": "7*8"
+            }
+          }
+        }
+      ],
+      "finishReason": "tool_calls",
+      "timings": {
+        "ttft_ms": 8356.2651,
+        "decode_ms": 3271.489099999999,
+        "tokens_per_second": 7.9474512080752495
+      },
+      "singleExpectedTool": true
+    }
+  ],
+  "status": "recorded",
+  "modelSha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "gpuModule": {
+    "package": "webgpu",
+    "version": "0.6.2"
+  },
+  "device": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "intel-r-iris-r-xe-graphics",
+    "description": "D3D12 driver version 31.0.101.5186",
+    "isFallbackAdapter": false,
+    "subgroupMinSize": 8,
+    "subgroupMaxSize": 16,
+    "features": {
+      "shaderF16": true,
+      "subgroups": true,
+      "subgroupMatrix": false,
+      "timestampQuery": true
+    }
+  },
+  "memory": {
+    "liveBytes": 770949232,
+    "peakBytes": 770949236
+  }
+}
