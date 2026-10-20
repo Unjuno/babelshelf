@@ -49,3 +49,22 @@ test('oversized tool output fails before being fed back to the model',async()=>{
  let plans=0;await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[1]],plan:async()=>{plans++;return {kind:'tool',tool:'memory.read',arguments:{query:'large.md'}};},execute:async()=>({body:'x'.repeat(9000)}),check:()=>{}}),/too large/);
  assert.equal(plans,1);
 });
+
+test('tool evidence and arguments are stable after a handler or planner mutates its objects',async()=>{
+ const argumentsFromPlan={query:'Notes/meeting.md'},source={noteId:'n1',revision:1,quote:'Monday at 10'};
+ let observed;
+ const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[1]],check:()=>{},
+  plan:async history=>{
+   if(!history.length)return {kind:'tool',tool:'memory.read',arguments:argumentsFromPlan};
+   observed=structuredClone(history);
+   history[0].result[0].quote='changed by planner';
+   history[0].arguments.query='changed by planner';
+   return {kind:'final',value:{action:'answer'}};
+  },
+  execute:async call=>{call.arguments.query='changed by handler';return [source];},
+ });
+ source.quote='changed after execution';
+ assert.deepEqual(observed,[{tool:'memory.read',arguments:{query:'Notes/meeting.md'},result:[{noteId:'n1',revision:1,quote:'Monday at 10'}]}]);
+ assert.deepEqual(result.calls,observed);
+ assert.equal(argumentsFromPlan.query,'Notes/meeting.md');
+});

@@ -15,11 +15,12 @@ function exactKeys(value:Record<string,unknown>,expected:string[]){
 function validRecord(value:unknown):value is Record<string,unknown>{
  return !!value&&typeof value==='object'&&!Array.isArray(value)&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null);
 }
-function serializeBoundedResult(result:unknown){
+function snapshotBoundedResult(result:unknown):unknown{
  let serialized:string;
- try{serialized=JSON.stringify(result)??'null';}catch{throw Error('Tool result is not serializable');}
+ try{serialized=JSON.stringify(result);}catch{throw Error('Tool result is not serializable');}
+ if(typeof serialized!=='string')throw Error('Tool result is not serializable');
  if(serialized.length>MAX_AGENT_RESULT_CHARS)throw Error('Tool result too large for the active context');
- return serialized;
+ return JSON.parse(serialized);
 }
 
 /** Run at most three registered tools in sequence, then return the model's final plan.
@@ -35,7 +36,8 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  const allowed=new Set(input.allowedTools.map(tool=>tool.id)),history:AgentToolResult[]=[];
  for(let step=0;step<=MAX_AGENT_TOOL_CALLS;step++){
   input.check();
-  const plan=await input.plan(history);
+  // A planner must not be able to change evidence from an earlier step.
+  const plan=await input.plan(structuredClone(history));
   input.check();
   if(!validRecord(plan)||typeof plan.kind!=='string')throw Error('Invalid agent plan');
   if(plan.kind==='final'){
@@ -44,12 +46,12 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   }
   if(plan.kind!=='tool'||!exactKeys(plan,['kind','tool','arguments'])||typeof plan.tool!=='string'||!allowed.has(plan.tool)||!validRecord(plan.arguments))throw Error('Tool is not registered or call is invalid');
   if(step===MAX_AGENT_TOOL_CALLS)throw Error('Agent tool call limit reached');
-  const call:AgentToolCall={kind:'tool',tool:plan.tool,arguments:plan.arguments};
+  const recordedArguments=structuredClone(plan.arguments);
+  const call:AgentToolCall={kind:'tool',tool:plan.tool,arguments:structuredClone(recordedArguments)};
   input.check();
   const result=await input.execute(call);
   input.check();
-  serializeBoundedResult(result);
-  history.push({tool:call.tool,arguments:call.arguments,result});
+  history.push({tool:call.tool,arguments:recordedArguments,result:snapshotBoundedResult(result)});
  }
  throw Error('Agent tool call limit reached');
 }
