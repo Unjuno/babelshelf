@@ -2,6 +2,8 @@
 design/prototype/** text eol=lf
 design/prototype/**/*.png binary
 design/prototype/licenses/*.tar.gz binary
+# This upstream license is byte-pinned with CRLF; Git must preserve its bytes.
+design/prototype/licenses/LFM2.5-350M-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 docs/design/*.png binary
 # Baseline shell hashes must also be stable after checkout.
 dist/** text eol=lf

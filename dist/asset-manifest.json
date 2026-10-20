@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "./app.js",
-      "bytes": 27852,
-      "sha256": "3713ac6a07bb91a109ca000889d32c5f32b71150cfdaede6a72ac7c4b4de8adf"
+      "bytes": 27715,
+      "sha256": "5cad23e6c6f35b2c6a5e1b1efe58dbb7172d65c3cea724bf804c49f5dfa8f49c"
     },
     {
       "path": "./blank-paper.svg",
@@ -23,18 +23,18 @@
     },
     {
       "path": "./engine.js",
-      "bytes": 2043,
-      "sha256": "a023bc3450b82e829664f4f8340f2d0c3dac779400c6baf543c0e7151ddae769"
+      "bytes": 2042,
+      "sha256": "79edaca8da60c4d79600eb0c596aadc4d5d47dae8d4d69427691aa818f5342aa"
     },
     {
       "path": "./files.js",
-      "bytes": 2415,
-      "sha256": "2ab175ce6d2e0ef93818dd368e3eac001794db38f417d40ef3e35e3dceff86e6"
+      "bytes": 2402,
+      "sha256": "0929185fcf37006948ef833c1f4d370162e962777ce9638987b658fa13e5ea03"
     },
     {
       "path": "./gguf-inspect.js",
-      "bytes": 6120,
-      "sha256": "e774dc12d879d6fa14288fc6a1e3406f37a3eb1ac932e2ec7c4cf5fbd86aa0f8"
+      "bytes": 6060,
+      "sha256": "1538f0ed3df4a8b5fd0009f882a6ce4e3dbb4985e6cedd07990d60036bf75910"
     },
     {
       "path": "./gpu-info.js",
@@ -63,8 +63,8 @@
     },
     {
       "path": "./input-events.js",
-      "bytes": 201,
-      "sha256": "e7e782c05f7436cfcfe72e61df4e23e8292dee300bb0a6a392139407e3e7d4e5"
+      "bytes": 199,
+      "sha256": "e64a4b3377222abefea253560f61e8bd400a0b9e53b45d5de31fcf6ebd99c7c5"
     },
     {
       "path": "./language-fixtures.json",
@@ -73,13 +73,13 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 6195,
-      "sha256": "290b624ac64339cf29bb92b2174d48a4bc7f80db1691006e40d24e0823a27d39"
+      "bytes": 6162,
+      "sha256": "6d106a27f6d93e63b3b1b31f9759a74d44fe247e476015127e85249e58973be5"
     },
     {
       "path": "./lfm-model-manifest.json",
-      "bytes": 3573,
-      "sha256": "6ad96f4197f564fa382826be18b8a1e55603fa8a111dfcf65334f78372c487ab"
+      "bytes": 3478,
+      "sha256": "ecc79d866ce3057bd7e2d1661620765a9408579582f4ed505156b3a00acba634"
     },
     {
       "path": "./LICENSES.txt",
@@ -93,13 +93,13 @@
     },
     {
       "path": "./local-model-manifest.js",
-      "bytes": 1508,
-      "sha256": "7de3c5155526ad7f4898d2eacc4777a49b5a4cc2f22a56af2d45a2d382412eb2"
+      "bytes": 1489,
+      "sha256": "3f1a2036ad212a8d4718f6417564a1c6c3df05d3ce83c968195b60bb13bfbc75"
     },
     {
       "path": "./local-models.js",
-      "bytes": 7423,
-      "sha256": "24d3d3dff5201c23a193c962a7dff955cc649669dd08fa815ebb025f765c46d7"
+      "bytes": 7358,
+      "sha256": "5aa42b9933ee73f11ae8948b6f9b569cd2b6252a94bebe14115598baac27df8f"
     },
     {
       "path": "./manifest.webmanifest",
@@ -108,8 +108,8 @@
     },
     {
       "path": "./model-manifest.json",
-      "bytes": 3293,
-      "sha256": "ac930e07b26d53cd80d8616d3898929c9b0b1884f06b692ea328c8983c19cd02"
+      "bytes": 3215,
+      "sha256": "500e6bd2809c05b4885c91f615ee50b0ea05c40db8bd023b2d099d1f830d2dd6"
     },
     {
       "path": "./model-worker.js",
@@ -133,8 +133,8 @@
     },
     {
       "path": "./sha256.js",
-      "bytes": 2786,
-      "sha256": "2dc095f070da7dde818082889edd4498c63a07c7d348e74fafc4e710d7b18450"
+      "bytes": 2770,
+      "sha256": "83947a4c0476ab4ba227bd1dd60bdddc334943c7e45b8b5fbf64cb8c3d84c86c"
     },
     {
       "path": "./storage.js",
@@ -149,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "ca7d87bbd41be8ab477856013ffda12493206d803e1fee8651c1ecd8e0201fa3"
+      "sha256": "b0cd7674ac965e6778e7faf0bf1a94c9ca086d5b2426d33636adfd142df46219"
     },
     {
       "path": "./ui.js",
