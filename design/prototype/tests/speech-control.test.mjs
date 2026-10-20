@@ -29,3 +29,18 @@ test('read-only speech status does not advertise processing busy while worker ex
   w.onmessage({data:{id:w.messages.at(-1).id,value:true}});await pending;assert.equal(updates.at(-1).busy,false);
  }
 });
+
+test('speech inference releases its worker before delivering the transcript and recreates only on request',async()=>{
+ const workers=[],events=[],client=new SpeechClient(()=>{const w=new WorkerFixture();const terminate=w.terminate.bind(w);w.terminate=()=>{terminate();events.push('released');};workers.push(w);return w;},()=>{});
+ const status=client.call('status');workers[0].onmessage({data:{id:workers[0].messages.at(-1).id,value:true}});assert.equal(await status,true);assert.equal(workers[0].terminated,false);
+ const first=client.call('transcribe').then(value=>{events.push('delivered');return value;});const old=workers[0];old.onmessage({data:{id:old.messages.at(-1).id,value:{text:'Original transcript'}}});
+ assert.deepEqual(await first,{text:'Original transcript'});assert.equal(old.terminated,true);assert.deepEqual(events,['released','delivered']);assert.equal(workers.length,1);
+ const next=client.call('transcribe');assert.equal(workers.length,2);old.onmessage({data:{id:workers[1].messages.at(-1).id,value:{text:'stale'}}});workers[1].onmessage({data:{id:workers[1].messages.at(-1).id,value:{text:'New transcript'}}});assert.deepEqual(await next,{text:'New transcript'});assert.equal(workers[1].terminated,true);
+});
+
+test('failed transcription releases its worker without replay and ignores late progress',async()=>{
+ const workers=[],updates=[],client=new SpeechClient(()=>{const w=new WorkerFixture();workers.push(w);return w;},(busy,progress)=>updates.push({busy,progress}));
+ const first=client.call('transcribe');const old=workers[0];old.onmessage({data:{id:old.messages.at(-1).id,error:'Decode failed'}});await assert.rejects(first,/Decode failed/);assert.equal(old.terminated,true);assert.equal(workers.length,1);
+ const count=updates.length;old.onmessage({data:{id:old.messages.at(-1).id,progress:'late'}});assert.equal(updates.length,count);
+ const retry=client.call('status');assert.equal(workers.length,2);workers[1].onmessage({data:{id:workers[1].messages.at(-1).id,value:true}});assert.equal(await retry,true);assert.equal(workers[1].terminated,false);
+});
