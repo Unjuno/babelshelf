@@ -1,0 +1,62 @@
+{
+  "scope": "Paired single-run prompt-token observations; no general speed/quality/phone gain. Native transport remains default OFF.",
+  "before": {
+    "build": "a907183eafca1b23",
+    "worker": "./assets/bonsai-worker-2ApC7oti.js",
+    "workerSha256": "10016d732509f7523a49c3a860e49ab97366faeb3eba49cbb703ca6a6ced445f",
+    "routerSha256": "092977e91e61374cd4071258f52f185a51f0b33f5137f5354f018bf4c1dd8b16",
+    "harnessSha256": "67a2f8c9444e49f1d24d07b8263c92140376199a7f460f5311ad27c2df77dfec"
+  },
+  "after": {
+    "build": "6a70aa14567eb3cc",
+    "worker": "./assets/bonsai-worker-2ApC7oti.js",
+    "workerSha256": "10016d732509f7523a49c3a860e49ab97366faeb3eba49cbb703ca6a6ced445f",
+    "routerSha256": "e2c5a98433fa5a2966fe711cd7d2c9b2c476825bbd1992731f384821f56d51f3",
+    "harnessSha256": "b5e1728ad4d900c0b5210c50c4c1385036d8f45bfeb78af354e81d4a9dceb831"
+  },
+  "sameQuestionContextModelRuntimeWorker": true,
+  "contextTokens": 2048,
+  "maxOutputTokens": 160,
+  "pipeline": 1,
+  "sampling": "greedy",
+  "hostFreePhysicalMemoryObservationKiB": 42188,
+  "hostMemoryObservationScope": "During follow-up after initiating load; not peak process RAM",
+  "rows": [
+    {
+      "case": "Japanese new note",
+      "inputTokensBefore": 1338,
+      "inputTokensAfter": 1231,
+      "savedTokens": 107,
+      "passedBefore": false,
+      "passedAfter": false,
+      "generatedBefore": true,
+      "generatedAfter": false,
+      "wallMsBefore": 40188.40000003576,
+      "wallMsAfter": 38563.80000001192
+    },
+    {
+      "case": "Opened file summary scope",
+      "inputTokensBefore": 1457,
+      "inputTokensAfter": 1342,
+      "savedTokens": 115,
+      "passedBefore": true,
+      "passedAfter": true,
+      "generatedBefore": true,
+      "generatedAfter": true,
+      "wallMsBefore": 25007.5,
+      "wallMsAfter": 24926.69999998808
+    },
+    {
+      "case": "Save first assistant original",
+      "inputTokensBefore": 1974,
+      "inputTokensAfter": 1842,
+      "savedTokens": 132,
+      "passedBefore": false,
+      "passedAfter": false,
+      "generatedBefore": false,
+      "generatedAfter": true,
+      "wallMsBefore": 22.100000023841858,
+      "wallMsAfter": 29782.80000001192
+    }
+  ]
+}

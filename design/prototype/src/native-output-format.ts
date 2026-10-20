@@ -1,5 +1,6 @@
 import {createStructuredSchema} from './structured-grammar.ts';
 import type {GenerationFormat} from './text-inference.ts';
+import {plannerRoutingInstruction} from './harness-actions.ts';
 // @ts-expect-error Shared browser transport is a plain JavaScript module.
 import {nativeActionBinding} from '../../../dist/native-response.js';
 
@@ -40,6 +41,10 @@ export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
  const name=(typeof format==='string'?format:format.type)==='dialogue-answer'?'babelshelf_answer':'babelshelf_plan';
  const copy=structuredClone(messages),instruction=actions?'Choose one offered function. capturetext creates new text; capturecurrent, captureinputs, captureuser and captureassistant select originals without rewriting them. Supply only its argument fields; no assistant prose. All original scope and authorization rules still apply.':`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
  const system=copy.find(m=>m.role==='system'&&typeof m.content==='string');
+ if(system&&typeof format==='object'&&format.type==='dialogue-plan'){
+  const prefix=plannerRoutingInstruction(format.scope);
+  if(system.content.startsWith(prefix))system.content=plannerRoutingInstruction(format.scope,true)+system.content.slice(prefix.length);
+ }
  if(system)system.content+='\n'+instruction;else copy.unshift({role:'system',content:instruction});
  return {messages:copy,responseTool:{name,parameters,...(actions?{actions}:{})}};
 }

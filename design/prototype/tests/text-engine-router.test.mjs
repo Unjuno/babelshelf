@@ -6,6 +6,8 @@ import {createOnnxTextClient} from '../src/onnx-text-client.ts';
 import {Engine} from '../../../dist/engine.js';
 import {nativeOutputRequest} from '../src/native-output-format.ts';
 import {nativeResponseTools,nativeResponseText} from '../../../dist/native-response.js';
+import {planDialogueMessages} from '../src/conversation.ts';
+import {scopedHarnessActions} from '../src/harness-actions.ts';
 function setup(nativeStructuredOutput=false){const calls=[];let finish;
  const backend=name=>({manifest:{contextTokens:4096,runtime:{revision:'webml-test'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){calls.push(name+':terminate');}},async init(){return{};},async call(cmd){calls.push(name+':'+cmd);return cmd==='status'?{[name]:{filesPresent:true}}:{};},async load(id){calls.push(name+':load');if(name==='onnx')await new Promise(r=>finish=r);this.loaded=id;},async unload(){calls.push(name+':unload');this.loaded=null;},abort(){calls.push(name+':abort');this.loaded=null;}});
  const webml=backend('webml');let onnx;
@@ -49,6 +51,22 @@ test('native capture separates a new body from current/history originals and can
  for(const name of ['capturecurrent','captureassistant','captureuser','captureinputs'])assert.equal(restricted.actions[name],undefined);
  const forged=structuredClone(restricted);forged.actions.capturecurrent={type:'object',properties:{},required:[],additionalProperties:false};
  assert.throws(()=>nativeResponseTools(forged),/Invalid native response format/,'a supplied alias cannot introduce a target absent from the global scoped schema');
+});
+
+test('native planner omits duplicate catalog syntax but retains purposes and every following scope rule',()=>{
+ const scope={inputs:false,file:false,current:false,historyCount:2,assistantIndices:[0,1]},format={type:'dialogue-plan',scope};
+ const messages=planDialogueMessages('Save your FIRST answer as a new note.',{summary:'',refs:[],recent:[{id:'a',user:'one',answer:'A'},{id:'b',user:'two',answer:'B'}],turnCount:2,historyAssistantIndices:[0,1]}),before=structuredClone(messages);
+ const r=nativeOutputRequest(messages,format),system=r.messages[0].content;
+ assert.ok(!system.includes('"purpose":'));
+ for(const action of scopedHarnessActions(scope))assert.ok(system.includes(action.purpose),action.id);
+ const tail=messages[0].content.slice(messages[0].content.indexOf('. To answer or summarize')+1);
+ assert.ok(system.includes(tail));
+ assert.ok(system.length<messages[0].content.length);
+ assert.deepEqual(messages,before);assert.deepEqual(r.messages.slice(1),messages.slice(1));
+ const custom=[{role:'system',content:'Custom policy '+messages[0].content},{role:'user',content:messages[0].content}];
+ assert.ok(nativeOutputRequest(custom,format).messages[0].content.startsWith(custom[0].content));
+ assert.deepEqual(nativeOutputRequest(custom,format).messages[1],custom[1]);
+ assert.deepEqual(nativeOutputRequest(messages,'prose').messages,messages);
 });
 
 test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{

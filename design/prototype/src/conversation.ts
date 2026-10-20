@@ -1,7 +1,7 @@
 import {validateFileResults,type FileResult} from './file-discovery.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
 import {planningContextForInputs} from './current-input-scope.ts';
-import {HARNESS_ACTIONS,harnessActionCatalog,validHarnessAction,validHarnessTarget,type PlannerScope} from './harness-actions.ts';
+import {HARNESS_ACTIONS,plannerRoutingInstruction,validHarnessAction,validHarnessTarget,type PlannerScope} from './harness-actions.ts';
 import {validateWorkingFile,type WorkingFile} from './working-file.ts';
 import {validateActivity,type Activity} from './harness-activity.ts';
 import {PlannerOutputError} from './planner-error.ts';
@@ -184,7 +184,7 @@ export type DialoguePlan={action:'tool';tool:string;arguments:Record<string,unkn
 export function planDialogueMessages(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext){
  context=planningContextForRequest(context,attachments.length>0,question);const scope=plannerScope(context,attachments.length>0,question);
  if(agent)scope.toolIds=agent.allowedTools.filter(tool=>tool.readOnly===true&&tool.network==='none').map(tool=>tool.id);
- const instructions=['Route the CURRENT request for a local assistant. Return one JSON object containing action and the fields required by the selected action and target below. action must be EXACTLY ONE catalog id, never a combined name. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.'];
+ const instructions=[plannerRoutingInstruction(scope)];
  if(scope.toolIds?.length){instructions.push('Agent tool step: when a registered read-only tool is necessary, return exactly {"action":"tool","query":"<registered tool ID>","body":"<JSON string containing that tool\'s arguments>"}. The usage guides and argument examples are: '+JSON.stringify(agent!.allowedTools.filter(tool=>scope.toolIds!.includes(tool.id)).map(({id,usage})=>({id,usage}))));if(agent!.history.length>=MAX_AGENT_TOOL_CALLS)instructions.push('The application tool-call limit has been reached. Return a final non-tool action now.');}
  if(scope.inputs)instructions.push('CURRENT INPUT SCOPE: use target=inputs for answers or summaries of the current attachments. Their identities and revisions are owned by the harness. Old opened files and history never change this scope.');
  if(scope.file)instructions.push('With an opened file, omitting target selects that file by harness default for actions that permit a file target. query never changes that scope. To read or edit a DIFFERENT file choose target=path and query=its exact path or filename.');
