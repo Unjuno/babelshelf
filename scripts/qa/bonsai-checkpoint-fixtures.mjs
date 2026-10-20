@@ -1,5 +1,5 @@
 // QA-only bounded rows from a fully hash-verified local 9B checkpoint.
-// No model loader, downloads, activation/sign reconstruction or inference.
+// Reads stored explicit rotation signs; no model loader, downloads or inference.
 import {openAsBlob,createReadStream} from 'node:fs';
 import {readFile,stat} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
@@ -15,8 +15,17 @@ export async function checkpointFixtures(filePath){
  const u32=()=>{const n=view.getUint32(at,true);at+=4;return n;},u64=()=>{const n=Number(view.getBigUint64(at,true));at+=8;return n;},decoder=new TextDecoder('utf-8',{fatal:true});
  const text=(keep=false)=>{const n=u64(),start=at;at+=n;return keep?decoder.decode(new Uint8Array(view.buffer,start,n)):undefined;};
  const widths={0:1,1:1,2:2,3:2,4:4,5:4,6:4,7:1,10:8,11:8,12:8};
- const skip=type=>{if(type===8){text();return;}if(type===9){const child=u32(),n=u64();if(child===8)for(let i=0;i<n;i++)text();else at+=widths[child]*n;return;}at+=widths[type];};
- const count=u64(),metadata=u64();for(let i=0;i<metadata;i++){text();skip(u32());}
+ const value=(type,keep=false)=>{
+  if(type===8)return text(keep);
+  if(type===9){const child=u32(),n=u64();if(!keep&&child!==8){at+=widths[child]*n;return;}const items=keep?[]:null;for(let i=0;i<n;i++){const item=value(child,keep);items?.push(item);}return items;}
+  const start=at;at+=widths[type];if(!keep)return;
+  switch(type){case 0:return view.getUint8(start);case 1:return view.getInt8(start);case 2:return view.getUint16(start,true);case 3:return view.getInt16(start,true);case 4:return view.getUint32(start,true);case 5:return view.getInt32(start,true);case 6:return view.getFloat32(start,true);case 7:return !!view.getUint8(start);case 10:return Number(view.getBigUint64(start,true));case 11:return Number(view.getBigInt64(start,true));case 12:return view.getFloat64(start,true);default:throw Error('Unsupported checkpoint metadata');}
+ };
+ const count=u64(),metadata=u64(),hadamard={};for(let i=0;i<metadata;i++){const key=text(true),item=value(u32(),key.startsWith('prism.hadamard.'));if(key.startsWith('prism.hadamard.'))hadamard[key.slice('prism.hadamard.'.length)]=item;}
+ if(hadamard.version!==1||hadamard.block_size!==4096||hadamard.sign_mode!=='explicit'||hadamard.transform!=='normalized-sylvester-walsh-hadamard'||hadamard.axis!=='input-last-dimension'||!hadamard.inverse_weight_names?.includes('token_embd.weight'))throw Error('Checkpoint rotation contract changed');
+ const signsByWidth=new Map;let signOffset=0;
+ for(const width of hadamard.sign_widths??[]){if(!Number.isSafeInteger(width)||width<1||width%hadamard.block_size||signsByWidth.has(width))throw Error('Invalid checkpoint sign width');const signs=hadamard.sign_values?.slice(signOffset,signOffset+width);if(signs?.length!==width||signs.some(x=>x!==-1&&x!==1))throw Error('Invalid checkpoint signs');signsByWidth.set(width,Float32Array.from(signs));signOffset+=width;}
+ if(signOffset!==hadamard.sign_values?.length||!signsByWidth.has(4096))throw Error('Checkpoint sign length mismatch');
  const selected=new Set(['token_embd.weight','output.weight','blk.0.attn_qkv.weight']),tensors=[];
  for(let i=0;i<count;i++){const name=text(true),rank=u32(),shape=Array.from({length:rank},()=>u64()),type=u32(),offset=u64();if(selected.has(name)){if(type!==143||rank!==2||shape[0]!==4096||shape[1]<256)throw Error('Checkpoint fixture shape changed');tensors.push({name,shape,type,start:inspection.dataOffset+offset});}}
  if(tensors.length!==selected.size)throw Error('Missing checkpoint fixture tensor');
@@ -33,5 +42,5 @@ export async function checkpointFixtures(filePath){
   fixtures.push({packed,values,scales,group:128,source:{tensor:tensor.name,shape:tensor.shape,rowStart,rows:N,byteStart:start,bytes,sha256:createHash('sha256').update(packed).digest('hex')}});
  }
  const after=await stat(filePath);if(before.size!==after.size||before.mtimeMs!==after.mtimeMs)throw Error('Checkpoint changed during inspection');
- return {identity:{id:model.id,revision:model.revision,quantization:model.format,sha256,bytes:blob.size},fixtures};
+ return {identity:{id:model.id,revision:model.revision,quantization:model.format,sha256,bytes:blob.size},fixtures,rotation:{blockSize:hadamard.block_size,signsByWidth}};
 }

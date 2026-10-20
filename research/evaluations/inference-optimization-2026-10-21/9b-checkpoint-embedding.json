@@ -1,0 +1,755 @@
+{
+  "schema": 1,
+  "at": "2026-10-20T21:03:57.062Z",
+  "scope": "Native Dawn sampled real checkpoint embeddings and stored explicit signs, independent scalar inverse rotation; no full loader/layer graph/generation/browser/phone acceptance",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "gpuModule": {
+    "package": "webgpu",
+    "version": "0.6.2"
+  },
+  "browser": null,
+  "backend": "d3d12",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "model": {
+    "id": "9B",
+    "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+    "quantization": "PTQ1_0",
+    "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+    "bytes": 1997486976
+  },
+  "inputTokens": null,
+  "outputTokens": null,
+  "cases": [
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointToken": 0,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 0,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointToken": 0,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 0,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointToken": 1,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 1,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointToken": 1,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 1,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointToken": 255,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 255,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointToken": 255,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 255,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 0,
+        "rows": 256,
+        "byteStart": 233550720,
+        "bytes": 229376,
+        "sha256": "edc31c0f2546f2bd1155bc66026fb6f4a4cec9bf7322443a5fe96c4da1a58b12"
+      },
+      "checkpointTokens": [
+        255,
+        0,
+        1
+      ],
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "tokens": [
+        255,
+        0,
+        1
+      ],
+      "rotationBlock": null,
+      "outputDtype": "float32",
+      "selectedVariant": "prefill_lut2",
+      "mismatches": 0,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointToken": 124160,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 0,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointToken": 124160,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 0,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointToken": 124161,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 1,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointToken": 124161,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 1,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointToken": 124415,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 255,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointToken": 124415,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 255,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 124160,
+        "rows": 256,
+        "byteStart": 344798080,
+        "bytes": 229376,
+        "sha256": "5cec864a7764f9b55c4dfd421e3c6f4b239ae1b6c0d935a627e49e13bd3c2a53"
+      },
+      "checkpointTokens": [
+        124415,
+        124160,
+        124161
+      ],
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "tokens": [
+        255,
+        0,
+        1
+      ],
+      "rotationBlock": null,
+      "outputDtype": "float32",
+      "selectedVariant": "prefill_lut2",
+      "mismatches": 0,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointToken": 248064,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 0,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointToken": 248064,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 0,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointToken": 248065,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 1,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointToken": 248065,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 1,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointToken": 248319,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 255,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "auto",
+      "selectedVariant": "lut2_inverse_rotation_subgroup",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointToken": 248319,
+      "negativeSigns": 2018,
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "token": 255,
+      "tokenOffset": 1,
+      "rotationBlock": 4096,
+      "inputDtype": "uint32",
+      "outputDtype": "float32",
+      "requestedVariant": "lut2_inverse_rotation",
+      "selectedVariant": "lut2_inverse_rotation",
+      "finite": true,
+      "nonzero": 4096,
+      "maxAbsError": 0,
+      "tolerance": 0.0001,
+      "passed": true
+    },
+    {
+      "checkpointRows": {
+        "tensor": "token_embd.weight",
+        "shape": [
+          4096,
+          248320
+        ],
+        "rowStart": 248064,
+        "rows": 256,
+        "byteStart": 455816064,
+        "bytes": 229376,
+        "sha256": "3b3c22499db485380ccf946bf543165a729719dd952536bbfa38c06dc061d9fe"
+      },
+      "checkpointTokens": [
+        248319,
+        248064,
+        248065
+      ],
+      "lut": 9,
+      "width": 4096,
+      "vocab": 256,
+      "tokens": [
+        255,
+        0,
+        1
+      ],
+      "rotationBlock": null,
+      "outputDtype": "float32",
+      "selectedVariant": "prefill_lut2",
+      "mismatches": 0,
+      "passed": true
+    }
+  ],
+  "rotationMapping": {
+    "blockSize": 4096,
+    "comparedSigns": 16384,
+    "widths": [
+      4096,
+      12288
+    ],
+    "inverseEmbedding": true,
+    "passed": true
+  },
+  "device": {
+    "adapterInfo": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "intel-r-iris-r-xe-graphics",
+      "description": "D3D12 driver version 31.0.101.5186",
+      "isFallbackAdapter": false,
+      "subgroupMinSize": 8,
+      "subgroupMaxSize": 16,
+      "subgroupMatrixConfigs": []
+    },
+    "features": [
+      "timestamp-query",
+      "core-features-and-limits",
+      "texture-formats-tier1",
+      "shader-f16",
+      "texture-formats-tier2",
+      "rg11b10ufloat-renderable",
+      "subgroups",
+      "subgroup-size-control"
+    ],
+    "limits": {
+      "maxTextureDimension1D": 8192,
+      "maxTextureDimension2D": 8192,
+      "maxTextureDimension3D": 2048,
+      "maxTextureArrayLayers": 256,
+      "maxBindGroups": 4,
+      "maxBindGroupsPlusVertexBuffers": 24,
+      "maxBindingsPerBindGroup": 1000,
+      "maxDynamicUniformBuffersPerPipelineLayout": 8,
+      "maxDynamicStorageBuffersPerPipelineLayout": 4,
+      "maxSampledTexturesPerShaderStage": 16,
+      "maxSamplersPerShaderStage": 16,
+      "maxStorageBuffersPerShaderStage": 16,
+      "maxStorageTexturesPerShaderStage": 4,
+      "maxUniformBuffersPerShaderStage": 12,
+      "maxUniformBufferBindingSize": 65536,
+      "maxStorageBufferBindingSize": 2147483648,
+      "minUniformBufferOffsetAlignment": 256,
+      "minStorageBufferOffsetAlignment": 256,
+      "maxVertexBuffers": 8,
+      "maxBufferSize": 2147483648,
+      "maxVertexAttributes": 16,
+      "maxVertexBufferArrayStride": 2048,
+      "maxInterStageShaderVariables": 16,
+      "maxColorAttachments": 8,
+      "maxColorAttachmentBytesPerSample": 32,
+      "maxComputeInvocationsPerWorkgroup": 1024,
+      "maxComputeWorkgroupSizeX": 1024,
+      "maxComputeWorkgroupSizeY": 256,
+      "maxComputeWorkgroupSizeZ": 64,
+      "maxComputeWorkgroupStorageSize": 32768,
+      "maxComputeWorkgroupsPerDimension": 65535,
+      "maxImmediateSize": 64,
+      "maxStorageBuffersInVertexStage": 16,
+      "maxStorageBuffersInFragmentStage": 16,
+      "maxStorageTexturesInVertexStage": 4,
+      "maxStorageTexturesInFragmentStage": 4
+    }
+  },
+  "passed": true
+}
