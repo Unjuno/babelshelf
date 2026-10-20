@@ -8,6 +8,7 @@ test('fresh selected Text status controls preparation without treating missing s
  const prefs=initial(),present=textPreparationStatus({'4B':{filesPresent:true}},'4B');
  assert.equal(initialPreparationPlan(prefs,{...present,speech:false,ocr:false}).bytes,0);
  assert.throws(()=>textPreparationStatus({'2B':{filesPresent:true}},'4B'),/status unavailable/);
+ assert.deepEqual(textPreparationStatus({'9B':null},'9B'),{text:false,textStatusError:false});
  const failed=textPreparationStatus({'4B':{filesPresent:true,statusError:true}},'4B');
  assert.throws(()=>initialPreparationPlan(prefs,{...failed,speech:false,ocr:false}),/status unavailable/);
  prefs.decisionModel='d1-omni-600M';prefs.decisionLibrary=['d1-omni-600M'];

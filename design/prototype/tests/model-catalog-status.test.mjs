@@ -9,9 +9,8 @@ import {textAssetInput} from '../src/asset-activity.ts';
 
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
-  assert.match(selectedTextFileGuidance(id),/GGUF contains its tokenizer and chat template/);
-  assert.match(selectedTextFileGuidance(id),/Files for the selected model only/);
-  assert.match(selectedTextFileGuidance(id),/does not add or select a different model/);
+  assert.match(selectedTextFileGuidance(id),/Selected model only.*matching GGUF.*tokenizer and chat-template metadata/);
+  assert.match(selectedTextFileGuidance(id),/does not add another model/);
   assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
  }
  for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct']){
@@ -23,6 +22,7 @@ test('selected-file guidance follows the executable model format, including LFM 
 });
 
 test('decision file guidance distinguishes a new custom package from files for the selected model',()=>{
+ assert.match(selectedDecisionFileGuidance(false,false),/Choose a decision model before supplying/);
  assert.match(selectedDecisionFileGuidance(false),/selected built-in D1 only.*six pinned files.*tokenizer.*does not add a model/);
  assert.match(selectedDecisionFileGuidance(true),/selected custom D1 only.*five matching ONNX, config and tokenizer files.*does not add a model/);
 });

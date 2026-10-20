@@ -5,13 +5,14 @@ export function selectedTextFileGuidance(modelId:string,customModels:readonly Cu
  if(!modelId)return 'Choose a model before supplying its files.';
  try{
   const {model}=textAssetInput(modelId,false,undefined,[...customModels]);
-  if(model.format==='GGUF'||('file' in model&&/\.gguf$/i.test(model.file?.name??'')))return 'Files for the selected model only. GGUF contains its tokenizer and chat template; a matching runtime file may also be required. This does not add or select a different model.';
+  if(model.format==='GGUF'||('file' in model&&/\.gguf$/i.test(model.file?.name??'')))return 'Selected model only. Supply its matching GGUF; supported files include tokenizer and chat-template metadata. A matching runtime file may also be required. This does not add another model.';
   if(model.format==='ONNX')return 'Files for the selected model only. Supply matching ONNX weights, config and tokenizer files. This does not add or select a different model.';
  }catch{/* An unknown selection must not be presented as an importable package. */}
  return 'No compatible import package for this selection.';
 }
 
-export function selectedDecisionFileGuidance(custom:boolean):string {
+export function selectedDecisionFileGuidance(custom:boolean,selected=true):string {
+ if(!selected)return 'Choose a decision model before supplying its files.';
  return custom
   ? 'Files for the selected custom D1 only: five matching ONNX, config and tokenizer files. This does not add a model.'
   : 'Files for the selected built-in D1 only: six pinned files, including ONNX weights, config, tokenizer and license. This does not add a model.';
