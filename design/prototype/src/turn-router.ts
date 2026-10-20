@@ -1,20 +1,13 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
 import {requestNamesEarlierDialogue} from './conversation.ts';
-import {namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
+import {namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 
 // The rest of a question can overwhelm the lexical index. Keep a named saved
 // file's descriptor as the query; the full request is still used for answering.
 export function savedKnowledgeSearchQuery(question:string){
  const named=/\b(?:saved|stored)\s+((?:(?:[\p{L}\p{N}-]+)\s+){1,8})(?:notes?|files?|documents?|records?)\b/iu.exec(question);
  return named?.[1].trim()||namedSavedSubject(question)?.trim()||question;
-}
-
-// A user may name a saved item and ask for its note citation in a second
-// sentence, without repeating the word "note" beside the item name.
-function namedSavedSubject(question:string){
- if(!/\b(?:cite|source)\s+(?:(?:the|this|that)\s+)?(?:note|file|document|record)\b/i.test(question))return null;
- return /\b(?:saved|stored)\s+((?:[\p{L}\p{N}-]+\s*){1,8})(?=[?？.!])/iu.exec(question)?.[1]??null;
 }
 
 // A question explicitly anchored to saved knowledge needs only the read-only
