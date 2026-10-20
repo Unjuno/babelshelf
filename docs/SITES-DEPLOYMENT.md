@@ -1,4 +1,8 @@
-## Current publication — model-file actions and media setup, 2026-10-20
+## Current publication — media capability authority, 2026-10-20
+
+Public Site v67 serves product `fff896b4648891fe` / 118 verified assets from canonical source `d4de8d3` and Site source `166038200ed0da8b9436121b98d4ef7d51fdc4cb`. Saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_9bc5f5eea3fc8191beebbcc4f1b5f103`; deployment `appgdep_6ad6b6b392ec8191847d0b6e6f70bf1e` succeeded. Both public-domain and Site-alias `/build.json` returned the exact build. The audience remains public. This release removes the unused Media capability list from bundled settings; the UI and inference adapters are otherwise unchanged. The Site delivery verifier passed and the Windows helper's Bash-path packaging failure was handled by packaging the same pushed source with the installed preparer and native tar. No retained public tab was updated or exercised on v67; the v66 browser evidence below remains scoped to v66.
+
+## Previous publication — model-file actions and media setup, 2026-10-20
 
 Public Site v66 serves product `56525c36cca8f47f` / 118 verified assets from canonical source `7cd268b` and Site source `fe8f7ea5fc86ad4368473b86fb89e4b7c6972698`. Saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b133e04390fc81919cd8802ab25b8273`; deployment `appgdep_6ad6b3ea216c8191a4e88c9777aa4c97` succeeded. Both public-domain and Site-alias `/build.json` returned the exact build. The public audience and data origin are unchanged. Site package archive: `outputs/site-v66-media-model-paths.tar.gz` in the canonical checkout; the Windows packaging helper's known Bash-path failure was bypassed with the bundled staging preparer and native tar after verified Site-source push.
 
