@@ -9,7 +9,7 @@ import {textAssetInput} from '../src/asset-activity.ts';
 
 test('selected-file guidance follows the executable model format, including LFM GGUF',()=>{
  for(const id of ['4B','2B','9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0']){
-  assert.match(selectedTextFileGuidance(id),/Selected model only.*matching GGUF.*tokenizer and chat-template metadata/);
+  assert.match(selectedTextFileGuidance(id),/Selected model only.*matching GGUF.*Tokenizer and chat template are normally embedded/);
   assert.match(selectedTextFileGuidance(id),/does not add another model/);
   assert.doesNotMatch(selectedTextFileGuidance(id),/ONNX weights/);
  }
@@ -23,8 +23,8 @@ test('selected-file guidance follows the executable model format, including LFM 
 
 test('decision file guidance distinguishes a new custom package from files for the selected model',()=>{
  assert.match(selectedDecisionFileGuidance(false,false),/Choose a decision model before supplying/);
- assert.match(selectedDecisionFileGuidance(false),/selected built-in D1 only.*six pinned files.*tokenizer.*does not add a model/);
- assert.match(selectedDecisionFileGuidance(true),/selected custom D1 only.*five matching ONNX, config and tokenizer files.*does not add a model/);
+ assert.match(selectedDecisionFileGuidance(false),/Selected built-in D1 only.*six pinned files.*tokenizer.*does not add a model/);
+ assert.match(selectedDecisionFileGuidance(true),/Custom D1 uses its verified ONNX, config and tokenizer package.*cannot silently replace/);
 });
 
 test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{
@@ -33,7 +33,7 @@ test('media statuses separate supported text and audio paths from unsupported vi
  assert.deepEqual(status.pdf,['Text layer · ready','Scanned pages · OCR model not selected']);
  assert.deepEqual(status.image,['Text · OCR model not selected','Description · model not selected']);
  assert.deepEqual(status.audio,['Transcription · not prepared']);
- assert.deepEqual(status.video,['Original preview · browser-dependent','Audio transcription · not prepared','Frame understanding · unsupported']);
+ assert.deepEqual(status.video,['Original preview · browser-dependent','Audio track transcription · not prepared','Video frames · no connected reader']);
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
