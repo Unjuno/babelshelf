@@ -22,6 +22,17 @@ test('model dialogue distinguishes application outcomes from assistant originals
  assert.deepEqual(context,before);assert.equal(historyPayload(context).recent[1].status,'Stopped');
 });
 
+test('dialogue-only generation has no knowledge-store dependency while keeping context and cancellation',async()=>{
+ let reads=0,received,checks=0,prepared=0;const store={all:async()=>{reads++;throw Error('Knowledge read must not run');},search:async()=>{throw Error('Search must not run');}};
+ const context={summary:'User prefers English.',recent:[{id:'past',user:'My name is Mira.',answer:'Hello Mira.'}],refs:[{noteId:'unread',revision:1,start:0,end:9,quote:'not evidence'}]};
+ const runtime={manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},loaded:'test',assets:{},count:async()=>({prompt_tokens:100}),generate:async messages=>{received=messages;return {text:'Hello Mira.',finishReason:'stop'};}};
+ const result=await groundedAnswer(store,runtime,'test','Hello.','','chat',context,()=>{checks++;},[],undefined,async()=>{prepared++;return context;});
+ assert.equal(reads,0);assert.equal(prepared,1);assert.equal(result.answer,'Hello Mira.');assert.deepEqual(result.sources,[]);assert.ok(checks>1);
+ assert.match(JSON.stringify(received),/My name is Mira/);assert.equal(received.at(-1).content,'Hello.');assert.doesNotMatch(JSON.stringify(received),/not evidence/);
+ let cancelled=false;await assert.rejects(groundedAnswer(store,{...runtime,generate:async()=>{cancelled=true;return {text:'Late output',finishReason:'stop'};}},'test','Hello.','','chat',context,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.equal(reads,0);
+ await assert.rejects(groundedAnswer(store,runtime,'test','What is in this file?','','chat',context,()=>{},[],{noteId:'file',revision:1}),/Knowledge read must not run/);assert.equal(reads,1);
+});
+
 test('plain original writing stays a conversation even when a small planner would search notes',async()=>{
  const context={summary:'',recent:[],refs:[],turnCount:0};
  const shouldNotPlan={...engine(),generate:async()=>{throw Error('planner must not run');}};
