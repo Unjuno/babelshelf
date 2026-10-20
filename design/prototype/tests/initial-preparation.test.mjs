@@ -16,7 +16,7 @@ test('fresh selected Text status controls preparation without treating missing s
 });
 test('initial preparation respects text-only selection without acquiring unselected readers',()=>{
  const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.models.transcriptionModel,'');assert.equal(plan.models.ocrModel,'');assert.equal(prefs.transcriptionModel,'');assert.ok(plan.bytes>950000000);assert.deepEqual(plan.steps.map(s=>s.role),['text']);
- assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-unknown'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/text model/);
+ assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-unknown'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/Choose a model/);
 });
 
 test('Whisper base preparation uses its own package and keeps other roles unchanged',()=>{
@@ -151,4 +151,24 @@ test('fresh downloads OFF refuses acquisition but allows local verification and 
 test('Stop during a fresh settings read cannot start preparation',async()=>{
  const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false}),calls=[];let stopped=false;
  await assert.rejects(runInitialPreparation(plan,async role=>calls.push(role),async()=>calls.push('commit'),()=>{if(stopped)throw Error('Stopped');},async()=>{stopped=true;}),/Stopped/);assert.deepEqual(calls,[]);
+});
+
+test('reader preparation does not require a selected text model or its status',async()=>{
+ const prefs=initial();prefs.textModel='';prefs.transcriptionModel='whisper-base';prefs.transcriptionLibrary=['whisper-base'];prefs.visionModel='lfm25-vl-450m-q4f16';prefs.visionLibrary=[prefs.visionModel];
+ const ready={text:false,textStatusError:true,speech:false,ocr:false,vision:true};
+ const speech=initialPreparationPlan(prefs,ready,'speech');assert.deepEqual(speech.steps.map(step=>step.role),['speech']);assert.equal(speech.bytes,79666385);assert.equal(speech.models.textModel,'');
+ const all=initialPreparationPlan(prefs,ready);assert.deepEqual(all.steps.map(step=>step.role),['speech','vision']);assert.equal(all.bytes,speech.bytes);
+ const calls=[];await runInitialPreparation(all,async role=>calls.push(role),async()=>calls.push('complete'));assert.deepEqual(calls,['speech','complete']);
+ assert.equal(prefs.textModel,'');assert.deepEqual(prefs.textLibrary,initial().textLibrary);
+});
+
+test('preparation probes only selected roles within the requested scope',async()=>{
+ const {preparationRoles}=await import('../src/initial-preparation.ts');const prefs=initial();prefs.transcriptionModel='whisper-base';prefs.transcriptionLibrary=['whisper-base'];prefs.visionModel='lfm25-vl-450m-q4f16';prefs.visionLibrary=[prefs.visionModel];
+ assert.deepEqual(preparationRoles(prefs,'text'),['text']);assert.deepEqual(preparationRoles(prefs,'speech'),['speech']);assert.deepEqual(preparationRoles(prefs,'ocr'),[]);
+ assert.deepEqual(preparationRoles(prefs),['text','speech','vision']);prefs.textModel='';assert.deepEqual(preparationRoles(prefs),['speech','vision']);assert.deepEqual(preparationRoles(prefs,'text'),[]);
+});
+
+test('empty and unknown selected roles do not invent a default text selection',()=>{
+ const prefs=initial();prefs.textModel='';assert.throws(()=>initialPreparationPlan(prefs,{text:false,speech:false,ocr:false}),/Choose a model/);assert.throws(()=>initialPreparationPlan(prefs,{text:false,speech:false,ocr:false},'text'),/Choose a text model/);
+ prefs.transcriptionModel='whisper-unknown';assert.throws(()=>initialPreparationPlan(prefs,{text:false,speech:false,ocr:false},'speech'),/Speech runtime not connected/);
 });

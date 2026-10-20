@@ -78,3 +78,19 @@ saved settings, invalidates the old plan, and offers Review again with the same
 role scope. It never automatically retries acquisition or silently switches a
 reviewed selection. Mid-file cancellation/eviction and OS-isolated full offline
 acceptance remain separate gates.
+
+## Independent role preparation (2026-10-20)
+
+Preparation and its initial asset-status probes share preparationRoles: the
+intersection of configured roles and the requested scope. Full preparation may
+contain readers/Decision without a Text model. A role-only request probes only
+that role; a missing/unselected Text model or unrelated Text status is not a
+prerequisite for speech, OCR, Decision or Vision setup. No default Text selection
+is inserted. Empty full selection reports Choose a model; empty explicit role
+reports Choose a <role> model. Unknown selected adapters remain errors.
+
+This removes unnecessary status work for unrelated selected readers during
+role-only setup and allows existing prepared readers to complete Use models with
+Text Not configured. Selection libraries, model assets and note/history records
+are preserved. It does not imply that unselected Text can answer a question, that
+preparation proves inference, or that memory/device limits have been established.

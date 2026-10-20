@@ -15,7 +15,7 @@ import {canAddModel,modelCatalogStatus,textModelChoiceHint} from './model-catalo
 import {calculatorInput,orderedCalculationInput} from './tools/math.calculate/tool';
 import {speechReady as preparedSpeech} from './speech-assets';
 import {ocrReady as preparedOcr} from './ocr-assets';
-import {initialPreparationPlan,runInitialPreparation,assertPreparationSettings,textPreparationStatus,type InitialPreparation,type PreparationRole} from './initial-preparation';
+import {initialPreparationPlan,preparationRoles,runInitialPreparation,assertPreparationSettings,textPreparationStatus,type InitialPreparation,type PreparationRole} from './initial-preparation';
 import {textModelControls} from './text-model-controls';
 // @ts-expect-error Shared bounded model inspector is JavaScript.
 import {inspectLocalModel} from '../../../dist/local-models.js';
@@ -438,8 +438,8 @@ export default function Prototype() {
   if(!storageReady||bonsai.busy||speech.busy||ocr.busy||decision.busy||vision.busy||assetGate.current.busy||sendLock.current||taskController.busy)return toast('Model busy');
   initialPrepRole.current=role;
   try{await assetGate.current.run(async()=>{setInitialPrep(null);setInitialPrepBusy(true);assetCancelled.current=false;setInitialPrepStatus('Checking local files');keyboard.hide();setSheet('initial-preparation');try{
-   const checkText=!role||role==='text';const [textAssets,speechFiles,ocrFiles,visionFiles,space]=await Promise.all([checkText?bonsai.refreshStatus():Promise.resolve(null),speechModel?preparedSpeech(selectedCustomSpeech??speechModel):false,ocrModel?preparedOcr(ocrLanguage):false,visionModel?visionReady():false,readDeviceStorage()]);
-   if(assetCancelled.current)throw Error('Stopped');const text=checkText?textPreparationStatus(textAssets!,model):{text:false,textStatusError:false};setDeviceStorage(space);setInitialPrep(initialPreparationPlan(modelPreferences,{...text,speech:speechFiles,ocr:ocrFiles,decision:decision.ready,vision:visionFiles},role));setInitialPrepStatus('');
+   const roles=preparationRoles(modelPreferences,role),checkText=roles.includes('text');const [textAssets,speechFiles,ocrFiles,visionFiles,space]=await Promise.all([checkText?bonsai.refreshStatus():Promise.resolve(null),roles.includes('speech')?preparedSpeech(selectedCustomSpeech??speechModel):false,roles.includes('ocr')?preparedOcr(ocrLanguage):false,roles.includes('vision')?visionReady():false,readDeviceStorage()]);
+   if(assetCancelled.current)throw Error('Stopped');const text=checkText?textPreparationStatus(textAssets!,model):{text:false,textStatusError:false};setDeviceStorage(space);setInitialPrep(initialPreparationPlan(modelPreferences,{...text,speech:speechFiles,ocr:ocrFiles,decision:roles.includes('decision')&&decision.ready,vision:visionFiles},role));setInitialPrepStatus('');
   }finally{setInitialPrepBusy(false);}});}catch(e){setInitialPrepStatus((e as Error).message);}
  }
 
