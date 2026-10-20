@@ -169,7 +169,6 @@ export default function Prototype() {
  const [inputReadProgress,setInputReadProgress]=useState<{id:string;label:string}|null>(null);
  function stopInput(){if(sendCancelled.current)return;sendCancelled.current=true;setChatProgress('Stopping…');inputReadController.current?.abort();if(inputReadController.current){speech.stop();vision.stop();}bonsai.stop();decision.stopIfBusy();}
  useEffect(()=>()=>{sendCancelled.current=true;inputReadController.current?.abort();},[]);
- useEffect(()=>{if(page!=='input')return;const scroller=conversationElement.current?.closest('.native-scroll');if(scroller)scroller.scrollTop=scroller.scrollHeight;},[messages,page,availableHeight]);
  const [offlineApp,setOfflineApp]=useState(offlineShellStatus);useEffect(()=>{setOfflineApp(offlineShellStatus());return subscribeOfflineShell(()=>setOfflineApp(offlineShellStatus()));},[]);
  const [appUpdateReady,setAppUpdateReady]=useState(false);
  const [diagnosticBuild,setDiagnosticBuild]=useState('Not checked');
@@ -780,6 +779,7 @@ export default function Prototype() {
 
  useEffect(()=>{if(page!=='settings'||settingsPanel!=='files')return;let alive=true;void readDeviceStorage().then(value=>{if(alive)setDeviceStorage(value);});return()=>{alive=false;};},[page,settingsPanel]);
  useEffect(()=>{const node=composerElement.current;if(!node)return;const update=()=>setComposerHeight(Math.ceil(node.getBoundingClientRect().height));update();const observer=new ResizeObserver(update);observer.observe(node);return()=>observer.disconnect();},[page,sheet,storageReady,metadataReady,dialogueReady]);
+ useEffect(()=>{if(page!=='input'||!storageReady||!metadataReady||!dialogueReady)return;const scroller=conversationElement.current?.closest('.native-scroll');if(scroller)scroller.scrollTop=scroller.scrollHeight;},[messages,page,availableHeight,storageReady,metadataReady,dialogueReady]);
  if(!storageReady||!metadataReady||!dialogueReady)return <div className="storage-gate" role="status">{dialogueError||storageError||metadataError||'Opening local storage…'}</div>;
  return <>
 

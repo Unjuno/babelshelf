@@ -34,6 +34,10 @@ Normal Send no longer calls dialogue.subject or performs a competing-speaker gen
 
 # Continuous input context
 
+## Restoring the visible conversation after local hydration
+
+The initial scroll-to-latest effect waits for storage, metadata and dialogue readiness, and observes all three readiness flags as dependencies. Dialogue can arrive before metadata mounts the conversation element; a messages-only effect would consume that transition while its ref is null and leave an existing conversation at its oldest turn. This changes viewport restoration only, not saved messages, compaction, model context or source identity. The regression test exercises this delayed-metadata order with the actual effect/dependencies; sidebar browser verification remains separate.
+
 ## Explicit Japanese original writing
 
 An unattached, explicit Japanese request to create a story, poem or similar original text enters the same source-free chat path as the existing English creative-writing command. The harness recognizes only a narrow creation grammar and refuses this shortcut when the request names a note, file, record, attachment, prior text or demonstrative target. Those requests still go through the scoped planner. This routing chooses an operation, not answer content: the selected local model must generate the prose. It neither edits knowledge nor treats a generated answer as a saved note. Small-model intent classification for other Japanese requests remains an open quality gate.
