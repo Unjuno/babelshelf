@@ -58,6 +58,7 @@ import {createOriginalLoader} from './original-loader';
 import {MicrophoneGate,saveReviewedTranscript} from './speech-control';
 import {useSpeech} from './useSpeech';
 import {useVision} from './useVision';
+import {releaseVisionResidents} from './vision-control';
 import {visionReady} from './vision-assets';
 import {makeTranscript,type Transcript} from './speech-transcript';
 import {groundedAnswer} from './grounded-answer';
@@ -196,9 +197,9 @@ export default function Prototype() {
  useEffect(()=>setTextTestStatus(''),[model]);
  useEffect(()=>{textDeviceEpoch.current++;setTextDeviceCheck(null);setTextDeviceChecking(false);},[model]);  const selectedCustomDecision=modelPreferences.customDecisionModels.find(m=>m.id===decisionModel);
   const selectedCustomSpeech=modelPreferences.customSpeechModels.find(m=>m.id===speechModel),speechSupported=!!getSpeechManifest(speechModel)||!!selectedCustomSpeech,speech=useSpeech(speechModel,modelPreferences.customSpeechModels);
- const vision=useVision(visionModel);
- const textControls=textModelControls({selected:!!model,custom:modelPreferences.customModels.some(m=>m.id===model),present:!!bonsai.assets[model]?.filesPresent,presenceOnly:!!bonsai.assets[model]?.presenceOnly,statusError:!!bonsai.assets[model]?.statusError,loaded:!!model&&bonsai.loaded===model,busy:bonsai.busy||!!assetAction,downloads});
  const decision=useDecision(decisionModel,modelPreferences.customDecisionModels);
+ const vision=useVision(visionModel,check=>releaseVisionResidents([bonsai,decision],check));
+ const textControls=textModelControls({selected:!!model,custom:modelPreferences.customModels.some(m=>m.id===model),present:!!bonsai.assets[model]?.filesPresent,presenceOnly:!!bonsai.assets[model]?.presenceOnly,statusError:!!bonsai.assets[model]?.statusError,loaded:!!model&&bonsai.loaded===model,busy:bonsai.busy||!!assetAction,downloads});
  const preparationEngine=assetAction==='model.prepare'?bonsai:assetAction==='speech.prepare'?speech:assetAction==='decision.prepare'?decision:assetAction==='ocr.prepare'?ocr:assetAction==='vision.prepare'?vision:null;
  const preparationProgress=initialPrepBusy&&preparationEngine?.busy&&!['Verified','Loaded','Unloaded'].includes(preparationEngine.progress)?preparationEngine.progress:'';
  const processorBusy=bonsai.busy||speech.busy||ocr.busy||decision.busy||vision.busy||!!assetAction||sending;
@@ -307,9 +308,12 @@ export default function Prototype() {
  async function loadOriginal(ref:OriginalRef):Promise<Attachment>{return originalLoader.current!.load(ref);}
  async function readOriginalPreview(ref:OriginalRef):Promise<Attachment>{const cached=liveAttachments.current.get(ref.id);if(cached?.asset?.id===ref.id&&cached.asset.revision===ref.revision&&cached.asset.sha256===ref.sha256&&cached.url&&assetURLs.current.has(cached.url))return cached;const asset=await knowledge.original(ref);if(!previewMounted.current)throw Error('Preview closed');const bytes=readOriginal(asset,ref),url=URL.createObjectURL(new Blob([new Uint8Array(bytes).buffer],{type:asset.mime}));assetURLs.current.add(url);const item:Attachment={id:asset.id,name:asset.name,mime:asset.mime,kind:asset.kind,size:asset.bytes,url,asset:ref,...originalText(asset,bytes)};liveAttachments.current.set(item.id,item);return item;}
  async function showAttachment(item:Attachment){keyboard.hide();home.current?.focus({preventScroll:true});try{const loaded=await previewSelection.current.load(async()=>item.asset&&(!item.url||!assetURLs.current.has(item.url))?await loadOriginal(item.asset):item);if(!loaded)return;setSelectedAttachment({...loaded,...(item.range?{range:item.range}:{}),...(item.pdfPage?{pdfPage:item.pdfPage}:{}),...(item.imageRegion?{imageRegion:item.imageRegion}:{})});setVisionOutput('');setVisionError('');setVisionReceipt(null);setVisionPrompt('Describe this image.');setSheet('attachment');renderDialogue(dialogue.current);}catch(e){toast((e as Error).message);}}
+ const visionReadLock=useRef(false);
  function stopVision(){visionStopped.current=true;vision.stop();}
  async function askAboutSelectedImage(){
-  if(!selectedAttachment||selectedAttachment.kind!=='image'||!visionModel||!vision.ready||vision.busy||!visionPrompt.trim())return;
+  if(!selectedAttachment||selectedAttachment.kind!=='image'||!visionModel||!vision.ready||vision.busy||visionReadLock.current||!visionPrompt.trim())return;
+  if(processorBusy||assetGate.current.busy||sendLock.current||taskController.busy||pdfLock.current||ocrLock.current||speechDecodeLock.current)return toast('Model busy');
+  visionReadLock.current=true;
   setVisionOutput('');setVisionError('');setVisionReceipt(null);visionStopped.current=false;
   try{
    let asset:OriginalAsset,fresh:boolean;
@@ -319,7 +323,7 @@ export default function Prototype() {
    else throw Error('Local image unavailable');
    const value=await traceProcessing('image.describe',visionDescriptionInput(visionModel,{...originalRef(asset),name:asset.name},visionPrompt),async()=>{const result=await vision.describe(new Blob([readOriginal(asset).slice().buffer],{type:asset.mime}),visionPrompt);return makeVisionText(asset,{...result,prompt:visionPrompt});},result=>({original:originalRef(asset),model:result.model,revision:result.revision,runtime:result.runtime,scope:'single-image',width:result.width,height:result.height,characters:result.text.length,textStateHash:stateHash(result.text)}),()=>visionStopped.current);
    setVisionReceipt({id:crypto.randomUUID(),asset,fresh,value});setVisionOutput(value.text);
-  }catch(error){setVisionError((error as Error).message);}
+  }catch(error){setVisionError((error as Error).message);}finally{visionReadLock.current=false;}
  }
  async function saveVisionToMemory(){
   const receipt=visionReceipt;if(!receipt||visionSaveLock.current)return;visionSaveLock.current=true;setVisionSaving(true);setVisionError('');

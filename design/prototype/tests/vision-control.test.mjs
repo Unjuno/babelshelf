@@ -27,3 +27,32 @@ test('a failed image inference releases the worker and only a new explicit reque
  const first=client.call('describe');const refused=assert.rejects(first,/Device unavailable/);workers[0].onmessage({data:{id:workers[0].last.id,error:'Device unavailable'}});await refused;assert.equal(workers[0].terminated,true);assert.equal(workers.length,1);
  const status=client.call('status');assert.equal(workers.length,2);workers[1].onmessage({data:{id:workers[1].last.id,value:{ready:true}}});assert.deepEqual(await status,{ready:true});assert.notEqual(workers[1].terminated,true);
 });
+
+test('image inference waits for resident-model release and owns the request while waiting',{timeout:1000},async()=>{
+ let release;const workers=[],events=[];const ready=new Promise(resolve=>release=resolve);
+ const client=new VisionClient(()=>{const worker={postMessage(m){worker.last=m;events.push('describe');},terminate(){}};workers.push(worker);return worker;},()=>{},async check=>{events.push('release');await ready;check();});
+ const result=client.call('describe');assert.deepEqual(events,['release']);assert.equal(workers.length,0);await assert.rejects(client.call('describe'),/busy/);
+ release();await Promise.resolve();await Promise.resolve();assert.deepEqual(events,['release','describe']);workers[0].onmessage({data:{id:workers[0].last.id,value:{text:'Green'}}});assert.deepEqual(await result,{text:'Green'});
+});
+
+test('Stop while releasing another model never starts delayed image inference',{timeout:1000},async()=>{
+ let release,created=0;const ready=new Promise(resolve=>release=resolve),client=new VisionClient(()=>{created++;return {postMessage(){},terminate(){}};},()=>{},async check=>{await ready;check();});
+ const result=client.call('describe');const stopped=assert.rejects(result,/Stopped/);client.stop();await stopped;release();await Promise.resolve();await Promise.resolve();assert.equal(created,0);
+});
+
+test('a release failure refuses image inference without replay and permits a later explicit call',{timeout:1000},async()=>{
+ let fail=true,created=0;const client=new VisionClient(()=>{created++;return {postMessage(){},terminate(){}};},()=>{},async()=>{if(fail)throw Error('Unload failed');});
+ await assert.rejects(client.call('describe'),/Unload failed/);assert.equal(created,0);fail=false;const next=client.call('describe');next.catch(()=>{});await Promise.resolve();await Promise.resolve();assert.equal(created,1);client.stop();await assert.rejects(next,/Stopped/);
+});
+
+test('resident release refuses active inference before unloading either model',async()=>{
+ const {releaseVisionResidents}=await import('../src/vision-control.ts');const released=[];
+ await assert.rejects(releaseVisionResidents([{loaded:'text',busy:false,unload:async()=>{released.push('text');}},{loaded:true,busy:true,unload:async()=>{released.push('decision');}}],()=>{}),/Model busy/);assert.deepEqual(released,[]);
+});
+
+test('resident release waits for idle loaded models and respects cancellation between owners',async()=>{
+ const {releaseVisionResidents}=await import('../src/vision-control.ts');const released=[];let cancelled=false;
+ const ports=[{loaded:'text',busy:false,unload:async()=>{released.push('text');cancelled=true;}},{loaded:true,busy:false,unload:async()=>{released.push('decision');}}];
+ await assert.rejects(releaseVisionResidents(ports,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.deepEqual(released,['text']);
+ cancelled=false;released.length=0;ports[0].unload=async()=>{released.push('text');};await releaseVisionResidents([...ports,{loaded:false,busy:false,unload:async()=>{throw Error('Idle empty model must not be loaded');}}],()=>{});assert.deepEqual(released,['text','decision']);
+});
