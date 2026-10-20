@@ -1,5 +1,7 @@
 ## Current canonical settings correction contract (Unit35)
 
+Connection now exposes an Offline/Online application mode backed by the same historical downloads boolean. Read [CONNECTION-MODE.md](CONNECTION-MODE.md) for worker enforcement, restart/cancellation and scope. No additional preference field or model authority is introduced.
+
 The current product persists managed preference records in canonical IndexedDB notes; historical session-only descriptions below describe early prototype stages. Settings controls and Memory read the same records and append revisions. The deployed app does not import arbitrary runtime code from a preference document.
 
 Opened appearance/models settings support a finite `settings.patch` proposal through the same full Before/After, expected-record CAS, atomic note/receipt and append-only Undo as ordinary note correction. Canonical managed ID and exact path must match. Allowed appearance fields are theme/background/glass. Allowed model fields are registered text/decision/transcription/OCR selections and validated reading languages. Existing schema/catalog validation remains authoritative. Libraries, downloads/connection, readiness, runtime, URLs, credentials, paths, permission flags and Tools definitions are rejected. Use explicit existing Settings controls for registration/preparation/connection actions.

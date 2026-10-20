@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Application Offline/Online mode is defined in docs/CONNECTION-MODE.md. The canonical connection record's existing downloads boolean is the sole permission source; the product worker checks it for external requests. Preserve fail-closed reads, stream cancellation, local-cache availability, explicit acquisition, model-local processing and history. This is not an OS firewall or proof of browser-owned script isolation.
+
 For sampled-video reading, read docs/VIDEO-VISION-CONTRACT.md. Vision schema2 retains actual decoded frame times, bounded observations and separate optional transcript provenance. Keep original video and single-image schema1 intact; processing headings are not factual citation candidates. A sampled PC color-bar run does not establish full-video understanding, phone fit or offline cold-start acceptance.
 
 As of 2026-10-19, the user accepts the current published product as the completed baseline. The bounded architecture rationalization is implemented and published as Unit44/v22: input-submission.ts owns preparation/commit/recovery, while the UI supplies ports and handles presentation. Preserve its acknowledged-commit boundary, expected dialogue snapshot and operation cancellation checks. Use docs/ARCHITECTURE-RATIONALIZATION.md for scope and decisions. Historical incomplete-MVP statements below do not override this acceptance; unverified capabilities remain unverified. Use docs/MVP-ACCEPTANCE.md for the evidence map; chronological unit notes retain their original scope.

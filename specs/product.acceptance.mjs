@@ -4,7 +4,8 @@ test('production shell contains every asset with exact size/hash and install met
  const manifest=JSON.parse(await fs.readFile(root+'build.json','utf8'));
  const workerSource=await fs.readFile('scripts/product-worker.mjs','utf8'),sw=await fs.readFile(root+'sw.js','utf8'),declaration=sw.match(/\bREMOTE=(\[[^;]*\]);/);
  assert.ok(declaration,'Worker remote allowlist missing');const remote=JSON.parse(declaration[1]);
- assert.equal(manifest.build,createHash('sha256').update(JSON.stringify(manifest.files)).update(workerSource).update(JSON.stringify(remote)).digest('hex').slice(0,16));
+ const connectionPolicy=await fs.readFile('dist/connection-policy.js','utf8');
+ assert.equal(manifest.build,createHash('sha256').update(JSON.stringify(manifest.files)).update(workerSource).update(connectionPolicy).update(JSON.stringify(remote)).digest('hex').slice(0,16));
  assert.ok(manifest.files.length>=5);for(const entry of manifest.files){const bytes=await fs.readFile(root+entry.path.slice(2));assert.equal(bytes.length,entry.bytes);assert.equal(createHash('sha256').update(bytes).digest('hex'),entry.sha256);}
  const shell=manifest.files.find(file=>file.path==='./index.html');assert.equal(shell.downloadPath,'./offline-shell-'+shell.sha256+'.bin');assert.deepEqual(await fs.readFile(root+shell.downloadPath.slice(2)),await fs.readFile(root+'index.html'));
  const html=await fs.readFile(root+'index.html','utf8');assert.match(html,/viewport-fit=cover/);assert.match(html,/manifest.webmanifest/);

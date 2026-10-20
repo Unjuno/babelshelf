@@ -1,8 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {webcrypto,createHash} from 'node:crypto';
 import {productWorker} from '../scripts/product-worker.mjs';
 const origin='http://localhost:4180',current='2222222222222222',previous='1111111111111111';
+function connectionDatabase(online=true){
+ let enabled=online;
+ return {set(value){enabled=value;},open(){const request={};queueMicrotask(()=>{const tx={objectStore(){return {get(){const result={};queueMicrotask(()=>{result.result={id:'settings-connection',state:'active',ui:{managed:true},revisions:[{path:'Settings/connection.md',body:'# Connection\n\n```json\n'+JSON.stringify({downloads:enabled,diagnosticLogs:false})+'\n```\n'}]};result.onsuccess();tx.oncomplete();});return result;}};}};request.result={objectStoreNames:{contains:()=>true},transaction:()=>tx,close(){}};request.onsuccess();});return request;}};
+}
 function storage(){const entries=new Map();return {entries,keys:async()=>[...entries.keys()],open:async name=>{if(!entries.has(name))entries.set(name,new Map());const data=entries.get(name);return {match:async url=>data.get(typeof url==='string'?url:url.url)?.clone(),put:async(url,r)=>data.set(typeof url==='string'?url:url.url,r.clone())};}};}
-async function harness(responseBytes='NEW',options={}){const caches=options.caches??storage(),handlers={},network=[];const self={registration:{scope:options.scope??origin+'/'},location:{origin},clients:{claim:async()=>{}},addEventListener:(type,fn)=>handlers[type]=fn};const bytes='NEW',files=options.files??[{path:'./assets/main-NEWabc12.js',bytes:3,sha256:createHash('sha256').update(bytes).digest('hex')}];vm.runInNewContext(productWorker({build:options.build??current,files,remote:['https://assets.example/model']}),{self,caches,URL,Response,Headers,...(options.now?{Date:{now:options.now}}:{}),crypto:webcrypto,fetch:async url=>{network.push(typeof url==='string'?url:url.url);return new Response(typeof responseBytes==='function'?responseBytes(url):responseBytes);}});return {caches,network,handlers,async put(name,path,body){await (await caches.open(name)).put(origin+path,new Response(body));},async request(path,mode='cors',method='GET',clientId='',range=''){let result;handlers.fetch({clientId,request:{url:path.startsWith('https://')?path:origin+path,mode,method,credentials:'omit',headers:new Headers(range?{Range:range}:{})},respondWith:p=>result=p});return await result;}};}
+async function harness(responseBytes='NEW',options={}){const caches=options.caches??storage(),handlers={},network=[];const self={registration:{scope:options.scope??origin+'/'},location:{origin},clients:{claim:async()=>{}},addEventListener:(type,fn)=>handlers[type]=fn};const bytes='NEW',files=options.files??[{path:'./assets/main-NEWabc12.js',bytes:3,sha256:createHash('sha256').update(bytes).digest('hex')}];vm.runInNewContext(productWorker({build:options.build??current,files,remote:['https://assets.example/model']}),{self,caches,URL,Response,Headers,setTimeout,clearTimeout,AbortController,ReadableStream,indexedDB:options.connection??connectionDatabase(),...(options.now?{Date:{now:options.now}}:{}),crypto:webcrypto,fetch:async (url,init)=>{network.push(typeof url==='string'?url:url.url);return options.fetcher?options.fetcher(url,init):new Response(typeof responseBytes==='function'?responseBytes(url):responseBytes);}});return {self,caches,network,handlers,async put(name,path,body){await (await caches.open(name)).put(origin+path,new Response(body));},async request(path,mode='cors',method='GET',clientId='',range=''){let result;handlers.fetch({clientId,request:{url:path.startsWith('https://')?path:origin+path,mode,method,credentials:'omit',headers:new Headers(range?{Range:range}:{})},respondWith:p=>result=p});return await result;}};}
 test('current navigation and current assets stay on the active verified generation',async()=>{const h=await harness();await h.put('babelshelf-product-'+current,'/index.html','NEW index');await h.put('babelshelf-product-'+previous,'/index.html','OLD index');assert.equal(await (await h.request('/','navigate')).text(),'NEW index');await h.put('babelshelf-product-'+current,'/assets/shared-AAAAAAAA.js','CURRENT');await h.put('babelshelf-product-'+previous,'/assets/shared-AAAAAAAA.js','OLD');assert.equal(await (await h.request('/assets/shared-AAAAAAAA.js')).text(),'CURRENT');assert.equal((await h.request('/missing.js')).status,503);assert.deepEqual(h.network,[]);});
 test('an old open page can read a missing hashed lazy module from its verified historical app cache after update',async()=>{const h=await harness();await h.put('babelshelf-product-'+previous,'/assets/pdf-engine-OLDabc12.js','OLD reader');const result=await h.request('/assets/pdf-engine-OLDabc12.js');assert.equal(result.status,200);assert.equal(await result.text(),'OLD reader');assert.deepEqual(h.network,[]);});
 test('historical fallback cannot use arbitrary cache namespaces or old documents and never acquires missing resources',async()=>{const h=await harness();for(const name of ['foreign-data','babelshelf-product-not-a-build'])await h.put(name,'/assets/reader-OLDabc12.js','foreign');await h.put('babelshelf-product-'+previous,'/private.json','old private');assert.equal((await h.request('/assets/reader-OLDabc12.js')).status,503);assert.equal((await h.request('/private.json')).status,503);assert.equal((await h.request('/assets/absent-NONEabcd.js')).status,503);assert.equal((await h.request('/assets/reader-OLDabc12.js','cors','POST')).status,405);assert.deepEqual(h.network,[]);assert.equal((await h.request('https://unapproved.example/model')).status,503);assert.deepEqual(h.network,[]);assert.equal((await h.request('https://assets.example/model')).status,200);assert.deepEqual(h.network,['https://assets.example/model']);});
@@ -56,6 +60,38 @@ test('cache read rejection returns a local failure response and the same cache c
 });
 
 function allowHF(h,url,{client='tab-a',range='',sourceOrigin=origin}={}){let reply;h.handlers.message({source:{id:client,url:sourceOrigin+'/',type:'window'},data:{type:'allow-huggingface-request',url,range},ports:[{postMessage(value){reply=value;}}]});return reply?.allowed;}
+
+test('Offline blocks pinned downloads and pre-issued HF grants across tabs while retaining the local shell',async()=>{
+ const connection=connectionDatabase(true),h=await harness('NEW',{connection}),url='https://huggingface.co/api/models/owner/model?blobs=true';
+ await h.put('babelshelf-product-'+current,'/index.html','Retained local app');
+ assert.equal(allowHF(h,url),true);connection.set(false);
+ assert.equal((await h.request('https://assets.example/model','cors','GET','another-tab')).status,503);
+ assert.equal((await h.request(url,'cors','GET','tab-a')).status,503);
+ assert.equal(await(await h.request('/','navigate')).text(),'Retained local app');assert.deepEqual(h.network,[]);
+ const restarted=await harness('NEW',{connection});assert.equal((await restarted.request('https://assets.example/model')).status,503);
+ connection.set(true);assert.equal((await restarted.request('https://assets.example/model')).status,200);
+ assert.equal((await restarted.request('https://unapproved.example/model')).status,503);
+});
+
+test('confirmed Offline cancels a response body already downloading in another tab and revokes unused grants',async()=>{
+ const connection=connectionDatabase(true);let aborted=false;
+ const h=await harness('NEW',{connection,fetcher:async(request,{signal})=>new Response(new ReadableStream({start(controller){signal.addEventListener('abort',()=>{aborted=true;controller.error(Error('Offline'));},{once:true});}}))});
+ const reader=(await h.request('https://assets.example/model','cors','GET','another-tab')).body.getReader(),pending=reader.read();
+ const rejected=assert.rejects(pending,/Offline/),url='https://huggingface.co/api/models/owner/model?blobs=true';assert.equal(allowHF(h,url),true);
+ connection.set(false);let work,reply;
+ h.handlers.message({source:{id:'tab-a',type:'window',url:origin+'/'},data:{type:'network-offline'},ports:[{postMessage(value){reply=value;}}],waitUntil:value=>work=value});
+ await work;await rejected;assert.equal(reply.offline,true);assert.equal(aborted,true);
+ connection.set(true);assert.equal((await h.request(url,'cors','GET','tab-a')).status,503);
+});
+
+test('Offline prevents replacement app asset acquisition while first preparation and retained caches remain distinct',async()=>{
+ const connection=connectionDatabase(false),h=await harness('NEW',{connection});
+ h.self.registration.active={};
+ await h.put('babelshelf-product-'+previous,'/index.html','OLD');
+ await assert.rejects(install(h),/App is offline/);assert.deepEqual(h.network,[]);
+ assert.equal(await(await (await h.caches.open('babelshelf-product-'+previous)).match(origin+'/index.html')).text(),'OLD');
+ connection.set(true);await install(h);assert.equal(h.network.length,1);
+});
 test('explicit HF access is one-use, exact URL/range and scoped to its initiating tab',async()=>{
  const h=await harness(),url='https://huggingface.co/api/models/owner/model?blobs=true';
  assert.equal((await h.request(url,'cors','GET','tab-a')).status,503);assert.equal(allowHF(h,url),true);

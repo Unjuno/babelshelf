@@ -19,6 +19,7 @@ if(!shell)throw Error('Missing app shell');
 shell.downloadPath='./offline-shell-'+shell.sha256+'.bin';
 await copyFile(path.join(root,'index.html'),path.join(root,shell.downloadPath));
 const workerSource=await readFile(new URL('./product-worker.mjs',import.meta.url),'utf8');
+const connectionPolicy=await readFile('dist/connection-policy.js','utf8');
 const models=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
 const speech=JSON.parse(await readFile('design/prototype/src/speech-manifest.json','utf8'));
 const speechBase=JSON.parse(await readFile('design/prototype/src/speech-base-manifest.json','utf8'));
@@ -32,7 +33,7 @@ const remote=[...lfm.models.filter(m=>['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-
 // The remote allowlist is part of the worker's behavior even when emitted app
 // assets and the worker template source are unchanged. Give that change a new
 // build ID so existing PWA registrations can receive the reviewed update.
-const build=createHash('sha256').update(JSON.stringify(files)).update(workerSource).update(JSON.stringify(remote)).digest('hex').slice(0,16);
+const build=createHash('sha256').update(JSON.stringify(files)).update(workerSource).update(connectionPolicy).update(JSON.stringify(remote)).digest('hex').slice(0,16);
 const worker=productWorker({build,files,remote});
 await writeFile(path.join(root,'sw.js'),worker);await writeFile(path.join(root,'build.json'),JSON.stringify({build,files},null,2));
 console.log('Product shell '+build+' · '+files.length+' verified assets');

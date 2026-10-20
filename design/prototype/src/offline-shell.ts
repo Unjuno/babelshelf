@@ -60,3 +60,16 @@ export async function activeAppBuild(container:Pick<ServiceWorkerContainer,'cont
   try{worker.postMessage('build',[channel.port2]);}catch{finish('Unknown');}
  });
 }
+
+// Called only after the canonical Offline preference commits. Acknowledgement
+// distinguishes enforcement by this controller from an old/uncontrolled page.
+export async function enforceOfflineNetwork(worker:Pick<ServiceWorker,'postMessage'>|null|undefined,timeoutMs=5000):Promise<boolean>{
+ if(!worker)return false;
+ return new Promise(resolve=>{
+  const channel=new MessageChannel();let settled=false;
+  const finish=(value:boolean)=>{if(settled)return;settled=true;clearTimeout(timer);channel.port1.close();channel.port2.close();resolve(value);};
+  const timer=setTimeout(()=>finish(false),timeoutMs);
+  channel.port1.onmessage=event=>finish(event.data?.offline===true);
+  try{worker.postMessage({type:'network-offline'},[channel.port2]);}catch{finish(false);}
+ });
+}

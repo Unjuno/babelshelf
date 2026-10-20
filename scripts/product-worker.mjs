@@ -1,8 +1,31 @@
 // Generated offline app worker; model/data stores are outside this module.
+import {readAppNetworkAccess} from '../dist/connection-policy.js';
 export function productWorker({build,files,remote}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
+const readAppNetworkAccess=${readAppNetworkAccess.toString()};
 `+String.raw`
 const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1';
 const hfGrants=new Map();
+const networkRequests=new Set();let networkEpoch=0;
+const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
+async function externalRequest(event){
+ const approved=REMOTE.includes(event.request.url)||consumeHF(event),epoch=networkEpoch;
+ if(!approved||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)return disabledNetwork();
+ const controller=new AbortController(),request=event.request,abort=()=>controller.abort();
+ networkRequests.add(controller);request.signal?.addEventListener('abort',abort,{once:true});
+ const cleanup=()=>{networkRequests.delete(controller);request.signal?.removeEventListener('abort',abort);};
+ try{
+  if(request.signal?.aborted)controller.abort();
+  const response=await fetch(request,{signal:controller.signal});
+  if(!response.body){cleanup();return response;}
+  const reader=response.body.getReader();
+  const stream=new ReadableStream({
+   async pull(target){try{const value=await reader.read();if(value.done){cleanup();target.close();}else target.enqueue(value.value);}catch(error){cleanup();target.error(error);}},
+   cancel(reason){cleanup();controller.abort();return reader.cancel(reason);}
+  });
+  const headers=new Headers(response.headers);headers.delete('Content-Encoding');headers.delete('Content-Length');
+  return new Response(stream,{status:response.status,statusText:response.statusText,headers});
+ }catch{cleanup();return disabledNetwork();}
+}
 function hfRequestAllowed(raw,range){
  if(raw.length>1024||range.length>32)return false;
  try{const url=new URL(raw);if(url.href!==raw||url.origin!=='https://huggingface.co'||url.username||url.password||url.hash)return false;
@@ -30,9 +53,11 @@ async function historicalManifest(cache,name){
  }catch{return null;}
 }
 self.addEventListener('install',event=>event.waitUntil((async()=>{
+ if(self.registration.active&&!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('App is offline');
  const cache=await caches.open(CACHE),pool=await caches.open(SHARED),assets=[];
  for(const file of FILES){
   if(immutable(file.path)){const saved=await pool.match(poolKey(file));if(saved&&await verified(saved,file)){assets.push(file);continue;}}
+  if(self.registration.active&&!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('App is offline');
   let response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin'});
   if(!response.ok)throw Error('App asset missing');if(!await verified(response,file))throw Error('App asset verification failed');
   if(file.path==='./index.html'&&file.downloadPath){
@@ -56,7 +81,7 @@ self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
  if(request.method!=='GET'){event.respondWith(new Response('Method unavailable',{status:405}));return;}
- if(url.origin!==self.location.origin){event.respondWith(REMOTE.includes(url.href)||consumeHF(event)?fetch(request):Promise.resolve(new Response('Network disabled',{status:503})));return;}
+ if(url.origin!==self.location.origin){event.respondWith(externalRequest(event));return;}
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);
   const missing=()=>new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain'}});
@@ -86,6 +111,15 @@ self.addEventListener('fetch',event=>{
  })().catch(()=>new Response('Local app unavailable. Reload to retry.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})));
 });
 self.addEventListener('message',event=>{
+ if(event.data?.type==='network-offline'){
+  const source=event.source;
+  if(source?.type!=='window'||!source.id||new URL(source.url).origin!==self.location.origin){event.ports[0]?.postMessage({offline:false});return;}
+  const work=(async()=>{
+   if(await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)){event.ports[0]?.postMessage({offline:false});return;}
+   networkEpoch++;hfGrants.clear();for(const controller of networkRequests)controller.abort();networkRequests.clear();
+   event.ports[0]?.postMessage({offline:true});
+  })();event.waitUntil?.(work);return;
+ }
  if(event.data?.type==='allow-huggingface-request'){
   const {url,range}=event.data,source=event.source;let allowed=false;
   try{allowed=source?.type==='window'&&!!source.id&&new URL(source.url).origin===self.location.origin&&typeof url==='string'&&typeof range==='string'&&hfRequestAllowed(url,range);}catch{}
