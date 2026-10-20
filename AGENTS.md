@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Real9B checkpoint-row arithmetic now supplements synthetic LUT2 vectors: optional local checkpoint path in check-bonsai-lut2.mjs verifies complete hash, reads nine bounded real tensor windows and compares actual GPU codec/products to independent scalar decoding. Read latest INFERENCE-OPTIMIZATION.md; passing sampled rows does not certify real activations/sign maps/full9B generation. Keep QA private runtime/weights outside commits/deployment.
+
 Fatal WebML Worker failure now exposes failed status and explicit Load may recover through an app-owned base factory. Router recovery only initializes; the hook invalidates registry caches and resyncs current canonical settings before loading. No replay/acquisition. Read MODEL-RUNTIME-VERIFICATION.md for Stop-race/controlled tests and actual sidebar Worker transport evidence; this is not post-crash GPU generation acceptance.
 
 WebML worker unload detaches session/model/identity before awaiting cleanup, attempts both disposals even on failure, and reports errors. Load failure also cleans acquired handles; post-model-acquisition Stop is checked before session publication. Controlled worker RED/GREEN does not prove driver memory reclamation. Preserve asset stores and explicit retry; see MODEL-RUNTIME-VERIFICATION.md.
