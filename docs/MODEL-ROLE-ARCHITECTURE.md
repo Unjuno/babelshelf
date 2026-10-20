@@ -96,3 +96,9 @@ The standard installation should be modular: text is required; decision, speech,
 6. Build and 454 prototype tests pass. Browser WebGPU output, offline cold-reload, target-phone performance and device acceptance remain unverified.
 
 2026-10-20: Whisper base is now connected through the shared built-in speech identity/pins, preparation and inference path. It is no longer a disconnected catalog placeholder. D1 3B remains disconnected. Prepared single-image Vision now also participates in ordinary Send through the existing typed input-reading transaction, retaining generated-observation coverage rather than claiming extracted facts. See INPUT-READINGS.md and TEST-RESULTS.txt for exact evidence scope.
+
+## Vision inference lifetime (2026-10-20)
+
+The Vision client treats describe as one operation, rather than an indefinitely loaded model session. On a successful or failed final response it detaches and terminates the image worker before resolving/rejecting the caller. The text-answer continuation can then begin without an idle image model intentionally retained by this client. Preparation and readiness remain storage facts; no model files, selection, original or observation record are deleted. Another explicit image request creates a fresh worker and loads only prepared local assets. Progress, Stop, errors and late messages remain isolated by worker identity and request sequence; there is no automatic replay.
+
+This bounds the image worker lifetime after inference. It does not establish an exact browser/driver memory reclamation time, prevent every possible cross-role overlap before image inference, or prove phone peak-memory limits. Those are separate resource-coordination/device gates.

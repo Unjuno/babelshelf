@@ -5,7 +5,17 @@ export class VisionClient{
  call(type:string,values:any={}):Promise<any>{
   if(this.pending)return Promise.reject(Error('Vision model busy'));
   if(!this.worker){const worker=this.factory();this.worker=worker;
-   worker.onmessage=({data}:any)=>{if(this.worker!==worker||data.id!==this.sequence)return;if(data.progress){this.update(this.pending?.type!=='status',data.progress);return;}const pending=this.pending;this.pending=null;this.update(false,data.error);if(data.error)pending?.reject(Error(data.error));else pending?.resolve(data.value);};
+   worker.onmessage=({data}:any)=>{
+    if(this.worker!==worker||data.id!==this.sequence)return;
+    if(data.progress){this.update(this.pending?.type!=='status',data.progress);return;}
+    const pending=this.pending;this.pending=null;
+    // The image model is an operation-scoped reader. Release its GPU/model
+    // owner before text answering can load another model. Prepared files and
+    // observation records belong to storage, independently of this worker.
+    if(pending?.type==='describe'){this.worker=null;worker.terminate();}
+    this.update(false,data.error);
+    if(data.error)pending?.reject(Error(data.error));else pending?.resolve(data.value);
+   };
    worker.onerror=()=>{if(this.worker!==worker)return;this.worker=null;worker.terminate();const pending=this.pending;this.pending=null;this.update(false,'Vision runtime failed');pending?.reject(Error('Vision runtime failed'));};
   }
   this.update(type!=='status');return new Promise((resolve,reject)=>{this.pending={type,resolve,reject};this.worker.postMessage({id:++this.sequence,type,...values});});
