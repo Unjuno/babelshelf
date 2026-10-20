@@ -47,3 +47,16 @@ export async function activateWaitingUpdate(registration:ServiceWorkerRegistrati
   try{worker.postMessage({type:'activate-update'});check();}catch(error){finish(error instanceof Error?error:Error('Update activation failed'));}
  });
 }
+
+// This reports the worker controlling the current page, not the newest build
+// on the server. Keep it in opt-in diagnostics so a stale client is visible.
+export async function activeAppBuild(container:Pick<ServiceWorkerContainer,'controller'>,timeoutMs=2000):Promise<string>{
+ const worker=container.controller;if(!worker)return 'Unavailable';
+ return new Promise(resolve=>{
+  const channel=new MessageChannel();let settled=false;
+  const finish=(value:string)=>{if(settled)return;settled=true;clearTimeout(timer);channel.port1.close();channel.port2.close();resolve(value);};
+  const timer=setTimeout(()=>finish('Unknown'),timeoutMs);
+  channel.port1.onmessage=event=>finish(typeof event.data?.build==='string'&&/^[a-f0-9]{16}$/.test(event.data.build)?event.data.build:'Unknown');
+  try{worker.postMessage('build',[channel.port2]);}catch{finish('Unknown');}
+ });
+}

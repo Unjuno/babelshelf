@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {observeOfflineRegistration,activateWaitingUpdate} from '../src/offline-shell.ts';
+import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild} from '../src/offline-shell.ts';
 class Worker extends EventTarget {constructor(state){super();this.state=state;}set(state){this.state=state;this.dispatchEvent(new Event('statechange'));}}
 test('failed first app installation is visible and never becomes Installed',()=>{const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;const states=[];const stop=observeOfflineRegistration(registration,s=>states.push(s));worker.set('redundant');assert.deepEqual(states,['Installing','Preparation failed']);stop();});
 test('activation and existing usable worker are distinct from model readiness',()=>{const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;const states=[];const stop=observeOfflineRegistration(registration,s=>states.push(s));registration.active=worker;worker.set('activated');assert.deepEqual(states,['Installing','Installed']);stop();});
@@ -29,4 +29,11 @@ test('Apply update does not report success if activation fails or never controls
  await assert.rejects(activateWaitingUpdate({waiting:failed},container,100),/activation failed/);
  const stalled=new Worker('installed');stalled.postMessage=()=>stalled.set('activated');
  await assert.rejects(activateWaitingUpdate({waiting:stalled,active:stalled},container,5),/not confirmed/);
+});
+
+test('diagnostics report the controlling worker build without assuming server freshness',async()=>{
+ const worker={postMessage:(message,[port])=>{assert.equal(message,'build');port.postMessage({build:'519a5ee2b57a7699'});}};
+ assert.equal(await activeAppBuild({controller:worker},100),'519a5ee2b57a7699');
+ assert.equal(await activeAppBuild({controller:null},100),'Unavailable');
+ assert.equal(await activeAppBuild({controller:{postMessage:()=>{}}},5),'Unknown');
 });
