@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Token-selection isolation follows the actual Prism head path: normalized/rotated hidden -> LlamaPrefillMatmul logits -> SampleNextToken, not absent generic fused LmHeadArgmax operators. Controlled full-vocabulary selectors pass on Intel; deliberately all-NaN logits produce token0 (the real9B header token0 is !). This is a hypothesis boundary, not proof that full9B logits are NaN or a fixed generation result. Read the latest INFERENCE-OPTIMIZATION.md section before adding instrumentation or changing sampling.
+
 Bounded embedding isolation now covers actual LlamaEmbed LUT2 inverse-rotation auto/portable kernels and prefill lookup, with independent scalar/FP64 references; see INFERENCE-OPTIMIZATION.md and embedding-parity.json. These are constructed arithmetic vectors, not a real checkpoint/tokenizer/sign-map or 9B generation pass. Keep private QA exports outside deployment and require the exact runtime hash.
 
 Follow-up native numerical evidence now includes12 LUT2/2 recurrent/2 transpose checks plus a full9B finite-scalar/hash audit. The optional allocation plan reports static weights only; it is not a phone-fit or peak-memory claim. See the latest INFERENCE-OPTIMIZATION.md section. Historical9B prose failure remains unresolved; do not change production kernels or label9B usable from these bounded QA checks.
