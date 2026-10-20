@@ -75,3 +75,6 @@ Actual installed PC Chrome, source server stopped and browser offline across two
 
 ## Operation-scoped speech inference (2026-10-21)
 SpeechClient terminates its inference worker on a final transcribe success or error before delivering the transcript/rejection to the caller. Prepared model files remain in storage; a later explicit request creates a fresh worker. Status/preparation may retain their non-inference worker. Late messages from a retired worker cannot change state or settle a new request. Stop still terminates immediately and does not replay. This bounds speech residency after inference; it does not establish peak-memory reclamation timing or prevent overlap with every other model before transcription begins.
+
+## Reader entry ownership (2026-10-21)
+Both Vision and Speech use inference-ownership.ts releaseIdleInference before inference dispatch. An active Text/Decision owner refuses reader startup; idle loaded owners unload sequentially with operation checks before/after each await. Speech reserves its request through this phase; Stop or a failed unload cannot dispatch a delayed transcription or replay. useSpeech keeps the current preflight callback separately from worker identity. Status/preparation do not unload inference owners. This is a same-component reader-entry rule, not a cross-tab lock or universal runtime scheduler.

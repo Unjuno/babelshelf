@@ -46,13 +46,13 @@ test('a release failure refuses image inference without replay and permits a lat
 });
 
 test('resident release refuses active inference before unloading either model',async()=>{
- const {releaseVisionResidents}=await import('../src/vision-control.ts');const released=[];
- await assert.rejects(releaseVisionResidents([{loaded:'text',busy:false,unload:async()=>{released.push('text');}},{loaded:true,busy:true,unload:async()=>{released.push('decision');}}],()=>{}),/Model busy/);assert.deepEqual(released,[]);
+ const {releaseIdleInference}=await import('../src/inference-ownership.ts');const released=[];
+ await assert.rejects(releaseIdleInference([{loaded:'text',busy:false,unload:async()=>{released.push('text');}},{loaded:true,busy:true,unload:async()=>{released.push('decision');}}],()=>{}),/Model busy/);assert.deepEqual(released,[]);
 });
 
 test('resident release waits for idle loaded models and respects cancellation between owners',async()=>{
- const {releaseVisionResidents}=await import('../src/vision-control.ts');const released=[];let cancelled=false;
+ const {releaseIdleInference}=await import('../src/inference-ownership.ts');const released=[];let cancelled=false;
  const ports=[{loaded:'text',busy:false,unload:async()=>{released.push('text');cancelled=true;}},{loaded:true,busy:false,unload:async()=>{released.push('decision');}}];
- await assert.rejects(releaseVisionResidents(ports,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.deepEqual(released,['text']);
- cancelled=false;released.length=0;ports[0].unload=async()=>{released.push('text');};await releaseVisionResidents([...ports,{loaded:false,busy:false,unload:async()=>{throw Error('Idle empty model must not be loaded');}}],()=>{});assert.deepEqual(released,['text','decision']);
+ await assert.rejects(releaseIdleInference(ports,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.deepEqual(released,['text']);
+ cancelled=false;released.length=0;ports[0].unload=async()=>{released.push('text');};await releaseIdleInference([...ports,{loaded:false,busy:false,unload:async()=>{throw Error('Idle empty model must not be loaded');}}],()=>{});assert.deepEqual(released,['text','decision']);
 });

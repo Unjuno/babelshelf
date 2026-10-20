@@ -34,9 +34,3 @@ export class VisionClient{
  }
  stop(){this.sequence++;this.worker?.terminate();this.worker=null;const pending=this.pending;this.pending=null;this.update(false,'Stopped');pending?.reject(Error('Stopped'));}
 }
-
-type VisionResident={readonly loaded:string|boolean;readonly busy:boolean;unload:()=>Promise<unknown>};
-export async function releaseVisionResidents(residents:readonly VisionResident[],check:()=>void){
- check();if(residents.some(model=>model.busy))throw Error('Model busy');
- for(const model of residents){check();if(model.busy)throw Error('Model busy');if(model.loaded)await model.unload();check();}
-}

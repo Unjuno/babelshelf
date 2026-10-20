@@ -44,3 +44,18 @@ test('failed transcription releases its worker without replay and ignores late p
  const count=updates.length;old.onmessage({data:{id:old.messages.at(-1).id,progress:'late'}});assert.equal(updates.length,count);
  const retry=client.call('status');assert.equal(workers.length,2);workers[1].onmessage({data:{id:workers[1].messages.at(-1).id,value:true}});assert.equal(await retry,true);assert.equal(workers[1].terminated,false);
 });
+
+test('speech reserves its request while idle resident models are released; Stop prevents late dispatch',async()=>{
+ const release=deferred(),workers=[],events=[];
+ const client=new SpeechClient(()=>{const w=new WorkerFixture();workers.push(w);return w;},busy=>events.push(busy),async check=>{check();await release.promise;check();});
+ const pending=client.call('transcribe',{samples:new Float32Array([1])});pending.catch(()=>{});assert.equal(workers.length,0);assert.equal(events.at(-1),true);
+ await assert.rejects(client.call('transcribe'),/busy/);client.stop();await assert.rejects(pending,/Stopped/);release.resolve();await new Promise(resolve=>setImmediate(resolve));assert.equal(workers.length,0);
+});
+
+test('speech status skips inference release; transcription waits and release failure never replays',async()=>{
+ const workers=[],release=deferred();let calls=0;
+ const client=new SpeechClient(()=>{const w=new WorkerFixture();workers.push(w);return w;},()=>{},async check=>{calls++;check();await release.promise;check();});
+ const status=client.call('status');assert.equal(calls,0);workers[0].onmessage({data:{id:workers[0].messages.at(-1).id,value:true}});await status;
+ const pending=client.call('transcribe');assert.equal(calls,1);assert.equal(workers[0].messages.length,1);release.resolve();await new Promise(resolve=>setImmediate(resolve));assert.equal(workers[0].messages.at(-1).type,'transcribe');workers[0].onmessage({data:{id:workers[0].messages.at(-1).id,value:{text:'Read'}}});assert.deepEqual(await pending,{text:'Read'});
+ let created=0;const failing=new SpeechClient(()=>{created++;return new WorkerFixture();},()=>{},async()=>{throw Error('Model busy');});await assert.rejects(failing.call('transcribe'),/Model busy/);assert.equal(created,0);
+});

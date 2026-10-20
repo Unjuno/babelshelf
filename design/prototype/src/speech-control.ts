@@ -1,9 +1,9 @@
 export class SpeechClient {
  private worker:any=null;private sequence=0;private pending:{type:string;resolve:(v:any)=>void;reject:(e:Error)=>void}|null=null;
  private factory:()=>any;private update:(busy:boolean,progress?:string)=>void;
- constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void){this.factory=factory;this.update=update;}
- call(type:string,values:any={}):Promise<any>{
-  if(this.pending)return Promise.reject(Error('Speech model busy'));
+ private beforeTranscribe?:(check:()=>void)=>Promise<void>;
+ constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void,beforeTranscribe?:(check:()=>void)=>Promise<void>){this.factory=factory;this.update=update;this.beforeTranscribe=beforeTranscribe;}
+ private dispatch(type:string,values:any,id:number){
   if(!this.worker){const w=this.factory();this.worker=w;
    w.onmessage=({data}:any)=>{
     if(this.worker!==w||data.id!==this.sequence||!this.pending)return;
@@ -17,7 +17,21 @@ export class SpeechClient {
    };
    w.onerror=()=>{if(this.worker!==w)return;this.worker=null;w.terminate();const p=this.pending;this.pending=null;this.update(false,'Speech runtime failed');p?.reject(Error('Speech runtime failed'));};
   }
-  this.update(type!=='status');return new Promise((resolve,reject)=>{this.pending={type,resolve,reject};this.worker.postMessage({id:++this.sequence,type,...values});});
+  this.worker.postMessage({...values,id,type});
+ }
+ call(type:string,values:any={}):Promise<any>{
+  if(this.pending)return Promise.reject(Error('Speech model busy'));
+  const id=++this.sequence;
+  return new Promise((resolve,reject)=>{
+   this.pending={type,resolve,reject};this.update(type!=='status');
+   const check=()=>{if(id!==this.sequence||!this.pending)throw Error('Stopped');};
+   const fail=(error:unknown)=>{if(id!==this.sequence||!this.pending)return;const pending=this.pending;this.pending=null;this.update(false,(error as Error).message);pending.reject(error as Error);};
+   if(type==='transcribe'&&this.beforeTranscribe){
+    // Reserve the operation while releasing other models. Stop invalidates
+    // this continuation before a worker can load a speech model.
+    void(async()=>{try{await this.beforeTranscribe!(check);check();this.dispatch(type,values,id);}catch(error){fail(error);}})();
+   }else{try{this.dispatch(type,values,id);}catch(error){fail(error);}}
+  });
  }
  stop(){this.sequence++;this.worker?.terminate();this.worker=null;const p=this.pending;this.pending=null;this.update(false,'Stopped');p?.reject(Error('Stopped'));}
 }
