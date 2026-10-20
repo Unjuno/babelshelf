@@ -29,11 +29,13 @@ test('valid container does not mean an architecture or quantization is supported
  const quant=await inspectGGUF(new Blob([gguf({tensorType:12})]));assert.equal(eligibleTextEngine(quant),undefined);
  assert.equal(localEngine('user-script'),undefined);
 });
-test('Qwen3 Q2_0 is refused before hashing or registering a custom model',async()=>{
- const bytes=gguf({arch:'qwen3',tensorType:42}),blob=new Blob([bytes]);let read=0;
- const file={size:blob.size,slice(start,end){read++;return blob.slice(start,end);},stream(){throw Error('Unsupported model must not be hashed');}};
- await assert.rejects(inspectLocalModel(file),/Qwen3 Q2_0 GGUF cannot run here/);
- assert.equal(read,1);
+test('both Qwen3 ternary types are refused before hashing or registration',async()=>{
+ for(const [type,format] of [[42,'Q2_0'],[142,'PQ2_0']]){
+  const bytes=gguf({arch:'qwen3',tensorType:type}),blob=new Blob([bytes]);let read=0;
+  const file={size:blob.size,slice(start,end){read++;return blob.slice(start,end);},stream(){throw Error('Unsupported model must not be hashed');}};
+  await assert.rejects(inspectLocalModel(file),new RegExp(`Qwen3 ${format} GGUF cannot run here`));
+  assert.equal(read,1);
+ }
 });
 test('an LFM2 GGUF with the pinned CPU engines tokenizer and checked supported block types resolves to its app-owned adapter',async()=>{
  const info=await inspectGGUF(new Blob([gguf({arch:'lfm2',tensorType:2,elements:128})]));

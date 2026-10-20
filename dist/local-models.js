@@ -56,7 +56,8 @@ export async function hashLocalModel(file,{signal,progress=()=>{}}={}){
 export async function inspectLocalModel(file,{signal,progress,label}={}){
  const inspection=await inspectGGUF(file,{signal}),engine=eligibleTextEngine(inspection);
  if(!engine){
-  if(inspection.architecture==='qwen3'&&inspection.tensorTypes.includes(42))throw Error('Qwen3 Q2_0 GGUF cannot run here · no Q2_0 browser engine is installed');
+  if(inspection.architecture==='qwen3'&&inspection.tensorTypes.includes(42))throw Error('Qwen3 Q2_0 GGUF cannot run here · no compatible Qwen3 browser engine is installed');
+  if(inspection.architecture==='qwen3'&&inspection.tensorTypes.includes(142))throw Error('Qwen3 PQ2_0 GGUF cannot run here · no compatible Qwen3 browser engine is installed');
   throw Error('No compatible local engine for this GGUF');
  }
  const sha256=await hashLocalModel(file,{signal,progress});signal?.throwIfAborted();

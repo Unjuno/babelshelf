@@ -1,18 +1,31 @@
-// Bounded inspection of the older Bonsai 8B, not a model download or run.
+// Bounded inspection of all current Bonsai 1 8B packings. This verifies the
+// pinned HTTP range and GGUF metadata, not tensor payloads or inference.
 import {inspectGGUF} from '../dist/gguf-inspect.js';
 import {eligibleTextEngine} from '../dist/local-engines.js';
 
 const revision='c2aefbeb4b24469cd11579c3384b990404c17a30';
-const expectedBytes=2182184672;
+const repository='prism-ml/Ternary-Bonsai-8B-gguf';
 const headerBytes=16*1024*1024;
-const url=`https://huggingface.co/prism-ml/Ternary-Bonsai-8B-gguf/resolve/${revision}/Ternary-Bonsai-8B-Q2_0.gguf`;
-const response=await fetch(url,{headers:{Range:`bytes=0-${headerBytes-1}`},signal:AbortSignal.timeout(60000)});
-const expectedRange=`bytes 0-${headerBytes-1}/${expectedBytes}`;
-if(response.status!==206||response.headers.get('content-range')!==expectedRange||!response.body){await response.body?.cancel();throw Error('Pinned 8B range response mismatch');}
-const bytes=new Uint8Array(await response.arrayBuffer());
-if(bytes.length!==headerBytes)throw Error('Pinned 8B header length mismatch');
-const file={size:expectedBytes,slice(start,end){if(start!==0||end>headerBytes)throw Error('Unexpected GGUF header read');return {arrayBuffer:async()=>bytes.slice(start,end).buffer};}};
-const info=await inspectGGUF(file);
-const engine=eligibleTextEngine(info)?.id??null;
-if(info.architecture!=='qwen3'||!info.tensorTypes.includes(42)||info.tensorExtentsChecked!==false||engine!==null)throw Error('8B compatibility boundary changed; review the engine before proceeding');
-console.log(JSON.stringify({revision,modelBytes:expectedBytes,headerBytes,architecture:info.architecture,tokenizer:info.tokenizer,tensorTypes:info.tensorTypes,tensorExtentsChecked:info.tensorExtentsChecked,eligibleEngine:engine,fullFileVerified:false,inferenceVerified:false},null,2));
+// Sizes come from the exact-revision Hugging Face repository API. The
+// unchanged legacy name cannot identify the newer group-64 packing.
+const variants=[
+ {name:'Ternary-Bonsai-8B-Q2_0.gguf',bytes:2182184672,type:42,packing:'legacy-group128'},
+ {name:'Ternary-Bonsai-8B-Q2_0_g64.gguf',bytes:2310125920,type:42,packing:'official-group64'},
+ {name:'Ternary-Bonsai-8B-PQ2_0.gguf',bytes:2182184672,type:142,packing:'prism-group128'},
+];
+
+const results=[];
+for(const variant of variants){
+ const url=`https://huggingface.co/${repository}/resolve/${revision}/${variant.name}`;
+ const response=await fetch(url,{headers:{Range:`bytes=0-${headerBytes-1}`},signal:AbortSignal.timeout(60000)});
+ const expectedRange=`bytes 0-${headerBytes-1}/${variant.bytes}`;
+ if(response.status!==206||response.headers.get('content-range')!==expectedRange||!response.body){await response.body?.cancel();throw Error(`${variant.name}: pinned range response mismatch`);}
+ const bytes=new Uint8Array(await response.arrayBuffer());
+ if(bytes.length!==headerBytes)throw Error(`${variant.name}: header length mismatch`);
+ const file={size:variant.bytes,slice(start,end){if(start!==0||end>headerBytes)throw Error('Unexpected GGUF header read');return {arrayBuffer:async()=>bytes.slice(start,end).buffer};}};
+ const info=await inspectGGUF(file);
+ const engine=eligibleTextEngine(info)?.id??null;
+ if(info.architecture!=='qwen3'||info.tokenizer!=='gpt2'||!info.tensorTypes.includes(variant.type)||info.tensorExtentsChecked!==false||engine!==null)throw Error(`${variant.name}: compatibility boundary changed; review before offering an engine`);
+ results.push({file:variant.name,packing:variant.packing,modelBytes:variant.bytes,architecture:info.architecture,tokenizer:info.tokenizer,tensorTypes:info.tensorTypes,tensorExtentsChecked:info.tensorExtentsChecked,eligibleBrowserEngine:engine});
+}
+console.log(JSON.stringify({repository,revision,headerBytes,results,fullFilesVerified:false,inferenceVerified:false},null,2));
