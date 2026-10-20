@@ -70,3 +70,19 @@ At the initial memory observation the PC had602,596KiB free physical memory; lat
 The WebML runtime's redistribution license is still unstated; production retains direct pinned upstream preparation, not a vendored runtime. Hash-wasm is MIT with its separate shipped notice. No app data, model weights, raw upstream runtime, browser profile or credentials belong in the published evidence/archive.
 
 Published as Sitev102 at https://babelshelf.com/, product29ed0f58ab9d059d/121, canonical implementationbcc1433. Independent HTTPS main/SW hashes match. Publication does not establish adoption by open clients or browser inference acceptance.
+
+
+## Follow-up: bounded numerical kernel checks
+
+The next investigation uses actual pinned-runtime GPU kernels without allocating a whole model. `scripts/qa/check-bonsai-hadamard.mjs` requires the exact runtime SHA above, then adds QA-only exports to a local output copy. It does not change the pinned production file, shader source, model selection, app assets or runtime license policy. No upstream bundle is committed. Optional native Node/Dawn is explicitly supplied via BABELSHELF_GPU_MODULE; backend can be d3d12/metal/vulkan. This is not an app startup benchmark or a browser launcher.
+
+Actual Windows11 build26200 / Node24.6.0 / webgpu0.6.2 / Intel Iris Xe gen-12lp / D3D12 driver31.0.101.5186 results are in `research/evaluations/inference-optimization-2026-10-21/hadamard-parity.json`:
+
+- Actual9B header declares block4096, hidden4096, intermediate12288 and32linear-value/16linear-key heads. These dimensions motivate fixtures; the numerical probe does not execute9B weights or tokenize a prompt.
+- Fourteen BlockHadamard checks cover float32 forward widths4096/12288, three-row prefill, inverse lookup, RMS fusion, gated RMS and the16-group/repeat2 input permutation. Each runs the device-selected optimized variant and an available portable workgroup variant against an independent double-precision CPU formula. All finite, max absolute error1.1293206405582623e-6, tolerance1e-4. The fixtures use bounded nonzero inputs and explicit +/-1 signs; they are numerical test vectors, not fabricated language answers.
+- Six actual GPU exact-Q4 transcodes cover PTQ1_0/PQ2_0/Q2_0 with float32/float16 scale storage. Independent known-value encoded fixtures include the three ternary values and all four2-bit levels where supported.10,240scalar values and320scales matched with zero mismatches. PTQ fixtures encode base3 digits before running the runtime's real shader. Scales0.5/1 do not exercise underflow/extreme values.
+- This adapter reports subgroup widths8-16. Its ordinary subgroup/workgroup paths pass for these fixtures; the wave32-only staged paths used by some other adapters are not tested. Hadamard float16 activation/output, LUT2 packing/matmul, full9B layers, recurrent-state updates, logits and semantic quality remain unverified. Passing exact-Q4 transcodes says nothing about whether every production projection selects that packing.
+
+This evidence narrows the failure investigation: do not replace the tested float32 transform/Q4 codec merely on the basis of the prose collapse. Next inspect the actual selected LUT2 packing and matrix products, then recurrent/prefill-vs-decode state and logits. The historical9B failure is still unresolved. Current physical memory was417,644KiB free at the follow-up observation, so no new full9B residency was attempted.
+
+Reproduce with `node scripts/qa/check-bonsai-hadamard.mjs PINNED_RUNTIME_FILE OUTPUT.json d3d12` after setting BABELSHELF_GPU_MODULE to an explicitly installed optional webgpu module entrypoint. Keep OUTPUT.json and its instrumented `.runtime.mjs` sibling outside the source/package. The tool refuses any different runtime hash before internal-name instrumentation. GPU/driver-specific results must remain scoped to that device. This follow-up changes QA/evidence only; the public product remains v102/build29ed0f58ab9d059d.

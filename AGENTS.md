@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+The optional scripts/qa/check-bonsai-hadamard.mjs instruments only an exact-hash local runtime copy for real native-Dawn numerical tests. Never ship that copy or expose its private QA exports in the app. Its14 transform/6 exact-Q4 checks are bounded Intel float32 evidence, not LUT2/matmul/full9B/phone acceptance; see INFERENCE-OPTIMIZATION.md before changing kernels.
+
 Read docs/INFERENCE-OPTIMIZATION.md for streaming WASM verification, identity-checked resident reloads, raw performance metrics and checked qwen35 PQ2_0/current-Q2_0 intake. Full hashes, Stop, source/review guards and prepared-only loading remain mandatory. The measured9B file-verification gain is Windows/Node CPU evidence, not GPU generation, phone performance or a fix for the historical9B prose failure. Diagnostic pipeline4 is opt-in; default stays1 until output/Stop/memory/device evidence supports changing it.
 
 Application Offline/Online mode is defined in docs/CONNECTION-MODE.md. The canonical connection record's existing downloads boolean is the sole permission source; the product worker checks it for external requests. Preserve fail-closed reads, stream cancellation, local-cache availability, explicit acquisition, model-local processing and history. This is not an OS firewall or proof of browser-owned script isolation.
