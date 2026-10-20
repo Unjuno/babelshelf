@@ -1,0 +1,489 @@
+{
+  "schema": 1,
+  "scope": "Actual sidebar browser product-Worker local2B prepare/generate/Stop/reload; no full harness/PWA/phone acceptance",
+  "at": "2026-10-20T21:26:49.714Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "identity": {
+    "build": "7e364bb04e9c2be0",
+    "worker": "./assets/bonsai-worker-C3t1TmOK.js",
+    "workerSha256": "7a47c56814a58d9a2cf9557241fbcbcdca61ac69de98f8a6c711f300b8482d48"
+  },
+  "model": {
+    "id": "2B",
+    "name": "Ternary Bonsai 2 2B",
+    "repository": "prism-ml/Ternary-Bonsai-2-2B-gguf",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "format": "PTQ1_0",
+    "license": "Apache-2.0",
+    "file": {
+      "name": "Ternary-Bonsai-2-2B-PTQ1_0.gguf",
+      "bytes": 429183456,
+      "sha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+      "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf"
+    },
+    "tokenizer": "GGUF metadata",
+    "chatTemplate": "GGUF tokenizer.chat_template metadata",
+    "mmproj": null,
+    "generationVerified": false
+  },
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "contextTokens": 512,
+  "cases": [
+    {
+      "name": "English",
+      "prompt": "Write one short sentence about a quiet garden.",
+      "text": "A quiet garden is filled with the soft rustle of leaves and the gentle hum of nature.",
+      "inputTokens": 21,
+      "ttftMs": 972.6000000238419,
+      "elapsedMs": 2373.600000023842,
+      "textChunks": 19,
+      "rawSummary": [
+        "finish_reason",
+        "message",
+        "usage",
+        "timings"
+      ],
+      "finishReason": "stop",
+      "outputTokens": 19,
+      "usage": {
+        "prompt_tokens": 21,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "completion_tokens": 19,
+        "reasoning_tokens": 0
+      },
+      "stopped": false,
+      "metrics": {
+        "identity": {
+          "model": "2B",
+          "revision": "683f7be2629342a50987627b40881e54761a2430",
+          "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+          "quantization": "PTQ1_0",
+          "contextTokens": 512
+        },
+        "device": {
+          "vendor": "intel",
+          "architecture": "gen-12lp",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false,
+          "subgroupMinSize": 8,
+          "subgroupMaxSize": 16,
+          "features": {
+            "shaderF16": true,
+            "subgroups": true,
+            "subgroupMatrix": false,
+            "timestampQuery": true
+          }
+        },
+        "countMs": 9.899999976158142,
+        "visibleTextTtftMs": 972.6000000238419,
+        "lastVisibleTextMs": 2294,
+        "generationMs": 2373.600000023842,
+        "outputTokens": 19,
+        "generationTokensPerSecond": 8.00471857086668,
+        "runtimeTtftMs": 971.2999999523163,
+        "runtimeDecodeMs": 1401.4000000357628,
+        "runtimeDecodeTokensPerSecond": 12.844298558256495,
+        "memoryBefore": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "memoryAfter": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "decodePipelineDepth": 1,
+        "samplingProfile": "greedy"
+      }
+    },
+    {
+      "name": "Japanese",
+      "prompt": "日本語で、静かな庭について短い一文を書いてください。",
+      "text": "静かな庭は、心を静かに癒やし、時間の流れを止める場所です。",
+      "inputTokens": 24,
+      "ttftMs": 958.6999999880791,
+      "elapsedMs": 2427.5,
+      "textChunks": 20,
+      "rawSummary": [
+        "finish_reason",
+        "message",
+        "usage",
+        "timings"
+      ],
+      "finishReason": "stop",
+      "outputTokens": 20,
+      "usage": {
+        "prompt_tokens": 24,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "completion_tokens": 20,
+        "reasoning_tokens": 0
+      },
+      "stopped": false,
+      "metrics": {
+        "identity": {
+          "model": "2B",
+          "revision": "683f7be2629342a50987627b40881e54761a2430",
+          "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+          "quantization": "PTQ1_0",
+          "contextTokens": 512
+        },
+        "device": {
+          "vendor": "intel",
+          "architecture": "gen-12lp",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false,
+          "subgroupMinSize": 8,
+          "subgroupMaxSize": 16,
+          "features": {
+            "shaderF16": true,
+            "subgroups": true,
+            "subgroupMatrix": false,
+            "timestampQuery": true
+          }
+        },
+        "countMs": 3.5,
+        "visibleTextTtftMs": 958.6999999880791,
+        "lastVisibleTextMs": 2350.599999964237,
+        "generationMs": 2427.5,
+        "outputTokens": 20,
+        "generationTokensPerSecond": 8.2389289392379,
+        "runtimeTtftMs": 958.3999999761581,
+        "runtimeDecodeMs": 1468.6000000238419,
+        "runtimeDecodeTokensPerSecond": 12.937491488282408,
+        "memoryBefore": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "memoryAfter": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "decodePipelineDepth": 1,
+        "samplingProfile": "greedy"
+      }
+    },
+    {
+      "name": "Structured request",
+      "prompt": "Return only a JSON object with operation set to calculate and expression set to 7*8. Do not include Markdown or explanations.",
+      "text": "{\n  \"operation\": \"calculate\",\n  \"expression\": \"7*8\"\n}\n\n\n{\n  \"operation\": \"calculate\",\n  \"expression\": \"7*8\"\n}",
+      "inputTokens": 38,
+      "ttftMs": 963.8000000119209,
+      "elapsedMs": 4332.800000011921,
+      "textChunks": 32,
+      "rawSummary": [
+        "finish_reason",
+        "message",
+        "usage",
+        "timings"
+      ],
+      "finishReason": "stop",
+      "outputTokens": 45,
+      "usage": {
+        "prompt_tokens": 38,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "completion_tokens": 45,
+        "reasoning_tokens": 0
+      },
+      "stopped": false,
+      "metrics": {
+        "identity": {
+          "model": "2B",
+          "revision": "683f7be2629342a50987627b40881e54761a2430",
+          "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+          "quantization": "PTQ1_0",
+          "contextTokens": 512
+        },
+        "device": {
+          "vendor": "intel",
+          "architecture": "gen-12lp",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false,
+          "subgroupMinSize": 8,
+          "subgroupMaxSize": 16,
+          "features": {
+            "shaderF16": true,
+            "subgroups": true,
+            "subgroupMatrix": false,
+            "timestampQuery": true
+          }
+        },
+        "countMs": 1.899999976158142,
+        "visibleTextTtftMs": 963.8000000119209,
+        "lastVisibleTextMs": 4260.5,
+        "generationMs": 4332.800000011921,
+        "outputTokens": 45,
+        "generationTokensPerSecond": 10.385893648420465,
+        "runtimeTtftMs": 963.5999999642372,
+        "runtimeDecodeMs": 3368.7000000476837,
+        "runtimeDecodeTokensPerSecond": 13.0614183511079,
+        "memoryBefore": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "memoryAfter": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "decodePipelineDepth": 1,
+        "samplingProfile": "greedy"
+      }
+    },
+    {
+      "name": "Same Worker after Unload",
+      "prompt": "What is 6 plus 7? Reply with only the number.",
+      "text": "13",
+      "inputTokens": 26,
+      "ttftMs": 926.8999999761581,
+      "elapsedMs": 1076.5,
+      "textChunks": 2,
+      "rawSummary": [
+        "finish_reason",
+        "message",
+        "usage",
+        "timings"
+      ],
+      "finishReason": "stop",
+      "outputTokens": 2,
+      "usage": {
+        "prompt_tokens": 26,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "completion_tokens": 2,
+        "reasoning_tokens": 0
+      },
+      "stopped": false,
+      "metrics": {
+        "identity": {
+          "model": "2B",
+          "revision": "683f7be2629342a50987627b40881e54761a2430",
+          "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+          "quantization": "PTQ1_0",
+          "contextTokens": 512
+        },
+        "device": {
+          "vendor": "intel",
+          "architecture": "gen-12lp",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false,
+          "subgroupMinSize": 8,
+          "subgroupMaxSize": 16,
+          "features": {
+            "shaderF16": true,
+            "subgroups": true,
+            "subgroupMatrix": false,
+            "timestampQuery": true
+          }
+        },
+        "countMs": 5.100000023841858,
+        "visibleTextTtftMs": 926.8999999761581,
+        "lastVisibleTextMs": 998.5,
+        "generationMs": 1076.5,
+        "outputTokens": 2,
+        "generationTokensPerSecond": 1.8578727357176033,
+        "runtimeTtftMs": 926.7000000476837,
+        "runtimeDecodeMs": 149.69999998807907,
+        "runtimeDecodeTokensPerSecond": 6.680026720638826,
+        "memoryBefore": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "memoryAfter": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "decodePipelineDepth": 1,
+        "samplingProfile": "greedy"
+      }
+    },
+    {
+      "name": "After Stop and fresh Worker",
+      "prompt": "What is 6 plus 7? Reply with only the number.",
+      "text": "13",
+      "inputTokens": 26,
+      "ttftMs": 960,
+      "elapsedMs": 1108.300000011921,
+      "textChunks": 2,
+      "rawSummary": [
+        "finish_reason",
+        "message",
+        "usage",
+        "timings"
+      ],
+      "finishReason": "stop",
+      "outputTokens": 2,
+      "usage": {
+        "prompt_tokens": 26,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "completion_tokens": 2,
+        "reasoning_tokens": 0
+      },
+      "stopped": false,
+      "metrics": {
+        "identity": {
+          "model": "2B",
+          "revision": "683f7be2629342a50987627b40881e54761a2430",
+          "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+          "quantization": "PTQ1_0",
+          "contextTokens": 512
+        },
+        "device": {
+          "vendor": "intel",
+          "architecture": "gen-12lp",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false,
+          "subgroupMinSize": 8,
+          "subgroupMaxSize": 16,
+          "features": {
+            "shaderF16": true,
+            "subgroups": true,
+            "subgroupMatrix": false,
+            "timestampQuery": true
+          }
+        },
+        "countMs": 7.100000023841858,
+        "visibleTextTtftMs": 960,
+        "lastVisibleTextMs": 1037.8999999761581,
+        "generationMs": 1108.300000011921,
+        "outputTokens": 2,
+        "generationTokensPerSecond": 1.8045655508242244,
+        "runtimeTtftMs": 959.1999999880791,
+        "runtimeDecodeMs": 148.4000000357628,
+        "runtimeDecodeTokensPerSecond": 6.738544472769615,
+        "memoryBefore": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "memoryAfter": {
+          "liveBytes": 770949232,
+          "peakBytes": 770949236
+        },
+        "decodePipelineDepth": 1,
+        "samplingProfile": "greedy"
+      }
+    }
+  ],
+  "passed": false,
+  "prepared": true,
+  "load": {
+    "model": "2B",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+    "quantization": "PTQ1_0",
+    "contextTokens": 512,
+    "device": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "",
+      "description": "",
+      "isFallbackAdapter": false,
+      "subgroupMinSize": 8,
+      "subgroupMaxSize": 16,
+      "features": {
+        "shaderF16": true,
+        "subgroups": true,
+        "subgroupMatrix": false,
+        "timestampQuery": true
+      }
+    },
+    "memory": {
+      "liveBytes": 770949232,
+      "peakBytes": 770949236
+    },
+    "timings": {
+      "verificationMs": 3781.199999988079,
+      "importMs": 77.40000003576279,
+      "runtimeModuleReused": false,
+      "runtimeLoadMs": 23384.69999998808,
+      "totalLoadMs": 27267.200000047684,
+      "hashBackend": "hash-wasm-4.12.0",
+      "decodePipelineDepth": 1
+    }
+  },
+  "englishNonempty": true,
+  "japaneseScript": true,
+  "structuredExact": false,
+  "stop": {
+    "requested": true,
+    "stopped": true
+  },
+  "sameWorkerReload": {
+    "model": "2B",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+    "quantization": "PTQ1_0",
+    "contextTokens": 512,
+    "device": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "",
+      "description": "",
+      "isFallbackAdapter": false,
+      "subgroupMinSize": 8,
+      "subgroupMaxSize": 16,
+      "features": {
+        "shaderF16": true,
+        "subgroups": true,
+        "subgroupMatrix": false,
+        "timestampQuery": true
+      }
+    },
+    "memory": {
+      "liveBytes": 770949232,
+      "peakBytes": 770949236
+    },
+    "timings": {
+      "verificationMs": 3853.699999988079,
+      "importMs": 16.200000047683716,
+      "runtimeModuleReused": true,
+      "runtimeLoadMs": 18796,
+      "totalLoadMs": 22671.30000001192,
+      "hashBackend": "hash-wasm-4.12.0",
+      "decodePipelineDepth": 1
+    }
+  },
+  "moduleReuseVerified": true,
+  "reload": {
+    "model": "2B",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+    "quantization": "PTQ1_0",
+    "contextTokens": 512,
+    "device": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "",
+      "description": "",
+      "isFallbackAdapter": false,
+      "subgroupMinSize": 8,
+      "subgroupMaxSize": 16,
+      "features": {
+        "shaderF16": true,
+        "subgroups": true,
+        "subgroupMatrix": false,
+        "timestampQuery": true
+      }
+    },
+    "memory": {
+      "liveBytes": 770949232,
+      "peakBytes": 770949236
+    },
+    "timings": {
+      "verificationMs": 4549.699999988079,
+      "importMs": 101.30000001192093,
+      "runtimeModuleReused": false,
+      "runtimeLoadMs": 19872.19999998808,
+      "totalLoadMs": 24528.5,
+      "hashBackend": "hash-wasm-4.12.0",
+      "decodePipelineDepth": 1
+    }
+  },
+  "afterReloadCorrect": true
+}

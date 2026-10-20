@@ -3,10 +3,11 @@ import {hashLocalModel} from './local-models.js';
 import {adapterSnapshot} from './gpu-info.js';
 import {createStreamingSHA256,streamingSHA256Backend} from './streaming-sha256.js';
 import {fileResponse} from './ranges.js';
+import {createRuntimeModuleCache} from './runtime-module.js';
 const networkFetch=globalThis.fetch.bind(globalThis);
 // Inference never has a network fallback, even when update permission is ON.
 globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));
-let manifest,baseManifest,model,session,controller,busy=false,root,loadedModelInfo=null;
+let manifest,baseManifest,model,session,controller,busy=false,root,loadedModelInfo=null,runtimeModules;
 const send=(id,type,value)=>postMessage({id,type,value});
 async function directory(){return root??=await (await navigator.storage.getDirectory()).getDirectoryHandle('mlb-assets-v1',{create:true});}
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
@@ -43,13 +44,13 @@ async function load(id,size){
  await unload();controller.signal.throwIfAborted();
  const verifyStarted=performance.now(),{f,runtime}=await verifyStored(id,size),verificationMs=performance.now()-verifyStarted;
  send(id,'progress','Loading…');
- const moduleURL=URL.createObjectURL(new Blob([runtime],{type:'text/javascript'}));let api;
- const importStarted=performance.now();try{api=await import(moduleURL);}finally{URL.revokeObjectURL(moduleURL);}const importMs=performance.now()-importStarted;
+ const importStarted=performance.now();runtimeModules??=createRuntimeModuleCache();
+ const {api,reused:runtimeModuleReused}=await runtimeModules(runtime,manifest.runtime,controller.signal),importMs=performance.now()-importStarted;
  const localURL=new URL('__model/'+m.file.name,self.location.href).href;
  const localFetch=async(url,options={})=>{if(String(url)!==localURL)throw Error('Blocked resource: '+url);return fileResponse(f,options);};
  const loadStarted=performance.now();model=await api.Qwen3_5ForConditionalGeneration.from_pretrained(localURL,{mmproj:null,fetch:localFetch,cache:false,maxLength:manifest.contextTokens,prefixSnapshotStore:null,decodePipelineDepth:1,signal:controller.signal,chatTemplateArgs:{enable_thinking:false},onProgress:p=>send(id,'progress',p.message??p.status)});const runtimeLoadMs=performance.now()-loadStarted;
  controller.signal.throwIfAborted();session=model.create_session();loadedModelInfo={model:size,revision:m.revision,runtimeRevision:manifest.runtime.revision,quantization:m.localModel?{container:'GGUF',tensorTypes:m.localModel.inspection.tensorTypes}:m.format,contextTokens:model.contextLength};const loadedModel=model;model.lost.then(e=>{if(model!==loadedModel)return;send(0,'lost',String(e?.message??e));model=null;session=null;loadedModelInfo=null;});
- return {...loadedModelInfo,device:model.deviceInfo(),memory:model.memoryStats(),timings:{verificationMs,importMs,runtimeLoadMs,totalLoadMs:performance.now()-started,hashBackend:streamingSHA256Backend(),decodePipelineDepth:1}};
+ return {...loadedModelInfo,device:model.deviceInfo(),memory:model.memoryStats(),timings:{verificationMs,importMs,runtimeModuleReused,runtimeLoadMs,totalLoadMs:performance.now()-started,hashBackend:streamingSHA256Backend(),decodePipelineDepth:1}};
 }
 async function unload(){
  const oldSession=session,oldModel=model;session=null;model=null;loadedModelInfo=null;

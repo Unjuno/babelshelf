@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+import {createRuntimeModuleCache} from '../dist/runtime-module.js';
 
 test('a failed load releases resources acquired before the failure before reporting its error',async()=>{
  const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
@@ -99,4 +100,17 @@ test('stored text verification hashes without loading, writing or fetching and r
  await context.onmessage({data:{id:1,cmd:'verify',args:{model:'4B',allowNetwork:true}}});assert.equal(events.at(-1).type,'done');assert.equal(network,0);
  bytes.set(sha('model'),new Blob(['wrong']));await context.onmessage({data:{id:2,cmd:'verify',args:{model:'4B'}}});assert.equal(events.at(-1).type,'error');assert.match(events.at(-1).value,/verification/);assert.equal(network,0);
  bytes.delete(sha('model'));await context.onmessage({data:{id:3,cmd:'verify',args:{model:'4B'}}});assert.equal(events.at(-1).type,'error');assert.equal(network,0);
+});
+
+test('actual worker Load reuses verified code but recreates models/sessions and ignores old device-loss completion',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const {createHash}=await import('node:crypto'),runtimeFile=new Blob(['controlled runtime']),pin={revision:'a'.repeat(40),file:{bytes:runtimeFile.size,sha256:createHash('sha256').update('controlled runtime').digest('hex')}};
+ let imports=0,verifies=0,disposedModels=0,disposedSessions=0;const models=[];
+ const api={Qwen3_5ForConditionalGeneration:{async from_pretrained(){let lose;const model={contextLength:512,deviceInfo:()=>({}),memoryStats:()=>({}),create_session(){return{async dispose(){disposedSessions++;}};},async dispose(){disposedModels++;},lost:new Promise(resolve=>lose=resolve),lose};model.lose=lose;models.push(model);return model;}}};
+ const moduleCache=createRuntimeModuleCache({createURL:()=> 'blob:controlled',revokeURL(){},importModule:async()=>{imports++;return api;}}),context=vm.createContext({streamingSHA256Backend,createRuntimeModuleCache:()=>moduleCache,fetch:()=>{throw Error('No network');},postMessage(){},AbortController,DOMException,performance,URL,console,self:{location:{href:'https://qa.invalid/worker.js'}}});
+ vm.runInContext(source+'\nglobalThis.install=(runtime,verify)=>{manifest={runtime,contextTokens:512,models:[{id:"2B",revision:"model",format:"PTQ1_0",file:{name:"model.gguf"}}]};meta=async()=>({});verifyStored=verify;controller=new AbortController();};globalThis.loadActual=()=>load(1,"2B");globalThis.currentModel=()=>model;',context);
+ context.install(pin,async()=>{verifies++;return{f:new Blob(['weights']),runtime:runtimeFile};});
+ assert.equal((await context.loadActual()).timings.runtimeModuleReused,false);assert.equal((await context.loadActual()).timings.runtimeModuleReused,true);
+ assert.equal(imports,1);assert.equal(verifies,2);assert.equal(models.length,2);assert.equal(disposedModels,1);assert.equal(disposedSessions,1);
+ models[0].lose(Error('old controlled device loss'));await Promise.resolve();assert.equal(context.currentModel(),models[1]);
 });

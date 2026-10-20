@@ -29,6 +29,8 @@ button.onclick=async()=>{
   const japanese=await generated('Japanese','日本語で、静かな庭について短い一文を書いてください。',64);result.japaneseScript=/[ぁ-んァ-ン一-龯]/.test(japanese.text);
   const structured=await generated('Structured request','Return only a JSON object with operation set to calculate and expression set to 7*8. Do not include Markdown or explanations.',96);try{const parsed=JSON.parse(structured.text);result.structuredExact=parsed.operation==='calculate'&&parsed.expression==='7*8';}catch{result.structuredExact=false;}
   let requested=false;try{const stopped=await engine.call('generate',{messages:[{role:'user',content:'Count from 1 to 200, writing every number.'}],maxTokens:384,resetSession:true},(type,value)=>{events(type,value);if(type==='text'&&!requested){requested=true;engine.abort();}});result.stop={requested,stopped:stopped.stopped===true};}catch(error){result.stop={requested,error:String(error.message),stopped:requested&&error.message==='Stopped'};}
+  await engine.unload();result.sameWorkerReload=await engine.load('2B',events);
+  const same=await generated('Same Worker after Unload','What is 6 plus 7? Reply with only the number.',32);result.moduleReuseVerified=result.load.timings.runtimeModuleReused===false&&result.sameWorkerReload.timings.runtimeModuleReused===true&&same.text.trim()==='13';
   await engine.unload();engine.worker.terminate();engine=create();await engine.init();result.reload=await engine.load('2B',events);
   const after=await generated('After Stop and fresh Worker','What is 6 plus 7? Reply with only the number.',32);result.afterReloadCorrect=after.text.trim()==='13';
   result.passed=result.englishNonempty&&result.japaneseScript&&result.structuredExact&&result.stop.stopped&&result.afterReloadCorrect;
