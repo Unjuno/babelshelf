@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Prepared optional text backends discard/abort a client when Unload rejects, allowing only a later explicit Load to create a fresh owner. Preserve reported failure and no-replay; do not infer physical GPU/child-memory reclamation from detached identity. See MODEL-RUNTIME-VERIFICATION.md and controlled router/backend regression.
+
 Real9B checkpoint-row arithmetic now supplements synthetic LUT2 vectors: optional local checkpoint path in check-bonsai-lut2.mjs verifies complete hash, reads nine bounded real tensor windows and compares actual GPU codec/products to independent scalar decoding. Read latest INFERENCE-OPTIMIZATION.md; passing sampled rows does not certify real activations/sign maps/full9B generation. Keep QA private runtime/weights outside commits/deployment.
 
 Fatal WebML Worker failure now exposes failed status and explicit Load may recover through an app-owned base factory. Router recovery only initializes; the hook invalidates registry caches and resyncs current canonical settings before loading. No replay/acquisition. Read MODEL-RUNTIME-VERIFICATION.md for Stop-race/controlled tests and actual sidebar Worker transport evidence; this is not post-crash GPU generation acceptance.

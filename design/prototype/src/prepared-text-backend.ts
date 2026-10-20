@@ -23,6 +23,6 @@ export function createPreparedTextBackend({manifest,stores,createClient}:{manife
    try{if(!active){active=createClient();client=active;await active.init();check();}await active.load(id,events);check();}
    catch(error){if(active&&client===active){client=null;active.abort();}throw error;}
   });},
-  unload(){return operation(async()=>{if(client&&!client.failed)await client.unload();});},
+  unload(){return operation(async()=>{const active=client;if(!active)return;try{if(!active.failed)await active.unload();}catch(error){if(client===active){client=null;active.abort();}throw error;}});},
  };
 }
