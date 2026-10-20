@@ -81,7 +81,7 @@ import { nextScheduleOccurrence, scheduleSummary, repeatOptions, localDate, type
 import { initialPreferenceNotes, readPreferenceWithFallback, updatePreference, preferenceGroup, parsePreference } from './preference-records';
 import { builtinToolNotes } from './tool-definitions';
 import { builtinPackageNotes,builtinToolRegistry } from './tool-package-records';
-import {projectAgentToolResult,agentEvidenceFromCalls} from './agent-evidence';
+import {projectAgentToolResult,agentEvidenceFromCalls,agentCalculationsFromCalls} from './agent-evidence';
 import { settings } from './app-settings';
 import {modelSets,matchingModelSet,applyModelSet,modelSetAssetBytes,type ModelSetId} from './model-sets';
 import { deletionContents, canRestore } from './memory-trash';
@@ -625,7 +625,7 @@ export default function Prototype() {
     }:undefined,
     plan:async()=>{
      setChatProgress('Selecting action…');
-     const allowedTools=!inputReadings.length&&!context.currentFile?builtinToolRegistry.capabilities().filter(capability=>['memory.search','memory.read'].includes(capability.id)):[];
+     const allowedTools=!inputReadings.length&&!context.currentFile?builtinToolRegistry.capabilities().filter(capability=>['memory.search','memory.read','math.calculate'].includes(capability.id)):[];
      const loop=await planDialogueAgent({engine:inference,question:text,context,attachments:descriptors,allowedTools,check:checkSend,
       tracePlan:(step,work)=>trace('dialogue.plan',{model,question:text,step},work),
       traceTool:async(call,work)=>{const identity=await builtinToolRegistry.identity(call.tool),result=await trace(call.tool as ActivityTool,{...call.arguments,...identity},work,value=>projectAgentToolResult(call.tool,value));return projectAgentToolResult(call.tool,result);},
@@ -634,6 +634,10 @@ export default function Prototype() {
     }
    });
    request=resolution.request;if(resolution.source==='decision'||resolution.source==='planner')setChatProgress('');
+   if(request?.action==='answer'&&agentToolCalls.length&&agentToolCalls.every(call=>call.tool==='math.calculate')){
+    const calculations=agentCalculationsFromCalls(agentToolCalls);
+    await finishTurn(id,{answer:calculations.map(item=>item.expression+' = '+String(item.result)).join('\n'),status:'Calculated',refs:[]});return;
+   }
    if(!literalRequest&&request&&!inputReadings.length)request=bindExplicitCurrentFileQuestion(request,text,prior.currentFile);
    if(literalRequest&&['read','search'].includes(literalRequest.action))inputReadings=[];
    if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputReadings.length)throw Error('Choose the opened file or current attachments');
@@ -675,7 +679,7 @@ export default function Prototype() {
    if(request?.action==='search'||request?.action==='read'){
     const searchQuery=request.query,results=await trace('memory.search',{query:searchQuery,...await builtinToolRegistry.identity('memory.search')},()=>builtinToolRegistry.run('memory.search',{query:searchQuery},{search:q=>knowledge.search(q,true),views:refreshSnapshot,check:checkSend}));await finishTurn(id,{results:results.filter(r=>r.kind!=='file'),files:results.filter(r=>r.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes',refs:importedRefs});return;
    }
-   if(text&&request){const answerQuery=groundingQuery(text,request.query,inputReadings.length>0),answerMode=request.action,toolEvidence=agentToolCalls.length?{used:true as const,refs:agentEvidenceFromCalls(agentToolCalls)}:undefined,parsed=await trace('knowledge.answer',{model,question:text,query:answerQuery,mode:answerMode,...(inputReadings.length?{inputReadings}:{}),...(toolEvidence?{toolCalls:agentToolCalls.map(call=>call.tool)}:{})},()=>groundedAnswer(knowledge,inference,model,text,answerQuery,answerMode,context,checkSend,inputReadings,workingFile,deferredContext,toolEvidence));checkSend();await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:request.action==='summary'?'Summary · selected excerpts':undefined});return;}
+   if(text&&request){const answerQuery=groundingQuery(text,request.query,inputReadings.length>0),answerMode=request.action,toolEvidence=agentToolCalls.length?{used:true as const,refs:agentEvidenceFromCalls(agentToolCalls),calculations:agentCalculationsFromCalls(agentToolCalls),memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))}:undefined,parsed=await trace('knowledge.answer',{model,question:text,query:answerQuery,mode:answerMode,...(inputReadings.length?{inputReadings}:{}),...(toolEvidence?{toolCalls:agentToolCalls.map(call=>call.tool)}:{})},()=>groundedAnswer(knowledge,inference,model,text,answerQuery,answerMode,context,checkSend,inputReadings,workingFile,deferredContext,toolEvidence));checkSend();await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:request.action==='summary'?'Summary · selected excerpts':undefined});return;}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
   }catch(e){recoverDraft();try{if(dialogue.current.turns.some(t=>t.id===id))await finishTurn(id,{status:(e as Error).message});else toast((e as Error).message);}catch(failure){setDialogueError((failure as Error).message);toast((failure as Error).message);}}
   finally{inputReadController.current=null;setInputReadProgress(null);activeInputId.current=null;sendLock.current=false;setSending(false);setChatProgress('');}

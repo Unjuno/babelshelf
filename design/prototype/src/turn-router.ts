@@ -3,6 +3,13 @@
 import {requestNamesEarlierDialogue} from './conversation.ts';
 import {namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 
+// The rest of a question can overwhelm the lexical index. Keep a named saved
+// file's descriptor as the query; the full request is still used for answering.
+export function savedKnowledgeSearchQuery(question:string){
+ const named=/\b(?:saved|stored)\s+((?:(?:[\p{L}\p{N}-]+)\s+){1,8})(?:notes?|files?|documents?|records?)\b/iu.exec(question);
+ return named?.[1].trim()||question;
+}
+
 // A question explicitly anchored to saved knowledge needs only the read-only
 // answer path. This narrow route is independent of the selected text engine:
 // small models need not choose between unrelated dialogue and write actions.
@@ -13,7 +20,7 @@ export function explicitSavedKnowledgeQuestion(question:string,currentInputs=fal
  if(currentInputs||workingFile&&(!namesExplicitSavedKnowledge(text)||namesDeicticFile(text))||text.length>500||requestNamesEarlierDialogue(text))return null;
  const englishQuestion=/\b(?:what|when|where|who|which|how\s+(?:many|much))\b/i;
  const japaneseQuestion=/(?:何|いつ|どこ|誰|どれ|いくつ|何時|何日|何件|何について)/u;
- if(namesSavedKnowledge(text)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:question,target:'knowledge' as const};
+ if(namesSavedKnowledge(text)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。.]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:savedKnowledgeSearchQuery(text),target:'knowledge' as const};
  return null;
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};

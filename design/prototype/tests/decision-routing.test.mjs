@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {decisionRoutingQuestion,decisionRoutingState,decisionRoute as route,routeWithDecision} from '../src/decision-routing.ts';
-import {explicitSavedKnowledgeQuestion,resolveTurnRoute} from '../src/turn-router.ts';
+import {explicitSavedKnowledgeQuestion,resolveTurnRoute,savedKnowledgeSearchQuery} from '../src/turn-router.ts';
 import {decisionManifest} from '../src/decision-assets.ts';
 const identity={model:decisionManifest.id,revision:decisionManifest.conversion.revision,inputLimit:decisionManifest.inputLimit,scope:'text-only'};
 const decisionRoute=(value,q,c,attachments=[])=>route(value,q,c,identity,attachments);
@@ -53,11 +53,14 @@ test('explicit local requests bypass both optional decision routing and text pla
 test('an explicit saved-note question takes only the cited read path across text models',async()=>{
  const question='In the saved blue lantern meeting note, what time and room are recorded?';
  const direct=explicitSavedKnowledgeQuestion(question);
- assert.deepEqual(direct,{action:'answer',query:question,target:'knowledge'});
+ assert.deepEqual(direct,{action:'answer',query:'blue lantern meeting',target:'knowledge'});
  let planned=0;
  const routed=await resolveTurnRoute({current:direct,question,select:async()=>{planned++;return {request:null,reason:'ambiguous'};},plan:async()=>{planned++;return {action:'recall',target:'current'};},check:()=>{}});
  assert.equal(routed.source,'explicit');assert.equal(planned,0);
  assert.deepEqual(explicitSavedKnowledgeQuestion('保存した会議メモには何時とどの部屋が記録されていますか？'),{action:'answer',query:'保存した会議メモには何時とどの部屋が記録されていますか？',target:'knowledge'});
+ const timed='In the saved blue lantern meeting note, how many minutes before 15:00 is the meeting? Cite the note.';
+ assert.deepEqual(explicitSavedKnowledgeQuestion(timed),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
+ assert.equal(savedKnowledgeSearchQuery('What is written in the saved note?'),'What is written in the saved note?');
  for(const q of ['What did I say about my saved note?','What is in this file?','Write a new note about my notes.','Delete my saved note','What time is it?'])assert.equal(explicitSavedKnowledgeQuestion(q),null,q);
  assert.equal(explicitSavedKnowledgeQuestion(question,true),null);
  assert.deepEqual(explicitSavedKnowledgeQuestion(question,false,true),direct);

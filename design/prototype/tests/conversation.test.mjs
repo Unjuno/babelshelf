@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueAgent,planDialogueMessages,readDialogueTurn} from '../src/conversation.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
-import {createNote,reviseNote} from '../../../dist/core.js';
+import {createNote,reviseNote,searchNotes} from '../../../dist/core.js';
+import {explicitSavedKnowledgeQuestion} from '../src/turn-router.ts';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
@@ -356,7 +357,46 @@ test('malformed grounded JSON gets one bounded retry with the same verified evid
  const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0,inputs=[];
  const e={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{inputs.push(messages);return {text:++calls===1?'{"answer":"bad "quote"}':JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};
  assert.equal((await groundedAnswer(store,e,'4B','What is the copper code?')).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
- calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer(store,e,'4B','code?'),/JSON/);assert.equal(calls,2);
+ calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer(store,e,'4B','code?'),/JSON/);assert.equal(calls,3);
+});
+
+test('one-source structured recovery cites the exact current excerpt after malformed model JSON',async()=>{
+ const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const store={all:async()=>[note],search:async()=>[ref]};let calls=0,format;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,_budget,f)=>{calls++;format=f;return {text:calls<3?'invalid JSON':'{"answer":"Cedar Room"}'};}};
+ const result=await groundedAnswer(store,runtime,'4B','Which room is the meeting in?');
+ assert.equal(calls,3);assert.equal(format,'dialogue-answer');assert.equal(result.answer,'Cedar Room');assert.deepEqual(result.sources,[ref]);
+});
+
+test('single-excerpt JSON recovery rejects an answer absent from the original',async()=>{
+ const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const store={all:async()=>[note],search:async()=>[ref]};let calls=0;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls<3?'invalid JSON':'{"answer":"The meeting is at 14:15."}'})};
+ await assert.rejects(groundedAnswer(store,runtime,'4B','When is the meeting?'),/Answer needs a verified quote/);
+});
+
+test('single-source time difference uses checked local arithmetic and retains the exact source',async()=>{
+ const note=createNote({body:'The meeting is at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const store={all:async()=>[note],search:async()=>[ref]};let generated=0;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{generated++;throw Error('unnecessary generation');}};
+ const result=await groundedAnswer(store,runtime,'4B','In the saved meeting note, how many minutes before 15:00 is the meeting? Cite the note.');
+ assert.equal(result.answer,'20 minutes before 15:00.');assert.deepEqual(result.sources,[ref]);assert.equal(generated,0);
+ assert.equal((await import('../src/time-answer.ts')).exactMinutesBefore('How many minutes before 15:00?','14:40 and 14:50'),null);
+});
+
+test('named saved-note question retrieves the real index excerpt before checked arithmetic',async()=>{
+ const note=createNote({title:'The blue lantern meeting',body:'The blue lantern meeting is on 19 November at 14:40 in Cedar Room.',path:'Inbox/The blue lantern meeting.md'});
+ const question='In the saved blue lantern meeting note, how many minutes before 15:00 is the meeting? Cite the note.';
+ const route=explicitSavedKnowledgeQuestion(question);
+ assert.ok(route);
+ assert.equal(searchNotes([note],question).length,0);
+ const found=searchNotes([note],route.query);
+ assert.equal(found.length,1);
+ const store={all:async()=>[note],search:async query=>searchNotes([note],query)};
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{throw Error('unnecessary generation');}};
+ const result=await groundedAnswer(store,runtime,'4B',question,route.query);
+ assert.equal(result.answer,'20 minutes before 15:00.');
+ assert.equal(result.sources[0].quote,note.revisions[0].body);
 });
 
 
@@ -531,6 +571,17 @@ test('tool-selected evidence stays pinned through answer generation and cannot f
  await assert.rejects(groundedAnswer(store,runtime,'test','What is the exact marker?','marker','answer',{summary:'',recent:[],refs:[ref]},()=>{},[],undefined,undefined,{used:true,refs:[]}),/No matching notes/);assert.equal(searches,0);assert.equal(generations,1);
 });
 
+test('a local arithmetic result reaches the sourced answer without becoming a citation',async()=>{
+ const note=createNote({path:'Notes/budget.md',body:'The budget has 1200 and 800 credits.'}),quote='The budget has 1200 and 800 credits.',ref={noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path};let messages,searches=0;
+ const store={all:async()=>[note],search:async()=>{searches++;return [];}};
+ const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{messages=value;return {text:JSON.stringify({answer:'One quarter is 500 credits.',citations:[{id:'S1',quote:'1200 and 800'}]})};}};
+ const calculation={expression:'(1200 + 800) / 4',result:500,precision:'IEEE-754 binary64'};
+ const answer=await groundedAnswer(store,runtime,'test','What is one quarter of the total?','budget','answer',undefined,()=>{},[],undefined,undefined,{used:true,refs:[ref],calculations:[calculation],memoryUsed:true});
+ const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);
+ assert.deepEqual(input.calculations,[calculation]);assert.equal(answer.answer,'One quarter is 500 credits.');assert.equal(answer.sources[0].noteId,note.id);assert.equal(searches,0);
+ await assert.rejects(groundedAnswer(store,runtime,'test','What is one quarter of the total?','budget','answer',undefined,()=>{},[],undefined,undefined,{used:true,refs:[ref],calculations:[{...calculation,result:501}],memoryUsed:true}),/Invalid calculation result/);
+});
+
 test('ordinary planner route runs sequential local search and returns only a grounded final plan',async()=>{
  const plans=[{action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})},{action:'answer',query:'meeting notes',target:'knowledge'}],seen=[],calls=[];
  const engine={manifest:{contextTokens:4096},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{seen.push(value);return {text:JSON.stringify(plans.shift())};}};
@@ -539,4 +590,16 @@ test('ordinary planner route runs sequential local search and returns only a gro
  assert.deepEqual(result.final,{action:'answer',query:'meeting notes',target:'knowledge'});assert.deepEqual(calls,[{kind:'tool',tool:'memory.search',arguments:{query:'meeting'}}]);assert.equal(result.calls.length,1);
  assert.match(seen[1].at(-2).content,/untrusted tool result/i);assert.ok(seen[1].at(-2).content.includes('Monday at 10'));
  await assert.rejects(planDialogueAgent({engine:{...engine,generate:async()=>({text:JSON.stringify({action:'tool',query:'memory.search',body:'{"query":"x"}'})})},question:'Question',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],allowedTools:[{id:'memory.search',readOnly:true,network:'none'}],execute:async()=>[],check:()=>{}}),/limit/);
+});
+
+test('planner can read a local result, calculate, then finalize within the same bounded loop',async()=>{
+ const plans=[
+  {action:'tool',query:'memory.search',body:JSON.stringify({query:'budget'})},
+  {action:'tool',query:'math.calculate',body:JSON.stringify({expression:'(1200 + 800) / 4'})},
+  {action:'answer',query:'budget',target:'knowledge'},
+ ],seen=[],executed=[];
+ const engine={manifest:{contextTokens:4096},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{seen.push(value);return {text:JSON.stringify(plans.shift())};}};
+ const result=await planDialogueAgent({engine,question:'What is one quarter of the budget total?',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],allowedTools:[{id:'memory.search',readOnly:true,network:'none',usage:'Search local notes.'},{id:'math.calculate',readOnly:true,network:'none',usage:'Calculate an arithmetic expression.'}],execute:async call=>{executed.push(call.tool);return call.tool==='memory.search'?[{noteId:'n1',revision:1,start:0,end:17,quote:'1200 and 800 here'}]:[{expression:'(1200 + 800) / 4',result:500,precision:'IEEE-754 binary64'}];},check:()=>{}});
+ assert.deepEqual(executed,['memory.search','math.calculate']);assert.equal(result.final.action,'answer');assert.equal(result.calls.length,2);
+ assert.match(seen[2].at(-2).content,/"result":500/);assert.match(seen[2].at(-2).content,/untrusted tool result/i);
 });

@@ -1,10 +1,31 @@
 import type {AgentToolResult} from './agent-loop.ts';
 import type {SourceRef} from './conversation.ts';
+import {calculate} from './tools/math.calculate/tool.ts';
+
+export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'};
+function checkedCalculation(value:unknown):AgentCalculation{
+ if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid calculation result');
+ const row=value as Record<string,unknown>;
+ if(typeof row.expression!=='string'||row.expression.length>200||typeof row.result!=='number'||!Number.isFinite(row.result)||row.precision!=='IEEE-754 binary64'||calculate(row.expression)!==row.result)throw Error('Invalid calculation result');
+ return {expression:row.expression,result:row.result,precision:'IEEE-754 binary64'};
+}
+export function agentCalculationsFromCalls(calls:readonly AgentToolResult[]):AgentCalculation[]{
+ return calls.filter(call=>call.tool==='math.calculate').flatMap(call=>{
+  if(!Array.isArray(call.result)||call.result.length!==1)throw Error('Invalid calculation result');
+  const value=checkedCalculation(call.result[0]);
+  if(call.arguments.expression!==value.expression)throw Error('Calculation expression changed');
+  return [value];
+ });
+}
 
 // Model-facing tool payloads are deliberately smaller than the canonical tool
 // result and preserve source offsets only for exact original substrings.
 export function projectAgentToolResult(tool:string,result:unknown):unknown{
  if(!Array.isArray(result))throw Error('Invalid local tool result');
+ if(tool==='math.calculate'){
+  if(result.length!==1)throw Error('Invalid calculation result');
+  return [checkedCalculation(result[0])];
+ }
  if(tool==='memory.search')return result.slice(0,5).flatMap((item:any)=>{
   if(!item||typeof item.noteId!=='string'||!Number.isSafeInteger(item.revision)||!Number.isSafeInteger(item.start)||typeof item.quote!=='string'||item.start<0||item.revision<1||item.end-item.start!==item.quote.length)return [];
   const quote=item.quote.slice(0,500);return [{noteId:item.noteId,revision:item.revision,start:item.start,end:item.start+quote.length,quote,...(typeof item.title==='string'?{title:item.title}:{})}];
