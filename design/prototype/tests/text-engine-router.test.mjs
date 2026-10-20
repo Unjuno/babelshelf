@@ -4,12 +4,33 @@ import {TextEngineRouter} from '../src/text-engine-router.ts';
 import {onnxTextManifest,onnxTextModels} from '../src/text-model-manifest.ts';
 import {createOnnxTextClient} from '../src/onnx-text-client.ts';
 import {Engine} from '../../../dist/engine.js';
-function setup(){const calls=[];let finish;
+import {nativeOutputRequest} from '../src/native-output-format.ts';
+function setup(nativeStructuredOutput=false){const calls=[];let finish;
  const backend=name=>({manifest:{contextTokens:4096,runtime:{revision:'webml-test'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){calls.push(name+':terminate');}},async init(){return{};},async call(cmd){calls.push(name+':'+cmd);return cmd==='status'?{[name]:{filesPresent:true}}:{};},async load(id){calls.push(name+':load');if(name==='onnx')await new Promise(r=>finish=r);this.loaded=id;},async unload(){calls.push(name+':unload');this.loaded=null;},abort(){calls.push(name+':abort');this.loaded=null;}});
  const webml=backend('webml');let onnx;
- const router=new TextEngineRouter(webml,()=>onnx=backend('onnx'));
- return {router,calls,get onnx(){return onnx;},finish:()=>finish()};
+ const router=new TextEngineRouter(webml,()=>onnx=backend('onnx'),[],undefined,nativeStructuredOutput);
+ return {router,calls,webml,get onnx(){return onnx;},finish:()=>finish()};
 }
+
+test('WebML count and generate share the exact native tool/schema/prompt while prose stays plain',async()=>{
+ const f=setup(true),seen=[];f.webml.call=async(cmd,args)=>{seen.push({cmd,args});return{};};await f.router.load('4B');
+ const messages=[{role:'system',content:'Return the required JSON.'},{role:'user',content:'A question'}],before=structuredClone(messages);
+ await f.router.call('count',{messages,format:'dialogue-answer'});await f.router.generate(messages,undefined,32,'dialogue-answer');
+ assert.deepEqual(seen[0].args.responseTool,seen[1].args.responseTool);assert.equal(seen[0].args.responseTool.name,'babelshelf_answer');assert.deepEqual(seen[0].args.messages,seen[1].args.messages);assert.notDeepEqual(seen[0].args.messages,messages);assert.deepEqual(messages,before);
+ await f.router.generate(messages,undefined,32,'prose');assert.equal(seen[2].args.responseTool,undefined);assert.deepEqual(seen[2].args.messages,messages);
+});
+
+test('compact native planner schema omits unavailable scopes without becoming execution authority',()=>{
+ const r=nativeOutputRequest([],{type:'dialogue-plan',scope:{inputs:true,file:false,current:false,historyCount:0,assistantIndices:[]}}),p=r.responseTool.parameters;
+ assert.equal(r.responseTool.name,'babelshelf_plan');assert.ok(!p.properties.action.enum.includes('calculate'));assert.ok(!p.properties.action.enum.includes('tool'));assert.equal(p.properties.historyIndex,undefined);assert.ok(!p.properties.target.enum.includes('history'));assert.ok(!p.properties.target.enum.includes('file'));assert.equal(p.additionalProperties,false);
+});
+
+test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{
+ const worker={postMessage(m){this.sent=m;},terminate(){}},manifest={contextTokens:2048,runtime:{revision:'r'},models:[{id:'4B',revision:'v'}]},base=new Engine(manifest,()=>{},worker);
+ const router=new TextEngineRouter(base,()=>{throw Error('unused');},[],undefined,true),loading=router.load('4B');worker.onmessage({data:{id:worker.sent.id,type:'done',value:true}});await loading;
+ const pending=router.generate([],undefined,32,'dialogue-answer');worker.onmessage({data:{id:worker.sent.id,type:'error',value:'Invalid model tool response',diagnostic:{raw:'x'.repeat(9000),reason:'native:shape',truncated:false}}});
+ await assert.rejects(pending,error=>error.name==='PlannerOutputError'&&error.diagnostic.raw.length===8192&&error.diagnostic.truncated&&error.diagnostic.reason==='native:shape');
+});
 
 test('explicit base worker recovery initializes a fresh owner without replaying inference or acquisition',async()=>{
  const calls=[],manifest={contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]};
@@ -177,3 +198,5 @@ test('switching away releases an idle optional worker and reselecting starts a f
  f.router.releaseInactive('4B');assert.ok(f.calls.includes('onnx:terminate'));
  await f.router.call('status',{model:onnxTextManifest.id});assert.notEqual(f.onnx,first);
 });
+
+test('native structured transport is opt-in until full harness quality is verified',async()=>{const f=setup(),seen=[];f.webml.call=async(cmd,args)=>{seen.push(args);return{};};await f.router.load('4B');const messages=[{role:'user',content:'Question'}];await f.router.call('count',{messages,format:'dialogue-answer'});await f.router.generate(messages,undefined,32,'dialogue-answer');for(const args of seen){assert.equal(args.responseTool,undefined);assert.deepEqual(args.messages,messages);}});

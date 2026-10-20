@@ -1,5 +1,8 @@
 # Repository handoff instructions
 
+Native structured transport is implemented but DEFAULT OFF. Read latest INFERENCE-OPTIMIZATION.md/2b-native-port-browser.json: actual sidebar answer13 passes but bare-request plan returns invalid read/knowledge, rejected by unchanged planner. Do not enable globally or deploy as a quality fix until actual full harness prompts/semantic guards pass. Count and generate must share tools; compact schema is only a hint. Publicv108 unchanged.
+
+
 Native2B QA now shows a single real calculate call with the runtime tools interface where plain JSON duplicates objects. Read latest INFERENCE-OPTIMIZATION.md/2b-native-tool-format.json before wiring it: native tool definitions must enter both count and generate, output needs strict single expected-call/error/text checks and unchanged downstream scope/review guards. This is not product integration, general quality or9B acceptance; publicv108 unchanged.
 
 WebML Load now reuses one hash-verified runtime module identity per Worker, separately from resident model reuse. Every load still verifies files and creates fresh model/session/GPU; pin changes require Worker restart. Read latest INFERENCE-OPTIMIZATION.md for controlled Stop/failure/hash tests and actual sidebar2B same/fresh Worker generation. Do not claim measured heap reclamation or9B repair; raw duplicate JSON remains a failure.

@@ -8,6 +8,12 @@ import {explicitSavedKnowledgeQuestion} from '../src/turn-router.ts';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('observed native 2B read/knowledge combination remains rejected by the real planner validator',async()=>{
+ const observed={text:'{"action":"read","query":"meeting notes","target":"knowledge"}'};
+ const port={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:0}),generate:async()=>observed};
+ await assert.rejects(planDialogue(port,'Find notes about the meeting.',{summary:'',refs:[],recent:[],turnCount:0}),error=>error.name==='PlannerOutputError'&&error.diagnostic.reason==='target action');
+});
+
 test('model dialogue distinguishes application outcomes from assistant originals without dropping closed requests',()=>{
  const context={summary:'Retain the preferred language.',refs:[],recent:[
   {id:'saved',user:'Save a note: The workshop starts at 15:30.',status:'Saved · Inbox/workshop.md'},

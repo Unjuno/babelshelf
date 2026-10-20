@@ -1,12 +1,15 @@
 import type {GenerationFormat} from './text-inference.ts';
+import {nativeOutputRequest} from './native-output-format.ts';
+import {PlannerOutputError} from './planner-error.ts';
 import {combinedTextManifest,onnxTextModels} from './text-model-manifest.ts';
 export type TextBackend={manifest:any;loaded?:string|null;failed?:boolean;init:()=>Promise<any>;call:(cmd:string,args?:any,events?:any)=>Promise<any>;load:(id:string,events?:any)=>Promise<any>;unload:()=>Promise<any>;abort:()=>void;worker:{terminate:()=>void}};
 export type TextBackendRegistration={id:string;modelIds:readonly string[];describe:(id:string)=>{contextTokens:number;runtime:{revision:string};models:any[]};create:()=>TextBackend};
 type Registered=TextBackendRegistration&{instance:TextBackend|null};
 // Trusted factories come from application code. Stored models/config cannot supply code.
 export class TextEngineRouter{
- private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';private createBase:(()=>TextBackend)|undefined;
- constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend){
+ private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';private nativeStructuredOutput=false;private createBase:(()=>TextBackend)|undefined;
+ constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend,nativeStructuredOutput=false){
+  this.nativeStructuredOutput=nativeStructuredOutput===true;
   this.webml=webml;this.base=webml.manifest;this.createBase=createBase;
   const defaults:TextBackendRegistration={id:'onnx-text',modelIds:onnxTextModels.map(m=>m.id),describe:id=>combinedTextManifest({...this.base,models:[]},id),create:createOnnx};
   const engines=new Set<string>(),models=new Set<string>((this.base.models??[]).map((m:any)=>m.id));
@@ -51,7 +54,7 @@ export class TextEngineRouter{
  async call(cmd:string,args:any={},events?:any):Promise<any>{
   if(cmd==='status')return this.status(args.model);
   if(cmd==='configure'){const selected=this.selectedRegistrations(args.statusModel,args.models),epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of selected){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}
-  if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');return this.active.call(cmd,args,events);}
+  if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');return this.active.call(cmd,this.active===this.webml&&this.nativeStructuredOutput?this.nativeArgs(args):args,events);}
   if(cmd==='prepare'||cmd==='verify')return this.backend(args.model).call(cmd,args,events);
   throw Error('Unknown text operation');
  }
@@ -62,7 +65,14 @@ export class TextEngineRouter{
  }
  async unload(){const epoch=this.epoch,old=this.active;this.active=null;if(old&&!old.failed)await old.unload();this.check(epoch);}
  releaseInactive(selectedModel:string){for(const r of this.registrations)if(!r.modelIds.includes(selectedModel)&&r.instance&&r.instance!==this.active){const old=r.instance;r.instance=null;old.abort();old.worker.terminate();}}
- generate(messages:any[],events?:any,maxTokens=256,format?:GenerationFormat){if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));return this.active.call('generate',{messages,maxTokens,...(format?{format}:{})},events);}
+ private nativeArgs(args:any){const {responseTool:_ignored,...rest}=args;return {...rest,...nativeOutputRequest(args.messages,args.format)};}
+ generate(messages:any[],events?:any,maxTokens=256,format?:GenerationFormat){
+  if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));
+  const args={messages,maxTokens,...(format?{format}:{})},native=this.active===this.webml&&this.nativeStructuredOutput;
+  return this.active.call('generate',native?this.nativeArgs(args):args,events).catch(error=>{
+   if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
+  });
+ }
  abort(){this.epoch++;this.webml.abort();for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;old.abort();old.worker.terminate();}}
  worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;}};
 }

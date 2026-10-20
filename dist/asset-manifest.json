@@ -28,8 +28,8 @@
     },
     {
       "path": "./engine.js",
-      "bytes": 2123,
-      "sha256": "80cb4e23885737a3587a8aaadbbb27ff60d4bf5af2f6688edab28c377add8523"
+      "bytes": 2345,
+      "sha256": "0445a3d3a9d4774242f2f514159fbdfeeb9a851fd2c9b979148dd0e8b6a7d5ab"
     },
     {
       "path": "./files.js",
@@ -118,8 +118,13 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 13363,
-      "sha256": "68155bdcd3e880a6af99b5168e0f26f47e850557e7eae561c730e5aca69b5c95"
+      "bytes": 13941,
+      "sha256": "ec0ff317c976f093f1a4c0c420c7ae846453299a8996d4c83684d1eb7d4ae539"
+    },
+    {
+      "path": "./native-response.js",
+      "bytes": 2910,
+      "sha256": "e92ac6b7c7582f7460b7729909162b9b82d5d2982b3e2684b71d3034a5c7fdd5"
     },
     {
       "path": "./ranges.js",
@@ -164,7 +169,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "75015f884251a9687995d6d8d0e365fdac54d4e585d8eb94cd526a9f36ede668"
+      "sha256": "8362f2cf99038871930419f4642df0741a8ac75f33adcefc649084fdfb5cbc1a"
     },
     {
       "path": "./ui.js",

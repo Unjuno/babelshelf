@@ -1,3 +1,4 @@
+import {nativeResponseTools,nativeResponseText} from './native-response.js';
 import {withLocalModels,verifyLocalModelFile} from './local-model-manifest.js';
 import {hashLocalModel} from './local-models.js';
 import {adapterSnapshot} from './gpu-info.js';
@@ -89,24 +90,26 @@ onmessage=async({data})=>{
    }
    case 'load':result=await load(id,args.model);break;
    case 'unload':await unload();result=true;break;
-   case 'count':if(!session)throw Error('Model not loaded');result=session.count_tokens(args.messages,{enable_thinking:false});break;
+   case 'count':if(!session)throw Error('Model not loaded');result=session.count_tokens(args.messages,{enable_thinking:false,...(args.responseTool?{tools:nativeResponseTools(args.responseTool)}:{})});break;
    case 'generate':{
     if(!session)throw Error('Model not loaded');
     if(args.profile!==undefined&&!['greedy','bonsai-nonthinking'].includes(args.profile))throw Error('Unsupported generation profile');
     if(args.seed!==undefined&&(!Number.isSafeInteger(args.seed)||args.seed<0||args.seed>4294967295))throw Error('Invalid sampling seed');
     if(args.decodePipelineDepth!==undefined&&![1,4].includes(args.decodePipelineDepth))throw Error('Unsupported diagnostic decode pipeline');
     if(args.resetSession===true)session.reset();
-    const countStarted=performance.now(),count=session.count_tokens(args.messages,{enable_thinking:false}),countMs=performance.now()-countStarted;if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
-    const start=performance.now();let first=null,last=null,text='',chunks=0;
+    const responseOptions={enable_thinking:false,...(args.responseTool?{tools:nativeResponseTools(args.responseTool)}:{})};
+    const countStarted=performance.now(),count=session.count_tokens(args.messages,responseOptions),countMs=performance.now()-countStarted;if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
+    const start=performance.now();let first=null,last=null,text='',chunks=0;const toolCalls=[];
     const sampling=args.profile==='bonsai-nonthinking'?{do_sample:true,temperature:.7,top_p:.8,top_k:20,min_p:0,seed:args.seed??0}:{do_sample:false};
     const memoryBefore=model.memoryStats?.()??null;
-    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,...sampling,...(args.decodePipelineDepth!==undefined?{decode_pipeline_depth:args.decodePipelineDepth}:{}),signal:controller.signal});
-    for await(const event of stream){if(event.type==='text'){text+=event.text;first??=performance.now();last=performance.now();chunks++;send(id,'text',event.text);}else if(event.type==='prefill')send(id,'progress',`Prefill · ${event.done} / ${event.total}`);}
+    const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,...responseOptions,...sampling,...(args.decodePipelineDepth!==undefined?{decode_pipeline_depth:args.decodePipelineDepth}:{}),signal:controller.signal});
+    for await(const event of stream){if(event.type==='text'){text+=event.text;first??=performance.now();last=performance.now();chunks++;send(id,'text',event.text);}else if(event.type==='tool_call'&&args.responseTool)toolCalls.push(event.tool_call);else if(event.type==='prefill')send(id,'progress',`Prefill · ${event.done} / ${event.total}`);}
     const raw=await stream.result,elapsedMs=performance.now()-start,outputTokens=raw?.usage?.completion_tokens,reported=key=>Number.isFinite(raw?.timings?.[key])&&raw.timings[key]>=0?raw.timings[key]:null;
+    if(args.responseTool){controller.signal.throwIfAborted();text=nativeResponseText(raw,args.responseTool,toolCalls);}
     result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],finishReason:raw?.finish_reason,outputTokens,usage:raw?.usage,stopped:controller.signal.aborted,metrics:{identity:loadedModelInfo,device:model.deviceInfo?.()??null,countMs,visibleTextTtftMs:first===null?null:first-start,lastVisibleTextMs:last===null?null:last-start,generationMs:elapsedMs,outputTokens:Number.isSafeInteger(outputTokens)?outputTokens:null,generationTokensPerSecond:Number.isSafeInteger(outputTokens)&&outputTokens>0&&elapsedMs>0?outputTokens*1000/elapsedMs:null,runtimeTtftMs:reported('ttft_ms'),runtimeDecodeMs:reported('decode_ms'),runtimeDecodeTokensPerSecond:reported('tokens_per_second'),memoryBefore,memoryAfter:model.memoryStats?.()??null,decodePipelineDepth:args.decodePipelineDepth??1,samplingProfile:args.profile??'greedy'}};break;
    }
    default:throw Error('Unknown action');
   }
   send(id,'done',result);
- }catch(e){if(cmd==='load')try{await unload();}catch(cleanup){e=new AggregateError([e,cleanup],'Model load and cleanup failed');}send(id,'error',e?.name==='AbortError'?'Stopped':String(e?.message??e));}finally{busy=false;controller=null;}
+ }catch(e){if(cmd==='load')try{await unload();}catch(cleanup){e=new AggregateError([e,cleanup],'Model load and cleanup failed');}postMessage({id,type:'error',value:e?.name==='AbortError'?'Stopped':String(e?.message??e),...(e?.name!=='AbortError'&&e?.diagnostic?{diagnostic:e.diagnostic}:{})});}finally{busy=false;controller=null;}
 };

@@ -11,7 +11,7 @@ export class Engine{
     this.onState(error.message);return;
    }
    const p=this.pending.get(m.id);if(!p)return;
-   if(m.type==='done'||m.type==='error'){this.pending.delete(m.id);m.type==='done'?p.resolve(m.value):p.reject(Error(m.value));}else p.events?.(m.type,m.value);
+   if(m.type==='done'||m.type==='error'){this.pending.delete(m.id);if(m.type==='done')p.resolve(m.value);else{const error=Error(m.value),d=m.diagnostic;if(d&&typeof d.raw==='string'&&typeof d.reason==='string'){error.diagnostic={raw:d.raw.slice(0,8192),reason:d.reason.slice(0,128),truncated:d.truncated===true||d.raw.length>8192};}p.reject(error);}}else p.events?.(m.type,m.value);
   };
   this.worker.onerror=(event)=>{this.loaded=null;this.resourceEpoch++;this.workerFault=Error('Model worker stopped');this.lastResourceError=this.workerFault;console.error(event.message??'Model worker stopped');for(const p of this.pending.values())p.reject(this.workerFault);this.pending.clear();this.onState(this.workerFault.message);};
  }
