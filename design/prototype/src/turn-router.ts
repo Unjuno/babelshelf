@@ -7,7 +7,14 @@ import {namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from '
 // file's descriptor as the query; the full request is still used for answering.
 export function savedKnowledgeSearchQuery(question:string){
  const named=/\b(?:saved|stored)\s+((?:(?:[\p{L}\p{N}-]+)\s+){1,8})(?:notes?|files?|documents?|records?)\b/iu.exec(question);
- return named?.[1].trim()||question;
+ return named?.[1].trim()||namedSavedSubject(question)?.trim()||question;
+}
+
+// A user may name a saved item and ask for its note citation in a second
+// sentence, without repeating the word "note" beside the item name.
+function namedSavedSubject(question:string){
+ if(!/\b(?:cite|source)\s+(?:(?:the|this|that)\s+)?(?:note|file|document|record)\b/i.test(question))return null;
+ return /\b(?:saved|stored)\s+((?:[\p{L}\p{N}-]+\s*){1,8})(?=[?？.!])/iu.exec(question)?.[1]??null;
 }
 
 // A question explicitly anchored to saved knowledge needs only the read-only
@@ -17,10 +24,11 @@ export function savedKnowledgeSearchQuery(question:string){
 // still needs a current source citation. Ambiguous requests keep the planner.
 export function explicitSavedKnowledgeQuestion(question:string,currentInputs=false,workingFile=false){
  const text=question.trim();
- if(currentInputs||workingFile&&(!namesExplicitSavedKnowledge(text)||namesDeicticFile(text))||text.length>500||requestNamesEarlierDialogue(text))return null;
+ const savedSubject=namedSavedSubject(text);
+ if(currentInputs||workingFile&&(!(namesExplicitSavedKnowledge(text)||savedSubject)||namesDeicticFile(text))||text.length>500||requestNamesEarlierDialogue(text))return null;
  const englishQuestion=/\b(?:what|when|where|who|which|how\s+(?:many|much))\b/i;
  const japaneseQuestion=/(?:何|いつ|どこ|誰|どれ|いくつ|何時|何日|何件|何について)/u;
- if(namesSavedKnowledge(text)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。.]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:savedKnowledgeSearchQuery(text),target:'knowledge' as const};
+ if((namesSavedKnowledge(text)||savedSubject)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。.]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:savedKnowledgeSearchQuery(text),target:'knowledge' as const};
  return null;
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};

@@ -60,8 +60,11 @@ test('an explicit saved-note question takes only the cited read path across text
  assert.deepEqual(explicitSavedKnowledgeQuestion('保存した会議メモには何時とどの部屋が記録されていますか？'),{action:'answer',query:'保存した会議メモには何時とどの部屋が記録されていますか？',target:'knowledge'});
  const timed='In the saved blue lantern meeting note, how many minutes before 15:00 is the meeting? Cite the note.';
  assert.deepEqual(explicitSavedKnowledgeQuestion(timed),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
+ const separated='What date and time is the saved blue lantern meeting? Cite the note.';
+ assert.deepEqual(explicitSavedKnowledgeQuestion(separated),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
+ assert.deepEqual(explicitSavedKnowledgeQuestion(separated,false,true),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
  assert.equal(savedKnowledgeSearchQuery('What is written in the saved note?'),'What is written in the saved note?');
- for(const q of ['What did I say about my saved note?','What is in this file?','Write a new note about my notes.','Delete my saved note','What time is it?'])assert.equal(explicitSavedKnowledgeQuestion(q),null,q);
+ for(const q of ['What did I say about my saved note?','What is in this file?','Write a new note about my notes.','Delete my saved note','What date is the saved blue lantern meeting?','What time is it?'])assert.equal(explicitSavedKnowledgeQuestion(q),null,q);
  assert.equal(explicitSavedKnowledgeQuestion(question,true),null);
  assert.deepEqual(explicitSavedKnowledgeQuestion(question,false,true),direct);
  assert.equal(explicitSavedKnowledgeQuestion('What is in my note?',false,true),null);
