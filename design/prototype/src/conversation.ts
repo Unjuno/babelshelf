@@ -198,15 +198,23 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
 const plainGreetings=new Set(['hello','hi','hey','hiya','good morning','good afternoon','good evening','hi there','hello there','hey there','how are you','what\'s up','こんにちは','こんばんは','おはよう','おはようございます','やあ','どうも','もしもし']);
 function plainConversationRoute(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
  if(attachments.length)return null;
+ const sourceReferent=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|この|その|さっき|先ほど|前に|以前|過去|保存した|書いた|\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?|previous|earlier|saved)\b)/iu;
  // Small text models can misroute a plainly original writing request into a
  // knowledge search. This narrow grammar contains no file or memory verbs.
- if(!/\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?)\b/i.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|long|detailed|original|creative|fictional|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)-sentence)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
+ if(!sourceReferent.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|long|detailed|original|creative|fictional|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)-sentence)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
  // Match only explicit Japanese original-writing requests with no source
  // referent. A request about a note, current file or attachment still needs
  // the planner and the usual evidence boundary.
- if(!/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|この|その|さっき|先ほど|前に|以前|過去|保存した|書いた)/u.test(question)
+ if(!sourceReferent.test(question)
   &&/(?:物語|詩|俳句|川柳|短歌|小説|ジョーク)/u.test(question)
   &&/(?:書いて|作って|創作して|考えて)(?:ください|下さい)?[。.!！?？\s]*$/u.test(question))return {action:'chat',query:''};
+ // A greeting request has no knowledge target or tool action. Route it to the
+ // selected model for actual generation without making a small CPU model first
+ // decode an unrelated action plan. Source-dependent greetings still plan.
+ if(!sourceReferent.test(question)&&question.length<=80&&(
+  /^(?:(?:こんにちは|おはよう(?:ございます)?|こんばんは)[。.!！\s]*)?(?:(?:短い|ひとことの|一文の)\s*)?挨拶を(?:(?:一文で|短く)\s*)?(?:返して|書いて|作って)(?:ください|下さい)?[。.!！?？\s]*$/u.test(question.trim())
+  ||/^(?:please\s+)?(?:say\s+(?:hello|hi)|(?:write|give me)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|one-sentence)\s+)?greeting)[.!?\s]*$/i.test(question.trim())
+ ))return {action:'chat',query:''};
  if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;

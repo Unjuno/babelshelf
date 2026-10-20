@@ -380,6 +380,15 @@ test('plain greetings take the model-backed conversation route without asking a 
  assert.deepEqual(await planDialogue(engine,'Hello. Search my notes about travel.',context),{action:'search',query:'travel',target:'knowledge'});assert.equal(calls,2);
 });
 
+test('explicit greeting requests skip action selection but source-based greetings keep the evidence planner',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};let calls=0;
+ const engine={manifest:{contextTokens:2048},count:async()=>{calls++;return {prompt_tokens:1};},generate:async()=>{calls++;return {text:'{"action":"answer","query":"saved greeting","target":"knowledge"}'};}};
+ for(const request of ['こんにちは。短い挨拶を一文で返してください。','短い挨拶を書いてください。','Please write a brief greeting.'])assert.deepEqual(await planDialogue(engine,request,context),{action:'chat',query:''});
+ assert.equal(calls,0);
+ assert.deepEqual(await planDialogue(engine,'このメモの挨拶を一文で返してください。',context),{action:'answer',query:'saved greeting',target:'knowledge'});
+ assert.equal(calls,2);
+});
+
 test('explicit Japanese original writing uses generation while source-based writing still needs planning',async()=>{
  const context={summary:'',recent:[],refs:[],turnCount:0};let calls=0;
  const planner={manifest:{contextTokens:2048},count:async()=>{calls++;return {prompt_tokens:1};},generate:async()=>{calls++;return {text:'{"action":"answer","query":"the note","target":"knowledge"}'};}};
