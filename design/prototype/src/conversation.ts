@@ -200,7 +200,7 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  if(attachments.length)return null;
  // Small text models can misroute a plainly original writing request into a
  // knowledge search. This narrow grammar contains no file or memory verbs.
- if(!/\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?)\b/i.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|long|detailed|original|creative|fictional)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
+ if(!/\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?)\b/i.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|long|detailed|original|creative|fictional|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)-sentence)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
  if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;

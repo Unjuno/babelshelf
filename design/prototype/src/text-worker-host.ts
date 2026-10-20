@@ -14,7 +14,7 @@ export function createTextWorkerHost(readRuntime:(progress:(value:string)=>void,
    if(cmd==='init'||cmd==='status')value=runtime.assets;
    else if(cmd==='load'){await runtime.load(args.model);value=true;}
    else if(cmd==='unload'){await runtime.unload();value=true;}
-   else if(cmd==='count')value=await runtime.count(args.messages);
+   else if(cmd==='count')value=await runtime.count(args.messages,args.format);
    else value=await runtime.generate(args.messages,args.maxTokens,args.format);
    if(disposed)throw Error('Stopped');send({id,type:'done',value});
   }catch(error){const d=(error as any)?.diagnostic;send({id,type:'error',value:String((error as Error)?.message??error).slice(0,2000),...(d&&typeof d.raw==='string'&&typeof d.reason==='string'?{diagnostic:{raw:d.raw.slice(0,8192),reason:d.reason.slice(0,100),truncated:d.truncated===true||d.raw.length>8192}}:{})});}

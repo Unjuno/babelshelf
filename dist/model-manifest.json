@@ -70,7 +70,7 @@
     }
   ],
   "contextTokens": 2048,
-  "maxReplyTokens": 256,
+  "maxReplyTokens": 768,
   "additionalTextCandidates": {
     "manifest": "./lfm-model-manifest.json",
     "adoption": "pending target-iPhone comparison; existing defaults unchanged"

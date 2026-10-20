@@ -13,6 +13,7 @@ test('plain original writing stays a conversation even when a small planner woul
  assert.deepEqual(await planDialogue(shouldNotPlan,'Write one short original sentence about a quiet garden.',context),{action:'chat',query:''});
  assert.deepEqual(await planDialogue(shouldNotPlan,'Compose a poem about rain.',context),{action:'chat',query:''});
  assert.deepEqual(await planDialogue(shouldNotPlan,'Write a long fictional story about a blue lantern in ten paragraphs.',context),{action:'chat',query:''});
+ assert.deepEqual(await planDialogue(shouldNotPlan,'Write a two-sentence story about a blue lantern.',context),{action:'chat',query:''});
  assert.deepEqual(await planDialogue(shouldNotPlan,'Write a long fictional story about a blue lantern in ten paragraphs.',{...context,currentFile:{noteId:'n',revision:1}}),{action:'chat',query:''});
  const planned={...engine(),generate:async()=>({text:'{"action":"answer","query":"garden","target":"knowledge"}'})};
  assert.equal((await planDialogue(planned,'Write a note about our meeting',context)).target,'knowledge');
@@ -177,6 +178,28 @@ test('answers can refer to dialogue without invented citations; invalid citation
  assert.throws(()=>parseChatAnswer('{"answer":"made up","citations":[{"id":"S1","quote":"fake"}]}',[]),/Citation/);
  assert.throws(()=>parseChatAnswer('{"answer":"","citations":[]}',[]),/Invalid/);
 });
+test('source-free dialogue generates prose without a JSON wrapper or file citation',async()=>{
+ const store={all:async()=>[],search:async()=>[]};let seen;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{seen={messages,budget,format};return {text:'A blue lantern lit the road.\n\nThe traveler kept walking.',finishReason:'stop',outputTokens:18};}};
+ const reply=await groundedAnswer(store,e,'4B','Write two paragraphs.','','chat',{summary:'',recent:[],refs:[]});
+ assert.match(seen.messages[0].content,/plain text/);assert.equal(seen.format,'prose');assert.equal(seen.budget,768);
+ assert.equal(reply.answer,'A blue lantern lit the road.\n\nThe traveler kept walking.');assert.deepEqual(reply.sources,[]);
+});
+test('a token-limited dialogue reply continues within a fixed bound, then fails without committing',async()=>{
+ const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Only the beginning',finishReason:'length'};}};
+ await assert.rejects(groundedAnswer(store,e,'4B','Write a story.','','chat',context),/output limit/);assert.equal(calls,4);
+});
+test('a capped prose segment continues from its prior text without adding citations or tools',async()=>{
+ const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{calls++;assert.equal(format,'prose');if(calls===1)return {text:'The lantern glowed. ',finishReason:'length'};assert.match(messages.at(-2).content,/lantern glowed/);assert.match(messages.at(-1).content,/Continue/);return {text:'Then dawn came.',finishReason:'stop'};}};
+ const reply=await groundedAnswer(store,e,'4B','Write a story.','','chat',context);assert.equal(reply.answer,'The lantern glowed. Then dawn came.');assert.deepEqual(reply.sources,[]);assert.equal(calls,2);
+});
+test('an explicit stop reason takes precedence over an estimated token count at the cap',async()=>{
+ const store={all:async()=>[],search:async()=>[]};let calls=0;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Complete answer.',finishReason:'stop',outputTokens:768};}};
+ const reply=await groundedAnswer(store,e,'4B','Write a sentence.','','chat',{summary:'',recent:[],refs:[]});assert.equal(reply.answer,'Complete answer.');assert.equal(calls,1);
+});
 test('interactive reply uses prior turns and validates pinned source bytes after generation',async()=>{
  let note=createNote({path:'Notes/water.md',body:'水は4Lです。'});const ref={noteId:note.id,revision:1,start:0,end:7,quote:note.revisions[0].body};
  const context={summary:'',recent:[{id:'previous',user:'水を確認して',answer:'水は4Lです。',refs:[ref]}],refs:[ref]};
@@ -209,7 +232,7 @@ test('an oversized rejected turn cannot permanently block later short requests',
 test('dialogue-only replies do not receive unrelated previous search results as evidence',async()=>{
  const note=createNote({path:'Notes/other-code.md',body:'Other code PINE'}),ref={noteId:note.id,revision:1,start:0,end:15,quote:'Other code PINE'};
  const state=completeTurn(appendTurn(emptyDialogue(),{id:'search',user:'Find other code'}),'search',{results:[ref]});let received;
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'{"answer":"LILAC","citations":[]}'};}};
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'LILAC'};}};
  await groundedAnswer({all:async()=>[note],search:async()=>[ref]},e,'4B','What did I say?','','chat',dialogueContext(state));
  assert.equal(received.includes('Other code PINE'),false);
 });
@@ -246,7 +269,7 @@ test('explicit history read resolves an original turn even when summary and simi
  assert.throws(()=>readDialogueTurn(s,2),/unavailable/);assert.throws(()=>readDialogueTurn(s,-1),/unavailable/);
  await assert.rejects(()=>planDialogue({...engine(),generate:async()=>({text:'{"action":"chat","query":"","historyIndex":-1}'})},'read',context),/Invalid/);
 });
-test('dialogue replies use an answer-only schema without making file citations',()=>{
+test('legacy answer-only JSON parser still rejects fabricated citations',()=>{
  assert.deepEqual(parseChatAnswer('{"answer":"LILAC-7319"}',[],true),{answer:'LILAC-7319',sources:[]});
  assert.throws(()=>parseChatAnswer('{"answer":"LILAC-7319","citations":[{"id":"S1","quote":"invented"}]}',[],true),/Citation/);
  assert.throws(()=>parseChatAnswer('{"answer":"No citation field"}',[]),/Invalid/);

@@ -93,7 +93,7 @@ onmessage=async({data})=>{
     const sampling=args.profile==='bonsai-nonthinking'?{do_sample:true,temperature:.7,top_p:.8,top_k:20,min_p:0,seed:args.seed??0}:{do_sample:false};
     const stream=session.generate(args.messages,{max_new_tokens:args.maxTokens??256,enable_thinking:false,...sampling,signal:controller.signal});
     for await(const event of stream){if(event.type==='text'){text+=event.text;first??=performance.now();last=performance.now();chunks++;send(id,'text',event.text);}else if(event.type==='prefill')send(id,'progress',`Prefill · ${event.done} / ${event.total}`);}
-    const raw=await stream.result;result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs:performance.now()-start,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],finishReason:raw?.finish_reason,usage:raw?.usage,stopped:controller.signal.aborted};break;
+    const raw=await stream.result;result={text,inputTokens:count.prompt_tokens,ttftMs:first===null?null:first-start,elapsedMs:performance.now()-start,textChunks:chunks,rawSummary:raw?Object.keys(raw):[],finishReason:raw?.finish_reason,outputTokens:raw?.usage?.completion_tokens,usage:raw?.usage,stopped:controller.signal.aborted};break;
    }
    default:throw Error('Unknown action');
   }

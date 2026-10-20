@@ -1,4 +1,4 @@
-import type {StructuredFormat} from './structured-grammar.ts';
+import type {GenerationFormat} from './text-inference.ts';
 import {combinedTextManifest,onnxTextModels} from './text-model-manifest.ts';
 export type TextBackend={manifest:any;loaded?:string|null;failed?:boolean;init:()=>Promise<any>;call:(cmd:string,args?:any,events?:any)=>Promise<any>;load:(id:string,events?:any)=>Promise<any>;unload:()=>Promise<any>;abort:()=>void;worker:{terminate:()=>void}};
 export type TextBackendRegistration={id:string;modelIds:readonly string[];describe:(id:string)=>{contextTokens:number;runtime:{revision:string};models:any[]};create:()=>TextBackend};
@@ -51,7 +51,7 @@ export class TextEngineRouter{
  }
  async unload(){const epoch=this.epoch,old=this.active;this.active=null;if(old&&!old.failed)await old.unload();this.check(epoch);}
  releaseInactive(selectedModel:string){for(const r of this.registrations)if(!r.modelIds.includes(selectedModel)&&r.instance&&r.instance!==this.active){const old=r.instance;r.instance=null;old.abort();old.worker.terminate();}}
- generate(messages:any[],events?:any,maxTokens=256,format?:StructuredFormat){if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));return this.active.call('generate',{messages,maxTokens,...(format?{format}:{})},events);}
+ generate(messages:any[],events?:any,maxTokens=256,format?:GenerationFormat){if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));return this.active.call('generate',{messages,maxTokens,...(format?{format}:{})},events);}
  abort(){this.epoch++;this.webml.abort();for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;old.abort();old.worker.terminate();}}
  worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;}};
 }
