@@ -55,7 +55,10 @@ export function bindExplicitCurrentFileQuestion<T extends {action:string;query:s
  if(currentInputs||!pin||!['answer','summary','search','read'].includes(request.action))return request;
  if(request.target==='knowledge'&&(namesExplicitSavedKnowledge(question)||namedSavedSubject(question)))return request;
  if(!requestNamesWorkingFile(question)||requestNamesEarlierDialogue(question))return request;
- return {...request,action:'read',target:'file',query:question};
+ // An already explicit read-only intent needs no second model classification.
+ // Bind its query to the human request rather than model-supplied context text.
+ const action=request.target==='file'&&['answer','summary'].includes(request.action)?request.action:'read';
+ return {...request,action,target:'file',query:question};
 }
 export function createFileFocusQueue(read:()=>Dialogue,write:(state:Dialogue)=>Promise<void>){
  let tail=Promise.resolve();return {

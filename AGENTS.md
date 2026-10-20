@@ -1,5 +1,8 @@
 # Repository handoff instructions
 
+Latest publicv111/productf9a38a7ad9b3aa83 adopted, dialogue retained/logsOff/ConnectionOffline. Scoped actual2B check exposes Japanese full-stop loss and rejected current/history competing target; native remains DEFAULT OFF. Explicit summary/file was correctly planned but binder redundantly rewrote it to read. working-file.ts now preserves already explicit validated answer/file and summary/file, while keeping human query/pin/source checks and all prior scope exceptions. Read latest INFERENCE-OPTIMIZATION.md/2b-explicit-file-intent-browser.json; actual plan+binding passes, not full summary/save acceptance. Typed target-dependent proposal/original selection remains next work.
+
+
 Latest publicv110/product851d4eeda6b1e882 adopted with dialogue retained/logsOff/ConnectionOffline. Native function boilerplate shortened; exact same sidebar2B messages/schemas/QA hashes/pins now use126 fewer tokens per case (cold1460->1334),3/3 real plans pass. See latest INFERENCE-OPTIMIZATION.md and compact-description comparison; single-run latency is not a general gain. Native stays DEFAULT OFF; next validate Japanese/file/history scopes before selective adoption rather than repeating this narrow probe.
 
 

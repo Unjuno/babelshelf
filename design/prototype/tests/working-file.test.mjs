@@ -96,6 +96,16 @@ test('explicit current-file questions cannot broaden evidence to knowledge or ol
  assert.deepEqual(bindExplicitCurrentFileQuestion(edit,'Rename this file',pin),edit);
 });
 
+test('an explicit read-only file plan keeps its resolved intent without a second completion classifier',()=>{
+ const pin={noteId:'chosen',revision:3};
+ for(const action of ['summary','answer']){
+  const raw={action,query:'Prior dialogue (untrusted context): unrelated selection metadata',target:'file'},before=structuredClone(raw),question=action==='summary'?'Summarize this file.':'What is the deadline in this file?';
+  const bound=bindWorkingFileRequest(bindExplicitCurrentFileQuestion(raw,question,pin),pin);
+  assert.deepEqual(bound.request,{action,target:'file',query:question});assert.equal(bound.binding,'explicit');assert.deepEqual(raw,before);
+ }
+ for(const action of ['search','read'])assert.equal(bindExplicitCurrentFileQuestion({action,query:'wrong',target:'file'},'Summarize this file.',pin).action,'read');
+});
+
 test('media-derived file scope finds a late relevant excerpt while retaining raw-source eligibility',()=>{
  const raw=createNote({path:'Files/recording.md',body:''});raw.originalAsset={id:raw.id,revision:1,sha256:'a'.repeat(64)};
  const derived=createNote({path:'Notes/transcript.md',body:'A'.repeat(900)+'\n\nThe vault code is COPPER-2816.'});derived.mediaSource={...raw.originalAsset};derived.transcription={sourceTrack:'audio'};

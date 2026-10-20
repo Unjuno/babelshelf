@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "scope": "Actual sidebar browser product-Worker local2B prepare/generate/Stop/reload; no full harness/PWA/phone acceptance",
+  "at": "2026-10-20T22:27:49.724Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "identity": {
+    "build": "851d4eeda6b1e882",
+    "worker": "./assets/bonsai-worker-BOk-chSv.js",
+    "workerSha256": "b3f0aa8a1f2977116c65391d4384996485560db794add36cdff3ae20555d7f5e",
+    "routerSha256": "055a3d0f8abe5d9ada08cfbdfab0552bc5b96fc1c09f880b517e0d3d7784b3f5",
+    "harnessSha256": "414ebc425c32119edafa078cac33b75486ec3481cd4f1d9ce4cf29362b0c6e8b"
+  },
+  "model": {
+    "id": "2B",
+    "name": "Ternary Bonsai 2 2B",
+    "repository": "prism-ml/Ternary-Bonsai-2-2B-gguf",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "format": "PTQ1_0",
+    "license": "Apache-2.0",
+    "file": {
+      "name": "Ternary-Bonsai-2-2B-PTQ1_0.gguf",
+      "bytes": 429183456,
+      "sha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+      "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-2B-gguf/resolve/683f7be2629342a50987627b40881e54761a2430/Ternary-Bonsai-2-2B-PTQ1_0.gguf"
+    },
+    "tokenizer": "GGUF metadata",
+    "chatTemplate": "GGUF tokenizer.chat_template metadata",
+    "mmproj": null,
+    "generationVerified": false
+  },
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "mode": "scoped",
+  "contextTokens": 2048,
+  "cases": [],
+  "passed": false,
+  "prepared": true,
+  "error": "Error: Model not loaded\n    at Engine.worker.onmessage (http://127.0.0.1:4219/engine.js:14:123)"
+}
