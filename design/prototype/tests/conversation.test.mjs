@@ -12,6 +12,8 @@ test('plain original writing stays a conversation even when a small planner woul
  const shouldNotPlan={...engine(),generate:async()=>{throw Error('planner must not run');}};
  assert.deepEqual(await planDialogue(shouldNotPlan,'Write one short original sentence about a quiet garden.',context),{action:'chat',query:''});
  assert.deepEqual(await planDialogue(shouldNotPlan,'Compose a poem about rain.',context),{action:'chat',query:''});
+ assert.deepEqual(await planDialogue(shouldNotPlan,'Write a long fictional story about a blue lantern in ten paragraphs.',context),{action:'chat',query:''});
+ assert.deepEqual(await planDialogue(shouldNotPlan,'Write a long fictional story about a blue lantern in ten paragraphs.',{...context,currentFile:{noteId:'n',revision:1}}),{action:'chat',query:''});
  const planned={...engine(),generate:async()=>({text:'{"action":"answer","query":"garden","target":"knowledge"}'})};
  assert.equal((await planDialogue(planned,'Write a note about our meeting',context)).target,'knowledge');
  assert.equal((await planDialogue(planned,'Write a poem about my notes',context)).target,'knowledge');
