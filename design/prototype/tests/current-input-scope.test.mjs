@@ -14,3 +14,10 @@ test('input targets are explicit typed scopes and cannot select files or history
 test('explicit dialogue original scopes remain intact until exact-original validation clears readings',()=>{for(const request of [{action:'recall',query:'',target:'current'},{action:'transform',query:'split',target:'history',historyIndex:0,historyPart:'assistant'},{action:'capture',query:'',target:'current'}])assert.equal(bindCurrentInputRequest(request,true),request);});
 
 test('validated legacy indexed capture keeps its original selector with current attachments',()=>{const request={action:'capture',query:'',historyIndex:0,historyPart:'assistant'};assert.equal(bindCurrentInputRequest(request,true),request);});
+
+import {explicitInputQuestion} from '../src/current-input-scope.ts';
+test('self-contained questions about submitted files use a fixed read-only scope, while commands and prior dialogue stay planned',()=>{
+ for(const question of ['What background color is visible in this image?','Which code is in the attached document?','この写真の背景は何色ですか？'])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ for(const question of ['Delete this image.','Save this attachment.','What is in this image? Delete it.','What is in this image? What about that note?','What did I say earlier about this image?','What is the date?'])assert.equal(explicitInputQuestion(question,true),null);
+ assert.equal(explicitInputQuestion('What color is in this image?',false),null);
+});

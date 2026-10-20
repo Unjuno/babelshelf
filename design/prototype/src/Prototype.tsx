@@ -30,7 +30,7 @@ import {getSpeechManifest,speechModelProvenance} from './speech-models';
 import {isSubmitKey} from '../../../dist/input-events.js';
 import {createReviewedFileSaver} from './reviewed-file-save';
 import {scheduleStatus,scheduleRunAction} from './task-status';
-import {planningContextForInputs,bindCurrentInputRequest,groundingQuery} from './current-input-scope.ts';
+import {planningContextForInputs,bindCurrentInputRequest,groundingQuery,explicitInputQuestion} from './current-input-scope.ts';
 import {executionAtRevision} from './execution-selection.ts';
 import {createDialogueWriter} from './dialogue-writer';
 import {createFileFocusQueue,workingFileNote,workingFileMetadata,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,scopeLiteralRequest,withWorkingFile,type WorkingFile} from './working-file';
@@ -607,7 +607,7 @@ export default function Prototype() {
    const {sent,saved,next}=submissionResult;prior=submissionResult.prior;
    if(items.length){storedDialogue.current=next;dialogue.current=next;sent.forEach(a=>liveAttachments.current.set(a.id,a));renderDialogue(next);}
    const imported:Note[]=saved.map(projectNote);
-   composerSnapshot.current={text:composerSnapshot.current.text===text?'':composerSnapshot.current.text,attachments:[]};setDraft(current=>current===text?'':current);setAttachments([]);keyboard.hide();if(items.length)await refreshStorage();setChatProgress('');checkSend();let inputReadings:CurrentInputRef[]=sent.flatMap<CurrentInputRef>(a=>a.reading?[a.reading]:a.status==='Text available'?[{kind:'text',noteId:a.id,revision:1}]:[]);const literalRequest=localRequest(text.trimStart()),explicitSavedRequest=literalRequest?null:explicitSavedKnowledgeQuestion(text,items.length>0,!!prior.currentFile);let request=scopeLiteralRequest(literalRequest,inputReadings.length>0)??explicitSavedRequest,context:DialogueContext=explicitSavedRequest?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,text);
+   composerSnapshot.current={text:composerSnapshot.current.text===text?'':composerSnapshot.current.text,attachments:[]};setDraft(current=>current===text?'':current);setAttachments([]);keyboard.hide();if(items.length)await refreshStorage();setChatProgress('');checkSend();let inputReadings:CurrentInputRef[]=sent.flatMap<CurrentInputRef>(a=>a.reading?[a.reading]:a.status==='Text available'?[{kind:'text',noteId:a.id,revision:1}]:[]);const literalRequest=localRequest(text.trimStart()),explicitSavedRequest=literalRequest?null:explicitSavedKnowledgeQuestion(text,items.length>0,!!prior.currentFile);const inputQuestion=literalRequest?null:explicitInputQuestion(text,inputReadings.length>0);let request=scopeLiteralRequest(literalRequest,inputReadings.length>0)??inputQuestion??explicitSavedRequest,context:DialogueContext=explicitSavedRequest||inputQuestion?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,text);
    const importedRefs=imported.filter(n=>n.body.length).map(n=>({noteId:n.id,revision:1,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}));
    const unread=sent.find(a=>a.status!=='Text available'&&!a.voice&&!a.reading);if(unread&&text&&(!request||['answer','summary'].includes(request.action)||request.action==='capture'&&inputReadings.length>0)){await finishTurn(id,{refs:importedRefs,status:'Original saved · '+unread.status});recoverDraft();return;}
    const orderedExpression=items.length?null:orderedCalculationInput(text);const expression=items.length?null:calculatorInput(text)??orderedExpression;
@@ -615,7 +615,7 @@ export default function Prototype() {
    if(text&&(!request||['answer','summary'].includes(request.action))){
     if(!model||bonsai.loaded!==model){await trace('model.load',{model},async()=>{if(!model)throw Error('Model not configured · Settings');if(!bonsai.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await bonsai.load(model);return {loaded:model};});}
     inference=bonsai.pin!();
-    if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else if(!explicitSavedRequest)context=await prepareContext();
+    if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else if(!explicitSavedRequest&&!inputQuestion)context=await prepareContext();
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
