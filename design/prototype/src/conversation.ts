@@ -201,6 +201,12 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  // Small text models can misroute a plainly original writing request into a
  // knowledge search. This narrow grammar contains no file or memory verbs.
  if(!/\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?)\b/i.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|long|detailed|original|creative|fictional|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)-sentence)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
+ // Match only explicit Japanese original-writing requests with no source
+ // referent. A request about a note, current file or attachment still needs
+ // the planner and the usual evidence boundary.
+ if(!/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|この|その|さっき|先ほど|前に|以前|過去|保存した|書いた)/u.test(question)
+  &&/(?:物語|詩|俳句|川柳|短歌|小説|ジョーク)/u.test(question)
+  &&/(?:書いて|作って|創作して|考えて)(?:ください|下さい)?[。.!！?？\s]*$/u.test(question))return {action:'chat',query:''};
  if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;

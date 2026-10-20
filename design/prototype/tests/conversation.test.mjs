@@ -380,6 +380,16 @@ test('plain greetings take the model-backed conversation route without asking a 
  assert.deepEqual(await planDialogue(engine,'Hello. Search my notes about travel.',context),{action:'search',query:'travel',target:'knowledge'});assert.equal(calls,2);
 });
 
+test('explicit Japanese original writing uses generation while source-based writing still needs planning',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};let calls=0;
+ const planner={manifest:{contextTokens:2048},count:async()=>{calls++;return {prompt_tokens:1};},generate:async()=>{calls++;return {text:'{"action":"answer","query":"the note","target":"knowledge"}'};}};
+ assert.deepEqual(await planDialogue(planner,'青いランタンの物語を二文で書いてください。',context),{action:'chat',query:''});
+ assert.equal(calls,0);
+ assert.deepEqual(await planDialogue(planner,'このメモの内容を物語にして書いてください。',context),{action:'answer',query:'the note',target:'knowledge'});
+ assert.deepEqual(await planDialogue(planner,'以前保存した詩を書いてください。',context),{action:'answer',query:'the note',target:'knowledge'});
+ assert.equal(calls,4);
+});
+
 // A constrained transport request never replaces semantic/target validation.
 test('planner requests structured generation but still refuses an invalid target',async()=>{
  let format;

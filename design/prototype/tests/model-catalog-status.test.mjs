@@ -39,7 +39,7 @@ test('media statuses separate supported text and audio paths from unsupported vi
 test('text choices expose pinned download size without claiming device readiness',()=>{
  const small=textModelFileSize('2B'),standard=textModelFileSize('4B'),large=textModelFileSize('9B');
  assert.ok(small>0&&small<standard&&standard<large);
- assert.match(textModelChoiceHint('9B'),/2\.00 GB · device check recommended/);
+ assert.match(textModelChoiceHint('9B'),/2\.00 GB · PC prose unstable/);
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
  assert.equal(textModelFileSize('unknown'),null);
 });

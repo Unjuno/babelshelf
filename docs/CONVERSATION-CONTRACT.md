@@ -34,6 +34,10 @@ Normal Send no longer calls dialogue.subject or performs a competing-speaker gen
 
 # Continuous input context
 
+## Explicit Japanese original writing
+
+An unattached, explicit Japanese request to create a story, poem or similar original text enters the same source-free chat path as the existing English creative-writing command. The harness recognizes only a narrow creation grammar and refuses this shortcut when the request names a note, file, record, attachment, prior text or demonstrative target. Those requests still go through the scoped planner. This routing chooses an operation, not answer content: the selected local model must generate the prose. It neither edits knowledge nor treats a generated answer as a saved note. Small-model intent classification for other Japanese requests remains an open quality gate.
+
 The Input surface has one continuous local dialogue, with no session picker or New chat concept. Canonical knowledge stays in the notes store; conversation is working context and does not automatically create knowledge notes. Saving a proposed capture or an existing answer still requires the existing review/Save operation.
 
 ## Persistence
