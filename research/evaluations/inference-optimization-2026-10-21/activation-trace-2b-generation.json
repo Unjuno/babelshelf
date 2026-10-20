@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "at": "2026-10-20T21:13:04.232Z",
+  "scope": "Native diagnostic generation with retained head activations and synchronous readback; not a performance benchmark/browser/phone result",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "browser": null,
+  "backend": "d3d12",
+  "model": "2B",
+  "modelRevision": "683f7be2629342a50987627b40881e54761a2430",
+  "quantization": "PTQ1_0",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "freeMemoryBytes": 2847338496,
+  "minimumFreeMemoryBytes": 805306368,
+  "contextTokens": 512,
+  "inputTokens": 21,
+  "outputTokens": 8,
+  "snapshots": [
+    {
+      "phase": "generating",
+      "sequence": 1,
+      "graph": "qwen35-prefill",
+      "readbackBytes": 1009664,
+      "tensors": [
+        {
+          "name": "__babelTrace.prism.head.hidden",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -37.85797882080078,
+          "max": 10.520700454711914,
+          "mean": 0.041945079161451015,
+          "variance": 3.112511114441803,
+          "argmax": 831
+        },
+        {
+          "name": "__babelTrace.prism.head.rotated",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -9.663278579711914,
+          "max": 11.214603424072266,
+          "mean": 0.05827202338849684,
+          "variance": 9.18256101991679,
+          "argmax": 1975
+        },
+        {
+          "name": "__babelTrace.prism.head.logits",
+          "dtype": "float32",
+          "shape": [
+            1,
+            248320
+          ],
+          "elements": 248320,
+          "finite": 248320,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -9.672731399536133,
+          "max": 21.3869686126709,
+          "mean": -1.799897415665729,
+          "variance": 3.952604365160465,
+          "argmax": 32
+        }
+      ]
+    },
+    {
+      "phase": "generating",
+      "sequence": 2,
+      "graph": "qwen35-decode",
+      "readbackBytes": 1009664,
+      "tensors": [
+        {
+          "name": "__babelTrace.prism.head.hidden",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -51.18386459350586,
+          "max": 11.961200714111328,
+          "mean": 0.024942963893408884,
+          "variance": 4.121830462628125,
+          "argmax": 493
+        },
+        {
+          "name": "__babelTrace.prism.head.rotated",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -9.637325286865234,
+          "max": 10.35362434387207,
+          "mean": -0.04022155244544464,
+          "variance": 8.505023943509844,
+          "argmax": 202
+        },
+        {
+          "name": "__babelTrace.prism.head.logits",
+          "dtype": "float32",
+          "shape": [
+            1,
+            248320
+          ],
+          "elements": 248320,
+          "finite": 248320,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -12.351322174072266,
+          "max": 20.784038543701172,
+          "mean": -3.012816261551163,
+          "variance": 4.5580608676346825,
+          "argmax": 11012
+        }
+      ]
+    },
+    {
+      "phase": "generating",
+      "sequence": 3,
+      "graph": "qwen35-decode",
+      "readbackBytes": 1009664,
+      "tensors": [
+        {
+          "name": "__babelTrace.prism.head.hidden",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -34.23810577392578,
+          "max": 12.020389556884766,
+          "mean": 0.06945079200158948,
+          "variance": 2.7300286269006646,
+          "argmax": 98
+        },
+        {
+          "name": "__babelTrace.prism.head.rotated",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -12.241195678710938,
+          "max": 13.097026824951172,
+          "mean": 0.014740239942170755,
+          "variance": 9.657651696660974,
+          "argmax": 133
+        },
+        {
+          "name": "__babelTrace.prism.head.logits",
+          "dtype": "float32",
+          "shape": [
+            1,
+            248320
+          ],
+          "elements": 248320,
+          "finite": 248320,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -13.356897354125977,
+          "max": 25.265199661254883,
+          "mean": -3.51932177020952,
+          "variance": 5.401682843705598,
+          "argmax": 13159
+        }
+      ]
+    },
+    {
+      "phase": "generating",
+      "sequence": 4,
+      "graph": "qwen35-decode",
+      "readbackBytes": 1009664,
+      "tensors": [
+        {
+          "name": "__babelTrace.prism.head.hidden",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -42.85353088378906,
+          "max": 5.996581077575684,
+          "mean": 0.014488003376754807,
+          "variance": 3.9772216110888996,
+          "argmax": 1589
+        },
+        {
+          "name": "__babelTrace.prism.head.rotated",
+          "dtype": "float32",
+          "shape": [
+            2048
+          ],
+          "elements": 2048,
+          "finite": 2048,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -11.48593807220459,
+          "max": 11.9417142868042,
+          "mean": 0.07934462213324876,
+          "variance": 9.596220964823404,
+          "argmax": 217
+        },
+        {
+          "name": "__babelTrace.prism.head.logits",
+          "dtype": "float32",
+          "shape": [
+            1,
+            248320
+          ],
+          "elements": 248320,
+          "finite": 248320,
+          "nan": 0,
+          "infinity": 0,
+          "zeros": 0,
+          "firstNonfinite": null,
+          "min": -12.379770278930664,
+          "max": 17.040428161621094,
+          "mean": -3.4158957759925905,
+          "variance": 4.762802874399676,
+          "argmax": 369
+        }
+      ]
+    }
+  ],
+  "status": "trace-recorded",
+  "gpuModule": {
+    "package": "webgpu",
+    "version": "0.6.2"
+  },
+  "modelSha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+  "device": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "intel-r-iris-r-xe-graphics",
+    "description": "D3D12 driver version 31.0.101.5186",
+    "isFallbackAdapter": false,
+    "subgroupMinSize": 8,
+    "subgroupMaxSize": 16,
+    "features": {
+      "shaderF16": true,
+      "subgroups": true,
+      "subgroupMatrix": false,
+      "timestampQuery": true
+    }
+  },
+  "memory": {
+    "liveBytes": 775028848,
+    "peakBytes": 775028852
+  },
+  "prompt": [
+    {
+      "role": "user",
+      "content": "Write one short sentence about a quiet garden."
+    }
+  ],
+  "generatedText": "A quiet garden is filled with the soft",
+  "finishReason": "length"
+}

@@ -26,20 +26,22 @@ export function summarize(values,dtype){
  }
  return {elements:values.length,finite,nan,infinity,zeros,firstNonfinite,min,max,mean:finite?mean:null,variance:finite?m2/finite:null,argmax};
 }
-export function createActivationTracer({onSnapshot,maxSnapshots=4,maxReadBytes=2*1024*1024}={}){
- if(typeof onSnapshot!=='function'||!Number.isSafeInteger(maxSnapshots)||maxSnapshots<1||maxSnapshots>16||!Number.isSafeInteger(maxReadBytes)||maxReadBytes<1||maxReadBytes>8*1024*1024)throw Error('Invalid trace bounds');
+export function createActivationTracer({onSnapshot,maxSnapshots=4,maxReadBytes=2*1024*1024,shouldObserve=()=>true}={}){
+ if(typeof onSnapshot!=='function'||typeof shouldObserve!=='function'||!Number.isSafeInteger(maxSnapshots)||maxSnapshots<1||maxSnapshots>16||!Number.isSafeInteger(maxReadBytes)||maxReadBytes<1||maxReadBytes>8*1024*1024)throw Error('Invalid trace bounds');
  const runtimes=new Map;let snapshots=0;
  const compiled=(runtime,program,graph)=>{
   const observed=graph.tensors.filter(t=>t.kind==='output'&&t.name.startsWith('__babelTrace.'));
   if(!observed.length)return;
   const bytes=observed.reduce((n,t)=>n+t.shape.reduce((a,b)=>a*b,1)*(t.dtype==='float16'?2:4),0);
   if(bytes>maxReadBytes)throw Error('Activation trace readback budget exceeded');
-  const next=program.tensor('next_token');let state=runtimes.get(runtime);
+  // The actual Qwen3.5 decode graph writes the selected ID into its step input.
+  // Prefill and the standalone plumbing graph instead expose next_token.
+  const next=program.tensor(graph.name==='qwen35-decode'?'input_ids':'next_token');let state=runtimes.get(runtime);
   if(!state){
    const original=runtime.readTensor,read=original.bind(runtime);state={original,read,entries:new Map};runtimes.set(runtime,state);
    runtime.readTensor=async tensor=>{
     const entry=state.entries.get(tensor.buffer);
-    if(entry&&tensor.dtype===entry.next.dtype&&tensor.byteOffset===entry.next.byteOffset&&tensor.byteLength===entry.next.byteLength&&snapshots<maxSnapshots){
+    if(entry&&tensor.dtype===entry.next.dtype&&tensor.byteOffset===entry.next.byteOffset&&tensor.byteLength===entry.next.byteLength&&snapshots<maxSnapshots&&shouldObserve()){
      snapshots++;const tensors=[];
      for(const descriptor of entry.observed){const value=entry.program.tensor(descriptor.name);tensors.push({name:descriptor.name,dtype:value.dtype,shape:descriptor.shape,...summarize(await read(value),value.dtype)});}
      await onSnapshot({sequence:snapshots,graph:entry.graph,readbackBytes:entry.bytes,tensors});

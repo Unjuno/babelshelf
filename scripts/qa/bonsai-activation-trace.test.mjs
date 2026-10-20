@@ -14,3 +14,17 @@ test('trace limits and runtime identity fail before observation/instrumentation'
  const original=()=>{},runtime={readTensor:original},tracer=createActivationTracer({onSnapshot(){},maxReadBytes:4});
  assert.throws(()=>tracer.compiled(runtime,{}, {tensors:[{kind:'output',name:'__babelTrace.fixture.logits',dtype:'float32',shape:[2]}]}),/readback budget/);assert.equal(runtime.readTensor,original);tracer.dispose();
 });
+
+test('actual decode graph watches its in-place input_ids readback rather than the prefill next_token name',async()=>{
+ const token={dtype:'uint32',buffer:{},byteOffset:0,byteLength:4},logits={dtype:'float32',buffer:{},byteOffset:0,byteLength:8},snapshots=[],lookups=[];
+ const runtime={async readTensor(t){return t===logits?new Float32Array([-1,2]):new Uint32Array([1]);}},original=runtime.readTensor;
+ const program={tensor(name){lookups.push(name);if(name==='input_ids')return token;if(name==='__babelTrace.head.logits')return logits;throw Error('Unbound '+name);}},graph={name:'qwen35-decode',tensors:[{kind:'output',name:'__babelTrace.head.logits',dtype:'float32',shape:[2]}]},tracer=createActivationTracer({onSnapshot:s=>snapshots.push(s)});
+ tracer.compiled(runtime,program,graph);assert.deepEqual([...await runtime.readTensor(token)],[1]);assert.equal(snapshots.length,1);assert.equal(snapshots[0].tensors[0].argmax,1);assert.equal(snapshots[0].graph,'qwen35-decode');assert.ok(!lookups.includes('next_token'));tracer.dispose();assert.equal(runtime.readTensor,original);
+});
+
+test('warmup readbacks cannot consume a generation-only snapshot budget',async()=>{
+ let armed=false;const token={dtype:'uint32',buffer:{},byteOffset:0,byteLength:4},score={dtype:'float32',buffer:{},byteOffset:0,byteLength:4},snapshots=[];
+ const runtime={async readTensor(t){return t===score?new Float32Array([2]):new Uint32Array([0]);}},program={tensor(name){return name==='next_token'?token:score;}},graph={name:'qwen35-prefill',tensors:[{kind:'output',name:'__babelTrace.logits',dtype:'float32',shape:[1]}]};
+ const tracer=createActivationTracer({onSnapshot:s=>snapshots.push(s),shouldObserve:()=>armed,maxSnapshots:1});tracer.compiled(runtime,program,graph);
+ await runtime.readTensor(token);assert.equal(tracer.snapshots,0);armed=true;await runtime.readTensor(token);assert.equal(tracer.snapshots,1);assert.equal(snapshots.length,1);tracer.dispose();
+});

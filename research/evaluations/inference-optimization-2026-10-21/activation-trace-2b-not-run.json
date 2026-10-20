@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "at": "2026-10-20T21:09:32.094Z",
+  "scope": "Native diagnostic generation with retained head activations and synchronous readback; not a performance benchmark/browser/phone result",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "browser": null,
+  "backend": "d3d12",
+  "model": "2B",
+  "modelRevision": "683f7be2629342a50987627b40881e54761a2430",
+  "quantization": "PTQ1_0",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "freeMemoryBytes": 781668352,
+  "minimumFreeMemoryBytes": 805306368,
+  "contextTokens": 512,
+  "inputTokens": null,
+  "outputTokens": null,
+  "snapshots": [],
+  "status": "not-run",
+  "reason": "Insufficient free system memory for an intentional full-model diagnostic run"
+}

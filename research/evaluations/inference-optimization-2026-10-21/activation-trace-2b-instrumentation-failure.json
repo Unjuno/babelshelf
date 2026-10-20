@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "at": "2026-10-20T21:10:11.714Z",
+  "scope": "Native diagnostic generation with retained head activations and synchronous readback; not a performance benchmark/browser/phone result",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "browser": null,
+  "backend": "d3d12",
+  "model": "2B",
+  "modelRevision": "683f7be2629342a50987627b40881e54761a2430",
+  "quantization": "PTQ1_0",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "freeMemoryBytes": 809029632,
+  "minimumFreeMemoryBytes": 805306368,
+  "contextTokens": 512,
+  "inputTokens": null,
+  "outputTokens": null,
+  "snapshots": [],
+  "status": "failed",
+  "gpuModule": {
+    "package": "webgpu",
+    "version": "0.6.2"
+  },
+  "modelSha256": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+  "error": "Error: graph \"qwen35-decode\" has no bound tensor named \"next_token\"\n    at Object.tensor (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:3541:87765)\n    at compiled (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/work/babelshelf/scripts/qa/bonsai-activation-trace.mjs:37:22)\n    at CT.build (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:4547:72557)\n    at async file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:4547:128381\n    at async jT.warmup (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:4547:129057)\n    at async e.warmup (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:4547:208274)\n    at async h_ (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:3541:10526)\n    at async e.from_pretrained (file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/outputs/inference-optimization/activation-trace-2b-after-server-stop.json.runtime.mjs:4547:213669)\n    at async file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/work/babelshelf/scripts/qa/trace-bonsai-activations.mjs:50:11"
+}

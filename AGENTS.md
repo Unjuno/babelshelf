@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Real pinned2B full-model activation tracing now succeeds on native Intel/D3D12 after fixing the observer: decode token readback is input_ids (prefill next_token), and warmup is excluded by generation-only arming. Read latest INFERENCE-OPTIMIZATION.md and retained failures/final phased trace.2B QA-only768MiB operational floor; all other models retain4GiB. No phone/browser/performance or9B semantic recovery follows; publicv107 unchanged.
+
 Optional real checkpoint embedding QA now validates explicit Hadamard metadata, compares runtime header/sign parsing and tests sampled inverse embeddings with real stored signs. Read latest INFERENCE-OPTIMIZATION.md: local256-row reindexing and independent repacking do not certify full loader/vocabulary addressing or full9B generation. Publicv107 remains unchanged by QA-only work.
 
 Prepared optional text backends discard/abort a client when Unload rejects, allowing only a later explicit Load to create a fresh owner. Preserve reported failure and no-replay; do not infer physical GPU/child-memory reclamation from detached identity. See MODEL-RUNTIME-VERIFICATION.md and controlled router/backend regression.
