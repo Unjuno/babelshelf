@@ -1,0 +1,77 @@
+{
+  "scope": "Paired real2B sidebar observations, identical messages/scoped schemas/QA code/model/runtime/device; one run each, no causal/general latency claim",
+  "before": "2b-named-actions-harness-browser.json",
+  "after": "2b-compact-description-harness-browser.json",
+  "rows": [
+    {
+      "case": "Search saved notes",
+      "inputBefore": 1460,
+      "inputAfter": 1334,
+      "savedTokens": 126,
+      "planBefore": {
+        "action": "search",
+        "query": "meeting notes",
+        "target": "knowledge"
+      },
+      "planAfter": {
+        "action": "search",
+        "query": "meeting",
+        "target": "knowledge"
+      },
+      "wallMsBefore": 40699.19999998808,
+      "wallMsAfter": 38082.69999998808,
+      "cachedBefore": 0,
+      "cachedAfter": 0,
+      "outputBefore": 35,
+      "outputAfter": 34,
+      "runtimeTTFTBefore": 37989.69999998808,
+      "runtimeTTFTAfter": 35496.700000047684
+    },
+    {
+      "case": "Arithmetic plan",
+      "inputBefore": 1461,
+      "inputAfter": 1335,
+      "savedTokens": 126,
+      "planBefore": {
+        "action": "calculate",
+        "query": "7 * 8"
+      },
+      "planAfter": {
+        "action": "calculate",
+        "query": "7 * 8"
+      },
+      "wallMsBefore": 3134.5,
+      "wallMsAfter": 3087.399999976158,
+      "cachedBefore": 1416,
+      "cachedAfter": 1290,
+      "outputBefore": 27,
+      "outputAfter": 27,
+      "runtimeTTFTBefore": 1044,
+      "runtimeTTFTAfter": 1034.5
+    },
+    {
+      "case": "New note proposal",
+      "inputBefore": 1470,
+      "inputAfter": 1344,
+      "savedTokens": 126,
+      "planBefore": {
+        "action": "capture",
+        "body": "The workshop starts at 15:30.",
+        "query": ""
+      },
+      "planAfter": {
+        "action": "capture",
+        "body": "The workshop starts at 15:30.",
+        "query": ""
+      },
+      "wallMsBefore": 3786.399999976158,
+      "wallMsAfter": 3680.399999976158,
+      "cachedBefore": 1416,
+      "cachedAfter": 1290,
+      "outputBefore": 35,
+      "outputAfter": 35,
+      "runtimeTTFTBefore": 1042.9000000357628,
+      "runtimeTTFTAfter": 1030.5999999642372
+    }
+  ]
+}

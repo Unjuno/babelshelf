@@ -7,7 +7,7 @@ function validateParameters(p,allowed,allowEmpty=false){
 export function nativeResponseTools(spec){
  if(!spec||!Object.hasOwn(fields,spec.name)||Object.keys(spec).some(k=>!['name','parameters','actions'].includes(k))||JSON.stringify(spec).length>16384)throw Error('Invalid native response format');
  validateParameters(spec.parameters,fields[spec.name]);
- const tool=(name,parameters)=>({type:'function',function:{name,description:'Propose one structured result. The application validates it; this does not execute any action.',parameters:structuredClone(parameters)}});
+ const tool=(name,parameters)=>({type:'function',function:{name,description:'Propose only.',parameters:structuredClone(parameters)}});
  if(spec.actions!==undefined){
   const names=spec.parameters.properties.action?.enum;
   if(spec.name!=='babelshelf_plan'||!names||!spec.actions||typeof spec.actions!=='object'||Array.isArray(spec.actions)||names.length>16||new Set(names).size!==names.length||Object.keys(spec.actions).length!==names.length||names.some(name=>typeof name!=='string'||!/^[a-z]{1,16}$/.test(name)||!Object.hasOwn(spec.actions,name)))throw Error('Invalid native response format');

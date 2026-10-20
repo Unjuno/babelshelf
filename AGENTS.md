@@ -1,5 +1,8 @@
 # Repository handoff instructions
 
+Latest publicv110/product851d4eeda6b1e882 adopted with dialogue retained/logsOff/ConnectionOffline. Native function boilerplate shortened; exact same sidebar2B messages/schemas/QA hashes/pins now use126 fewer tokens per case (cold1460->1334),3/3 real plans pass. See latest INFERENCE-OPTIMIZATION.md and compact-description comparison; single-run latency is not a general gain. Native stays DEFAULT OFF; next validate Japanese/file/history scopes before selective adoption rather than repeating this narrow probe.
+
+
 Latest publicv109 includes scoped planner count-format consistency and memo sharing; native transport remains DEFAULT OFF. Actual sidebar full-prompt wrapper fails search function naming; derived per-action functions now pass real2B search/calculate/capture validation3/3. Read latest INFERENCE-OPTIMIZATION.md/2b-named-actions-harness-browser.json:1460-token cold input costs~40.7s; warm follow-ups have1416cached tokens. Not full Send/storage/Japanese/9B/phone acceptance. Do not auto-enable from this bounded pass; reduce repetitive prompt/schema overhead next without weakening guards.
 
 
