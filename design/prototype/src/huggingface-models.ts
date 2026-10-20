@@ -1,3 +1,8 @@
+// @ts-expect-error Shared bounded GGUF parser is JavaScript.
+import {inspectGGUF} from '../../../dist/gguf-inspect.js';
+// @ts-expect-error App-owned engine eligibility is JavaScript.
+import {eligibleTextEngine} from '../../../dist/local-engines.js';
+import {fetchHuggingFace} from './huggingface-network.ts';
 export type HuggingFaceModelFile={path:string;bytes:number};
 export type HuggingFaceModelSource={provider:'huggingface';repo:string;revision:string;file:string;license:string|null};
 export type HuggingFaceRepository={repo:string;revision:string;license:string|null;architecture:'qwen35'|'lfm2'|'gguf';files:HuggingFaceModelFile[]};
@@ -11,7 +16,7 @@ function selectedModelUrl(repository:HuggingFaceRepository,file:HuggingFaceModel
 }
 // Reject unsupported packages before creating a staging file or fetching weights.
 // The same container parser and adapter rules also check the complete local file.
-export async function inspectHuggingFaceModel(repository:HuggingFaceRepository,file:HuggingFaceModelFile,{signal,fetcher=fetch}:{signal?:AbortSignal;fetcher?:typeof fetch}={}){
+export async function inspectHuggingFaceModel(repository:HuggingFaceRepository,file:HuggingFaceModelFile,{signal,fetcher=fetchHuggingFace}:{signal?:AbortSignal;fetcher?:typeof fetch}={}){
  const url=selectedModelUrl(repository,file),limit=16*1024*1024;
  signal?.throwIfAborted();
  const inspection=await inspectGGUF({size:file.bytes,slice(start:number,end:number){return {async arrayBuffer(){
@@ -35,7 +40,7 @@ export async function inspectHuggingFaceModel(repository:HuggingFaceRepository,f
  return inspection;
 }
 export function validateHuggingFaceRepo(value:string){if(!repoPattern.test(value))throw Error('Enter a public Hugging Face model ID');return value;}
-export async function findHuggingFaceModels(repoInput:string,{signal,fetcher=fetch}:{signal?:AbortSignal;fetcher?:typeof fetch}={}):Promise<HuggingFaceRepository>{
+export async function findHuggingFaceModels(repoInput:string,{signal,fetcher=fetchHuggingFace}:{signal?:AbortSignal;fetcher?:typeof fetch}={}):Promise<HuggingFaceRepository>{
  const repo=validateHuggingFaceRepo(repoInput),encoded=repo.split('/').map(segment).join('/');signal?.throwIfAborted();
  const response=await fetcher(`https://huggingface.co/api/models/${encoded}?blobs=true`,{signal,credentials:'omit',referrerPolicy:'no-referrer'});
  if(!response.ok)throw Error(response.status===404?'Model repository not found':`Hugging Face request failed · ${response.status}`);
@@ -53,7 +58,7 @@ export async function findHuggingFaceModels(repoInput:string,{signal,fetcher=fet
  const rawLicense=info.cardData?.license,license=typeof rawLicense==='string'&&rawLicense.length<=100?rawLicense:null;
  return {repo,revision:info.sha,license,architecture,files};
 }
-export async function downloadHuggingFaceModel(repository:HuggingFaceRepository,file:HuggingFaceModelFile,{signal,progress=()=>{},fetcher=fetch,storage=navigator.storage}:{signal?:AbortSignal;progress?:(bytes:number,total:number)=>void;fetcher?:typeof fetch;storage?:StorageManager}={}):Promise<{file:File;source:HuggingFaceModelSource;remove:()=>Promise<void>}>{
+export async function downloadHuggingFaceModel(repository:HuggingFaceRepository,file:HuggingFaceModelFile,{signal,progress=()=>{},fetcher=fetchHuggingFace,storage=navigator.storage}:{signal?:AbortSignal;progress?:(bytes:number,total:number)=>void;fetcher?:typeof fetch;storage?:StorageManager}={}):Promise<{file:File;source:HuggingFaceModelSource;remove:()=>Promise<void>}>{
  const url=selectedModelUrl(repository,file);
  await inspectHuggingFaceModel(repository,file,{signal,fetcher});signal?.throwIfAborted();
  const root=await storage.getDirectory(),staging=await root.getDirectoryHandle('model-download-staging',{create:true}),name='download-'+crypto.randomUUID()+'.gguf';let created=false;
@@ -70,7 +75,3 @@ export async function downloadHuggingFaceModel(repository:HuggingFaceRepository,
   return {file:staged,source:{provider:'huggingface',repo:repository.repo,revision:repository.revision,file:file.path,license:repository.license},remove:cleanup};
  }catch(error){try{await writer?.abort();}catch{}await cleanup();throw error;}
 }
-// @ts-expect-error Shared bounded GGUF parser is JavaScript.
-import {inspectGGUF} from '../../../dist/gguf-inspect.js';
-// @ts-expect-error App-owned engine eligibility is JavaScript.
-import {eligibleTextEngine} from '../../../dist/local-engines.js';

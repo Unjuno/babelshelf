@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {findHuggingFaceModels,downloadHuggingFaceModel,inspectHuggingFaceModel} from '../src/huggingface-models.ts';
+import {allowHuggingFaceRequest} from '../src/huggingface-network.ts';
 
 const commit='a'.repeat(40),repo='owner/model';
 const u32=n=>{const b=Buffer.alloc(4);b.writeUInt32LE(n);return b;},u64=n=>{const b=Buffer.alloc(8);b.writeBigUInt64LE(BigInt(n));return b;},str=s=>Buffer.concat([u64(Buffer.byteLength(s)),Buffer.from(s)]);
@@ -73,4 +74,14 @@ test('Stop during header reading cancels the reader and prevents staging/full ac
  const body={getReader(){return {async read(){controller.abort();return {done:false,value:bytes};},async cancel(){cancelled++;},releaseLock(){}};}};
  await assert.rejects(downloadHuggingFaceModel(repository,file,{signal:controller.signal,storage:{async getDirectory(){staged++;}},fetcher:async()=>{requests++;return {ok:true,status:200,headers:new Headers(),body};}}),{name:'AbortError'});
  assert.equal(requests,1);assert.equal(staged,0);assert.ok(cancelled>0);
+});
+
+test('controlled PWA requires the exact one-request acknowledgement and an old worker fails explicitly',async()=>{
+ const url='https://huggingface.co/api/models/owner/model?blobs=true';let message;
+ await allowHuggingFaceRequest(url,'',{postMessage(data,[port]){message=data;port.postMessage({allowed:true});}});
+ assert.deepEqual(message,{type:'allow-huggingface-request',url,range:''});
+ await assert.rejects(allowHuggingFaceRequest(url,'',{postMessage(data,[port]){port.postMessage({allowed:false});}}),/not allowed/);
+ await assert.rejects(allowHuggingFaceRequest(url,'',{postMessage(){}},undefined,5),/App update required/);
+ const controller=new AbortController(),pending=allowHuggingFaceRequest(url,'',{postMessage(){}},controller.signal);controller.abort();await assert.rejects(pending,{name:'AbortError'});
+ await allowHuggingFaceRequest(url,'',null);
 });

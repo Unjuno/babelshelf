@@ -2,6 +2,19 @@
 export function productWorker({build,files,remote}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
 `+String.raw`
 const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1';
+const hfGrants=new Map();
+function hfRequestAllowed(raw,range){
+ if(raw.length>1024||range.length>32)return false;
+ try{const url=new URL(raw);if(url.href!==raw||url.origin!=='https://huggingface.co'||url.username||url.password||url.hash)return false;
+  const repo='[A-Za-z0-9][A-Za-z0-9._-]{0,63}/[A-Za-z0-9][A-Za-z0-9._-]{0,95}';
+  if(new RegExp('^/api/models/'+repo+'$').test(url.pathname))return url.search==='?blobs=true'&&range==='';
+  if(!new RegExp('^/'+repo+'/resolve/[a-f0-9]{40}/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+$').test(url.pathname))return false;
+  if(url.pathname.endsWith('/config.json'))return url.search===''&&range==='';
+  return url.pathname.toLowerCase().endsWith('.gguf')&&url.search==='?download=true'&&(range===''||/^bytes=0-\d+$/.test(range)&&Number(range.slice(8))<16777216);
+ }catch{return false;}
+}
+function hfKey(client,url,range){return JSON.stringify([client,url,range]);}
+function consumeHF(event){const request=event.request,key=hfKey(event.clientId,request.url,request.headers?.get('Range')??''),expires=hfGrants.get(key);hfGrants.delete(key);return typeof expires==='number'&&expires>Date.now()&&request.credentials==='omit';}
 const absolute=path=>new URL(path,self.registration.scope).href;
 const immutable=path=>/^\.\/assets\/[^/]+-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/.test(path);
 const poolKey=file=>absolute('./.babelshelf-app-assets/'+file.sha256);
@@ -43,7 +56,7 @@ self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
  if(request.method!=='GET'){event.respondWith(new Response('Method unavailable',{status:405}));return;}
- if(url.origin!==self.location.origin){event.respondWith(REMOTE.includes(url.href)?fetch(request):Promise.resolve(new Response('Network disabled',{status:503})));return;}
+ if(url.origin!==self.location.origin){event.respondWith(REMOTE.includes(url.href)||consumeHF(event)?fetch(request):Promise.resolve(new Response('Network disabled',{status:503})));return;}
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);
   const missing=()=>new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain'}});
@@ -72,5 +85,14 @@ self.addEventListener('fetch',event=>{
   return missing();
  })().catch(()=>new Response('Local app unavailable. Reload to retry.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})));
 });
-self.addEventListener('message',event=>{if(event.data?.type==='activate-update')self.skipWaiting();if(event.data==='build')event.ports[0]?.postMessage({build:BUILD,cache:CACHE,assets:FILES.length});});
+self.addEventListener('message',event=>{
+ if(event.data?.type==='allow-huggingface-request'){
+  const {url,range}=event.data,source=event.source;let allowed=false;
+  try{allowed=source?.type==='window'&&!!source.id&&new URL(source.url).origin===self.location.origin&&typeof url==='string'&&typeof range==='string'&&hfRequestAllowed(url,range);}catch{}
+  for(const [key,expires]of hfGrants)if(expires<=Date.now())hfGrants.delete(key);
+  if(allowed){const key=hfKey(source.id,url,range);if(hfGrants.size>=32&&!hfGrants.has(key))allowed=false;else hfGrants.set(key,Date.now()+30000);}
+  event.ports[0]?.postMessage({allowed});return;
+ }
+ if(event.data?.type==='activate-update')self.skipWaiting();if(event.data==='build')event.ports[0]?.postMessage({build:BUILD,cache:CACHE,assets:FILES.length});
+});
 `;}
