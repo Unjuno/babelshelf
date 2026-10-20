@@ -18,7 +18,7 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'text-image',label:'Text + OCR',detail:'Bonsai 2 · 4B · Tesseract 7 · image text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'tesseract-7',visionModel:''}},
  {id:'text-vision',label:'Text + vision',detail:'Bonsai 2 · 4B · LFM2.5-VL 450M',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'lfm25-vl-450m-q4f16'}},
  {id:'local-text-media',label:'Text + capture',detail:'Bonsai 2 · 4B · Whisper tiny · Tesseract 7 · no image understanding',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
- {id:'text-image-audio',label:'Text + image + audio',detail:'Bonsai 2 · 4B · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · no video frames',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
+ {id:'text-image-audio',label:'Text + image + audio',detail:'Bonsai 2 · 4B · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · sampled video frames',models:{textModel:'4B',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
  {id:'local-full',label:'Local pipeline',detail:'Bonsai 2 · 4B · Open d1 · Omni 600M · Whisper tiny · Tesseract 7',models:{textModel:'4B',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
 ]);
 

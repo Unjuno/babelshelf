@@ -25,6 +25,6 @@ export function mediaReadingStatus(input:{ocrSelected:boolean;ocrReady:boolean;v
   pdf:['Text layer · ready','Scanned pages · OCR '+state(input.ocrSelected,input.ocrReady)],
   image:['Text · OCR '+state(input.ocrSelected,input.ocrReady),'Description · '+state(input.visionSelected,input.visionReady)],
   audio:['Transcription · '+speech],
-  video:['Original preview · browser-dependent','Audio track transcription · '+speech,'Video frames · no connected reader'],
+  video:['Original preview · browser-dependent','Audio track transcription · '+speech,'Sampled video frames · '+state(input.visionSelected,input.visionReady)],
  };
 }

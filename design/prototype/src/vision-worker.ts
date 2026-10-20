@@ -29,6 +29,20 @@ async function load(progress:(value:string)=>void){
  model=await AutoModelForImageTextToText.from_pretrained(modelId,{...options,device:'webgpu',dtype:visionDtype});
 }
 
+async function describe(imageBlob:Blob,prompt:string,progress:(text:string)=>void){
+ progress('Reading image');const image=await RawImage.read(imageBlob);
+ if(!image.width||!image.height||image.width*image.height>64000000)throw Error('Image dimensions unsupported · maximum 64 megapixels');
+ const messages=[{role:'user',content:[{type:'image'},{type:'text',text:'Answer only from visible image content. State uncertainty when details are unclear. Do not infer hidden context.\n\n'+prompt}]}];
+ const chat=processor.apply_chat_template(messages,{add_generation_prompt:true});let inputs:any,outputs:any,sliced:any;
+ try{
+  inputs=await processor(image,chat,{add_special_tokens:false,max_image_tokens:256});progress('Analyzing image locally');
+  outputs=await model.generate({...inputs,max_new_tokens:256,temperature:0.1,min_p:0.15,repetition_penalty:1.05});
+  sliced=outputs.slice(null,[inputs.input_ids.dims.at(-1),null]);const result=processor.batch_decode(sliced,{skip_special_tokens:true})[0]?.trim();
+  if(!result)throw Error('Vision model returned no description');
+  return {text:result,model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,width:image.width,height:image.height,scope:'single-image'};
+ }finally{for(const tensor of new Set<any>([sliced,outputs,...Object.values(inputs??{})]))if(typeof tensor?.dispose==='function')await tensor.dispose();}
+}
+
 self.onmessage=async({data}:MessageEvent<any>)=>{
  if(busy){self.postMessage({id:data.id,error:'Vision model busy'});return;}busy=true;
  const progress=(text:string)=>self.postMessage({id:data.id,progress:text});
@@ -37,18 +51,11 @@ self.onmessage=async({data}:MessageEvent<any>)=>{
   if(data.type==='status')value={ready:await visionReady(),model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime};
   else if(data.type==='prepare'){await prepareVision(data.allowNetwork===true,data.signal??new AbortController().signal,progress,data.localFiles);value={ready:true,model:visionManifest.id,revision:visionManifest.revision};}
   else if(data.type==='describe'){
-   if(!(data.image instanceof Blob)||!data.image.type.startsWith('image/')||data.image.size<1||data.image.size>32*1024*1024)throw Error('Image file unsupported · maximum 32 MB');
+   const batch=data.images!==undefined,images=batch?data.images:[data.image];
+   if(!Array.isArray(images)||images.length<1||images.length>3||batch&&data.image!==undefined||images.some(image=>!(image instanceof Blob)||!image.type.startsWith('image/')||image.size<1||image.size>(batch?2:32)*1024*1024))throw Error('Image file unsupported · maximum 3 sampled frames');
    const prompt=typeof data.prompt==='string'?data.prompt.trim():'';if(!prompt||prompt.length>2000)throw Error('Image question required · maximum 2,000 characters');
-   await load(progress);progress('Reading image');
-   const image=await RawImage.read(data.image);if(!image.width||!image.height||image.width*image.height>64000000)throw Error('Image dimensions unsupported · maximum 64 megapixels');
-   const messages=[{role:'user',content:[{type:'image'},{type:'text',text:'Answer only from visible image content. State uncertainty when details are unclear. Do not infer hidden context.\n\n'+prompt}]}];
-   const chat=processor.apply_chat_template(messages,{add_generation_prompt:true});
-   const inputs=await processor(image,chat,{add_special_tokens:false,max_image_tokens:256});
-   progress('Analyzing image locally');
-   const outputs=await model.generate({...inputs,max_new_tokens:256,temperature:0.1,min_p:0.15,repetition_penalty:1.05});
-   const result=processor.batch_decode(outputs.slice(null,[inputs.input_ids.dims.at(-1),null]),{skip_special_tokens:true})[0]?.trim();
-   if(!result)throw Error('Vision model returned no description');
-   value={text:result,model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,width:image.width,height:image.height,scope:'single-image'};
+   await load(progress);const frames=[];for(let i=0;i<images.length;i++){progress('Reading image · '+(i+1)+' / '+images.length);frames.push(await describe(images[i],prompt,progress));}
+   value=batch?{frames}:frames[0];
   }else throw Error('Vision action unavailable');
   self.postMessage({id:data.id,value});
  }catch(error){self.postMessage({id:data.id,error:(error as Error).message});}finally{busy=false;}

@@ -27,13 +27,14 @@ test('decision file guidance distinguishes a new custom package from files for t
  assert.match(selectedDecisionFileGuidance(true),/Custom D1 uses its verified ONNX, config and tokenizer package.*cannot silently replace/);
 });
 
-test('media statuses separate supported text and audio paths from unsupported video frames',async()=>{
+test('media statuses separate sampled video model preparation from audio and original preview',async()=>{
  const {mediaReadingStatus}=await import('../src/model-file-guidance.ts');
  const status=mediaReadingStatus({ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Speech model not prepared'});
  assert.deepEqual(status.pdf,['Text layer · ready','Scanned pages · OCR model not selected']);
  assert.deepEqual(status.image,['Text · OCR model not selected','Description · model not selected']);
  assert.deepEqual(status.audio,['Transcription · not prepared']);
- assert.deepEqual(status.video,['Original preview · browser-dependent','Audio track transcription · not prepared','Video frames · no connected reader']);
+ assert.deepEqual(status.video,['Original preview · browser-dependent','Audio track transcription · not prepared','Sampled video frames · model not selected']);
+ assert.equal(mediaReadingStatus({ocrSelected:false,ocrReady:false,visionSelected:true,visionReady:true,speechStatus:'Ready'}).video.at(-1),'Sampled video frames · files verified');
 });
 
 test('text choices expose pinned download size without claiming device readiness',()=>{

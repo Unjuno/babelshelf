@@ -13,7 +13,7 @@ export type ReadingAdapters={ocr?:Adapter<OcrText>;pdf?:Adapter<PdfText>;speech?
 type RecordRead=<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown)=>Promise<T>;
 export async function readInputOriginal(asset:OriginalAsset,policy:ReadingPolicy,adapters:ReadingAdapters,signal:AbortSignal,progress:(s:string)=>void,record:RecordRead):Promise<{reading?:ReviewedText;status:string}>{
  const check=()=>{if(signal.aborted)throw Error('Stopped');};check();
- const kind=isOcrImage(asset)?(policy.visionModel?'vision':'ocr'):isPdf(asset)?'pdf':asset.kind==='audio'||asset.kind==='video'?'speech':undefined;
+ const kind=asset.kind==='video'&&policy.visionModel?'vision':isOcrImage(asset)?(policy.visionModel?'vision':'ocr'):isPdf(asset)?'pdf':asset.kind==='audio'||asset.kind==='video'?'speech':undefined;
  if(!kind)return {status:'Unsupported'};
  let workError:unknown;
  const tool=kind==='vision'?'image.describe':kind==='ocr'?'image.read':kind==='pdf'?'pdf.read':'speech.transcribe';

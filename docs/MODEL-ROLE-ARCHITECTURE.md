@@ -1,5 +1,7 @@
 # Model roles and local media pipeline
 
+2026-10-21: ordinary Send now connects bounded sampled video frames through the existing prepared Vision model, with separate optional audio provenance. See [sampled video contract](VIDEO-VISION-CONTRACT.md). Earlier video-frame pending statements below describe the prior boundary; physical-device, full-offline, broad accuracy and whole-video understanding are still unverified.
+
 ## Decision
 
 Settings > Models distinguishes **Add custom GGUF text model** (register another compatible model) from **Supply files for selected [model]** (supply the exact assets for the current selection without creating a model). A compatible text GGUF carries tokenizer and chat-template metadata inside the GGUF; ONNX text packages, D1 decisions and Whisper speech require their matching configuration/tokenizer files. The local file picker accepts ONNX data shards as well as the graph and JSON files. Supplying files verifies identity but does not prove inference on this device. The existing custom adapters accept Qwen3.5/LFM2 GGUF text, D1 text ONNX decisions, and Whisper ONNX speech. Arbitrary OCR, vision, video-frame and other architectures still need an app-owned execution adapter before import can be enabled; those two reader roles are labelled accordingly.

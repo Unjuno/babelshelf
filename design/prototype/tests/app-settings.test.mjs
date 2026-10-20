@@ -5,7 +5,9 @@ import {capabilityState} from '../src/local-capabilities.ts';
 
 test('settings cannot declare installed media or grant remote/destructive execution',()=>{
  assert.equal(capabilityState('image.ocr','tesseract-7',false).status,'Not prepared');
- assert.equal(capabilityState('video.frames','',false).status,'Unsupported');
+ assert.equal(capabilityState('video.frames','',false).status,'Not configured');
+ assert.equal(capabilityState('video.frames','lfm25-vl-450m-q4f16',false).status,'Not prepared');
+ assert.equal(capabilityState('video.frames','lfm25-vl-450m-q4f16',true).status,'Ready');
  for(const key of ['implicitDownloads','automaticOverwrite','automaticDelete']){
   const candidate=structuredClone(settings);candidate.harness[key]=true;
   assert.throws(()=>validateSettings(candidate),/Unsafe/);

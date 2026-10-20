@@ -12,6 +12,14 @@ const policy={ocrModel:'tesseract-7',ocrReady:true,ocrLanguage:'eng',speechModel
 const record=(events,signal)=>(tool,input,work,project)=>recordProcessingOperation(tool,input,work,async a=>{events.push(a);},project,()=>signal.aborted);
 const raw=async(name='image.png',type='image/png')=>prepareOriginal(new File(['controlled bytes'],name,{type}));
 const image={width:100,height:100,processedWidth:100,processedHeight:100,frame:0,orientation:'browser-decoded'};
+
+test('video Send uses selected prepared vision; missing preparation never silently becomes audio-only',async()=>{
+ const {videoFramePlan}=await import('../src/video-frame-plan.ts'),{makeVideoVisionText}=await import('../src/video-observations.ts');
+ const asset=await raw('video.mp4','video/mp4'),controller=new AbortController(),events=[],plan=videoFramePlan({trackId:1,start:0,end:12,width:100,height:100});let described=0,transcribed=0;
+ const selected={...policy,visionModel:'lfm25-vl-450m-q4f16',visionReady:true},adapters={vision:async()=>{described++;return makeVideoVisionText(asset,'Describe',plan,plan.timestampsUs.map(requestedUs=>({requestedUs,timestampUs:requestedUs,durationUs:40000,width:100,height:100,imageSha256:'a'.repeat(64),text:'Controlled observation.'})),{status:'not-selected'});},speech:async()=>{transcribed++;throw Error('must not fall back');}};
+ const result=await readInputOriginal(asset,selected,adapters,controller.signal,()=>{},record(events,controller.signal));assert.equal(result.reading.kind,'vision');assert.equal(result.reading.value.scope,'sampled-video');assert.match(result.status,/sampled frames/);assert.equal(events[0].tool,'image.describe');assert.equal(described,1);assert.equal(transcribed,0);
+ const missing=await readInputOriginal(asset,{...selected,visionReady:false},adapters,controller.signal,()=>{},record(events,controller.signal));assert.equal(missing.reading,undefined);assert.match(missing.status,/not prepared/i);assert.equal(described,1);assert.equal(transcribed,0);
+});
 // Adapter results are controlled metadata for orchestration, not OCR/ASR acceptance.
 test('Send auto OCR retains raw identity, returns extracted not reviewed text, and records real operation lifecycle',async()=>{
  const asset=await raw(),controller=new AbortController(),events=[],before=structuredClone(asset);let called=0;

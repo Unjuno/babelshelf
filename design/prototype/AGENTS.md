@@ -1,5 +1,7 @@
 # Mobile Prototype Agent Guide
 
+Sampled-video reading is connected as of 2026-10-21. Read ../../docs/VIDEO-VISION-CONTRACT.md: selected/prepared image understanding reads at most three actual decoded frames with separate optional audio. Earlier "unsupported video frames" notes below are historical. Preserve bounded decoding, schema1 image compatibility, original-linked schema2 observations and exact factual source spans. Readiness does not certify codec support, observation accuracy, phone fit or full offline cold start.
+
 ## Prototype Instructions
 
 In ChatGPT Work Mode, run `sites-preview start "$PWD"`, open `http://terminal.local:4173/` in the cloud browser, and verify the rendered app and its primary interactions. Keep that preview open and tell the user to inspect it in the cloud browser; do not present the local URL as a user-facing chat link. In Codex Desktop, run the local server yourself, open the preview in the in-app browser, and provide the clickable local URL. Do not deploy to Sites unless the user explicitly asks to share, publish, or deploy. Do not give the user server-start instructions when you can run it.
