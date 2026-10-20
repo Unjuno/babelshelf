@@ -16,7 +16,7 @@ function freeze<T>(value:T):T {if(value&&typeof value==='object'){Object.values(
 export function validateSettings(value:unknown):Settings {
  keys(value,['schemaVersion','models','defaults','appearance','media','storage','harness']);
  const c=value as Settings;
- if(c.schemaVersion!==6)throw Error('Unsupported settings version');
+ if(c.schemaVersion!==7)throw Error('Unsupported settings version');
  keys(c.models,['text','decision','transcription','ocr','vision']);
  for(const [role,allowed] of [['text',allowedText],['decision',allowedDecision]] as const){
   const options=c.models[role];
@@ -36,11 +36,10 @@ export function validateSettings(value:unknown):Settings {
  keys(c.appearance,['themes','backgrounds','glass']);
  list(c.appearance.themes,['system','light','dark']);list(c.appearance.backgrounds,['paper','sage','sand']);list(c.appearance.glass,['clear','frosted']);
  if(!c.appearance.themes.includes(c.defaults.theme)||!c.appearance.backgrounds.includes(c.defaults.background)||!c.appearance.glass.includes(c.defaults.glass))throw Error('Invalid appearance default');
- keys(c.media,['maxTextBytes','capabilities']);
+ // Media execution capabilities belong to local-capabilities.ts, where each
+ // claim is paired with an app-owned adapter. Config only owns input limits.
+ keys(c.media,['maxTextBytes']);
  if(!Number.isSafeInteger(c.media.maxTextBytes)||c.media.maxTextBytes<1||c.media.maxTextBytes>1048576)throw Error('Invalid text read budget');
- const capabilities=['image.read','image.describe','audio.transcribe','video.read'];
- if(!Array.isArray(c.media.capabilities)||c.media.capabilities.length!==capabilities.length)throw Error('Invalid media registry');
- c.media.capabilities.forEach((item,i)=>{keys(item,['id','label']);if(item.id!==capabilities[i]||typeof item.label!=='string'||!item.label.trim())throw Error('Unsupported capability');});
  keys(c.storage,['protectedRoots','maxFolderDepth','captureFolder']);list(c.storage.protectedRoots,roots);
  if(c.storage.maxFolderDepth!==5||c.storage.captureFolder!=='Inbox')throw Error('Invalid storage policy');
  keys(c.harness,['localOnly','implicitDownloads','automaticOverwrite','automaticDelete','clarifyAmbiguousTarget','preserveOriginals','requireSourceRevision']);
@@ -51,9 +50,3 @@ export function validateSettings(value:unknown):Settings {
 }
 
 export const settings=validateSettings(defaults);
-
-// Availability comes from installed runtime evidence, never a settings label.
-export function mediaStatus(id:string,readiness:Readonly<Record<string,boolean>>={}) {
- if(!settings.media.capabilities.some(c=>c.id===id))return 'Unsupported';
- return readiness[id]===true?'Ready':'Not prepared';
-}

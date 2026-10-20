@@ -1,15 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {settings,validateSettings,mediaStatus} from '../src/app-settings.ts';
+import {settings,validateSettings} from '../src/app-settings.ts';
+import {capabilityState} from '../src/local-capabilities.ts';
 
 test('settings cannot declare installed media or grant remote/destructive execution',()=>{
- assert.equal(mediaStatus('image.read'),'Not prepared');
- assert.equal(mediaStatus('unknown',{'unknown':true}),'Unsupported');
+ assert.equal(capabilityState('image.ocr','tesseract-7',false).status,'Not prepared');
+ assert.equal(capabilityState('video.frames','',false).status,'Unsupported');
  for(const key of ['implicitDownloads','automaticOverwrite','automaticDelete']){
   const candidate=structuredClone(settings);candidate.harness[key]=true;
   assert.throws(()=>validateSettings(candidate),/Unsafe/);
  }
- const candidate=structuredClone(settings);candidate.media.capabilities[0].ready=true;
+ const candidate=structuredClone(settings);candidate.media.capabilities=[{id:'video.frames',label:'Ready'}];
  assert.throws(()=>validateSettings(candidate),/Unknown/);
 });
 test('configuration rejects unsupported models, budgets and missing fields',()=>{
@@ -36,7 +37,7 @@ test('OCR registry cannot claim installation or select an unregistered custom ru
 test('Vision catalog separates image understanding from OCR and remains unprepared by default',()=>{
  assert.equal(settings.models.vision[0].value,'lfm25-vl-450m-q4f16');
  assert.equal(settings.defaults.visionModel,'');
- assert.equal(mediaStatus('image.describe'),'Not prepared');
+ assert.equal(capabilityState('image.describe','lfm25-vl-450m-q4f16',false).status,'Not prepared');
  const candidate=structuredClone(settings);candidate.models.vision[0].ready=true;
  assert.throws(()=>validateSettings(candidate),/Unknown/);
 });

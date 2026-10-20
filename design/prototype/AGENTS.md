@@ -98,7 +98,7 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 - Media readiness is explicit Not prepared; no unconnected Prepare buttons. Appearance System/Light/Dark, Paper/Sage/Sand, Clear/Frosted and Reset are transient UI settings. Keep protected black device indicators readable.
 - Notifications open detail, mark read and link to current schedule. Deleting only removes the notification event. Save receipts must say execution is not connected. Canonical Memory-backed notification persistence is pending.
 
-- Shared defaults and catalogs live in src/app-settings.json, validated by app-settings.ts. Never put ready/installed claims, runtime URLs, executable tools or permission escalation into settings. See docs/SETTINGS-CONTRACT.md.
+- Shared defaults and model catalogs live in src/app-settings.json, validated by app-settings.ts. Its media section contains only the text-input size limit. Actual PDF/OCR/Vision/Speech/video capability claims come from src/local-capabilities.ts and their app-owned adapters; do not create another declarative capability registry in settings. Never put ready/installed claims, runtime URLs, executable tools or permission escalation into settings. See docs/SETTINGS-CONTRACT.md.
 
 ## Attachment source choice
 

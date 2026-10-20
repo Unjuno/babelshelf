@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "models": {
     "text": [
       {
@@ -100,25 +100,7 @@
     ]
   },
   "media": {
-    "maxTextBytes": 1048576,
-    "capabilities": [
-      {
-        "id": "image.read",
-        "label": "Image reading"
-      },
-      {
-        "id": "image.describe",
-        "label": "Image understanding"
-      },
-      {
-        "id": "audio.transcribe",
-        "label": "Transcription"
-      },
-      {
-        "id": "video.read",
-        "label": "Video reading"
-      }
-    ]
+    "maxTextBytes": 1048576
   },
   "storage": {
     "protectedRoots": [
