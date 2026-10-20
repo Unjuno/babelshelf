@@ -365,7 +365,16 @@ button.model-picker svg{flex-shrink:0}
 .settings-screen section[aria-label="Media reading"] .capability-hint{font-size:0.9375rem;line-height:1.35;color:#40574b}
 .settings-screen section[aria-label="Media reading"] .capability-status{font-size:0.9375rem;color:#24503b}
 .settings-screen section[aria-label="Media reading"] .capability-limit{border-bottom:0}
+.settings-screen section[aria-label="Media reading"] .media-format{padding:4px 0 8px;border-bottom:1px solid rgba(130,158,149,.25)}
+.settings-screen section[aria-label="Media reading"] .media-format:last-child{border-bottom:0}
+.settings-screen section[aria-label="Media reading"] .media-model-action{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:6px 0;border:0;background:transparent;color:#24503b;text-align:left;font:inherit;font-size:.9375rem;cursor:pointer}
+.settings-screen section[aria-label="Media reading"] .media-model-action>span:first-child{min-width:0}
+.settings-screen section[aria-label="Media reading"] .media-model-action>span:last-child{display:inline-flex;align-items:center;gap:4px;flex:none}
+.settings-screen section[aria-label="Media reading"] .media-model-action:hover{text-decoration:underline}
+.device-screen:has(.appearance-dark) .settings-screen section[aria-label="Media reading"] .media-model-action{color:#b8edcf}
 .settings-screen .model-settings .source-revision{font-size:0.9375rem;line-height:1.4}
+.settings-screen .model-action-label{margin:14px 0 2px;color:#435f52;font-size:.875rem;font-weight:600;line-height:1.4}
+.device-screen:has(.appearance-dark) .settings-screen .model-action-label{color:#c0d1c7}
 .appearance-group{margin:14px 0;font-size:0.9375rem}.appearance-options{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.appearance-options button{flex:1;border:1px solid rgba(130,158,149,.3);border-radius:14px;min-height:44px;background:transparent;font:inherit;font-size:0.9375rem;padding:8px;color:inherit}.appearance-options button[aria-pressed=true]{background:#e0f0e7;border-color:#547b67;color:#004f35}
 .device-screen:has(.background-sage){--app-bg:#edf5ef}.device-screen:has(.background-sand){--app-bg:#f8f2e7}
 .knowledge-scroll{background:var(--app-bg,#fff)}
