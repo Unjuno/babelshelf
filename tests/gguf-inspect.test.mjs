@@ -13,6 +13,12 @@ function gguf({arch='qwen35',tensorType=143,elements=128,duplicate=false}={}){
  const h=Buffer.concat([Buffer.from('GGUF'),u32(3),u64(1),u64(entries.length),...entries.map(([k,t,v])=>Buffer.concat([str(k),u32(t),v])),str('weight'),u32(1),u64(elements),u32(tensorType),u64(0)]);
  const padding=(32-h.length%32)%32;return Buffer.concat([h,Buffer.alloc(padding),Buffer.alloc(512)]);
 }
+function q2Pair(secondOffset){
+ const arch='qwen3',entries=[['general.architecture',8,str(arch)],['tokenizer.ggml.model',8,str('gpt2')]];
+ const tensor=(name,offset)=>Buffer.concat([str(name),u32(1),u64(2048),u32(42),u64(offset)]);
+ const header=Buffer.concat([Buffer.from('GGUF'),u32(3),u64(2),u64(entries.length),...entries.map(([key,type,value])=>Buffer.concat([str(key),u32(type),value])),tensor('first',0),tensor('second',secondOffset)]);
+ return Buffer.concat([header,Buffer.alloc((32-header.length%32)%32),Buffer.alloc(secondOffset+576)]);
+}
 test('bounded inspection preserves model data without executing templates or unbounded reads',async()=>{
  const bytes=gguf(),blob=new Blob([bytes]);let read=0;
  const limited={size:blob.size,slice(start,end){read+=Math.min(end,blob.size)-start;return blob.slice(start,end);}};
@@ -42,5 +48,13 @@ test('an LFM2 GGUF with the pinned CPU engines tokenizer and checked supported b
  assert.equal(info.tensorExtentsChecked,true);assert.equal(eligibleTextEngine(info).id,'wllama-lfm2');
 });
 test('known tensor byte extents reject truncated payload, not just out-of-file starting offsets',async()=>{
- for(const [tensorType,elements] of [[0,128],[143,128],[2,128],[14,256]]){const bytes=gguf({tensorType,elements}),info=await inspectGGUF(new Blob([bytes]));await assert.equal(info.tensorExtentsChecked,true);await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);}
+ for(const [tensorType,elements] of [[0,128],[143,128],[42,128],[2,128],[14,256]]){const bytes=gguf({tensorType,elements}),info=await inspectGGUF(new Blob([bytes]));await assert.equal(info.tensorExtentsChecked,true);await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);}
+});
+test('official Q2_0 group-64 offsets fit while the legacy group-128 layout is refused',async()=>{
+ const current=await inspectGGUF(new Blob([q2Pair(576)]));
+ assert.equal(current.tensorExtentsChecked,true);assert.deepEqual(current.tensorTypes,[42]);
+ await assert.rejects(inspectGGUF(new Blob([q2Pair(544)])),/Q2_0 tensor layout conflicts with official group-64 blocks/);
+ const legacy=new Blob([q2Pair(544)]);let reads=0;
+ await assert.rejects(inspectLocalModel({size:legacy.size,slice(start,end){reads++;return legacy.slice(start,end);},stream(){throw Error('Legacy Q2_0 must not be hashed');}}),/Q2_0 tensor layout conflicts with official group-64 blocks/);
+ assert.equal(reads,1);
 });

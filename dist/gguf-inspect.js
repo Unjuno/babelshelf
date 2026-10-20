@@ -39,15 +39,22 @@ export async function inspectGGUF(file,{signal}={}){
   const type=u32(),offset=u64();types.add(type);let size=null;
   if(type===0)size=elements*4;
   if(type===143){if(elements%128)fail('Invalid PTQ1_0 block shape');size=elements/128*28;}
+  // Type 42 is the current official Q2_0 layout: 64 values in 18 bytes.
+  // Older Prism files reused this type ID for 128 values in 34 bytes.
+  // Checking extents and adjacent offsets must reject that legacy layout.
+  if(type===42){if(elements%64)fail('Invalid Q2_0 block shape');size=elements/64*18;}
   if(type===2){if(elements%32)fail('Invalid Q4_0 block shape');size=elements/32*18;}
   if(type===14){if(elements%256)fail('Invalid Q6_K block shape');size=elements/256*210;}
   if(size!==null&&!Number.isSafeInteger(size))fail('Tensor size exceeds safe range');
-  offsets.push({offset,size});
+  offsets.push({offset,size,type});
  }
  const alignment=metadata.get('general.alignment')??32;
  if(!Number.isInteger(alignment)||alignment<1||alignment>4096||(alignment&(alignment-1)))fail('Invalid alignment');
  const dataOffset=Math.ceil(at/alignment)*alignment;
- if(dataOffset>=file.size||offsets.some(({offset,size})=>offset%alignment!==0||offset>=file.size-dataOffset||size!==null&&size>file.size-dataOffset-offset))fail('Tensor range outside file');
+ if(dataOffset>=file.size)fail('Tensor range outside file');
+ for(const {offset,size,type} of offsets)if(offset%alignment!==0||offset>=file.size-dataOffset||size!==null&&size>file.size-dataOffset-offset)fail(type===42?'Q2_0 tensor exceeds file for official group-64 blocks':'Tensor range outside file');
+ const ordered=offsets.slice().sort((a,b)=>a.offset-b.offset);
+ for(let i=0;i+1<ordered.length;i++)if(ordered[i].size!==null&&ordered[i].offset+ordered[i].size>ordered[i+1].offset)fail(ordered[i].type===42?'Q2_0 tensor layout conflicts with official group-64 blocks':'Tensor ranges overlap');
  const architecture=metadata.get('general.architecture'),tokenArray=metadata.get('tokenizer.ggml.tokens');
  return {format:'GGUF',version,bytes:file.size,name:typeof metadata.get('general.name')==='string'?metadata.get('general.name'):'',architecture:typeof architecture==='string'?architecture:'',contextLength:metadata.get(architecture+'.context_length'),tokenizer:metadata.get('tokenizer.ggml.model'),chatTemplate:typeof metadata.get('tokenizer.chat_template')==='string'&&metadata.get('tokenizer.chat_template').trim().length>0,tokenCount:tokenArray?.elementType===8?tokenArray.count:0,tensorCount,tensorTypes:[...types].sort((a,b)=>a-b),tensorExtentsChecked:offsets.every(t=>t.size!==null),dataOffset};
 }

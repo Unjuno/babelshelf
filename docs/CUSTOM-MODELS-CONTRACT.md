@@ -48,7 +48,7 @@ No general-purpose custom runtime/plugin loader is planned. Custom checkpoints a
 
 ## Unit59 foundation evidence
 
-Bounded GGUF v3 inspection and strict declarative local-model records are implemented. The first16MiB prefix may contain initial payload bytes but payload is not interpreted. Known F32 and Prism PTQ1_0 (type143,128elements/28bytes) tensor extents are checked; unknown layouts remain ineligible. Structural eligibility is not numerical compatibility. Hashing streams bytes with bounded task yields, delivered-abort checks and pending-read cancellation/reader cleanup.
+Bounded GGUF v3 inspection and strict declarative local-model records are implemented. The first16MiB prefix may contain initial payload bytes but payload is not interpreted. Known F32, Prism PTQ1_0 (type143,128elements/28bytes), official Q2_0 (type42,64elements/18bytes), Q4_0 and Q6_K tensor extents are checked, including overlap against the next declared tensor; unknown layouts remain ineligible. This rejects the deprecated Prism Q2_0 group-128 layout without admitting Qwen3 to an unsupported browser engine. Structural eligibility is not numerical compatibility. Hashing streams bytes with bounded task yields, delivered-abort checks and pending-read cancellation/reader cleanup.
 
 Node tests cover malformed/truncated tables and payloads, strict records, exact hashes and both queued-Stop/pending-read cancellation. Existing949549920byte official4B file independently inspected and hashed to manifestSHA256; this is file inspection evidence only. Canonical preferences, local import, worker integration and product UI remain outstanding. Current accepted product build is unchanged.
 

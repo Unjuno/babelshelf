@@ -33,8 +33,8 @@
     },
     {
       "path": "./gguf-inspect.js",
-      "bytes": 5397,
-      "sha256": "864556743e39e096000c656b391e6962ddbc222fc19f03df023fad78a18cbed7"
+      "bytes": 6120,
+      "sha256": "e774dc12d879d6fa14288fc6a1e3406f37a3eb1ac932e2ec7c4cf5fbd86aa0f8"
     },
     {
       "path": "./gpu-info.js",
@@ -149,7 +149,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "14f51c37abcbb7d212b63e16c8eb57b6a5e03a42bcaadb392d09d0d19f2394f0"
+      "sha256": "ca7d87bbd41be8ab477856013ffda12493206d803e1fee8651c1ecd8e0201fa3"
     },
     {
       "path": "./ui.js",

@@ -23,9 +23,14 @@ for(const variant of variants){
  const bytes=new Uint8Array(await response.arrayBuffer());
  if(bytes.length!==headerBytes)throw Error(`${variant.name}: header length mismatch`);
  const file={size:variant.bytes,slice(start,end){if(start!==0||end>headerBytes)throw Error('Unexpected GGUF header read');return {arrayBuffer:async()=>bytes.slice(start,end).buffer};}};
- const info=await inspectGGUF(file);
+ let info;
+ try{info=await inspectGGUF(file);}catch(error){
+  if(variant.packing!=='legacy-group128'||!String(error).includes('Q2_0 tensor'))throw error;
+  results.push({file:variant.name,packing:variant.packing,modelBytes:variant.bytes,inspectionError:String(error),eligibleBrowserEngine:null});
+  continue;
+ }
  const engine=eligibleTextEngine(info)?.id??null;
- if(info.architecture!=='qwen3'||info.tokenizer!=='gpt2'||!info.tensorTypes.includes(variant.type)||info.tensorExtentsChecked!==false||engine!==null)throw Error(`${variant.name}: compatibility boundary changed; review before offering an engine`);
+ if(info.architecture!=='qwen3'||info.tokenizer!=='gpt2'||!info.tensorTypes.includes(variant.type)||info.tensorExtentsChecked!==(variant.packing==='official-group64')||engine!==null)throw Error(`${variant.name}: compatibility boundary changed; review before offering an engine`);
  results.push({file:variant.name,packing:variant.packing,modelBytes:variant.bytes,architecture:info.architecture,tokenizer:info.tokenizer,tensorTypes:info.tensorTypes,tensorExtentsChecked:info.tensorExtentsChecked,eligibleBrowserEngine:engine});
 }
 console.log(JSON.stringify({repository,revision,headerBytes,results,fullFilesVerified:false,inferenceVerified:false},null,2));
