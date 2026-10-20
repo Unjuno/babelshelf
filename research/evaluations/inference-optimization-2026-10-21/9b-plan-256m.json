@@ -1,0 +1,312 @@
+{
+  "schema": 1,
+  "scope": "Node/Dawn header and adapter check only; not model loading, generation or browser/phone acceptance",
+  "at": "2026-10-20T20:14:14.322Z",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "runtime": "v24.6.0",
+  "gpuModule": {
+    "package": "webgpu",
+    "version": "0.6.2"
+  },
+  "browser": null,
+  "model": "9B",
+  "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+  "quantization": "PTQ1_0",
+  "runtimeRevision": "621e20782f208660f4f58283c2ce58430020f243",
+  "runtimeSha256": "00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488",
+  "backend": "d3d12",
+  "inputTokens": null,
+  "outputTokens": null,
+  "weightsVerified": false,
+  "headerOnly": false,
+  "requests": [
+    {
+      "method": "HEAD",
+      "range": null
+    },
+    {
+      "method": "GET",
+      "range": "bytes=0-4194303"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=4194304-5242879"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=5242880-6553599"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=6553600-10860838"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=10860839-13576048"
+    },
+    {
+      "method": "HEAD",
+      "range": null
+    },
+    {
+      "method": "GET",
+      "range": "bytes=0-4194303"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=4194304-5242879"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=5242880-6553599"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=6553600-10860838"
+    },
+    {
+      "method": "GET",
+      "range": "bytes=10860839-13576048"
+    }
+  ],
+  "compatibility": {
+    "ok": true
+  },
+  "elapsedMs": 1390.1918,
+  "controlledPlanningLimits": {
+    "scope": "Header-planner input projection only; GPU device/adapter were not changed and this is not a phone result",
+    "maxBufferSize": 268435456,
+    "maxStorageBufferBindingSize": 268435456
+  },
+  "allocationPlan": {
+    "scope": "Static header-based runtime support plan, not actual residency or peak memory; generation cache/activation lifetimes require separate verification",
+    "ok": true,
+    "reason": null,
+    "footprint": {
+      "totalBytes": 2405812224,
+      "buffers": [
+        {
+          "name": "lut2_128Bits.3",
+          "bytes": 268435456
+        },
+        {
+          "name": "lut2_128Bits.2",
+          "bytes": 266338304
+        },
+        {
+          "name": "lut2_128Bits.0",
+          "bytes": 257949696
+        },
+        {
+          "name": "lut2_128Bits.4",
+          "bytes": 257949696
+        },
+        {
+          "name": "lut2_128Bits.5",
+          "bytes": 257949696
+        },
+        {
+          "name": "lmHeadQ4",
+          "bytes": 254279680
+        },
+        {
+          "name": "embedBits",
+          "bytes": 254279680
+        },
+        {
+          "name": "lut2_128Bits.1",
+          "bytes": 245366784
+        },
+        {
+          "name": "lut2_128Bits.6",
+          "bytes": 174063616
+        },
+        {
+          "name": "weights",
+          "bytes": 29411328
+        },
+        {
+          "name": "lut2_128Scales.3",
+          "bytes": 16777216
+        },
+        {
+          "name": "lut2_128Scales.2",
+          "bytes": 16646144
+        },
+        {
+          "name": "lut2_128Scales.0",
+          "bytes": 16121856
+        },
+        {
+          "name": "lut2_128Scales.4",
+          "bytes": 16121856
+        },
+        {
+          "name": "lut2_128Scales.5",
+          "bytes": 16121856
+        },
+        {
+          "name": "lmHeadQ4Scales",
+          "bytes": 15892480
+        },
+        {
+          "name": "embedScales",
+          "bytes": 15892480
+        },
+        {
+          "name": "lut2_128Scales.1",
+          "bytes": 15335424
+        },
+        {
+          "name": "lut2_128Scales.6",
+          "bytes": 10878976
+        }
+      ]
+    },
+    "opIds": [
+      "com.xenova.LlamaEmbed",
+      "com.xenova.BlockHadamard",
+      "com.xenova.Qwen35DecodeLinearInProjConv",
+      "com.xenova.Qwen35LinearAttention",
+      "co.huggingface.GatedRMSNorm",
+      "ai.onnx.Transpose",
+      "com.xenova.LlamaDecodeResidualProjection",
+      "com.xenova.LlamaDecodeGateUp",
+      "com.xenova.LlamaDecodeQkvProj",
+      "com.xenova.LlamaDecodeRopeCacheKv",
+      "com.xenova.CachedDecodeAttention",
+      "com.xenova.LlamaPrefillMatmul",
+      "com.xenova.SampleNextToken",
+      "ai.onnx.Where",
+      "co.huggingface.RMSNorm",
+      "com.xenova.Qwen35PrefillGates",
+      "com.xenova.Qwen35PrefillConv",
+      "com.xenova.Axpy",
+      "co.huggingface.GatedMlpActivation",
+      "com.xenova.LlamaPrefillRopeCacheKv",
+      "com.xenova.StridedCopy"
+    ],
+    "selectableVariants": [
+      "com.xenova.LlamaEmbed#lut2_inverse_rotation_subgroup",
+      "com.xenova.LlamaEmbed#lut2_inverse_rotation",
+      "com.xenova.BlockHadamard#fused_norm_subgroup_workgroup_tee",
+      "com.xenova.BlockHadamard#fused_norm_workgroup_register_tee",
+      "com.xenova.BlockHadamard#fused_norm_tee",
+      "com.xenova.Qwen35DecodeLinearInProjConv#lut2_gemv",
+      "com.xenova.Qwen35LinearAttention#decode_vec4_gather",
+      "com.xenova.Qwen35LinearAttention#decode_scalar",
+      "co.huggingface.GatedRMSNorm#shared_group",
+      "ai.onnx.Transpose#inner_vec4",
+      "ai.onnx.Transpose#generic",
+      "com.xenova.BlockHadamard#subgroup_workgroup",
+      "com.xenova.BlockHadamard#workgroup_register",
+      "com.xenova.BlockHadamard#workgroup",
+      "com.xenova.BlockHadamard#subgroup",
+      "com.xenova.LlamaDecodeResidualProjection#oproj_q4_mr2",
+      "com.xenova.LlamaDecodeResidualProjection#oproj_q4_mr4",
+      "com.xenova.LlamaDecodeResidualProjection#oproj_q4",
+      "com.xenova.BlockHadamard#fused_norm_subgroup_workgroup",
+      "com.xenova.BlockHadamard#fused_norm_workgroup_register",
+      "com.xenova.BlockHadamard#fused_norm",
+      "com.xenova.LlamaDecodeGateUp#lut_compact",
+      "com.xenova.LlamaDecodeResidualProjection#down_q4_mr2",
+      "com.xenova.LlamaDecodeResidualProjection#down_q4_mr4",
+      "com.xenova.LlamaDecodeResidualProjection#down_q4",
+      "com.xenova.LlamaDecodeQkvProj#q4_gated",
+      "com.xenova.LlamaDecodeRopeCacheKv#qk_norm_rope_cache_rope_offset",
+      "com.xenova.CachedDecodeAttention#qwen_splitk_mid_heads",
+      "com.xenova.CachedDecodeAttention#qwen_splitk",
+      "com.xenova.CachedDecodeAttention#qwen_scalar",
+      "com.xenova.LlamaPrefillMatmul#lut2_decode_gemv_mr2",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_f16",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_exact",
+      "com.xenova.SampleNextToken#block_lists",
+      "com.xenova.LlamaEmbed#prefill_lut2",
+      "ai.onnx.Where#broadcast",
+      "co.huggingface.RMSNorm#arena_rows",
+      "com.xenova.LlamaPrefillMatmul#dense_gemv_mrows",
+      "com.xenova.LlamaPrefillMatmul#scalar",
+      "com.xenova.Qwen35PrefillGates#scalar",
+      "com.xenova.Qwen35PrefillConv#scalar",
+      "com.xenova.Qwen35LinearAttention#prefill_vec4_gather",
+      "com.xenova.Qwen35LinearAttention#prefill_scalar",
+      "com.xenova.Axpy#scalar",
+      "co.huggingface.GatedMlpActivation#vec4",
+      "co.huggingface.GatedMlpActivation#scalar",
+      "com.xenova.LlamaPrefillRopeCacheKv#qk_norm_projected_mrope",
+      "com.xenova.CachedDecodeAttention#prefill_flash_gated",
+      "com.xenova.CachedDecodeAttention#prefill_scalar_gated",
+      "com.xenova.StridedCopy#scalar",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_exact_register_rows",
+      "com.xenova.LlamaPrefillMatmul#dense_vector",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_exact_large_m",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_f16_dynamic_rows",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_exact_large_m_dynamic_rows",
+      "com.xenova.LlamaPrefillMatmul#lut2_tiled_exact_dynamic_rows"
+    ]
+  },
+  "device": {
+    "adapterInfo": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "intel-r-iris-r-xe-graphics",
+      "description": "D3D12 driver version 31.0.101.5186",
+      "isFallbackAdapter": false,
+      "subgroupMinSize": 8,
+      "subgroupMaxSize": 16,
+      "subgroupMatrixConfigs": []
+    },
+    "features": [
+      "timestamp-query",
+      "core-features-and-limits",
+      "texture-formats-tier1",
+      "shader-f16",
+      "texture-formats-tier2",
+      "rg11b10ufloat-renderable",
+      "subgroups",
+      "subgroup-size-control"
+    ],
+    "limits": {
+      "maxTextureDimension1D": 8192,
+      "maxTextureDimension2D": 8192,
+      "maxTextureDimension3D": 2048,
+      "maxTextureArrayLayers": 256,
+      "maxBindGroups": 4,
+      "maxBindGroupsPlusVertexBuffers": 24,
+      "maxBindingsPerBindGroup": 1000,
+      "maxDynamicUniformBuffersPerPipelineLayout": 8,
+      "maxDynamicStorageBuffersPerPipelineLayout": 4,
+      "maxSampledTexturesPerShaderStage": 16,
+      "maxSamplersPerShaderStage": 16,
+      "maxStorageBuffersPerShaderStage": 16,
+      "maxStorageTexturesPerShaderStage": 4,
+      "maxUniformBuffersPerShaderStage": 12,
+      "maxUniformBufferBindingSize": 65536,
+      "maxStorageBufferBindingSize": 2147483648,
+      "minUniformBufferOffsetAlignment": 256,
+      "minStorageBufferOffsetAlignment": 256,
+      "maxVertexBuffers": 8,
+      "maxBufferSize": 2147483648,
+      "maxVertexAttributes": 16,
+      "maxVertexBufferArrayStride": 2048,
+      "maxInterStageShaderVariables": 16,
+      "maxColorAttachments": 8,
+      "maxColorAttachmentBytesPerSample": 32,
+      "maxComputeInvocationsPerWorkgroup": 1024,
+      "maxComputeWorkgroupSizeX": 1024,
+      "maxComputeWorkgroupSizeY": 256,
+      "maxComputeWorkgroupSizeZ": 64,
+      "maxComputeWorkgroupStorageSize": 32768,
+      "maxComputeWorkgroupsPerDimension": 65535,
+      "maxImmediateSize": 64,
+      "maxStorageBuffersInVertexStage": 16,
+      "maxStorageBuffersInFragmentStage": 16,
+      "maxStorageTexturesInVertexStage": 4,
+      "maxStorageTexturesInFragmentStage": 4
+    }
+  }
+}

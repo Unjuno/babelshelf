@@ -1,5 +1,23 @@
 # Local inference optimization — 2026-10-21 JST
 
+## Existing sharding and controlled buffer-limit planning
+
+The original Intel support plan's1,728,053,248-byte main bits buffer is not a universal minimum per binding. The exact runtime already partitions that pack according to device limits. Adding a static product rule that rejects all adapters below that original buffer size would incorrectly reject configurations the planner supports. No such product/UI rule, automatic selection or download restriction was introduced.
+
+`probe-bonsai-webgpu.mjs` now supports an optional `BABELSHELF_PLAN_BUFFER_CAP` aligned byte value, only with `BABELSHELF_NUMERICAL_PLAN=1`. It may lower both maxBufferSize and maxStorageBufferBindingSize in a copied descriptor passed only to the pinned runtime's header support planner. It refuses a raised, invalid or unaligned value. The real native GPU device and its actual limits remain unchanged and recorded separately; actual checkAvailability and projected allocationPlan results must not be conflated. No weight buffers are allocated or generated tokens measured.
+
+Same Windows11/Intel/Dawn/D3D12 and pinned9B header/runtime results:
+
+| Planner inputs | Header plan result | Meaning |
+|---|---|---|
+|Actual2GiB buffer/binding limits|Accepted, one1,728,053,248-byte bits pack|Earlier native evidence; not full residency/quality|
+|Controlled256MiB limits|Accepted, seven main LUT2 bits shards, each at most268,435,456bytes|Existing partitioning handles this cap; no new sharding implementation|
+|Controlled128MiB limits|Rejected: lmHeadQ4 requires254,279,680bytes (242.5MiB); embedBits is the same size|The standalone head/embed remain a limit even though main packs split|
+
+The accepted256MiB plan still totals2,405,812,224weight bytes; sharding does not reduce that sum, prove available system memory or include cache/temporary/browser/driver peaks. Evidence `9b-plan-256m.json` and `9b-plan-128m.json` explicitly separates controlledPlanningLimits from real device.limits. These are not simulated iPhone runs or assertions about iPhone Air/Safari's actual limits. A rejected projected plan exits1 even when the preceding actual-adapter availability is true. An attempted4GiB projection above the observed2GiB limit was also rejected with the explicit lower-only error.
+
+The user-triggered product device check currently reports storage/adapter observations and explicitly says loading/generation untested. A browser adapter alone is not a9B acceptance gate. The next architecture investment for a genuinely smaller-cap target would be qualifying chunked head/embedding access in addition to existing main-pack sharding, after observing that target's actual capabilities. Preserve this evidence rather than duplicating partitioning already present. QA/docs changed only; publicv103 and production runtime remain unchanged.
+
 ## Explicit head-activation trace, not a speed benchmark
 
 `scripts/qa/trace-bonsai-activations.mjs MODEL_ID LOCAL_GGUF PINNED_RUNTIME OUTPUT.json [backend]` now prepares a bounded native diagnostic run using only a manifest-pinned existing local model and runtime. Set BABELSHELF_GPU_MODULE explicitly to the optional QA package. The runner disables network, verifies the complete local model hash before inference, selects context512/pipeline1/greedy, uses a fixed public garden prompt and at most eight generated tokens. It never reads application storage or becomes a PC/LAN/app inference backend.
