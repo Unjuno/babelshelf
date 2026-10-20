@@ -46,7 +46,7 @@ export class TextEngineRouter{
   if(cmd==='prepare'||cmd==='verify')return this.backend(args.model).call(cmd,args,events);
   throw Error('Unknown text operation');
  }
- async load(id:string,events?:any){const epoch=this.epoch,backend=this.backend(id),manifest=this.registration(id)?.describe(id)??this.base,identity=JSON.stringify([id,manifest.models.find((m:any)=>m.id===id)?.revision,manifest.runtime?.revision,manifest.contextTokens]);
+ async load(id:string,events?:any){const epoch=this.epoch,backend=this.backend(id),manifest=this.registration(id)?.describe(id)??this.base,identity=JSON.stringify([id,manifest.models.find((m:any)=>m.id===id),manifest.runtime,manifest.contextTokens]);
   if(this.active===backend&&backend.loaded===id&&!backend.failed&&this.residentIdentity===identity)return {model:id,reused:true};
   this.residentIdentity='';if(this.active){const old=this.active;this.active=null;if(!old.failed)await old.unload();}this.check(epoch);this.active=backend;
   try{const result=await backend.load(id,events);this.check(epoch);this.residentIdentity=identity;return result;}catch(error){if(this.active===backend)this.active=null;throw error;}

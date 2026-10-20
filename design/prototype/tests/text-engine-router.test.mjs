@@ -23,6 +23,17 @@ test('reloading the same healthy pinned model preserves its resident session, wh
  f.router.manifest={...f.router.manifest,models:f.router.manifest.models.filter(m=>m.id==='4B'),runtime:{revision:'new-runtime'}};await f.router.load('4B');
  assert.equal(f.calls.filter(c=>c==='webml:load').length,2);assert.equal(f.calls.filter(c=>c==='webml:unload').length,1);
 });
+
+test('same revision labels cannot reuse a session after model or runtime asset pins change',async()=>{
+ for(const changed of ['model','runtime']){
+  const f=setup(),manifest={contextTokens:4096,runtime:{revision:'same-runtime',file:{sha256:'a'.repeat(64),bytes:100}},models:[{id:'4B',revision:'same-model',file:{sha256:'b'.repeat(64),bytes:200}}]};
+  f.router.manifest=manifest;await f.router.load('4B');
+  const next=structuredClone(manifest);if(changed==='model')next.models[0].file.sha256='c'.repeat(64);else next.runtime.file.sha256='d'.repeat(64);
+  f.router.manifest=next;await f.router.load('4B');
+  assert.equal(f.calls.filter(c=>c==='webml:load').length,2,changed+' asset requires load');assert.equal(f.calls.filter(c=>c==='webml:unload').length,1);
+  await f.router.load('4B');assert.equal(f.calls.filter(c=>c==='webml:load').length,2,'unchanged new identity stays resident');
+ }
+});
 test('Stop during ONNX load discards worker and rejects late completion without replay',async()=>{
  const f=setup(),pending=f.router.load(onnxTextManifest.id);f.router.abort();f.finish();await assert.rejects(pending,/Stopped/);
  assert.equal(f.router.loaded,null);assert.ok(f.calls.includes('onnx:terminate'));assert.equal(f.calls.filter(x=>x==='onnx:load').length,1);

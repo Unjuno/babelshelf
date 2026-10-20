@@ -1,5 +1,11 @@
 # Local inference optimization — 2026-10-21 JST
 
+## Resident identity includes declared asset pins
+
+The router's original resident-session optimization compared only ID, model revision, runtime revision and context. A changed declared model or runtime file SHA under the same revision labels could therefore reuse a stale session. A controlled router regression reproduced the skipped reload, then passed after identity serialization was widened to the selected model descriptor, runtime descriptor and context. This captures the asset pins and adapter metadata those descriptors expose, without including unrelated model entries. A repeated unchanged request still avoids unloading/reloading. Stored identity is an immutable string snapshot, so later descriptor mutation cannot retroactively change it.
+
+This does not replace backend verification or discover changed on-disk files by itself. Backends still own complete file hashing, prepared status, runtime ownership, source validation and Stop. App-owned factory replacement and exclusive engine switching remain unchanged. The regressions use controlled backends to check routing/ownership; they are not a new native GPU generation, hash-corruption recovery or phone result. Prototype583, product4, protected runtime28, check33 and both preview/product builds pass; productff9234453db72414/121. Product acceptance was rerun after the actual product build, separately from the preview build. Existing large-chunk warnings remain.
+
 ## Existing sharding and controlled buffer-limit planning
 
 The original Intel support plan's1,728,053,248-byte main bits buffer is not a universal minimum per binding. The exact runtime already partitions that pack according to device limits. Adding a static product rule that rejects all adapters below that original buffer size would incorrectly reject configurations the planner supports. No such product/UI rule, automatic selection or download restriction was introduced.

@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Resident TextEngineRouter reuse now snapshots the full selected model/runtime descriptors and context, including declared asset hashes, rather than revision strings alone. Same-revision/different-pin RED/GREEN covers model and runtime; unchanged descriptors still reuse. See INFERENCE-OPTIMIZATION.md. This is cache routing identity, not readiness authority or a substitute for backend file verification.
+
 Do not infer a1,728,053,248-byte single-buffer minimum from the original Intel9B plan: runtime already shards main weight packs. Controlled256MiB header planning produces seven LUT2 bits shards and accepts;128MiB rejects the unsharded254,279,680-byte head/embed. New BABELSHELF_PLAN_BUFFER_CAP in the native header probe projects lower planner limits only, never changes the real device or certifies phone fit. See INFERENCE-OPTIMIZATION.md; no guessed static UI/device rejection rule was added.
 
 Explicit native head-activation diagnostics are in scripts/qa/trace-bonsai-activations.mjs. Exact-hash local instrumentation retains hidden/rotated/logits graph outputs and synchronous readback; this changes allocation/timing and must never become a product import, benchmark or shipped runtime. Read the activation-trace section of INFERENCE-OPTIMIZATION.md. Real compiled-graph plumbing self-check passes; the full9B attempt refused before loading due low available memory. Session compile-hook/full-checkpoint execution remain unverified until a real run records snapshots.
