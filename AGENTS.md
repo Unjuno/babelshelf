@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Actual sidebar Chrome1552B product-Worker check now covers local verified preparation, English/Japanese generation, Stop and fresh-Worker reload. Single-object JSON prompt produced duplicate objects, so combined check is FAIL; core.parseJSON rejects the actual output. Read latest INFERENCE-OPTIMIZATION.md/2b-sidebar-browser.json; do not call this full harness, PWA/phone/offline acceptance. QA server must stay loopback-only/outside deployment. Publicv107 unchanged.
+
 Real pinned2B full-model activation tracing now succeeds on native Intel/D3D12 after fixing the observer: decode token readback is input_ids (prefill next_token), and warmup is excluded by generation-only arming. Read latest INFERENCE-OPTIMIZATION.md and retained failures/final phased trace.2B QA-only768MiB operational floor; all other models retain4GiB. No phone/browser/performance or9B semantic recovery follows; publicv107 unchanged.
 
 Optional real checkpoint embedding QA now validates explicit Hadamard metadata, compares runtime header/sign parsing and tests sampled inverse embeddings with real stored signs. Read latest INFERENCE-OPTIMIZATION.md: local256-row reindexing and independent repacking do not certify full loader/vocabulary addressing or full9B generation. Publicv107 remains unchanged by QA-only work.
