@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+WebML worker unload detaches session/model/identity before awaiting cleanup, attempts both disposals even on failure, and reports errors. Load failure also cleans acquired handles; post-model-acquisition Stop is checked before session publication. Controlled worker RED/GREEN does not prove driver memory reclamation. Preserve asset stores and explicit retry; see MODEL-RUNTIME-VERIFICATION.md.
+
 Resident TextEngineRouter reuse now snapshots the full selected model/runtime descriptors and context, including declared asset hashes, rather than revision strings alone. Same-revision/different-pin RED/GREEN covers model and runtime; unchanged descriptors still reuse. See INFERENCE-OPTIMIZATION.md. This is cache routing identity, not readiness authority or a substitute for backend file verification.
 
 Do not infer a1,728,053,248-byte single-buffer minimum from the original Intel9B plan: runtime already shards main weight packs. Controlled256MiB header planning produces seven LUT2 bits shards and accepts;128MiB rejects the unsharded254,279,680-byte head/embed. New BABELSHELF_PLAN_BUFFER_CAP in the native header probe projects lower planner limits only, never changes the real device or certifies phone fit. See INFERENCE-OPTIMIZATION.md; no guessed static UI/device rejection rule was added.

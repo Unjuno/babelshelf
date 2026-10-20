@@ -118,8 +118,8 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 12888,
-      "sha256": "d792db382f1783d1bdb471158d585818b380bd1279cc46463a57186e0fd352cc"
+      "bytes": 13287,
+      "sha256": "8a766794638940a4df95f0e262b73eec4e89f5d4db7a31f8dd507325f585603c"
     },
     {
       "path": "./ranges.js",
@@ -159,7 +159,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "c2bbbf3f2eb3551b63ebe741d572be219734c22c6a8315a6a087e80aeaf51dba"
+      "sha256": "253e2b64d2e645105724ebf84e6df7f416d32d8037e9541e3c380db985ae6143"
     },
     {
       "path": "./ui.js",

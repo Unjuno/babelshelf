@@ -5,6 +5,32 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 
+test('a failed load releases resources acquired before the failure before reporting its error',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const events=[],calls=[],context=vm.createContext({createStreamingSHA256,streamingSHA256Backend,fetch:()=>{throw Error('No network');},postMessage:m=>events.push(m),AbortController,DOMException,performance,console});
+ vm.runInContext(source+'\nglobalThis.installFailingLoad=(dispose)=>{load=async()=>{model={dispose};throw Error("Session creation failed");};};globalThis.ownership=()=>({session,model,loadedModelInfo});',context);
+ context.installFailingLoad(async()=>{calls.push('model disposed');});
+ await context.onmessage({data:{id:1,cmd:'load',args:{model:'9B'}}});
+ assert.deepEqual(calls,['model disposed']);assert.equal(events.at(-1).type,'error');assert.match(events.at(-1).value,/Session creation failed/);
+ for(const value of Object.values(context.ownership()))assert.ok(value==null);
+});
+
+test('cleanup failures release both session and model ownership and allow an explicit retry',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ for(const fail of ['session','model','both']){
+  const events=[],calls=[],context=vm.createContext({createStreamingSHA256,streamingSHA256Backend,fetch:()=>{throw Error('No network');},postMessage:m=>events.push(m),AbortController,DOMException,performance,console});
+  vm.runInContext(source+'\nglobalThis.install=(s,m)=>{session=s;model=m;loadedModelInfo={model:"9B"};};globalThis.ownership=()=>({session,model,loadedModelInfo});',context);
+  const disposal=name=>async()=>{calls.push(name);if(fail===name||fail==='both')throw Error(name+' release failed');};
+  context.install({dispose:disposal('session')},{dispose:disposal('model')});
+  await context.onmessage({data:{id:1,cmd:'unload'}});
+  assert.deepEqual(calls,['session','model'],fail+' must attempt both releases');
+  for(const value of Object.values(context.ownership()))assert.equal(value,null);
+  assert.equal(events.at(-1).type,'error');assert.match(events.at(-1).value,fail==='both'?/cleanup failed/:/release failed/);
+  await context.onmessage({data:{id:2,cmd:'count',args:{messages:[]}}});assert.equal(events.at(-1).type,'error');assert.match(events.at(-1).value,/not loaded/);
+  await context.onmessage({data:{id:3,cmd:'unload'}});assert.equal(events.at(-1).type,'done');assert.deepEqual(calls,['session','model'],'retry cannot dispose detached resources twice');
+ }
+});
+
 test('explicit diagnostic reset isolates a generation and reports runtime completion metadata',async()=>{
  const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
  const events=[];let resets=0;

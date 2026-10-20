@@ -48,10 +48,14 @@ async function load(id,size){
  const localURL=new URL('__model/'+m.file.name,self.location.href).href;
  const localFetch=async(url,options={})=>{if(String(url)!==localURL)throw Error('Blocked resource: '+url);return fileResponse(f,options);};
  const loadStarted=performance.now();model=await api.Qwen3_5ForConditionalGeneration.from_pretrained(localURL,{mmproj:null,fetch:localFetch,cache:false,maxLength:manifest.contextTokens,prefixSnapshotStore:null,decodePipelineDepth:1,signal:controller.signal,chatTemplateArgs:{enable_thinking:false},onProgress:p=>send(id,'progress',p.message??p.status)});const runtimeLoadMs=performance.now()-loadStarted;
- session=model.create_session();loadedModelInfo={model:size,revision:m.revision,runtimeRevision:manifest.runtime.revision,quantization:m.localModel?{container:'GGUF',tensorTypes:m.localModel.inspection.tensorTypes}:m.format,contextTokens:model.contextLength};const loadedModel=model;model.lost.then(e=>{if(model!==loadedModel)return;send(0,'lost',String(e?.message??e));model=null;session=null;loadedModelInfo=null;});
+ controller.signal.throwIfAborted();session=model.create_session();loadedModelInfo={model:size,revision:m.revision,runtimeRevision:manifest.runtime.revision,quantization:m.localModel?{container:'GGUF',tensorTypes:m.localModel.inspection.tensorTypes}:m.format,contextTokens:model.contextLength};const loadedModel=model;model.lost.then(e=>{if(model!==loadedModel)return;send(0,'lost',String(e?.message??e));model=null;session=null;loadedModelInfo=null;});
  return {...loadedModelInfo,device:model.deviceInfo(),memory:model.memoryStats(),timings:{verificationMs,importMs,runtimeLoadMs,totalLoadMs:performance.now()-started,hashBackend:streamingSHA256Backend(),decodePipelineDepth:1}};
 }
-async function unload(){await session?.dispose();session=null;await model?.dispose();model=null;loadedModelInfo=null;}
+async function unload(){
+ const oldSession=session,oldModel=model;session=null;model=null;loadedModelInfo=null;
+ const errors=[];try{await oldSession?.dispose();}catch(error){errors.push(error);}try{await oldModel?.dispose();}catch(error){errors.push(error);}
+ if(errors.length)throw errors.length===1?errors[0]:new AggregateError(errors,'Model cleanup failed');
+}
 onmessage=async({data})=>{
  const {id,cmd,args={}}=data;
  if(cmd==='abort'){controller?.abort(new DOMException('Stopped','AbortError'));return;}
@@ -103,5 +107,5 @@ onmessage=async({data})=>{
    default:throw Error('Unknown action');
   }
   send(id,'done',result);
- }catch(e){send(id,'error',e?.name==='AbortError'?'Stopped':String(e?.message??e));}finally{busy=false;controller=null;}
+ }catch(e){if(cmd==='load')try{await unload();}catch(cleanup){e=new AggregateError([e,cleanup],'Model load and cleanup failed');}send(id,'error',e?.name==='AbortError'?'Stopped':String(e?.message??e));}finally{busy=false;controller=null;}
 };
