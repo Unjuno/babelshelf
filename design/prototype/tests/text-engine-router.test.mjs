@@ -5,6 +5,7 @@ import {onnxTextManifest,onnxTextModels} from '../src/text-model-manifest.ts';
 import {createOnnxTextClient} from '../src/onnx-text-client.ts';
 import {Engine} from '../../../dist/engine.js';
 import {nativeOutputRequest} from '../src/native-output-format.ts';
+import {nativeResponseTools,nativeResponseText} from '../../../dist/native-response.js';
 function setup(nativeStructuredOutput=false){const calls=[];let finish;
  const backend=name=>({manifest:{contextTokens:4096,runtime:{revision:'webml-test'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){calls.push(name+':terminate');}},async init(){return{};},async call(cmd){calls.push(name+':'+cmd);return cmd==='status'?{[name]:{filesPresent:true}}:{};},async load(id){calls.push(name+':load');if(name==='onnx')await new Promise(r=>finish=r);this.loaded=id;},async unload(){calls.push(name+':unload');this.loaded=null;},abort(){calls.push(name+':abort');this.loaded=null;}});
  const webml=backend('webml');let onnx;
@@ -27,6 +28,27 @@ test('compact native planner schema omits unavailable scopes without becoming ex
  assert.deepEqual(r.responseTool.actions.search.properties.target.enum,['knowledge']);
  assert.equal(r.responseTool.actions.read.properties.action,undefined);
  assert.equal(r.responseTool.actions.recall,undefined);
+});
+
+test('native capture separates a new body from current/history originals and cannot mix their selectors',()=>{
+ const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:true,historyCount:2,assistantIndices:[0,1]}},s=nativeOutputRequest([],format).responseTool;
+ assert.equal(s.actions.capture,undefined);
+ assert.deepEqual(Object.keys(s.actions.capturetext.properties),['body']);
+ assert.deepEqual(Object.keys(s.actions.capturecurrent.properties),[]);
+ assert.deepEqual(Object.keys(s.actions.captureassistant.properties),['historyIndex']);
+ assert.deepEqual(s.actions.captureassistant.properties.historyIndex.enum,[0,1]);
+ assert.ok(nativeResponseTools(s).some(tool=>tool.function.name==='captureassistant'));
+ const result=(name,args)=>{const call={type:'function',function:{name,arguments:args}};return nativeResponseText({finish_reason:'tool_calls',message:{role:'assistant',content:'',tool_calls:[call]}},s,[call]);};
+ assert.deepEqual(JSON.parse(result('captureassistant',{historyIndex:0})),{action:'capture',query:'',target:'history',historyPart:'assistant',historyIndex:0});
+ assert.deepEqual(JSON.parse(result('capturecurrent',{})),{action:'capture',query:'',target:'current'});
+ assert.deepEqual(JSON.parse(result('captureuser',{historyIndex:1})),{action:'capture',query:'',target:'history',historyPart:'user',historyIndex:1});
+ assert.deepEqual(JSON.parse(result('capturetext',{body:'新しい本文。'})),{action:'capture',query:'',body:'新しい本文。'});
+ assert.throws(()=>result('captureassistant',{historyIndex:2}),e=>e.diagnostic?.reason==='native:value');
+ for(const [name,args]of [['captureassistant',{historyIndex:0,body:'regenerated'}],['captureassistant',{historyIndex:0,historyPart:'user'}],['capturecurrent',{historyIndex:0}],['capturetext',{body:'new',target:'history'}]])assert.throws(()=>result(name,args),e=>e.diagnostic?.reason==='native:fields');
+ const restricted=nativeOutputRequest([],{type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}}).responseTool;
+ for(const name of ['capturecurrent','captureassistant','captureuser','captureinputs'])assert.equal(restricted.actions[name],undefined);
+ const forged=structuredClone(restricted);forged.actions.capturecurrent={type:'object',properties:{},required:[],additionalProperties:false};
+ assert.throws(()=>nativeResponseTools(forged),/Invalid native response format/,'a supplied alias cannot introduce a target absent from the global scoped schema');
 });
 
 test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{

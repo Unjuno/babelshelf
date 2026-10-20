@@ -1,12 +1,14 @@
 import {createStructuredSchema} from './structured-grammar.ts';
 import type {GenerationFormat} from './text-inference.ts';
+// @ts-expect-error Shared browser transport is a plain JavaScript module.
+import {nativeActionBinding} from '../../../dist/native-response.js';
 
 // Compact transport hint, derived from the authoritative scoped schema. Cross-field
 // semantic validation, authorization and reviewed writes remain in the harness.
-function compact(branches:any[],omitAction=false){
+function compact(branches:any[],omit:string[]=[]){
  const properties:Record<string,any>={};
  for(const key of new Set<string>(branches.flatMap(b=>Object.keys(b.properties)))){
-  if(omitAction&&key==='action')continue;
+  if(omit.includes(key))continue;
   const rules=branches.map(b=>b.properties[key]).filter(Boolean),type=rules[0].type;
   if(rules.some(r=>r.type!==type))throw Error('Inconsistent native response schema');
   const rule:any={type};
@@ -18,15 +20,25 @@ function compact(branches:any[],omitAction=false){
   }
   properties[key]=rule;
  }
- const required=branches[0].required.filter((key:string)=>(!omitAction||key!=='action')&&branches.every(b=>b.required.includes(key)));
+ const required=branches[0].required.filter((key:string)=>!omit.includes(key)&&branches.every(b=>b.required.includes(key)));
  return {type:'object',properties,required,additionalProperties:false};
 }
 export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
  if(!format||format==='prose')return {messages};
  const schema:any=createStructuredSchema(format),branches:any[]=schema.anyOf??[schema],parameters=compact(branches);
- const actions=schema.anyOf?Object.fromEntries([...new Set<string>(branches.map(b=>b.properties.action.enum[0]))].map(name=>[name,compact(branches.filter(b=>b.properties.action.enum[0]===name),true)])):undefined;
+ const groups=new Map<string,any[]>();
+ if(schema.anyOf)for(const branch of branches){
+  let name=branch.properties.action.enum[0];
+  if(name==='capture'){
+   const target=branch.properties.target?.enum?.[0],part=branch.properties.historyPart?.enum?.[0];
+   name=target===undefined?'capturetext':target==='current'?'capturecurrent':target==='inputs'?'captureinputs':target==='history'&&part==='assistant'?'captureassistant':target==='history'&&part==='user'?'captureuser':undefined;
+   if(!name)throw Error('Unsupported native capture scope');
+  }
+  const group=groups.get(name)??[];group.push(branch);groups.set(name,group);
+ }
+ const actions=schema.anyOf?Object.fromEntries([...groups].map(([name,group])=>[name,compact(group,Object.keys(nativeActionBinding(name)))])):undefined;
  const name=(typeof format==='string'?format:format.type)==='dialogue-answer'?'babelshelf_answer':'babelshelf_plan';
- const copy=structuredClone(messages),instruction=actions?'Choose exactly one offered action function. Its name supplies the action field; put the remaining required JSON fields in its arguments. Do not repeat action in arguments or write assistant prose. All original scope and authorization rules still apply.':`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
+ const copy=structuredClone(messages),instruction=actions?'Choose one offered function. capturetext creates new text; capturecurrent, captureinputs, captureuser and captureassistant select originals without rewriting them. Supply only its argument fields; no assistant prose. All original scope and authorization rules still apply.':`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
  const system=copy.find(m=>m.role==='system'&&typeof m.content==='string');
  if(system)system.content+='\n'+instruction;else copy.unshift({role:'system',content:instruction});
  return {messages:copy,responseTool:{name,parameters,...(actions?{actions}:{})}};

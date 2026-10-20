@@ -123,8 +123,8 @@
     },
     {
       "path": "./native-response.js",
-      "bytes": 3789,
-      "sha256": "e76ececce273123d24f5c2eb186bb60fde9f5741b78a3a16d3d6821ed60c83a4"
+      "bytes": 4772,
+      "sha256": "f9936d8e1b7382214852decaed94d1c40b7923e27fa4633a9c166fe8e369dd0d"
     },
     {
       "path": "./ranges.js",
@@ -169,7 +169,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "18c05930ef7c9489e84b1e8b7f1413b2db394522a395558198da060d46e64d54"
+      "sha256": "8eaa6a5d35515b4ede0a92a38327b95f3b31cd783ad4cfb8cec4016099d08d91"
     },
     {
       "path": "./ui.js",

@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Latest experimental native capture uses scoped typed aliases: new body vs current/input/user/assistant originals. Shared fixed binding refuses injected body/selectors; default remains OFF. Actual sidebar2B scoped1/3: file summary PASS, Japanese includes instruction in body, history1974+160 exceeds2048 and refuses before generation. Read latest INFERENCE-OPTIMIZATION.md/2b-typed-capture-browser.json; do not claim original selection or speed gain. Next remove redundant native catalog/format overhead without weakening purposes/scope/budget guards. Publicv111 unchanged; local builda907183eafca1b23 only.
+
 Latest publicv111/productf9a38a7ad9b3aa83 adopted, dialogue retained/logsOff/ConnectionOffline. Scoped actual2B check exposes Japanese full-stop loss and rejected current/history competing target; native remains DEFAULT OFF. Explicit summary/file was correctly planned but binder redundantly rewrote it to read. working-file.ts now preserves already explicit validated answer/file and summary/file, while keeping human query/pin/source checks and all prior scope exceptions. Read latest INFERENCE-OPTIMIZATION.md/2b-explicit-file-intent-browser.json; actual plan+binding passes, not full summary/save acceptance. Typed target-dependent proposal/original selection remains next work.
 
 
