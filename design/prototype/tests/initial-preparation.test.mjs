@@ -16,7 +16,15 @@ test('fresh selected Text status controls preparation without treating missing s
 });
 test('initial preparation respects text-only selection without acquiring unselected readers',()=>{
  const prefs=initial(),plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false});assert.equal(plan.models.textModel,prefs.textModel);assert.equal(plan.models.transcriptionModel,'');assert.equal(plan.models.ocrModel,'');assert.equal(prefs.transcriptionModel,'');assert.ok(plan.bytes>950000000);assert.deepEqual(plan.steps.map(s=>s.role),['text']);
- assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-base'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/text model/);
+ assert.throws(()=>initialPreparationPlan({...prefs,transcriptionModel:'whisper-unknown'},{text:false,speech:false,ocr:false}),/runtime/);assert.throws(()=>initialPreparationPlan({...prefs,textModel:''},{text:false,speech:false,ocr:false}),/text model/);
+});
+
+test('Whisper base preparation uses its own package and keeps other roles unchanged',()=>{
+ const prefs=initial();prefs.transcriptionModel='whisper-base';prefs.transcriptionLibrary=['whisper-base'];
+ const plan=initialPreparationPlan(prefs,{text:true,speech:false,ocr:false},'speech');
+ assert.equal(plan.bytes,79666385);assert.equal(plan.steps[0].label,'Whisper base');
+ assert.deepEqual(plan.steps.map(step=>step.role),['speech']);assert.equal(plan.models.textModel,prefs.textModel);
+ assert.equal(initialPreparationPlan(prefs,{text:true,speech:true,ocr:false},'speech').bytes,0);
 });
 
 test('only explicitly selected readers enter preparation, including vision',async()=>{

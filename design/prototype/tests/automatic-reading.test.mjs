@@ -50,7 +50,7 @@ import {capabilityState,localAdapters,requireCapability,videoCapabilityStatus} f
 test('shared capability dispatch separates role, engine support and verified assets',()=>{
  assert.equal(capabilityState('image.ocr','tesseract-7',false).status,'Not prepared');
  assert.equal(requireCapability('image.ocr','tesseract-7',true).engine,'tesseract-wasm');
- assert.equal(capabilityState('audio.transcribe','whisper-base',true).status,'Runtime not connected');
+ assert.equal(capabilityState('audio.transcribe','whisper-base',true).status,'Ready');
  assert.equal(capabilityState('audio.transcribe','d1-omni-600M',true).status,'Runtime not connected');
  assert.equal(capabilityState('decision.classify','d1-omni-600M',true).status,'Ready');
  assert.equal(capabilityState('text.generate','lfm25-230m-qad-q4-0',false).status,'Not prepared');
@@ -104,7 +104,7 @@ test('processor verification stays local even when downloads are enabled; unsupp
   assert.equal(processorAssetControls(capability,model,false,false,true).allowNetwork,true);
   assert.equal(processorAssetControls(capability,model,true,true,true).enabled,false);
  }
- assert.equal(processorAssetControls('audio.transcribe','whisper-base',true,false,true).enabled,false);
+ assert.equal(processorAssetControls('audio.transcribe','whisper-unknown',true,false,true).enabled,false);
  assert.equal(processorAssetControls('image.describe','d1-omni-600M',true,false,true).enabled,false);
  const localDecision=[{id:'local-d1',role:'decision',engine:'onnx-d1-text'}];
  assert.deepEqual(processorAssetControls('decision.classify','local-d1',false,false,false,localDecision),{label:'Choose model files',enabled:true,allowNetwork:false,setup:false});

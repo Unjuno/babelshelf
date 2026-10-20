@@ -2,8 +2,9 @@ import {createStructuredTokenFilter} from './structured-decoding';
 import {validateOnnxTextBudget} from './text-model-manifest';
 /// <reference lib="webworker" />
 import {AutoModelForCausalLM,AutoTokenizer,env,LogitsProcessor,LogitsProcessorList} from '@huggingface/transformers';
-import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
-import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
+import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
+import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
+import {configureLocalTransformerRuntime} from './transformers-runtime';
 import {onnxTextModels,getOnnxTextManifest} from './text-model-manifest';
 import {createPinnedAssetStore} from './pinned-text-assets';
 const networkFetch=globalThis.fetch.bind(globalThis);
@@ -26,8 +27,7 @@ env.customCache={
  },
  async put(){throw Error('Use explicit text model preparation');}
 };
-env.backends.onnx.wasm!.wasmPaths={wasm:wasmURL,mjs:mjsURL};
-env.backends.onnx.wasm!.numThreads=1;env.backends.onnx.wasm!.proxy=false;
+configureLocalTransformerRuntime(env,wasmURL,mjsURL);
 function encode(messages:any[]){
  if(!tokenizer||!model)throw Error('Model not loaded');
  if(!Array.isArray(messages)||messages.length>256||messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>1000000))throw Error('Invalid text messages');

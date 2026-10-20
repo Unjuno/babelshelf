@@ -1,10 +1,14 @@
 /// <reference lib="webworker" />
 import {AutoProcessor,AutoModelForImageTextToText,RawImage,env} from '@huggingface/transformers';
+import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
+import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
+import {configureLocalTransformerRuntime} from './transformers-runtime';
 import {visionManifest,visionReady,prepareVision,visionRuntimeResponse} from './vision-assets';
 
 env.allowRemoteModels=false;env.allowLocalModels=true;env.localModelPath='/vision-model/';
 env.useBrowserCache=false;env.useFSCache=false;env.useCustomCache=true;
 env.customCache={match:async(path:any)=>visionRuntimeResponse(String(path)),put:async()=>{throw Error('Use explicit vision preparation');}};
+configureLocalTransformerRuntime(env,wasmURL,mjsURL);
 
 let processor:any=null,model:any=null,busy=false;
 const modelId='lfm25-vl-450m';

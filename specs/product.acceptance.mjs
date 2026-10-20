@@ -28,11 +28,11 @@ test('published worker permits every pinned Vision preparation URL and no neighb
 });
 test('published worker permits every pinned built-in model asset',async()=>{
  const read=async file=>JSON.parse(await fs.readFile(file,'utf8'));
- const [bonsai,lfm,smol,qwen,decision,ocr,speech,vision]=await Promise.all([
+ const [bonsai,lfm,smol,qwen,decision,ocr,speech,speechBase,vision]=await Promise.all([
   read('dist/model-manifest.json'),read('dist/lfm-model-manifest.json'),
   read('design/prototype/src/onnx-text-manifest.json'),read('design/prototype/src/qwen-text-manifest.json'),
   read('design/prototype/src/decision-manifest.json'),read('design/prototype/src/ocr-manifest.json'),
-  read('design/prototype/src/speech-manifest.json'),read('design/prototype/src/vision-manifest.json')
+  read('design/prototype/src/speech-manifest.json'),read('design/prototype/src/speech-base-manifest.json'),read('design/prototype/src/vision-manifest.json')
  ]);
  const sw=await fs.readFile(root+'sw.js','utf8');
  const declaration=sw.match(/\bREMOTE=(\[[^;]*\]);/);
@@ -42,7 +42,7 @@ test('published worker permits every pinned built-in model asset',async()=>{
   ...lfm.models.map(model=>model.file.url),...smol.files.map(file=>file.url),
   ...qwen.files.map(file=>file.url),...decision.files.map(file=>file.url),
   ...ocr.data.map(file=>file.url),bonsai.runtime.file.url,
-  ...bonsai.models.map(model=>model.file.url),...speech.files.map(file=>file.url),
+  ...bonsai.models.map(model=>model.file.url),...speech.files.map(file=>file.url),...speechBase.files.map(file=>file.url),
   ...vision.files.map(file=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${file.path}`)
  ];
  assert.deepEqual([...actual].sort(),[...required].sort(),'Service Worker remote asset list differs from pinned model manifests');

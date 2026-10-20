@@ -1,3 +1,4 @@
+import {speechModels} from './speech-models.ts';
 // App-owned executable adapter declarations. Saved settings/model labels cannot add capabilities.
 export type LocalCapability='text.generate'|'decision.classify'|'image.ocr'|'audio.transcribe'|'video.audio'|'video.frames'|'pdf.text'|'image.describe'|'text.embed'|'text.rerank'|'audio.synthesize';
 export type LocalAdapter={id:string;engine:string;models:readonly string[];capabilities:readonly LocalCapability[]};
@@ -6,7 +7,7 @@ const adapters:readonly LocalAdapter[]=[
  {id:'webml-text',engine:'webml',models:['4B','2B','9B'],capabilities:['text.generate']},
  {id:'onnx-text',engine:'transformers-onnx',models:['smollm2-360m-instruct','qwen25-05b-instruct'],capabilities:['text.generate']},
  {id:'d1-text',engine:'onnx-d1',models:['d1-omni-600M'],capabilities:['decision.classify']},
- {id:'whisper',engine:'transformers-onnx',models:['whisper-tiny'],capabilities:['audio.transcribe','video.audio']},
+ {id:'whisper',engine:'transformers-onnx',models:speechModels.map(model=>model.id),capabilities:['audio.transcribe','video.audio']},
  {id:'tesseract',engine:'tesseract-wasm',models:['tesseract-7'],capabilities:['image.ocr']},
  {id:'lfm-vision',engine:'transformers-onnx-webgpu',models:['lfm25-vl-450m-q4f16'],capabilities:['image.describe']},
  {id:'pdf-text',engine:'pdfjs',models:[],capabilities:['pdf.text']},

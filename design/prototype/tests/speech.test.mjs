@@ -16,7 +16,7 @@ test('video audio transcription retains video identity, explicit audio-only scop
 });
 test('speech assets only resolve exact pinned local files; corrupt bytes and unrelated URLs refuse',()=>{
  const f=speechManifest.files[0];assert.equal(speechFile('/asr-model/whisper-tiny/'+f.path)?.sha256,f.sha256);
- for(const path of [f.url,'https://evil.invalid/asr-model/whisper-tiny/'+f.path,'/asr-model/whisper-base/'+f.path,'/asr-model/whisper-tiny/../'+f.path])assert.equal(speechFile(path),undefined);
+ for(const path of [f.url,'https://evil.invalid/asr-model/whisper-tiny/'+f.path,'/asr-model/whisper-unknown/'+f.path,'/asr-model/whisper-tiny/../'+f.path])assert.equal(speechFile(path),undefined);
  assert.throws(()=>verifySpeechBytes(f,new Uint8Array(f.bytes)),/verification/i);
 });
 test('reviewed transcript pins exact original, model and bounded time segments without modifying raw projection',async()=>{

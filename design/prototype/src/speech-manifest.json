@@ -3,7 +3,7 @@
   "id": "whisper-tiny",
   "repository": "onnx-community/whisper-tiny",
   "revision": "ff4177021cc41f7db950912b73ea4fdf7d01d8e7",
-  "runtime": "@huggingface/transformers@3.8.1",
+  "runtime": "@huggingface/transformers@4.3.0",
   "dtype": "q8",
   "device": "wasm",
   "files": [

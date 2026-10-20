@@ -50,7 +50,7 @@ test('the standard add list contains at least three prepared-path text choices a
  assert.equal(canAddModel('decision','d1-omni-600M'),true);
  assert.equal(canAddModel('decision','d1-3B'),false);
  assert.equal(canAddModel('speech','whisper-tiny'),true);
- assert.equal(canAddModel('speech','whisper-base'),false);
+ assert.equal(canAddModel('speech','whisper-base'),true);
 });
 
 test('every fresh-library text choice has an explicit pinned preparation route',()=>{
@@ -75,7 +75,7 @@ test('only installed app-owned role adapters can be added from model libraries',
  assert.equal(modelCatalogStatus('decision','d1-omni-600M'),'Not prepared');
  assert.equal(modelCatalogStatus('decision','d1-3B'),'Runtime not connected');
  assert.equal(modelCatalogStatus('speech','whisper-tiny'),'Not prepared');
- assert.equal(modelCatalogStatus('speech','whisper-base'),'Runtime not connected');
+ assert.equal(modelCatalogStatus('speech','whisper-base'),'Not prepared');
  assert.equal(modelCatalogStatus('ocr','tesseract-7'),'Not prepared');
  assert.equal(modelCatalogStatus('ocr','whisper-tiny'),'Runtime not connected');
  assert.equal(modelCatalogStatus('text','4B'),'Not prepared');

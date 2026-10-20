@@ -1,12 +1,12 @@
 import {validateVideoAudioTiming,type VideoAudioTiming} from './video-audio-timeline.ts';
 import languages from './speech-languages.json' with {type:'json'};
-import {speechManifest} from './speech-assets.ts';
+import {speechModelProvenance,validSpeechModelProvenance} from './speech-models.ts';
 import {readOriginal,originalRef,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 // @ts-expect-error Canonical baseline is JavaScript.
 import {createNote} from '../../../dist/core.js';
 export type Transcript={schema:1;containerTiming?:VideoAudioTiming;type:'audio-transcript';sourceTrack?:'video-audio';timebase?:'decoded-audio';timing:'model-estimated';language:string;original:OriginalRef;model:{id:string;revision:string;runtime:string;dtype:string};durationMs:number;coverage:{startMs:number;endMs:number};text:string;segments:{startMs:number;endMs:number;modelEndMs:number|null;text:string}[]};
 export type SpeechModelProvenance=Transcript['model'];
-export function makeTranscript(asset:OriginalAsset,durationMs:number,result:any,language='en',containerTiming?:VideoAudioTiming,model:SpeechModelProvenance={id:speechManifest.id,revision:speechManifest.revision,runtime:speechManifest.runtime,dtype:speechManifest.dtype}):Transcript {
+export function makeTranscript(asset:OriginalAsset,durationMs:number,result:any,language='en',containerTiming?:VideoAudioTiming,model:SpeechModelProvenance=speechModelProvenance()):Transcript {
  const value:Transcript={schema:1,type:'audio-transcript',...(containerTiming?{containerTiming:structuredClone(containerTiming)}:{}),...(asset.kind==='video'?{sourceTrack:'video-audio' as const,timebase:'decoded-audio' as const}:{}),timing:'model-estimated',language,original:originalRef(asset),model:structuredClone(model),durationMs,coverage:{startMs:0,endMs:durationMs},text:result.text?.trim(),segments:(result.chunks??[]).map((c:any)=>({text:c.text?.trim(),startMs:Math.round(c.timestamp?.[0]*1000),modelEndMs:c.timestamp?.[1]===null?null:Math.round(c.timestamp?.[1]*1000),endMs:c.timestamp?.[1]===null?durationMs:Math.min(durationMs,Math.round(c.timestamp?.[1]*1000))}))};
  validateTranscript(value,asset);return value;
 }
@@ -14,9 +14,7 @@ export function validateTranscript(t:Transcript,asset:OriginalAsset){
  if(!languages.includes(t?.language))throw Error('Transcript language invalid');
  readOriginal(asset,t.original);
  if(t.containerTiming!==undefined){if(asset.kind!=='video')throw Error('Transcript video timing invalid');validateVideoAudioTiming(t.containerTiming,t.durationMs);}
- const builtin=JSON.stringify(t?.model)===JSON.stringify({id:speechManifest.id,revision:speechManifest.revision,runtime:speechManifest.runtime,dtype:speechManifest.dtype});
- const custom=!!t?.model&&/^local-speech-[a-f0-9]{64}$/.test(t.model.id)&&t.model.revision==='sha256:'+t.model.id.slice('local-speech-'.length)&&t.model.runtime===speechManifest.runtime&&t.model.dtype==='q8';
- if((asset.kind!=='audio'&&asset.kind!=='video')||(asset.kind==='video'?(t.sourceTrack!=='video-audio'||t.timebase!=='decoded-audio'):(t.sourceTrack!==undefined||t.timebase!==undefined))||t.schema!==1||t.type!=='audio-transcript'||t.timing!=='model-estimated'||(!builtin&&!custom)||!Number.isInteger(t.durationMs)||t.durationMs<=0||t.durationMs>120000||t.coverage?.startMs!==0||t.coverage?.endMs!==t.durationMs||typeof t.text!=='string'||!t.text.trim()||t.text.length>32000||!Array.isArray(t.segments)||!t.segments.length||t.segments.length>1000)throw Error('Transcript metadata invalid');
+ if((asset.kind!=='audio'&&asset.kind!=='video')||(asset.kind==='video'?(t.sourceTrack!=='video-audio'||t.timebase!=='decoded-audio'):(t.sourceTrack!==undefined||t.timebase!==undefined))||t.schema!==1||t.type!=='audio-transcript'||t.timing!=='model-estimated'||!validSpeechModelProvenance(t.model)||!Number.isInteger(t.durationMs)||t.durationMs<=0||t.durationMs>120000||t.coverage?.startMs!==0||t.coverage?.endMs!==t.durationMs||typeof t.text!=='string'||!t.text.trim()||t.text.length>32000||!Array.isArray(t.segments)||!t.segments.length||t.segments.length>1000)throw Error('Transcript metadata invalid');
  let start=0;for(const s of t.segments){if(typeof s.text!=='string'||!s.text.trim()||!Number.isInteger(s.startMs)||!Number.isInteger(s.endMs)||s.startMs<start||s.endMs<=s.startMs||s.endMs>t.durationMs||(s.modelEndMs!==null&&(!Number.isInteger(s.modelEndMs)||s.modelEndMs>s.endMs+30000||s.modelEndMs<=s.startMs))||s.endMs!==Math.min(t.durationMs,s.modelEndMs??t.durationMs))throw Error('Transcript time range invalid');start=s.startMs;}
  if(t.segments.map(s=>s.text).join(' ').replace(/\s/g,'')!==t.text.replace(/\s/g,''))throw Error('Transcript segments mismatch');
 }

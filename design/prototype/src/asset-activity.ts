@@ -9,6 +9,7 @@ import {decisionManifest} from './decision-assets.ts';
 import {ocrManifest,ocrModelPins,type OcrLanguage} from './ocr-assets.ts';
 import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 import {speechManifest} from './speech-assets.ts';
+import {getSpeechManifest,speechModelLabel} from './speech-models.ts';
 import {visionManifest} from './vision-assets.ts';
 export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'vision.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare';
 type FileDescriptor={name:string;size:number;type:string};
@@ -20,7 +21,11 @@ export function textAssetInput(id:string,allowNetwork=false,files?:FileDescripto
  const network=allowNetwork&&!m.localModel;
  return {source:{name:m.name},role:'text',model:{id:m.id,revision:m.revision,format:m.format,file:filePin(m.file)},runtime:{name:textManifest.runtime.name,revision:textManifest.runtime.revision,file:filePin(textManifest.runtime.file)},allowNetwork:network,method:files||m.localModel?'local-files':network?'explicit-preparation':'local-only',...(files?{files:files.map(f=>({name:f.name,bytes:f.size,mime:f.type}))}:{})};
 }
-export function speechAssetInput(allowNetwork:boolean,custom?:CustomSpeechModel){return custom?{source:{name:custom.label},role:'speech',model:{id:custom.id,revision:custom.revision,format:'Whisper-ONNX',files:custom.files.map(filePin)},runtime:{name:speechManifest.runtime,revision:'app-owned-transformersjs'},device:'wasm',allowNetwork:false,method:'local-files'}:{source:{name:'Whisper tiny'},role:'speech',model:{id:speechManifest.id,revision:speechManifest.revision,dtype:speechManifest.dtype},runtime:speechManifest.runtime,device:speechManifest.device,files:speechManifest.files.map(filePin),allowNetwork,method:'explicit-preparation'};}
+export function speechAssetInput(allowNetwork:boolean,custom?:CustomSpeechModel,id='whisper-tiny'){
+ if(custom)return {source:{name:custom.label},role:'speech',model:{id:custom.id,revision:custom.revision,format:'Whisper-ONNX',files:custom.files.map(filePin)},runtime:{name:speechManifest.runtime,revision:'app-owned-transformersjs'},device:'wasm',allowNetwork:false,method:'local-files'};
+ const model=getSpeechManifest(id);if(!model)throw Error('Speech runtime not connected');
+ return {source:{name:speechModelLabel(id)},role:'speech',model:{id:model.id,revision:model.revision,dtype:model.dtype},runtime:model.runtime,device:model.device,files:model.files.map(filePin),allowNetwork,method:'explicit-preparation'};
+}
 // Acquired synchronously before the first audit write: clicks cannot race the worker's busy state.
 export class AssetOperationGate{
  private held=false;
