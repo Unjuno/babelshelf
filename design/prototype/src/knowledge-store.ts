@@ -4,7 +4,7 @@ import {findStoredFiles} from './file-discovery.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
-import {buildInputReadings,validateInputReadings,type ReviewedText} from './input-readings.ts';
+import {buildInputReadings,validateInputReadings,inputReadingKind,type ReviewedText} from './input-readings.ts';
 import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {visionTextNote,type VisionText} from './vision-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
@@ -176,7 +176,7 @@ export class KnowledgeStore {
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
     if(created.some(n=>current.notes.some(old=>old.id===n.id))||originals.some(a=>current.runs.some(r=>r.key===originalKey(a.id))))throw Error('Original already saved');
-    const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===(n.ocrText?'ocr':n.pdfText?'pdf':'speech'))))throw Error('Input reading mismatch');checkNotes(notes);assertFolderNamespace(notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
+    const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===inputReadingKind(n))))throw Error('Input reading mismatch');checkNotes(notes);assertFolderNamespace(notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
     for(const a of turn.attachments!)if(a.reading&&!notes.some(n=>n.id===a.reading?.noteId&&n.state==='active'&&latest(n).version===a.reading?.revision))throw Error('Input source changed');
     for(const a of turn.attachments!)if(!notes.some(n=>n.id===a.id&&n.originalAsset&&n.state==='active'))throw Error('Original withdrawn or unavailable');
     checkAttachmentBatch(turn.attachments!.map(a=>({size:runs.find(r=>r.key===originalKey(a.id))!.value.bytes})));

@@ -52,3 +52,5 @@ Future restructuring should extract one transaction boundary at a time from `Pro
 ## Acceptance boundary
 
 Node tests and controlled worker tests prove contracts, not model quality. Native PC browser flows, installed-PWA cold starts, Sites-hosted delivery, OS-level network isolation, and physical Android/iPhone use are separate evidence. A successful adapter/device probe does not prove real model generation. Current unresolved gates are listed in `REMAINING-GATES.md`.
+
+Image input now shares the same typed submission boundary as OCR/PDF/speech. input-readings.ts owns the unique derivative kind used by KnowledgeStore commit checks and backup validation; adding a reader must not create a second, stale kind switch in persistence. Vision observations remain generated and potentially speculative, with single-image coverage and source pins. This change connects the existing app-owned Vision adapter to Send; it does not add model-supplied code or write authority.

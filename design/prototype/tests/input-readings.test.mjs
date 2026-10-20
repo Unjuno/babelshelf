@@ -50,3 +50,10 @@ test('model read/search for current readable inputs continues to an answer, pres
  for(const action of ['capture','edit','recall','transform','summary'])assert.equal(routeInputRequest({action},inputs,false).action,action);
  assert.equal(routeInputRequest({action:'search'},inputs,true).action,'search');assert.equal(routeInputRequest({action:'read'},[],false).action,'read');
 });
+
+import {inputReadingKind} from '../src/input-readings.ts';
+test('atomic submission and backup use the same unique derived reading kind',async()=>{
+ const {review,notes}=await fixture();assert.equal(inputReadingKind(notes[1]),'ocr');assert.equal(inputReadingKind(notes[0]),undefined);
+ assert.equal(inputReadingKind({visionText:{text:'observations'}}),'vision');assert.equal(inputReadingKind({pdfText:{}}),'pdf');assert.equal(inputReadingKind({transcription:{}}),'speech');
+ assert.equal(inputReadingKind({...notes[1],visionText:{text:'conflicting'}}),undefined);
+});

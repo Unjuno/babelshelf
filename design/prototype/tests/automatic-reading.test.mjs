@@ -122,3 +122,32 @@ test('offline processor verification refuses missing or corrupt local bytes with
  assert.equal(fetches,0);assert.equal(writes,0);
  }finally{for(const [key,value] of Object.entries(saved)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 });
+
+import {makeVisionText} from '../src/vision-text.ts';
+import {visionManifest} from '../src/vision-assets.ts';
+import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts';
+
+test('prepared selected image understanding enters Send as generated, source-pinned observations and survives backup',async()=>{
+ const asset=await raw(),controller=new AbortController(),events=[];let ocrCalls=0;
+ const description=makeVisionText(asset,{model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,prompt:'What color is shown?',text:'A green background with white letters.',width:100,height:100});
+ const result=await readInputOriginal(asset,{...policy,visionModel:visionManifest.id,visionReady:true},{vision:async()=>description,ocr:async()=>{ocrCalls++;throw Error('Must not silently substitute OCR');}},controller.signal,()=>{},record(events,controller.signal));
+ assert.equal(result.reading?.kind,'vision');assert.match(result.status,/generated/i);assert.equal(ocrCalls,0);assert.equal(events[0].tool,'image.describe');
+ const runs=[{key:originalKey(asset.id),value:asset}],notes=[originalNote(asset),...buildInputReadings([result.reading],runs)],ref=readingRef(result.reading);
+ const dialogue=appendTurn(emptyDialogue(),{id:'vision-input',user:description.prompt,attachments:[{id:asset.id,name:asset.name,kind:'image',status:result.status,asset:originalRef(asset),reading:ref}]});
+ const evidence=readingEvidence(notes,[ref],description.prompt);assert.equal(evidence[0].noteId,ref.noteId);assert.match(evidence[0].coverage,/generated.*observation/i);assert.match(evidence[0].coverage,/may.*incorrect/i);
+ const pack=await makeStateBackup({notes,settings:[{key:'ui-v1-dialogue',value:dialogue}],runs});const restored=await parseStateBackup(JSON.stringify(pack));assert.deepEqual(restored.notes[1].visionText,description);
+ const corrupt=structuredClone(pack);corrupt.payload.settings[0].value.turns[0].attachments[0].reading.kind='ocr';corrupt.sha256=stateHash(corrupt.payload);await assert.rejects(parseStateBackup(JSON.stringify(corrupt)));
+});
+
+test('selected but unprepared or failing vision never becomes OCR, fabricated evidence or a download',async()=>{
+ const asset=await raw(),controller=new AbortController();let called=0;
+ const adapters={vision:async()=>{called++;throw Error('Vision device unavailable');},ocr:async()=>{throw Error('No fallback');}};
+ const missing=await readInputOriginal(asset,{...policy,visionModel:visionManifest.id,visionReady:false},adapters,controller.signal,()=>{},record([],controller.signal));assert.equal(missing.reading,undefined);assert.match(missing.status,/understanding not prepared/i);assert.equal(called,0);
+ const failed=await readInputOriginal(asset,{...policy,visionModel:visionManifest.id,visionReady:true},adapters,controller.signal,()=>{},record([],controller.signal));assert.equal(failed.reading,undefined);assert.equal(failed.status,'Vision device unavailable');assert.equal(called,1);
+});
+
+test('Stop during image observations never commits a late generated reading',async()=>{
+ const asset=await raw(),controller=new AbortController(),events=[];
+ await assert.rejects(readInputOriginal(asset,{...policy,visionModel:visionManifest.id,visionReady:true},{vision:async()=>{controller.abort();return makeVisionText(asset,{model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,prompt:'Describe',text:'Late output',width:100,height:100});}},controller.signal,()=>{},record(events,controller.signal)),/Stopped/);
+ assert.equal(events.at(-1).status,'stopped');assert.equal(events.filter(event=>event.status==='succeeded').length,0);
+});
