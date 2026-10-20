@@ -23,6 +23,10 @@ test('WebML count and generate share the exact native tool/schema/prompt while p
 test('compact native planner schema omits unavailable scopes without becoming execution authority',()=>{
  const r=nativeOutputRequest([],{type:'dialogue-plan',scope:{inputs:true,file:false,current:false,historyCount:0,assistantIndices:[]}}),p=r.responseTool.parameters;
  assert.equal(r.responseTool.name,'babelshelf_plan');assert.ok(!p.properties.action.enum.includes('calculate'));assert.ok(!p.properties.action.enum.includes('tool'));assert.equal(p.properties.historyIndex,undefined);assert.ok(!p.properties.target.enum.includes('history'));assert.ok(!p.properties.target.enum.includes('file'));assert.equal(p.additionalProperties,false);
+ assert.deepEqual(r.responseTool.actions.read.properties.target.enum,['path']);
+ assert.deepEqual(r.responseTool.actions.search.properties.target.enum,['knowledge']);
+ assert.equal(r.responseTool.actions.read.properties.action,undefined);
+ assert.equal(r.responseTool.actions.recall,undefined);
 });
 
 test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{

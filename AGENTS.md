@@ -1,5 +1,8 @@
 # Repository handoff instructions
 
+Latest publicv109 includes scoped planner count-format consistency and memo sharing; native transport remains DEFAULT OFF. Actual sidebar full-prompt wrapper fails search function naming; derived per-action functions now pass real2B search/calculate/capture validation3/3. Read latest INFERENCE-OPTIMIZATION.md/2b-named-actions-harness-browser.json:1460-token cold input costs~40.7s; warm follow-ups have1416cached tokens. Not full Send/storage/Japanese/9B/phone acceptance. Do not auto-enable from this bounded pass; reduce repetitive prompt/schema overhead next without weakening guards.
+
+
 Native structured transport is implemented but DEFAULT OFF. Read latest INFERENCE-OPTIMIZATION.md/2b-native-port-browser.json: actual sidebar answer13 passes but bare-request plan returns invalid read/knowledge, rejected by unchanged planner. Do not enable globally or deploy as a quality fix until actual full harness prompts/semantic guards pass. Count and generate must share tools; compact schema is only a hint. Publicv108 unchanged.
 
 

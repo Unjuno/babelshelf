@@ -3,11 +3,10 @@ import type {GenerationFormat} from './text-inference.ts';
 
 // Compact transport hint, derived from the authoritative scoped schema. Cross-field
 // semantic validation, authorization and reviewed writes remain in the harness.
-export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
- if(!format||format==='prose')return {messages};
- const schema:any=createStructuredSchema(format),branches:any[]=schema.anyOf??[schema];
+function compact(branches:any[],omitAction=false){
  const properties:Record<string,any>={};
  for(const key of new Set<string>(branches.flatMap(b=>Object.keys(b.properties)))){
+  if(omitAction&&key==='action')continue;
   const rules=branches.map(b=>b.properties[key]).filter(Boolean),type=rules[0].type;
   if(rules.some(r=>r.type!==type))throw Error('Inconsistent native response schema');
   const rule:any={type};
@@ -19,10 +18,16 @@ export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
   }
   properties[key]=rule;
  }
- const required=branches[0].required.filter((key:string)=>branches.every(b=>b.required.includes(key)));
+ const required=branches[0].required.filter((key:string)=>(!omitAction||key!=='action')&&branches.every(b=>b.required.includes(key)));
+ return {type:'object',properties,required,additionalProperties:false};
+}
+export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
+ if(!format||format==='prose')return {messages};
+ const schema:any=createStructuredSchema(format),branches:any[]=schema.anyOf??[schema],parameters=compact(branches);
+ const actions=schema.anyOf?Object.fromEntries([...new Set<string>(branches.map(b=>b.properties.action.enum[0]))].map(name=>[name,compact(branches.filter(b=>b.properties.action.enum[0]===name),true)])):undefined;
  const name=(typeof format==='string'?format:format.type)==='dialogue-answer'?'babelshelf_answer':'babelshelf_plan';
- const copy=structuredClone(messages),instruction=`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
+ const copy=structuredClone(messages),instruction=actions?'Choose exactly one offered action function. Its name supplies the action field; put the remaining required JSON fields in its arguments. Do not repeat action in arguments or write assistant prose. All original scope and authorization rules still apply.':`Submit the required JSON object once as arguments to the ${name} tool instead of writing JSON in assistant text. All original scope and authorization rules still apply.`;
  const system=copy.find(m=>m.role==='system'&&typeof m.content==='string');
  if(system)system.content+='\n'+instruction;else copy.unshift({role:'system',content:instruction});
- return {messages:copy,responseTool:{name,parameters:{type:'object',properties,required,additionalProperties:false}}};
+ return {messages:copy,responseTool:{name,parameters,...(actions?{actions}:{})}};
 }

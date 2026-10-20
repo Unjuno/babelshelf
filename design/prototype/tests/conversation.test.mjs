@@ -8,6 +8,20 @@ import {explicitSavedKnowledgeQuestion} from '../src/turn-router.ts';
 
 const engine=(limit=2048)=>({manifest:{contextTokens:limit},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async()=>({text:'Earlier request: use Japanese. Verification code: AMBER-42.'})});
 
+test('planner budgets the exact scoped generation format before starting inference',async()=>{
+ let generated=false;const formats=[],context={summary:'',refs:[],recent:[],turnCount:0};
+ const port={manifest:{contextTokens:2048},count:async(_messages,format)=>{formats.push(format);return {prompt_tokens:format?1900:10};},generate:async()=>{generated=true;return {text:'{"action":"search","query":"meeting"}'};}};
+ await assert.rejects(planDialogue(port,'Find notes about the meeting.',context),/Input exceeds context limit/);
+ assert.equal(generated,false);assert.deepEqual(formats,[{type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}}]);
+});
+
+test('planner preflight and inference share one memoized scoped token count',async()=>{
+ const {createTextInference}=await import('../src/text-inference.ts');let counts=0;
+ const runtime={manifest:{contextTokens:2048,models:[{id:'test',revision:'v'}],runtime:{revision:'r'}},loaded:'test',assets:{},load:async()=>{},stop(){},count:async(_messages,format)=>{counts++;assert.equal(format.type,'dialogue-plan');return {prompt_tokens:100};},generate:async(_messages,_budget,format)=>{assert.equal(format.type,'dialogue-plan');return {text:'{"action":"search","query":"meeting"}'};}};
+ const plan=await planDialogue(createTextInference(()=>runtime),'Find meeting notes.',{summary:'',refs:[],recent:[],turnCount:0});
+ assert.equal(plan.action,'search');assert.equal(counts,1);
+});
+
 test('observed native 2B read/knowledge combination remains rejected by the real planner validator',async()=>{
  const observed={text:'{"action":"read","query":"meeting notes","target":"knowledge"}'};
  const port={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:0}),generate:async()=>observed};

@@ -23,3 +23,14 @@ test('arbitrary tool/schema definitions are not accepted as output transport',()
  assert.throws(()=>nativeResponseTools({...spec,name:'delete-files'}),/response format/);
  assert.throws(()=>nativeResponseTools({...spec,parameters:{...spec.parameters,additionalProperties:true}}),/response format/);
 });
+
+test('scoped named action is mapped to one inert plan and enforces its own fields',()=>{
+ const parameters={type:'object',properties:{action:{type:'string',enum:['search']},query:{type:'string'},target:{type:'string',enum:['knowledge','path']}},required:['action','query'],additionalProperties:false};
+ const actions={search:{type:'object',properties:{query:{type:'string'},target:{type:'string',enum:['knowledge']}},required:['query'],additionalProperties:false}},s={name:'babelshelf_plan',parameters,actions};
+ assert.equal(nativeResponseTools(s)[0].function.name,'search');
+ const call={type:'function',function:{name:'search',arguments:{query:'meeting',target:'knowledge'}}},r={finish_reason:'tool_calls',message:{role:'assistant',content:'',tool_calls:[call]}};
+ assert.deepEqual(JSON.parse(nativeResponseText(r,s,[call])),{action:'search',query:'meeting',target:'knowledge'});
+ call.function.arguments.target='path';assert.throws(()=>nativeResponseText(r,s,[call]),e=>e.diagnostic.reason==='native:value');
+ call.function.arguments={action:'edit',query:'meeting'};assert.throws(()=>nativeResponseText(r,s,[call]),e=>e.diagnostic.reason==='native:fields');
+ call.function.name='edit';assert.throws(()=>nativeResponseText(r,s,[call]),e=>e.diagnostic.reason==='native:call');
+});
