@@ -190,6 +190,12 @@ test('a token-limited dialogue reply continues within a fixed bound, then fails 
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Only the beginning',finishReason:'length'};}};
  await assert.rejects(groundedAnswer(store,e,'4B','Write a story.','','chat',context),/output limit/);assert.equal(calls,4);
 });
+test('a punctuation-only model collapse fails after one generation instead of repeating continuations',async()=>{
+ const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
+ const e={...engine(),loaded:'9B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'!'.repeat(256),finishReason:'length',outputTokens:256};}};
+ await assert.rejects(groundedAnswer(store,e,'9B','Write a two-sentence story.','','chat',context),/repeated one character/);
+ assert.equal(calls,1);
+});
 test('a capped prose segment continues from its prior text without adding citations or tools',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{calls++;assert.equal(format,'prose');if(calls===1)return {text:'The lantern glowed. ',finishReason:'length'};assert.match(messages.at(-2).content,/lantern glowed/);assert.match(messages.at(-1).content,/Continue/);return {text:'Then dawn came.',finishReason:'stop'};}};

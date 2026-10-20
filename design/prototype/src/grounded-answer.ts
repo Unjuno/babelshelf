@@ -15,8 +15,14 @@ function outputLimited(result:GenerationResult,budget:number){
  if(['stop','eos_token'].includes(result.finishReason??''))return false;
  return result.outputTokens!==undefined&&result.outputTokens>=budget;
 }
+function checkRepeatedOutput(text:string){
+ // A real 9B run filled its budget with one punctuation character. Continuing
+ // that output consumed more inference without producing an answer.
+ const compact=text.replace(/\s/gu,'');
+ if(/^([^\p{L}\p{N}])\1{63,}$/u.test(compact))throw Error('Model output repeated one character · try another model');
+}
 async function continueDialogue(engine:TextRuntime,messages:{role:string;content:string}[],initial:GenerationResult,budget:number,check:()=>void){
- const parts=[initial.text];let result=initial;
+ checkRepeatedOutput(initial.text);const parts=[initial.text];let result=initial;
  for(let segment=1;outputLimited(result,budget)&&segment<4;segment++){
   let previous=parts.at(-1)!,continuation:{role:string;content:string}[]=[],available=0;
   for(let trim=0;trim<8;trim++){
@@ -26,7 +32,7 @@ async function continueDialogue(engine:TextRuntime,messages:{role:string;content
    previous=Array.from(previous).slice(Math.ceil(Array.from(previous).length/2)).join('');
   }
   if(available<128)throw Error('Response exceeded model context limit');
-  budget=Math.min(768,available);result=await engine.generate(continuation,budget,'prose');check();if(result.stopped)throw Error('Stopped');
+  budget=Math.min(768,available);result=await engine.generate(continuation,budget,'prose');check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
   if(!result.text.trim())throw Error('Empty model continuation');parts.push(result.text);
  }
  if(outputLimited(result,budget))throw Error('Response exceeded model output limit');
@@ -64,7 +70,7 @@ export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,mod
  if(inputReadings.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId)))throw Error('Context limit · fewer attachments');
  if(!evidence.length&&(workingFile||!context))throw Error(hits.length?'Context limit':'No matching notes');
  const parse=(text:string)=>answerContext?parseChatAnswer(text,evidence):(()=>{const p=parseAnswer(text,evidence);if(p.status==='insufficient_evidence')throw Error('Insufficient evidence');return {answer:p.answer,sources:p.refs};})();
- check();let generated=await engine.generate(messages,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');
+ check();let generated=await engine.generate(messages,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);
  let parsed:{answer:string;sources:any[]};
  if(mode==='chat')parsed={answer:await continueDialogue(engine,messages,generated,replyTokens,check),sources:[]};
  else {
@@ -75,7 +81,7 @@ export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,mod
   // into a model response or treat malformed output as a successful answer.
   const retry=messages.map((message,index)=>index===0?{...message,content:message.content+' Output valid compact JSON. Escape quotation marks inside strings. No markdown or extra text.'}:message);
   if((await engine.count(retry)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
-  generated=await engine.generate(retry,replyTokens);check();if(generated.stopped)throw Error('Stopped');if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
+  generated=await engine.generate(retry,replyTokens);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
   try{parsed=parse(generated.text);}catch(retryError){if(retryError instanceof SyntaxError)throw Error('Invalid model JSON · retry');throw retryError;}
  }
  }
