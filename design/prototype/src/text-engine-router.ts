@@ -5,9 +5,9 @@ export type TextBackendRegistration={id:string;modelIds:readonly string[];descri
 type Registered=TextBackendRegistration&{instance:TextBackend|null};
 // Trusted factories come from application code. Stored models/config cannot supply code.
 export class TextEngineRouter{
- private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';
- constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[]){
-  this.webml=webml;this.base=webml.manifest;
+ private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';private createBase:(()=>TextBackend)|undefined;
+ constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend){
+  this.webml=webml;this.base=webml.manifest;this.createBase=createBase;
   const defaults:TextBackendRegistration={id:'onnx-text',modelIds:onnxTextModels.map(m=>m.id),describe:id=>combinedTextManifest({...this.base,models:[]},id),create:createOnnx};
   const engines=new Set<string>(),models=new Set<string>((this.base.models??[]).map((m:any)=>m.id));
   for(const r of [defaults,...additional]){
@@ -39,6 +39,15 @@ export class TextEngineRouter{
  private selectedRegistrations(model?:string,incomingModels:any[]=[]){if(model===undefined)return this.registrations;if(!model)return [];if(!this.base.models?.some((m:any)=>m.id===model)&&!incomingModels.some(m=>m.id===model)&&!this.registration(model))throw Error('Unknown text model');return this.registrations.filter(r=>r.modelIds.includes(model));}
  private async status(model?:string){const selected=this.selectedRegistrations(model),epoch=this.epoch,base=await this.webml.call('status');this.check(epoch);const assets:Record<string,any>={};for(const r of selected){Object.assign(assets,await this.optionalStatus(r,epoch));this.check(epoch);}return {...base,...assets};}
  async init(){return this.webml.init();}
+ get needsRecovery(){return !!this.webml.failed;}
+ async recover(){
+  if(!this.webml.failed)return false;
+  if(!this.createBase)throw Error('Reload app to restart model worker');
+  const epoch=this.epoch,old=this.webml;this.residentIdentity='';if(this.active===old)this.active=null;old.abort();old.worker.terminate();
+  const replacement=this.createBase();this.webml=replacement;
+  try{await replacement.init();this.check(epoch);return true;}
+  catch(error){replacement.abort();replacement.worker.terminate();if(this.webml===replacement)this.webml=old;throw error;}
+ }
  async call(cmd:string,args:any={},events?:any):Promise<any>{
   if(cmd==='status')return this.status(args.model);
   if(cmd==='configure'){const selected=this.selectedRegistrations(args.statusModel,args.models),epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of selected){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}

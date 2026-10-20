@@ -1,0 +1,20 @@
+// Standalone browser transport check. It never loads a model or reads app storage.
+import {build} from '../../design/prototype/node_modules/vite/dist/node/index.js';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {resolve,join} from 'node:path';
+const out=resolve(process.argv[2]);await mkdir(out,{recursive:false});
+await build({configFile:false,logLevel:'warn',build:{outDir:out,emptyOutDir:false,lib:{entry:{engine:resolve('dist/engine.js'),router:resolve('design/prototype/src/text-engine-router.ts')},formats:['es'],fileName:(_format,name)=>name+'.js'},minify:false}});
+await writeFile(join(out,'index.html'),`<!doctype html><meta charset="utf-8"><title>Worker recovery transport check</title><style>body{font:20px system-ui;max-width:44em;margin:2em;color:#152b25;background:#f5faf7}button{font:inherit;padding:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Worker recovery transport check</h1><p>No models, inference, downloads, or app storage.</p><button id="run">Run transport check</button><pre id="result">Not run</pre><script type="module" src="./check.js"></script>`);
+await writeFile(join(out,'check.js'),`import {Engine} from './engine.js';import {TextEngineRouter} from './router.js';
+const button=document.querySelector('#run'),view=document.querySelector('#result');
+button.onclick=async()=>{button.disabled=true;const workers=[],commands=[],states=[];let router;const result={scope:'Actual browser Worker transport failure/replacement only; no inference/GPU/model acceptance',userAgent:navigator.userAgent,at:new Date().toISOString(),passed:false};
+const check=(condition,message)=>{if(!condition)throw Error(message);};
+const code='self.onmessage=({data})=>{if(data.cmd==="abort")return;if(data.cmd==="crash")throw Error("Intentional QA transport failure");if(!["init","configure"].includes(data.cmd))throw Error("Inference/acquisition forbidden in this check");postMessage({id:data.id,type:"done",value:{}});};';
+const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));let timer;
+try{const manifest={contextTokens:1,runtime:{revision:'transport-check-only'},models:[{id:'4B',revision:'no-model-loaded'}]};
+const create=()=>{const worker=new Worker(url),index=workers.length,send=worker.postMessage.bind(worker),terminate=worker.terminate.bind(worker);workers.push(worker);commands.push([]);worker.postMessage=message=>{commands[index].push(message.cmd);send(message);};worker.terminate=()=>{result.terminations=(result.terminations??0)+1;terminate();};return new Engine(manifest,message=>states.push(message),worker);};
+const old=create();router=new TextEngineRouter(old,()=>{throw Error('Optional engine must stay idle');},[],create);
+await Promise.race([(async()=>{await router.init();await old.call('crash').then(()=>{throw Error('Crash must reject');},error=>check(error.message==='Model worker stopped','Unexpected transport failure'));check(router.needsRecovery,'Fatal Worker state missing');check(workers.length===1,'Failure restarted automatically');await router.recover();await router.call('configure',{models:[],statusModel:'4B'});check(router.loaded===null,'Recovery must not load or replay');check(JSON.stringify(commands)===JSON.stringify([['init','crash','abort'],['init','configure']]),'Unexpected command replay');result.commands=commands;result.states=states;result.loaded=router.loaded;result.passed=true;})(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Transport check timeout')),10000);})]);
+}catch(error){result.error=String(error.stack??error);}finally{clearTimeout(timer);result.terminationsBeforeTeardown=result.terminations??0;for(const worker of workers)worker.terminate();URL.revokeObjectURL(url);view.textContent=JSON.stringify(result,null,2);document.title=result.passed?'PASS · Worker recovery transport':'FAIL · Worker recovery transport';button.disabled=false;}};
+`);
+console.log(out);

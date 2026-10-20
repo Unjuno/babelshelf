@@ -3,12 +3,37 @@ import assert from 'node:assert/strict';
 import {TextEngineRouter} from '../src/text-engine-router.ts';
 import {onnxTextManifest,onnxTextModels} from '../src/text-model-manifest.ts';
 import {createOnnxTextClient} from '../src/onnx-text-client.ts';
+import {Engine} from '../../../dist/engine.js';
 function setup(){const calls=[];let finish;
  const backend=name=>({manifest:{contextTokens:4096,runtime:{revision:'webml-test'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){calls.push(name+':terminate');}},async init(){return{};},async call(cmd){calls.push(name+':'+cmd);return cmd==='status'?{[name]:{filesPresent:true}}:{};},async load(id){calls.push(name+':load');if(name==='onnx')await new Promise(r=>finish=r);this.loaded=id;},async unload(){calls.push(name+':unload');this.loaded=null;},abort(){calls.push(name+':abort');this.loaded=null;}});
  const webml=backend('webml');let onnx;
  const router=new TextEngineRouter(webml,()=>onnx=backend('onnx'));
  return {router,calls,get onnx(){return onnx;},finish:()=>finish()};
 }
+
+test('explicit base worker recovery initializes a fresh owner without replaying inference or acquisition',async()=>{
+ const calls=[],manifest={contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]};
+ const backend=(name,failed)=>({manifest,failed,loaded:null,worker:{terminate(){calls.push(name+':terminate');}},abort(){calls.push(name+':abort');},async init(){calls.push(name+':init');return{};},async call(cmd){calls.push(name+':'+cmd);return{};},async load(id){calls.push(name+':load');this.loaded=id;},async unload(){this.loaded=null;}});
+ const old=backend('old',true),fresh=backend('fresh',false),router=new TextEngineRouter(old,()=>{throw Error('Optional engine must stay idle');},[],()=>fresh);
+ assert.equal(await router.recover(),true);assert.deepEqual(calls,['old:abort','old:terminate','fresh:init']);assert.equal(router.loaded,null);
+ assert.equal(await router.recover(),false);assert.deepEqual(calls,['old:abort','old:terminate','fresh:init']);
+ await router.call('configure',{models:[],statusModel:'4B'});await router.load('4B');assert.equal(router.loaded,'4B');assert.deepEqual(calls.slice(3),['fresh:configure','fresh:load']);
+});
+
+test('actual Engine crash status recovers through the router and requires explicit registry and Load',async()=>{
+ const transports=[],states=[],manifest={contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]};
+ const create=()=>{const w={sent:[],postMessage(m){this.sent.push(m);},terminate(){this.terminated=true;},emit(m){this.onmessage({data:m});}};transports.push(w);return new Engine(manifest,s=>states.push(s),w);};
+ const old=create(),router=new TextEngineRouter(old,()=>{throw Error('Optional engine must stay idle');},[],create);
+ old.worker.onerror({message:'controlled worker failure'});assert.equal(old.failed,true);assert.equal(states.at(-1),'Model worker stopped');assert.equal(transports.length,1,'failure itself does not restart or replay');
+ const recovering=router.recover(),fresh=transports[1];assert.equal(old.worker.terminated,true);assert.deepEqual(fresh.sent.map(m=>m.cmd),['init']);fresh.emit({id:fresh.sent[0].id,type:'done',value:{}});assert.equal(await recovering,true);assert.equal(router.loaded,null);
+ const configuration=router.call('configure',{models:[],statusModel:'4B'});fresh.emit({id:fresh.sent.at(-1).id,type:'done',value:{}});await configuration;
+ const loading=router.load('4B');fresh.emit({id:fresh.sent.at(-1).id,type:'done',value:true});await loading;assert.equal(router.loaded,'4B');assert.deepEqual(fresh.sent.map(m=>m.cmd),['init','configure','load']);
+});
+
+test('Stop during replacement initialization rejects recovery and never publishes the replacement',async()=>{
+ const calls=[];let finish;const manifest={contextTokens:4096,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},old={manifest,failed:true,worker:{terminate(){}},abort(){},async init(){},async call(){throw Error('Original worker stopped');},async load(){},async unload(){}},fresh={manifest,failed:false,worker:{terminate(){calls.push('terminate');}},abort(){calls.push('abort');},init(){return new Promise(resolve=>finish=resolve);},async call(){},async load(){calls.push('load');},async unload(){}};
+ const router=new TextEngineRouter(old,()=>{throw Error('unused');},[],()=>fresh),pending=router.recover();router.abort();finish({});await assert.rejects(pending,/Stopped/);assert.ok(calls.includes('terminate'));assert.ok(!calls.includes('load'));assert.equal(router.loaded,null);await assert.rejects(router.call('status',{model:'4B'}),/Original worker stopped/);
+});
 test('cross-engine load releases previous engine and pins active runtime identity',async()=>{
  const f=setup();await f.router.load('4B');assert.equal(f.router.manifest.runtime.revision,'webml-test');
  const pending=f.router.load(onnxTextManifest.id);await Promise.resolve();f.finish();await pending;

@@ -1,4 +1,5 @@
 export class Engine{
+ get failed(){return !!this.workerFault;}
  constructor(manifest,onState=()=>{},worker=null){
   this.manifest=manifest;this.onState=onState;this.seq=0;this.pending=new Map();this.resourceEpoch=0;
   this.worker=worker??new Worker(new URL('./model-worker.js',import.meta.url),{type:'module'});
@@ -12,7 +13,7 @@ export class Engine{
    const p=this.pending.get(m.id);if(!p)return;
    if(m.type==='done'||m.type==='error'){this.pending.delete(m.id);m.type==='done'?p.resolve(m.value):p.reject(Error(m.value));}else p.events?.(m.type,m.value);
   };
-  this.worker.onerror=(event)=>{this.loaded=null;this.resourceEpoch++;this.workerFault=Error('Model worker stopped');this.lastResourceError=this.workerFault;console.error(event.message??'Model worker stopped');for(const p of this.pending.values())p.reject(this.workerFault);this.pending.clear();};
+  this.worker.onerror=(event)=>{this.loaded=null;this.resourceEpoch++;this.workerFault=Error('Model worker stopped');this.lastResourceError=this.workerFault;console.error(event.message??'Model worker stopped');for(const p of this.pending.values())p.reject(this.workerFault);this.pending.clear();this.onState(this.workerFault.message);};
  }
  call(cmd,args={},events){if(this.workerFault)return Promise.reject(this.workerFault);return new Promise((resolve,reject)=>{const id=++this.seq;this.pending.set(id,{cmd,resolve,reject,events});this.worker.postMessage({id,cmd,args});});}
  async init(){return this.call('init',{manifest:this.manifest});}

@@ -1,5 +1,7 @@
 # Repository handoff instructions
 
+Fatal WebML Worker failure now exposes failed status and explicit Load may recover through an app-owned base factory. Router recovery only initializes; the hook invalidates registry caches and resyncs current canonical settings before loading. No replay/acquisition. Read MODEL-RUNTIME-VERIFICATION.md for Stop-race/controlled tests and actual sidebar Worker transport evidence; this is not post-crash GPU generation acceptance.
+
 WebML worker unload detaches session/model/identity before awaiting cleanup, attempts both disposals even on failure, and reports errors. Load failure also cleans acquired handles; post-model-acquisition Stop is checked before session publication. Controlled worker RED/GREEN does not prove driver memory reclamation. Preserve asset stores and explicit retry; see MODEL-RUNTIME-VERIFICATION.md.
 
 Resident TextEngineRouter reuse now snapshots the full selected model/runtime descriptors and context, including declared asset hashes, rather than revision strings alone. Same-revision/different-pin RED/GREEN covers model and runtime; unchanged descriptors still reuse. See INFERENCE-OPTIMIZATION.md. This is cache routing identity, not readiness authority or a substitute for backend file verification.

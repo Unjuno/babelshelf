@@ -11,7 +11,7 @@ const base=JSON.parse(await readFile(new URL('../../../dist/model-manifest.json'
 const source=(await readFile(new URL('../src/useBonsai.ts',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'').replace(/^export /gm,'').replace(/new URL\('\.\/(?:bonsai|onnx-text|lfm-text)-worker\.ts',import\.meta\.url\)/g,"'worker'");
 function setup(loaded='',options={}){
  const effects=[],refs=[],calls=[],stateWrites=[];let index=0,resolveConfigure;
- class Engine{constructor(manifest){this.manifest=manifest;this.loaded=loaded;this.worker={terminate(){}};}init(){return Promise.resolve({});}call(cmd){calls.push(cmd);if(cmd==='configure')return new Promise(resolve=>{resolveConfigure=resolve;});if(cmd==='status'){if(options.statusError)return Promise.reject(options.statusError);return options.statusGate??Promise.resolve({'4B':{filesPresent:false}});}return Promise.resolve({});}abort(){calls.push('abort');}async load(model){calls.push('load:'+model);if(options.loadGate)await options.loadGate;if(options.loadError)throw options.loadError;this.loaded=model;}async unload(){calls.push('unload');this.loaded='';}async generate(){calls.push('generate');return {text:'controlled test output'};}}
+ class Engine{get needsRecovery(){return options.needsRecovery===true;}async recover(){calls.push('recover');return await options.recover();}constructor(manifest){this.manifest=manifest;this.loaded=loaded;this.worker={terminate(){}};}init(){return Promise.resolve({});}call(cmd){calls.push(cmd);if(cmd==='configure')return new Promise(resolve=>{resolveConfigure=resolve;});if(cmd==='status'){if(options.statusError)return Promise.reject(options.statusError);return options.statusGate??Promise.resolve({'4B':{filesPresent:false}});}return Promise.resolve({});}abort(){calls.push('abort');}async load(model){calls.push('load:'+model);if(options.loadGate)await options.loadGate;if(options.loadError)throw options.loadError;this.loaded=model;}async unload(){calls.push('unload');this.loaded='';}async generate(){calls.push('generate');return {text:'controlled test output'};}}
  const useRef=value=>refs[index++]??(refs[index-1]={current:value}),useState=value=>[typeof value==='object'?{'4B':{filesPresent:true}}:value,next=>stateWrites.push(next)];
  const hook=new Function('createTextInference','useEffect','useRef','useState','Engine','withLocalModels','baseManifest','Worker','TextEngineRouter','createOnnxTextBackend','combinedTextManifest','lfmTextModels','describeLfmText','createLfmTextBackend','runtimeStatus',stripTypeScriptTypes(source)+';return useBonsai;')(createTextInference,f=>effects.push(f),useRef,useState,Engine,withLocalModels,base,class{},class{constructor(webml){return webml;}},()=>{},x=>x,[],()=>({}),()=>{},runtimeStatus);
  const api=hook([],true);effects[0]();return {api,calls,stateWrites,release:()=>resolveConfigure({})};
@@ -19,6 +19,13 @@ function setup(loaded='',options={}){
 for(const operation of ['load','prepare'])test('Stop during registry synchronization cannot start '+operation,async()=>{
  const {api,calls,release}=setup(),pending=operation==='load'?api.load('4B'):api.prepare('4B',false,[]);
  await Promise.resolve();await Promise.resolve();api.stop();release();await assert.rejects(pending,/Stopped/);assert.deepEqual(calls,['configure','abort']);assert.equal(api.loaded,'');
+});
+
+test('Stop immediately after successful worker replacement still invalidates the old registry cache',async()=>{
+ const options={},f=setup('',options),first=f.api.load('4B');await Promise.resolve();await Promise.resolve();f.release();await first;
+ options.needsRecovery=true;options.recover=async()=>{options.needsRecovery=false;f.api.stop();return true;};
+ await assert.rejects(f.api.load('4B'),/Stopped/);assert.equal(f.calls.filter(c=>c==='configure').length,1);
+ const retry=f.api.load('4B');await Promise.resolve();await Promise.resolve();assert.equal(f.calls.filter(c=>c==='configure').length,2,'replacement must receive canonical registry before Load');f.release();await retry;assert.equal(f.calls.filter(c=>c==='load:4B').length,2);
 });
 
 test('Stop during pending custom registration cannot begin weight preparation',async()=>{
