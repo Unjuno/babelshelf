@@ -68,3 +68,5 @@ At the initial memory observation the PC had602,596KiB free physical memory; lat
 `scripts/qa/probe-bonsai-webgpu.mjs` uses an explicitly installed optional Node/Dawn module via BABELSHELF_GPU_MODULE, a hash-verified local runtime, and an existing local model or retained bounded-header descriptor. It never launches a browser, fetches a runtime/model, or certifies generation. The optional Node package is QA-only and not a product dependency. `inspect-bonsai-alternatives.mjs` applies the production intake validator to retained exact prefix data and never registers a model.
 
 The WebML runtime's redistribution license is still unstated; production retains direct pinned upstream preparation, not a vendored runtime. Hash-wasm is MIT with its separate shipped notice. No app data, model weights, raw upstream runtime, browser profile or credentials belong in the published evidence/archive.
+
+Published as Sitev102 at https://babelshelf.com/, product29ed0f58ab9d059d/121, canonical implementationbcc1433. Independent HTTPS main/SW hashes match. Publication does not establish adoption by open clients or browser inference acceptance.
