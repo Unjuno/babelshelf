@@ -1,3 +1,4 @@
+import {getQwen3TextManifest} from './qwen3-text-manifest.ts';
 import {decisionManifest} from './decision-assets.ts';
 import {capabilityState} from './local-capabilities.ts';
 import {isOnnxText} from './text-model-manifest.ts';
@@ -37,7 +38,7 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  // never add readers or spend storage on roles that were left unselected.
  // Custom packages are imported locally and contribute no network bytes.
  const steps:{role:Role;label:string;readyLabel:string;ready:boolean;bytes:number}[]=[];
- if(text)steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+((isOnnxText(text.id)||isLfmText(text.id,value.customModels))?0:textManifest.runtime.file.bytes)});
+ if(text)steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+((isOnnxText(text.id)||isLfmText(text.id,value.customModels)||getQwen3TextManifest(text.id,value.customModels))?0:textManifest.runtime.file.bytes)});
  if(roles.includes('speech'))steps.push({role:'speech',label:selectedSpeech?.label??speechModelLabel(models.transcriptionModel),readyLabel:'Verified',ready:ready.speech,bytes:selectedSpeech?0:builtinSpeech?.files.reduce((n,f)=>n+f.bytes,0)??0});
  if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
  if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}

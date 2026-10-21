@@ -15,6 +15,10 @@ test('LFM2 custom records must match the inspected wllama adapter contract',()=>
  const value=record();value.engine='wllama-lfm2';value.inspection.architecture='lfm2';value.inspection.tensorTypes=[0,2,14];value.inspection.tensorCount=3;assert.deepEqual(validateLocalModel(value),value);
  for(const change of [r=>r.inspection.tokenizer='sentencepiece',r=>r.inspection.chatTemplate=false,r=>r.inspection.tensorTypes=[0,2,143],r=>r.inspection.tensorExtentsChecked=false]){const bad=record();bad.engine='wllama-lfm2';bad.inspection.architecture='lfm2';bad.inspection.tensorTypes=[0,2,14];bad.inspection.tensorCount=3;change(bad);assert.throws(()=>validateLocalModel(bad),/model/i);}
 });
+test('Qwen3 CPU custom identity admits audited packings but excludes private and ambiguous layouts',()=>{
+ const value=record();value.engine='wllama-qwen3';value.inspection.architecture='qwen3';value.inspection.tensorTypes=[0,2,42];value.inspection.tensorCount=3;assert.deepEqual(validateLocalModel(value),value);
+ for(const change of [r=>r.inspection.tensorTypes=[0,142],r=>r.inspection.tensorTypes=[0,143],r=>r.inspection.tensorExtentsChecked=false,r=>r.engine='webml-qwen35',r=>r.inspection.architecture='qwen35']){const bad=structuredClone(value);change(bad);assert.throws(()=>validateLocalModel(bad),/model/i);}
+});
 test('custom decision records bind only the fixed app-owned D1 text graph assets',()=>{
  const value=decisionRecord();assert.deepEqual(validateLocalModel(value),value);
  for(const change of [r=>r.engine='remote',r=>r.inspection.architecture='llama',r=>r.inspection.scope='multimodal',r=>r.files.pop(),r=>r.files[4].path='onnx/arbitrary.onnx',r=>r.files.push({path:'script.js',bytes:10,sha256:'6'.repeat(64)}),r=>r.files[0].sha256='bad',r=>r.runtime='custom.js',r=>r.ready=true]){const bad=decisionRecord();change(bad);assert.throws(()=>validateLocalModel(bad),/model/i);}

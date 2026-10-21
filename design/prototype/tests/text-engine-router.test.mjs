@@ -15,6 +15,13 @@ function setup(nativeStructuredOutput=false){const calls=[];let finish;
  return {router,calls,webml,get onnx(){return onnx;},finish:()=>finish()};
 }
 
+test('a custom-only installed engine stays idle with zero models and accepts/removes a validated registry later',async()=>{
+ const f=setup(),calls=[];let ids=[];const describe=()=>({contextTokens:2048,runtime:{revision:'cpu-fixed'},models:ids.map(id=>({id,revision:'sha256:fixture'}))});
+ const registration=()=>({id:'qwen3-text',modelIds:[...ids],describe,create:()=>{calls.push('create');return {manifest:describe(),loaded:null,worker:{terminate(){calls.push('terminate');}},abort(){calls.push('abort');},async init(){return{};},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;}};}});
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('Unrelated optional worker');},[registration()]);await router.init();await router.call('status');assert.deepEqual(calls,[]);assert.equal(router.manifest.models.some(m=>m.id==='local-qwen3'),false);
+ ids=['local-qwen3'];router.replaceRegistration('qwen3-text',registration());assert.equal(router.manifest.models.find(m=>m.id==='local-qwen3').revision,'sha256:fixture');await router.load('local-qwen3');assert.equal(router.loaded,'local-qwen3');assert.deepEqual(calls,['create']);await router.unload();ids=[];router.replaceRegistration('qwen3-text',registration());assert.equal(router.manifest.models.some(m=>m.id==='local-qwen3'),false);assert.deepEqual(calls,['create','abort','terminate']);
+ assert.throws(()=>new TextEngineRouter(f.webml,()=>null,[{...registration(),describe:()=>({...describe(),models:[{id:'hidden',revision:'x'}]})}]),/Invalid text engine manifest/);
+});
 test('WebML count and generate share the exact native tool/schema/prompt while prose stays plain',async()=>{
  const f=setup(true),seen=[];f.webml.call=async(cmd,args)=>{seen.push({cmd,args});return{};};await f.router.load('4B');
  const messages=[{role:'system',content:'Return the required JSON.'},{role:'user',content:'A question'}],before=structuredClone(messages);

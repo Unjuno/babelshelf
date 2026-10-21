@@ -1,0 +1,515 @@
+{
+  "scope": "Actual sidebar real Qwen3-0.6B CPU adapter; not full harness, 8B or phone acceptance",
+  "at": "2026-10-21T00:35:52.337Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "crossOriginIsolated": true,
+  "identity": {
+    "variant": "default",
+    "runtime": {
+      "name": "wllama CPU count extension",
+      "revision": "wllama-3.8.1-count1-a09a6c37e9e58c44",
+      "contextTokens": 2048,
+      "maxReplyTokens": 768,
+      "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+      "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+      "patchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+      "files": [
+        {
+          "path": "index.js",
+          "bytes": 318537,
+          "sha256": "7172035fb1521a83b178048efddfdb3c0fd90fd6e7c0f5831c9d95a68c7f9539"
+        },
+        {
+          "path": "default.wasm",
+          "bytes": 6886604,
+          "sha256": "8e709bee62b81a1e432f67450956c6e9f2d9a55492de42bc21bc5293c157b03a"
+        },
+        {
+          "path": "compat.js",
+          "bytes": 128615,
+          "sha256": "978b330aa7d8644e2edbe991415cb39b45d67540ad7d15f68f5a60f4b6147ce7"
+        },
+        {
+          "path": "compat.wasm",
+          "bytes": 13685530,
+          "sha256": "1f9644d6c42a4106e34a0111d506d5068c84efe5ae5e9225611960cc0a4fec4c"
+        }
+      ],
+      "licenses": [
+        "wllama-MIT.txt",
+        "llama-cpp-MIT.txt"
+      ]
+    },
+    "adapterFiles": [
+      {
+        "path": "qwen3-adapter.js",
+        "sha256": "493eb9963aefda88c208e3254b25d3256cab0f52912d06f83bee0da2bf8bbcbc"
+      },
+      {
+        "path": "lfm-adapter.js",
+        "sha256": "ddf84ef5409e68f8f992dd7b36e4776decbfd253ce2577e1e71c846c1530a799"
+      },
+      {
+        "path": "local-models.js",
+        "sha256": "439bedb836464ea9b185925fccc1a1f5fe17beed33878cb809a424e6fdc1e6f0"
+      },
+      {
+        "path": "local-engines.js",
+        "sha256": "c8937db72821950e6f107e0525715b34813a56433a93b221d4ba3d5a824d1a92"
+      },
+      {
+        "path": "gguf-inspect.js",
+        "sha256": "5a0f7a25fa67f20cf4417c460e8a4f1f686b3deeb6c1e03522bc170ff03f96fe"
+      },
+      {
+        "path": "sha256.js",
+        "sha256": "83947a4c0476ab4ba227bd1dd60bdddc334943c7e45b8b5fbf64cb8c3d84c86c"
+      },
+      {
+        "path": "streaming-sha256.js",
+        "sha256": "a05654866fc9b7259fc3bd3582e709f94670707031dd988c125ad42dcfaff1c7"
+      }
+    ]
+  },
+  "model": {
+    "id": "qa-qwen3-06b",
+    "revision": "13ac06624948e4d8589cb4b6f90100837342fcb8",
+    "file": {
+      "name": "Qwen3-0.6B-Q4_0.gguf",
+      "bytes": 428970080,
+      "sha256": "da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+      "url": "https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/13ac06624948e4d8589cb4b6f90100837342fcb8/Qwen3-0.6B-Q4_0.gguf"
+    }
+  },
+  "cases": [
+    {
+      "name": "English",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is 6 plus 7? Reply with only the number."
+        }
+      ],
+      "json": false,
+      "maxTokens": 32,
+      "count": 26,
+      "again": 26,
+      "text": "6 + 7 = 13",
+      "firstContentMs": 8128.430000007153,
+      "totalMs": 10868.810000002384,
+      "inputTokens": 26,
+      "outputTokens": 9,
+      "tokenCountSource": "runtime-timings",
+      "usage": null,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 26,
+        "prompt_ms": 7717.41,
+        "prompt_per_token_ms": 296.8234615384615,
+        "prompt_per_second": 3.369005922971567,
+        "predicted_n": 9,
+        "predicted_ms": 3116.599,
+        "predicted_per_token_ms": 389.574875,
+        "predicted_per_second": 2.566900650356366
+      },
+      "tokensPerSecond": 0.8280575334372416,
+      "wallMs": 10882.554999947548,
+      "countMatches": true
+    },
+    {
+      "name": "Japanese",
+      "messages": [
+        {
+          "role": "user",
+          "content": "日本語で短く挨拶してください。"
+        }
+      ],
+      "json": false,
+      "maxTokens": 48,
+      "count": 21,
+      "again": 21,
+      "text": "お welcome! おはよう！",
+      "firstContentMs": 6134.704999983311,
+      "totalMs": 8815.25,
+      "inputTokens": 21,
+      "outputTokens": 9,
+      "tokenCountSource": "runtime-timings",
+      "usage": null,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 21,
+        "prompt_ms": 5713.62,
+        "prompt_per_token_ms": 272.07714285714286,
+        "prompt_per_second": 3.6754281873838304,
+        "predicted_n": 9,
+        "predicted_ms": 3084.175,
+        "predicted_per_token_ms": 385.521875,
+        "predicted_per_second": 2.5938865336759425
+      },
+      "tokensPerSecond": 1.020957998922322,
+      "wallMs": 8826.839999973774,
+      "countMatches": true
+    },
+    {
+      "name": "Structured answer",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Return only a JSON object with an answer string."
+        },
+        {
+          "role": "user",
+          "content": "What is 6 plus 7?"
+        }
+      ],
+      "json": true,
+      "maxTokens": 48,
+      "count": 35,
+      "again": 35,
+      "text": "{\n  \"answer\": \"13\"\n}",
+      "firstContentMs": 10605.32999998331,
+      "totalMs": 14130.589999973774,
+      "inputTokens": 35,
+      "outputTokens": 11,
+      "tokenCountSource": "runtime-timings",
+      "usage": null,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 35,
+        "prompt_ms": 10127.379,
+        "prompt_per_token_ms": 289.35368571428575,
+        "prompt_per_second": 3.455978096603277,
+        "predicted_n": 11,
+        "predicted_ms": 3979.316,
+        "predicted_per_token_ms": 397.9316,
+        "predicted_per_second": 2.5129946955707965
+      },
+      "tokensPerSecond": 0.7784529874563211,
+      "wallMs": 14142.550000011921,
+      "countMatches": true
+    },
+    {
+      "name": "After Stop and reload",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is 6 plus 7? Reply with only the number."
+        }
+      ],
+      "json": false,
+      "maxTokens": 32,
+      "count": 26,
+      "again": 26,
+      "text": "6 + 7 = 13",
+      "firstContentMs": 8113.264999985695,
+      "totalMs": 10772.899999976158,
+      "inputTokens": 26,
+      "outputTokens": 9,
+      "tokenCountSource": "runtime-timings",
+      "usage": null,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 26,
+        "prompt_ms": 7678.59,
+        "prompt_per_token_ms": 295.3303846153846,
+        "prompt_per_second": 3.386038322139872,
+        "predicted_n": 9,
+        "predicted_ms": 3053.064,
+        "predicted_per_token_ms": 381.633,
+        "predicted_per_second": 2.62031847350727
+      },
+      "tokensPerSecond": 0.8354296429020893,
+      "wallMs": 10784.75,
+      "countMatches": true
+    }
+  ],
+  "passed": false,
+  "load": {
+    "model": "qa-qwen3-06b",
+    "backend": "cpu",
+    "actualGpuLayers": 0,
+    "loadMs": 9161.805000007153,
+    "runtimeLoadMs": 4205.079999983311,
+    "verificationMs": 4956.735000014305,
+    "context": {
+      "_name": "load_res",
+      "success": true,
+      "n_ctx": 2048,
+      "n_batch": 128,
+      "n_ubatch": 128,
+      "n_vocab": 151936,
+      "n_ctx_train": 40960,
+      "n_embd": 1024,
+      "n_layer": 28,
+      "metadata_key": [
+        "general.file_type",
+        "tokenizer.chat_template",
+        "tokenizer.ggml.add_bos_token",
+        "tokenizer.ggml.padding_token_id",
+        "general.name",
+        "qwen3.attention.value_length",
+        "general.base_model.0.organization",
+        "qwen3.attention.key_length",
+        "qwen3.attention.layer_norm_rms_epsilon",
+        "qwen3.rope.freq_base",
+        "general.architecture",
+        "qwen3.attention.head_count_kv",
+        "general.license.link",
+        "qwen3.feed_forward_length",
+        "qwen3.attention.head_count",
+        "qwen3.embedding_length",
+        "tokenizer.ggml.eos_token_id",
+        "qwen3.context_length",
+        "tokenizer.ggml.pre",
+        "general.base_model.count",
+        "general.quantization_version",
+        "general.base_model.0.repo_url",
+        "general.license",
+        "general.basename",
+        "qwen3.block_count",
+        "general.base_model.0.name",
+        "general.size_label",
+        "tokenizer.ggml.bos_token_id",
+        "general.type",
+        "tokenizer.ggml.model"
+      ],
+      "metadata_val": [
+        "2",
+        "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "false",
+        "151643",
+        "Qwen3 0.6B",
+        "128",
+        "Qwen",
+        "128",
+        "0.000001",
+        "1000000.000000",
+        "qwen3",
+        "8",
+        "https://huggingface.co/Qwen/Qwen3-0.6B/blob/main/LICENSE",
+        "3072",
+        "16",
+        "1024",
+        "151645",
+        "40960",
+        "qwen2",
+        "1",
+        "2",
+        "https://huggingface.co/Qwen/Qwen3-0.6B-Base",
+        "apache-2.0",
+        "Qwen3",
+        "28",
+        "Qwen3 0.6B Base",
+        "0.6B",
+        "151643",
+        "model",
+        "gpt2"
+      ],
+      "token_bos": 151643,
+      "token_eos": 151645,
+      "token_eot": 151645,
+      "list_tokens_eog": [
+        128247,
+        151643,
+        151645,
+        151662,
+        151663,
+        151664
+      ],
+      "add_bos_token": false,
+      "add_eos_token": false,
+      "has_encoder": false,
+      "token_decoder_start": -1,
+      "media_marker": "<__media_EgoWme1yTh7NQ3YivnRNy0q8xk9NsM7j__>",
+      "has_image_input": false,
+      "has_audio_input": false,
+      "metadata": {
+        "general.file_type": "2",
+        "tokenizer.chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "tokenizer.ggml.add_bos_token": "false",
+        "tokenizer.ggml.padding_token_id": "151643",
+        "general.name": "Qwen3 0.6B",
+        "qwen3.attention.value_length": "128",
+        "general.base_model.0.organization": "Qwen",
+        "qwen3.attention.key_length": "128",
+        "qwen3.attention.layer_norm_rms_epsilon": "0.000001",
+        "qwen3.rope.freq_base": "1000000.000000",
+        "general.architecture": "qwen3",
+        "qwen3.attention.head_count_kv": "8",
+        "general.license.link": "https://huggingface.co/Qwen/Qwen3-0.6B/blob/main/LICENSE",
+        "qwen3.feed_forward_length": "3072",
+        "qwen3.attention.head_count": "16",
+        "qwen3.embedding_length": "1024",
+        "tokenizer.ggml.eos_token_id": "151645",
+        "qwen3.context_length": "40960",
+        "tokenizer.ggml.pre": "qwen2",
+        "general.base_model.count": "1",
+        "general.quantization_version": "2",
+        "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen3-0.6B-Base",
+        "general.license": "apache-2.0",
+        "general.basename": "Qwen3",
+        "qwen3.block_count": "28",
+        "general.base_model.0.name": "Qwen3 0.6B Base",
+        "general.size_label": "0.6B",
+        "tokenizer.ggml.bos_token_id": "151643",
+        "general.type": "model",
+        "tokenizer.ggml.model": "gpt2"
+      }
+    },
+    "template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+    "workerResources": {
+      "compat": false,
+      "wasmPath": "http://127.0.0.1:4265/runtime/default.wasm"
+    },
+    "runtimeVersion": "b11364-46ca246+babelshelf-count1-cpu"
+  },
+  "englishCorrect": false,
+  "japaneseScript": true,
+  "structuredCorrect": true,
+  "stop": {
+    "requested": true,
+    "stopped": true,
+    "error": "Stopped"
+  },
+  "unloaded": true,
+  "reload": {
+    "model": "qa-qwen3-06b",
+    "backend": "cpu",
+    "actualGpuLayers": 0,
+    "loadMs": 9910.255000054836,
+    "runtimeLoadMs": 4822.490000009537,
+    "verificationMs": 5087.770000040531,
+    "context": {
+      "_name": "load_res",
+      "success": true,
+      "n_ctx": 2048,
+      "n_batch": 128,
+      "n_ubatch": 128,
+      "n_vocab": 151936,
+      "n_ctx_train": 40960,
+      "n_embd": 1024,
+      "n_layer": 28,
+      "metadata_key": [
+        "general.file_type",
+        "tokenizer.chat_template",
+        "tokenizer.ggml.add_bos_token",
+        "tokenizer.ggml.padding_token_id",
+        "general.name",
+        "qwen3.attention.value_length",
+        "general.base_model.0.organization",
+        "qwen3.attention.key_length",
+        "qwen3.attention.layer_norm_rms_epsilon",
+        "qwen3.rope.freq_base",
+        "general.architecture",
+        "qwen3.attention.head_count_kv",
+        "general.license.link",
+        "qwen3.feed_forward_length",
+        "qwen3.attention.head_count",
+        "qwen3.embedding_length",
+        "tokenizer.ggml.eos_token_id",
+        "qwen3.context_length",
+        "tokenizer.ggml.pre",
+        "general.base_model.count",
+        "general.quantization_version",
+        "general.base_model.0.repo_url",
+        "general.license",
+        "general.basename",
+        "qwen3.block_count",
+        "general.base_model.0.name",
+        "general.size_label",
+        "tokenizer.ggml.bos_token_id",
+        "general.type",
+        "tokenizer.ggml.model"
+      ],
+      "metadata_val": [
+        "2",
+        "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "false",
+        "151643",
+        "Qwen3 0.6B",
+        "128",
+        "Qwen",
+        "128",
+        "0.000001",
+        "1000000.000000",
+        "qwen3",
+        "8",
+        "https://huggingface.co/Qwen/Qwen3-0.6B/blob/main/LICENSE",
+        "3072",
+        "16",
+        "1024",
+        "151645",
+        "40960",
+        "qwen2",
+        "1",
+        "2",
+        "https://huggingface.co/Qwen/Qwen3-0.6B-Base",
+        "apache-2.0",
+        "Qwen3",
+        "28",
+        "Qwen3 0.6B Base",
+        "0.6B",
+        "151643",
+        "model",
+        "gpt2"
+      ],
+      "token_bos": 151643,
+      "token_eos": 151645,
+      "token_eot": 151645,
+      "list_tokens_eog": [
+        128247,
+        151643,
+        151645,
+        151662,
+        151663,
+        151664
+      ],
+      "add_bos_token": false,
+      "add_eos_token": false,
+      "has_encoder": false,
+      "token_decoder_start": -1,
+      "media_marker": "<__media_c7wrZptW6WeSdFxYwv8kZ8mSb7B95Fjz__>",
+      "has_image_input": false,
+      "has_audio_input": false,
+      "metadata": {
+        "general.file_type": "2",
+        "tokenizer.chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "tokenizer.ggml.add_bos_token": "false",
+        "tokenizer.ggml.padding_token_id": "151643",
+        "general.name": "Qwen3 0.6B",
+        "qwen3.attention.value_length": "128",
+        "general.base_model.0.organization": "Qwen",
+        "qwen3.attention.key_length": "128",
+        "qwen3.attention.layer_norm_rms_epsilon": "0.000001",
+        "qwen3.rope.freq_base": "1000000.000000",
+        "general.architecture": "qwen3",
+        "qwen3.attention.head_count_kv": "8",
+        "general.license.link": "https://huggingface.co/Qwen/Qwen3-0.6B/blob/main/LICENSE",
+        "qwen3.feed_forward_length": "3072",
+        "qwen3.attention.head_count": "16",
+        "qwen3.embedding_length": "1024",
+        "tokenizer.ggml.eos_token_id": "151645",
+        "qwen3.context_length": "40960",
+        "tokenizer.ggml.pre": "qwen2",
+        "general.base_model.count": "1",
+        "general.quantization_version": "2",
+        "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen3-0.6B-Base",
+        "general.license": "apache-2.0",
+        "general.basename": "Qwen3",
+        "qwen3.block_count": "28",
+        "general.base_model.0.name": "Qwen3 0.6B Base",
+        "general.size_label": "0.6B",
+        "tokenizer.ggml.bos_token_id": "151643",
+        "general.type": "model",
+        "tokenizer.ggml.model": "gpt2"
+      }
+    },
+    "template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set content = message.content %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is defined and message.reasoning_content is not none %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in message.content %}\n                {%- set content = message.content.split('</think>')[-1].lstrip('\\n') %}\n                {%- set reasoning_content = message.content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+    "workerResources": {
+      "compat": false,
+      "wasmPath": "http://127.0.0.1:4265/runtime/default.wasm"
+    },
+    "runtimeVersion": "b11364-46ca246+babelshelf-count1-cpu"
+  },
+  "afterReloadCorrect": false
+}

@@ -1,0 +1,94 @@
+{
+  "identity": {
+    "build": "20fb1108e8aaff14",
+    "worker": {
+      "path": "./assets/qwen3-text-worker-Cqmw_ZVs.js",
+      "sha256": "a18f853d1535b2fc6623935f4783c24d3f819e3bcc7d8a37bc67ede5ed9dfb9c",
+      "bytes": 454001
+    },
+    "baseWorker": {
+      "path": "./assets/bonsai-worker-DcHzbMBf.js",
+      "sha256": "83fd7dd14bc8dff3f8d09f919d0bfe9e3496e8e3500d6a35c2b0834746d9da95",
+      "bytes": 48425
+    },
+    "qaSha256": "477fa741f9f0e863fc76ef99308e25f774f5e7290bdac20c2ca5a2c5835f2159"
+  },
+  "at": "2026-10-21T01:00:34.516Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "crossOriginIsolated": true,
+  "passed": true,
+  "worker": {
+    "scope": "Actual built product Qwen3 Worker, strict intake/preparation/router/count/generation/Stop/reload; no knowledge or settings write",
+    "record": {
+      "id": "local-da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+      "label": "Qwen3 0.6B",
+      "role": "text",
+      "engine": "wllama-qwen3",
+      "revision": "sha256:da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+      "file": {
+        "bytes": 428970080,
+        "sha256": "da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4"
+      },
+      "inspection": {
+        "format": "GGUF",
+        "version": 3,
+        "bytes": 428970080,
+        "name": "Qwen3 0.6B",
+        "architecture": "qwen3",
+        "contextLength": 40960,
+        "tokenizer": "gpt2",
+        "chatTemplate": true,
+        "tokenCount": 151936,
+        "tensorCount": 311,
+        "tensorTypes": [
+          0,
+          2
+        ],
+        "tensorExtentsChecked": true,
+        "dataOffset": 5951584
+      }
+    },
+    "constructions": 2,
+    "cases": [
+      {
+        "name": "Structured answer",
+        "count": 35,
+        "countAfter": 35,
+        "output": {
+          "text": "{\n  \"answer\": \"13\"\n}",
+          "outputTokens": 11
+        },
+        "elapsedMs": 13782.884999990463,
+        "passed": true
+      },
+      {
+        "name": "Fresh Worker after Stop",
+        "count": 35,
+        "countAfter": 35,
+        "output": {
+          "text": "{\n  \"answer\": \"13\"\n}",
+          "outputTokens": 11
+        },
+        "elapsedMs": 15117.2650000453,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "prepared": {
+      "4B": null,
+      "2B": null,
+      "9B": null,
+      "local-da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4": {
+        "filesPresent": true,
+        "presenceOnly": true
+      }
+    },
+    "loadMs": 7480.014999985695,
+    "stop": {
+      "requested": true,
+      "stopped": true,
+      "error": "Stopped"
+    },
+    "reloadMs": 7230.080000042915
+  }
+}

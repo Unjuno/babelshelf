@@ -1,0 +1,42 @@
+{
+  "repository": "prism-ml/Ternary-Bonsai-8B-gguf",
+  "revision": "c2aefbeb4b24469cd11579c3384b990404c17a30",
+  "headerBytes": 16777216,
+  "results": [
+    {
+      "file": "Ternary-Bonsai-8B-Q2_0.gguf",
+      "packing": "legacy-group128",
+      "modelBytes": 2182184672,
+      "inspectionError": "Error: GGUF · Q2_0 tensor exceeds file for official group-64 blocks",
+      "eligibleBrowserEngine": null
+    },
+    {
+      "file": "Ternary-Bonsai-8B-Q2_0_g64.gguf",
+      "packing": "official-group64",
+      "modelBytes": 2310125920,
+      "architecture": "qwen3",
+      "tokenizer": "gpt2",
+      "tensorTypes": [
+        0,
+        42
+      ],
+      "tensorExtentsChecked": true,
+      "eligibleBrowserEngine": "wllama-qwen3"
+    },
+    {
+      "file": "Ternary-Bonsai-8B-PQ2_0.gguf",
+      "packing": "prism-group128",
+      "modelBytes": 2182184672,
+      "architecture": "qwen3",
+      "tokenizer": "gpt2",
+      "tensorTypes": [
+        0,
+        142
+      ],
+      "tensorExtentsChecked": true,
+      "eligibleBrowserEngine": null
+    }
+  ],
+  "fullFilesVerified": false,
+  "inferenceVerified": false
+}

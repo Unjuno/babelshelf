@@ -14,22 +14,22 @@ export class TextEngineRouter{
   const defaults:TextBackendRegistration={id:'onnx-text',modelIds:onnxTextModels.map(m=>m.id),describe:id=>combinedTextManifest({...this.base,models:[]},id),create:createOnnx};
   const engines=new Set<string>(),models=new Set<string>((this.base.models??[]).map((m:any)=>m.id));
   for(const r of [defaults,...additional]){
-   if(!r||typeof r.id!=='string'||!/^[a-z][a-z0-9-]*$/.test(r.id)||engines.has(r.id)||typeof r.create!=='function'||typeof r.describe!=='function'||!Array.isArray(r.modelIds)||!r.modelIds.length||r.modelIds.some(id=>typeof id!=='string'||!id||models.has(id))||new Set(r.modelIds).size!==r.modelIds.length)throw Error('Invalid text engine registration');
-   for(const id of r.modelIds){const d=r.describe(id);if(!d||!Number.isSafeInteger(d.contextTokens)||d.contextTokens<1||(typeof d.runtime?.revision!=='string'||!d.runtime.revision)||!Array.isArray(d.models)||d.models.length!==r.modelIds.length||d.models.some(m=>!r.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(d.models.map(m=>m.id)).size!==r.modelIds.length)throw Error('Invalid text engine manifest');models.add(id);}
+   if(!r||typeof r.id!=='string'||!/^[a-z][a-z0-9-]*$/.test(r.id)||engines.has(r.id)||typeof r.create!=='function'||typeof r.describe!=='function'||!Array.isArray(r.modelIds)||r.modelIds.some(id=>typeof id!=='string'||!id||models.has(id))||new Set(r.modelIds).size!==r.modelIds.length)throw Error('Invalid text engine registration');
+   for(const id of r.modelIds.length?r.modelIds:['']){const d=r.describe(id);if(!d||!Number.isSafeInteger(d.contextTokens)||d.contextTokens<1||(typeof d.runtime?.revision!=='string'||!d.runtime.revision)||!Array.isArray(d.models)||d.models.length!==r.modelIds.length||d.models.some(m=>!r.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(d.models.map(m=>m.id)).size!==r.modelIds.length)throw Error('Invalid text engine manifest');if(id)models.add(id);}
    engines.add(r.id);this.registrations.push({...r,modelIds:Object.freeze([...r.modelIds]),instance:null});
   }
  }
  replaceRegistration(id:string,replacement:TextBackendRegistration){
   const index=this.registrations.findIndex(r=>r.id===id),current=this.registrations[index];
-  if(!current||replacement.id!==id||!Array.isArray(replacement.modelIds)||!replacement.modelIds.length||new Set(replacement.modelIds).size!==replacement.modelIds.length||typeof replacement.describe!=='function'||typeof replacement.create!=='function')throw Error('Invalid text engine registration');
+  if(!current||replacement.id!==id||!Array.isArray(replacement.modelIds)||new Set(replacement.modelIds).size!==replacement.modelIds.length||typeof replacement.describe!=='function'||typeof replacement.create!=='function')throw Error('Invalid text engine registration');
   if(current.instance&&this.active===current.instance)throw Error('Unload model first');
   const occupied=new Set<string>((this.base.models??[]).map((m:any)=>m.id));for(let i=0;i<this.registrations.length;i++)if(i!==index)for(const model of this.registrations[i].modelIds)occupied.add(model);
-  for(const modelId of replacement.modelIds){if(typeof modelId!=='string'||!modelId||occupied.has(modelId))throw Error('Invalid text engine registration');const described=replacement.describe(modelId);if(!described||!Number.isSafeInteger(described.contextTokens)||described.contextTokens<1||!described.runtime?.revision||!Array.isArray(described.models)||described.models.length!==replacement.modelIds.length||described.models.some((m:any)=>!replacement.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(described.models.map((m:any)=>m.id)).size!==replacement.modelIds.length)throw Error('Invalid text engine registration');occupied.add(modelId);}
+  for(const modelId of replacement.modelIds.length?replacement.modelIds:['']){if(replacement.modelIds.length&&(typeof modelId!=='string'||!modelId||occupied.has(modelId)))throw Error('Invalid text engine registration');const described=replacement.describe(modelId);if(!described||!Number.isSafeInteger(described.contextTokens)||described.contextTokens<1||!described.runtime?.revision||!Array.isArray(described.models)||described.models.length!==replacement.modelIds.length||described.models.some((m:any)=>!replacement.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(described.models.map((m:any)=>m.id)).size!==replacement.modelIds.length)throw Error('Invalid text engine registration');if(modelId)occupied.add(modelId);}
   if(current.instance){current.instance.abort();current.instance.worker.terminate();}
   this.registrations[index]={...replacement,modelIds:Object.freeze([...replacement.modelIds]),instance:null};
  }
  private registration(id:string){return this.registrations.find(r=>r.modelIds.includes(id));}
- get manifest(){const id=this.loaded??'',selected=this.registration(id)?.describe(id);return {...this.base,...(selected?{contextTokens:selected.contextTokens,runtime:selected.runtime}:{}),models:[...this.base.models,...this.registrations.flatMap(r=>r.describe(r.modelIds.includes(id)?id:r.modelIds[0]).models)]};}
+ get manifest(){const id=this.loaded??'',selected=this.registration(id)?.describe(id);return {...this.base,...(selected?{contextTokens:selected.contextTokens,runtime:selected.runtime}:{}),models:[...this.base.models,...this.registrations.filter(r=>r.modelIds.length).flatMap(r=>r.describe(r.modelIds.includes(id)?id:r.modelIds[0]).models)]};}
  set manifest(value:any){if(value.models?.some((m:any)=>this.registration(m.id)))throw Error('Text model belongs to a registered engine');this.base=value;this.webml.manifest=value;}
  get loaded(){return this.active?.loaded??null;}
  private instance(r:Registered){if(r.instance?.failed){if(this.active===r.instance)this.active=null;r.instance=null;}return r.instance??=r.create();}
@@ -39,7 +39,7 @@ export class TextEngineRouter{
   try{const assets=await this.instance(r).call('status');this.check(epoch);return assets;}
   catch{this.check(epoch);return Object.fromEntries(r.modelIds.map(id=>[id,{filesPresent:false,presenceOnly:true,statusError:true}]));}
  }
- private selectedRegistrations(model?:string,incomingModels:any[]=[]){if(model===undefined)return this.registrations;if(!model)return [];if(!this.base.models?.some((m:any)=>m.id===model)&&!incomingModels.some(m=>m.id===model)&&!this.registration(model))throw Error('Unknown text model');return this.registrations.filter(r=>r.modelIds.includes(model));}
+ private selectedRegistrations(model?:string,incomingModels:any[]=[]){if(model===undefined)return this.registrations.filter(r=>r.modelIds.length);if(!model)return [];if(!this.base.models?.some((m:any)=>m.id===model)&&!incomingModels.some(m=>m.id===model)&&!this.registration(model))throw Error('Unknown text model');return this.registrations.filter(r=>r.modelIds.includes(model));}
  private async status(model?:string){const selected=this.selectedRegistrations(model),epoch=this.epoch,base=await this.webml.call('status');this.check(epoch);const assets:Record<string,any>={};for(const r of selected){Object.assign(assets,await this.optionalStatus(r,epoch));this.check(epoch);}return {...base,...assets};}
  async init(){return this.webml.init();}
  get needsRecovery(){return !!this.webml.failed;}

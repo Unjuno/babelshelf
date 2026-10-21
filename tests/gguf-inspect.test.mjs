@@ -35,8 +35,9 @@ test('valid container does not mean an architecture or quantization is supported
  const quant=await inspectGGUF(new Blob([gguf({tensorType:12})]));assert.equal(eligibleTextEngine(quant),undefined);
  assert.equal(localEngine('user-script'),undefined);
 });
-test('both Qwen3 ternary types are refused before hashing or registration',async()=>{
- for(const [type,format] of [[42,'Q2_0'],[142,'PQ2_0']]){
+test('private Qwen3 PQ2 remains refused before hashing while official Q2 resolves to CPU',async()=>{
+ const accepted=await inspectLocalModel(new Blob([gguf({arch:'qwen3',tensorType:42})]));assert.equal(accepted.engine,'wllama-qwen3');
+ for(const [type,format] of [[142,'PQ2_0']]){
   const bytes=gguf({arch:'qwen3',tensorType:type}),blob=new Blob([bytes]);let read=0;
   const file={size:blob.size,slice(start,end){read++;return blob.slice(start,end);},stream(){throw Error('Unsupported model must not be hashed');}};
   await assert.rejects(inspectLocalModel(file),new RegExp(`Qwen3 ${format} GGUF cannot run here`));
@@ -51,8 +52,8 @@ test('known tensor byte extents reject truncated payload, not just out-of-file s
  for(const [tensorType,elements] of [[0,128],[143,128],[142,128],[42,128],[2,128],[14,256]]){const bytes=gguf({tensorType,elements}),info=await inspectGGUF(new Blob([bytes]));await assert.equal(info.tensorExtentsChecked,true);await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);}
 });
 
-test('Qwen3.5 ternary alternatives require checked packing and do not admit Qwen3 or malformed blocks',async()=>{
- for(const tensorType of [42,142]){const blob=new Blob([gguf({tensorType})]),info=await inspectGGUF(blob);assert.equal(info.tensorExtentsChecked,true);assert.equal(eligibleTextEngine(info)?.id,'webml-qwen35');const registered=await inspectLocalModel(blob);assert.equal(registered.engine,'webml-qwen35');assert.deepEqual(registered.inspection.tensorTypes,[tensorType]);const other=await inspectGGUF(new Blob([gguf({arch:'qwen3',tensorType})]));assert.equal(eligibleTextEngine(other),undefined);}
+test('Qwen3.5 and Qwen3 select separate adapters only for their audited packings',async()=>{
+ for(const tensorType of [42,142]){const blob=new Blob([gguf({tensorType})]),info=await inspectGGUF(blob);assert.equal(info.tensorExtentsChecked,true);assert.equal(eligibleTextEngine(info)?.id,'webml-qwen35');const registered=await inspectLocalModel(blob);assert.equal(registered.engine,'webml-qwen35');assert.deepEqual(registered.inspection.tensorTypes,[tensorType]);const other=await inspectGGUF(new Blob([gguf({arch:'qwen3',tensorType})]));assert.equal(eligibleTextEngine(other)?.id,tensorType===42?'wllama-qwen3':undefined);}
  await assert.rejects(inspectGGUF(new Blob([gguf({tensorType:142,elements:96})])),/PQ2_0/);
 });
 test('official Q2_0 group-64 offsets fit while the legacy group-128 layout is refused',async()=>{

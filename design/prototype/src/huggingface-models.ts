@@ -5,7 +5,7 @@ import {eligibleTextEngine} from '../../../dist/local-engines.js';
 import {fetchHuggingFace} from './huggingface-network.ts';
 export type HuggingFaceModelFile={path:string;bytes:number};
 export type HuggingFaceModelSource={provider:'huggingface';repo:string;revision:string;file:string;license:string|null};
-export type HuggingFaceRepository={repo:string;revision:string;license:string|null;architecture:'qwen35'|'lfm2'|'gguf';files:HuggingFaceModelFile[]};
+export type HuggingFaceRepository={repo:string;revision:string;license:string|null;architecture:'qwen35'|'lfm2'|'qwen3'|'gguf';files:HuggingFaceModelFile[]};
 export const MAX_HF_CUSTOM_MODEL_BYTES=8*1024*1024*1024;
 const repoPattern=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/;
 const safePath=(path:string)=>typeof path==='string'&&path.length<=512&&!path.startsWith('/')&&!path.includes('\\')&&path.split('/').every(part=>!!part&&part!=='.'&&part!=='..'&&/^[A-Za-z0-9_.-]+$/.test(part));
@@ -36,7 +36,7 @@ export async function inspectHuggingFaceModel(repository:HuggingFaceRepository,f
   }finally{signal?.removeEventListener('abort',abort);await reader.cancel().catch(()=>{});reader.releaseLock();}
  }};}},{signal});
  const engine=eligibleTextEngine(inspection);if(!engine)throw Error('No compatible local engine for this GGUF');
- if(repository.architecture!=='gguf'&&engine.id!==(repository.architecture==='qwen35'?'webml-qwen35':'wllama-lfm2'))throw Error('GGUF architecture does not match repository configuration');
+ if(repository.architecture!=='gguf'&&engine.id!==(repository.architecture==='qwen35'?'webml-qwen35':repository.architecture==='qwen3'?'wllama-qwen3':'wllama-lfm2'))throw Error('GGUF architecture does not match repository configuration');
  return inspection;
 }
 export function validateHuggingFaceRepo(value:string){if(!repoPattern.test(value))throw Error('Enter a public Hugging Face model ID');return value;}
@@ -50,8 +50,8 @@ export async function findHuggingFaceModels(repoInput:string,{signal,fetcher=fet
   if(!Number.isSafeInteger(configEntry.size)||configEntry.size<2||configEntry.size>1024*1024)throw Error('Model architecture metadata unavailable');
   const configUrl=`https://huggingface.co/${encoded}/resolve/${info.sha}/config.json`,configResponse=await fetcher(configUrl,{signal,credentials:'omit',referrerPolicy:'no-referrer'});
   if(!configResponse.ok)throw Error('Model architecture could not be checked');const config=await configResponse.json() as any;
-  if(config?.model_type==='qwen3_5')architecture='qwen35';else if(config?.model_type==='lfm2')architecture='lfm2';
-  else throw Error(config?.model_type==='qwen3'?'Qwen3 needs a connected local engine · current GGUF imports support Qwen3.5 and LFM2 only':'No connected local engine for this Hugging Face model');
+  if(config?.model_type==='qwen3_5')architecture='qwen35';else if(config?.model_type==='lfm2')architecture='lfm2';else if(config?.model_type==='qwen3')architecture='qwen3';
+  else throw Error('No connected local engine for this Hugging Face model');
  }
  const files=info.siblings.filter((entry:any)=>typeof entry?.rfilename==='string'&&entry.rfilename.toLowerCase().endsWith('.gguf')&&!/-\d{5}-of-\d{5}\.gguf$/i.test(entry.rfilename)&&safePath(entry.rfilename)&&Number.isSafeInteger(entry.size)&&entry.size>=24&&entry.size<=MAX_HF_CUSTOM_MODEL_BYTES).map((entry:any)=>({path:entry.rfilename,bytes:entry.size})).sort((a:HuggingFaceModelFile,b:HuggingFaceModelFile)=>a.path.localeCompare(b.path));
  if(!files.length)throw Error('No supported-size GGUF files in this repository');

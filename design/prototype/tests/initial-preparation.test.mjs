@@ -4,6 +4,23 @@ import {createHash} from 'node:crypto';
 import {initialPreparationPlan,runInitialPreparation,textPreparationStatus} from '../src/initial-preparation.ts';
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
+
+test('custom Qwen3 persists its own CPU identity and prepares without WebML assets',async()=>{
+ const {formatPreference,parsePreference}=await import('../src/preference-records.ts');
+ const {combinedLocalTextManifest}=await import('../src/lfm-text-manifest.ts');
+ const {describeQwen3Text}=await import('../src/qwen3-text-manifest.ts');
+ const sha='c'.repeat(64),record={id:'local-'+sha,label:'Local Qwen3',role:'text',engine:'wllama-qwen3',revision:'sha256:'+sha,file:{bytes:428970080,sha256:sha},inspection:{format:'GGUF',version:3,bytes:428970080,name:'Qwen3',architecture:'qwen3',contextLength:40960,tokenizer:'gpt2',chatTemplate:true,tokenCount:151936,tensorCount:311,tensorTypes:[0,2],tensorExtentsChecked:true,dataOffset:5951584}};
+ const prefs=initial();prefs.customModels=[record];prefs.textModel=record.id;prefs.textLibrary.push(record.id);
+ const restored=parsePreference('models',formatPreference('models',prefs));
+ assert.deepEqual(restored.customModels,[record]);assert.equal(restored.textModel,record.id);
+ const descriptor=describeQwen3Text(restored.customModels),base={models:[],runtime:{revision:'unrelated'},contextTokens:8192};
+ const combined=combinedLocalTextManifest(base,record.id,restored.customModels);
+ assert.equal(combined.runtime.revision,descriptor.runtime.revision);assert.equal(combined.contextTokens,2048);
+ const model=combined.models.find(m=>m.id===record.id);assert.equal(model.engine,'wllama-qwen3-cpu');assert.equal(model.file.sha256,sha);assert.equal(model.url,undefined);
+ assert.throws(()=>initialPreparationPlan(restored,{text:false,speech:false,ocr:false},'text'),/Import local text model files first/);
+ const plan=initialPreparationPlan(restored,{text:true,speech:false,ocr:false},'text');assert.equal(plan.bytes,0);assert.equal(plan.steps[0].bytes,record.file.bytes);assert.equal(plan.steps[0].label,record.label);
+ model.localModel.file.sha256='d'.repeat(64);assert.equal(restored.customModels[0].file.sha256,sha);
+});
 test('fresh selected Text status controls preparation without treating missing status as missing files',()=>{
  const prefs=initial(),present=textPreparationStatus({'4B':{filesPresent:true}},'4B');
  assert.equal(initialPreparationPlan(prefs,{...present,speech:false,ocr:false}).bytes,0);

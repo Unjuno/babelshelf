@@ -78,8 +78,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 6162,
-      "sha256": "6d106a27f6d93e63b3b1b31f9759a74d44fe247e476015127e85249e58973be5"
+      "bytes": 6778,
+      "sha256": "ddf84ef5409e68f8f992dd7b36e4776decbfd253ce2577e1e71c846c1530a799"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -93,8 +93,8 @@
     },
     {
       "path": "./local-engines.js",
-      "bytes": 1642,
-      "sha256": "c8937db72821950e6f107e0525715b34813a56433a93b221d4ba3d5a824d1a92"
+      "bytes": 2140,
+      "sha256": "26601d2122aa017b3d7067b92c03b86542006209c0c716142d2dba6b438f3173"
     },
     {
       "path": "./local-model-manifest.js",
@@ -125,6 +125,11 @@
       "path": "./native-response.js",
       "bytes": 4772,
       "sha256": "f9936d8e1b7382214852decaed94d1c40b7923e27fa4633a9c166fe8e369dd0d"
+    },
+    {
+      "path": "./qwen3-adapter.js",
+      "bytes": 334,
+      "sha256": "493eb9963aefda88c208e3254b25d3256cab0f52912d06f83bee0da2bf8bbcbc"
     },
     {
       "path": "./ranges.js",
@@ -169,7 +174,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "8eaa6a5d35515b4ede0a92a38327b95f3b31cd783ad4cfb8cec4016099d08d91"
+      "sha256": "1b1658702482deb1a0122fdd18bffcbd8c25f254eebd75e93c3dc9ae54c4e5e7"
     },
     {
       "path": "./ui.js",

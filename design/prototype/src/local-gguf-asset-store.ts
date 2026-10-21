@@ -5,7 +5,7 @@ type Progress=(bytes:number,total:number)=>void;
 // Custom weights have no acquisition URL: only the explicitly selected local file can fill this store.
 export function createLocalGgufAssetStore(model:Model,io:{directory:()=>Promise<FileSystemDirectoryHandle>}){
  const pin=structuredClone(model);
- if(pin.engine!=='wllama-lfm2'||pin.id!=='local-'+pin.file.sha256||!Number.isSafeInteger(pin.file.bytes)||pin.file.bytes<24||!/^[a-f0-9]{64}$/.test(pin.file.sha256))throw Error('Invalid local GGUF pin');
+ if(!['wllama-lfm2','wllama-qwen3'].includes(pin.engine)||pin.id!=='local-'+pin.file.sha256||!Number.isSafeInteger(pin.file.bytes)||pin.file.bytes<24||!/^[a-f0-9]{64}$/.test(pin.file.sha256))throw Error('Invalid local GGUF pin');
  const check=(signal:AbortSignal)=>signal.throwIfAborted();
  async function read(signal:AbortSignal,progress:Progress=()=>{}){
   check(signal);const dir=await io.directory();check(signal);const file=await(await dir.getFileHandle(pin.file.sha256)).getFile();check(signal);

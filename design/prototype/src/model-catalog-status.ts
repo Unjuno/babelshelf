@@ -13,7 +13,7 @@ export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonl
  if(role==='vision'&&id!=='lfm25-vl-450m-q4f16')return 'Runtime not connected';
  if(role==='text'){
   const custom=customModels.find(model=>model.id===id);
-  if(custom)return custom.engine==='webml-qwen35'||custom.engine==='wllama-lfm2'?'Not prepared':'Runtime not connected';
+  if(custom)return custom.engine==='webml-qwen35'||['wllama-lfm2','wllama-qwen3'].includes(custom.engine)?'Not prepared':'Runtime not connected';
  }
  if(role==='decision'){
   const custom=customDecisionModels.find(model=>model.id===id);

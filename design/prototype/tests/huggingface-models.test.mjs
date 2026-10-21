@@ -24,7 +24,7 @@ test('Hugging Face discovery resolves architecture at the repository commit and 
 test('Hugging Face discovery refuses unknown engines and malformed or private repository IDs',async()=>{
  await assert.rejects(findHuggingFaceModels('../owner/model'),/public Hugging Face model ID/);
  await assert.rejects(findHuggingFaceModels('owner/model',{fetcher:async(url)=>url.includes('/api/models/')?jsonResponse(metadata):jsonResponse({model_type:'llama'})}),/No connected local engine/);
- await assert.rejects(findHuggingFaceModels('owner/model',{fetcher:async(url)=>url.includes('/api/models/')?jsonResponse(metadata):jsonResponse({model_type:'qwen3'})}),/Qwen3 needs a connected local engine/);
+ assert.equal((await findHuggingFaceModels('owner/model',{fetcher:async(url)=>url.includes('/api/models/')?jsonResponse(metadata):jsonResponse({model_type:'qwen3'})})).architecture,'qwen3');
 });
 
 test('GGUF-only repositories without root config remain discoverable and require actual file compatibility',async()=>{

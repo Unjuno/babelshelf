@@ -1,0 +1,51 @@
+{
+  "identity": {
+    "build": "68952f7ec1deff98",
+    "worker": {
+      "path": "./assets/qwen3-text-worker-Ry0KIO1Q.js",
+      "sha256": "0624cbcd55ac5a99bfc3c33d1ed92e54f9223137537a739f2675eb4596e86d2f",
+      "bytes": 435693
+    },
+    "qaSha256": "0b2da0bb278dd220086ff7c60fd02597fd0435ac5bb3b695e994385834b5aa08"
+  },
+  "at": "2026-10-21T00:47:57.809Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "crossOriginIsolated": true,
+  "passed": false,
+  "worker": {
+    "scope": "Actual built product Qwen3 Worker, strict intake/preparation/router/count/generation/Stop/reload; no knowledge or settings write",
+    "record": {
+      "id": "local-da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+      "label": "Qwen3 0.6B",
+      "role": "text",
+      "engine": "wllama-qwen3",
+      "revision": "sha256:da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+      "file": {
+        "bytes": 428970080,
+        "sha256": "da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4"
+      },
+      "inspection": {
+        "format": "GGUF",
+        "version": 3,
+        "bytes": 428970080,
+        "name": "Qwen3 0.6B",
+        "architecture": "qwen3",
+        "contextLength": 40960,
+        "tokenizer": "gpt2",
+        "chatTemplate": true,
+        "tokenCount": 151936,
+        "tensorCount": 311,
+        "tensorTypes": [
+          0,
+          2
+        ],
+        "tensorExtentsChecked": true,
+        "dataOffset": 5951584
+      }
+    },
+    "constructions": 0,
+    "cases": [],
+    "passed": false,
+    "error": "Error: Unrelated engine must stay idle\n    at Object.unavailable (http://127.0.0.1:4267/check.js:2290:9)\n    at TextEngineRouter.status (http://127.0.0.1:4267/check.js:2017:99)\n    at TextEngineRouter.call (http://127.0.0.1:4267/check.js:2057:37)\n    at checkQwen3Product (http://127.0.0.1:4267/check.js:2364:34)\n    at async document.querySelector.onclick (http://127.0.0.1:4267/:2:750)"
+  }
+}

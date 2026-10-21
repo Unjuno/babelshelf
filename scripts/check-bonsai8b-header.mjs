@@ -30,7 +30,8 @@ for(const variant of variants){
   continue;
  }
  const engine=eligibleTextEngine(info)?.id??null;
- if(info.architecture!=='qwen3'||info.tokenizer!=='gpt2'||!info.tensorTypes.includes(variant.type)||info.tensorExtentsChecked!==(variant.packing==='official-group64')||engine!==null)throw Error(`${variant.name}: compatibility boundary changed; review before offering an engine`);
+ const expectedEngine=variant.packing==='official-group64'?'wllama-qwen3':null;
+ if(info.architecture!=='qwen3'||info.tokenizer!=='gpt2'||!info.tensorTypes.includes(variant.type)||!info.tensorExtentsChecked||engine!==expectedEngine)throw Error(`${variant.name}: compatibility boundary changed; review before offering an engine`);
  results.push({file:variant.name,packing:variant.packing,modelBytes:variant.bytes,architecture:info.architecture,tokenizer:info.tokenizer,tensorTypes:info.tensorTypes,tensorExtentsChecked:info.tensorExtentsChecked,eligibleBrowserEngine:engine});
 }
 console.log(JSON.stringify({repository,revision,headerBytes,results,fullFilesVerified:false,inferenceVerified:false},null,2));
