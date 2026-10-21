@@ -41,3 +41,15 @@ cover complete backend pipeline selection, binding offsets/batches, subgroup
 matrix variants, a linked WASM runtime, full-model generation, decoding speed,
 mobile memory, Safari or Metal. Full integration and model validation remain
 required before this is eligible for product adoption.
+
+A separate GPU/count distribution has now been linked and executed with a
+real small Q4_0 model in the sidebar browser. See
+[Q2-WEBGPU-BUILD.md](../research/runtime/wllama-count/Q2-WEBGPU-BUILD.md) and
+`q2-webgpu-runtime-*.json` evidence. This still does not certify full-model
+Q2_0 dispatch or original 8B/Bonsai2 9B. Product GPU admission remains unchanged.
+
+`wllama-stream-abort.patch` targets the pinned wllama revision after its count
+patch. It suppresses queued content after abort while awaiting actual native
+cancellation/error, and rejects normal completion after a requested abort.
+Its hash/source chain is recorded in `stream-abort-pins.json`. The wllama MIT
+notice is retained in `research/runtime/wllama-count/UPSTREAM-LICENCE`.

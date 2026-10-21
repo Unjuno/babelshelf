@@ -1,0 +1,190 @@
+{
+  "scope": "Sequential actual sidebar PC comparison on small Q4_0; no general throughput, Q2_0 full-model, large-model, mobile, thermal or full-harness claim",
+  "device": {
+    "os": "Windows 11 Home",
+    "version": "10.0.26200",
+    "cpu": "12th Gen Intel Core i7-1250U",
+    "gpu": "Intel Iris Xe Graphics",
+    "gpuDriver": "31.0.101.5186",
+    "physicalMemoryKiB": 16463352,
+    "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "adapter": {
+      "vendor": "intel",
+      "architecture": "gen-12lp",
+      "device": "",
+      "description": ""
+    },
+    "api": "WebGPU; underlying native browser backend not separately queried"
+  },
+  "model": {
+    "repository": "ggml-org/Qwen3-0.6B-GGUF",
+    "revision": "13ac06624948e4d8589cb4b6f90100837342fcb8",
+    "bytes": 428970080,
+    "sha256": "da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+    "quantization": "Q4_0"
+  },
+  "runtime": {
+    "scope": "QA-only linked GPU/count runtime; not product registration, execution, numerical or phone acceptance",
+    "at": "2026-10-21T02:07:21.899Z",
+    "compiled": true,
+    "browserExecuted": false,
+    "variant": "JSPI memory64 experimental WebGPU + CPU fallback",
+    "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+    "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+    "countPatchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+    "gpuPatchSha256": "7b49cfe6875ce35341158d396508ff47057a81e184bf5a6beb1b9ebe006245e9",
+    "streamAbortPatchSha256": "bb2dd511222b90c5143ee6b0908a5bd1a65bfad5eb3c185119d2b7379b9437c5",
+    "cacheSha256": "c224ed4bd9387dd35327f652c08415ee9d675c3425519fb8075e6cc5f3b81321",
+    "generatedWorkerSha256": "eb7b375fd391b8d696a3e0636ea9f44220c3c97a240b99904d55447da405e28f",
+    "assets": [
+      {
+        "name": "wllama.js",
+        "bytes": 136406,
+        "sha256": "41aac8f689195005f52c59b4ffa01e8d84f2b629a66013f44e3b0c07ad1ea0ce"
+      },
+      {
+        "name": "wllama.wasm",
+        "bytes": 8810732,
+        "sha256": "36bea8f5e23a7a151f2ec4abc1cc39161fbe2cd079fd03d83ce8904feb93df49"
+      }
+    ],
+    "bundle": {
+      "name": "wllama-count-q2-webgpu.js",
+      "bytes": 363265,
+      "sha256": "39f8e07c2ab9345917e8d5a8e51c9c8147afd7865dd985bb9d7f7dc8473db530"
+    }
+  },
+  "settings": {
+    "n_ctx": 2048,
+    "n_batch": 128,
+    "n_ubatch": 128,
+    "n_threads": 1,
+    "n_gpu_layers": {
+      "cpu": 0,
+      "gpu": 99999
+    },
+    "temperature": 0,
+    "seed": 0,
+    "cache_prompt": false,
+    "max_tokens": 48,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "Return only a JSON object with an answer string."
+    },
+    {
+      "role": "user",
+      "content": "What is 6 plus 7?"
+    }
+  ],
+  "conditions": [
+    "GPU then CPU, one bounded run each; no repeated statistical benchmark",
+    "New Worker per load; browser/OS/shader caches not cleared",
+    "Pre-existing user apps left running; AC/power/thermal state not controlled",
+    "Loopback-only verified resources; model read/hash not included in loadModel elapsed time",
+    "Fresh Worker after Stop rather than suspend/resume of the same native session",
+    "Maximum RSS/combined memory/thermal and long sustained decode were not measured"
+  ],
+  "generatedClientPins": [
+    {
+      "backend": "gpu",
+      "sha256": "9fa5d0b64f77cb341359050201e54645c2613a403bf9f29cdde1dd2075ad933d"
+    },
+    {
+      "backend": "cpu",
+      "sha256": "1221d1694d3dbaf4236873b5c2140184400eab9f1881b03d49c8345df3980124"
+    }
+  ],
+  "samples": [
+    {
+      "case": "Structured answer",
+      "inputTokens": 35,
+      "outputTokens": 11,
+      "cpu": {
+        "firstContentMs": 10609.15499997139,
+        "totalMs": 14368.299999952316,
+        "nativeDecodeTokensPerSecond": 2.4071994521214046
+      },
+      "webgpu": {
+        "firstContentMs": 2167.8449999690056,
+        "totalMs": 2910.7400000095367,
+        "nativeDecodeTokensPerSecond": 12.186116114188783
+      },
+      "observedWallSpeedRatio": 4.936304857151528,
+      "observedNativeDecodeSpeedRatio": 5.062362449214361
+    },
+    {
+      "case": "Fresh Worker after Stop",
+      "inputTokens": 35,
+      "outputTokens": 11,
+      "cpu": {
+        "firstContentMs": 10488.514999985695,
+        "totalMs": 14145.764999985695,
+        "nativeDecodeTokensPerSecond": 2.4750606699246718
+      },
+      "webgpu": {
+        "firstContentMs": 2159.2849999666214,
+        "totalMs": 2859.0499999523163,
+        "nativeDecodeTokensPerSecond": 12.776368828215332
+      },
+      "observedWallSpeedRatio": 4.9477151502147985,
+      "observedNativeDecodeSpeedRatio": 5.162042685848254
+    }
+  ],
+  "modelLoadMs": {
+    "webgpu": 4245.635000050068,
+    "cpu": 5192.974999964237
+  },
+  "modelReloadMs": {
+    "webgpu": 6153.0650000572205,
+    "cpu": 5793.129999995232
+  },
+  "stop": {
+    "webgpu": {
+      "name": "Stop after first content",
+      "count": 38,
+      "text": "{\n",
+      "firstContentMs": 1295.589999973774,
+      "totalMs": 1380.3899999856949,
+      "requested": true,
+      "aborted": true,
+      "abortError": {
+        "name": "AbortError",
+        "message": "Operation aborted"
+      },
+      "contentAfterStop": 0,
+      "cancellationMs": 84.7950000166893,
+      "passed": true
+    },
+    "cpu": {
+      "name": "Stop after first content",
+      "count": 38,
+      "text": "{\n",
+      "firstContentMs": 12700.680000007153,
+      "totalMs": 13165.599999964237,
+      "requested": true,
+      "aborted": true,
+      "abortError": {
+        "name": "AbortError",
+        "message": "Operation aborted"
+      },
+      "contentAfterStop": 0,
+      "cancellationMs": 464.91999995708466,
+      "passed": true
+    }
+  },
+  "nativeGpuBufferReportsMiB": {
+    "model": 319.96,
+    "kv": 224,
+    "compute": 7,
+    "scope": "Runtime allocation log only, not total/peak GPU or process memory"
+  },
+  "passed": true
+}

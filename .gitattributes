@@ -17,6 +17,7 @@ research/runtime/wllama-count/UPSTREAM-LICENCE -text
 
 # Preserve the hashed unified diff; blank context lines contain a literal space.
 patches/llama-cpp-q2_0-webgpu.patch -text whitespace=-blank-at-eol
+patches/wllama-stream-abort.patch -text whitespace=-blank-at-eol,-blank-at-eof
 
 # Preserve pinned generated runtime JS byte identity.
 design/prototype/runtime/wllama-count/*.js -text

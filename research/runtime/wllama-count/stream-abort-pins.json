@@ -1,0 +1,13 @@
+{
+  "scope": "JS wrapper queue cancellation; same native artifacts; not product registration",
+  "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+  "requiresCountPatchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+  "patchSha256": "bb2dd511222b90c5143ee6b0908a5bd1a65bfad5eb3c185119d2b7379b9437c5",
+  "files": [
+    {
+      "path": "src/wllama.ts",
+      "beforeSha256": "71f42c5e83610183708b9dea9f567bfc23ba7b7080fb9bd29e232ac9dfc8b668",
+      "afterSha256": "d311eb35a972914576940224c6a55bca8592aa26020db6c6495d690a5af68f37"
+    }
+  ]
+}

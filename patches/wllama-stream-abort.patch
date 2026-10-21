@@ -1,0 +1,27 @@
+--- a/src/wllama.ts
++++ b/src/wllama.ts
+@@ -909,7 +909,23 @@
+             .catch((err) => callback(undefined, false, err));
+         }
+       );
+-      resolve(createGenerator());
++      const iterable = createGenerator();
++      const signal = (options as { abortSignal?: AbortSignal }).abortSignal;
++      // A native result can enqueue several chunks before the consumer aborts.
++      // Suppress queued chunks after abort, but drain to the producer's actual
++      // cancellation/error so the native request has been released before return.
++      resolve((async function* () {
++        for await (const chunk of iterable) {
++          if (signal?.aborted) {
++            for await (const ignored of iterable) { /* discard queued content */ }
++            throw new WllamaError('Inference completed without cancellation', 'inference_error');
++          }
++          yield chunk;
++        }
++        if (signal?.aborted) {
++          throw new WllamaError('Inference completed without cancellation', 'inference_error');
++        }
++      })());
+     });
+   }
+ 
