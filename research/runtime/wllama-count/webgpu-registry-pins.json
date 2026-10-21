@@ -1,0 +1,13 @@
+{
+  "scope": "Preserve detected count and live GPU device/resources on repeated backend initialization; apply after official Q2 GPU patch",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "requiresGpuPatchSha256": "7b49cfe6875ce35341158d396508ff47057a81e184bf5a6beb1b9ebe006245e9",
+  "patchSha256": "3fc5632074e3e0908e7b35c4414bf016fef70d619a6be4ae16934239b442b450",
+  "files": [
+    {
+      "path": "ggml/src/ggml-webgpu/ggml-webgpu.cpp",
+      "beforeSha256": "be020a0f1abea3024c6b8116c68755b69f579d3ab4cff5e0d8e5154673f03821",
+      "afterSha256": "6200ad2b91e2505bab64f5bf0d31e69bded0bfbcbc0fa0690e69c16b9756cf1d"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "scope": "QA-only linked GPU/count runtime; not product registration, execution, numerical or phone acceptance",
+  "at": "2026-10-21T02:44:35.961Z",
+  "compiled": true,
+  "browserExecuted": false,
+  "variant": "JSPI memory64 experimental WebGPU + CPU fallback",
+  "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "countPatchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+  "gpuPatchSha256": "7b49cfe6875ce35341158d396508ff47057a81e184bf5a6beb1b9ebe006245e9",
+  "streamAbortPatchSha256": "bb2dd511222b90c5143ee6b0908a5bd1a65bfad5eb3c185119d2b7379b9437c5",
+  "registryPatchSha256": "3fc5632074e3e0908e7b35c4414bf016fef70d619a6be4ae16934239b442b450",
+  "gpuArchiveSha256": "4f141431934ffd1a21621681b6a035b78813fb3d4a61a8f1f19a0bd5828193bb",
+  "cacheSha256": "c224ed4bd9387dd35327f652c08415ee9d675c3425519fb8075e6cc5f3b81321",
+  "generatedWorkerSha256": "99d18977ab91e0399801d37be324f8bbd31b2df5aded3239a5780492fcef15fa",
+  "assets": [
+    {
+      "name": "wllama.js",
+      "bytes": 136406,
+      "sha256": "41aac8f689195005f52c59b4ffa01e8d84f2b629a66013f44e3b0c07ad1ea0ce"
+    },
+    {
+      "name": "wllama.wasm",
+      "bytes": 8810742,
+      "sha256": "0cdc826bb8b852ada698a391761c8ff5615d0b205fc28bfdb01241e994177cb0"
+    }
+  ],
+  "bundle": {
+    "name": "wllama-count-q2-webgpu.js",
+    "bytes": 363275,
+    "sha256": "de771741e0011dae3fb5b4d57eb52d52b3f911877d7c0fd0f12dfc563383a8f5"
+  }
+}

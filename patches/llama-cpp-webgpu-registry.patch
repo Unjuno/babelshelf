@@ -1,0 +1,36 @@
+--- a/ggml/src/ggml-webgpu/ggml-webgpu.cpp
++++ b/ggml/src/ggml-webgpu/ggml-webgpu.cpp
+@@ -4127,6 +4127,13 @@
+ }
+ 
+ static void create_webgpu_device(ggml_backend_webgpu_reg_context * ctx) {
++    // Global staging buffers and pipelines belong to this device. Replacing it
++    // during another backend lookup leaves cached resources on the old device.
++    // Device loss is fatal to this runtime; recovery constructs a fresh Worker.
++    if (ctx->webgpu_global_ctx->device != nullptr) {
++        return;
++    }
++
+     ggml_backend_webgpu_request_adapter(ctx->webgpu_global_ctx->instance, ctx->webgpu_global_ctx->adapter);
+     GGML_ASSERT(ctx->webgpu_global_ctx->adapter != nullptr);
+ 
+@@ -4851,15 +4858,16 @@
+         /* .context     = */ ctx,
+     };
+ 
+-    ctx->name         = GGML_WEBGPU_NAME;
+-    ctx->device_count = 0;
+-
+     // Keep one Dawn/WebGPU instance alive for the lifetime of the static backend
+     // registry. Recreating it on repeated registry lookups can invalidate
+     // adapter/device references that are still held by the backend/device layer.
+     if (ctx->webgpu_global_ctx != nullptr && ctx->webgpu_global_ctx->instance != nullptr) {
+         return &reg;
+     }
++
++    // Preserve the detected count when returning an already-live registry.
++    ctx->name         = GGML_WEBGPU_NAME;
++    ctx->device_count = 0;
+ 
+     wgpu::InstanceDescriptor               instance_descriptor{};
+     std::vector<wgpu::InstanceFeatureName> instance_features = { wgpu::InstanceFeatureName::TimedWaitAny };

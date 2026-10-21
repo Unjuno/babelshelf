@@ -12,7 +12,8 @@ Start with a new private clone of wllama at
 `46ca246de9bb1c35269722a6240d37d9dfd79cad`. Apply
 `research/runtime/wllama-count/count.patch`, followed by
 `patches/wllama-stream-abort.patch`, to wllama and
-`patches/llama-cpp-q2_0-webgpu.patch` to llama.cpp. Preserve the original CPU
+`patches/llama-cpp-q2_0-webgpu.patch`, followed by
+`patches/llama-cpp-webgpu-registry.patch`, to llama.cpp. Preserve the original CPU
 checkout and build directory. On Windows, set `core.longpaths=true` locally
 before checking out llama.cpp; otherwise deeply nested upstream UI files can
 leave an incomplete checkout. Do not discard other work to repair a checkout.
@@ -44,11 +45,14 @@ one shell invocation, with properly quoted absolute paths. Build concurrency
 is intentionally bounded on the development host; it is not an inference
 performance setting.
 
-The packager checks both source revisions, all three patch hashes, all modified
+The packager checks both source revisions, all four patch hashes, all modified
 source hashes, unexpected tracked edits, key CMake options and native artifact
 hashes. It creates a distinctly named bundle in a new private directory. The
 receipt describes compilation, not successful model execution. It never uses
 the historical CPU artifact receipt to certify a GPU binary.
+It also refuses a native WASM older than the rebuilt GPU archive and records
+that archive's hash. This is a stale-build guard; completed build and execution
+receipts remain necessary evidence of linkage.
 
 The loopback server validates the complete pinned 0.6B Q4_0 file hash and the
 new native/bundle hashes before serving. Open it only in the existing sidebar
@@ -71,8 +75,9 @@ compiled-wrapper unit check covers queued cancellation, unrelated error,
 ignored cancellation, final-chunk cancellation and normal content. This is a
 controlled producer test, separate from the real browser/model evidence.
 
-This small Q4_0 check exercises whole-runtime integration. It cannot certify
-Q2_0 full-model dispatch, original 8B, Bonsai2 9B, mobile memory, thermal
+This small Q4_0 check exercises whole-runtime integration. Separate linked
+Q2_0 graph/offset/batch checks are described in [Q2-WEBGPU-BACKEND.md](Q2-WEBGPU-BACKEND.md).
+Neither check certifies Q2_0 full-model generation, original 8B, Bonsai2 9B, mobile memory, thermal
 stability, Metal, long conversations or offline cold restart. Keep those
 acceptance items separate. Do not package private models or runtime binaries
 into Git or deploy them merely because compilation succeeds.

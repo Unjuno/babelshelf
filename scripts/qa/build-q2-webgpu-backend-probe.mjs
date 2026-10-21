@@ -1,0 +1,24 @@
+import {execFileSync} from 'node:child_process';
+import {readFile, mkdir, writeFile} from 'node:fs/promises';
+import {resolve, join} from 'node:path';
+import {createHash} from 'node:crypto';
+const [sourceArg, sdkArg, outArg] = process.argv.slice(2);
+if (!sourceArg || !sdkArg || !outArg) throw Error('Use ISOLATED_GPU_WLLAMA_SOURCE EMSDK_ROOT NEW_PRIVATE_OUTPUT');
+const source=resolve(sourceArg),sdk=resolve(sdkArg),out=resolve(outArg),hash=b=>createHash('sha256').update(b).digest('hex');
+const gpu=JSON.parse(await readFile('research/evaluations/inference-optimization-2026-10-21/q2-webgpu-patch-manifest.json','utf8'));
+const registry=JSON.parse(await readFile('research/runtime/wllama-count/webgpu-registry-pins.json','utf8'));
+if(registry.requiresGpuPatchSha256!==gpu.patchSha256||hash(await readFile('patches/llama-cpp-webgpu-registry.patch'))!==registry.patchSha256)throw Error('Wrong registry patch chain');
+if(execFileSync('git',['rev-parse','HEAD'],{cwd:join(source,'llama.cpp'),encoding:'utf8'}).trim()!==gpu.llamaCppRevision)throw Error('Wrong llama revision');
+for(const pin of gpu.files){const extra=registry.files.find(f=>f.path===pin.path);if(extra&&extra.beforeSha256!==pin.afterSha256)throw Error('Wrong registry base');if(hash((await readFile(join(source,'llama.cpp',pin.path),'utf8')).replace(/\r\n/g,'\n'))!==(extra?.afterSha256??pin.afterSha256))throw Error('Wrong GPU source: '+pin.path);}
+const cache=await readFile(join(source,'build-count-q2-webgpu/CMakeCache.txt'),'utf8');
+for(const option of ['GGML_WEBGPU:BOOL=ON','GGML_WEBGPU_JSPI:BOOL=ON','LLAMA_WASM_MEM64:BOOL=ON'])if(!cache.split(/\r?\n/).includes(option))throw Error('Wrong native build: '+option);
+const archiveNames=['ggml/src/libggml.a','ggml/src/ggml-webgpu/libggml-webgpu.a','ggml/src/libggml-cpu.a','ggml/src/libggml-base.a'];
+const archives=archiveNames.map(name=>join(source,'build-count-q2-webgpu/llama.cpp',name));
+const archivePins=await Promise.all(archives.map(async(path,i)=>({path:archiveNames[i],sha256:hash(await readFile(path))})));
+await mkdir(out,{recursive:false});
+const probe=resolve('scripts/qa/q2-webgpu-backend-probe.cpp');
+const args=[join(sdk,'upstream/emscripten/em++.py'),probe,'-I'+join(source,'llama.cpp/ggml/include'),'-Wl,--start-group',...archives,'-Wl,--end-group','--use-port=emdawnwebgpu','-O1','-msimd128','-pthread','-fwasm-exceptions','-sMEMORY64=1','-sJSPI','-sJSPI_EXPORTS=["probe_init","probe_registry_count","probe_shutdown","probe_matmul","probe_rows"]','--no-entry','-sMODULARIZE=1','-sEXPORT_ES6=1','-sENVIRONMENT=web,worker','-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=67108864','-sMAXIMUM_MEMORY=268435456','-sPTHREAD_POOL_SIZE=0','-sEXPORTED_RUNTIME_METHODS=["HEAPU8","ccall","cwrap"]','-sEXPORTED_FUNCTIONS=["_probe_init","_probe_registry_count","_probe_shutdown","_probe_matmul","_probe_rows","_probe_alloc","_probe_free"]','-o',join(out,'probe.mjs')];
+execFileSync('python',args,{stdio:'inherit',env:{...process.env,EM_CONFIG:join(sdk,'.emscripten')}});
+const files=await Promise.all(['probe.mjs','probe.wasm'].map(async path=>{const bytes=await readFile(join(out,path));return {path,bytes:bytes.length,sha256:hash(bytes)};}));
+await writeFile(join(out,'build.json'),JSON.stringify({scope:'QA-only full linked ggml WebGPU backend graph/allocation/readback; no CPU scheduler, no full model generation',at:new Date().toISOString(),llamaCppRevision:gpu.llamaCppRevision,gpuPatchSha256:gpu.patchSha256,registryPatchSha256:registry.patchSha256,archives:archivePins,probeSha256:hash(await readFile(probe)),settings:{memory64:true,jspi:true,linkOptimization:'O1',nativeArchiveOptimization:'Release O3',maximumWasmMemoryBytes:268435456},files},null,2)+'\n');
+console.log(JSON.stringify({compiled:true,files}));

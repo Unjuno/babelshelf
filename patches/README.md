@@ -53,3 +53,9 @@ patch. It suppresses queued content after abort while awaiting actual native
 cancellation/error, and rejects normal completion after a requested abort.
 Its hash/source chain is recorded in `stream-abort-pins.json`. The wllama MIT
 notice is retained in `research/runtime/wllama-count/UPSTREAM-LICENCE`.
+
+`llama-cpp-webgpu-registry.patch` applies after the Q2_0 patch. It preserves
+the registered device count and shared GPU device/resources across later
+backend lookups and reinitialization. It does not implement device-loss
+recovery. See [Q2-WEBGPU-BACKEND.md](../research/runtime/wllama-count/Q2-WEBGPU-BACKEND.md)
+for the actual failing and passing browser graph/lifecycle receipts.
