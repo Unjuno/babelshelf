@@ -1,3 +1,4 @@
+import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
 import {findStoredFiles} from './file-discovery.ts';
@@ -30,10 +31,10 @@ import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
 export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
-export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
+export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];dialogueCopy?:DialogueCopy;importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
 type Canonical=ReturnType<typeof createNote>;
 export function projectNote(n:Canonical):NoteView {
- const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{}),...(n.visionText?{vision:{model:n.visionText.model,revision:n.visionText.revision,prompt:n.visionText.prompt}}:{})};
+ validateDialogueCopyRecord(n);const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.dialogueCopy?{dialogueCopy:structuredClone(n.dialogueCopy)}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{}),...(n.visionText?{vision:{model:n.visionText.model,revision:n.visionText.revision,prompt:n.visionText.prompt}}:{})};
 }
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 function readSnapshot(tx:IDBTransaction,done:(value:StateSnapshot)=>void){
@@ -46,7 +47,7 @@ function readSnapshot(tx:IDBTransaction,done:(value:StateSnapshot)=>void){
   keys.onsuccess=()=>{finish();complete();};values.onsuccess=()=>{finish();complete();};
  }
 }
-export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],after:NoteView[]):Canonical[]{
+export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],after:NoteView[],dialogue?:Dialogue):Canonical[]{
  const result=structuredClone(records),oldView=new Map(before.map(n=>[n.id,n])),newView=new Map(after.map(n=>[n.id,n]));
  if(newView.size!==after.length)throw Error('Duplicate ID conflict');
  for(const id of new Set([...oldView.keys(),...newView.keys()])){
@@ -59,6 +60,7 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
   if(old?.ui?.managed){if(next.path!==notePath(old))throw Error('Settings path is protected');parsePreference(preferenceGroup(next.path)!,next.body);}
   if(!old||next.path!==notePath(old))validateMemoryFilePath(next.path);
   if(old){
+   if(!equal(old.dialogueCopy,next.dialogueCopy))throw Error('Dialogue copy origin is immutable');
    if(old.state==='active'&&(!previous||next.version!==previous.version+1||!equal(next.history,[...previous.history,previous.body])))throw Error('Invalid revision history');
    if(old.state==='withdrawn'&&['execution','notification'].includes(old.ui?.recordType)&&(next.body!==latest(old).body||next.path!==notePath(old)))throw Error('Restore exact log before changing it');
    const active={...old,state:'active'};delete active.withdrawnAt;
@@ -69,7 +71,8 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
    if(next.version!==1||next.history.length)throw Error('Invalid new revision');
    if(next.kind==='generated'&&(!Array.isArray(next.sources)||!validateGroundingRefs(records,next.sources).ok))throw Error('Source changed · review before saving');
    const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path,kind:next.kind??'original',sources:next.sources??[]});
-   result.push({...created,id,...(next.importedFrom?{importedFrom:next.importedFrom}:{})});
+   const record={...created,id,...(next.importedFrom?{importedFrom:next.importedFrom}:{}),...(next.dialogueCopy?{dialogueCopy:structuredClone(next.dialogueCopy)}:{})};
+   validateDialogueCopyRecord(record);if(record.dialogueCopy)assertDialogueCopySource(dialogue,record.dialogueCopy);result.push(record);
   }
  }
  checkNotes(result);for(const note of result)if(!records.some(old=>old.id===note.id)&&note.kind==='generated'&&!validateGroundingRefs(result,note.sources).ok)throw Error('Source changed · review before saving');return result;
@@ -255,8 +258,8 @@ export class KnowledgeStore {
   };});
  }
  async commit(before:NoteView[],after:NoteView[]){
-  const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2,error:unknown,views:NoteView[];
-   const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;
+  const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,error:unknown,views:NoteView[];
+   const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after,dialogue.result);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
    tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
   });
  }

@@ -1,0 +1,54 @@
+{
+  "identity": {
+    "build": "21d3a058be26e17b",
+    "fixtureSha256": "21d74c8bcf079693f02b3c4ecaa0989d2533c6280c492af675f387ae42ce82b5"
+  },
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "at": "2026-10-20T23:47:23.155Z",
+  "transactions": {
+    "passed": true,
+    "scope": "Actual IndexedDB, controlled fixtures, no inference",
+    "database": "babelshelf-copy-qa-42679948-5e18-4705-b77b-bee0a99a7252",
+    "saved": {
+      "id": "qa-saved",
+      "kind": "generated",
+      "state": "active",
+      "createdAt": "2026-10-20T23:48:27.516Z",
+      "aliases": [],
+      "sources": [],
+      "revisions": [
+        {
+          "version": 1,
+          "title": "qa-copy",
+          "body": "QA first assistant answer\r\n日本語 🌳",
+          "path": "Inbox/qa-copy.md",
+          "at": "2026-10-20T23:48:27.516Z"
+        }
+      ],
+      "dialogueCopy": {
+        "schema": 1,
+        "noteRevision": 1,
+        "turnId": "qa-copy-first",
+        "turnIndex": 0,
+        "speaker": "assistant",
+        "quote": "QA first assistant answer\r\n日本語 🌳",
+        "refs": [],
+        "edited": false
+      }
+    },
+    "staleError": "Dialogue source changed · choose again",
+    "forgedError": "Invalid dialogue copy origin",
+    "unchangedSnapshotHash": "a05b9f891882a213e5f57d537857647881548e3818c6e2446bdcb0dec4d286ca",
+    "backupRoundTrip": true,
+    "freshDatabaseRestore": {
+      "conflicts": [],
+      "added": {
+        "notes": 1,
+        "settings": 1,
+        "runs": 0
+      },
+      "restored": true
+    },
+    "markdownOrigin": true
+  }
+}

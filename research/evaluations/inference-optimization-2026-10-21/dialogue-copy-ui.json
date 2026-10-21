@@ -1,0 +1,30 @@
+{
+  "scope": "Actual sidebar PC product UI with controlled dialogue fixture; no model inference",
+  "build": "21d3a058be26e17b",
+  "noteId": "d718d5f7-eefc-4c1d-bb04-99af08a5f5be",
+  "path": "Inbox/Answer-2026-10-21.md",
+  "kind": "generated",
+  "dialogueCopy": {
+    "schema": 1,
+    "noteRevision": 1,
+    "turnId": "qa-copy-first",
+    "turnIndex": 0,
+    "speaker": "assistant",
+    "quote": "QA first assistant answer\r\n日本語 🌳",
+    "refs": [],
+    "edited": false
+  },
+  "exactCRLFUnicodeBody": true,
+  "dialogueUnchanged": true,
+  "noteCount": 18,
+  "backupSha256": "987affe048d55e4df25c69f2d5167529b8546b6747398ad1cef240583dc6efa9",
+  "observedControls": [
+    "Save note",
+    "You -> Assistant source switch",
+    "Edited copy while editing",
+    "Unchanged message-number blur retains edit",
+    "Explicit source reselect restores original",
+    "Save",
+    "Original message expands saved origin"
+  ]
+}

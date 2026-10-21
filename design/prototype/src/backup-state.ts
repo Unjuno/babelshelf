@@ -1,3 +1,4 @@
+import {validateDialogueCopyRecord} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 import {validateFileResultLinks} from './file-discovery.ts';
 import {validateNoteRestoreReceipt} from './note-restore.ts';
@@ -60,7 +61,7 @@ function sourceRefs(notes:any[],refs:unknown){
 }
 function validateState(state:StateSnapshot){
  jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);
- for(const n of state.notes){const path=notePath(n),group=preferenceGroup(path);
+ for(const n of state.notes){validateDialogueCopyRecord(n);const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
   if(n.ui?.recordType==='execution'){const r=taskRunView(n);if(typeof r.startedAt!=='string'||!['running','succeeded','failed','stopped','missed','interrupted','skipped'].includes(r.status)||!state.notes.some(t=>t.id===r.taskId&&t.revisions.some((v:any)=>v.version===r.taskRevision)))throw Error('Invalid execution target');sourceRefs(state.notes,r.sources??[]);}

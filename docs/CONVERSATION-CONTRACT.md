@@ -152,3 +152,6 @@ This addresses a concrete model-message provenance defect found after actual pub
 
 ## Dialogue-only generation does not enumerate knowledge (2026-10-21)
 When the resolved mode is chat with no current working-file or attachment scope, groundedAnswer generates from the supplied dialogue without reading/indexing the knowledge store. Context preparation, exact-token budget, pinned local engine, cancellation, output completion checks and empty source list remain. Historical source refs never become dialogue evidence. All file, attachment, tool-evidence and stored-knowledge branches retain their source reads/revalidation, including the unusual chat-with-file boundary. This is removal of unrelated storage work, not removal of the user's dialogue or a measured generation-speed improvement. The input submission and dialogue/activity persistence still use their canonical stores.
+
+
+Reviewed dialogue-copy origin and source correction are now defined in [DIALOGUE-COPY-CONTRACT.md](DIALOGUE-COPY-CONTRACT.md). Both manual answer saving and current/history capture show the app-owned message/speaker selection and preserve an immutable revision1 origin snapshot. New-copy commit rechecks stored dialogue in the same transaction as the note write. This adds user correction and provenance, not a claim that model source selection is reliable.
