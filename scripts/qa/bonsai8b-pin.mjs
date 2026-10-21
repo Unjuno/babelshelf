@@ -1,0 +1,2 @@
+// QA-only immutable input. Not a product preset or a generation certification.
+export const bonsai8bPin=Object.freeze({id:'8B-Q2_0-g64',repository:'prism-ml/Ternary-Bonsai-8B-gguf',revision:'c2aefbeb4b24469cd11579c3384b990404c17a30',file:'Ternary-Bonsai-8B-Q2_0_g64.gguf',bytes:2310125920,sha256:'e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e',format:'Q2_0',group:64,license:'Apache-2.0'});

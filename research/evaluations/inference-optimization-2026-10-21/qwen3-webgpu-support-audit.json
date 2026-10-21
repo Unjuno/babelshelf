@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-21T01:18:13.968Z",
+  "scope": "Static exact-source backend capability audit; no new GPU binary, model execution or speed claim",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "file": "llama.cpp/ggml/src/ggml-webgpu/ggml-webgpu.cpp",
+  "sourceSha256": "2be9bcc93c8b83d8972941851ff623ed3ae5fc767a3deec950ce1613c5c7ca54",
+  "packagedBuildWebgpuEnabled": false,
+  "q2_0ListedForQuantizedRows": false,
+  "q2_0ListedForMatrixMultiply": false,
+  "q2_kListedForMatrixMultiply": true,
+  "interpretation": "CPU official-Q2 support is not WebGPU support. Enabling the backend alone cannot offload these Q2_0 projections; Q2_K is a different format."
+}

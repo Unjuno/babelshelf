@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "at": "2026-10-21T01:19:06.223Z",
+  "scope": "Exact-revision full model acquisition, SHA256 and bounded GGUF inspection; no loading/generation or device-fit claim",
+  "pin": {
+    "id": "8B-Q2_0-g64",
+    "repository": "prism-ml/Ternary-Bonsai-8B-gguf",
+    "revision": "c2aefbeb4b24469cd11579c3384b990404c17a30",
+    "file": "Ternary-Bonsai-8B-Q2_0_g64.gguf",
+    "bytes": 2310125920,
+    "sha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e",
+    "format": "Q2_0",
+    "group": 64,
+    "license": "Apache-2.0"
+  },
+  "source": "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-gguf/resolve/c2aefbeb4b24469cd11579c3384b990404c17a30/Ternary-Bonsai-8B-Q2_0_g64.gguf",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "elapsedMs": 1484.1676,
+  "existing": true,
+  "bytes": 2310125920,
+  "sha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e",
+  "inspection": {
+    "format": "GGUF",
+    "version": 3,
+    "bytes": 2310125920,
+    "name": "",
+    "architecture": "qwen3",
+    "contextLength": 65536,
+    "tokenizer": "gpt2",
+    "chatTemplate": true,
+    "tokenCount": 151669,
+    "tensorCount": 399,
+    "tensorTypes": [
+      0,
+      42
+    ],
+    "tensorExtentsChecked": true,
+    "dataOffset": 5950560
+  },
+  "eligibleAdapter": "wllama-qwen3",
+  "weightsVerified": true,
+  "generationVerified": false,
+  "offlineVerified": false,
+  "passed": true
+}
