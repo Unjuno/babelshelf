@@ -51,6 +51,7 @@ import {AssetOperationGate,decisionAssetInput,textAssetInput,speechAssetInput,oc
 import {processingName,recordProcessingOperation,type ProcessingTool} from './processing-history';
 import {appendDiagnosticLog,clearDiagnosticLogs,readDiagnosticLogs,type DiagnosticLog} from './diagnostic-logs';
 import {runDeviceDiagnostics,formatDeviceDiagnosticReport,readOfflineRestartMarker,writeOfflineRestartMarker,clearOfflineRestartMarker,type OfflineRestartMarker,type DeviceDiagnosticReport} from './device-diagnostics';
+import {copyDiagnosticReport} from './diagnostic-report-copy';
 import {PdfPreview} from './PdfPreview';
 import {isPdf,pdfCitationPage,type PdfText} from './pdf-text';
 import {recordOperation,updateActivity,activityLabel,activityStatus,type Activity,type ActivityTool} from './harness-activity';
@@ -309,7 +310,7 @@ export default function Prototype() {
    }catch(error){toast((error as Error).message||'Could not create model test report');}
   finally{setDeviceModelTesting(false);}
  }
- async function copyDeviceTestReport(){if(!deviceTestReport)return;try{await navigator.clipboard.writeText(deviceTestReport);toast('Device test report copied');}catch{toast('Clipboard unavailable · select the report below');}}
+ async function copyDeviceTestReport(){if(!deviceTestReport)return;const result=await copyDiagnosticReport(deviceTestReport,navigator.clipboard,document);toast(result==='copied'?'Device test report copied':'Select the report below to copy');}
  async function beginOfflineRestartTest(){if(deviceTestRunning||deviceModelTesting)return;setDeviceTestRunning(true);try{const report=deviceTestReport?JSON.parse(deviceTestReport) as DeviceDiagnosticReport:await collectDeviceReport(),marker:OfflineRestartMarker={schema:1,startedAt:new Date().toISOString(),appBuild:report.appBuild,baseline:{checkedAt:report.createdAt,appBuild:report.appBuild,standalone:report.standalone,onlineSignal:report.onlineSignal,checks:report.checks,modelGeneration:report.modelGeneration}};writeOfflineRestartMarker(localStorage,marker);setOfflineRestartMarker(marker);setDeviceTestReport(formatDeviceDiagnosticReport(report));toast('Current report saved · continue with offline restart steps');}catch(error){toast((error as Error).message||'Could not start offline restart test');}finally{setDeviceTestRunning(false);}}
  async function applyAppUpdate(){try{const registration=await navigator.serviceWorker.getRegistration();if(!registration)throw Error('App cache not prepared');await activateWaitingUpdate(registration,navigator.serviceWorker);setAppUpdateReady(false);toast('Updated · reopen app');}catch(error){setAppUpdateReady(false);toast((error as Error).message);}}
  async function protectStorage(){if(storageProtectionBusy)return;setStorageProtectionBusy(true);try{const result=await requestStorageProtection();setDeviceStorage(result.state);setStorageProtectionMessage(result.outcome==='unsupported'?'Unsupported':result.outcome==='not-granted'?'Not granted':'Request completed');}finally{setStorageProtectionBusy(false);}}
