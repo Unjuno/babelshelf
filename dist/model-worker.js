@@ -5,6 +5,7 @@ import {adapterSnapshot} from './gpu-info.js';
 import {createStreamingSHA256,streamingSHA256Backend} from './streaming-sha256.js';
 import {fileResponse} from './ranges.js';
 import {createRuntimeModuleCache} from './runtime-module.js';
+import {createPinnedFileSnapshots} from './pinned-file-snapshots.js';
 const networkFetch=globalThis.fetch.bind(globalThis);
 // Inference never has a network fallback, even when update permission is ON.
 globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));
@@ -12,11 +13,12 @@ let manifest,baseManifest,model,session,controller,busy=false,root,loadedModelIn
 const send=(id,type,value)=>postMessage({id,type,value});
 async function directory(){return root??=await (await navigator.storage.getDirectory()).getDirectoryHandle('mlb-assets-v1',{create:true});}
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
+const pinnedFiles=createPinnedFileSnapshots({read:name=>file(name),hash:(snapshot,options)=>hashFile(snapshot,options?.progress?ratio=>options.progress(ratio):undefined)});
 async function meta(id){try{return JSON.parse(await (await file('ready-'+id+'.json')).text());}catch{return null;}}
 async function writeJSON(name,value){const w=await(await(await directory()).getFileHandle(name,{create:true})).createWritable();await w.write(JSON.stringify(value));await w.close();}
 async function hashFile(f,notify=()=>{}){return hashLocalModel(f,{signal:controller?.signal,progress:(bytes,total)=>notify(bytes/total)});}
 async function storeAsset(entry,id,local=null){
- const name=entry.sha256;try{const f=await file(name);if(f.size===entry.bytes&&await hashFile(f)===entry.sha256)return name;}catch{controller?.signal.throwIfAborted();}
+ const name=entry.sha256;try{await pinnedFiles.verify(name,entry,{signal:controller?.signal});return name;}catch{controller?.signal.throwIfAborted();pinnedFiles.invalidate(name);}
  controller?.signal.throwIfAborted();
  const h=await createStreamingSHA256();controller?.signal.throwIfAborted();
  const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();let count=0,last=0,yieldBytes=0;let reader,cancellation;
@@ -33,10 +35,12 @@ async function storeAsset(entry,id,local=null){
 async function status(){const out={};for(const m of manifest.models){const x=await meta(m.id);if(x){try{const a=await file(x.modelHash),r=await file(x.runtimeHash);out[m.id]={...x,filesPresent:a.size===m.file.bytes&&r.size===manifest.runtime.file.bytes};}catch{out[m.id]={...x,filesPresent:false};}}else out[m.id]=null;}return out;}
 async function verifyStored(id,size){
  const m=manifest.models.find(m=>m.id===size);if(!m)throw Error('Unsupported model');
- const f=await file(m.file.sha256),runtime=await file(manifest.runtime.file.sha256);
+ const f=await pinnedFiles.get(m.file.sha256),runtime=await pinnedFiles.get(manifest.runtime.file.sha256);
  send(id,'progress','Verifying…');
  if(m.localModel)await verifyLocalModelFile(f,m.localModel,{signal:controller.signal,progress:(n,total)=>send(id,'progress','Verifying model · '+Math.round(n/total*100)+'%')});
- if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes||(!m.localModel&&(await hashFile(f,p=>send(id,'progress','Verifying model · '+Math.round(p*100)+'%'))!==m.file.sha256))||await hashFile(runtime)!==manifest.runtime.file.sha256)throw Error('Local verification failed');
+ if(!m.localModel)await pinnedFiles.verify(m.file.sha256,m.file,{signal:controller.signal,progress:ratio=>send(id,'progress','Verifying model · '+Math.round(ratio*100)+'%')});
+ await pinnedFiles.verify(manifest.runtime.file.sha256,manifest.runtime.file,{signal:controller.signal});
+ if(f.size!==m.file.bytes||runtime.size!==manifest.runtime.file.bytes)throw Error('Local verification failed');
  controller.signal.throwIfAborted();return {f,runtime};
 }
 async function load(id,size){

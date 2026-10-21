@@ -7,6 +7,13 @@ const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1'
 const hfGrants=new Map();
 const networkRequests=new Set();let networkEpoch=0;
 const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
+function isolatedNavigation(response){
+ const headers=new Headers(response.headers);
+ headers.set('Cross-Origin-Opener-Policy','same-origin');
+ headers.set('Cross-Origin-Embedder-Policy','require-corp');
+ headers.delete('Content-Encoding');headers.delete('Content-Length');
+ return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
 async function externalRequest(event){
  const approved=REMOTE.includes(event.request.url)||consumeHF(event),epoch=networkEpoch;
  if(!approved||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)return disabledNetwork();
@@ -91,10 +98,7 @@ self.addEventListener('fetch',event=>{
    // cannot satisfy a navigation whose redirect mode is manual. Serve the
    // already verified body without its network redirect metadata, including
    // for existing caches. No acquisition or cache/data migration is needed.
-   if(request.mode==='navigate'&&hit.redirected){
-    const headers=new Headers(hit.headers);headers.delete('Content-Encoding');headers.delete('Content-Length');
-    return new Response(hit.body,{status:hit.status,statusText:hit.statusText,headers});
-   }
+   if(request.mode==='navigate')return isolatedNavigation(hit);
    return hit;
   }
   if(immutable(path)){

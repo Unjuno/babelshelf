@@ -79,6 +79,7 @@
     "theme": "system",
     "background": "paper",
     "glass": "clear",
+    "fontFamily": "system",
     "transcriptionModel": "",
     "ocrModel": "",
     "visionModel": ""

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 import {withLocalModels,verifyLocalModelFile} from '../dist/local-model-manifest.js';
+import {createPinnedFileSnapshots} from '../dist/pinned-file-snapshots.js';
 const base=JSON.parse(await readFile(new URL('../dist/model-manifest.json',import.meta.url)));
 const sha256='a'.repeat(64);
 const record=()=>({id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'My model',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}});
@@ -21,7 +22,7 @@ test('registered declaration cannot verify unrelated local bytes',async()=>{
 
 test('worker registration preserves engine authority and custom preparation cannot fetch',async()=>{
  const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');let fetched=0;const events=[];
- const context=vm.createContext({withLocalModels,verifyLocalModelFile,structuredClone,fetch:()=>{fetched++;throw Error('unexpected network');},postMessage:e=>events.push(e),AbortController,DOMException,performance,console});
+ const context=vm.createContext({withLocalModels,verifyLocalModelFile,createPinnedFileSnapshots,structuredClone,fetch:()=>{fetched++;throw Error('unexpected network');},postMessage:e=>events.push(e),AbortController,DOMException,performance,console});
  vm.runInContext(source+'\nglobalThis.workerTest={manifest:()=>manifest,setLoaded:()=>{model={};},clear:()=>{model=null;}};',context);
  context.root={}; // status catches unavailable asset metadata, never prepares it.
  async function command(cmd,args){const id=events.length+1;await context.onmessage({data:{id,cmd,args}});return events.findLast(e=>e.id===id);}

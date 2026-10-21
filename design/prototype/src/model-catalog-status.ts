@@ -44,5 +44,7 @@ export function textModelChoiceHint(id:string,customModels:readonly CustomLocalM
  const bytes=textModelFileSize(id,customModels);
  if(bytes===null)return 'Size unavailable';
  const size=bytes>=1e9?(bytes/1e9).toFixed(2)+' GB':Math.round(bytes/1e6)+' MB';
+ const custom=customModels.find(model=>model.id===id);
+ if(custom?.engine==='wllama-qwen3')return size+' · CPU WASM · execution not tested';
  return id==='9B'?size+' · PC prose unstable':size+' · model files';
 }

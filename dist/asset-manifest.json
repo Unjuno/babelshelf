@@ -67,6 +67,11 @@
       "sha256": "c19dae99c6edb62057e074b69d496efca3f7b580785d980c9a7591b1019857f6"
     },
     {
+      "path": "./inference-threads.js",
+      "bytes": 585,
+      "sha256": "4490e841e204006d02ff19775322dc32ad8f96a6b85bc9871bfc4e700a09b90c"
+    },
+    {
       "path": "./input-events.js",
       "bytes": 199,
       "sha256": "e64a4b3377222abefea253560f61e8bd400a0b9e53b45d5de31fcf6ebd99c7c5"
@@ -78,8 +83,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 6778,
-      "sha256": "ddf84ef5409e68f8f992dd7b36e4776decbfd253ce2577e1e71c846c1530a799"
+      "bytes": 7504,
+      "sha256": "84707f82804ce274fc9e5569579e323483b67d06deffaaebebd94ed670153d35"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -118,13 +123,18 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 13941,
-      "sha256": "ec0ff317c976f093f1a4c0c420c7ae846453299a8996d4c83684d1eb7d4ae539"
+      "bytes": 14323,
+      "sha256": "c13c7b58e96214bb6c1da0a18dba78cd662c4e00bf130407bfeafba5b115de1c"
     },
     {
       "path": "./native-response.js",
       "bytes": 4772,
       "sha256": "f9936d8e1b7382214852decaed94d1c40b7923e27fa4633a9c166fe8e369dd0d"
+    },
+    {
+      "path": "./pinned-file-snapshots.js",
+      "bytes": 1621,
+      "sha256": "fd77f17341b24f15caef6c5add35f81235b88373063948671b277da9dcaaa371"
     },
     {
       "path": "./qwen3-adapter.js",
@@ -174,7 +184,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "1b1658702482deb1a0122fdd18bffcbd8c25f254eebd75e93c3dc9ae54c4e5e7"
+      "sha256": "d8a3f660032787c55c7cec49705220cf89ecc7d3d43fc2e325447fbe07772568"
     },
     {
       "path": "./ui.js",

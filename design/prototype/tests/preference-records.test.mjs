@@ -110,6 +110,14 @@ test('custom declarations survive backup without assets and model proposals cann
  assert.throws(()=>settingsPatchResult(note,JSON.stringify({action:'patch',changes:{textLibrary:[model.id]}})),/Invalid settings patch/);
 });
 
+test('appearance adds local font selection without rewriting old records or accepting unverified declarations',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-appearance'),legacy=readPreference('appearance',notes);delete legacy.fontFamily;delete legacy.fonts;record.body=formatPreference('appearance',legacy);const before=record.body;
+ const migrated=readPreference('appearance',notes);assert.equal(migrated.fontFamily,'system');assert.deepEqual(migrated.fonts,[]);assert.equal(record.body,before);
+ const font={id:'font-'+'a'.repeat(64),label:'Local Sans',format:'woff2',bytes:4000,sha256:'a'.repeat(64)};
+ const updated=updatePreference('appearance',notes,value=>({...value,fontFamily:font.id,fonts:[font]}));assert.equal(readPreference('appearance',updated).fontFamily,font.id);assert.deepEqual(updated.find(n=>n.id===record.id).history,[before]);
+ for(const change of [value=>{value.fonts[0].sha256='b'.repeat(64);},value=>{value.fontFamily='https://example.com/font.woff2';},value=>{value.fonts[0].format='css';}]){const invalid=structuredClone(readPreference('appearance',updated));change(invalid);assert.throws(()=>parsePreference('appearance',formatPreference('appearance',invalid)),/Invalid local font registry/);}
+});
+
 
 test('corrupt settings fall back safely and restore defaults with a versioned history while preserving memory',()=>{
  const notes=structuredClone(initialPreferenceNotes);const appearance=notes.find(n=>n.id==='settings-appearance');appearance.body='not valid settings';

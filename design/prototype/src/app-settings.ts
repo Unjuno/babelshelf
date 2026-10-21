@@ -28,14 +28,14 @@ export function validateSettings(value:unknown):Settings {
  c.models.transcription.forEach((item,i)=>{keys(item,['value','label','parameters','language']);if(item.value!==speechIDs[i]||typeof item.label!=='string'||!item.label.trim()||item.parameters!==[39000000,74000000][i]||item.language!=='Multilingual')throw Error('Unsupported transcription model');});
  if(!Array.isArray(c.models.ocr)||c.models.ocr.length!==1||c.models.ocr[0].value!=='tesseract-7'||c.models.ocr[0].label!=='Tesseract 7')throw Error('Unsupported image reader');keys(c.models.ocr[0],['value','label']);
  if(!Array.isArray(c.models.vision)||c.models.vision.length!==1||c.models.vision[0].value!=='lfm25-vl-450m-q4f16'||c.models.vision[0].label!=='LFM2.5-VL · 450M · Vision')throw Error('Unsupported vision model');keys(c.models.vision[0],['value','label']);
- keys(c.defaults,['ocrModel','visionModel','textModel','decisionModel','transcriptionModel','downloads','theme','background','glass']);
+ keys(c.defaults,['ocrModel','visionModel','textModel','decisionModel','transcriptionModel','downloads','theme','background','glass','fontFamily']);
  if(c.defaults.ocrModel!=='')throw Error('Invalid image reader default');
  if(c.defaults.visionModel!==''&&!c.models.vision.some(m=>m.value===c.defaults.visionModel))throw Error('Invalid vision default');
  if(c.defaults.transcriptionModel!==''&&!speechIDs.includes(c.defaults.transcriptionModel))throw Error('Invalid transcription default');
  if(!allowedText.includes(c.defaults.textModel)||!allowedDecision.includes(c.defaults.decisionModel)||c.defaults.downloads!==false)throw Error('Invalid model/network defaults');
  keys(c.appearance,['themes','backgrounds','glass']);
  list(c.appearance.themes,['system','light','dark']);list(c.appearance.backgrounds,['paper','sage','sand']);list(c.appearance.glass,['clear','frosted']);
- if(!c.appearance.themes.includes(c.defaults.theme)||!c.appearance.backgrounds.includes(c.defaults.background)||!c.appearance.glass.includes(c.defaults.glass))throw Error('Invalid appearance default');
+ if(!c.appearance.themes.includes(c.defaults.theme)||!c.appearance.backgrounds.includes(c.defaults.background)||!c.appearance.glass.includes(c.defaults.glass)||c.defaults.fontFamily!=='system')throw Error('Invalid appearance default');
  // Media execution capabilities belong to local-capabilities.ts, where each
  // claim is paired with an app-owned adapter. Config only owns input limits.
  keys(c.media,['maxTextBytes']);
