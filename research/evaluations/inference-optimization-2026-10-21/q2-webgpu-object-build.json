@@ -1,0 +1,11 @@
+{
+  "scope": "Emscripten object compilation of the experimental WebGPU backend; not a linked/runtime/model acceptance result",
+  "llvmObjectBytes": 2153399,
+  "llvmObjectSha256": "dacb5f31c4a86ef12d2acc8b1c96b7afc341e5f991179aea0be8a46d610801bd",
+  "emsdk": "4.0.20",
+  "dawnPort": "v20251002.162335",
+  "flags": "-std=c++20 --use-port=emdawnwebgpu -c -O1",
+  "syntaxOnlyExit": 0,
+  "objectCompileExit": 0,
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad"
+}

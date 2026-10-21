@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-21T01:26:04.817Z",
+  "scope": "Actual upstream preprocessed WGSL numerical checks on Node/Dawn D3D12; not full model, browser, phone or throughput acceptance",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "backend": "d3d12",
+  "browser": null,
+  "model": null,
+  "inputTokens": null,
+  "outputTokens": null,
+  "variants": [
+    {
+      "name": "rows",
+      "file": "get_rows.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "Q2_0",
+        "Q2_0_T",
+        "SRC_TYPE=u32",
+        "DST_TYPE=f32",
+        "BLOCK_SIZE=64u",
+        "WG_SIZE=64"
+      ],
+      "sha256": "afcd51ab0a56b09beefe887963155b4eb61810ff4512dc5c5d89e722b8ba0c6a",
+      "errors": [
+        {
+          "message": "unresolved call target 'copy_elements'",
+          "line": 166
+        }
+      ]
+    },
+    {
+      "name": "vector",
+      "file": "mul_mat_vec.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "MUL_ACC_Q2_0",
+        "SCALAR",
+        "SRC0_INNER_TYPE=u32",
+        "SRC1_INNER_TYPE=f32",
+        "WG_SIZE=128",
+        "OUTPUTS_PER_WG=4",
+        "NUM_COLS=3",
+        "USE_WORKGROUP_REDUCTION"
+      ],
+      "sha256": "b83780c4c84bdc5e80890734b1c9f8643501908b8eab71819cdde378fa8feeed",
+      "errors": [
+        {
+          "message": "unresolved call target 'accumulate_vec_dot'",
+          "line": 185
+        }
+      ]
+    },
+    {
+      "name": "tile",
+      "file": "mul_mat_reg_tile.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "INIT_SRC0_SHMEM_Q2_0",
+        "INIT_SRC1_SHMEM_FLOAT",
+        "SCALAR",
+        "SRC0_INNER_TYPE=u32",
+        "SRC1_INNER_TYPE=f32",
+        "TILE_M=2u",
+        "TILE_N=2u",
+        "TILE_K=32u",
+        "WORKGROUP_SIZE_M=4u",
+        "WORKGROUP_SIZE_N=4u"
+      ],
+      "sha256": "e373db682f5648167e3ad3369c3dcac8068a48f8f655ee2458a253d722672931",
+      "errors": [
+        {
+          "message": "unresolved call target 'init_shmem_src0'",
+          "line": 223
+        }
+      ]
+    }
+  ],
+  "cases": [],
+  "passed": false,
+  "adapter": {
+    "subgroupMatrixConfigs": []
+  },
+  "error": "Error: Required Q2_0 shader variants did not compile\n    at file:///C:/Users/junny/Documents/Codex/2026-10-17/github-https-github-com-unjuno-babelshelf/work/babelshelf/scripts/qa/check-qwen3-q2-webgpu.mjs:30:59"
+}

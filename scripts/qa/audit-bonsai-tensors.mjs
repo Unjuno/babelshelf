@@ -24,7 +24,7 @@ for(let i=0;i<tensorCount;i++){
  const name=text(true),rank=u32(),shape=Array.from({length:rank},()=>u64()),type=u32(),offset=u64(),elements=shape.reduce((a,b)=>a*b,1),group=type===0?1:type===42?64:128,step=type===0?4:type===143?28:type===142?34:type===42?18:0;
  if(!step)throw Error('Unsupported audit tensor type');
  const start=inspection.dataOffset+offset,size=elements/group*step;
- tensors.push({name,type,elements,start,size,step,first:start+(type===143?26:0),expectedScalars:elements/group,scalars:0,nonFinite:0,zero:0,negative:0,min:null,max:null});
+ tensors.push({name,type,shape,elements,start,size,step,first:start+(type===143?26:0),expectedScalars:elements/group,scalars:0,nonFinite:0,zero:0,negative:0,min:null,max:null});
 }
 tensors.sort((a,b)=>a.start-b.start);
 const hash=await createStreamingSHA256(),started=performance.now();let offset=0,firstTensor=0;

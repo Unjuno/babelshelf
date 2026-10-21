@@ -15,6 +15,9 @@ research/evaluations/reference-cpu-e3de715/** -text whitespace=-blank-at-eof,-bl
 research/runtime/wllama-count/count.patch -text
 research/runtime/wllama-count/UPSTREAM-LICENCE -text
 
+# Preserve the hashed unified diff; blank context lines contain a literal space.
+patches/llama-cpp-q2_0-webgpu.patch -text whitespace=-blank-at-eol
+
 # Preserve pinned generated runtime JS byte identity.
 design/prototype/runtime/wllama-count/*.js -text
 design/prototype/runtime/wllama-count/*.wasm binary

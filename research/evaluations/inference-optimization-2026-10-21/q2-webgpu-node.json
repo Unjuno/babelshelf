@@ -1,0 +1,660 @@
+{
+  "at": "2026-10-21T01:36:13.174Z",
+  "scope": "Actual upstream preprocessed WGSL numerical checks on Node/Dawn D3D12; not full model, browser, phone or throughput acceptance",
+  "os": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64"
+  },
+  "node": "v24.6.0",
+  "backend": "d3d12",
+  "browser": null,
+  "model": {
+    "id": "8B-Q2_0-g64",
+    "repository": "prism-ml/Ternary-Bonsai-8B-gguf",
+    "revision": "c2aefbeb4b24469cd11579c3384b990404c17a30",
+    "file": "Ternary-Bonsai-8B-Q2_0_g64.gguf",
+    "bytes": 2310125920,
+    "sha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e",
+    "format": "Q2_0",
+    "group": 64,
+    "license": "Apache-2.0"
+  },
+  "inputTokens": null,
+  "outputTokens": null,
+  "variants": [
+    {
+      "name": "rows",
+      "file": "get_rows.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "Q2_0",
+        "Q2_0_T",
+        "SRC_TYPE=u32",
+        "DST_TYPE=f32",
+        "BLOCK_SIZE=64u",
+        "WG_SIZE=64"
+      ],
+      "sha256": "da930f884da1f118708d5681222ae255640f05b067e71a9a78f65830eb0e919d",
+      "errors": []
+    },
+    {
+      "name": "vector",
+      "file": "mul_mat_vec.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "MUL_ACC_Q2_0",
+        "SCALAR",
+        "SRC0_INNER_TYPE=u32",
+        "SRC1_INNER_TYPE=f32",
+        "WG_SIZE=128",
+        "OUTPUTS_PER_WG=4",
+        "NUM_COLS=3",
+        "USE_WORKGROUP_REDUCTION"
+      ],
+      "sha256": "78c679d1fe6ce41339111cefcf06ffb15166db7174606fbe05da2cad640e83b8",
+      "errors": []
+    },
+    {
+      "name": "vector1",
+      "file": "mul_mat_vec.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "MUL_ACC_Q2_0",
+        "SCALAR",
+        "SRC0_INNER_TYPE=u32",
+        "SRC1_INNER_TYPE=f32",
+        "WG_SIZE=128",
+        "OUTPUTS_PER_WG=4",
+        "NUM_COLS=1",
+        "USE_WORKGROUP_REDUCTION"
+      ],
+      "sha256": "90783c6d0ab82e65800fb686c423afca717b1da7df0930a2752be8ce49cda022",
+      "errors": []
+    },
+    {
+      "name": "tile",
+      "file": "mul_mat_reg_tile.wgsl",
+      "defines": [
+        "U32_DEQUANT_HELPERS",
+        "BYTE_HELPERS",
+        "INIT_SRC0_SHMEM_Q2_0",
+        "INIT_SRC1_SHMEM_FLOAT",
+        "SCALAR",
+        "SRC0_INNER_TYPE=u32",
+        "SRC1_INNER_TYPE=f32",
+        "TILE_M=2u",
+        "TILE_N=2u",
+        "TILE_K=32u",
+        "WORKGROUP_SIZE_M=4u",
+        "WORKGROUP_SIZE_N=4u"
+      ],
+      "sha256": "360dd5dba173df715c10fad915c5e241f40b694aba6143397f56069c17739d4a",
+      "errors": []
+    }
+  ],
+  "cases": [
+    {
+      "name": "vector1",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 64,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 64,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 64,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 64,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 128,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.0000028461217880249023,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 128,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.0000028461217880249023,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 128,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.000005766749382019043,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 128,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.000005766749382019043,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.00003187358379364014,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.000008746981620788574,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.00003357231616973877,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.00003485381603240967,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 12288,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.00003917515277862549,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 12288,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.00003917515277862549,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 12288,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.000053688883781433105,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 12288,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.000053688883781433105,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 14336,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.00004582107067108154,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 14336,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0.00004582107067108154,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 14336,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.00004582107067108154,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "controlled",
+      "originalRows": null,
+      "k": 14336,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0.00004582107067108154,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "token_embd.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "token_embd.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "token_embd.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "token_embd.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "output.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "output.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "output.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "output.weight",
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "blk.0.attn_q.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "blk.0.attn_q.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "blk.0.attn_q.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "blk.0.attn_q.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 4096,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector1",
+      "fixture": "blk.0.ffn_down.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 12288,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "blk.0.ffn_down.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 12288,
+      "rows": 5,
+      "columns": 1,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "vector",
+      "fixture": "blk.0.ffn_down.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 12288,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "name": "tile",
+      "fixture": "blk.0.ffn_down.weight",
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "k": 12288,
+      "rows": 5,
+      "columns": 3,
+      "maxError": 0,
+      "rowError": 0,
+      "sentinels": true,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "status": "finished",
+  "adapter": {
+    "vendor": "intel",
+    "architecture": "gen-12lp",
+    "device": "intel-r-iris-r-xe-graphics",
+    "description": "D3D12 driver version 31.0.101.5186"
+  },
+  "features": [
+    "timestamp-query",
+    "core-features-and-limits",
+    "indirect-first-instance",
+    "depth-clip-control",
+    "shader-f16",
+    "depth32float-stencil8",
+    "texture-compression-bc",
+    "texture-compression-bc-sliced-3d",
+    "rg11b10ufloat-renderable",
+    "bgra8unorm-storage",
+    "float32-filterable",
+    "float32-blendable",
+    "clip-distances",
+    "dual-source-blending",
+    "subgroups",
+    "texture-formats-tier1",
+    "texture-formats-tier2",
+    "primitive-index",
+    "texture-component-swizzle",
+    "subgroup-size-control",
+    "texture-compression-unaligned"
+  ]
+}

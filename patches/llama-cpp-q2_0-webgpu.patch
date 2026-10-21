@@ -1,0 +1,130 @@
+--- a/ggml/src/ggml-webgpu/wgsl-shaders/get_rows.wgsl
++++ b/ggml/src/ggml-webgpu/wgsl-shaders/get_rows.wgsl
+@@ -46,6 +46,23 @@
+                 let w = select(-d, d, ((q_byte >> bit) & 1u) != 0u);
+                 dst[dst_base128 + k * 8u + bit] = w;
+             }
++        }
++    }
++}
++#endif
++
++#ifdef Q2_0
++// Official type42: one FP16 scale and 16 bytes, four consecutive 2-bit
++// values per byte. This is not Q2_K or the old Prism group128 packing.
++fn copy_elements(src_base: u32, dst_base: u32, offset: u32) {
++    let block_byte_base = (src_base + offset) * 18u;
++    let d = load_f16_as_f32_at_src(block_byte_base);
++    for (var j = 0u; j < 16u; j++) {
++        let byte_offset = block_byte_base + 2u + j;
++        let bits = (src[byte_offset / 4u] >> ((byte_offset % 4u) * 8u)) & 255u;
++        for (var q = 0u; q < 4u; q++) {
++            dst[dst_base + offset * 64u + j * 4u + q] =
++                (f32((bits >> (2u * q)) & 3u) - 1.0) * d;
+         }
+     }
+ }
+--- a/ggml/src/ggml-webgpu/wgsl-shaders/mul_mat_vec_acc.tmpl
++++ b/ggml/src/ggml-webgpu/wgsl-shaders/mul_mat_vec_acc.tmpl
+@@ -75,6 +75,36 @@
+         }
+     }
+ 
++    return acc;
++}
++#endif
++
++#ifdef MUL_ACC_Q2_0
++#define BLOCK_SIZE 64u
++#define THREADS_PER_BLOCK 16u
++fn accumulate_vec_dot(thread_id: u32, row_base: u32, src0_batch_offset: u32, src1_idx_base: u32) -> array<array<f32, OUTPUTS_PER_WG>, NUM_COLS> {
++    var acc: array<array<f32, OUTPUTS_PER_WG>, NUM_COLS>;
++    let lane = thread_id % THREADS_PER_BLOCK;
++    for (var block = thread_id / THREADS_PER_BLOCK; block < params.k / BLOCK_SIZE; block += WG_SIZE / THREADS_PER_BLOCK) {
++        var x: array<array<f32, 4>, NUM_COLS>;
++        for (var col = 0u; col < NUM_COLS; col++) {
++            for (var q = 0u; q < 4u; q++) {
++                x[col][q] = f32(SRC1[src1_idx_base + col * params.stride_11 + block * BLOCK_SIZE + lane * 4u + q]);
++            }
++        }
++        for (var row = 0u; row < OUTPUTS_PER_WG; row++) {
++            if (row_base + row < params.m) {
++                let base = (src0_batch_offset + (row_base + row) * params.stride_01 + block) * 18u;
++                let d = load_f16_as_f32_at_src0(base);
++                let offset = base + 2u + lane;
++                let bits = (SRC0[offset / 4u] >> ((offset % 4u) * 8u)) & 255u;
++                for (var q = 0u; q < 4u; q++) {
++                    let w = (f32((bits >> (2u * q)) & 3u) - 1.0) * d;
++                    for (var col = 0u; col < NUM_COLS; col++) { acc[col][row] += w * x[col][q]; }
++                }
++            }
++        }
++    }
+     return acc;
+ }
+ #endif
+--- a/ggml/src/ggml-webgpu/wgsl-shaders/mul_mat_decls.tmpl
++++ b/ggml/src/ggml-webgpu/wgsl-shaders/mul_mat_decls.tmpl
+@@ -78,6 +78,25 @@
+ #endif // INIT_SRC1_SHMEM_FLOAT
+ #endif
+ 
++#ifdef INIT_SRC0_SHMEM_Q2_0
++// Tile K can be smaller than a quantization block. Address each global
++// element explicitly so K=32 tiles can share an official 64-element block.
++fn init_shmem_src0(thread_id: u32, batch_offset: u32, offset_m: u32, k_outer: u32) {
++    for (var i = thread_id; i < TILE_SRC0_SHMEM; i += TOTAL_WORKGROUP_SIZE) {
++        let row = offset_m + i / TILE_K;
++        let k = k_outer + i % TILE_K;
++        var value = 0.0;
++        if (row < params.m && k < params.k) {
++            let base = (batch_offset + row * params.stride_01 + k / 64u) * 18u;
++            let offset = base + 2u + (k % 64u) / 4u;
++            let bits = (SRC0[offset / 4u] >> ((offset % 4u) * 8u)) & 255u;
++            value = (f32((bits >> ((k % 4u) * 2u)) & 3u) - 1.0) * load_f16_as_f32_at_src0(base);
++        }
++        shmem[i] = f16(value);
++    }
++}
++#endif
++
+ #ifdef INIT_SRC0_SHMEM_Q1_0
+ const BLOCK_SIZE = 128u;
+ const BLOCK_SIZE_BYTES = 18u;
+--- a/ggml/src/ggml-webgpu/ggml-webgpu-shader-lib.hpp
++++ b/ggml/src/ggml-webgpu/ggml-webgpu-shader-lib.hpp
+@@ -1621,6 +1621,7 @@
+ 
+                     switch (key.src_type) {
+                         case GGML_TYPE_Q1_0:
++                        case GGML_TYPE_Q2_0:
+                         case GGML_TYPE_Q4_0:
+                         case GGML_TYPE_Q5_0:
+                         case GGML_TYPE_Q8_0:
+@@ -1665,6 +1666,8 @@
+                     } else if ((key.src_type >= GGML_TYPE_Q4_0 && key.src_type <= GGML_TYPE_Q8_1) ||
+                                key.src_type == GGML_TYPE_IQ4_NL || key.src_type == GGML_TYPE_MXFP4) {
+                         defines.push_back("BLOCK_SIZE=32u");
++                    } else if (key.src_type == GGML_TYPE_Q2_0) {
++                        defines.push_back("BLOCK_SIZE=64u");
+                     } else if (key.src_type == GGML_TYPE_NVFP4) {
+                         defines.push_back("BLOCK_SIZE=64u");
+                     } else if (key.src_type >= GGML_TYPE_Q2_K) {
+--- a/ggml/src/ggml-webgpu/ggml-webgpu.cpp
++++ b/ggml/src/ggml-webgpu/ggml-webgpu.cpp
+@@ -4350,6 +4350,7 @@
+ static bool ggml_webgpu_supported_qtype(ggml_type type) {
+     switch (type) {
+         case GGML_TYPE_Q1_0:
++        case GGML_TYPE_Q2_0:
+         case GGML_TYPE_Q4_0:
+         case GGML_TYPE_Q4_1:
+         case GGML_TYPE_Q5_0:
+@@ -4453,6 +4454,7 @@
+                             case GGML_TYPE_F16:
+                             case GGML_TYPE_BF16:
+                             case GGML_TYPE_Q1_0:
++                            case GGML_TYPE_Q2_0:
+                             case GGML_TYPE_Q4_0:
+                             case GGML_TYPE_Q4_1:
+                             case GGML_TYPE_Q5_0:

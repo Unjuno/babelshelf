@@ -1,0 +1,33 @@
+{
+  "hashEncoding": "UTF-8 normalized LF",
+  "scope": "Experimental source patch; not built or enabled in the app runtime",
+  "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+  "patchSha256": "7b49cfe6875ce35341158d396508ff47057a81e184bf5a6beb1b9ebe006245e9",
+  "files": [
+    {
+      "path": "ggml/src/ggml-webgpu/wgsl-shaders/get_rows.wgsl",
+      "beforeSha256": "0ad2af306e33260e6e6f3a0082aefd1811037ea3550161f17ab3f17dbc0a60a7",
+      "afterSha256": "1ed33bc759b6f683e01af8a8bc67f3ddf7138c28e73fcc4de71e82956d895346"
+    },
+    {
+      "path": "ggml/src/ggml-webgpu/wgsl-shaders/mul_mat_vec_acc.tmpl",
+      "beforeSha256": "c938be30a28ea800dda6297dae2a9aee71ddef83f189c077b22bf8c8317d98dc",
+      "afterSha256": "2898c3fe68b8746df5a8d76662341f834f22c1a4e0432d6341b0e6f4f0425f2c"
+    },
+    {
+      "path": "ggml/src/ggml-webgpu/wgsl-shaders/mul_mat_decls.tmpl",
+      "beforeSha256": "e29282ffcb16bdeb0aa0c6cd7ae15703ec855c4ff010e8398075d0257b6a49d5",
+      "afterSha256": "60e1b1cd65d55c8ae1623c9f7f56a3e3c8a000e27af263b656871c54e07e1cbe"
+    },
+    {
+      "path": "ggml/src/ggml-webgpu/ggml-webgpu-shader-lib.hpp",
+      "beforeSha256": "3f2b0656c179bffaa9346b13f4eedb4a15bab6696166e9d679d6957a1fadb892",
+      "afterSha256": "ddfa109a01c9231365392262ad4c15559621849d9c0dfbd20d717b6c928490e5"
+    },
+    {
+      "path": "ggml/src/ggml-webgpu/ggml-webgpu.cpp",
+      "beforeSha256": "7e19df4caa0084ad291772b3df2f28d68c5e3e53d738a02f59baf6901468fd33",
+      "afterSha256": "be020a0f1abea3024c6b8116c68755b69f579d3ab4cff5e0d8e5154673f03821"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "scope": "Real-row identities and recorded shapes; raw weight bytes remain private",
+  "model": {
+    "id": "8B-Q2_0-g64",
+    "repository": "prism-ml/Ternary-Bonsai-8B-gguf",
+    "revision": "c2aefbeb4b24469cd11579c3384b990404c17a30",
+    "file": "Ternary-Bonsai-8B-Q2_0_g64.gguf",
+    "bytes": 2310125920,
+    "sha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e",
+    "format": "Q2_0",
+    "group": 64,
+    "license": "Apache-2.0"
+  },
+  "shapeAuditSha256": "c539d2c422e6ad31ea7cf57d73d758a3215de56f480a9e8bcb753bffd89d061f",
+  "shapeAuditPassed": true,
+  "fixtures": [
+    {
+      "name": "token_embd.weight",
+      "k": 4096,
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "sha256": "dac49d0af2f446fc4150c48bfcb25d5ddfd515b75ea418b67e3ae3a5750b2003",
+      "tensor": {
+        "name": "token_embd.weight",
+        "type": 42,
+        "shape": [
+          4096,
+          151669
+        ],
+        "elements": 621236224,
+        "start": 180689632,
+        "size": 174722688,
+        "step": 18,
+        "first": 180689632,
+        "expectedScalars": 9706816,
+        "scalars": 9706816,
+        "nonFinite": 0,
+        "zero": 0,
+        "negative": 0,
+        "min": 0.00011348724365234375,
+        "max": 0.0291748046875
+      }
+    },
+    {
+      "name": "output.weight",
+      "k": 4096,
+      "originalRows": [
+        0,
+        75834,
+        151668,
+        1,
+        151667
+      ],
+      "sha256": "0de40f947e26f6da10cba5320cfda7e17ba8d2288a7e84571a63b3e0b78faff6",
+      "tensor": {
+        "name": "output.weight",
+        "type": 42,
+        "shape": [
+          4096,
+          151669
+        ],
+        "elements": 621236224,
+        "start": 5950560,
+        "size": 174722688,
+        "step": 18,
+        "first": 5950560,
+        "expectedScalars": 9706816,
+        "scalars": 9706816,
+        "nonFinite": 0,
+        "zero": 0,
+        "negative": 0,
+        "min": 0.0035552978515625,
+        "max": 0.06005859375
+      }
+    },
+    {
+      "name": "blk.0.attn_q.weight",
+      "k": 4096,
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "sha256": "44d852c95c8f9f8bb2f050278a085008349d8068774fecf8c73f4499db2e6fc3",
+      "tensor": {
+        "name": "blk.0.attn_q.weight",
+        "type": 42,
+        "shape": [
+          4096,
+          4096
+        ],
+        "elements": 16777216,
+        "start": 361327456,
+        "size": 4718592,
+        "step": 18,
+        "first": 361327456,
+        "expectedScalars": 262144,
+        "scalars": 262144,
+        "nonFinite": 0,
+        "zero": 0,
+        "negative": 0,
+        "min": 0.002471923828125,
+        "max": 0.056396484375
+      }
+    },
+    {
+      "name": "blk.0.ffn_down.weight",
+      "k": 12288,
+      "originalRows": [
+        0,
+        2048,
+        4095,
+        1,
+        4094
+      ],
+      "sha256": "28a6a848fa258755ae49cb2f7f831821becb154d5fcd55e9d21909b415bae6b2",
+      "tensor": {
+        "name": "blk.0.ffn_down.weight",
+        "type": 42,
+        "shape": [
+          12288,
+          4096
+        ],
+        "elements": 50331648,
+        "start": 367226208,
+        "size": 14155776,
+        "step": 18,
+        "first": 367226208,
+        "expectedScalars": 786432,
+        "scalars": 786432,
+        "nonFinite": 0,
+        "zero": 0,
+        "negative": 0,
+        "min": 0.0089111328125,
+        "max": 0.1044921875
+      }
+    }
+  ]
+}
