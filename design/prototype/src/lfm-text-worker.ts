@@ -10,6 +10,7 @@ import {lfmTextModels,describeLfmText} from './lfm-text-manifest.ts';
 // @ts-expect-error Shared strict declaration validator is JavaScript.
 import {validateLocalModel} from '../../../dist/local-models.js';
 import {createLfmTextRuntime} from './lfm-text-runtime.ts';
+import {createRecentPreparedFileReader} from './prepared-file-snapshot.ts';
 import {createTextWorkerHost} from './text-worker-host.ts';
 import {ownChildWorkers} from './owned-workers.ts';
 const owned=ownChildWorkers(self as unknown as {Worker:typeof Worker});
@@ -18,7 +19,8 @@ const networkFetch=globalThis.fetch.bind(globalThis),allowed=new Set([wasm,compa
 globalThis.fetch=(input,options)=>{const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url,location.href).href;return allowed.has(url)?networkFetch(input,options):Promise.reject(Error('Network disabled for text inference'));};
 self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  const supplied=configuration?.customModels??[];if(!Array.isArray(supplied)||supplied.length>64)throw Error('Invalid local model registry');const custom=supplied.map(validateLocalModel),manifest=describeLfmText(custom);
- const readFile=async(id:string)=>{const model=manifest.models.find(m=>m.id===id);if(!model)throw Error('Unknown LFM model');const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-text-lfm-v1');return (await dir.getFileHandle(model.file.sha256)).getFile();};
+ const modelById=new Map(manifest.models.map(model=>[model.id,model]));
+ const readFile=createRecentPreparedFileReader(async(id:string)=>{const model=modelById.get(id);if(!model)throw Error('Unknown LFM model');const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-text-lfm-v1');return(await dir.getFileHandle(model.file.sha256)).getFile();},id=>modelById.get(id)?.file.sha256??'');
  const assets:Record<string,{filesPresent:boolean}>={};for(const model of manifest.models){let present=false;try{present=(await readFile(model.id)).size===model.file.bytes;}catch{/* absence is not preparation */}assets[model.id]={filesPresent:present};}
  const adapter=new LfmAdapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:768,onProgress:progress});
  return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets});

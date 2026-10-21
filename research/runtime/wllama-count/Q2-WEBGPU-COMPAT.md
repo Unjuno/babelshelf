@@ -64,3 +64,42 @@ model fits or generates correctly. File positions beyond wasm32 `SIZE_MAX`
 and reads whose requested end exceeds SIZE_MAX are explicitly refused. Cache comparisons use subtraction to avoid wrapping. Over-4-GiB models, actual heap pointers beyond 2 GiB,
 GPU residency/peak memory, mobile memory pressure, heat, device-loss recovery,
 offline cold restart and Safari execution remain separate requirements.
+
+See [iOS WebGPU feasibility and measurement limits](IOS-WEBGPU-VALIDATION.md)
+for the iPhone-specific evidence boundary and the fields now captured by the
+QA result.
+
+## Keep the Bonsai 8B and Bonsai 2 9B engine paths separate
+
+The private Q2_0 group-64 kernels here target the Qwen3-based Bonsai 8B GGUF.
+They do not implement the Bonsai 2 9B model. PrismML describes Bonsai 2 9B as
+Qwen3.5-9B with hybrid linear/full attention, a blockwise Hadamard transform,
+and distinct PTQ1_0, PQ2_0, and Q2_0 packs. The 9B vision tower is a separate
+optional mmproj asset. The current 9B catalogue entry pins PTQ1_0 and a
+Qwen3.5 WebML runtime, so routing it through the Qwen3 group-64 kernels would
+be an invalid format/architecture substitution. Its WebGPU implementation
+needs its own pinned, licensed runtime and tested Qwen3.5/ternary kernels; its
+vision path also needs explicit mmproj handling. No 9B speed, iPhone fit, or
+vision acceptance follows from the 8B Q2 fixtures.
+
+Model references checked 2026-10-21:
+
+- [PrismML Ternary Bonsai 8B GGUF](https://huggingface.co/prism-ml/Ternary-Bonsai-8B-gguf)
+- [PrismML Ternary Bonsai 2 9B GGUF](https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf)
+
+The product has a **custom-import CPU route** for Qwen3 type-42 GGUF: the
+inspector admits eligible Qwen3/Q2_0 files to `wllama-qwen3`, the model
+registry exposes custom Qwen3 models, and `qwen3-text-worker.ts` routes them
+through the pinned wllama/count CPU adapter. Type-142 PQ2_0 is not admitted to
+this Qwen3 route. This is separate from the private Q2_0 WebGPU compat binary,
+which is not connected to product model selection or inference.
+
+The admission test uses a small synthetic GGUF header; it verifies the
+architecture/format policy, not that the complete Bonsai 8B weights load,
+generate, fit in memory, or produce acceptable output in the product. The
+product status remains `Execution not tested` until a complete official 8B
+file is imported, prepared and exercised through the user-facing route. Keep
+it available only as an unverified custom import; do not imply measured 8B
+performance or device support. A product WebGPU route would still need to be
+separately versioned and integrated with preparation, cancellation, offline
+reload, and runtime selection before claiming GPU execution.

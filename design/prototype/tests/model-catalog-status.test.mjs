@@ -44,6 +44,10 @@ test('text choices expose pinned download size without claiming device readiness
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
  assert.equal(textModelFileSize('unknown'),null);
 });
+test('custom Qwen3 choices disclose the current CPU-only adapter and untested model execution',()=>{
+ const sha='c'.repeat(64),bytes=2310125920,model={id:'local-'+sha,label:'Bonsai 8B',role:'text',engine:'wllama-qwen3',revision:'sha256:'+sha,file:{bytes,sha256:sha},inspection:{format:'GGUF',version:3,bytes,name:'Bonsai 8B',architecture:'qwen3',contextLength:65536,tokenizer:'gpt2',chatTemplate:true,tokenCount:151669,tensorCount:399,tensorTypes:[0,42],tensorExtentsChecked:true,dataOffset:16777216}};
+ assert.match(textModelChoiceHint(model.id,[model]),/2\.31 GB · CPU WASM · execution not tested/);
+});
 test('the standard add list contains at least three prepared-path text choices and hides disconnected candidates',()=>{
  const available=settings.models.text.filter(model=>canAddModel('text',model.value));
  assert.ok(available.length>=3);

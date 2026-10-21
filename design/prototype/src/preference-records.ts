@@ -7,10 +7,11 @@ import {settings} from './app-settings.ts';
 export type CustomLocalModel={id:string;label:string;role:'text';engine:'webml-qwen35'|'wllama-lfm2'|'wllama-qwen3';revision:string;file:{bytes:number;sha256:string};source?:{provider:'huggingface';repo:string;revision:string;file:string;license:string|null};inspection:{format:'GGUF';version:number;bytes:number;name:string;architecture:string;contextLength:number;tokenizer:string;chatTemplate:boolean;tokenCount:number;tensorCount:number;tensorTypes:number[];tensorExtentsChecked:boolean}};
 export type CustomDecisionModel={id:string;label:string;role:'decision';engine:'onnx-d1-text';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'D1-ONNX';architecture:'d1_omni';contextTokens:16384;inputLimit:2048;scope:'text-only'}};
 export type CustomSpeechModel={id:string;label:string;role:'speech';engine:'transformers-whisper-onnx';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'Whisper-ONNX';architecture:'whisper';device:'wasm';dtype:'q8';maxDurationSeconds:120}};
+export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';bytes:number;sha256:string};
 export type PreferenceGroup='models'|'appearance'|'connection';
 const defaults={
  models:{customModels:[] as CustomLocalModel[],customDecisionModels:[] as CustomDecisionModel[],customSpeechModels:[] as CustomSpeechModel[],visionModel:'',visionLibrary:[] as string[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel,'2B','lfm25-230m-qad-q4-0'] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
- appearance:{theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass},
+ appearance:{theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[]},
  connection:{downloads:settings.defaults.downloads,diagnosticLogs:false},
 };
 export type Preferences=typeof defaults;
@@ -32,6 +33,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customModels' in value))value.customModels=[];
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customDecisionModels' in value))value.customDecisionModels=[];
  if(group==='models'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('customSpeechModels' in value))value.customSpeechModels=[];
+ if(group==='appearance'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('fontFamily' in value)){value.fontFamily='system';value.fonts=[];}
  if(group==='connection'&&value&&typeof value==='object'&&!Array.isArray(value)&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).sort().join('|')!==Object.keys(defaults[group]).sort().join('|'))throw Error('Unknown or missing setting');
  if(group==='models'){
@@ -45,6 +47,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  }else if(group==='appearance'){
   const a=value as Preferences['appearance'];
   if(!settings.appearance.themes.includes(a.theme)||!settings.appearance.backgrounds.includes(a.background)||!settings.appearance.glass.includes(a.glass))throw Error('Unsupported appearance value');
+  if(typeof a.fontFamily!=='string'||a.fontFamily!=='system'&&!a.fonts?.some(font=>font.id===a.fontFamily)||!Array.isArray(a.fonts)||a.fonts.length>32||new Set(a.fonts.map(font=>font?.id)).size!==a.fonts.length||a.fonts.some(font=>!font||!/^font-[a-f0-9]{64}$/.test(font.id)||typeof font.label!=='string'||font.label.length>128||!['woff2','woff','ttf','otf'].includes(font.format)||!Number.isSafeInteger(font.bytes)||font.bytes<1||font.bytes>20*1024*1024||font.sha256!==font.id.slice(5)))throw Error('Invalid local font registry');
  }else if(typeof value.downloads!=='boolean'||typeof value.diagnosticLogs!=='boolean')throw Error('Invalid connection preference');
  return value;
 }
