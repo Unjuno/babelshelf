@@ -1,0 +1,190 @@
+{
+  "scope": "Actual wasm32 async fread wrapper with synthetic sparse 2.31GB file; no full model, no GPU, no phone acceptance",
+  "at": "2026-10-21T03:09:56.243Z",
+  "sourceHeaderSha256": "dff3514e22b5d384f4b9c55bb507767c8abee489a03de3bbfb72267c8c0f444e",
+  "sourceHeaderLfSha256": "dff3514e22b5d384f4b9c55bb507767c8abee489a03de3bbfb72267c8c0f444e",
+  "probeSha256": "dd858ff5f6fbe6c2ca77569d5911be72b2672b34028b92a96644efebda624a65",
+  "wasmSha256": "a6b298e2775d4219a7c988390b85b3b911dba40d54d673e50cec21bb838e91e0",
+  "settings": {
+    "memory64": false,
+    "asyncify": true,
+    "maximumMemoryBytes": 33554432,
+    "fileBytes": 2310125920
+  },
+  "cases": [
+    {
+      "offset": 0,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 0,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 0,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 0,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 1048592,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483632,
+      "requested": 8,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483632,
+          "size": 1048576
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483632,
+      "requested": 1048592,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483632,
+          "size": 1048592
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483644,
+      "requested": 8,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483644,
+          "size": 1048576
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483644,
+      "requested": 1048592,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483644,
+          "size": 1048592
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483648,
+      "requested": 8,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": -1,
+          "size": 1048576
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483648,
+      "requested": 1048592,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": -1,
+          "size": 1048592
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483664,
+      "requested": 8,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": -1,
+          "size": 1048576
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2147483664,
+      "requested": 1048592,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": -1,
+          "size": 1048592
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2310125904,
+      "requested": 8,
+      "code": -5,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": -1,
+          "size": 1048576
+        }
+      ],
+      "passed": false
+    },
+    {
+      "offset": 2310125904,
+      "requested": 1048592,
+      "code": -3,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": -1,
+          "size": 1048592
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "cached range crossing wasm32 SIZE_MAX is refused",
+      "code": -4,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 0,
+          "size": 1048576
+        }
+      ],
+      "passed": false
+    }
+  ],
+  "passed": false
+}

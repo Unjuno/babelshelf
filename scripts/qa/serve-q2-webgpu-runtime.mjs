@@ -10,6 +10,8 @@ assert.ok(runtimeArg && modelArg && /^\d{4,5}$/.test(port) && ['gpu','cpu'].incl
 const runtime = resolve(runtimeArg), model = resolve(modelArg), hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const receipt = JSON.parse(await readFile(join(runtime, 'bundle.json'), 'utf8'));
 assert.equal(receipt.compiled, true);
+const compat = receipt.compat === true;
+assert.equal(receipt.variant, compat ? 'Asyncify wasm32 experimental WebGPU + CPU fallback' : 'JSPI memory64 experimental WebGPU + CPU fallback');
 assert.equal(receipt.gpuPatchSha256, '7b49cfe6875ce35341158d396508ff47057a81e184bf5a6beb1b9ebe006245e9');
 const routes = new Map();
 for (const pin of [...receipt.assets, receipt.bundle]) {
@@ -26,10 +28,14 @@ const page = `<!doctype html><meta charset="utf-8"><title>GPU runtime check</tit
 import {Wllama} from '/wllama-count-q2-webgpu.js';
 const backend=${JSON.stringify(backend)},receipt=${JSON.stringify(receipt)},model=${JSON.stringify(modelPin)},state=document.querySelector('#state'),view=document.querySelector('#result');
 document.querySelector('#run').onclick=async()=>{document.querySelector('#run').disabled=true;let llm,timer,stopping;
- const result={scope:'Actual sidebar linked JSPI memory64 GPU runtime; Q4_0 integration, not Q2_0 full-model/8B/9B/Safari/phone acceptance',at:new Date().toISOString(),userAgent:navigator.userAgent,crossOriginIsolated,backend,settings:{n_ctx:2048,n_batch:128,n_ubatch:128,n_threads:1,n_gpu_layers:backend==='gpu'?99999:0,temperature:0,seed:0,cache_prompt:false,max_tokens:48,chat_template_kwargs:{enable_thinking:false},response_format:{type:'json_object'}},receipt,model,logs:[],cases:[],passed:false};
- const show=()=>view.textContent=JSON.stringify(result,null,2), log=(...args)=>{result.logs.push(args.map(String).join(' '));if(result.logs.length>250)result.logs.shift();};
+ const compat=${JSON.stringify(compat)};
+ const result={scope:'Actual sidebar linked '+(compat?'Asyncify wasm32':'JSPI memory64')+' GPU runtime; Q4_0 integration, not Q2_0 full-model/8B/9B/Safari/phone acceptance',at:new Date().toISOString(),userAgent:navigator.userAgent,crossOriginIsolated,backend,compat,settings:{n_ctx:2048,n_batch:128,n_ubatch:128,n_threads:1,n_gpu_layers:backend==='gpu'?99999:0,temperature:0,seed:0,cache_prompt:false,max_tokens:48,chat_template_kwargs:{enable_thinking:false},response_format:{type:'json_object'}},receipt,model,logs:[],cases:[],passed:false};
+ result.nativeErrors=[];
+ const show=()=>view.textContent=JSON.stringify(result,null,2), log=(...args)=>{const line=args.map(String).join(' ');result.logs.push(line);if(['Device error!','Aborted(','ValidationError','Assertion failed'].some(marker=>line.includes(marker)))result.nativeErrors.push(line);if(result.logs.length>250)result.logs.shift();};
  const save=()=>{show();const a=document.querySelector('#save');if(a.href)URL.revokeObjectURL(a.href);a.href=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));a.download=backend==='gpu'?'q2-webgpu-runtime-browser.json':'q2-webgpu-runtime-cpu-browser.json';a.hidden=false;};
- const create=()=>new Wllama({default:location.origin+'/wllama.wasm'},{logger:{debug:log,log,info:log,warn:log,error:log}});
+ // Force the explicitly selected local ABI on Chrome too. No UA spoofing or CDN resources.
+ class QaWllama extends Wllama {getWorkerResources(){const resources=super.getWorkerResources();return compat?{...resources,compat:true,jsPath:location.origin+'/wllama.js'}:resources;}}
+ const create=()=>new QaWllama({default:location.origin+'/wllama.wasm'},{logger:{debug:log,log,info:log,warn:log,error:log}});
  try{const adapter=await navigator.gpu?.requestAdapter();if(!adapter&&backend==='gpu')throw Error('No WebGPU adapter');result.adapter=Object.fromEntries(['vendor','architecture','device','description'].map(k=>[k,adapter?.info?.[k]??null]));result.features=[...(adapter?.features??[])];
  state.textContent='Reading verified local QA model';const file=new File([await(await fetch('/model.gguf')).blob()],'qwen3-0.6b-q4-0.gguf');
  // Bound hangs by terminating this QA runtime only; no app Worker is used.
@@ -46,7 +52,7 @@ document.querySelector('#run').onclick=async()=>{document.querySelector('#run').
  result.cases.push(entry);show();return entry;};
  await run('Structured answer');await run('Stop after first content',true);await llm.exit();result.exited=true;result.reload=await load();await run('Fresh Worker after Stop');
  result.gpuEvidence=result.logs.filter(line=>/offload|WebGPU|webgpu|GPU buffer/.test(line));
- result.passed=result.cases.length===3&&result.cases.every(c=>c.passed)&&result.exited&&!result.watchdog&&(backend==='gpu'?result.gpuEvidence.some(line=>/offloaded [1-9][0-9]*[/]/.test(line)):!result.logs.some(line=>/offloaded [1-9][0-9]*[/]/.test(line))&&result.logs.some(line=>/CPU.*model buffer size/.test(line)));
+ result.passed=result.cases.length===3&&result.cases.every(c=>c.passed)&&result.exited&&!result.watchdog&&result.nativeErrors.length===0&&result.load.resources.compat===compat&&result.reload.resources.compat===compat&&(backend==='gpu'?result.gpuEvidence.some(line=>/offloaded [1-9][0-9]*[/]/.test(line)):!result.logs.some(line=>/offloaded [1-9][0-9]*[/]/.test(line))&&result.logs.some(line=>/CPU.*model buffer size/.test(line)));
  }catch(error){result.error=error.stack??error.message;}finally{clearTimeout(timer);try{await llm?.exit();}catch(error){result.cleanupError=error.message;result.passed=false;}state.textContent=result.passed?'Passed bounded runtime integration':'Check results';save();}
 };</script>`;
 http.createServer(async(req,res)=>{try{const path=new URL(req.url,'http://127.0.0.1').pathname;res.setHeader('Cross-Origin-Opener-Policy','same-origin');res.setHeader('Cross-Origin-Embedder-Policy','require-corp');res.setHeader('Cache-Control','no-store');if(!['GET','HEAD'].includes(req.method))throw Error();if(path==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(req.method==='HEAD'?undefined:page);return;}const file=routes.get(path);if(!file)throw Error();const info=await stat(file);res.setHeader('Content-Type',path.endsWith('.js')?'text/javascript; charset=utf-8':path.endsWith('.wasm')?'application/wasm':'application/octet-stream');res.setHeader('Content-Length',info.size);if(req.method==='HEAD')res.end();else createReadStream(file).pipe(res);}catch{res.writeHead(404);res.end();}}).listen(Number(port),'127.0.0.1',()=>console.log('QA-only linked GPU runtime http://127.0.0.1:'+port));

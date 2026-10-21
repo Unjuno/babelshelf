@@ -1,0 +1,73 @@
+diff --git a/cpp/wllama-fs.h b/cpp/wllama-fs.h
+index 5832b20..5facef8 100644
+--- a/cpp/wllama-fs.h
++++ b/cpp/wllama-fs.h
+@@ -34,7 +34,9 @@ namespace wllama_fs
+   {
+     if (f != cache_file || cache_data.empty())
+       return 0;
+-    if (fpos >= cache_start && fpos + req_bytes <= cache_start + cache_data.size())
++    // Subtract before comparing: size_t is 32-bit in the compat runtime.
++    if (fpos >= cache_start && fpos - cache_start <= cache_data.size() &&
++        req_bytes <= cache_data.size() - (fpos - cache_start))
+     {
+       memcpy(ptr, cache_data.data() + (fpos - cache_start), req_bytes);
+       return req_bytes;
+@@ -47,7 +49,10 @@ namespace wllama_fs
+ // C++ formatter mangling the JS syntax inside EM_ASYNC_JS macros.
+ 
+ EM_ASYNC_JS(size_t, js_file_read, (const char *path_ptr, size_t offset, size_t req_size, void *out_ptr), {
+-  return await _wllama_js_file_read(UTF8ToString(Number(path_ptr)), Number(offset), Number(req_size), Number(out_ptr));
++  // wasm32 ABI i32 values arrive signed in JavaScript. Preserve unsigned
++  // size_t/pointers beyond 2 GiB; memory64 already uses BigInt.
++  const unsignedValue = value => typeof value === 'bigint' ? Number(value) : value >>> 0;
++  return await _wllama_js_file_read(UTF8ToString(unsignedValue(path_ptr)), unsignedValue(offset), unsignedValue(req_size), unsignedValue(out_ptr));
+ });
+ 
+ extern "C"
+@@ -104,7 +109,14 @@ extern "C"
+     if (req_bytes == 0)
+       return 0;
+ 
+-    size_t fpos = (size_t)__real_ftell(f);
++    // ftell/fseek use 32-bit long on wasm32. Model files may exceed 2 GiB.
++    const off_t file_pos = ftello(f);
++    if (file_pos < 0 || static_cast<uint64_t>(file_pos) > SIZE_MAX)
++      return 0;
++    const size_t fpos = static_cast<size_t>(file_pos);
++    // Do not wrap cache/read ranges at the wasm32 addressable file boundary.
++    if (req_bytes > SIZE_MAX - fpos)
++      return 0;
+ 
+     // Large reads (>= 1 MB): write directly into ptr, skip cache entirely.
+     if (req_bytes >= wllama_fs::CACHE_SIZE)
+@@ -114,7 +126,8 @@ extern "C"
+       if (actual == 0)
+         return 0;
+       size_t copy_bytes = std::min(req_bytes, actual);
+-      __real_fseek(f, fpos + copy_bytes, SEEK_SET);
++      if (fseeko(f, static_cast<off_t>(fpos) + copy_bytes, SEEK_SET) != 0)
++        return 0;
+       return copy_bytes / size;
+     }
+ 
+@@ -122,7 +135,8 @@ extern "C"
+     size_t cached = wllama_fs::try_cache(f, (char *)ptr, req_bytes, fpos);
+     if (cached == req_bytes)
+     {
+-      __real_fseek(f, fpos + req_bytes, SEEK_SET);
++      if (fseeko(f, static_cast<off_t>(fpos) + req_bytes, SEEK_SET) != 0)
++        return 0;
+       return nmemb;
+     }
+ 
+@@ -141,7 +155,8 @@ extern "C"
+ 
+     size_t copy_bytes = std::min(req_bytes, actual);
+     memcpy(ptr, wllama_fs::cache_data.data(), copy_bytes);
+-    __real_fseek(f, fpos + copy_bytes, SEEK_SET);
++    if (fseeko(f, static_cast<off_t>(fpos) + copy_bytes, SEEK_SET) != 0)
++      return 0;
+ 
+     return copy_bytes / size;
+   }

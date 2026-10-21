@@ -12,6 +12,7 @@ Start with a new private clone of wllama at
 `46ca246de9bb1c35269722a6240d37d9dfd79cad`. Apply
 `research/runtime/wllama-count/count.patch`, followed by
 `patches/wllama-stream-abort.patch`, to wllama and
+`patches/wllama-large-file.patch` to its async file reader, then
 `patches/llama-cpp-q2_0-webgpu.patch`, followed by
 `patches/llama-cpp-webgpu-registry.patch`, to llama.cpp. Preserve the original CPU
 checkout and build directory. On Windows, set `core.longpaths=true` locally
@@ -45,7 +46,7 @@ one shell invocation, with properly quoted absolute paths. Build concurrency
 is intentionally bounded on the development host; it is not an inference
 performance setting.
 
-The packager checks both source revisions, all four patch hashes, all modified
+The packager checks both source revisions, all five patch hashes, all modified
 source hashes, unexpected tracked edits, key CMake options and native artifact
 hashes. It creates a distinctly named bundle in a new private directory. The
 receipt describes compilation, not successful model execution. It never uses
@@ -81,6 +82,11 @@ Neither check certifies Q2_0 full-model generation, original 8B, Bonsai2 9B, mob
 stability, Metal, long conversations or offline cold restart. Keep those
 acceptance items separate. Do not package private models or runtime binaries
 into Git or deploy them merely because compilation succeeds.
+
+The wasm32 / Asyncify build and the >2 GiB file-reader repair have a separate
+reproduction and evidence scope in [Q2-WEBGPU-COMPAT.md](Q2-WEBGPU-COMPAT.md).
+The new packager requires rebuilding after the file-reader patch; it refuses
+the earlier four-patch native binary rather than attaching new provenance to it.
 
 Licenses must be traced to the actual included components. The local
 emdawnwebgpu package contains Emscripten MIT/NCSA terms for its C bindings and

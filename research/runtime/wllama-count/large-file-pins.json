@@ -1,0 +1,12 @@
+{
+  "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+  "patchSha256": "fc42d05a80d8a9e3e9f817058210e00d8acb1bb78ea94e433a7dda552a6c5d25",
+  "scope": "Async file reader unsigned wasm32 ABI and 64-bit file positions; not model or phone acceptance",
+  "files": [
+    {
+      "path": "cpp/wllama-fs.h",
+      "beforeSha256": "dff3514e22b5d384f4b9c55bb507767c8abee489a03de3bbfb72267c8c0f444e",
+      "afterSha256": "0613f9aab4379931310c18973412ff7ff40179499a840129a8daac73f0a6345c"
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "scope": "Actual wasm32 async fread wrapper with synthetic sparse 2.31GB file; no full model, no GPU, no phone acceptance",
+  "at": "2026-10-21T03:09:23.783Z",
+  "sourceHeaderSha256": "faef7d0f255dd864c4f15b67c956455bbf0e8de200cddc156aaca228b7db8f7f",
+  "sourceHeaderLfSha256": "0613f9aab4379931310c18973412ff7ff40179499a840129a8daac73f0a6345c",
+  "probeSha256": "dd858ff5f6fbe6c2ca77569d5911be72b2672b34028b92a96644efebda624a65",
+  "wasmSha256": "f5b97c1a7bf8ced0a66d395873a967651e18ffa72893762e80dc36906620db05",
+  "settings": {
+    "memory64": false,
+    "asyncify": true,
+    "maximumMemoryBytes": 33554432,
+    "fileBytes": 2310125920
+  },
+  "cases": [
+    {
+      "offset": 0,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 0,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 0,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 0,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 1048592,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483632,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483632,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483632,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483632,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 2148532224,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483644,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483644,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483644,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483644,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 2148532236,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483648,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483648,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483648,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483648,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 2148532240,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483664,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483664,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2147483664,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2147483664,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 2148532256,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2310125904,
+      "requested": 8,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2310125904,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    },
+    {
+      "offset": 2310125904,
+      "requested": 1048592,
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 2310125904,
+          "size": 1048592
+        },
+        {
+          "path": "/large.gguf",
+          "offset": 2310125920,
+          "size": 1048592
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "cached range crossing wasm32 SIZE_MAX is refused",
+      "code": 1,
+      "requests": [
+        {
+          "path": "/large.gguf",
+          "offset": 0,
+          "size": 1048576
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "passed": true
+}

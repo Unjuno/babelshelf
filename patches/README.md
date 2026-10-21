@@ -59,3 +59,14 @@ the registered device count and shared GPU device/resources across later
 backend lookups and reinitialization. It does not implement device-loss
 recovery. See [Q2-WEBGPU-BACKEND.md](../research/runtime/wllama-count/Q2-WEBGPU-BACKEND.md)
 for the actual failing and passing browser graph/lifecycle receipts.
+# Async model files beyond 2 GiB in wasm32
+
+`wllama-large-file.patch` applies to wllama revision
+`7ed17361caf221a84aa1e80ca85a3d6324f3af85`, independently of the count/stream
+patches. It replaces long-sized ftell/fseek inside async fread with
+ftello/fseeko, preserves unsigned wasm32 arguments across the JS ABI, checks
+read-end overflow, and uses subtraction for cache bounds. Exact source/patch
+hashes: `research/runtime/wllama-count/large-file-pins.json`. Actual isolated
+wasm32 tests with a sparse 2.31 GB virtual file pass13/13 after failing11/13
+on the original header. This is not full-model or mobile acceptance. See
+`research/runtime/wllama-count/Q2-WEBGPU-COMPAT.md` for scope and reproduction.
