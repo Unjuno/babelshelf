@@ -126,10 +126,18 @@ export async function compactDialogue(state:Dialogue,engine:ChatEngine,question:
   let chosen=0,messages:any[]=[];
   // Prefer retaining the latest full exchange, but compact it too when necessary.
   const max=remaining>1?remaining-1:1;
-  for(let size=1;size<=max;size++){
-   const trial=compactionMessages(context.summary,{turns:state.turns.slice(from,from+size)});
-   if((await engine.count(trial)).prompt_tokens+output>engine.manifest.contextTokens)break;chosen=size;messages=trial;
+  // Avoid re-encoding every growing prefix of a long history. Every retained
+  // candidate is counted exactly; BPE counts need not be monotone, so this is
+  // a bounded fit search, not a claim to find the mathematically largest fit.
+  const fits=async(size:number)=>{const trial=compactionMessages(context.summary,{turns:state.turns.slice(from,from+size)}),count=await engine.count(trial);
+   if(!Number.isSafeInteger(count.prompt_tokens)||count.prompt_tokens<0)throw Error('Invalid token count');
+   if(count.prompt_tokens+output>engine.manifest.contextTokens)return false;chosen=size;messages=trial;return true;};
+  let ceiling=max;
+  for(let size=1;;size=Math.min(max,size*2)){
+   if(!await fits(size)){ceiling=size-1;break;}if(size===max)break;
   }
+  let low=chosen+1,high=ceiling;
+  while(low<=high){const mid=Math.floor((low+high)/2);if(await fits(mid))low=mid+1;else high=mid-1;}
   if(!chosen){
    // A rejected oversized input remains in the archive. Summarize its bounded pieces
    // so it cannot poison every future short request. No original bytes are removed.

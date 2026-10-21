@@ -204,6 +204,24 @@ test('compaction uses token counts, retains original turns and exact references,
  assert.deepEqual(dialogueContext(compact).refs,[ref]);assert.equal(dialogueContext(compact).recent.at(-1).user,state.turns.at(-1).user);
  assert.ok((await e.count([{role:'user',content:JSON.stringify(dialogueContext(compact))}])).prompt_tokens<=850);
 });
+test('long histories choose a counted compaction batch without counting every growing prefix',async()=>{
+ let state=emptyDialogue();for(let i=0;i<128;i++)state=appendTurn(state,{id:'batch-'+i,user:'Original request '+i+' 日本語 🌳',answer:'Original answer '+i});
+ const before=structuredClone(state),batches=[];let probes=0,serialized=0;
+ const port={manifest:{contextTokens:8192},count:async messages=>{const payload=JSON.stringify(messages);if(messages[0].content.startsWith('Summarize earlier dialogue')){probes++;serialized+=payload.length;}return {prompt_tokens:Math.ceil(payload.length/4)};},generate:async(messages,budget)=>{assert.ok(Math.ceil(JSON.stringify(messages).length/4)+budget<=8192);const raw=messages.at(-1).content;assert.ok(raw.startsWith('Archived dialogue JSON'));batches.push(JSON.parse(raw.slice(raw.indexOf('\n')+1)));return {text:'Retained working summary'};}};
+ const compact=await compactDialogue(state,port,'Next');assert.equal(compact.compaction.through,127);assert.equal(batches.length,1);assert.deepEqual(batches[0],historyPayload({summary:'',recent:state.turns.slice(0,127),refs:[]}).recent);assert.ok(probes<=10,'Count probes: '+probes);assert.ok(serialized<80000,'Serialized count input: '+serialized);assert.deepEqual(state,before);assert.deepEqual(compact.turns,before.turns);assert.equal(dialogueContext(compact).recent[0].id,'batch-127');
+});
+test('batch probing never generates an uncounted or over-budget compaction candidate',async()=>{
+ let state=emptyDialogue();for(let i=0;i<40;i++)state=appendTurn(state,{id:'bounded-'+i,user:'Original 日本語 🌳 '.repeat(12)+i,answer:'Assistant '+i});
+ const before=structuredClone(state),verified=new Set();let generated=0,over=0;
+ const port={manifest:{contextTokens:2048},count:async messages=>{const raw=JSON.stringify(messages),n=Math.ceil(raw.length/2);verified.add(raw);if(messages[0].content.startsWith('Summarize earlier dialogue')&&n+192>2048)over++;return {prompt_tokens:n};},generate:async(messages,budget)=>{const raw=JSON.stringify(messages);assert.ok(verified.has(raw));assert.ok(Math.ceil(raw.length/2)+budget<=2048);generated++;return {text:'Short working summary'};}};
+ const compact=await compactDialogue(state,port,'Next');assert.ok(generated>0);assert.ok(over>0);assert.deepEqual(state,before);assert.deepEqual(compact.turns,before.turns);assert.ok(compact.compaction.through>0&&compact.compaction.through<40);assert.equal(dialogueContext(compact).recent.at(-1).id,'bounded-39');
+});
+test('compaction batch probe failure or invalid counts preserve originals without generating a summary',async()=>{
+ let state=emptyDialogue();for(let i=0;i<20;i++)state=appendTurn(state,{id:'error-'+i,user:'Retained original '.repeat(30)});const before=structuredClone(state);
+ for(const invalid of ['stopped',NaN,-1,1.5]){let probes=0,generated=0;const port={manifest:{contextTokens:2048},count:async messages=>{if(messages[0].content.startsWith('Summarize earlier dialogue')&&++probes===2){if(invalid==='stopped')throw Error('Stopped');return {prompt_tokens:invalid};}return {prompt_tokens:Math.ceil(JSON.stringify(messages).length/4)};},generate:async()=>{generated++;throw Error('Must not generate');}};
+  await assert.rejects(compactDialogue(state,port,'Next'),invalid==='stopped'?/Stopped/:/Invalid token count/);assert.equal(generated,0);assert.deepEqual(state,before);
+ }
+});
 test('stopped or failed compaction keeps the existing state intact and never fabricates a summary',async()=>{
  let state=emptyDialogue();for(let i=0;i<8;i++)state=completeTurn(appendTurn(state,{id:String(i),user:'data '.repeat(300)}),String(i),{answer:'prior answer'});
  const before=structuredClone(state);await assert.rejects(()=>compactDialogue(state,{...engine(),generate:async()=>{throw Error('Stopped');}},'next'),/Stopped/);
