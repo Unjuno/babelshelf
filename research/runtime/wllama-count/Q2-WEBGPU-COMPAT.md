@@ -7,7 +7,7 @@ patches with `WLLAMA_COMPAT=ON`, `LLAMA_WASM_MEM64=OFF`, and
 spoof or a fallback to remote inference. A successful PC run is not Safari or
 iPhone acceptance.
 
-Apply the four patches in [Q2-WEBGPU-BUILD.md](Q2-WEBGPU-BUILD.md), plus
+Apply the five patches in [Q2-WEBGPU-BUILD.md](Q2-WEBGPU-BUILD.md), including
 `patches/wllama-large-file.patch` to the wllama checkout. Its source and patch
 hashes are recorded in `large-file-pins.json`. Leave the original CPU checkout,
 shipped assets and the existing JSPI build directory untouched.

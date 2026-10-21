@@ -1,0 +1,29 @@
+{
+  "scope": "Binaryen input validation with declared Emscripten features enabled and memory64 disabled; no runtime instantiation/model/browser acceptance",
+  "at": "2026-10-21T03:24:20.178734+00:00",
+  "wasmSha256": "e0b917374ad85d5b2164b780583c407904dd96cca590d06051cbc22eae3bae46",
+  "arguments": [
+    "--enable-threads",
+    "--enable-bulk-memory",
+    "--enable-bulk-memory-opt",
+    "--enable-call-indirect-overlong",
+    "--enable-multivalue",
+    "--enable-mutable-globals",
+    "--enable-nontrapping-float-to-int",
+    "--enable-reference-types",
+    "--enable-sign-ext",
+    "--enable-simd",
+    "--disable-memory64",
+    "--print-features"
+  ],
+  "exitCode": 0,
+  "stdout": "--enable-threads\n--enable-mutable-globals\n--enable-nontrapping-float-to-int\n--enable-simd\n--enable-bulk-memory\n--enable-sign-ext\n--enable-reference-types\n--enable-multivalue\n--enable-bulk-memory-opt\n--enable-call-indirect-overlong\n",
+  "stderr": "warning: no output file specified, not emitting output\n",
+  "qaCorrection": "Initial validator invocation omitted stripped module feature flags, so its feature-disabled errors were not an invalid-binary finding.",
+  "nodeValidation": {
+    "version": "v24.6.0",
+    "platform": "win32",
+    "architecture": "x64",
+    "passed": true
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "scope": "Actual compiled wrapper queue unit tests; controlled producer, no model inference",
+  "version": "b11364-46ca246+babelshelf-count1-q2-webgpu-stream2-registry1-largefile1-compat-experimental",
+  "outcomes": [
+    {
+      "mode": "normal",
+      "seen": [
+        "first",
+        "queued"
+      ],
+      "failure": null,
+      "producerReleased": true,
+      "passed": true
+    },
+    {
+      "mode": "queued-abort",
+      "seen": [
+        "first"
+      ],
+      "failure": {
+        "name": "AbortError",
+        "message": "Operation aborted"
+      },
+      "producerReleased": true,
+      "passed": true
+    },
+    {
+      "mode": "unrelated-error",
+      "seen": [
+        "first"
+      ],
+      "failure": {
+        "name": "Error",
+        "message": "unit unrelated producer failure"
+      },
+      "producerReleased": true,
+      "passed": true
+    },
+    {
+      "mode": "ignored-abort",
+      "seen": [
+        "first"
+      ],
+      "failure": {
+        "name": "Error",
+        "message": "Inference completed without cancellation"
+      },
+      "producerReleased": true,
+      "passed": true
+    },
+    {
+      "mode": "last-chunk-abort",
+      "seen": [
+        "first"
+      ],
+      "failure": {
+        "name": "Error",
+        "message": "Inference completed without cancellation"
+      },
+      "producerReleased": true,
+      "passed": true
+    }
+  ],
+  "passed": true
+}
