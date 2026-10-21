@@ -1,0 +1,328 @@
+{
+  "identity": {
+    "build": {
+      "scope": "QA-only link of frozen compat CPU archives; not the product WASM, not model loading",
+      "source": {
+        "backend": "explicit CPU only",
+        "wllamaRevision": "7ed17361caf221a84aa1e80ca85a3d6324f3af85",
+        "llamaCppRevision": "46ca246de9bb1c35269722a6240d37d9dfd79cad",
+        "patchSha256": "a09a6c37e9e58c443d3f8f1048a73a664214ca58adc13f8186e65ae5f96dd4da",
+        "compiled": true,
+        "browserExecuted": true,
+        "exactCountAgreementVerified": true,
+        "variant": "compat Asyncify memory32; not Safari acceptance",
+        "confirmation": "Session54234 cmake --build build-count-compat --target wllama --parallel 4 terminal exit0; original compat-build.txt retained",
+        "assets": [
+          {
+            "name": "wllama.js",
+            "bytes": 128615,
+            "sha256": "978b330aa7d8644e2edbe991415cb39b45d67540ad7d15f68f5a60f4b6147ce7"
+          },
+          {
+            "name": "wllama.wasm",
+            "bytes": 13685530,
+            "sha256": "1f9644d6c42a4106e34a0111d506d5068c84efe5ae5e9225611960cc0a4fec4c"
+          }
+        ],
+        "browserAcceptance": {
+          "scope": "Native PC Chrome app-owned explicit compatibility resources; actual Asyncify memory32 CPU execution, not Safari/phone or normal UI acceptance",
+          "model": "lfm25-350m-qad-q4-0",
+          "count": 53,
+          "textRuntimeInputTokens": 53,
+          "jsonRuntimeInputTokens": 53,
+          "countAfterGeneration": 53,
+          "oversizedCount": 2310,
+          "requestsAfterWarmOffline": 0,
+          "artifact": "outputs/unit124-compat-browser/evidence.json"
+        }
+      },
+      "archives": [
+        {
+          "path": "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\runtime-development\\wllama-3.8.1-count\\build-count-compat\\llama.cpp\\ggml\\src\\libggml-cpu.a",
+          "sha256": "07ac83dadec292e52765cd1da3f54d760ebb0646238d3d39d3b97db1ced8c13b"
+        },
+        {
+          "path": "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\runtime-development\\wllama-3.8.1-count\\build-count-compat\\llama.cpp\\ggml\\src\\libggml-base.a",
+          "sha256": "a0efb86b430eaa31b4aaee04e47cb6adb5ee340beab594063ab255b84316e1b7"
+        }
+      ],
+      "probeSha256": "4fedbe1eef1c0d0fea211d65a41b9088bc8988388f0a7c5ead4b32e9f141d434",
+      "command": [
+        "python",
+        "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\runtime-development\\emsdk-4.0.20\\upstream\\emscripten\\em++.py",
+        "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\work\\babelshelf\\scripts\\qa\\qwen3-q2-cpu-probe.c",
+        "-IC:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\runtime-development\\wllama-3.8.1-count\\llama.cpp\\ggml\\include",
+        "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\runtime-development\\wllama-3.8.1-count\\build-count-compat\\llama.cpp\\ggml\\src\\libggml-cpu.a",
+        "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\runtime-development\\wllama-3.8.1-count\\build-count-compat\\llama.cpp\\ggml\\src\\libggml-base.a",
+        "-O2",
+        "-msimd128",
+        "-pthread",
+        "-fexceptions",
+        "-sMODULARIZE=1",
+        "-sEXPORT_ES6=1",
+        "-sENVIRONMENT=node,web,worker",
+        "-sALLOW_MEMORY_GROWTH=1",
+        "-sINITIAL_MEMORY=16777216",
+        "-sMAXIMUM_MEMORY=67108864",
+        "-sPTHREAD_POOL_SIZE=0",
+        "-sEXPORTED_RUNTIME_METHODS=[\"HEAPU8\"]",
+        "-sEXPORTED_FUNCTIONS=[\"_probe_init\",\"_probe_dequant\",\"_probe_dot\",\"_probe_matmul\",\"_malloc\",\"_free\"]",
+        "-o",
+        "C:\\Users\\junny\\Documents\\Codex\\2026-10-17\\github-https-github-com-unjuno-babelshelf\\outputs\\inference-optimization\\qwen3-q2-cpu-probe4\\probe.mjs"
+      ],
+      "files": [
+        {
+          "path": "probe.mjs",
+          "bytes": 31236,
+          "sha256": "f7d0b0e9da5e6a532bd0de6b4d008279d1cdabe04e40fa57899d90998cc7cb50"
+        },
+        {
+          "path": "probe.wasm",
+          "bytes": 884135,
+          "sha256": "0eacae5d526a4cdc366828cec731167a95cc79fda8073c0521453343b014033c"
+        }
+      ]
+    },
+    "casesSha256": "1a7d8661f580def5c9a1543ed525830119d0ea49885a06acba79c3f695e38d19"
+  },
+  "scope": "Actual sidebar browser WebAssembly SIMD, fixed-source compat CPU archives; no model loading/inference/storage writes",
+  "at": "2026-10-21T00:26:41.270Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "crossOriginIsolated": true,
+  "passed": true,
+  "cases": [
+    {
+      "n": 64,
+      "mode": "all-codes",
+      "maxDequantError": 0,
+      "expectedDot": 296.5,
+      "actualDot": 296.5,
+      "dotError": 0,
+      "tolerance": 0.0002965,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 64,
+      "mode": "negative",
+      "maxDequantError": 0,
+      "expectedDot": -296.5,
+      "actualDot": -296.5,
+      "dotError": 0,
+      "tolerance": 0.0002965,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 64,
+      "mode": "zero",
+      "maxDequantError": 0,
+      "expectedDot": 0,
+      "actualDot": 0,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 64,
+      "mode": "subnormal",
+      "maxDequantError": 0,
+      "expectedDot": 0.00001767277717590332,
+      "actualDot": 0.00001767277717590332,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 128,
+      "mode": "all-codes",
+      "maxDequantError": 0,
+      "expectedDot": 305.25,
+      "actualDot": 305.25,
+      "dotError": 0,
+      "tolerance": 0.00030524999999999997,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 128,
+      "mode": "negative",
+      "maxDequantError": 0,
+      "expectedDot": -305.25,
+      "actualDot": -305.25,
+      "dotError": 0,
+      "tolerance": 0.00030524999999999997,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 128,
+      "mode": "zero",
+      "maxDequantError": 0,
+      "expectedDot": 0,
+      "actualDot": 0,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 128,
+      "mode": "subnormal",
+      "maxDequantError": 0,
+      "expectedDot": 0.001084744930267334,
+      "actualDot": 0.001084744930267334,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 4096,
+      "mode": "all-codes",
+      "maxDequantError": 0,
+      "expectedDot": -274.9375,
+      "actualDot": -274.9375,
+      "dotError": 0,
+      "tolerance": 0.0002749375,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 4096,
+      "mode": "negative",
+      "maxDequantError": 0,
+      "expectedDot": -605.625,
+      "actualDot": -605.625,
+      "dotError": 0,
+      "tolerance": 0.0006056249999999999,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 4096,
+      "mode": "zero",
+      "maxDequantError": 0,
+      "expectedDot": 0,
+      "actualDot": 0,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 4096,
+      "mode": "subnormal",
+      "maxDequantError": 0,
+      "expectedDot": -0.011795029044151306,
+      "actualDot": -0.011795029044151306,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 12288,
+      "mode": "all-codes",
+      "maxDequantError": 0,
+      "expectedDot": -963.0625,
+      "actualDot": -963.0625,
+      "dotError": 0,
+      "tolerance": 0.0009630624999999999,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 12288,
+      "mode": "negative",
+      "maxDequantError": 0,
+      "expectedDot": -651.375,
+      "actualDot": -651.375,
+      "dotError": 0,
+      "tolerance": 0.0006513749999999999,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 12288,
+      "mode": "zero",
+      "maxDequantError": 0,
+      "expectedDot": 0,
+      "actualDot": 0,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "n": 12288,
+      "mode": "subnormal",
+      "maxDequantError": 0,
+      "expectedDot": -0.04475386440753937,
+      "actualDot": -0.04475386440753937,
+      "dotError": 0,
+      "tolerance": 0.00001,
+      "sentinels": true,
+      "passed": true
+    }
+  ],
+  "matrices": [
+    {
+      "k": 64,
+      "rows": 4,
+      "columns": 1,
+      "activation": "F32 quantized by actual CPU graph to Q8_0",
+      "maxError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "k": 64,
+      "rows": 4,
+      "columns": 3,
+      "activation": "F32 quantized by actual CPU graph to Q8_0",
+      "maxError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "k": 4096,
+      "rows": 4,
+      "columns": 1,
+      "activation": "F32 quantized by actual CPU graph to Q8_0",
+      "maxError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "k": 4096,
+      "rows": 4,
+      "columns": 3,
+      "activation": "F32 quantized by actual CPU graph to Q8_0",
+      "maxError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "k": 12288,
+      "rows": 4,
+      "columns": 1,
+      "activation": "F32 quantized by actual CPU graph to Q8_0",
+      "maxError": 0,
+      "sentinels": true,
+      "passed": true
+    },
+    {
+      "k": 12288,
+      "rows": 4,
+      "columns": 3,
+      "activation": "F32 quantized by actual CPU graph to Q8_0",
+      "maxError": 0,
+      "sentinels": true,
+      "passed": true
+    }
+  ],
+  "elapsedMs": 92.97000002861023
+}

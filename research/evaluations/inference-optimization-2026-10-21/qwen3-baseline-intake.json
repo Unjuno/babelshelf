@@ -1,0 +1,33 @@
+{
+  "repository": "ggml-org/Qwen3-0.6B-GGUF",
+  "revision": "13ac06624948e4d8589cb4b6f90100837342fcb8",
+  "license": "Apache-2.0",
+  "file": {
+    "name": "Qwen3-0.6B-Q4_0.gguf",
+    "bytes": 428970080,
+    "sha256": "da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4",
+    "url": "https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/13ac06624948e4d8589cb4b6f90100837342fcb8/Qwen3-0.6B-Q4_0.gguf"
+  },
+  "scope": "Private local QA asset only; no model registration or generation acceptance",
+  "inspection": {
+    "format": "GGUF",
+    "version": 3,
+    "bytes": 428970080,
+    "name": "Qwen3 0.6B",
+    "architecture": "qwen3",
+    "contextLength": 40960,
+    "tokenizer": "gpt2",
+    "chatTemplate": true,
+    "tokenCount": 151936,
+    "tensorCount": 311,
+    "tensorTypes": [
+      0,
+      2
+    ],
+    "tensorExtentsChecked": true,
+    "dataOffset": 5951584
+  },
+  "eligibleAdapter": null,
+  "modelLoadVerified": false,
+  "generationVerified": false
+}
