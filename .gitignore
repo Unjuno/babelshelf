@@ -9,5 +9,14 @@ node_modules/
 design/prototype/dist/
 design/prototype/test-results/
 design/prototype/playwright-report/
-
 design/prototype/.ocr-runtime/
+design/prototype/src/generated/package-notices.json
+
+# Local-only QA and runtime artifacts; retain required assets/evidence and prune obsolete generated copies.
+/outputs/
+/a.out.js
+/a.out.wasm
+/scripts/qa/__pycache__/
+
+# Ephemeral local QA profiles and cache probes
+.tmp-*/

@@ -1,7 +1,10 @@
 import smol from './onnx-text-manifest.json' with {type:'json'};
 import qwen from './qwen-text-manifest.json' with {type:'json'};
 export const onnxTextManifest=smol;
-export const onnxTextModels=[smol,qwen];
+const variant=smol.variants?.find(item=>item.id==='smollm2-360m-instruct-webgpu-q4f16');
+if(!variant||variant.weight.url!==`https://huggingface.co/${smol.repository}/resolve/${smol.revision}/${variant.weight.path}`)throw Error('Invalid pinned ONNX model variant');
+const smolWebGpu={...smol,id:variant.id,name:variant.name,engine:variant.engine,device:variant.device,dtype:variant.dtype,files:smol.files.map(file=>file.path==='onnx/model_quantized.onnx'?{...file,...variant.weight}:file)};
+export const onnxTextModels=[smol,smolWebGpu,qwen];
 export const getOnnxTextManifest=(id:string)=>onnxTextModels.find(m=>m.id===id);
 export const isOnnxText=(id:string)=>!!getOnnxTextManifest(id);
 export function combinedTextManifest(base:any,active=''){

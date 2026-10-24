@@ -3,6 +3,7 @@ import {originalRef,readOriginal,type OriginalAsset,type OriginalRef} from './or
 import {videoFramePlan,validateSampledFrame,type VideoFramePlan} from './video-frame-plan.ts';
 import {validateTranscript,type Transcript} from './speech-transcript.ts';
 import {transcriptCitationRange,type AudioRange} from './voice-input.ts';
+import {validVisionModelIdentity,type VisionModelIdentity} from './vision-model-identity.ts';
 export type VideoFrameObservation={requestedUs:number;timestampUs:number;durationUs:number;width:number;height:number;imageSha256:string;text:string};
 export type VideoAudioReading={status:'processed';value:Transcript}|{status:'not-selected'|'not-prepared'|'no-audio-track'|'too-long'};
 export type VideoVisionText={schema:2;scope:'sampled-video';model:string;revision:string;runtime:string;original:OriginalRef;prompt:string;text:string;width:number;height:number;plan:VideoFramePlan;frames:(VideoFrameObservation&{start:number;end:number})[];audio:VideoAudioReading;audioStart?:number};
@@ -14,13 +15,13 @@ function render(frames:VideoFrameObservation[],audio:VideoAudioReading){
  else text+='\nAudio not processed · '+audio.status;
  return {text,frames:mapped,...(audioStart!==undefined?{audioStart}:{})};
 }
-export function makeVideoVisionText(asset:OriginalAsset,prompt:string,plan:VideoFramePlan,frames:VideoFrameObservation[],audio:VideoAudioReading):VideoVisionText{
- const value:VideoVisionText={schema:2,scope:'sampled-video',model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,original:originalRef(asset),prompt,width:plan.width,height:plan.height,plan:structuredClone(plan),audio:structuredClone(audio),...render(frames,audio)};
+export function makeVideoVisionText(asset:OriginalAsset,prompt:string,plan:VideoFramePlan,frames:VideoFrameObservation[],audio:VideoAudioReading,identity:VisionModelIdentity={model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime}):VideoVisionText{
+ const value:VideoVisionText={schema:2,scope:'sampled-video',...identity,original:originalRef(asset),prompt,width:plan.width,height:plan.height,plan:structuredClone(plan),audio:structuredClone(audio),...render(frames,audio)};
  validateVideoVisionText(value,asset);return value;
 }
 export function validateVideoVisionText(value:VideoVisionText,asset:OriginalAsset){
  readOriginal(asset,value?.original);
- if(asset.kind!=='video'||value.schema!==2||value.scope!=='sampled-video'||value.model!==visionManifest.id||value.revision!==visionManifest.revision||value.runtime!==visionManifest.runtime||typeof value.prompt!=='string'||!value.prompt.trim()||value.prompt.length>2000||typeof value.text!=='string'||value.text.length>50000||value.text.includes('\0'))throw Error('Video observation metadata invalid');
+ if(asset.kind!=='video'||value.schema!==2||value.scope!=='sampled-video'||!validVisionModelIdentity(value)||typeof value.prompt!=='string'||!value.prompt.trim()||value.prompt.length>2000||typeof value.text!=='string'||value.text.length>50000||value.text.includes('\0'))throw Error('Video observation metadata invalid');
  const p=value.plan,reconstructed=videoFramePlan({trackId:p?.trackId,start:p?.startUs/1e6,end:p?.endUs/1e6,width:p?.width,height:p?.height});
  if(JSON.stringify(p)!==JSON.stringify(reconstructed)||value.width!==p.width||value.height!==p.height||!Array.isArray(value.frames)||value.frames.length!==p.timestampsUs.length)throw Error('Video observation plan invalid');
  for(let i=0;i<value.frames.length;i++){

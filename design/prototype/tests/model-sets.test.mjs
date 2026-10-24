@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {initialPreferenceNotes,readPreference,updatePreference} from '../src/preference-records.ts';
-import {modelSets,applyModelSet,matchingModelSet,modelSetAssetBytes} from '../src/model-sets.ts';
+import {initialPreferenceNotes,readPreference,updatePreference,parsePreference,formatPreference} from '../src/preference-records.ts';
+import {modelSets,modelSetsFor,createUserModelSet,applyModelSet,matchingModelSet,modelSetAssetBytes} from '../src/model-sets.ts';
 import {localAdapters} from '../src/local-capabilities.ts';
 import {initialPreparationPlan} from '../src/initial-preparation.ts';
 
@@ -66,6 +66,55 @@ test('applying a text-only set preserves registered libraries, custom declaratio
  for(const key of ['textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary','customModels','customDecisionModels','customSpeechModels'])assert.deepEqual(after[key],before[key]);
  assert.deepEqual(next.filter(n=>n.id!=='settings-models'),snapshot.filter(n=>n.id!=='settings-models'));
  assert.throws(()=>applyModelSet(after,'unknown'),/Unknown model set/);
+});
+
+test('user model sets are validated in Memory and join the same reviewed selection catalog',()=>{
+ const set={id:'user-reading',label:'Reading',detail:'Small local text model',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}};
+ const notes=updatePreference('models',structuredClone(initialPreferenceNotes),value=>({...value,customSets:[set]}));
+ const value=readPreference('models',notes);
+ assert.deepEqual(value.customSets,[set]);
+ assert.deepEqual(modelSetsFor(value)[0],set);
+ const applied=applyModelSet(value,set.id);
+ assert.equal(applied.textModel,'2B');
+ assert.equal(matchingModelSet(applied)?.id,set.id);
+ assert.equal(applied.customSets.length,1);
+ assert.equal(modelSetAssetBytes(value,set.id),modelSetAssetBytes(value,'bonsai-2b-text'));
+ assert.equal(notes.find(note=>note.id==='settings-models').version,2);
+ assert.deepEqual(notes.find(note=>note.id==='settings-models').history,[initialPreferenceNotes.find(note=>note.id==='settings-models').body]);
+});
+
+test('saving current model choices creates a stable Memory ID without preparing or selecting anything',()=>{
+ const value=readPreference('models',initialPreferenceNotes),before=structuredClone(value);
+ const first=createUserModelSet(value,'Local Reader','A local reader profile');
+ assert.equal(first.id,'user-localreader');
+ assert.deepEqual(first.models,{textModel:value.textModel,decisionModel:value.decisionModel,transcriptionModel:value.transcriptionModel,ocrModel:value.ocrModel,visionModel:value.visionModel});
+ const second=createUserModelSet({...value,customSets:[first]},'Local Reader','A second saved profile');
+ assert.equal(second.id,'user-localreader-2');
+ assert.deepEqual(value,before);
+ assert.throws(()=>createUserModelSet(value,'','Missing name'),/Set name/);
+ assert.throws(()=>createUserModelSet({...value,textModel:''},'Empty','No text model'),/Text model/);
+});
+
+test('legacy model Memory records read an empty set list without rewriting their stored revision',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models'),legacy=readPreference('models',notes);
+ delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 1,\n','');const storedBytes=record.body;
+ assert.deepEqual(readPreference('models',notes).customSets,[]);
+ assert.equal(record.body,storedBytes);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
+});
+
+test('Memory model sets reject unregistered roles, unsafe IDs, collisions and malformed records',()=>{
+ const base=readPreference('models',initialPreferenceNotes),set={id:'user-reading',label:'Reading',detail:'A local profile',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}};
+ const invalid=[
+  {...set,id:'bonsai-4b-text'},
+  {...set,id:'user-unsafe/path'},
+  {...set,models:{...set.models,decisionModel:'d1-omni-600M'}},
+  {...set,models:{...set.models,textModel:'remote-model'}},
+  {...set,extra:true},
+ ];
+ for(const item of invalid)assert.throws(()=>updatePreference('models',structuredClone(initialPreferenceNotes),value=>({...value,customSets:[item]})));
+ assert.throws(()=>updatePreference('models',structuredClone(initialPreferenceNotes),value=>({...value,customSets:[set,{...set,label:'Duplicate'}]})));
+ const unavailable={...base,textLibrary:[],customSets:[set]};
+ assert.throws(()=>parsePreference('models',formatPreference('models',unavailable)),/model|registry/i);
 });
 
 test('Bonsai 2 9B set selects a pinned text-only asset without claiming device verification',async()=>{

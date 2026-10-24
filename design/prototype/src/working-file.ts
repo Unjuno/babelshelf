@@ -1,7 +1,7 @@
 import {videoTimingCoverage} from './speech-transcript.ts';
 import {validHarnessTarget} from './harness-actions.ts';
 import {requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type SourceRef} from './conversation.ts';
-import {namedSavedSubject,namesExplicitSavedKnowledge} from './saved-knowledge-reference.ts';
+import {namedSavedSubject,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {latest,buildIndex,searchNotes,chunks} from '../../../dist/core.js';
 // @ts-expect-error Shared canonical path contract is JavaScript.
@@ -15,6 +15,12 @@ export function validateWorkingFileLink(records:any[],pin:WorkingFile){validateW
 export function withWorkingFile(state:Dialogue,pin:WorkingFile):Dialogue{
  validateWorkingFile(pin);if(state.currentFile?.noteId===pin.noteId&&state.currentFile?.revision===pin.revision)return state;
  return {...state,revision:state.revision+1,currentFile:{...pin}};
+}
+export function withoutWorkingFile(state:Dialogue,expected:WorkingFile):Dialogue{
+ validateWorkingFile(expected);
+ if(state.currentFile?.noteId!==expected.noteId||state.currentFile.revision!==expected.revision)return state;
+ const {currentFile:_removed,...rest}=state;
+ return {...rest,revision:state.revision+1};
 }
 export function workingFileNote(records:any[],pin:WorkingFile){
  validateWorkingFileLink(records,pin);const note=records.find(n=>n.id===pin.noteId);
@@ -53,16 +59,17 @@ export function bindWorkingFileRequest<T extends {action:string;query:string;tar
 /** Explicit references to the currently opened file must use its pinned revision as evidence. */
 export function bindExplicitCurrentFileQuestion<T extends {action:string;query:string;target?:string}>(request:T,question:string,pin:WorkingFile|undefined,currentInputs=false):T{
  if(currentInputs||!pin||!['answer','summary','search','read'].includes(request.action))return request;
- if(request.target==='knowledge'&&(namesExplicitSavedKnowledge(question)||namedSavedSubject(question)))return request;
+ if(request.target==='knowledge'&&(namesExplicitSavedKnowledge(question)||namesSavedKnowledge(question)||namedSavedSubject(question)))return request;
  if(!requestNamesWorkingFile(question)||requestNamesEarlierDialogue(question))return request;
  // An already explicit read-only intent needs no second model classification.
  // Bind its query to the human request rather than model-supplied context text.
  const action=request.target==='file'&&['answer','summary'].includes(request.action)?request.action:'read';
  return {...request,action,target:'file',query:question};
 }
-export function createFileFocusQueue(read:()=>Dialogue,write:(state:Dialogue)=>Promise<void>){
+export function createFileFocusQueue(read:()=>Dialogue,write:(state:Dialogue,remove?:WorkingFile)=>Promise<void>){
  let tail=Promise.resolve();return {
   select(value:WorkingFile){const pin={...validateWorkingFile(value)};tail=tail.then(async()=>{const state=read(),next=withWorkingFile(state,pin);if(next!==state)await write(next);});return tail;},
+  clear(value:WorkingFile){const pin={...validateWorkingFile(value)};tail=tail.then(async()=>{const state=read(),next=withoutWorkingFile(state,pin);if(next!==state)await write(next,pin);});return tail;},
   settled:()=>tail
  };
 }

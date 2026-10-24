@@ -36,6 +36,16 @@ Actual PC browser/installed-PWA evidence includes offline process restarts, real
 
 ## Verification and work map
 
+For the repeatable PC/CI regression set, run the full gate once after a code change:
+
+```sh
+npm run test:quality
+```
+
+It runs the repository checks, production build/acceptance, versioned Markdown path/tree/export/backup acceptance, browser worker tests, installed offline-process checks and the mobile-sized Chromium plus WebKit preflights for the iPhone handoff. If only the handoff UI changed, use `npm run test:ios-handoff` (builds first and runs both engines), `npm run test:ios-handoff:built` (Chromium against the current built app), or `npm run test:ios-handoff:webkit:built` (WebKit against the current built app). Both engines are PC preflights; Windows WebKit is not iOS Safari and neither preflight simulates Airplane Mode, force-close, or physical-device acceptance. Do not repeat the iPhone run for every PC-only fix.
+
+The one-run physical-device flow is in Settings → Developer → Device test. Start it once on the iPhone, follow its offline-restart steps, then use **Copy test + context for Codex** and paste the result into the development conversation. Model generation is optional and remains unchecked unless explicitly selected. The copied report contains bounded device/runtime checks and excludes notes, prompts, original files and generated answer text. The browser cannot attest iOS system actions; report those as limitations rather than inferred passes.
+
 ```sh
 npm test
 npm run test:prototype

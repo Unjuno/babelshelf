@@ -2,6 +2,31 @@ import test from 'node:test';import assert from 'node:assert/strict';import {cre
 import {formatTask,parseTask,taskDefinition} from '../src/task-records.ts';
 const taskFixture=()=>{const task={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,enabled:false,notify:true,prompt:'Check lamp stock.'},n=createNote({path:'Schedule/qa-task.md',body:formatTask(task)});n.ui={recordType:'schedule'};n.taskCursor={definition:taskDefinition(task),nextAt:'2026-10-20T00:00:00.000Z'};return n;};
 const patch=changes=>JSON.stringify({action:'patch',changes});
+
+test('scheduled prompts and full note rewrites receive the available bounded output space',async()=>{
+ const body='確認した内容を日本語で整理する。'.repeat(80);
+ const scheduled=taskFixture();let calls=0;
+ const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:1200}),generate:async(messages,maxTokens)=>{
+  calls++;assert.ok(maxTokens>768);assert.ok(maxTokens+1200+160<=4096);return {text:patch({prompt:body})};
+ }};
+ const scheduleProposal=await proposeCorrection(engine,'Use this full prompt',scheduled);
+ assert.equal(parseTask(scheduleProposal.after).prompt,body);assert.equal(calls,1);
+ calls=0;const original=createNote({path:'Home/notes.md',body:'Original text'});
+ const proposal=await proposeCorrection({...engine,generate:async(messages,maxTokens)=>{
+  if(++calls===1)return {text:'{"action":"rewrite"}'};
+  assert.ok(maxTokens>768);assert.ok(maxTokens+1200+160<=4096);return {text:JSON.stringify({body})};
+ }},'Rewrite as a detailed Japanese note',original);
+ assert.equal(proposal.after,body);assert.equal(latest(original).version,1);
+});
+
+test('invalid token counts refuse ordinary and schedule proposals before generation',async()=>{
+ for(const target of [taskFixture(),createNote({path:'Home/test.md',body:'Original'})]){
+  let generated=0;
+  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:NaN}),generate:async()=>{generated++;return {text:target.ui?.recordType?patch({time:'10:00'}):'{"action":"replace","find":"Original","with":"Changed"}'};}};
+  await assert.rejects(proposeCorrection(engine,'Change this',target),/token budget|token count/);
+  assert.equal(generated,0);
+ }
+});
 test('typed schedule changes are reviewed against exact originals and retain disabled state, canonical cursor, history and Undo',()=>{
  const n=taskFixture(),original=structuredClone(n),p=prepareCorrection(n,'Move this schedule to ten',patch({time:'10:00'}));assert.deepEqual(n,original);assert.equal(p.operation.name,'schedule.patch');assert.equal(parseTask(p.after).time,'10:00');assert.equal(parseTask(p.after).enabled,false);
  const applied=applyCorrection([n],p);assert.equal(applied.note.id,n.id);assert.equal(latest(applied.note).path,'Schedule/qa-task.md');assert.equal(applied.note.revisions[0].body,latest(n).body);assert.equal(applied.note.taskCursor.definition,taskDefinition(parseTask(p.after)));assert.deepEqual(applied.note.sources,n.sources);
@@ -36,10 +61,10 @@ test('rewrite receipts are compact, validate against retained body bytes in back
  const n=note(),body='日本語の整理済み文章。'.repeat(1000),applied=applyCorrection([n],prepareCorrection(n,'Organize',raw(body)));assert.ok(JSON.stringify(applied.receipt).length<1500);assert.equal(applied.receipt.operation.arguments.bodySha256.length,64);assert.equal(JSON.stringify(applied.receipt).includes(body),false);const snapshot={notes:[applied.note],settings:[],runs:[{key:'ui-v1-correction-'+applied.receipt.id,value:applied.receipt}]},pack=await makeStateBackup(snapshot);assert.equal((await parseStateBackup(JSON.stringify(pack))).notes[0].revisions[1].body,body);const forged=structuredClone(pack);forged.payload.runs[0].value.operation.arguments.bodySha256='0'.repeat(64);forged.sha256=stateHash(forged.payload);await assert.rejects(parseStateBackup(JSON.stringify(forged)),/correction/i);
 });
 test('semantic selection uses a separate source-only generation while literal corrections remain one call',async()=>{
- const n=note(),calls=[],e={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async(m,max)=>{calls.push({m,max});return {text:calls.length===1?'{"action":"rewrite"}':JSON.stringify({body:'- Water: three liters.\n- Meeting Monday at ten; same venue.'})};}};const p=await proposeCorrection(e,'Organize this as bullets',n);assert.equal(p.operation.name,'text.rewrite');assert.equal(calls.length,2);assert.equal(calls[1].max,768);assert.match(JSON.stringify(calls[1].m),/three liters/);assert.equal(calls[1].m.length,2);let literalCalls=0;await proposeCorrection({...e,generate:async()=>{literalCalls++;return {text:'{"action":"replace","find":"three","with":"four"}'};}},'Replace three with four',n);assert.equal(literalCalls,1);
+ const n=note(),calls=[],e={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async(m,max)=>{calls.push({m,max});return {text:calls.length===1?'{"action":"rewrite"}':JSON.stringify({body:'- Water: three liters.\n- Meeting Monday at ten; same venue.'})};}};const p=await proposeCorrection(e,'Organize this as bullets',n);assert.equal(p.operation.name,'text.rewrite');assert.equal(calls.length,2);assert.ok(calls[1].max>768&&calls[1].max+100+160<=2048);assert.match(JSON.stringify(calls[1].m),/three liters/);assert.equal(calls[1].m.length,2);let literalCalls=0;await proposeCorrection({...e,generate:async()=>{literalCalls++;return {text:'{"action":"replace","find":"three","with":"four"}'};}},'Replace three with four',n);assert.equal(literalCalls,1);
 });
 test('rewrite inference cannot accept cancelled, oversized, truncated or authority-bearing results',async()=>{
- const n=note(),base={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100})};let calls=0;const e={...base,generate:async()=>({text:++calls===1?'{"action":"rewrite"}':'{"body":"truncated'})};await assert.rejects(proposeCorrection(e,'rewrite',n),/JSON|Unterminated/);assert.equal(calls,2);calls=0;await assert.rejects(proposeCorrection({...e,count:async()=>({prompt_tokens:calls?1500:100})},'rewrite',n),/context limit/);assert.equal(calls,1);calls=0;await assert.rejects(proposeCorrection({...e,generate:async()=>({text:++calls===1?'{"action":"rewrite"}':'{"body":"new","delete":true}'})},'rewrite',n),/Invalid/);calls=0;let cancelled=false;await assert.rejects(proposeCorrection({...e,generate:async()=>{calls++;cancelled=true;return {text:'{"action":"rewrite"}'};}},'rewrite',n,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.equal(calls,1);
+ const n=note(),base={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100})};let calls=0;const e={...base,generate:async()=>({text:++calls===1?'{"action":"rewrite"}':'{"body":"truncated'})};await assert.rejects(proposeCorrection(e,'rewrite',n),/JSON|Unterminated/);assert.equal(calls,2);calls=0;await assert.rejects(proposeCorrection({...e,count:async()=>({prompt_tokens:calls?1900:100})},'rewrite',n),/context limit/);assert.equal(calls,1);calls=0;await assert.rejects(proposeCorrection({...e,generate:async()=>({text:++calls===1?'{"action":"rewrite"}':'{"body":"new","delete":true}'})},'rewrite',n),/Invalid/);calls=0;let cancelled=false;await assert.rejects(proposeCorrection({...e,generate:async()=>{calls++;cancelled=true;return {text:'{"action":"rewrite"}'};}},'rewrite',n,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.equal(calls,1);
 });
 
 test('correction inference snapshots the selected original before awaiting; later caller mutation cannot silently become its approved base',async()=>{

@@ -81,13 +81,15 @@ test('native purposes advertise exactly the functions offered, including source-
  const context={summary:'',refs:[],recent:[{id:'a',user:'one',answer:'A'},{id:'b',user:'two',answer:'B'}],turnCount:2,historyAssistantIndices:[0,1],currentResult:{turnId:'b'}};
  const request=nativeOutputRequest(planDialogueMessages('Save your FIRST answer as a new note.',context),format);
  const advertised=[...request.messages[0].content.matchAll(/^([a-z]+): /gm)].map(match=>match[1]);
- assert.deepEqual(advertised,Object.keys(request.responseTool.actions));
+ assert.deepEqual(advertised,Object.keys(request.responseTool.actions).map(name=>name==='tool-create'?'toolcreate':name));
  assert.ok(!advertised.includes('capture'));
  assert.match(request.messages[0].content,/captureassistant: .*ONE.*assistant.*historyIndex/);
  assert.match(request.messages[0].content,/capturetext: .*new.*never.*dialogue/i);
+ assert.match(request.messages[0].content,/toolcreate: .*reviewable draft form/i);
  const empty={inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]};
  const r=nativeOutputRequest(planDialogueMessages('hello',{summary:'',refs:[],recent:[],turnCount:0}),{type:'dialogue-plan',scope:empty});
  assert.ok(!r.messages[0].content.includes('captureassistant'));
+ assert.ok(r.messages[0].content.includes('toolcreate:'));
 });
 
 test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{

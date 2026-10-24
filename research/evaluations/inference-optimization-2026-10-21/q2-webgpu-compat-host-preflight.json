@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-10-21T03:36:32.3693927Z",
+  "scope": "Read-only Windows host readiness snapshot before a large-model browser run; no model load or inference",
+  "host": {
+    "platform": "win32",
+    "totalVisibleMemoryMiB": 16077,
+    "freePhysicalMemoryMiB": 1638
+  },
+  "models": [
+    {
+      "id": "ternary-bonsai-8b-q2-g64",
+      "bytes": 2310125920,
+      "sha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e",
+      "verifiedFilePresent": true,
+      "verifiedFileSha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e"
+    },
+    {
+      "id": "ternary-bonsai-2-9b-ptq1",
+      "bytes": 1997486976,
+      "verifiedFileSha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+    }
+  ],
+  "decision": "Do not start either large model on this snapshot: free physical memory is below both model file sizes, before browser/WASM/KV/compute overhead. This is a host-readiness limitation, not a model/runtime failure. Do not close user apps to manufacture capacity.",
+  "browser": {
+    "sidebarDesktopObservedLocked": true,
+    "actualCompatModelRun": false
+  }
+}

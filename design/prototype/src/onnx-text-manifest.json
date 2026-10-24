@@ -8,12 +8,12 @@
   "license": "Apache-2.0",
   "runtime": {
     "name": "Transformers.js / ONNX Runtime Web",
-    "revision": "@huggingface/transformers@3.8.1 + onnxruntime-web@1.22.0-dev.20250409-89f8206ba4",
+    "revision": "@huggingface/transformers@4.3.0 + onnxruntime-web@1.31.0-dev.20260914-8d85527a0",
     "licenses": {
       "transformers": "Apache-2.0",
       "onnxruntime-web": "MIT"
     },
-    "onnxRevision": "onnxruntime-web@1.22.0-dev.20250409-89f8206ba4"
+    "onnxRevision": "onnxruntime-web@1.31.0-dev.20260914-8d85527a0"
   },
   "dtype": "q8",
   "device": "wasm",
@@ -57,5 +57,20 @@
       "sha256": "57987a3a24dc34ad2cb5e7e566840ccaece095e35a24ae4fc5b3086c7ddd6918"
     }
   ],
-  "architecture": "llama"
+  "architecture": "llama",
+  "variants": [
+    {
+      "id": "smollm2-360m-instruct-webgpu-q4f16",
+      "name": "SmolLM2 360M · WebGPU Q4F16",
+      "engine": "transformers-causal-webgpu",
+      "device": "webgpu",
+      "dtype": "q4f16",
+      "weight": {
+        "path": "onnx/model_q4f16.onnx",
+        "url": "https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct/resolve/a10cc1512eabd3dde888204e902eca88bddb4951/onnx/model_q4f16.onnx",
+        "bytes": 272737275,
+        "sha256": "cc63370efc2aca6d5307518b85162777132cc5b8d68eeb8154ea9b5fce09ad46"
+      }
+    }
+  ]
 }

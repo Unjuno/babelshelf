@@ -1,6 +1,25 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {webcrypto,createHash} from 'node:crypto';
 import {productWorker} from '../scripts/product-worker.mjs';
 const origin='http://localhost:4180',current='2222222222222222',previous='1111111111111111';
+
+test('cached dedicated and shared workers keep isolation across current, shared and historical assets without fetching',async()=>{
+ const path='/assets/tool-RUNTIM12.js',body='self.onmessage=()=>self.postMessage(42)';
+ for(const source of ['current','shared','historical']){
+  const h=await harness(body,{files:[pinned('.'+path,body)]});
+  if(source==='shared')await install(h);
+  else await h.put('babelshelf-product-'+(source==='current'?current:previous),path,body);
+  h.network.length=0;
+  for(const destination of ['worker','sharedworker']){
+   let result;
+   h.handlers.fetch({request:{url:origin+path,method:'GET',mode:'same-origin',destination},respondWith:promise=>{result=promise;}});
+   const response=await result;
+   assert.equal(response.status,200,source+' '+destination);
+   assert.equal(response.headers.get('Cross-Origin-Embedder-Policy'),'require-corp',source+' '+destination);
+   assert.equal(await response.text(),body);
+  }
+  assert.deepEqual(h.network,[]);
+ }
+});
 function connectionDatabase(online=true){
  let enabled=online;
  return {set(value){enabled=value;},open(){const request={};queueMicrotask(()=>{const tx={objectStore(){return {get(){const result={};queueMicrotask(()=>{result.result={id:'settings-connection',state:'active',ui:{managed:true},revisions:[{path:'Settings/connection.md',body:'# Connection\n\n```json\n'+JSON.stringify({downloads:enabled,diagnosticLogs:false})+'\n```\n'}]};result.onsuccess();tx.oncomplete();});return result;}};}};request.result={objectStoreNames:{contains:()=>true},transaction:()=>tx,close(){}};request.onsuccess();});return request;}};
@@ -14,6 +33,48 @@ test('installation verifies every saved asset before completion and refuses corr
 
 async function install(h){let work;h.handlers.install({waitUntil:p=>work=p});await work;}
 const pinned=(path,body)=>({path,bytes:Buffer.byteLength(body),sha256:createHash('sha256').update(body).digest('hex')});
+test('installation treats an exact concurrent cache write as success but rejects conflicting bytes',async()=>{
+ const files=[pinned('./index.html','INDEX'),pinned('./assets/main-NEWabc12.js','NEW')],body=url=>String(url).endsWith('index.html')?'INDEX':'NEW';
+ for(const target of ['asset','manifest']){
+  const caches=storage(),originalOpen=caches.open;let injected=false;
+  caches.open=async name=>{const cache=await originalOpen(name);return {...cache,put:async(key,response)=>{await cache.put(key,response);if(!injected&&(target==='asset'?name==='babelshelf-product-assets-v1'&&String(key).includes('/.babelshelf-app-assets/'):name==='babelshelf-product-'+current&&String(key).endsWith('/.babelshelf-app-manifest-v1'))){injected=true;throw new DOMException('Entry already exists','InvalidAccessError');}}};};
+  const h=await harness(body,{caches,files});await install(h);assert.equal(injected,true,target);assert.equal(await(await h.request('/assets/main-NEWabc12.js')).text(),'NEW');
+ }
+ const caches=storage(),originalOpen=caches.open;let injected=false;
+ caches.open=async name=>{const cache=await originalOpen(name);return {...cache,put:async(key,response)=>{if(!injected&&name==='babelshelf-product-assets-v1'&&String(key).includes('/.babelshelf-app-assets/')){injected=true;await cache.put(key,new Response('BAD'));throw new DOMException('Entry already exists','InvalidAccessError');}return cache.put(key,response);}};};
+ const invalid=await harness(body,{caches,files});await assert.rejects(install(invalid),/Entry already exists/);assert.equal(injected,true);
+});
+let roleOperation=0;
+async function prepareRole(h,role,clientId='tab-a',acquire=true){
+ let result,work;
+ h.handlers.message({source:{id:clientId,url:origin+'/',type:'window'},data:{type:'prepare-product-assets',role,operationId:'test-op-'+String(++roleOperation).padStart(4,'0'),acquire},ports:[{postMessage:value=>{result=value;}}],waitUntil:value=>{work=value;}});
+ if(work)await work;
+ return result;
+}
+
+test('custom tool QuickJS assets are excluded from first-install shell and acquired only on explicit preparation',async()=>{
+ const files=[pinned('./index.html','INDEX'),{...pinned('./assets/custom-tool-worker-ABCDEFGH.js','TOOL-WORKER'),roles:['custom-tools']},{...pinned('./assets/emscripten-module-ABCDEFGH.wasm','QUICKJS-WASM'),roles:['custom-tools']}],body=url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('custom-tool-worker-')?'TOOL-WORKER':'QUICKJS-WASM',h=await harness(body,{files});
+ await install(h);assert.deepEqual(h.network,[origin+'/index.html']);assert.equal((await h.request('/assets/custom-tool-worker-ABCDEFGH.js')).status,503);
+ const prepared=await prepareRole(h,'custom-tools');assert.equal(prepared.status,'prepared');assert.equal(prepared.assets,2);assert.equal(await(await h.request('/assets/custom-tool-worker-ABCDEFGH.js')).text(),'TOOL-WORKER');assert.equal(await(await h.request('/assets/emscripten-module-ABCDEFGH.wasm')).text(),'QUICKJS-WASM');
+ assert.equal((await prepareRole(h,'custom-tools','tab-a',false)).status,'prepared');
+});
+test('inference and PDF worker bundles are fetched only when their exact feature runtime is prepared',async()=>{
+ const features=[
+  ['decision-worker-ABCDEFGH.js','decision'],['speech-worker-ABCDEFGH.js','speech'],['vision-worker-ABCDEFGH.js','vision'],
+  ['onnx-text-worker-ABCDEFGH.js','text-onnx'],['lfm-text-worker-ABCDEFGH.js','text-wllama'],
+  ['qwen3-text-worker-ABCDEFGH.js','text-wllama'],['pdf-engine-ABCDEFGH.js','pdf'],['pdf-ABCDEFGH.js','pdf']
+ ];
+ const files=[pinned('./index.html','INDEX'),...features.map(([name,role])=>({...pinned('./assets/'+name,name),roles:[role]}))];
+ const h=await harness(url=>url.endsWith('/index.html')?'INDEX':features.find(([name])=>url.endsWith('/'+name))?.[0]??'UNKNOWN',{files});
+ await install(h);assert.deepEqual(h.network,[origin+'/index.html']);
+ for(const [name] of features)assert.equal((await h.request('/assets/'+name)).status,503,name+' is optional before preparation');
+ const groups=new Map();for(const feature of features){const [name,role]=feature,group=groups.get(role)??[];group.push(name);groups.set(role,group);}
+ for(const [role,names] of groups){
+  const prepared=await prepareRole(h,role);assert.equal(prepared.status,'prepared',role+' prepares its feature bundles');
+  for(const name of names)assert.equal(await(await h.request('/assets/'+name)).text(),name);
+ }
+ assert.deepEqual(h.network,[origin+'/index.html',...features.map(([name])=>origin+'/assets/'+name)]);
+});
 
 test('binary shell transport retains exact verified HTML and refuses modified transport bytes',async()=>{
  const html='<!doctype html><title>Verified shell</title>',file={...pinned('./index.html',html),downloadPath:'./offline-shell-pinned.bin'};
@@ -24,6 +85,23 @@ test('binary shell transport retains exact verified HTML and refuses modified tr
  const bad=await harness(html+'<script>injected()</script>',{files:[file]});await assert.rejects(install(bad),/verification/);assert.equal((await bad.request('/','navigate')).status,503);
 });
 test('new generations share identical verified binaries while each keeps its own shell',async()=>{const files=[pinned('./index.html','INDEX'),pinned('./assets/reader-SHARED12.wasm','BINARY')],body=url=>String(url).endsWith('index.html')?'INDEX':'BINARY',first=await harness(body,{files});await install(first);const second=await harness(body,{files,caches:first.caches,build:'3333333333333333'});await install(second);assert.deepEqual(second.network,[origin+'/index.html']);assert.equal(await (await second.request('/assets/reader-SHARED12.wasm')).text(),'BINARY');assert.equal(first.caches.entries.get('babelshelf-product-'+current).has(origin+'/assets/reader-SHARED12.wasm'),false);assert.equal(await (await second.request('/','navigate')).text(),'INDEX');});
+test('feature runtime assets are not installed until their exact feature is explicitly prepared',async()=>{
+ const files=[pinned('./index.html','INDEX'),{...pinned('./assets/ort-RUNTIM12.wasm','RUNTIME'),roles:['speech']}],body=url=>String(url).endsWith('index.html')?'INDEX':'RUNTIME',h=await harness(body,{files});await install(h);
+ assert.deepEqual(h.network,[origin+'/index.html']);assert.equal((await h.request('/assets/ort-RUNTIM12.wasm')).status,503);
+ const prepared=await prepareRole(h,'speech');assert.equal(prepared.status,'prepared');assert.equal(prepared.assets,1);assert.deepEqual(h.network,[origin+'/index.html',origin+'/assets/ort-RUNTIM12.wasm']);
+ assert.equal(await(await h.request('/assets/ort-RUNTIM12.wasm')).text(),'RUNTIME');
+});
+test('feature preparation fails closed for unknown roles, unauthorized contexts, corrupt bytes and disabled downloads',async()=>{
+ const files=[pinned('./index.html','INDEX'),{...pinned('./assets/ort-RUNTIM12.wasm','RUNTIME'),roles:['speech']}],body=url=>String(url).endsWith('index.html')?'INDEX':'CORRUPT',h=await harness(body,{files});await install(h);
+ assert.equal((await prepareRole(h,'unknown')).status,'failed');assert.deepEqual(h.network,[origin+'/index.html']);
+ let unauthorized;h.handlers.message({source:{id:'foreign',url:'https://evil.example/',type:'window'},data:{type:'prepare-product-assets',role:'speech'},ports:[{postMessage:value=>{unauthorized=value;}}],waitUntil(){}});assert.equal(unauthorized.status,'failed');assert.deepEqual(h.network,[origin+'/index.html']);
+ const corrupt=await prepareRole(h,'speech');assert.equal(corrupt.status,'failed');assert.match(corrupt.error,/verification/);assert.equal((await h.request('/assets/ort-RUNTIME12.wasm')).status,503);
+});
+test('cached feature runtimes remain usable offline; missing pieces are never acquired after Offline',async()=>{
+ const files=[pinned('./index.html','INDEX'),{...pinned('./assets/ort-RUNTIM12.wasm','RUNTIME'),roles:['speech']},{...pinned('./assets/ort-MISSIN12.wasm','MISSING'),roles:['speech']}],body=url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('RUNTIM')?'RUNTIME':'MISSING',connection=connectionDatabase(true),h=await harness(body,{files,connection});await install(h);
+ const partial=await prepareRole(h,'speech');assert.equal(partial.status,'prepared');connection.set(false);const pool=h.caches.entries.get('babelshelf-product-assets-v1');pool.delete(origin+'/.babelshelf-app-assets/'+files[2].sha256);
+ assert.equal(await(await h.request('/assets/ort-RUNTIM12.wasm')).text(),'RUNTIME');const failed=await prepareRole(h,'speech');assert.equal(failed.status,'failed');assert.match(failed.error,/Downloads are off/);assert.deepEqual(h.network,[origin+'/index.html',origin+'/assets/ort-RUNTIM12.wasm',origin+'/assets/ort-MISSIN12.wasm']);
+});
 test('old shared-aware lazy modules remain available after a new build removes them',async()=>{const old=await harness('OLD',{files:[pinned('./assets/reader-OLDabc12.js','OLD')]});await install(old);const next=await harness('NEW',{caches:old.caches,build:'3333333333333333'});await install(next);next.network.length=0;assert.equal(await (await next.request('/assets/reader-OLDabc12.js')).text(),'OLD');assert.deepEqual(next.network,[]);});
 
 test('shared entries are rehashed on install and corrupt bytes require an explicit verified fetch',async()=>{const first=await harness();await install(first);const pool=first.caches.entries.get('babelshelf-product-assets-v1'),key=[...pool.keys()][0];pool.set(key,new Response('BAD'));const next=await harness('NEW',{caches:first.caches,build:'3333333333333333'});await install(next);assert.equal(next.network.length,1);assert.equal(await (await next.request('/assets/main-NEWabc12.js')).text(),'NEW');assert.equal((await next.request('/.babelshelf-app-manifest-v1')).status,503);assert.equal((await next.request('/.babelshelf-app-assets/'+key.split('/').at(-1))).status,503);});

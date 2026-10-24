@@ -15,6 +15,7 @@ test('only validated confident read-only decisions skip planner and retain exact
  for(const action of ['recall','transform','capture','edit','search','read','schedule'])assert.deepEqual(decisionRoute(result(action),'x',empty),{request:null,reason:'structured-request'});
  assert.deepEqual(decisionRoute(result('answer',.8),'x',empty),{request:null,reason:'ambiguous'});
  for(const mutate of [r=>r.answer.choice='delete',r=>r.answer.confidence=NaN,r=>r.answer.probabilities.answer=1.1,r=>r.revision='other',r=>r.scope='omni',r=>r.inputTokens=9999,r=>delete r.answer.probabilities.recall]){const r=result();mutate(r);assert.throws(()=>decisionRoute(r,'x',empty),/Invalid decision route/);}
+ for(const invalid of [null,undefined,0,'answer',[],{}, {answer:{type:'choice',choice:'chat',confidence:1,probabilities:{}}},{...result(),permission:'write'},{...result(),answer:{...result().answer,tool:'memory.read'}}])assert.throws(()=>decisionRoute(invalid,'x',empty),/Invalid decision route/);
 });
 test('only a typed work context limit defers; Stop, crash, malformed output and receipt failures propagate',async()=>{
  let calls=0;const trace=async(_tool,_input,work,project)=>{calls++;const value=await work();project(value);return value;};const engine={identity,classify:async()=>result()};assert.equal((await routeWithDecision(engine,'q',{summary:'',recent:[],refs:[]},[],trace,()=>{})).request.action,'answer');assert.equal(calls,1);

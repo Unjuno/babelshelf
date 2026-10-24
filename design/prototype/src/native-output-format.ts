@@ -38,6 +38,7 @@ export function nativeOutputRequest(messages:any[],format?:GenerationFormat){
  const groups=new Map<string,any[]>();
  if(schema.anyOf)for(const branch of branches){
   let name=branch.properties.action.enum[0];
+  if(name==='tool-create')name='toolcreate';
   if(name==='capture'){
    const target=branch.properties.target?.enum?.[0],part=branch.properties.historyPart?.enum?.[0];
    name=target===undefined?'capturetext':target==='current'?'capturecurrent':target==='inputs'?'captureinputs':target==='history'&&part==='assistant'?'captureassistant':target==='history'&&part==='user'?'captureuser':undefined;

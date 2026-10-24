@@ -5,7 +5,7 @@ export type LocalAdapter={id:string;engine:string;models:readonly string[];capab
 const adapters:readonly LocalAdapter[]=[
  {id:'lfm-text',engine:'wllama-cpu-count',models:['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'],capabilities:['text.generate']},
  {id:'webml-text',engine:'webml',models:['4B','2B','9B'],capabilities:['text.generate']},
- {id:'onnx-text',engine:'transformers-onnx',models:['smollm2-360m-instruct','qwen25-05b-instruct'],capabilities:['text.generate']},
+ {id:'onnx-text',engine:'transformers-onnx',models:['smollm2-360m-instruct','smollm2-360m-instruct-webgpu-q4f16','qwen25-05b-instruct'],capabilities:['text.generate']},
  {id:'d1-text',engine:'onnx-d1',models:['d1-omni-600M'],capabilities:['decision.classify']},
  {id:'whisper',engine:'transformers-onnx',models:speechModels.map(model=>model.id),capabilities:['audio.transcribe','video.audio']},
  {id:'tesseract',engine:'tesseract-wasm',models:['tesseract-7'],capabilities:['image.ocr']},
@@ -17,7 +17,7 @@ export const localAdapters=Object.freeze(adapters.map(a=>Object.freeze({...a,mod
 export type CapabilityState={status:'Unsupported'|'Not configured'|'Runtime not connected'|'Not prepared'|'Ready';adapter?:LocalAdapter;model:string;capability:LocalCapability};
 // Prepared is a live result supplied by the owning verifier, never a persisted preference.
 // Ready means dispatchable, not loaded, accurate, or device acceptance.
-export function capabilityState(capability:LocalCapability,model:string,prepared:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[],customSpeechModels:readonly {id:string;role:string;engine:string}[]=[]):CapabilityState {
+export function capabilityState(capability:LocalCapability,model:string,prepared:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[],customSpeechModels:readonly {id:string;role:string;engine:string}[]=[],customVisionModels:readonly {id:string;role:string;engine:string}[]=[]):CapabilityState {
  const candidates=localAdapters.filter(a=>a.capabilities.includes(capability));
  const base={capability,model};
  if(!candidates.length)return {...base,status:'Unsupported'};
@@ -27,6 +27,7 @@ export function capabilityState(capability:LocalCapability,model:string,prepared
  const adapter=candidates.find(a=>a.models.includes(model));
  if(!adapter&&capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {...base,adapter:candidates.find(a=>a.id==='d1-text'),status:prepared===true?'Ready':'Not prepared'};
  if(!adapter&&(capability==='audio.transcribe'||capability==='video.audio')&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {...base,adapter:candidates.find(a=>a.id==='whisper'),status:prepared===true?'Ready':'Not prepared'};
+ if(!adapter&&(capability==='image.describe'||capability==='video.frames')&&customVisionModels.some(item=>item.id===model&&item.role==='vision'&&item.engine==='transformers-lfm2-vl-onnx'))return {...base,adapter:candidates.find(a=>a.id==='lfm-vision'),status:prepared===true?'Ready':'Not prepared'};
  // A registered Vision adapter does not make unrelated model families
  // image-capable. Keep unsupported models visibly distinct from a missing runtime.
  if(!adapter&&(capability==='image.describe'||capability==='video.frames'))return {...base,status:'Unsupported'};
@@ -43,10 +44,11 @@ export function videoCapabilityStatus(model:string,prepared:boolean,customSpeech
  return audio.status==='Ready'?'Ready':audio.status==='Not configured'?'Speech model required':audio.status==='Not prepared'?'Speech model not prepared':audio.status;
 }
 // Verify always rechecks local assets; it never authorizes reacquisition.
-export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[],customSpeechModels:readonly {id:string;role:string;engine:string}[]=[]){
- const state=capabilityState(capability,model,ready,customDecisionModels,customSpeechModels),verified=state.status==='Ready';
+export function processorAssetControls(capability:LocalCapability,model:string,ready:boolean,busy:boolean,downloads:boolean,customDecisionModels:readonly {id:string;role:string;engine:string}[]=[],customSpeechModels:readonly {id:string;role:string;engine:string}[]=[],customVisionModels:readonly {id:string;role:string;engine:string}[]=[]){
+ const state=capabilityState(capability,model,ready,customDecisionModels,customSpeechModels,customVisionModels),verified=state.status==='Ready';
  if(capability==='decision.classify'&&customDecisionModels.some(item=>item.id===model&&item.role==='decision'&&item.engine==='onnx-d1-text'))return {label:verified?'Verify':'Choose model files',enabled:!busy,allowNetwork:false,setup:false};
  if(capability==='audio.transcribe'&&customSpeechModels.some(item=>item.id===model&&item.role==='speech'&&item.engine==='transformers-whisper-onnx'))return {label:verified?'Verify':'Choose model files',enabled:!busy,allowNetwork:false,setup:false};
+ if(capability==='image.describe'&&customVisionModels.some(item=>item.id===model&&item.role==='vision'&&item.engine==='transformers-lfm2-vl-onnx'))return {label:verified?'Verify':'Choose model files',enabled:!busy,allowNetwork:false,setup:false};
  const setup=!!state.adapter&&!verified&&!downloads;
  return {label:setup?'Set up':verified?'Verify':'Prepare',enabled:!!state.adapter&&!busy&&(verified||downloads||setup),allowNetwork:!verified&&downloads,setup};
 }

@@ -7,11 +7,16 @@
     "check:runtime": "node scripts/check-mobile-runtime.mjs",
     "update:runtime-lock": "node scripts/update-mobile-runtime-lock.mjs",
     "test:runtime": "playwright test",
+    "test:help:built": "playwright test -c playwright.help.config.ts",
+    "test:ios-handoff": "npm run build:app --prefix ../.. && npm run test:ios-handoff:built && npm run test:ios-handoff:webkit:built",
+    "test:ios-handoff:built": "playwright test -c playwright.device.config.ts",
+    "test:ios-handoff:webkit:built": "playwright test -c playwright.device.config.ts --browser=webkit --workers=1",
     "test:sites": "node --test tests/sites-worker.test.mjs",
-    "predev": "npm run check:runtime && node scripts/prepare-ocr-runtime.mjs",
+    "predev": "npm run check:runtime && node scripts/prepare-ocr-runtime.mjs && node scripts/prepare-license-notices.mjs",
     "dev": "vite",
-    "prebuild": "npm run check:runtime && node scripts/prepare-ocr-runtime.mjs",
-    "build": "tsc && vite build && node scripts/prepare-sites-build.mjs"
+    "prebuild": "npm run check:runtime && node scripts/prepare-ocr-runtime.mjs && node scripts/prepare-license-notices.mjs",
+    "build": "tsc && vite build && node scripts/prepare-sites-build.mjs",
+    "test:tools:built": "playwright test -c playwright.tools.config.ts"
   },
   "dependencies": {
     "@fontsource/roboto": "5.2.10",
@@ -28,6 +33,7 @@
     "motion": "12.42.2",
     "onnxruntime-web-d1": "npm:onnxruntime-web@1.31.0-dev.20260914-8d85527a0",
     "pdfjs-dist": "6.4.299",
+    "quickjs-emscripten": "0.32.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "tesseract.js": "7.0.0"

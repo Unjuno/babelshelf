@@ -21,6 +21,21 @@ test('grounded current readings exclude a stale planner fact from retrieval whil
  const invalid={...engine,generate:async()=>({text:JSON.stringify({answer:'OLD-481',citations:[{id:'S1',quote:'OLD-481'}]})})};
  await assert.rejects(groundedAnswer(store,invalid,'4B',question,'Earlier code OLD-481','answer',context,()=>{},[readingRef(review)]),/Citation mismatch/);
 });
+test('a scoped pure calculation augments current attachment evidence and retains the original citation',async()=>{
+ const {groundedAnswer}=await import('../src/grounded-answer.ts'),{raw}=await fixture(),reading=makeOcrText(raw,'eng',{width:100,height:100,processedWidth:100,processedHeight:100,frame:0,orientation:'browser-decoded'},'The budget items are 1200 and 800 credits.',[]),review={kind:'ocr',id:'budget-reading',value:reading},notes=[originalNote(raw),...buildInputReadings([review],[{key:originalKey(raw.id),value:raw}])],question='What is one quarter of the total shown in this image?';let messages,searches=0;
+ const store={all:async()=>notes,search:async()=>{searches++;throw Error('attachment scope must not search Memory');}};
+ const calculation={expression:'(1200 + 800) / 4',result:500,precision:'IEEE-754 binary64'};
+ const engine={loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[{id:'4B',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1}),generate:async value=>{messages=value;const input=JSON.parse(value.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.deepEqual(input.calculations,[calculation]);assert.ok(input.evidence.some(item=>item.noteId===review.id&&item.quote.includes('1200')));return {text:JSON.stringify({answer:'One quarter is 500.',citations:[{id:input.evidence[0].label,quote:input.evidence[0].quote}]})};}};
+ const result=await groundedAnswer(store,engine,'4B',question,question,'answer',{summary:'',recent:[],refs:[]},()=>{},[readingRef(review)],undefined,undefined,{used:true,refs:[],calculations:[calculation],memoryUsed:false});
+ assert.equal(result.answer,'One quarter is 500.');assert.equal(result.sources.length,1);assert.equal(result.sources[0].noteId,review.id);assert.equal(searches,0);assert.ok(JSON.stringify(messages).includes('original excerpt'));
+});
+test('attachment scope rejects calculator evidence mixed with memory evidence',async()=>{
+ const {groundedAnswer}=await import('../src/grounded-answer.ts'),{review,notes}=await fixture();let generated=false;
+ const engine={loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[{id:'4B',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1}),generate:async()=>{generated=true;return {text:'{}'};}};
+ const ref={noteId:review.id,revision:1,start:0,end:10,quote:'a source quote'};
+ await assert.rejects(groundedAnswer({all:async()=>notes,search:async()=>[]},engine,'4B','Question','Question','answer',undefined,()=>{},[readingRef(review)],undefined,undefined,{used:true,refs:[ref],calculations:[{expression:'1 + 1',result:2,precision:'IEEE-754 binary64'}],memoryUsed:true}),/Conflicting tool evidence scope/);
+ assert.equal(generated,false);
+});
 test('reviewed input produces separate immutable extraction; wrong source, duplicate IDs and blank extraction refuse',async()=>{
  const {raw,review,runs,notes}=await fixture();assert.equal(notes[0].revisions[0].body,'');assert.equal(notes[1].revisions[0].body,review.value.text);assert.deepEqual(notes[1].mediaSource,originalRef(raw));assert.notEqual(notes[1].ocrText,review.value);
  assert.throws(()=>buildInputReadings([review,review],runs),/reading/i);assert.throws(()=>buildInputReadings([{...review,id:raw.id}],runs));assert.throws(()=>buildInputReadings([{...review,value:{...review.value,text:''}}],runs));assert.throws(()=>buildInputReadings([{...review,value:{...review.value,original:{...review.value.original,sha256:'0'.repeat(64)}}}],runs));

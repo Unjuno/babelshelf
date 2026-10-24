@@ -5,6 +5,7 @@ import {AutoModelForCausalLM,AutoTokenizer,env,LogitsProcessor,LogitsProcessorLi
 import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
 import {configureLocalTransformerRuntime} from './transformers-runtime';
+import {transformerLoadOptions} from './onnx-execution-options';
 import {onnxTextModels,getOnnxTextManifest} from './text-model-manifest';
 import {createPinnedAssetStore} from './pinned-text-assets';
 const networkFetch=globalThis.fetch.bind(globalThis);
@@ -57,9 +58,10 @@ self.onmessage=async({data})=>{
     progress('Verifying text model');
     const config=JSON.parse(await(await store.read('config.json',controller.signal)).text());
     if(config.model_type!==manifest.architecture||!config.architectures?.includes(manifest.architecture==='qwen2'?'Qwen2ForCausalLM':'LlamaForCausalLM'))throw Error('Text model config incompatible');
-    progress('Loading · WASM');
+    const execution=transformerLoadOptions(manifest);
+    progress('Loading · '+(execution.device==='webgpu'?'WebGPU':'WASM'));
     tokenizer=await AutoTokenizer.from_pretrained(manifest.id,{local_files_only:true,revision:manifest.revision});check();
-    try{model=await AutoModelForCausalLM.from_pretrained(manifest.id,{local_files_only:true,revision:manifest.revision,device:'wasm',dtype:'q8'});check();}
+    try{model=await AutoModelForCausalLM.from_pretrained(manifest.id,{local_files_only:true,revision:manifest.revision,...execution});check();}
     catch(error){await unload();throw error;}
    }value=true;
   }else if(data.cmd==='unload'){await unload();value=true;}

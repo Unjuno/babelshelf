@@ -18,7 +18,8 @@ export const builtinPackageNotes = [
 ].map(([relative,body])=>({id:'builtin-package-'+relative,path:'Tools/'+relative,body,version:1,history:[] as string[],protected:true}));
 
 // Trusted module references are app-owned; stored text cannot add an entry.
-export const builtinToolRegistry=createToolRegistry([searchTool,readTool,calculateTool].map(tool=>({
+export const builtinToolPackages=[searchTool,readTool,calculateTool].map(tool=>({
  definition:tool.definition,entry:'Tools/'+tool.definition.id+'/tool.ts',run:tool.run,
  sources:builtinPackageNotes.filter(n=>n.path.startsWith('Tools/'+tool.definition.id+'/')||n.path==='Tools/tool-host.ts').map(n=>({path:n.path,body:n.body})),
-})));
+}));
+export const builtinToolRegistry=createToolRegistry(builtinToolPackages);

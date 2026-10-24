@@ -45,6 +45,16 @@ test('the application-owned call limit stops before an extra tool executes',asyn
  assert.equal(MAX_AGENT_TOOL_CALLS,3);assert.equal(executions,MAX_AGENT_TOOL_CALLS);
 });
 
+test('an editable profile can lower the call limit but cannot permit a fourth call',async()=>{
+ let executions=0,plans=0;await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],maxToolCalls:1,plan:async()=>{plans++;return {kind:'tool',tool:'memory.search',arguments:{query:'x'}};},execute:async()=>{executions++;return [];},check:()=>{}}),/limit/);
+ assert.equal(plans,2);assert.equal(executions,1);
+});
+
+test('an editable profile can lower the result budget before tool output enters context',async()=>{
+ let plans=0;await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[1]],maxResultChars:300,plan:async()=>{plans++;return {kind:'tool',tool:'memory.read',arguments:{query:'large.md'}};},execute:async()=>({body:'x'.repeat(400)}),check:()=>{}}),/too large/);
+ assert.equal(plans,1);
+});
+
 test('oversized tool output fails before being fed back to the model',async()=>{
  let plans=0;await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[1]],plan:async()=>{plans++;return {kind:'tool',tool:'memory.read',arguments:{query:'large.md'}};},execute:async()=>({body:'x'.repeat(9000)}),check:()=>{}}),/too large/);
  assert.equal(plans,1);

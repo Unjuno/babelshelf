@@ -90,6 +90,10 @@ Canonical records also accept TypeScript source paths `Tools/<lowercase-package>
 
 Single source exports use UTF-8 body bytes without Markdown frontmatter, with a `.vN.ts` filename; use a brainpack for IDs/history/metadata. Ordinary Markdown exports retain frontmatter. New .ts paths extend the storage contract: older clients may reject them. No historical data is deleted to introduce these records.
 
+## Inert custom tool JavaScript source records
+
+The path validator additionally permits `Tools/user.<lowercase-package>/tool.js` as inert UTF-8 text, paired by the package inspector with that package's `SKILL.md`. It exports raw source bytes under `tool.vN.js`; the ordinary Markdown writer still only creates `.md` notes. This allowlist does not install or execute the JavaScript. Custom package runtime, capability approval and migration UI remain unimplemented; older clients may reject the new path.
+
 ## Device storage observations and explicit protection (Unit92)
 Settings > Local files exposes browser-reported origin usage and quota-minus-usage as estimates, plus persisted() status. Initial preparation displays the same estimated available amount beside its existing up-to asset total. Unknown, absent, rejected or nonfinite measurements stay Unknown; they are not zero, physical disk free space, RAM, exact acquisition budgets or model readiness. Insufficient-capacity admission is not inferred from a partial-cache total.
 

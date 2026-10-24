@@ -17,6 +17,15 @@ test('Memory has immutable system folders and creates only inside them',()=>{
  assert.doesNotThrow(()=>paths.assertMutableFolder('Notes/Projects'));
 });
 
+test('user tool packages may store one exact executable entry while all other code extensions remain Markdown',()=>{
+ assert.equal(paths.memoryFolderPath('Tools','user.lookup'),'Tools/user.lookup');
+ assert.equal(paths.memoryFilePath('Tools/user.lookup','SKILL.md'),'Tools/user.lookup/SKILL.md');
+ assert.equal(paths.memoryFilePath('Tools/user.lookup','tool.js'),'Tools/user.lookup/tool.js');
+ assert.equal(paths.validateMemoryFilePath('Tools/user.lookup/tool.js'),'Tools/user.lookup/tool.js');
+ assert.equal(paths.memoryFilePath('Notes','tool.js'),'Notes/tool.js.md');
+ for(const path of ['Tools/user.lookup/other.js','Tools/user.lookup/deep/tool.js','Notes/user.lookup/tool.js','Tools/user.lookup/tool.ts'])assert.throws(()=>paths.validateMemoryFilePath(path),/\.md|tool\.js/);
+});
+
 test('captured note names keep the complete first sentence when it fits',()=>{
  const body='The blue lantern meeting is on 19 November at 14:40 in Cedar Room.\nExtra details';
  assert.equal(paths.suggestedNoteName(body),'The blue lantern meeting is on 19 November at 14-40 in Cedar Room');

@@ -13,12 +13,13 @@ const record=(events,signal)=>(tool,input,work,project)=>recordProcessingOperati
 const raw=async(name='image.png',type='image/png')=>prepareOriginal(new File(['controlled bytes'],name,{type}));
 const image={width:100,height:100,processedWidth:100,processedHeight:100,frame:0,orientation:'browser-decoded'};
 
-test('video Send uses selected prepared vision; missing preparation never silently becomes audio-only',async()=>{
+test('video Send uses prepared frame vision and otherwise may use explicitly labelled prepared audio only',async()=>{
  const {videoFramePlan}=await import('../src/video-frame-plan.ts'),{makeVideoVisionText}=await import('../src/video-observations.ts');
  const asset=await raw('video.mp4','video/mp4'),controller=new AbortController(),events=[],plan=videoFramePlan({trackId:1,start:0,end:12,width:100,height:100});let described=0,transcribed=0;
- const selected={...policy,visionModel:'lfm25-vl-450m-q4f16',visionReady:true},adapters={vision:async()=>{described++;return makeVideoVisionText(asset,'Describe',plan,plan.timestampsUs.map(requestedUs=>({requestedUs,timestampUs:requestedUs,durationUs:40000,width:100,height:100,imageSha256:'a'.repeat(64),text:'Controlled observation.'})),{status:'not-selected'});},speech:async()=>{transcribed++;throw Error('must not fall back');}};
+ const selected={...policy,visionModel:'lfm25-vl-450m-q4f16',visionReady:true},adapters={vision:async()=>{described++;return makeVideoVisionText(asset,'Describe',plan,plan.timestampsUs.map(requestedUs=>({requestedUs,timestampUs:requestedUs,durationUs:40000,width:100,height:100,imageSha256:'a'.repeat(64),text:'Controlled observation.'})),{status:'not-selected'});},speech:async a=>{transcribed++;return makeTranscript(a,12000,{text:'Controlled spoken words.',chunks:[{text:'Controlled spoken words.',timestamp:[0,12]}]});}};
  const result=await readInputOriginal(asset,selected,adapters,controller.signal,()=>{},record(events,controller.signal));assert.equal(result.reading.kind,'vision');assert.equal(result.reading.value.scope,'sampled-video');assert.match(result.status,/sampled frames/);assert.equal(events[0].tool,'image.describe');assert.equal(described,1);assert.equal(transcribed,0);
- const missing=await readInputOriginal(asset,{...selected,visionReady:false},adapters,controller.signal,()=>{},record(events,controller.signal));assert.equal(missing.reading,undefined);assert.match(missing.status,/not prepared/i);assert.equal(described,1);assert.equal(transcribed,0);
+ const partial=await readInputOriginal(asset,{...selected,visionReady:false},adapters,controller.signal,()=>{},record(events,controller.signal));assert.equal(partial.reading.kind,'speech');assert.match(partial.status,/frames not processed/i);assert.equal(events.at(-1).tool,'speech.transcribe');assert.equal(described,1);assert.equal(transcribed,1);
+ const missing=await readInputOriginal(asset,{...selected,visionReady:false,speechReady:false},adapters,controller.signal,()=>{},record(events,controller.signal));assert.equal(missing.reading,undefined);assert.match(missing.status,/understanding not prepared/i);assert.equal(described,1);assert.equal(transcribed,1);
 });
 // Adapter results are controlled metadata for orchestration, not OCR/ASR acceptance.
 test('Send auto OCR retains raw identity, returns extracted not reviewed text, and records real operation lifecycle',async()=>{
@@ -51,7 +52,7 @@ test('Stop while extracting or persisting completion propagates and never become
 
 test('processing ledger write failure aborts Send instead of silently degrading to an unread attachment',async()=>{
  const asset=await raw(),controller=new AbortController();
- for(const phase of ['start','completion','failure']){let count=0;await assert.rejects(readInputOriginal(asset,policy,{ocr:async a=>{if(phase==='failure')throw Error('reader failed');return makeOcrText(a,'eng',image,'Text.',[]);}},controller.signal,()=>{},(tool,input,work,project)=>recordProcessingOperation(tool,input,work,async()=>{count++;if(phase==='start'||count===2)throw Error('disk full');},project,()=>false)),/disk full|activity record unavailable/);}
+ for(const phase of ['start','completion','failure']){let count=0;await assert.rejects(readInputOriginal(asset,policy,{ocr:async a=>{if(phase==='failure')throw Error('reader failed');return makeOcrText(a,'eng',image,'Text.',[]);}},controller.signal,()=>{},(tool,input,work,project)=>recordProcessingOperation(tool,input,work,async()=>{count++;if(phase==='start'||count===2)throw Error('disk full');},project,()=>false)),error=>error.code==='persistence_failure');}
 });
 
 import {capabilityState,localAdapters,requireCapability,videoCapabilityStatus} from '../src/local-capabilities.ts';
@@ -117,6 +118,18 @@ test('processor verification stays local even when downloads are enabled; unsupp
  const localDecision=[{id:'local-d1',role:'decision',engine:'onnx-d1-text'}];
  assert.deepEqual(processorAssetControls('decision.classify','local-d1',false,false,false,localDecision),{label:'Choose model files',enabled:true,allowNetwork:false,setup:false});
  assert.deepEqual(processorAssetControls('decision.classify','local-d1',true,false,true,localDecision),{label:'Verify',enabled:true,allowNetwork:false,setup:false});
+});
+
+test('registered local LFM2-VL models enable only image and sampled-frame capabilities through the built-in adapter',()=>{
+ const local=[{id:'local-vision-'+('a'.repeat(64)),role:'vision',engine:'transformers-lfm2-vl-onnx'}];
+ for(const capability of ['image.describe','video.frames']){
+  assert.equal(capabilityState(capability,local[0].id,false,[],[],local).status,'Not prepared');
+  const ready=capabilityState(capability,local[0].id,true,[],[],local);assert.equal(ready.status,'Ready');assert.equal(ready.adapter?.id,'lfm-vision');
+ }
+ assert.equal(capabilityState('audio.transcribe',local[0].id,true,[],[],local).status,'Runtime not connected');
+ assert.equal(capabilityState('image.describe',local[0].id,true).status,'Unsupported');
+ assert.deepEqual(processorAssetControls('image.describe',local[0].id,false,false,false,[],[],local),{label:'Choose model files',enabled:true,allowNetwork:false,setup:false});
+ assert.deepEqual(processorAssetControls('image.describe',local[0].id,true,false,true,[],[],local),{label:'Verify',enabled:true,allowNetwork:false,setup:false});
 });
 
 import {prepareSpeech} from '../src/speech-assets.ts';

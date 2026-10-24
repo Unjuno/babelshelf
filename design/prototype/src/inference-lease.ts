@@ -1,6 +1,7 @@
 const LOCK_NAME='babelshelf-local-inference';
 type LockApi={request:(name:string,options:{mode:'exclusive';ifAvailable:true},callback:(lock:Lock|null)=>Promise<void>|void)=>Promise<unknown>};
 export type InferenceLease={readonly protected:boolean;release:()=>Promise<void>};
+export type InferenceRole='Text'|'Decision'|'Vision'|'Speech'|'OCR';
 
 function reserveAcrossTabs(locks:LockApi):Promise<InferenceLease>{
  let releaseHold!:()=>void,rejectReady!:(error:Error)=>void,settled=false;
@@ -20,20 +21,25 @@ function reserveAcrossTabs(locks:LockApi):Promise<InferenceLease>{
  return acquired;
 }
 
-// Several model roles may share one tab; hold a single origin-wide browser
-// lock until that tab's last resident inference model releases its lease.
+// One role at a time may own this tab's inference resources. Text/Decision
+// leases can be resident; Vision/Speech/OCR leases cover a bounded operation.
+// The origin-wide browser lock remains held until the final same-role lease
+// releases, preventing other tabs from loading a competing model meanwhile.
 export function createInferenceLeaseManager(locks:LockApi|null|undefined=globalThis.navigator?.locks){
- let root:Promise<InferenceLease>|null=null,owners=0,ending:Promise<void>|null=null;
- async function acquire(_role='model'):Promise<InferenceLease>{
+ let root:Promise<InferenceLease>|null=null,owners=0,activeRole:InferenceRole|null=null,ending:Promise<void>|null=null;
+ async function acquire(role:InferenceRole='Text'):Promise<InferenceLease>{
   if(ending)await ending;
   const reservation=root??(root=locks?reserveAcrossTabs(locks):Promise.resolve({protected:false,release:async()=>{}}));
   let lease:InferenceLease;
   try{lease=await reservation;}catch(error){if(root===reservation)root=null;throw error;}
-  if(ending){await ending;return acquire(_role);}
+  if(ending){await ending;return acquire(role);}
+  if(owners>0&&activeRole!==role)throw Error(`Another local inference role is active (${activeRole}). Finish or unload it before using ${role}.`);
+  activeRole=role;
   owners++;let released=false;
   return {protected:lease.protected,release:async()=>{
    if(released)return;released=true;owners--;
    if(owners===0&&root===reservation){
+    activeRole=null;
     ending=reservation.then(value=>value.release()).then(()=>{},()=>{}).finally(()=>{if(root===reservation)root=null;ending=null;});
     await ending;
    }

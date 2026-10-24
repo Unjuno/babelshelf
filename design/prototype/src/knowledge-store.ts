@@ -2,6 +2,7 @@ import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} f
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
 import {findStoredFiles} from './file-discovery.ts';
+import type {MemorySearchResult,MemoryPassageResult} from './memory-search-types.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
@@ -21,7 +22,7 @@ import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGrounding
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {openDB} from '../../../dist/storage.js';
-import {parsePreference,readPreference,readPreferenceWithFallback,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
+import {parsePreference,readPreference,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
@@ -70,8 +71,10 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
    if(next.recordType)throw Error('Register through Schedule');
    if(next.version!==1||next.history.length)throw Error('Invalid new revision');
    if(next.kind==='generated'&&(!Array.isArray(next.sources)||!validateGroundingRefs(records,next.sources).ok))throw Error('Source changed · review before saving');
+   const managedGroup=preferenceGroup(next.path),managed=managedGroup&&id==='settings-'+managedGroup;
+   if(managedGroup&&managed)parsePreference(managedGroup,next.body);
    const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path,kind:next.kind??'original',sources:next.sources??[]});
-   const record={...created,id,...(next.importedFrom?{importedFrom:next.importedFrom}:{}),...(next.dialogueCopy?{dialogueCopy:structuredClone(next.dialogueCopy)}:{})};
+   const record={...created,id,...(managed?{ui:{managed:true}}:{}),...(next.importedFrom?{importedFrom:next.importedFrom}:{}),...(next.dialogueCopy?{dialogueCopy:structuredClone(next.dialogueCopy)}:{})};
    validateDialogueCopyRecord(record);if(record.dialogueCopy)assertDialogueCopySource(dialogue,record.dialogueCopy);result.push(record);
   }
  }
@@ -124,12 +127,16 @@ export class KnowledgeStore {
  private name:string;
  constructor(name='mlb-memory-v1'){this.name=name;}
  async open(){if(!this.database)this.database=await openDB(this.name);return this.database!;}
- private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void):Promise<T>{
-  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown;
+ private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void,signal?:AbortSignal):Promise<T>{
+  if(signal?.aborted)throw Error('Stopped');
+  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();if(signal?.aborted)throw Error('Stopped');return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown,stopped=false;
+   const cleanup=()=>signal?.removeEventListener('abort',abort);
+   const abort=()=>{stopped=true;try{tx.abort();}catch{/* The transaction may already be complete. */}};
+   signal?.addEventListener('abort',abort,{once:true});
    const fail=(e:unknown)=>{error=e;tx.abort();};
    try{run(tx,v=>{value=v;if(guarded){const rows=tx.objectStore('notes').getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2;const check=()=>{if(--pending)return;try{assertFolderNamespace(rows.result,folders.result??[]);}catch(e){fail(e);}};rows.onsuccess=check;folders.onsuccess=check;}},fail);}catch(e){fail(e);}
    tx.addEventListener('error',()=>{error??=tx.error;});
-   tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(error??tx.error??Error('Save failed'));
+   tx.oncomplete=()=>{cleanup();resolve(value);};tx.onabort=()=>{cleanup();reject(stopped?Error('Stopped'):error??tx.error??Error('Save failed'));};
   });
  }
  async initialize(defaults:NoteView[]){
@@ -138,15 +145,14 @@ export class KnowledgeStore {
     const note={...createNote({title:seed.path.split('/').at(-1),body:seed.body,path:seed.path}),id:seed.id,ui:{protected:!!seed.protected,managed:!!seed.managed}};records.push(note);store.add(note);
    }
    for(const update of builtinToolUpdates(records,defaults)){records[records.findIndex(n=>n.id===update.id)]=update;store.put(update);}
-   const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
-   // A malformed preference must not lock the user out of Memory/recovery.
-   // The safe fallback is downloads OFF; retain invalid bytes until explicit restore.
-   if(connection&&readPreferenceWithFallback('connection',[projectNote(connection)]).value.downloads){const safe=readPreferenceWithFallback('connection',[projectNote(connection)]).value;const changed=reviseNote(connection,{body:formatPreference('connection',{...safe,downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
+   // Connection mode is a durable user preference. Offline remains the default,
+   // but a deliberate Online choice must survive a normal PWA restart/reload.
+   // Malformed settings are retained for explicit recovery; never rewrite user data here.
    checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){fail(e);}
   };});
  }
- async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}
- async views(){return (await this.all()).filter(n=>n.state==='active').map(projectNote);}
+ async all(signal?:AbortSignal):Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);},signal);}
+ async views(signal?:AbortSignal){return (await this.all(signal)).filter(n=>n.state==='active').map(projectNote);}
  // Preparation needs only these two canonical records, even with a large diary.
  async preparationSettings(){
   return this.transaction<{models:ReturnType<typeof readPreference<'models'>>;connection:ReturnType<typeof readPreference<'connection'>>}>(['notes'],'readonly',(tx,done,fail)=>{
@@ -247,7 +253,7 @@ export class KnowledgeStore {
  async restoreDefaults(expected:NoteView[]){
   return this.transaction<void>(['notes'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
    try{const before=q.result.filter(n=>n.state==='active').map(projectNote);
-    for(const id of ['settings-models','settings-appearance','settings-connection']){
+    for(const id of ['settings-models','settings-appearance','settings-connection','settings-harness']){
      const reviewed=expected.filter(n=>n.id===id),current=before.find(n=>n.id===id);
      if(reviewed.length!==1||!current||!equal(current,reviewed[0]))throw Error('Settings changed · cancel and reopen');
     }
@@ -305,7 +311,9 @@ export class KnowledgeStore {
   });
  }
  async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
- async search(query:string,stored=false){const all=await this.all(),explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12);const text=searchStoredNotes(records,query,12),ids=new Set(text.map((r:any)=>r.noteId));return [...findStoredFiles(records,query).filter(file=>!ids.has(file.noteId)),...text].slice(0,12);}
+ search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
+ search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
+ async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[],ids=new Set(text.map(result=>result.noteId));return [...findStoredFiles(records,query).filter(file=>!ids.has(file.noteId)),...text].slice(0,12);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};

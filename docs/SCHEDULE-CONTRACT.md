@@ -10,6 +10,10 @@ New tasks are paused. Run now is explicit and can consume a future occurrence ea
 
 Scheduled generation is isolated from interactive conversation. It only reads evidence and generates prose; no capture/edit/delete tools or external operations. A successful result must have valid current source references. Result Save note uses the existing output review without regeneration. Runs are read-only in Memory; a running run cannot be deleted. All revisions remain.
 
+While a run is active, the Schedule screen shows `Running` and a `Stop` action. Stop aborts the task signal and requests the active local Text engine to stop. A cancellation observed before success is committed records the occurrence as `stopped`, discards its pending answer, and creates no success notification. This only governs foreground execution; it does not provide background wakeup or push delivery.
+
+Completion and Stop have an explicit same-tab arbitration point immediately before the success write. If Stop wins first, success cannot be committed; once completion claims that point, the UI reports `Saving result…` and removes Stop while the canonical success transaction finishes. This avoids presenting a Stop control that can no longer cancel a result already entering persistence. IndexedDB still owns the final status transition and notification transaction.
+
 Notifications are separate versioned outcome notes linked to task/run IDs. Read/unread is a canonical revision. Opening links to the actual result/task; deletion withdraws only the event and never deletes the task/run. Recovery is separate. This is an in-app inbox, not push delivery.
 
 Existing local-zone schedules also support reviewed model-originated typed patches through CORRECTION-CONTRACT.md. Prompt/condition/notify changes share the dedicated editor's canonical revision/cursor rules; activation and timezone are preserved. A pending review blocks same-page foreground claims. Other clients or execution-cursor changes invalidate approval/Undo through whole-record checks. Memory and Schedule project that same record.

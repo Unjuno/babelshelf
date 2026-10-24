@@ -1,5 +1,5 @@
 import type {ToolHost} from '../tool-host.ts';
-export const definition=Object.freeze({id:'math.calculate',version:1,readOnly:true,network:'none'});
+export const definition=Object.freeze({id:'math.calculate',version:2,readOnly:true,network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:200}}}});
 // Only whole, explicit arithmetic inputs bypass planning. No document or history scan.
 export function calculatorInput(text:string):string|null {
  if(/^\d{4}-\d{2}-\d{2}$/.test(text.trim()))return null;
@@ -30,6 +30,15 @@ export async function run(args:unknown,host:ToolHost){
 // model output. Each explicit "then" folds the previous result as one operand.
 export function orderedCalculationInput(text:string):string|null {
  if(text.length>1000)return null;
+ const japanese=text.trim().replace(/[。！？!?]$/,'');
+ const japaneseNumber='([+−-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?)';
+ const japaneseForms:[RegExp,string][]=[
+  [new RegExp('^'+japaneseNumber+'\\s*と\\s*'+japaneseNumber+'\\s*を(?:足して|足す|足します)$'),'+'],
+  [new RegExp('^'+japaneseNumber+'\\s*から\\s*'+japaneseNumber+'\\s*を(?:引いて|引く|引きます)$'),'-'],
+  [new RegExp('^'+japaneseNumber+'\\s*に\\s*'+japaneseNumber+'\\s*を(?:掛けて|掛ける|掛けます|かけて|かける)$'),'*'],
+  [new RegExp('^'+japaneseNumber+'\\s*を\\s*'+japaneseNumber+'\\s*で(?:割って|割る|割ります)$'),'/'],
+ ];
+ for(const [pattern,operator] of japaneseForms){const match=japanese.match(pattern);if(match)return `(${match[1]} ${operator} ${match[2]})`;}
  const clauses=text.trim().replace(/[.!?]$/,'').split(/\s*,?\s+then\s+/i);if(clauses.length>16)return null;
  const number='[+−-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?',numeric=new RegExp('^'+number+'$');
  const first=clauses[0].trim();let expression:string|null=null;

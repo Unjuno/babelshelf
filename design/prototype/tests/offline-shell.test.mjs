@@ -1,7 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild,enforceOfflineNetwork} from '../src/offline-shell.ts';
+import {refreshAppVersion,appUpdateOutcome} from '../src/offline-shell.ts';
 class Worker extends EventTarget {constructor(state){super();this.state=state;}set(state){this.state=state;this.dispatchEvent(new Event('statechange'));}}
+
+test('Refresh returns a retryable error when the browser update check never settles',async()=>{
+ let release,activations=0;const worker=new Worker('installed');worker.postMessage=()=>activations++;
+ const registration={waiting:worker,update:()=>new Promise(resolve=>{release=resolve;})};
+ const result=refreshAppVersion(registration,new EventTarget(),5).then(()=> 'success',error=>error.message);
+ assert.match(await Promise.race([result,new Promise(resolve=>setTimeout(()=>resolve('still waiting'),100))]),/Update timed out/);
+ release();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(activations,0,'A late browser response cannot resume the timed-out refresh');
+});
+
+test('stalled install wait detaches its listener and a later explicit retry can use the verified worker',async()=>{
+ const worker=new Worker('installing');let listeners=0;
+ const add=worker.addEventListener.bind(worker),remove=worker.removeEventListener.bind(worker);
+ worker.addEventListener=(...args)=>{listeners++;add(...args);};
+ worker.removeEventListener=(...args)=>{listeners--;remove(...args);};
+ const registration={installing:worker};
+ const result=appUpdateOutcome(registration,5).then(()=> 'success',error=>error.message);
+ assert.match(await Promise.race([result,new Promise(resolve=>setTimeout(()=>resolve('still waiting'),100))]),/Update timed out/);
+ assert.equal(listeners,0);
+ registration.waiting=worker;registration.installing=null;worker.set('installed');
+ assert.equal(await appUpdateOutcome(registration,5),'Update ready');
+});
 
 test('Offline requires controller acknowledgement and never claims enforcement for old or missing workers',async()=>{
  assert.equal(await enforceOfflineNetwork({postMessage(message,[port]){assert.deepEqual(message,{type:'network-offline'});port.postMessage({offline:true});}},100),true);
@@ -36,6 +59,19 @@ test('Apply update does not report success if activation fails or never controls
  await assert.rejects(activateWaitingUpdate({waiting:failed},container,100),/activation failed/);
  const stalled=new Worker('installed');stalled.postMessage=()=>stalled.set('activated');
  await assert.rejects(activateWaitingUpdate({waiting:stalled,active:stalled},container,5),/not confirmed/);
+});
+
+test('Refresh app checks once, applies a waiting build, and returns only after the new worker controls the page',async()=>{
+ const {refreshAppVersion}=await import('../src/offline-shell.ts');
+ const container=new EventTarget();container.controller=new Worker('activated');
+ const worker=new Worker('installing'),registration={installing:worker,waiting:null,active:container.controller,update:async()=>{registration.waiting=worker;worker.set('installed');}};
+ worker.postMessage=message=>{assert.deepEqual(message,{type:'activate-update'});queueMicrotask(()=>{registration.waiting=null;registration.installing=null;registration.active=worker;worker.set('activated');container.controller=worker;container.dispatchEvent(new Event('controllerchange'));});};
+ assert.equal(await refreshAppVersion(registration,container,100),'Updated');assert.equal(container.controller,worker);
+});
+
+test('Refresh app verifies an up-to-date active build and still requests an explicit refresh',async()=>{
+ const {refreshAppVersion}=await import('../src/offline-shell.ts');let checks=0;const registration={active:new Worker('activated'),waiting:null,installing:null,update:async()=>{checks++;}};
+ assert.equal(await refreshAppVersion(registration,new EventTarget(),100),'Up to date');assert.equal(checks,1);
 });
 
 test('diagnostics report the controlling worker build without assuming server freshness',async()=>{

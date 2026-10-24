@@ -1,5 +1,7 @@
 # Accepted product and UI specification
 
+Settings includes separate Help and Licenses pages (2026-10-23). Help explains current task flows with short English steps and expandable topics: preparation, Input, navigation, Memory/history, attachments/sources, models/tools, schedules/notifications, offline updates and backup/recovery. It links to relevant settings. Licenses exposes the app license, versioned dependency metadata, full available license/notice texts and separate model/runtime provenance. Both are bundled read-only app content, available offline after shell preparation; they are not user configuration files. Missing package license text and the unresolved WebML runtime redistribution status remain explicit. Package inventory is generated from locked installed non-optional production dependencies, including transitive packages rather than claiming every listed package executes in the browser.
+
 Updated 2026-10-18 JST. This is the current design baseline, replacing historical bottom-toggle, fixed rail and tap-to-open iterations. It specifies intended behavior; implementation status is listed separately.
 
 This file defines accepted behavior. Current implementation evidence belongs in [MVP-ACCEPTANCE.md](MVP-ACCEPTANCE.md), remaining gates in [REMAINING-GATES.md](REMAINING-GATES.md), and historical observations in [TEST-RESULTS.txt](TEST-RESULTS.txt). A requirement here is not evidence that it passed on a device.

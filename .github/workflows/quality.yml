@@ -1,0 +1,29 @@
+name: Local PWA quality
+
+on:
+  push:
+    branches: [codex/ui-design-handoff]
+  pull_request:
+    branches: [codex/ui-design-handoff]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: design/prototype/package-lock.json
+      - name: Install pinned dependencies
+        run: npm ci --prefix design/prototype
+      - name: Install Chromium and WebKit for real browser checks
+        run: npm --prefix design/prototype exec -- playwright install --with-deps chromium webkit
+      - name: Run product quality gates
+        run: npm run test:quality

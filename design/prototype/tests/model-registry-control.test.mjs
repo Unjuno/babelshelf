@@ -29,7 +29,7 @@ test('Stop immediately after successful worker replacement still invalidates the
 });
 
 test('Stop during pending custom registration cannot begin weight preparation',async()=>{
- const {api,calls,release}=setup(),sha256='a'.repeat(64),record={id:'local-'+sha256,label:'Local',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'Local',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};
+ const {api,calls,release}=setup(),sha256='a'.repeat(64),record={id:'local-'+sha256,label:'Local',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},contextTokens:2048,inspection:{format:'GGUF',version:3,bytes:1000,name:'Local',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};
  const pending=api.importCustom(record,[]);await Promise.resolve();await Promise.resolve();api.stop();release();await assert.rejects(pending,/Stopped/);assert.deepEqual(calls,['configure','abort']);
 });
 test('Stop while a changed registry unloads/configures cannot start generation',async()=>{

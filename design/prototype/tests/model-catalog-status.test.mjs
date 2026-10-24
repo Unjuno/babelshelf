@@ -44,9 +44,13 @@ test('text choices expose pinned download size without claiming device readiness
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
  assert.equal(textModelFileSize('unknown'),null);
 });
-test('custom Qwen3 choices disclose the current CPU-only adapter and untested model execution',()=>{
- const sha='c'.repeat(64),bytes=2310125920,model={id:'local-'+sha,label:'Bonsai 8B',role:'text',engine:'wllama-qwen3',revision:'sha256:'+sha,file:{bytes,sha256:sha},inspection:{format:'GGUF',version:3,bytes,name:'Bonsai 8B',architecture:'qwen3',contextLength:65536,tokenizer:'gpt2',chatTemplate:true,tokenCount:151669,tensorCount:399,tensorTypes:[0,42],tensorExtentsChecked:true,dataOffset:16777216}};
- assert.match(textModelChoiceHint(model.id,[model]),/2\.31 GB · CPU WASM · execution not tested/);
+test('custom model choices disclose their app-owned adapter class and untested generation',()=>{
+ const sha='c'.repeat(64),bytes=2310125920,model={id:'local-'+sha,label:'Bonsai 8B',role:'text',engine:'wllama-qwen3',revision:'sha256:'+sha,file:{bytes,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes,name:'Bonsai 8B',architecture:'qwen3',contextLength:65536,tokenizer:'gpt2',chatTemplate:true,tokenCount:151669,tensorCount:399,tensorTypes:[0,42],tensorExtentsChecked:true,dataOffset:16777216}};
+ const lfm={...model,id:'local-lfm',engine:'wllama-lfm2',label:'Custom LFM2'};
+ const qwen35={...model,id:'local-'+'d'.repeat(64),file:{...model.file,sha256:'d'.repeat(64)},engine:'webml-qwen35',label:'Custom Qwen3.5',inspection:{...model.inspection,architecture:'qwen35',tensorTypes:[0,143]}};
+ assert.match(textModelChoiceHint(model.id,[model]),/2\.31 GB · CPU WASM path · execution not tested/);
+ assert.match(textModelChoiceHint(lfm.id,[lfm]),/2\.31 GB · CPU WASM path · execution not tested/);
+ assert.match(textModelChoiceHint(qwen35.id,[qwen35]),/2\.31 GB · WebGPU path · execution not tested/);
 });
 test('the standard add list contains at least three prepared-path text choices and hides disconnected candidates',()=>{
  const available=settings.models.text.filter(model=>canAddModel('text',model.value));
@@ -107,4 +111,11 @@ test('the pinned Vision model is selectable only through its app-owned local ima
  assert.equal(modelCatalogStatus('vision','lfm25-vl-450m-q4f16'),'Not prepared');
  assert.equal(modelCatalogStatus('vision','unknown-vision'),'Runtime not connected');
  assert.equal(modelCatalogStatus('ocr','lfm25-vl-450m-q4f16'),'Runtime not connected');
+});
+test('custom LFM2-VL declarations are addable only through the app-owned Vision adapter',()=>{
+ const record={id:'local-vision-'+'a'.repeat(64),role:'vision',engine:'transformers-lfm2-vl-onnx'};
+ assert.equal(modelCatalogStatus('vision',record.id,[],[],[],[record]),'Not prepared');
+ assert.equal(modelCatalogStatus('vision',record.id,[],[],[],[{...record,engine:'untrusted'}]),'Runtime not connected');
+ assert.equal(modelCatalogStatus('text',record.id,[],[],[],[record]),'Runtime not connected');
+ assert.equal(canAddModel('vision',record.id,[],[],[],[record]),true);
 });

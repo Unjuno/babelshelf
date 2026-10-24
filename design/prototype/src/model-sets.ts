@@ -1,10 +1,9 @@
-import {settings} from './app-settings.ts';
 import {localAdapters} from './local-capabilities.ts';
 import {initialPreparationPlan} from './initial-preparation.ts';
-import type {Preferences} from './preference-records.ts';
+import type {Preferences,ModelSetSelection,UserModelSet} from './preference-records.ts';
 
-export type ModelSetId='bonsai-2b-text'|'bonsai-4b-text'|'bonsai-9b-text'|'text-compact'|'text-expanded'|'text-speech'|'text-image'|'text-vision'|'local-text-media'|'text-image-audio'|'local-full';
-export type ModelSet={id:ModelSetId;label:string;detail:string;models:{textModel:string;decisionModel:string;transcriptionModel:string;ocrModel:string;visionModel:string}};
+export type ModelSetId=string;
+export type ModelSet=UserModelSet;
 
 // These are selection presets over connected local adapters, not downloadable
 // bundles, capability declarations, executable plans, or device-fit guarantees.
@@ -22,18 +21,34 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'local-full',label:'Local pipeline',detail:'Bonsai 2 · 4B · Open d1 · Omni 600M · Whisper tiny · Tesseract 7',models:{textModel:'4B',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
 ]);
 
-const connected=(set:ModelSet)=>{
+const connected=(set:ModelSet,value?:Preferences['models'])=>{
  const roles=[['textModel','text','text.generate'],['decisionModel','decision','decision.classify'],['transcriptionModel','transcription','audio.transcribe'],['ocrModel','ocr','image.ocr'],['visionModel','vision','image.describe']] as const;
- for(const [selection,role,capability] of roles){const id=set.models[selection];if(!id)continue;if(!settings.models[role].some(model=>model.value===id)||!localAdapters.some(adapter=>adapter.models.includes(id)&&adapter.capabilities.includes(capability)))throw Error('Model set contains a model without a connected role adapter');}
+ for(const [selection,role,capability] of roles){const id=set.models[selection];if(!id)continue;const adapter=localAdapters.some(item=>item.models.includes(id)&&item.capabilities.includes(capability));const custom=role==='text'?value?.customModels.some(model=>model.id===id&&model.role==='text'&&['webml-qwen35','wllama-lfm2','wllama-qwen3'].includes(model.engine)):role==='decision'?value?.customDecisionModels.some(model=>model.id===id&&model.role==='decision'&&model.engine==='onnx-d1-text'):role==='transcription'?value?.customSpeechModels.some(model=>model.id===id&&model.role==='speech'&&model.engine==='transformers-whisper-onnx'):role==='vision'?value?.customVisionModels.some(model=>model.id===id&&model.role==='vision'&&model.engine==='transformers-lfm2-vl-onnx'):false;if(!adapter&&!custom)throw Error('Model set contains a model without a connected role adapter');}
 };
 for(const set of modelSets)connected(set);
 
+export function modelSetsFor(value:Preferences['models']):readonly ModelSet[]{return [...value.customSets,...modelSets];}
+
+export function createUserModelSet(value:Preferences['models'],label:string,detail:string):UserModelSet{
+ const name=label.trim(),description=detail.trim();
+ if(!name||name.length>48||/[\u0000-\u001f\u007f]/.test(name))throw Error('Set name must be 1–48 characters');
+ if(!description||description.length>120||/[\u0000-\u001f\u007f]/.test(description))throw Error('Set detail must be 1–120 characters');
+ const models:ModelSetSelection={textModel:value.textModel,decisionModel:value.decisionModel,transcriptionModel:value.transcriptionModel,ocrModel:value.ocrModel,visionModel:value.visionModel};
+ if(!models.textModel)throw Error('Choose a Text model first');
+ const idPart=name.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,36)||'model';
+ const used=new Set([...modelSets.map(set=>set.id),...value.customSets.map(set=>set.id)]);
+ let id='user-'+idPart,suffix=2;
+ while(used.has(id)){id='user-'+idPart+'-'+suffix++;if(suffix>10000)throw Error('Too many model sets');}
+ const set={id,label:name,detail:description,models};connected(set,value);
+ return set;
+}
+
 export function matchingModelSet(value:Preferences['models']):ModelSet|undefined{
- return modelSets.find(set=>Object.entries(set.models).every(([key,id])=>value[key as keyof typeof set.models]===id));
+ return modelSetsFor(value).find(set=>Object.entries(set.models).every(([key,id])=>value[key as keyof ModelSetSelection]===id));
 }
 
 export function applyModelSet(value:Preferences['models'],id:string):Preferences['models']{
- const set=modelSets.find(candidate=>candidate.id===id);if(!set)throw Error('Unknown model set');connected(set);
+ const set=modelSetsFor(value).find(candidate=>candidate.id===id);if(!set)throw Error('Unknown model set');connected(set,value);
  return {...value,...set.models,
   textLibrary:set.models.textModel?[...new Set([...value.textLibrary,set.models.textModel])]:value.textLibrary,
   decisionLibrary:set.models.decisionModel?[...new Set([...value.decisionLibrary,set.models.decisionModel])]:value.decisionLibrary,

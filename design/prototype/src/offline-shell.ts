@@ -21,10 +21,18 @@ export async function initializeOfflineShell(container:ServiceWorkerContainer|un
  if(!container){report('Unavailable');return;}report('Checking');
  try{const registration=await container.getRegistration()??await container.register('./sw.js');observeOfflineRegistration(registration,report);}catch{report('Preparation failed');}
 }
-export async function appUpdateOutcome(registration:ServiceWorkerRegistration):Promise<'Update ready'|'Up to date'>{
+const updateTimeout=()=>Error('Update timed out · try again');
+async function boundedUpdateCheck(check:Promise<unknown>,timeoutMs:number){
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{await Promise.race([check,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(updateTimeout()),Math.max(0,timeoutMs));})]);}
+ finally{clearTimeout(timer);}
+}
+export async function appUpdateOutcome(registration:ServiceWorkerRegistration,timeoutMs=120000):Promise<'Update ready'|'Up to date'>{
  const worker=registration.installing;
  if(worker)await new Promise<void>((resolve,reject)=>{
-  const settle=()=>{if(['installed','activated','redundant'].includes(worker.state)){worker.removeEventListener('statechange',settle);if(worker.state==='redundant')reject(Error('Update verification failed'));else resolve();}};
+  const finish=(error?:Error)=>{clearTimeout(timer);worker.removeEventListener('statechange',settle);error?reject(error):resolve();};
+  const settle=()=>{if(['installed','activated','redundant'].includes(worker.state))finish(worker.state==='redundant'?Error('Update verification failed'):undefined);};
+  const timer=setTimeout(()=>finish(updateTimeout()),Math.max(0,timeoutMs));
   worker.addEventListener('statechange',settle);settle();
  });
  if(registration.waiting?.state==='installed')return 'Update ready';
@@ -46,6 +54,16 @@ export async function activateWaitingUpdate(registration:ServiceWorkerRegistrati
   timer=setTimeout(()=>finish(Error('Update activation not confirmed · reopen app to check')),timeoutMs);
   try{worker.postMessage({type:'activate-update'});check();}catch(error){finish(error instanceof Error?error:Error('Update activation failed'));}
  });
+}
+
+export async function refreshAppVersion(registration:ServiceWorkerRegistration,container:ServiceWorkerContainer,timeoutMs=120000):Promise<'Updated'|'Up to date'>{
+ // Timeout releases the UI, not the browser-owned installation. A later
+ // explicit refresh may finish applying that same verified worker.
+ const deadline=Date.now()+timeoutMs,remaining=()=>Math.max(0,deadline-Date.now());
+ await boundedUpdateCheck(registration.update(),remaining());
+ const outcome=await appUpdateOutcome(registration,remaining());
+ if(outcome==='Update ready')await activateWaitingUpdate(registration,container,remaining());
+ return outcome==='Update ready'?'Updated':'Up to date';
 }
 
 // This reports the worker controlling the current page, not the newest build

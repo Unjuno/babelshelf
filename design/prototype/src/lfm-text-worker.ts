@@ -22,6 +22,8 @@ self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  const modelById=new Map(manifest.models.map(model=>[model.id,model]));
  const readFile=createRecentPreparedFileReader(async(id:string)=>{const model=modelById.get(id);if(!model)throw Error('Unknown LFM model');const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-text-lfm-v1');return(await dir.getFileHandle(model.file.sha256)).getFile();},id=>modelById.get(id)?.file.sha256??'');
  const assets:Record<string,{filesPresent:boolean}>={};for(const model of manifest.models){let present=false;try{present=(await readFile(model.id)).size===model.file.bytes;}catch{/* absence is not preparation */}assets[model.id]={filesPresent:present};}
- const adapter=new LfmAdapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:768,onProgress:progress});
+ // The pinned native server validates token prefixes and recurrent checkpoints.
+ // Reuse only completed work in this resident engine; Stop/unload clears eligibility.
+ const adapter=new LfmAdapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:768,reusePrompt:true,onProgress:progress});
  return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets});
 },message=>self.postMessage(message),owned.dispose);

@@ -2,7 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {emptyDialogue,validateDialogue,dialogueContext,historyPayload,planDialogue} from '../src/conversation.ts';
-import {withWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
+import {withWorkingFile,withoutWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
+
+test('removing input file context preserves dialogue originals and refuses a stale removal target',()=>{
+ const pin={noteId:'file-a',revision:3},state=withWorkingFile({...emptyDialogue(),turns:[{id:'old',user:'Original request',answer:'Original answer',refs:[{noteId:'file-a',revision:3,start:0,end:4,quote:'Text'}]}]},pin),before=structuredClone(state);
+ const cleared=withoutWorkingFile(state,pin);assert.equal(cleared.currentFile,undefined);assert.equal(cleared.revision,state.revision+1);assert.deepEqual(cleared.turns,before.turns);assert.deepEqual(state,before);
+ assert.equal(withoutWorkingFile(state,{noteId:'file-a',revision:2}),state);
+ assert.equal(withoutWorkingFile(state,{noteId:'other',revision:3}),state);
+ assert.equal(withoutWorkingFile(cleared,pin),cleared);
+});
+
+test('queued context removal is awaited by Send and cannot remove a later selected file',async()=>{
+ const a={noteId:'a',revision:1},b={noteId:'b',revision:2};let state=withWorkingFile(emptyDialogue(),a),release;
+ const gate=new Promise(resolve=>release=resolve),queue=createFileFocusQueue(()=>state,async(next,expected)=>{if(expected){await gate;state=withoutWorkingFile({...state,turns:[{id:'new',user:'Concurrent original'}]},expected);}else state=withWorkingFile(state,next.currentFile);});
+ const clear=queue.clear(a);let captured=false;const waiting=queue.settled().then(()=>{captured=true;assert.equal(state.currentFile,undefined);});await Promise.resolve();assert.equal(captured,false);release();await Promise.all([clear,waiting]);assert.equal(state.turns[0].user,'Concurrent original');
+ await queue.select(b);await queue.clear(a);assert.deepEqual(state.currentFile,b);
+});
 
 const note=()=>createNote({path:'Notes/focus.md',body:'The inventory code is COPPER-2816. Water is 3L.'});
 test('file working target retains ID/version and refuses stale, withdrawn or missing originals',()=>{
@@ -86,6 +101,8 @@ test('explicit current-file questions cannot broaden evidence to knowledge or ol
  assert.deepEqual(bindExplicitCurrentFileQuestion({action:'summary',query:'this file'},'このファイルを要約して',pin),{action:'read',query:'このファイルを要約して',target:'file'});
  const saved={action:'answer',query:'In the saved blue lantern meeting note, what time and room are recorded?',target:'knowledge'};
  assert.deepEqual(bindExplicitCurrentFileQuestion(saved,saved.query,pin),saved);
+ const savedOpen={action:'read',query:'blue lantern meeting',target:'knowledge'};
+ assert.deepEqual(bindExplicitCurrentFileQuestion(savedOpen,'Open my note about the blue lantern meeting.',pin),savedOpen);
  const separated={action:'answer',query:'blue lantern meeting',target:'knowledge'};
  assert.deepEqual(bindExplicitCurrentFileQuestion(separated,'What date and time is the saved blue lantern meeting? Cite the note.',pin),separated);
  const previous={action:'answer',query:'earlier',target:'knowledge'};

@@ -1,6 +1,10 @@
 # Architecture rationalization
 
-Decision date: 2026-10-19. Baseline: public build `55b466cb7c95a837`, Site v21. The user accepts this product as completed and requests rational design and architecture. This document starts a new work scope; it does not retroactively certify untested capabilities.
+Decision date: 2026-10-19. Baseline: public build `55b466cb7c95a837`, Site v21. This document records the bounded input-submission refactor requested at that time; it does not certify the broader local-agent product objective or untested capabilities.
+
+## Current status (2026-10-22)
+
+The bounded submission-boundary work below is complete for its original scope. The active objective is broader: a polished local-first PWA agent with offline behavior, adaptable local inference, memory-defined configuration, tools, and safe model-proposed changes. Since this document's original decision, the harness gained versioned `Settings/harness.md` profiles, reviewable profile edits, registered read-only tools, bounded agent-loop calls, custom tool packages, and report-driven iOS diagnostics. See `ARCHITECTURE.md`, `TOOL-PACKAGES.md`, `DEVICE-DIAGNOSTICS.md`, and `REMAINING-GATES.md` for current implementation and limits. The old findings below describe the initial 2026-10-19 state and should not be read as current behavior without this dated update.
 
 ## Objective and stopping conditions
 
@@ -25,7 +29,7 @@ Evidence comes from reading the implementations, not from assuming the diagram i
 
 1. **The principal coupling is workflow ownership.** `send()` coordinates asynchronous extraction, atomic submission, planning, context compaction, model loading, tool dispatch, review UI and error recovery. Moving that whole function into another file with the same captured component state would not resolve the coupling. First separate the submitted-input lifecycle from presentation: explicit input snapshot, operation identity, cancellation checks, committed submission result and terminal result. Retain existing revision checks and persistence adapters.
 2. **Model abstraction already exists.** `TextRuntime` and `TextEngineRouter` separate local execution and trusted backend selection. Preserve them. Adding another generic engine framework is not justified by current evidence. Extraction roles have different outputs/provenance and should not be forced through a text-generation-only interface.
-3. **Memory configuration must not own execution authority.** Existing managed records are appropriate for versioned settings. The planned configurable harness/presentation layer is not implemented merely because its description is in Memory. Typed validation, registered code, cancellation and approval remain application-owned. Add configuration only for an actual supported behavior.
+3. **Memory configuration must not own execution authority.** At the decision date, a configurable harness/presentation layer had not been implemented merely by describing it in Memory. The current implementation now stores versioned harness profiles in `Settings/harness.md`; the app validates registered tool IDs and lower-only budgets, while tool execution, cancellation, source validation and approval remain application-owned. Configuration still cannot add write/delete/network/MCP authority.
 4. **A failure record must distinguish stages.** Original input may have been committed even if planning or generation fails. The extracted coordinator must expose this distinction so the UI can recover a draft without falsely claiming that nothing was saved or duplicating originals on retry.
 5. **Evidence is scoped.** The public build manifest currently matches the accepted build. The corrected API probe reports `navigator.gpu` present; neither that result nor a catalog entry proves a model can load or generate. Do not make architecture decisions from the invalid Unit42 probe.
 
@@ -58,11 +62,11 @@ Use existing controlled tests to cover lifecycle races, then exercise the change
 | Requirement | Evidence |
 |---|---|
 | Preserve accepted product UI/local data | No JSX/CSS/schema changes; public calculation, reviewed Save, attachment preview and reload succeed; all 17 pre-existing canonical notes compare equal |
-| Factual responsibilities and ownership | Table above and actual `createInputSubmission` call in `Prototype.tsx`; future configurable harness remains explicitly a design direction |
+| Factual responsibilities and ownership | Table above and actual `createInputSubmission` call in `Prototype.tsx`; the input-submission boundary is distinct from the later implemented versioned harness described in `ARCHITECTURE.md` |
 | Reduce a concrete coupling | Preparation/commit/recovery no longer capture component state; UI receives a committed result through typed ports rather than constructing storage payloads itself |
 | Failure before/after commit, Stop, stale operation | Seven lifecycle tests include failed commit, Stop during extraction/commit, stale snapshot, recovery and pinned-reference validation; current public unprepared-model failure/retry preserves one original |
 | No new draft overwrite | Recovery test refuses both a nonempty replacement draft and newly added attachments; existing conditional composer clearing retained |
 | Preserve exact Save/review/history contracts | Existing prototype suite464 passes; public reviewed calculator-result Save retains exact `391`; no generation was used for that check |
 | Relevant regressions and current public delivery | Baseline100, prototype464, product2, TypeScript/runtime lock/check/build pass; public served JS and manifest match build09913024bec5dcaa |
 
-The architecture goal's bounded refactor is complete. Physical devices, model semantic quality, and existing unsupported adapters retain their prior evidence limits; they are not certified by this refactor. No broad restructuring or additional model comparison is required to close this objective.
+The specific 2026-10-19 bounded input-submission refactor is complete. It does not complete the broader active architecture objective. Physical devices, model semantic quality, and existing unsupported adapters retain their prior evidence limits; they are not certified by this refactor. No broad restructuring or additional model comparison is required to close that historical bounded scope.

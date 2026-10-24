@@ -7,19 +7,24 @@ import type {VisionText} from './vision-text.ts';
 import {originalKey,originalRef,type OriginalAsset} from './original-assets.ts';
 import {stateHash} from './backup-state.ts';
 import type {ProcessingTool} from './processing-history.ts';
-export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string;visionModel?:string;visionReady?:boolean;customSpeechModels?:readonly {id:string;role:string;engine:string}[]};
+export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string;visionModel?:string;visionReady?:boolean;customSpeechModels?:readonly {id:string;role:string;engine:string}[];customVisionModels?:readonly {id:string;role:string;engine:string}[]};
 type Adapter<T>=(asset:OriginalAsset,signal:AbortSignal,progress:(s:string)=>void)=>Promise<T>;
 export type ReadingAdapters={ocr?:Adapter<OcrText>;pdf?:Adapter<PdfText>;speech?:Adapter<Transcript>;vision?:Adapter<VisionText>};
 type RecordRead=<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown)=>Promise<T>;
 export async function readInputOriginal(asset:OriginalAsset,policy:ReadingPolicy,adapters:ReadingAdapters,signal:AbortSignal,progress:(s:string)=>void,record:RecordRead):Promise<{reading?:ReviewedText;status:string}>{
  const check=()=>{if(signal.aborted)throw Error('Stopped');};check();
- const kind=asset.kind==='video'&&policy.visionModel?'vision':isOcrImage(asset)?(policy.visionModel?'vision':'ocr'):isPdf(asset)?'pdf':asset.kind==='audio'||asset.kind==='video'?'speech':undefined;
+ const videoFrameReady=!!policy.visionModel&&capabilityState('video.frames',policy.visionModel,policy.visionReady===true,[],[],policy.customVisionModels).status==='Ready';
+ const videoAudioReady=!!policy.speechModel&&capabilityState('video.audio',policy.speechModel,policy.speechReady,[],policy.customSpeechModels).status==='Ready';
+ // An unavailable frame model may leave a video with a useful, explicit audio
+ // transcript. Runtime/inference failures from a ready Vision adapter do not
+ // trigger this partial fallback.
+ const kind=asset.kind==='video'?(videoFrameReady?'vision':videoAudioReady?'speech':policy.visionModel?'vision':'speech'):isOcrImage(asset)?(policy.visionModel?'vision':'ocr'):isPdf(asset)?'pdf':asset.kind==='audio'?'speech':undefined;
  if(!kind)return {status:'Unsupported'};
  let workError:unknown;
  const tool=kind==='vision'?'image.describe':kind==='ocr'?'image.read':kind==='pdf'?'pdf.read':'speech.transcribe';
  try{
   const reading=await record(tool,{source:{...originalRef(asset),name:asset.name},automatic:true,...(kind==='vision'?{model:policy.visionModel}:kind==='ocr'?{language:policy.ocrLanguage,model:policy.ocrModel}:kind==='speech'?{language:policy.speechLanguage,model:policy.speechModel}:kind==='pdf'?{ocrPolicy:{model:policy.ocrModel,prepared:policy.ocrReady,language:policy.ocrLanguage}}:{})},async()=>{try{
-   check();if(kind==='vision'&&capabilityState('image.describe',policy.visionModel??'',policy.visionReady===true).status!=='Ready')throw Error('Image understanding not prepared');
+   check();if(kind==='vision'&&capabilityState('image.describe',policy.visionModel??'',policy.visionReady===true,[],[],policy.customVisionModels).status!=='Ready')throw Error('Image understanding not prepared');
    if(kind==='ocr'&&capabilityState('image.ocr',policy.ocrModel,policy.ocrReady).status!=='Ready')throw Error('Image text not prepared');
    if(kind==='speech'&&capabilityState(asset.kind==='video'?'video.audio':'audio.transcribe',policy.speechModel,policy.speechReady,[],policy.customSpeechModels).status!=='Ready')throw Error('Speech to text not prepared');
    const adapter=adapters[kind];if(!adapter)throw Error('Reader unsupported');progress(kind==='speech'?'Transcribing':'Reading');

@@ -8,12 +8,12 @@
   "license": "Apache-2.0 (upstream)",
   "runtime": {
     "name": "Transformers.js / ONNX Runtime Web",
-    "revision": "@huggingface/transformers@3.8.1 + onnxruntime-web@1.22.0-dev.20250409-89f8206ba4",
+    "revision": "@huggingface/transformers@4.3.0 + onnxruntime-web@1.31.0-dev.20260914-8d85527a0",
     "licenses": {
       "transformers": "Apache-2.0",
       "onnxruntime-web": "MIT"
     },
-    "onnxRevision": "onnxruntime-web@1.22.0-dev.20250409-89f8206ba4"
+    "onnxRevision": "onnxruntime-web@1.31.0-dev.20260914-8d85527a0"
   },
   "dtype": "q8",
   "device": "wasm",

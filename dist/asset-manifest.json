@@ -33,8 +33,8 @@
     },
     {
       "path": "./files.js",
-      "bytes": 2402,
-      "sha256": "0929185fcf37006948ef833c1f4d370162e962777ce9638987b658fa13e5ea03"
+      "bytes": 2438,
+      "sha256": "817f09b9482c004f3ee045fb022a7cba09b55ffac1653fa7bfad439beb72f43e"
     },
     {
       "path": "./gguf-inspect.js",
@@ -83,8 +83,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 7504,
-      "sha256": "84707f82804ce274fc9e5569579e323483b67d06deffaaebebd94ed670153d35"
+      "bytes": 8579,
+      "sha256": "aad61c0e71ffd75e0ec3ebc7a484885e7aa321dba94cd39a076a7f62502de223"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -108,8 +108,8 @@
     },
     {
       "path": "./local-models.js",
-      "bytes": 7581,
-      "sha256": "439bedb836464ea9b185925fccc1a1f5fe17beed33878cb809a424e6fdc1e6f0"
+      "bytes": 8330,
+      "sha256": "97ab147284c88546361fdbc564424f10748c2937ad03bbcdcd97008315db4b3d"
     },
     {
       "path": "./manifest.webmanifest",
@@ -128,8 +128,8 @@
     },
     {
       "path": "./native-response.js",
-      "bytes": 4772,
-      "sha256": "f9936d8e1b7382214852decaed94d1c40b7923e27fa4633a9c166fe8e369dd0d"
+      "bytes": 4808,
+      "sha256": "d60c418f6b510fd1e2675729fec5cd70c3d68eabbb9c25cbecc9d5c3a3f461f4"
     },
     {
       "path": "./pinned-file-snapshots.js",
@@ -184,7 +184,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "d8a3f660032787c55c7cec49705220cf89ecc7d3d43fc2e325447fbe07772568"
+      "sha256": "9e700b10f9fc3b8c7a634a6ce39cc919a067b5f432311edc0f8d239d403f4652"
     },
     {
       "path": "./ui.js",

@@ -6,7 +6,7 @@ export type ProcessingRecord={schema:1;type:'media-processing';activity:Activity
 export const processingKey=(id:string)=>'ui-v1-processing-'+id;
 export function validateProcessing(key:string,value:any):asserts value is ProcessingRecord{
  if(value?.schema!==1||value.type!=='media-processing'||!value.activity||key!==processingKey(value.activity.id))throw Error('Invalid processing receipt');
- validateActivity([value.activity]);if(!['decision.prepare','decision.load','decision.unload','image.read','image.describe','ocr.prepare','vision.prepare','pdf.read','speech.transcribe','model.test','model.prepare','model.load','model.unload','speech.prepare'].includes(value.activity.tool))throw Error('Invalid processing operation');
+ validateActivity([value.activity]);if(!['decision.prepare','decision.load','decision.unload','image.read','image.describe','ocr.prepare','vision.prepare','runtime.prepare','pdf.read','speech.transcribe','model.test','model.prepare','model.load','model.unload','speech.prepare'].includes(value.activity.tool))throw Error('Invalid processing operation');
 }
 export function processingUpdate(old:ProcessingRecord|undefined,next:Activity):ProcessingRecord{
  const value:ProcessingRecord={schema:1,type:'media-processing',activity:structuredClone(next)};validateProcessing(processingKey(next.id),value);

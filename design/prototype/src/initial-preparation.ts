@@ -55,5 +55,5 @@ export function assertPreparationSettings(plan:InitialPreparation,current:{model
 }
 export async function runInitialPreparation(plan:InitialPreparation,prepare:(role:Role)=>Promise<unknown>,commit:()=>Promise<unknown>,check=()=>{},review:(step?:PreparationStep)=>Promise<void>=async()=>{}){
  const reviewed=async(step?:PreparationStep)=>{check();await review(step);check();};
- check();for(const step of plan.steps){if(step.ready&&step.role!=='text')continue;await reviewed(step);await prepare(step.role);check();}await reviewed();await commit();
+ check();for(const step of plan.steps){await reviewed(step);await prepare(step.role);check();}await reviewed();await commit();
 }

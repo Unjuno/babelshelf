@@ -1,5 +1,6 @@
 import {readDeviceStorage,type StoragePort} from './device-storage.ts';
 import {textModelFileSize} from './model-catalog-status.ts';
+import {textExecutionRoute} from './text-execution-route.ts';
 import type {CustomLocalModel} from './preference-records.ts';
 
 type GpuPort={requestAdapter:()=>Promise<unknown>};
@@ -14,9 +15,10 @@ export function describeTextDeviceCheck(check:TextDeviceCheck):string {
 // A user-initiated, read-only preflight. Quota is not physical free space and
 // an adapter is not proof of enough GPU memory, model loading or generation.
 export async function checkTextDevice(modelId:string,customModels:readonly CustomLocalModel[]=[],filesPresent=false,ports:{storage?:StoragePort;gpu?:GpuPort}={}):Promise<TextDeviceCheck>{
+ const route=textExecutionRoute(modelId,customModels);if(!route)throw Error('Selected text engine route unavailable');
  const modelBytes=textModelFileSize(modelId,customModels);
  if(modelBytes===null)throw Error('Selected model size unavailable');
- const backend=['2B','4B','9B'].includes(modelId)||customModels.some(model=>model.id===modelId&&model.engine==='webml-qwen35')?'webgpu':'cpu-wasm';
+ const backend=route.backend;
  const gpu=ports.gpu??(globalThis.navigator as Navigator&{gpu?:GpuPort}|undefined)?.gpu;
  const [space,webgpu]=await Promise.all([
   readDeviceStorage(ports.storage),

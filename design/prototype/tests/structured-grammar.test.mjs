@@ -24,6 +24,14 @@ test('body-only capture is a complete new-text plan, never an attachment or hist
  assert.equal(accepts({type:'dialogue-plan',scope:{...scope,inputs:true}},JSON.stringify({action:'capture',body:'原文'})),false);
  for(const v of [{action:'capture'},{action:'capture',target:'current',body:'原文'},{action:'answer',body:'原文'}])assert.equal(accepts(format,JSON.stringify(v)),false);
 });
+test('new tool drafting is available only outside attachment and opened-file scopes',()=>{
+ const request={action:'tool-create',query:'Search saved notes for a named person and return their phone number'};
+ const base={inputs:false,file:false,current:false,historyCount:0};
+ assert.equal(accepts({type:'dialogue-plan',scope:base},JSON.stringify(request)),true);
+ assert.equal(accepts({type:'dialogue-plan',scope:{...base,inputs:true}},JSON.stringify(request)),false);
+ assert.equal(accepts({type:'dialogue-plan',scope:{...base,file:true}},JSON.stringify(request)),false);
+ assert.equal(accepts({type:'dialogue-plan',scope:base},JSON.stringify({...request,enabled:true})),false);
+});
 
 test('request scope excludes absent inputs/file/current/history while retaining new capture and exact paths',()=>{
  const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0}};

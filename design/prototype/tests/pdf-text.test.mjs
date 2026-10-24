@@ -27,3 +27,9 @@ test('PDF empty-page OCR is sequential, bounded, prepared-only and propagates St
  let seen=0;const bounded=await readPdfPages(asset,41,async page=>{seen++;return {page,text:'x',regions:[]}},signal,()=>{},recognize);assert.equal(seen,40);assert.equal(bounded.status,'partial');
  const tooLarge=await readPdfPages(asset,2,async page=>({page,text:page===1?'a'.repeat(99999):'',regions:[]}),signal,()=>{},recognize);assert.equal(tooLarge.pages.length,1);assert.equal(tooLarge.status,'partial');
 });
+test('PDF scan pages release idle inference models immediately before OCR, but text pages keep them loaded',async()=>{
+ const {readPdfPages}=await import('../src/pdf-pages.ts'),{asset}=await fixture(),events=[],signal=new AbortController().signal;
+ await readPdfPages(asset,3,async page=>{events.push('read-'+page);return {page,text:page===1?'Text':'',regions:[]};},signal,()=>{},async page=>{events.push('ocr-'+page);return {text:'Scan '+page,regions:[],ocr:ocr()};},async()=>{events.push('release');});
+ assert.deepEqual(events,['read-1','read-2','release','ocr-2','read-3','release','ocr-3']);
+ let recognized=false;await assert.rejects(readPdfPages(asset,2,async page=>({page,text:page===1?'Text':'',regions:[]}),signal,()=>{},async()=>{recognized=true;return {text:'Scan',regions:[],ocr:ocr()};},async()=>{throw Error('Model busy');}),/Model busy/);assert.equal(recognized,false);
+});

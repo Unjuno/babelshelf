@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote,latest} from '../../../dist/core.js';
 import {projectNote,applyKnowledgeChanges,planFolderRename,planMemoryRecovery} from '../src/knowledge-store.ts';
+import {initialPreferenceNotes} from '../src/preference-records.ts';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from 'node:module';
 
@@ -60,6 +61,13 @@ test('transaction validation rejects protected edits, invalid preferences and re
  assert.throws(()=>applyKnowledgeChanges([original],[before],[{...before,body:'changed'}]),/protected/i);
  const user=createNote({path:'Notes/b.md',body:'v1'}),projected=projectNote(user);
  assert.throws(()=>applyKnowledgeChanges([user],[projected],[{...projected,body:'bad'}]),/revision/i);
+});
+
+test('a missing canonical setting can be recreated as managed through its validated Memory record',()=>{
+ const ordinary=createNote({path:'Notes/kept.md',body:'Keep this note'}),before=[projectNote(ordinary)],seed=initialPreferenceNotes.find(note=>note.id==='settings-models');
+ const restored=applyKnowledgeChanges([ordinary],before,[...before,structuredClone(seed)]),record=restored.find(note=>note.id==='settings-models');
+ assert.equal(record.ui?.managed,true);assert.equal(projectNote(record).managed,true);
+ assert.equal(latest(record).body,seed.body);assert.equal(restored.find(note=>note.id===ordinary.id).revisions.length,1);
 });
 
 test('saving an existing generated result preserves exact content and rejects stale sources',()=>{

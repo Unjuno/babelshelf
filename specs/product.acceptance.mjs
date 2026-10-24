@@ -16,6 +16,27 @@ test('production entry excludes simulated device and keyboard runtime',async()=>
  const entries=await fs.readdir(root+'assets');const app=await fs.readFile(root+'assets/'+entries.find(n=>/^index.*\.js$/.test(n)),'utf8');
  assert.ok(!app.includes('keyboard-asset'));assert.ok(!app.includes('Preview device:'));assert.ok(!app.includes('@vite/client'));
 });
+test('production shell does not precache developer-only runtime QA pages',async()=>{
+ const manifest=JSON.parse(await fs.readFile(root+'build.json','utf8'));
+ const qaChunks=manifest.files.filter(file=>/\/assets\/(?:LfmCheck|HarnessCheck|SpeechCheck|DecisionCheck)-/.test(file.path));
+ assert.deepEqual(qaChunks.map(file=>file.path),[],'QA pages belong to development builds, not the production offline shell');
+});
+test('production manifest keeps optional inference and PDF worker chunks out of the initial shell',async()=>{
+ const manifest=JSON.parse(await fs.readFile(root+'build.json','utf8'));
+ const roleFor=(prefix,role)=>{
+  const matches=manifest.files.filter(file=>file.path.startsWith('./assets/'+prefix));
+  assert.equal(matches.length,1,`Expected one built asset for ${prefix}`);
+  assert.deepEqual(matches[0].roles,[role],`${prefix} must be acquired through its selected feature role`);
+ };
+ roleFor('decision-worker-','decision');roleFor('speech-worker-','speech');roleFor('vision-worker-','vision');
+ roleFor('onnx-text-worker-','text-onnx');roleFor('lfm-text-worker-','text-wllama');roleFor('qwen3-text-worker-','text-wllama');
+ roleFor('pdf-engine-','pdf');
+ const pdfChunks=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-')&&file.path.endsWith('.js'));
+ assert.equal(pdfChunks.length,2,'Both the PDF engine and PDF.js chunk must be role-gated');
+ for(const file of pdfChunks)assert.deepEqual(file.roles,['pdf'],file.path+' must be acquired through PDF preparation');
+ const sw=await fs.readFile(root+'sw.js','utf8');
+ assert.match(sw,/INSTALL_FILES=FILES\.filter\(file=>!Array\.isArray\(file\.roles\)\|\|file\.roles\.length===0\)/);
+});
 test('published worker permits every pinned Vision preparation URL and no neighboring revision',async()=>{
  const vision=JSON.parse(await fs.readFile('design/prototype/src/vision-manifest.json','utf8'));
  const sw=await fs.readFile(root+'sw.js','utf8'),declaration=sw.match(/\bREMOTE=(\[[^;]*\]);/);
@@ -40,7 +61,7 @@ test('published worker permits every pinned built-in model asset',async()=>{
  assert.ok(declaration,'Worker remote allowlist missing');
  const actual=JSON.parse(declaration[1]);
  const required=[
-  ...lfm.models.map(model=>model.file.url),...smol.files.map(file=>file.url),
+  ...lfm.models.map(model=>model.file.url),...smol.files.map(file=>file.url),...(smol.variants??[]).map(variant=>variant.weight.url),
   ...qwen.files.map(file=>file.url),...decision.files.map(file=>file.url),
   ...ocr.data.map(file=>file.url),bonsai.runtime.file.url,
   ...bonsai.models.map(model=>model.file.url),...speech.files.map(file=>file.url),...speechBase.files.map(file=>file.url),

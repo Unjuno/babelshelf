@@ -5,7 +5,8 @@ const captureBindings={
  capturecurrent:{action:'capture',query:'',target:'current'},
  captureinputs:{action:'capture',query:'',target:'inputs'},
  captureuser:{action:'capture',query:'',target:'history',historyPart:'user'},
- captureassistant:{action:'capture',query:'',target:'history',historyPart:'assistant'}
+ captureassistant:{action:'capture',query:'',target:'history',historyPart:'assistant'},
+ toolcreate:{action:'tool-create'}
 };
 export function nativeActionBinding(name){return Object.hasOwn(captureBindings,name)?{...captureBindings[name]}:{action:name};}
 function validateParameters(p,allowed,allowEmpty=false){

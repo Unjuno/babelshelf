@@ -14,5 +14,5 @@ export function exportMarkdownRevision(note:any,revision:number){
  const source=isToolSourcePath(path);
  const text=source?selected.body:'---\nbabelshelf: '+JSON.stringify(metadata)+'\n---\n'+selected.body;
  if(new TextDecoder('utf-8',{fatal:true}).decode(new TextEncoder().encode(text))!==text)throw Error('Text cannot be exported as UTF-8');
- const name=path.split('/').at(-1)!;return {filename:source?name.replace(/\.ts$/,'')+'.v'+revision+'.ts':name.replace(/\.md$/i,'')+'.v'+revision+'.md',text,path,revision};
+ const name=path.split('/').at(-1)!;return {filename:source?name.replace(/\.(?:ts|js)$/,'')+'.v'+revision+'.'+name.split('.').at(-1):name.replace(/\.md$/i,'')+'.v'+revision+'.md',text,path,revision};
 }
