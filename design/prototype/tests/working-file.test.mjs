@@ -53,10 +53,10 @@ test('selected-file generation validates its scope again after generation and ne
  const n=note(),other=createNote({path:'Inbox/other.md',body:'Unrelated WRONG-999'}),pin={noteId:n.id,revision:1};let records=[n,other],calls=0;
  const engine={loaded:'4B',assets:{'4B':{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'4B',revision:'test'}],runtime:{revision:'test'}},count:async()=>({prompt_tokens:200}),generate:async messages=>{calls++;assert.doesNotMatch(JSON.stringify(messages),/WRONG-999/);return {text:JSON.stringify({answer:'COPPER-2816',citations:[{id:'S1',quote:'COPPER-2816'}]})};}};
  const store={all:async()=>records,search:async()=>{throw Error('No global search allowed');}};
- const result=await groundedAnswer(store,engine,'4B','What is this code?','','answer',undefined,()=>{},[],pin);assert.equal(result.sources[0].noteId,n.id);
+ const result=await groundedAnswer({store:store,engine:engine},{model:'4B',question:'What is this code?',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})});assert.equal(result.sources[0].noteId,n.id);
  engine.generate=async()=>{calls++;records=[reviseNote(n,{body:'Changed'},1),other];return {text:JSON.stringify({answer:'COPPER-2816',citations:[{id:'S1',quote:'COPPER-2816'}]})};};
- await assert.rejects(()=>groundedAnswer(store,engine,'4B','What is this code?','','answer',undefined,()=>{},[],pin),/changed/i);
- const count=calls;await assert.rejects(()=>groundedAnswer(store,engine,'4B','retry','','answer',undefined,()=>{},[],pin),/changed/i);assert.equal(calls,count);
+ await assert.rejects(()=>groundedAnswer({store:store,engine:engine},{model:'4B',question:'What is this code?',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})}),/changed/i);
+ const count=calls;await assert.rejects(()=>groundedAnswer({store:store,engine:engine},{model:'4B',question:'retry',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})}),/changed/i);assert.equal(calls,count);
 });
 
 test('focus queue freezes selected identity and propagates CAS failures without overwriting later state',async()=>{

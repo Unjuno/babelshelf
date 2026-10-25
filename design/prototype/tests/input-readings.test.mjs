@@ -17,23 +17,23 @@ test('grounded current readings exclude a stale planner fact from retrieval whil
   const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.retrievalQuery,question);assert.ok(input.evidence.every(r=>r.noteId===review.id));
   return {text:JSON.stringify({answer:'CEDAR-5821',citations:[{id:input.evidence[0].label,quote:'CEDAR-5821'}]})};
  }};
- const answer=await groundedAnswer(store,engine,'4B',question,'Earlier code OLD-481','answer',context,()=>{},[readingRef(review)]);assert.equal(answer.sources[0].noteId,review.id);
+ const answer=await groundedAnswer({store:store,engine:engine},{model:'4B',question:question,query:'Earlier code OLD-481',mode:'answer',context:context,check:()=>{},scope:([readingRef(review)].length?{kind:'attachments',readings:[readingRef(review)]}:{kind:'knowledge'})});assert.equal(answer.sources[0].noteId,review.id);
  const invalid={...engine,generate:async()=>({text:JSON.stringify({answer:'OLD-481',citations:[{id:'S1',quote:'OLD-481'}]})})};
- await assert.rejects(groundedAnswer(store,invalid,'4B',question,'Earlier code OLD-481','answer',context,()=>{},[readingRef(review)]),/Citation mismatch/);
+ await assert.rejects(groundedAnswer({store:store,engine:invalid},{model:'4B',question:question,query:'Earlier code OLD-481',mode:'answer',context:context,check:()=>{},scope:([readingRef(review)].length?{kind:'attachments',readings:[readingRef(review)]}:{kind:'knowledge'})}),/Citation mismatch/);
 });
 test('a scoped pure calculation augments current attachment evidence and retains the original citation',async()=>{
  const {groundedAnswer}=await import('../src/grounded-answer.ts'),{raw}=await fixture(),reading=makeOcrText(raw,'eng',{width:100,height:100,processedWidth:100,processedHeight:100,frame:0,orientation:'browser-decoded'},'The budget items are 1200 and 800 credits.',[]),review={kind:'ocr',id:'budget-reading',value:reading},notes=[originalNote(raw),...buildInputReadings([review],[{key:originalKey(raw.id),value:raw}])],question='What is one quarter of the total shown in this image?';let messages,searches=0;
  const store={all:async()=>notes,search:async()=>{searches++;throw Error('attachment scope must not search Memory');}};
  const calculation={expression:'(1200 + 800) / 4',result:500,precision:'IEEE-754 binary64'};
  const engine={loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[{id:'4B',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1}),generate:async value=>{messages=value;const input=JSON.parse(value.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.deepEqual(input.calculations,[calculation]);assert.ok(input.evidence.some(item=>item.noteId===review.id&&item.quote.includes('1200')));return {text:JSON.stringify({answer:'One quarter is 500.',citations:[{id:input.evidence[0].label,quote:input.evidence[0].quote}]})};}};
- const result=await groundedAnswer(store,engine,'4B',question,question,'answer',{summary:'',recent:[],refs:[]},()=>{},[readingRef(review)],undefined,undefined,{used:true,refs:[],calculations:[calculation],memoryUsed:false});
+ const result=await groundedAnswer({store:store,engine:engine},{model:'4B',question:question,query:question,mode:'answer',context:{summary:'',recent:[],refs:[]},check:()=>{},scope:([readingRef(review)].length?{kind:'attachments',readings:[readingRef(review)]}:{kind:'knowledge'}),toolEvidence:{used:true,refs:[],calculations:[calculation],memoryUsed:false}});
  assert.equal(result.answer,'One quarter is 500.');assert.equal(result.sources.length,1);assert.equal(result.sources[0].noteId,review.id);assert.equal(searches,0);assert.ok(JSON.stringify(messages).includes('original excerpt'));
 });
 test('attachment scope rejects calculator evidence mixed with memory evidence',async()=>{
  const {groundedAnswer}=await import('../src/grounded-answer.ts'),{review,notes}=await fixture();let generated=false;
  const engine={loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[{id:'4B',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1}),generate:async()=>{generated=true;return {text:'{}'};}};
  const ref={noteId:review.id,revision:1,start:0,end:10,quote:'a source quote'};
- await assert.rejects(groundedAnswer({all:async()=>notes,search:async()=>[]},engine,'4B','Question','Question','answer',undefined,()=>{},[readingRef(review)],undefined,undefined,{used:true,refs:[ref],calculations:[{expression:'1 + 1',result:2,precision:'IEEE-754 binary64'}],memoryUsed:true}),/Conflicting tool evidence scope/);
+ await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>[]},engine:engine},{model:'4B',question:'Question',query:'Question',mode:'answer',check:()=>{},scope:([readingRef(review)].length?{kind:'attachments',readings:[readingRef(review)]}:{kind:'knowledge'}),toolEvidence:{used:true,refs:[ref],calculations:[{expression:'1 + 1',result:2,precision:'IEEE-754 binary64'}],memoryUsed:true}}),/Conflicting tool evidence scope/);
  assert.equal(generated,false);
 });
 test('reviewed input produces separate immutable extraction; wrong source, duplicate IDs and blank extraction refuse',async()=>{

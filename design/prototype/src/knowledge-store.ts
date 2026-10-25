@@ -164,28 +164,35 @@ export class KnowledgeStore {
   });
  }
  async original(ref:OriginalRef):Promise<OriginalAsset>{const asset=await this.transaction<OriginalAsset>(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').get(originalKey(ref.id));q.onsuccess=()=>done(q.result);});readOriginal(asset,ref);return asset;}
+ private saveReading(id:string,originalId:string,newOriginal:OriginalAsset|undefined,duplicateError:string,build:(asset:OriginalAsset)=>Canonical){
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
+   const raw=tx.objectStore('runs').get(originalKey(originalId)),notes=tx.objectStore('notes').getAll();let finished=0;
+   const commit=()=>{if(++finished!==2)return;try{
+    const original=notes.result.find(n=>n.id===originalId);
+    if(newOriginal&&(original||raw.result))throw Error('Original already exists');
+    if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');
+    if(notes.result.some(n=>n.id===id))throw Error(duplicateError);
+    // Each reader builder still validates its own original pin, hash, model,
+    // coordinates/pages/timing. The shared transaction owns only persistence.
+    const note=build(newOriginal??raw.result),created=newOriginal?[originalNote(newOriginal)]:[];
+    checkNotes([...notes.result,...created,note]);
+    if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}
+    tx.objectStore('notes').add(note);done(note);
+   }catch(error){fail(error);}};
+   raw.onsuccess=commit;notes.onsuccess=commit;
+  });
+ }
  async saveTranscript(id:string,value:Transcript,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Transcript already saved');const asset=newOriginal??raw.result,note=transcriptNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
- } async savePdfText(id:string,value:PdfText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('PDF text already saved');const asset=newOriginal??raw.result,note=pdfTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
+  return this.saveReading(id,value.original.id,newOriginal,'Transcript already saved',asset=>transcriptNote(id,asset,value));
+ }
+ async savePdfText(id:string,value:PdfText,newOriginal?:OriginalAsset){
+  return this.saveReading(id,value.original.id,newOriginal,'PDF text already saved',asset=>pdfTextNote(id,asset,value));
  }
  async saveOcrText(id:string,value:OcrText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
+  return this.saveReading(id,value.original.id,newOriginal,'OCR text already saved',asset=>ocrTextNote(id,asset,value));
  }
  async saveVisionText(id:string,value:VisionText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Vision note already saved');const asset=newOriginal??raw.result,note=visionTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
+  return this.saveReading(id,value.original.id,newOriginal,'Vision note already saved',asset=>visionTextNote(id,asset,value));
  }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);

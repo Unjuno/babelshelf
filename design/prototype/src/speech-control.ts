@@ -1,39 +1,7 @@
-export class SpeechClient {
- private worker:any=null;private sequence=0;private pending:{type:string;resolve:(v:any)=>void;reject:(e:Error)=>void}|null=null;
- private factory:()=>any;private update:(busy:boolean,progress?:string)=>void;
- private beforeTranscribe?:(check:()=>void)=>Promise<void>;
- constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void,beforeTranscribe?:(check:()=>void)=>Promise<void>){this.factory=factory;this.update=update;this.beforeTranscribe=beforeTranscribe;}
- private dispatch(type:string,values:any,id:number){
-  if(!this.worker){const w=this.factory();this.worker=w;
-   w.onmessage=({data}:any)=>{
-    if(this.worker!==w||data.id!==this.sequence||!this.pending)return;
-    if(data.progress){this.update(this.pending.type!=='status',data.progress);return;}
-    const p=this.pending;this.pending=null;
-    // Keep prepared files in storage, but end the inference owner before
-    // the transcript can continue into another model's operation.
-    if(p.type==='transcribe'){this.worker=null;w.terminate();}
-    this.update(false,data.error);
-    if(data.error)p.reject(Error(data.error));else p.resolve(data.value);
-   };
-   w.onerror=()=>{if(this.worker!==w)return;this.worker=null;w.terminate();const p=this.pending;this.pending=null;this.update(false,'Speech runtime failed');p?.reject(Error('Speech runtime failed'));};
-  }
-  this.worker.postMessage({...values,id,type});
- }
- call(type:string,values:any={}):Promise<any>{
-  if(this.pending)return Promise.reject(Error('Speech model busy'));
-  const id=++this.sequence;
-  return new Promise((resolve,reject)=>{
-   this.pending={type,resolve,reject};this.update(type!=='status');
-   const check=()=>{if(id!==this.sequence||!this.pending)throw Error('Stopped');};
-   const fail=(error:unknown)=>{if(id!==this.sequence||!this.pending)return;const pending=this.pending;this.pending=null;this.update(false,(error as Error).message);pending.reject(error as Error);};
-   if(type==='transcribe'&&this.beforeTranscribe){
-    // Reserve the operation while releasing other models. Stop invalidates
-    // this continuation before a worker can load a speech model.
-    void(async()=>{try{await this.beforeTranscribe!(check);check();this.dispatch(type,values,id);}catch(error){fail(error);}})();
-   }else{try{this.dispatch(type,values,id);}catch(error){fail(error);}}
-  });
- }
- stop(){this.sequence++;this.worker?.terminate();this.worker=null;const p=this.pending;this.pending=null;this.update(false,'Stopped');p?.reject(Error('Stopped'));}
+import {ReaderOperationClient} from './reader-operation-client.ts';
+import type {InferenceLease} from './inference-lease.ts';
+export class SpeechClient extends ReaderOperationClient {
+ constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void,before?:(check:()=>void)=>Promise<void>,acquire?:()=>Promise<InferenceLease>){super('Speech','transcribe',factory,update,before,acquire);}
 }
 export class MicrophoneGate {
  private epoch=0;pending=false;

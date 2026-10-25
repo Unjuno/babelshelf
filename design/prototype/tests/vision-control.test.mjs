@@ -32,7 +32,7 @@ test('image inference waits for resident-model release and owns the request whil
  let release;const workers=[],events=[];const ready=new Promise(resolve=>release=resolve);
  const client=new VisionClient(()=>{const worker={postMessage(m){worker.last=m;events.push('describe');},terminate(){}};workers.push(worker);return worker;},()=>{},async check=>{events.push('release');await ready;check();});
  const result=client.call('describe');assert.deepEqual(events,['release']);assert.equal(workers.length,0);await assert.rejects(client.call('describe'),/busy/);
- release();await Promise.resolve();await Promise.resolve();assert.deepEqual(events,['release','describe']);workers[0].onmessage({data:{id:workers[0].last.id,value:{text:'Green'}}});assert.deepEqual(await result,{text:'Green'});
+ release();await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(events,['release','describe']);workers[0].onmessage({data:{id:workers[0].last.id,value:{text:'Green'}}});assert.deepEqual(await result,{text:'Green'});
 });
 
 test('Stop while releasing another model never starts delayed image inference',{timeout:1000},async()=>{

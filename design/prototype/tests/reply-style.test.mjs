@@ -26,15 +26,15 @@ test('dialogue output budgets follow style and explicit length without leaving a
 test('grounded dialogue passes the selected response style through its actual generation boundary',async()=>{
  let generated,budget;const engine={loaded:'model',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async(messages,maxTokens)=>{generated=messages;budget=maxTokens;return {text:'A concise answer.',finishReason:'stop'};}};
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
- await groundedAnswer(store,engine,'model','Hello.','','chat',context,()=>{},[],undefined,undefined,undefined,'concise');
+ await groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});
  assert.match(generated[0].content,/Prefer a brief answer/);assert.equal(budget,256);
- await groundedAnswer(store,engine,'model','Explain this in detail.','','chat',context,()=>{},[],undefined,undefined,undefined,'concise');assert.equal(budget,768,'explicit length outranks the concise setting at the actual generation boundary');
- await assert.rejects(groundedAnswer(store,engine,'model','Hello.','','chat',context,()=>{},[],undefined,undefined,undefined,'do anything'),/Unsupported reply style/);
+ await groundedAnswer({store:store,engine:engine},{model:'model',question:'Explain this in detail.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});assert.equal(budget,768,'explicit length outranks the concise setting at the actual generation boundary');
+ await assert.rejects(groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'do anything'}),/Unsupported reply style/);
 });
 
 test('an underreported token count cannot reopen output budget after a length stop',async()=>{
  let calls=0;const engine={loaded:'model',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async()=>{calls++;return {text:'Partial output',finishReason:'length',outputTokens:0};}};
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
- await assert.rejects(groundedAnswer(store,engine,'model','What time is it?','','chat',context,()=>{},[],undefined,undefined,undefined,'concise'),/output limit/);
+ await assert.rejects(groundedAnswer({store:store,engine:engine},{model:'model',question:'What time is it?',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'}),/output limit/);
  assert.equal(calls,1,'the concise 256-token allowance was fully allocated to the only segment');
 });

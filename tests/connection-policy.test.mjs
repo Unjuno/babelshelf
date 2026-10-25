@@ -21,6 +21,19 @@ test('network authority is read from the current canonical record on every call,
  assert.equal(db.closed(),2);assert.equal(restarted.closed(),1);assert.equal(db.upgrades(),0);
 });
 
+test('current versioned connection records and legacy records share the same fail-closed network authority',async()=>{
+ const {formatPreference}=await import('../design/prototype/src/preference-records.ts');
+ const current=note(true);current.revisions[0].body=formatPreference('connection',{downloads:true,diagnosticLogs:false});
+ assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),true);
+ current.revisions[0].body=formatPreference('connection',{downloads:false,diagnosticLogs:false});
+ assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
+ for(const schemaVersion of [0,2,'1',null]){
+  current.revisions[0].body='# Connection\n\n```json\n'+JSON.stringify({schemaVersion,downloads:true,diagnosticLogs:false})+'\n```\n';
+  assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
+ }
+ assert.equal(await readAppNetworkAccess(database(()=>note(true)).indexedDB),true);
+});
+
 test('missing, withdrawn, malformed or forged settings and unavailable storage fail closed',async()=>{
  for(const current of [undefined,note(false),{...note(true),state:'withdrawn'},{...note(true),id:'other'},{...note(true),ui:{}},{...note(true),revisions:[{path:'Notes/connection.md',body:note(true).revisions[0].body}]},{...note(true),revisions:[{path:'Settings/connection.md',body:'true'}]}])assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
  assert.equal(await readAppNetworkAccess(undefined),false);

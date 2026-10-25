@@ -43,7 +43,31 @@ async function continueDialogue(engine:TextRuntime,messages:{role:string;content
  if(outputLimited(result,currentBudget))throw Error('Response exceeded model output limit');
  const answer=parts.join('').trim();if(!answer)throw Error('Empty model response');return answer;
 }
-export async function groundedAnswer(store:KnowledgeStore,engine:TextRuntime,model:string,question:string,query=question,mode='answer',context?:DialogueContext,check=()=>{},inputReadings:CurrentInputRef[]=[],workingFile?:WorkingFile,prepareContext?:()=>Promise<DialogueContext>,toolEvidence?:{used:true;refs:SourceRef[];calculations?:AgentCalculation[];memoryUsed?:boolean},replyStyle:ReplyStyle='balanced',userGuidance=''){
+export type AnswerScope =
+ | {kind:'conversation';file?:never;readings?:never}
+ | {kind:'knowledge';file?:never;readings?:never}
+ | {kind:'file';file:WorkingFile;readings?:never}
+ | {kind:'attachments';readings:CurrentInputRef[];file?:never};
+export type AnswerToolEvidence={used:true;refs:SourceRef[];calculations?:AgentCalculation[];memoryUsed?:boolean};
+export type GroundedAnswerRequest={
+ model:string;question:string;query?:string;mode?:'answer'|'summary'|'chat';scope:AnswerScope;
+ context?:DialogueContext;check?:()=>void;prepareContext?:()=>Promise<DialogueContext>;
+ toolEvidence?:AnswerToolEvidence;replyStyle?:ReplyStyle;userGuidance?:string;
+};
+export type GroundedAnswerDependencies={store:KnowledgeStore;engine:TextRuntime};
+export async function groundedAnswer(dependencies:GroundedAnswerDependencies,request:GroundedAnswerRequest){
+ let {engine}=dependencies;const {store}=dependencies;
+ const {model,question,context,check=()=>{},prepareContext,toolEvidence,replyStyle='balanced',userGuidance=''}=request;
+ let {query=question,mode='answer'}=request;
+ const scope=request.scope;
+ if(!['answer','summary','chat'].includes(mode)||typeof question!=='string'||typeof model!=='string'||typeof query!=='string')throw Error('Invalid answer request');
+ // Persisted/external callers must pass the same exclusive scope as typed callers.
+ if(!scope||!['conversation','knowledge','file','attachments'].includes(scope.kind)||
+  (scope.kind!=='file'&&scope.file!==undefined)||(scope.kind!=='attachments'&&scope.readings!==undefined)||
+  (scope.kind==='file'&&!scope.file)||(scope.kind==='attachments'&&(!Array.isArray(scope.readings)||!scope.readings.length))||
+  (scope.kind==='conversation'&&mode!=='chat'))throw Error('Conflicting input scopes');
+ const inputReadings=scope.kind==='attachments'?scope.readings:[],workingFile=scope.kind==='file'?scope.file:undefined;
+
  const styleInstruction=replyStyleInstruction(replyStyle);
  check();if(workingFile&&inputReadings.length)throw Error('Conflicting input scopes');
  const calculations=toolEvidence?.calculations??[];

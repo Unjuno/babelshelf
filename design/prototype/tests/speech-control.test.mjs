@@ -2,6 +2,32 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {SpeechClient,MicrophoneGate,saveReviewedTranscript} from '../src/speech-control.ts';
 class WorkerFixture{onmessage=null;onerror=null;terminated=false;messages=[];postMessage(v){this.messages.push(v);}terminate(){this.terminated=true;}}
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
+for(const role of ['Speech','Vision']){
+ test(`${role} production client order releases resident Text before acquiring the reader lease`,async()=>{
+  const {VisionClient}=await import('../src/vision-control.ts');
+  const {createInferenceLeaseManager}=await import('../src/inference-lease.ts');
+  const manager=createInferenceLeaseManager(null),resident=await manager.acquire('Text'),workers=[];
+  const Client=role==='Speech'?SpeechClient:VisionClient,type=role==='Speech'?'transcribe':'describe';
+  const client=new Client(()=>{const worker=new WorkerFixture();workers.push(worker);return worker;},()=>{},async check=>{check();await resident.release();check();},()=>manager.acquire(role));
+  const result=client.call(type);await assert.rejects(client.call(type),/busy/);
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(workers.length,1);
+  await assert.rejects(manager.acquire('Text'),/role/);
+  workers[0].onmessage({data:{id:workers[0].messages[0].id,value:'read'}});
+  assert.equal(await result,'read');assert.equal(workers[0].terminated,true);
+  const next=await manager.acquire('Text');await next.release();
+ });
+ test(`${role} Stop while lease acquisition is pending releases the late lease without dispatch`,async()=>{
+  const {VisionClient}=await import('../src/vision-control.ts');
+  const gate=deferred();let created=0,released=0;
+  const Client=role==='Speech'?SpeechClient:VisionClient,type=role==='Speech'?'transcribe':'describe';
+  const client=new Client(()=>{created++;return new WorkerFixture();},()=>{},async()=>{},()=>gate.promise);
+  const result=client.call(type);await new Promise(resolve=>setImmediate(resolve));
+  client.stop();await assert.rejects(result,/Stopped/);await assert.rejects(client.call(type),/busy/);
+  gate.resolve({protected:false,release:async()=>{released++;}});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(created,0);assert.equal(released,1);
+  const status=client.call('status');assert.equal(created,1);client.stop();await assert.rejects(status,/Stopped/);
+ });
+}
 test('failed speech worker is discarded; retry uses a new worker and ignores stale callbacks',async()=>{
  const workers=[],client=new SpeechClient(()=>{const w=new WorkerFixture();workers.push(w);return w;},()=>{});const first=client.call('status');workers[0].onerror();await assert.rejects(first,/runtime/);assert.equal(workers[0].terminated,true);
  const retry=client.call('status');assert.equal(workers.length,2);workers[0].onerror();workers[0].onmessage({data:{id:workers[0].messages[0].id,value:'stale'}});workers[1].onmessage({data:{id:workers[1].messages[0].id,value:true}});assert.equal(await retry,true);

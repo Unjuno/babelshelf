@@ -1,5 +1,58 @@
 # Current application architecture
 
+## Harness boundary update — 2026-10-25
+
+The current source adds the bounded execution seams below. Acceptance and exact
+build evidence are tracked in [the harness acceptance record](HARNESS-ACCEPTANCE-2026-10-25.md).
+
+```mermaid
+flowchart TD
+  UI[Input and review UI] --> SUB[Existing atomic input submission]
+  SUB --> ROUTE[Existing scope / context / Agent routing]
+  ROUTE --> APP[resolved-actions: read / search / answer / proposals]
+  APP --> ANSWER[groundedAnswer: dependencies + exclusive scope request]
+  APP --> KNOW[KnowledgeStore / validated local tool host]
+  APP --> RUN[Existing pinned TextRuntime]
+  APP --> RESULT[Discriminated result data]
+  RESULT --> UI
+  UI --> APPROVE[Existing explicit review and CAS]
+  APPROVE --> KNOW
+  KNOW --> DB[IndexedDB originals / revisions / provenance]
+  MEDIA[Speech / Vision hooks] --> LIFE[ReaderOperationClient reservation]
+  LIFE --> IDLE[Release idle resident owners]
+  IDLE --> LEASE[Acquire role / origin lease]
+  LEASE --> WORKER[Check cancellation then dispatch]
+  WORKER --> CLEAN[Terminate owned Worker / release owned lease]
+```
+
+`resolved-actions.ts` receives a pinned engine, canonical-store adapter, typed
+registry, snapshot port, cancellation check and the existing activity tracer.
+It returns search results, file-open/continue decisions, exact answer text and
+sources, schedule clarification/proposals and correction proposals. It has no
+React imports, setters, sheet names or edit-approval/commit API. Input/dialogue
+commit and review presentation still belong to the UI transaction; extraction
+does not merge their different commit scopes. Foreground schedules continue to
+call the typed answer boundary without inheriting dialogue Agent privileges.
+
+Speech and Vision share a client lifecycle. The request is reserved before
+awaiting resident-owner release, then acquires its operation lease and checks
+cancellation before dispatch. Busy resident owners are refused by the existing
+release policy. Stop rejects promptly while retaining the reservation until any
+late-acquired lease is released. Success/error delivery waits for owned cleanup;
+status/preparation do not acquire inference leases or release resident models.
+This describes application ownership, not GPU-driver reclamation or model fit.
+
+The four reader-save methods retain their public typed builders and provenance
+validators, while `KnowledgeStore.saveReading` shares their existing notes/runs
+transaction sequence. The transaction helper still adds settings scope and
+checks folder namespaces. Atomic attachment submission and reviewed note-save
+then dialogue-acknowledgement remain separate existing contracts.
+
+The worker network reader accepts the current Connection `schemaVersion: 1`
+and the legacy unversioned record; unsupported versions/keys fail closed. This
+fixes explicit runtime preparation being refused even after Online was saved.
+It adds no implicit download or remote inference.
+
 Updated 2026-10-24. See [architecture rationalization](ARCHITECTURE-RATIONALIZATION.md) for the accepted baseline, evidence-backed findings and active refactor scope. This document describes the runnable product and its real boundaries. `ARCHITECTURE.txt` is retained as a historical 0.1 baseline.
 
 ## Runtime and ownership

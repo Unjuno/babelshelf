@@ -9,10 +9,10 @@ const builtinVision='lfm25-vl-450m-q4f16';
 export function useVision(model:string,customModels:readonly CustomVisionModel[]=[],beforeDescribe?:(check:()=>void)=>Promise<void>){
  const before=useRef(beforeDescribe);before.current=beforeDescribe;
  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false),[progress,setProgress]=useState('');
- const client=useRef<VisionClient|null>(null),importAbort=useRef<AbortController|null>(null);client.current??=new VisionClient(()=>new Worker(new URL('./vision-worker.ts',import.meta.url),{type:'module'}),(active,text)=>{setBusy(active);if(text)setProgress(text);},async check=>{check();await before.current?.(check);check();});
+ const client=useRef<VisionClient|null>(null),importAbort=useRef<AbortController|null>(null);client.current??=new VisionClient(()=>new Worker(new URL('./vision-worker.ts',import.meta.url),{type:'module'}),(active,text)=>{setBusy(active);if(text)setProgress(text);},async check=>{check();await before.current?.(check);check();},()=>inferenceLeaseManager.acquire('Vision'));
  const customModel=customModels.find(item=>item.id===model),customModelId=customModel?.id??'';
- useEffect(()=>{let alive=true;setReady(false);if(!model){client.current!.stop();return()=>{alive=false;};}client.current!.call('status',{model,customModel}).then(value=>{if(alive)setReady(value.ready===true);}).catch(()=>{if(alive)setReady(false);});return()=>{alive=false;client.current!.stop();importAbort.current?.abort();};},[model,customModelId]);
- const describe=async(values:Record<string,unknown>)=>{const lease=await inferenceLeaseManager.acquire('Vision');try{return await client.current!.call('describe',{...values,model,...(customModel?{customModel}: {})});}finally{await lease.release();}};
+ useEffect(()=>{let alive=true;setReady(false);if(!model){client.current!.stop();return()=>{alive=false;};}client.current!.call('status',{model,customModel}).then(value=>{if(alive)setReady(value.ready===true);}).catch(()=>{if(alive)setReady(false);});return()=>{alive=false;client.current!.stop();importAbort.current?.abort();};},[model,customModelId,customModel?.revision]);
+ const describe=async(values:Record<string,unknown>)=>{return client.current!.call('describe',{...values,model,...(customModel?{customModel}: {})});};
  const prepare=async(allowNetwork:boolean,localFiles?:File[])=>{
   if(model===builtinVision){setReady(false);await client.current!.call('prepare',{model,allowNetwork,localFiles});setReady(true);setProgress('Verified');return;}
   if(!customModel)throw Error('Vision model not configured');

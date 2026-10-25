@@ -107,11 +107,11 @@ test('dialogue-only generation has no knowledge-store dependency while keeping c
  let reads=0,received,checks=0,prepared=0;const store={all:async()=>{reads++;throw Error('Knowledge read must not run');},search:async()=>{throw Error('Search must not run');}};
  const context={summary:'User prefers English.',recent:[{id:'past',user:'My name is Mira.',answer:'Hello Mira.'}],refs:[{noteId:'unread',revision:1,start:0,end:9,quote:'not evidence'}]};
  const runtime={manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},loaded:'test',assets:{},count:async()=>({prompt_tokens:100}),generate:async messages=>{received=messages;return {text:'Hello Mira.',finishReason:'stop'};}};
- const result=await groundedAnswer(store,runtime,'test','Hello.','','chat',context,()=>{checks++;},[],undefined,async()=>{prepared++;return context;});
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{checks++;},scope:{kind:'conversation'},prepareContext:async()=>{prepared++;return context;}});
  assert.equal(reads,0);assert.equal(prepared,1);assert.equal(result.answer,'Hello Mira.');assert.deepEqual(result.sources,[]);assert.ok(checks>1);
  assert.match(JSON.stringify(received),/My name is Mira/);assert.equal(received.at(-1).content,'Hello.');assert.doesNotMatch(JSON.stringify(received),/not evidence/);
- let cancelled=false;await assert.rejects(groundedAnswer(store,{...runtime,generate:async()=>{cancelled=true;return {text:'Late output',finishReason:'stop'};}},'test','Hello.','','chat',context,()=>{if(cancelled)throw Error('Stopped');}),/Stopped/);assert.equal(reads,0);
- await assert.rejects(groundedAnswer(store,runtime,'test','What is in this file?','','chat',context,()=>{},[],{noteId:'file',revision:1}),/Knowledge read must not run/);assert.equal(reads,1);
+ let cancelled=false;await assert.rejects(groundedAnswer({store:store,engine:{...runtime,generate:async()=>{cancelled=true;return {text:'Late output',finishReason:'stop'};}}},{model:'test',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{if(cancelled)throw Error('Stopped');},scope:{kind:'conversation'}}),/Stopped/);assert.equal(reads,0);
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is in this file?',query:'',mode:'chat',context:context,check:()=>{},scope:({noteId:'file',revision:1}?{kind:'file',file:{noteId:'file',revision:1}}:{kind:'conversation'})}),/Knowledge read must not run/);assert.equal(reads,1);
 });
 
 test('plain original writing stays a conversation even when a small planner would search notes',async()=>{
@@ -332,45 +332,45 @@ test('answers can refer to dialogue without invented citations; invalid citation
 test('source-free dialogue generates prose without a JSON wrapper or file citation',async()=>{
  const store={all:async()=>[],search:async()=>[]};let seen;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{seen={messages,budget,format};return {text:'A blue lantern lit the road.\n\nThe traveler kept walking.',finishReason:'stop',outputTokens:18};}};
- const reply=await groundedAnswer(store,e,'4B','Write two paragraphs.','','chat',{summary:'',recent:[],refs:[]});
+ const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write two paragraphs.',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});
  assert.match(seen.messages[0].content,/plain text/);assert.equal(seen.format,'prose');assert.equal(seen.budget,768);
  assert.equal(reply.answer,'A blue lantern lit the road.\n\nThe traveler kept walking.');assert.deepEqual(reply.sources,[]);
 });
 test('a token-limited dialogue reply continues within a fixed bound, then fails without committing',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Only the beginning',finishReason:'length'};}};
- await assert.rejects(groundedAnswer(store,e,'4B','Write a story.','','chat',context),/output limit/);assert.equal(calls,3);
+ await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/output limit/);assert.equal(calls,3);
 });
 test('a punctuation-only model collapse fails after one generation instead of repeating continuations',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'9B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'!'.repeat(256),finishReason:'length',outputTokens:256};}};
- await assert.rejects(groundedAnswer(store,e,'9B','Write a two-sentence story.','','chat',context),/repeated one character/);
+ await assert.rejects(groundedAnswer({store:store,engine:e},{model:'9B',question:'Write a two-sentence story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/repeated one character/);
  assert.equal(calls,1);
 });
 test('a capped prose segment continues from its prior text without adding citations or tools',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{calls++;assert.equal(format,'prose');if(calls===1)return {text:'The lantern glowed. ',finishReason:'length'};assert.match(messages.at(-2).content,/lantern glowed/);assert.match(messages.at(-1).content,/Continue/);return {text:'Then dawn came.',finishReason:'stop'};}};
- const reply=await groundedAnswer(store,e,'4B','Write a story.','','chat',context);assert.equal(reply.answer,'The lantern glowed. Then dawn came.');assert.deepEqual(reply.sources,[]);assert.equal(calls,2);
+ const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}});assert.equal(reply.answer,'The lantern glowed. Then dawn came.');assert.deepEqual(reply.sources,[]);assert.equal(calls,2);
 });
 test('an explicit stop reason takes precedence over an estimated token count at the cap',async()=>{
  const store={all:async()=>[],search:async()=>[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Complete answer.',finishReason:'stop',outputTokens:768};}};
- const reply=await groundedAnswer(store,e,'4B','Write a sentence.','','chat',{summary:'',recent:[],refs:[]});assert.equal(reply.answer,'Complete answer.');assert.equal(calls,1);
+ const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a sentence.',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});assert.equal(reply.answer,'Complete answer.');assert.equal(calls,1);
 });
 test('interactive reply uses prior turns and validates pinned source bytes after generation',async()=>{
  let note=createNote({path:'Notes/water.md',body:'水は4Lです。'});const ref={noteId:note.id,revision:1,start:0,end:7,quote:note.revisions[0].body};
  const context={summary:'',recent:[{id:'previous',user:'水を確認して',answer:'水は4Lです。',refs:[ref]}],refs:[ref]};
  const store={all:async()=>[note],search:async()=>[]};let seen;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{seen=JSON.stringify(m);return {text:JSON.stringify({answer:'4Lです。',citations:[{id:'S1',quote:ref.quote}]})};}};
- const reply=await groundedAnswer(store,e,'4B','それは何リットル？','','answer',context);
+ const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'それは何リットル？',query:'',mode:'answer',context:context,scope:{kind:'knowledge'}});
  assert.match(seen,/水を確認して/);assert.equal(reply.sources[0].noteId,note.id);
  e.generate=async()=>{note=reviseNote(note,{body:'水は5Lです。'},1);return {text:JSON.stringify({answer:'4L',citations:[{id:'S1',quote:ref.quote}]})};};
- await assert.rejects(()=>groundedAnswer(store,e,'4B','何リットル？','','answer',context),/Source changed/);
+ await assert.rejects(()=>groundedAnswer({store:store,engine:e},{model:'4B',question:'何リットル？',query:'',mode:'answer',context:context,scope:{kind:'knowledge'}}),/Source changed/);
 });
 test('Stop during evidence budgeting prevents generation and completion',async()=>{
  let stopped=false,generated=false;const store={all:async()=>[],search:async()=>[]};
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>{stopped=true;return {prompt_tokens:10};},generate:async()=>{generated=true;return {text:'{"answer":"late answer","citations":[]}'};}};
- await assert.rejects(()=>groundedAnswer(store,e,'4B','hello','','chat',{summary:'',recent:[],refs:[]},()=>{if(stopped)throw Error('Stopped');}),/Stopped/);
+ await assert.rejects(()=>groundedAnswer({store:store,engine:e},{model:'4B',question:'hello',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},check:()=>{if(stopped)throw Error('Stopped');},scope:{kind:'conversation'}}),/Stopped/);
  assert.equal(generated,false);
 });
 test('pinned generated prose cannot reintroduce a changed ancestor as evidence',async()=>{
@@ -378,7 +378,7 @@ test('pinned generated prose cannot reintroduce a changed ancestor as evidence',
  const derived=createNote({path:'Inbox/derived.md',body:'Derived claim',kind:'generated',sources:[parent]}),ref={noteId:derived.id,revision:1,start:0,end:13,quote:'Derived claim'};
  const changed=reviseNote(original,{body:'Corrected fact'},1),store={all:async()=>[changed,derived],search:async()=>[]};
  let received;const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'{"answer":"No current saved source.","citations":[]}'};}};
- await groundedAnswer(store,e,'4B','the current fact?','','answer',{summary:'',recent:[],refs:[ref]});
+ await groundedAnswer({store:store,engine:e},{model:'4B',question:'the current fact?',query:'',mode:'answer',context:{summary:'',recent:[],refs:[ref]},scope:{kind:'knowledge'}});
  assert.equal(received.includes('Derived claim'),false);
 });
 test('an oversized rejected turn cannot permanently block later short requests',async()=>{
@@ -390,7 +390,7 @@ test('dialogue-only replies do not receive unrelated previous search results as 
  const note=createNote({path:'Notes/other-code.md',body:'Other code PINE'}),ref={noteId:note.id,revision:1,start:0,end:15,quote:'Other code PINE'};
  const state=completeTurn(appendTurn(emptyDialogue(),{id:'search',user:'Find other code'}),'search',{results:[ref]});let received;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'LILAC'};}};
- await groundedAnswer({all:async()=>[note],search:async()=>[ref]},e,'4B','What did I say?','','chat',dialogueContext(state));
+ await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:e},{model:'4B',question:'What did I say?',query:'',mode:'chat',context:dialogueContext(state),scope:{kind:'conversation'}});
  assert.equal(received.includes('Other code PINE'),false);
 });
 test('compacted dialogue can recall original user words rather than trusting a lossy summary',()=>{
@@ -503,30 +503,30 @@ test('explicit new tool requests produce only a bounded draft-form action, never
 
 test('a newly retrieved topic outranks old pinned references and excludes unrelated dialogue facts from grounded generation',async()=>{
  const old=createNote({path:'Notes/old.md',body:'The old code is PINE-9191.'}),fresh=createNote({path:'Notes/copper.md',body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),oldRef=ref(old),freshRef=ref(fresh);const store={all:async()=>[old,fresh],search:async()=>[freshRef]};const context={summary:'Old code PINE-9191',recent:[{id:'old',user:'old code?',answer:'PINE-9191'}],refs:[oldRef]};
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.evidence[0].noteId,fresh.id);assert.doesNotMatch(JSON.stringify(messages),/PINE-9191/);return {text:JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};const reply=await groundedAnswer(store,e,'4B','What is the copper code?','copper code','answer',context);assert.equal(reply.sources[0].noteId,fresh.id);
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.evidence[0].noteId,fresh.id);assert.doesNotMatch(JSON.stringify(messages),/PINE-9191/);return {text:JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',query:'copper code',mode:'answer',context:context,scope:{kind:'knowledge'}});assert.equal(reply.sources[0].noteId,fresh.id);
 });
 test('a stored-knowledge answer with evidence cannot accept an uncited claim copied from dialogue',async()=>{
- const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]},context={summary:'',recent:[],refs:[ref]};const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'PINE-9191',citations:[]})})};await assert.rejects(groundedAnswer(store,e,'4B','What is the code?','code','answer',context),/citation|source/i);
+ const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]},context={summary:'',recent:[],refs:[ref]};const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'PINE-9191',citations:[]})})};await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the code?',query:'code',mode:'answer',context:context,scope:{kind:'knowledge'}}),/citation|source/i);
 });
 
 test('invalidated current retrieval must reject before unrelated historical pins can replace it',async()=>{
  const old=createNote({body:'The pine code is PINE-9191.'}),fresh=createNote({body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),changed=reviseNote(fresh,{body:'The copper code is Maple 43.'},1);let generated=false;
  const store={search:async()=>[ref(fresh)],all:async()=>[old,changed]},context={summary:'PINE-9191',recent:[],refs:[ref(old)]},e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{generated=true;return {text:JSON.stringify({answer:'PINE-9191',citations:[{id:'S1',quote:'PINE-9191'}]})};}};
- await assert.rejects(groundedAnswer(store,e,'4B','What is the copper code?','copper code','answer',context),/Source changed/);assert.equal(generated,false);
+ await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',query:'copper code',mode:'answer',context:context,scope:{kind:'knowledge'}}),/Source changed/);assert.equal(generated,false);
 });
 
 test('malformed grounded JSON gets one bounded retry with the same verified evidence',async()=>{
  const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0,inputs=[];
  const e={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{inputs.push(messages);return {text:++calls===1?'{"answer":"bad "quote"}':JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};
- assert.equal((await groundedAnswer(store,e,'4B','What is the copper code?')).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
- calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer(store,e,'4B','code?'),/JSON/);assert.equal(calls,3);
+ assert.equal((await groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',scope:{kind:'knowledge'}})).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
+ calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'code?',scope:{kind:'knowledge'}}),/JSON/);assert.equal(calls,3);
 });
 
 test('one-source structured recovery cites the exact current excerpt after malformed model JSON',async()=>{
  const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0,format;
  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,_budget,f)=>{calls++;format=f;return {text:calls<3?'invalid JSON':'{"answer":"Cedar Room"}'};}};
- const result=await groundedAnswer(store,runtime,'4B','Which room is the meeting in?');
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'4B',question:'Which room is the meeting in?',scope:{kind:'knowledge'}});
  assert.equal(calls,3);assert.equal(format,'dialogue-answer');assert.equal(result.answer,'Cedar Room');assert.deepEqual(result.sources,[ref]);
 });
 
@@ -534,14 +534,14 @@ test('single-excerpt JSON recovery rejects an answer absent from the original',a
  const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0;
  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls<3?'invalid JSON':'{"answer":"The meeting is at 14:15."}'})};
- await assert.rejects(groundedAnswer(store,runtime,'4B','When is the meeting?'),/Answer needs a verified quote/);
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'4B',question:'When is the meeting?',scope:{kind:'knowledge'}}),/Answer needs a verified quote/);
 });
 
 test('single-source time difference uses checked local arithmetic and retains the exact source',async()=>{
  const note=createNote({body:'The meeting is at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let generated=0;
  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{generated++;throw Error('unnecessary generation');}};
- const result=await groundedAnswer(store,runtime,'4B','In the saved meeting note, how many minutes before 15:00 is the meeting? Cite the note.');
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'4B',question:'In the saved meeting note, how many minutes before 15:00 is the meeting? Cite the note.',scope:{kind:'knowledge'}});
  assert.equal(result.answer,'20 minutes before 15:00.');assert.deepEqual(result.sources,[ref]);assert.equal(generated,0);
  assert.equal((await import('../src/time-answer.ts')).exactMinutesBefore('How many minutes before 15:00?','14:40 and 14:50'),null);
 });
@@ -556,7 +556,7 @@ test('named saved-note question retrieves the real index excerpt before checked 
  assert.equal(found.length,1);
  const store={all:async()=>[note],search:async query=>searchNotes([note],query)};
  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{throw Error('unnecessary generation');}};
- const result=await groundedAnswer(store,runtime,'4B',question,route.query);
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'4B',question:question,query:route.query,scope:{kind:'knowledge'}});
  assert.equal(result.answer,'20 minutes before 15:00.');
  assert.equal(result.sources[0].quote,note.revisions[0].body);
 });
@@ -570,7 +570,7 @@ test('one request cannot plan on one revision and answer on its replacement',asy
  const prior=emptyDialogue(),context=dialogueContext(await compactDialogue(prior,request,'Can we talk?'));
  const plan=await planDialogue(request,'Can we talk?',context);assert.equal(plan.action,'chat');
  runtime.manifest.models[0].revision='replacement';
- await assert.rejects(groundedAnswer({all:async()=>[]},request,'local','Can we talk?','','chat',context),/Model changed/);
+ await assert.rejects(groundedAnswer({store:{all:async()=>[]},engine:request},{model:'local',question:'Can we talk?',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/Model changed/);
  assert.equal(generations,1);assert.deepEqual(prior,emptyDialogue());
 });
 
@@ -671,14 +671,14 @@ test('fresh evidence can bypass deferred context work while a continuing source 
  const source=createNote({path:'Notes/fresh103.md',body:'The marker is MAPLE-103.'}),ref={noteId:source.id,revision:1,start:0,end:source.revisions[0].body.length,quote:source.revisions[0].body};let prepared=0,messages=[];
  const port={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async m=>({prompt_tokens:Math.ceil(JSON.stringify(m).length/4)}),generate:async m=>{messages=m;return {text:JSON.stringify({answer:'MAPLE-103',citations:[{id:'S1',quote:'MAPLE-103'}]})};}};
  const store={all:async()=>[source],search:async()=>[ref]},unbounded={summary:'x'.repeat(20000),recent:[],refs:[]};
- await groundedAnswer(store,port,'test','Answer: marker?','marker','answer',unbounded,()=>{},[],undefined,async()=>{prepared++;throw Error('Unneeded history preparation');});assert.equal(prepared,0);assert.ok(!JSON.stringify(messages).includes('x'.repeat(100)));
- await groundedAnswer(store,port,'test','What is it?','marker','answer',{...unbounded,refs:[ref]},()=>{},[],undefined,async()=>{prepared++;return {summary:'Prepared context sentinel',recent:[],refs:[ref]};});assert.equal(prepared,1);assert.match(JSON.stringify(messages),/Prepared context sentinel/);
+ await groundedAnswer({store:store,engine:port},{model:'test',question:'Answer: marker?',query:'marker',mode:'answer',context:unbounded,check:()=>{},scope:{kind:'knowledge'},prepareContext:async()=>{prepared++;throw Error('Unneeded history preparation');}});assert.equal(prepared,0);assert.ok(!JSON.stringify(messages).includes('x'.repeat(100)));
+ await groundedAnswer({store:store,engine:port},{model:'test',question:'What is it?',query:'marker',mode:'answer',context:{...unbounded,refs:[ref]},check:()=>{},scope:{kind:'knowledge'},prepareContext:async()=>{prepared++;return {summary:'Prepared context sentinel',recent:[],refs:[ref]};}});assert.equal(prepared,1);assert.match(JSON.stringify(messages),/Prepared context sentinel/);
 });
 test('deferred context failure or a source edit during preparation cannot start answer generation',async()=>{
  const source=createNote({path:'Notes/stale103.md',body:'The marker is CEDAR-103.'}),ref={noteId:source.id,revision:1,start:0,end:source.revisions[0].body.length,quote:source.revisions[0].body},context={summary:'',recent:[],refs:[ref]};let records=[source],calls=0;
  const store={all:async()=>records,search:async()=>[ref]},port={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,models:[{id:'test'}],runtime:{revision:'engine1'}},count:async()=>({prompt_tokens:1}),generate:async()=>{calls++;throw Error('Generation must not run');}};
- await assert.rejects(groundedAnswer(store,port,'test','Question','marker','answer',context,()=>{},[],undefined,async()=>{throw Error('Stopped');}),/Stopped/);
- await assert.rejects(groundedAnswer(store,port,'test','Question','marker','answer',context,()=>{},[],undefined,async()=>{records=[reviseNote(source,{body:'Corrected'},1)];return context;}),/Source changed/);assert.equal(calls,0);
+ await assert.rejects(groundedAnswer({store:store,engine:port},{model:'test',question:'Question',query:'marker',mode:'answer',context:context,check:()=>{},scope:{kind:'knowledge'},prepareContext:async()=>{throw Error('Stopped');}}),/Stopped/);
+ await assert.rejects(groundedAnswer({store:store,engine:port},{model:'test',question:'Question',query:'marker',mode:'answer',context:context,check:()=>{},scope:{kind:'knowledge'},prepareContext:async()=>{records=[reviseNote(source,{body:'Corrected'},1)];return context;}}),/Source changed/);assert.equal(calls,0);
 });
 
 
@@ -779,9 +779,9 @@ test('tool-selected evidence stays pinned through answer generation and cannot f
  const note=createNote({path:'Notes/agent-evidence.md',body:'The exact marker is AQUA-81.'}),quote='The exact marker is AQUA-81.',ref={noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path};let searches=0,generations=0,messages;
  const store={all:async()=>[note],search:async()=>{searches++;return [];}};
  const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{messages=value;generations++;return {text:JSON.stringify({answer:'AQUA-81',citations:[{id:'S1',quote:'AQUA-81'}]})};}};
- const answer=await groundedAnswer(store,runtime,'test','What is the exact marker?','marker','answer',{summary:'',recent:[],refs:[{...ref,noteId:'unrelated'}]},()=>{},[],undefined,undefined,{used:true,refs:[ref]});
+ const answer=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is the exact marker?',query:'marker',mode:'answer',context:{summary:'',recent:[],refs:[{...ref,noteId:'unrelated'}]},check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref]}});
  assert.equal(answer.answer,'AQUA-81');assert.equal(answer.sources[0].noteId,note.id);assert.equal(searches,0);assert.equal(generations,1);assert.ok(JSON.stringify(messages).includes('AQUA-81'));
- await assert.rejects(groundedAnswer(store,runtime,'test','What is the exact marker?','marker','answer',{summary:'',recent:[],refs:[ref]},()=>{},[],undefined,undefined,{used:true,refs:[]}),/No matching notes/);assert.equal(searches,0);assert.equal(generations,1);
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is the exact marker?',query:'marker',mode:'answer',context:{summary:'',recent:[],refs:[ref]},check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[]}}),/No matching notes/);assert.equal(searches,0);assert.equal(generations,1);
 });
 
 test('a local arithmetic result reaches the sourced answer without becoming a citation',async()=>{
@@ -789,10 +789,10 @@ test('a local arithmetic result reaches the sourced answer without becoming a ci
  const store={all:async()=>[note],search:async()=>{searches++;return [];}};
  const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{messages=value;return {text:JSON.stringify({answer:'One quarter is 500 credits.',citations:[{id:'S1',quote:'1200 and 800'}]})};}};
  const calculation={expression:'(1200 + 800) / 4',result:500,precision:'IEEE-754 binary64'};
- const answer=await groundedAnswer(store,runtime,'test','What is one quarter of the total?','budget','answer',undefined,()=>{},[],undefined,undefined,{used:true,refs:[ref],calculations:[calculation],memoryUsed:true});
+ const answer=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[calculation],memoryUsed:true}});
  const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);
  assert.deepEqual(input.calculations,[calculation]);assert.equal(answer.answer,'One quarter is 500 credits.');assert.equal(answer.sources[0].noteId,note.id);assert.equal(searches,0);
- await assert.rejects(groundedAnswer(store,runtime,'test','What is one quarter of the total?','budget','answer',undefined,()=>{},[],undefined,undefined,{used:true,refs:[ref],calculations:[{...calculation,result:501}],memoryUsed:true}),/Invalid calculation result/);
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[{...calculation,result:501}],memoryUsed:true}}),/Invalid calculation result/);
 });
 
 test('ordinary planner route runs sequential local search and returns only a grounded final plan',async()=>{
