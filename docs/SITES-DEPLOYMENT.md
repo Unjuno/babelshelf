@@ -1,3 +1,11 @@
+# Public v197 — current-build cache diagnostic identity (2026-10-27)
+
+App159e100 on codex/ui-design-handoff packagesc821024468a405c0 /135 verified assets, entry index-Djf--NnK.js. Site sourceb95bd8a92d288257ef05b404e0b6df1fe2deb7c5 retained current and actual previous public9706 assets;19 old delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f90e80a7b5c8819181a07cb8a024a928(v197), deployment appgdep_6adfbaf7ef48819187940350021ccc8c succeeded2026-10-26T20:41:42.081399Z. Native uncompressed tar SHA256935f03701be6ae5966ac3c77c207fc217cda26c4e1ed04ab92e694c7a14a2b6e,57,169,920bytes/160files. Public audience retained; one compressed current archive reused.
+
+Existing babelshelf.com sidebar normal Update adopted matching page/worker. RestoredOffline, actual Quick yielded Current build cache listed;141 other app build(s);offline restart not proven.4B remained unprepared/not-run; no model acquisition. No cache or knowledge deletion. Existing dialogue/input filev1/logsOff retained. Diagnostic report replaced by the explicit new run. PC prototype930/product6/diagnostic-browser18 and strict build/static checks passed. The recorded count is name-level evidence, not bytes or safe-reclamation proof; no physical-device or full cold-offline claim.
+
 # Public v196 — correct browser diagnostic next steps (2026-10-27)
 
 App cf5f019 on codex/ui-design-handoff packages9706bf0d93208521 /135 verified assets, entry index-Ww9FE1hc.js. Site source696a0e35d96f7b0fe9c695433148dd9376a2c4a2 retains current and actual previous publice52f assets;19 older assets pruned. Adapter verification and independently recomputed135 asset byte/hash entries passed.
