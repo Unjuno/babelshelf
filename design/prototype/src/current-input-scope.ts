@@ -11,8 +11,8 @@ export function explicitInputQuestion(question:string,currentInputs:boolean){
  // request. Mixed actions and second questions still go through normal planning.
  const tail=parts[1].trim();
  if(tail&&!/^(?:(?:reply|respond|answer)(?:\s+with)?|return)\s+(?:the\s+)?(?:code|number|answer|text|value|name|date|time|result)\s+only[.!]?$/iu.test(tail))return null;
- const english=/^(?:what|which|where|when|who|why|how)\b/iu.test(text)&&/\b(?:this|these|attached|current)\s+(?:(?:[\p{L}\p{N}-]+)\s+){0,3}(?:images?|photos?|pictures?|files?|attachments?|documents?|recordings?|audio|videos?)\b/iu.test(text);
- const japanese=/^(?:この|これらの|添付(?:した|された)?).*(?:画像|写真|ファイル|文書|資料|録音|音声|動画).*(?:何|どこ|なぜ|どう|どれ|いつ)/u.test(text);
+ const english=/^(?:what|which|where|when|who|why|how)\b/iu.test(text)&&/\b(?:this|these|attached|current)\s+(?:(?:[\p{L}\p{N}-]+)\s+){0,3}(?:images?|photos?|pictures?|files?|attachments?|documents?|pdfs?|recordings?|audio|videos?)\b/iu.test(text);
+ const japanese=/^(?:この|これらの|添付(?:した|された)?).*(?:画像|写真|ファイル|文書|PDF|資料|録音|音声|動画).*(?:何|どこ|なぜ|どう|どれ|いつ)/u.test(text);
  return english||japanese?{action:'answer' as const,query:question,target:'inputs' as const}:null;
 }
 // Current attachments are already selected by canonical ID/revision. A planner's

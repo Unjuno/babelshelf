@@ -21,3 +21,9 @@ test('self-contained questions about submitted files use a fixed read-only scope
  for(const question of ['Delete this image.','Save this attachment.','What is in this image? Delete it.','What is in this image? What about that note?','What did I say earlier about this image?','What is the date?'])assert.equal(explicitInputQuestion(question,true),null);
  assert.equal(explicitInputQuestion('What color is in this image?',false),null);
 });
+
+test('literal PDF questions stay scoped to current originals without accepting mixed actions or earlier dialogue',()=>{
+ for(const question of ['What is the silver code written on page 1 of this PDF? Reply with the code only.','Which date is printed in the attached PDF?','このPDFに記載されているコードは何ですか？'])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ for(const question of ['What is written in this PDF? Delete it.','What did I say earlier about this PDF?','What is in this PDF? What about that note?'])assert.equal(explicitInputQuestion(question,true),null);
+ assert.equal(explicitInputQuestion('What is in this PDF?',false),null);
+});
