@@ -1,3 +1,11 @@
+# Public v209 — exact quoted correction without inference (2026-10-27)
+
+App603a89e042c2e874404f93d19cef6282bea83db2 on codex/ui-design-handoff delivers4e6a1b6ab6c75b73 /135 independently byte/hash-verified assets, entry index-D_NkC3Hx.js. Site source57c4105d0849da9c575f0dd98c17ec3206a3290a retains current and previous publicb707 assets;19 older generated assets pruned. Delivery adapter gzip/identity, method and offline-shell checks passed. One current compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_979274ebce2c81918da73da51db37426(v209), deployment appgdep_6adfe7573c148191966b9bda2437a957 succeeded2026-10-26T23:51:04.700329Z. Native uncompressed tar SHA256a3ed8ce9d0e26d0fd6baa6fcbb6e46b68107254a8818fc95e3c30a4b78e46948,57,200,640bytes/160files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normal Update adopted index-D_NkC3Hx.js; Developer confirms active worker4e6a1b6ab6c75b73 and retained prior0aa313 Performance report/logsOff. Offline, original QA-draft-v179.md v1 displayed blue notebook. Replace "blue" with "green" in this file. opened exact Before/After review despite the unprepared text model. Activity contained only Read file/Review changes with source=literal. Explicit Cancel produced Correction cancelled · original retained; reload and opening the file confirmed unchanged blue notebook/v1 and empty composer. No public knowledge write, model load/generation/acquisition or new performance report. Local8b0 exactJapanese Savev5/Undov6 scope and final local no-file guard evidence are recorded separately. No phone/general semantic-quality claim.
+
 # Public v208 — saved correction discovery and review (2026-10-27)
 
 App f6c4a206effa582dffc94347143b0bbe15db7eaa on codex/ui-design-handoff delivers b707f38d8c61407c /135 independently byte/hash-verified assets, entry index-BgupePQP.js. Site source 0fa07106e59845c7787e1ecebfb7b29c70dd41a6 retains current and previous public63f79 assets;19 older generated assets pruned. Delivery gzip/identity, method and offline-shell transport checks passed; one compressed archive reused.
