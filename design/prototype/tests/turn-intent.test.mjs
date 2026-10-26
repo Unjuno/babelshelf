@@ -18,6 +18,14 @@ test('explicit named corrections nominate a search subject without inventing a t
  for(const text of ['このメモの水をお茶に直して。','前の会話で保存したQA星見のメモの水をお茶に直して。','保存したQA星見のメモの水をお茶に直して。それから削除して。','In my saved meeting note, replace water with tea and email it.'])assert.equal(router.explicitSavedKnowledgeCorrection(text),null,text);
  assert.equal(router.explicitSavedKnowledgeCorrection('保存したQA星見のメモの水をお茶に直して。',true),null);
 });
+
+test('quoted replacement content cannot masquerade as saved-knowledge, history or question routing',()=>{
+ for(const question of ['Replace "saved note what" with "x".', 'Replace "saved note what" with "x" in this file.','このファイルの「前の会話」を「保存したメモ」に直して。','Replace "x.md?" with "and delete;" in this file.']){
+  const intent=route({question});assert.equal(intent.request.action,'edit',question);assert.equal(intent.request.target,'file',question);
+  assert.equal(router.scopeResolvedTurnRequest({request:intent.request,question,literal:false,inputs:[],currentFile:prior.currentFile}).request.target,'file');
+ }
+ assert.equal(route({question:'保存した荷物のメモの「何」を「新しい文字」に直して。'}).request.action,'edit');
+});
 const route=(overrides={})=>{
  assert.equal(typeof router.resolveSubmittedTurnIntent,'function');
  return router.resolveSubmittedTurnIntent({

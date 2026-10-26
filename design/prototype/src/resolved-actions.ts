@@ -4,7 +4,7 @@ import type {TextRuntime} from './text-inference.ts';
 import type {DialogueContext} from './conversation.ts';
 import type {createTurnActivityTracer} from './harness-activity.ts';
 import {proposeTask} from './task-proposals.ts';
-import {proposeCorrection,resolveCorrectionTarget} from './note-corrections.ts';
+import {literalCorrectionProposal,proposeCorrection,resolveCorrectionTarget} from './note-corrections.ts';
 import type {builtinToolRegistry} from './tool-package-records.ts';
 import {runBuiltinTool} from './tools/builtin-tool-results.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
@@ -61,7 +61,12 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
    return proposal.question?{kind:'clarify' as const,question:proposal.question}:{kind:'schedule' as const,task:proposal.task!};
   },
   async correction(query:string,selectedFile?:Parameters<typeof proposeCorrection>[2]){
-   const proposal=await trace('memory.propose_correction',{model,question,query},async()=>{const records=await store.all(),target=selectedFile??resolveCorrectionTarget(records,query);return proposeCorrection(engine,question,target,check,records);},value=>({id:value.id,path:value.path,revision:value.expected.revisions.at(-1).version,before:value.before,after:value.after,operation:value.operation}));
+   let source:'literal'|'model'='literal';
+   const proposal=await trace('memory.propose_correction',{model,question,query},async()=>{
+    const records=await store.all(),target=structuredClone(selectedFile??resolveCorrectionTarget(records,query));check();
+    const literal=literalCorrectionProposal(target,question);if(literal)return literal;
+    source='model';const runtime=acquireModel?await acquireModel():engine;check();return proposeCorrection(runtime,question,target,check,records);
+   },value=>({id:value.id,path:value.path,revision:value.expected.revisions.at(-1).version,before:value.before,after:value.after,operation:value.operation,source}));
    check();return {kind:'correction' as const,proposal};
   },
   async search(query:string,options:{complete?:boolean}={}){

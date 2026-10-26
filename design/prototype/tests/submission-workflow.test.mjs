@@ -46,6 +46,18 @@ test('discovered corrections revalidate canonical identity and revision before p
  }
 });
 
+test('quoted named corrections can reach exact review with no prepared model, without writing knowledge',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/packing.md',body:'水と懐中電灯。'}),before=structuredClone(note),proposals=[];
+ f.services.knowledge={getState:async()=>undefined,all:async()=>[note],search:async query=>{assert.equal(query,'荷物');return [{kind:'file',noteId:note.id,revision:1,path:'Notes/packing.md'}];}};f.view.reviewCorrection=p=>proposals.push(p);
+ const outcome=await c.run(run=>executeSubmission({text:'保存した荷物のメモの「水」を「お茶」に直して。',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'awaitingApproval');assert.equal(f.modelCalls(),0);assert.equal(proposals[0].after,'お茶と懐中電灯。');assert.deepEqual(note,before);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'||a.tool==='dialogue.plan'),false);
+});
+
+test('unqualified quoted replacements require a selected file rather than treating operands as knowledge questions',async()=>{
+ const f=fixture(),c=createSubmissionController();f.services.knowledge={all:async()=>{throw Error('No implicit knowledge read');},search:async()=>{throw Error('No implicit search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'Replace "saved note what" with "x".',attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/No working file/);assert.equal(f.modelCalls(),0);
+});
+
 test('named corrections discover first, choose among canonical files and generate only a reviewed proposal',async()=>{
  for(const mode of ['unique','choose','cancel','stale']){
   const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/meeting.md',body:'Bring water.'}),other=createNote({path:'Inbox/meeting-copy.md',body:'Other water.'}),proposals=[];let records=[note,other],generated=0,choices=0;

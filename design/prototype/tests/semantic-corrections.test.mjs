@@ -1,7 +1,32 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {createNote,reviseNote,latest} from '../../../dist/core.js';import {prepareCorrection,applyCorrection,undoCorrection,proposeCorrection} from '../src/note-corrections.ts';import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts';
+import test from 'node:test';import assert from 'node:assert/strict';import {createNote,reviseNote,latest} from '../../../dist/core.js';import {prepareCorrection,applyCorrection,undoCorrection,proposeCorrection,literalCorrectionProposal} from '../src/note-corrections.ts';import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts';
 import {formatTask,parseTask,taskDefinition} from '../src/task-records.ts';
+import {explicitLiteralReplacement} from '../src/correction-request.ts';
 const taskFixture=()=>{const task={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,enabled:false,notify:true,prompt:'Check lamp stock.'},n=createNote({path:'Schedule/qa-task.md',body:formatTask(task)});n.ui={recordType:'schedule'};n.taskCursor={definition:taskDefinition(task),nextAt:'2026-10-20T00:00:00.000Z'};return n;};
 const patch=changes=>JSON.stringify({action:'patch',changes});
+
+test('literal operands remain data, including command words, punctuation, whitespace and replacement symbols',()=>{
+ for(const [request,find,replacement] of [
+  ['保存した手順のメモの「削除して」を「実行しない」に直して。','削除して','実行しない'],
+  ['In my saved instructions note, replace "a.md" with "b.md".','a.md','b.md'],
+  ['In my saved instructions note, replace "and" with "or".','and','or'],
+  ['Replace "  Ａ🌳 " with "$&\\n$1" in this file.','  Ａ🌳 ','$&\\n$1'],
+ ])assert.deepEqual(explicitLiteralReplacement(request),{action:'replace',find,with:replacement},request);
+ for(const request of ['このファイルの水をお茶に直して。','Replace "water" with "tea" and delete the note.','Translate "water" into Japanese.','Do not replace "water" with "tea".','「水」を「お茶」に直して。それから保存して。'])assert.equal(explicitLiteralReplacement(request),null,request);
+});
+
+test('explicit quoted replacements preserve exact multilingual bytes before model inference and retain review/history/Undo',async()=>{
+ const n=createNote({path:'Notes/packing.md',body:'水と懐中電灯。水を追加。'}),before=structuredClone(n),engine={count:()=>{throw Error('No model count for exact replacement');},generate:()=>{throw Error('No model generation for exact replacement');}};
+ for(const request of ['このファイルの「水」を「お茶」に直して。','保存した荷物のメモの「水」を「お茶」に直して。','In my saved packing note, replace "水" with "お茶".','Replace “水” with “お茶” in this file.']){
+  const proposal=await proposeCorrection(engine,request,n);assert.equal(proposal.after,'お茶と懐中電灯。お茶を追加。');assert.deepEqual(proposal.operation.arguments,{find:'水',with:'お茶'});assert.deepEqual(n,before);
+  const saved=applyCorrection([n],proposal);assert.equal(saved.note.revisions[0].body,before.revisions[0].body);assert.equal(saved.note.revisions[1].body,proposal.after);const undone=undoCorrection([saved.note],saved.receipt);assert.equal(latest(undone.note).body,before.revisions[0].body);assert.equal(undone.note.revisions.length,3);
+ }
+ await assert.rejects(proposeCorrection(engine,'このファイルの「存在しない文字」を「お茶」に直して。',n),/not found/i);
+ for(const ui of [{managed:true},{recordType:'schedule'},{recordType:'execution'}])assert.equal(literalCorrectionProposal({...n,ui},'Replace "水" with "お茶".'),null);
+ const tool=createNote({path:'Tools/user.example/tool.js',body:'function(){}'});assert.equal(literalCorrectionProposal(tool,'Replace "function" with "async function".'),null);
+ assert.throws(()=>literalCorrectionProposal({...n,ui:{protected:true}},'Replace "水" with "お茶".'),/protected|unsupported/);
+ await assert.rejects(proposeCorrection(engine,'Replace "水" with "".',createNote({path:'Notes/empty.md',body:'水'})),/Empty result/);
+ await assert.rejects(proposeCorrection(engine,'Replace "水" with "お茶".',createNote({path:'Notes/large.md',body:'水'.repeat(1001)})),/limit/);
+});
 
 test('scheduled prompts and full note rewrites receive the available bounded output space',async()=>{
  const body='確認した内容を日本語で整理する。'.repeat(80);

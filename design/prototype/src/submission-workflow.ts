@@ -213,7 +213,6 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       return workingFileNote(records,pin);
      },workingFileMetadata);checkSend();
     }
-    await ensureText();checkSend();
     const {proposal}=await actions().correction(request.query,selectedFile);checkSend();
     await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+proposal.expected.revisions.at(-1).version});checkSend();await view.reviewCorrection(proposal,id);return {kind:'awaitingApproval'};
    }

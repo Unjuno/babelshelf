@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Literal versus semantic correction — 2026-10-27
+
+correction-request.ts shares named-subject admission and exact quoted operand parsing. Ordinary literal replacements use the existing validated text.replace proposal before acquisition; semantic work acquires the selected engine only when needed. Quoted content remains data at routing boundaries, not a saved-file/history/question command. Both paths share canonical target discovery and review/Save/CAS/history. Managed settings, schedules and custom tool sources retain their typed adapters. See [correction contract](CORRECTION-CONTRACT.md).
+
 ## Saved-file planning boundary — 2026-10-27
 
 Explicit saved-content work excludes unrelated dialogue/current-file selectors before context preparation and planning. Existing read-only discovery can terminate in a reviewed edit only when its exact target is present in successful built-in results and a fresh canonical ID/version/path read agrees. The model still proposes the transformation; full review/approval/CAS/history own all knowledge writes. Navigation-only file metadata remains distinct from source content. See [Saved-file planning](SAVED-FILE-PLANNING.md).
