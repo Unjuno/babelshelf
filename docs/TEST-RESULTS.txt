@@ -1,3 +1,19 @@
+REAL STOP AND NEXT GENERATION — 2026-10-27 JST
+Unchanged23ae43723e1c44af local Windows sidebar, selected prepared4B registered
+model revision8d6557168168f91ea6697a4a49ed2ef622b53adb/runtime
+621e20782f208660f4f58283c2ce58430020f243, configuredwebml-qwen35/webgpu.
+Long synthetic story request reached Generating after local verification/warmup.
+Stop showed Stopped, restored exact input and enabled Send at first observation;
+host click+AX took446ms, not an instrumented runtime cancellation measurement.
+No completed story answer or Save note appeared. A separate Hello then generated
+Hello! How can I help you today? from the same selected model without page reload
+or reselection. No stale story output observed. Original user draft restored.
+Focused controller/workflow/inference/worker tests39 passed. Product unchanged,
+public release remains182; docs-only follow-up pushed. App modeOnline with prepared
+assets: no OS-offline, hardware execution, precise decode/kernel cancellation,
+long-run, memory/thermal, partial-story continuation or phone acceptance claim.
+Evidence: stop-and-resume.png; USABILITY-EVALUATION.md / REMAINING-GATES.md.
+
 SOURCED FOLLOW-UP AND HISTORY SELECTOR RECOVERY — 2026-10-27 JST
 Final23ae43723e1c44af /135 assets, index-Bx_EYrcy.js, app172ab7e.
 Old100d local4B 「その集合の持ち物は何？」 chose chat and hallucinated file

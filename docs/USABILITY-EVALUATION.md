@@ -1,5 +1,13 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — Stop, recover input, and generate again
+
+Actual unchanged23ae43723e1c44af Windows sidebar, selected prepared Bonsai2 4B: sent a synthetic original-story request of at least1500 words, waited through local model verification/warmup to Generating, then pressed Stop. The first post-click AX observation showed Stopped, the exact story request restored to Message, and attachment/voice/Send enabled. The host interaction plus observation took446ms; this is not an instrumented cancellation latency measurement or proof of immediate GPU-kernel shutdown. The stopped turn had no completed answer or Save note action.
+
+Replaced only that test-owned recovered text with Hello. The same selected model returned the actual response “Hello! How can I help you today?” without page reload, model reselection, or an explicit new preparation. No stale story output replaced the new reply. The pre-existing user draft was restored afterward and not submitted. No original note or setting was edited. App connection mode stayed Online; do not infer OS/network isolation. Screenshot: outputs/stop-and-resume.png (Stop and a separate new generation, not continuation of the stopped story).
+
+No defect was reproduced in this flow, so the working controller/runtime path was retained. Current focused controller/workflow/text-inference/worker regressions39 passed. This narrows the PC interruption evidence gap only; repeated stress, memory/thermal behavior, exact prefill/decode cancellation points, partial-response continuation, and physical iOS/Android remain unverified. Public release remainsv182; this follow-up changes documentation only.
+
 ## 2026-10-27 — source-dependent follow-ups and invalid history recovery
 
 Actual local sidebar on100d2301fc13e22d: after a sourced answer about the meeting place, 「その集合の持ち物は何？」 selected chat and answered that the belongings were the filenames QA-creation-draft and QA-旅程, with no source. Planner1638 input/15 output took37573ms. Model-facing history retained found titles but dropped all answer source identities; the planner could not distinguish a sourced answer from unsupported dialogue. Evidence: outputs/followup-before.png. The erroneous historical answer was retained, not rewritten.
