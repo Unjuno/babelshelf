@@ -1,3 +1,11 @@
+# Public v201 — immediate cited-source follow-ups (2026-10-27)
+
+Appa0372ca on codex/ui-design-handoff packages78000fcf335235b7 /135verified assets, entry index-BD02r2lQ.js. Site source68a41377657541904de399517eb6a25ff184ce40 retained current and actual previous public4e640 assets;20 older delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b6fc1b9c73988191917238bf53564f40(v201), deployment appgdep_6adfc665d5a481918ba1f59c1bae2615 succeeded2026-10-26T21:30:32.310514Z. Native uncompressed tar SHA256e8dcde5beae69cc898aa6f3c1e2f64ba80e25f953faf9cd532d5c6bca9b10c1f,57,169,920bytes/160files. Public audience retained; one current compressed archive reused.
+
+Existing babelshelf.com sidebar normalUpdate adopted matching78000 worker/index-BD02r2lQ.js. RestoredOffline, opened retained QA-draft-v179.md v1 Original from its existing source control; exact body remained. Original pin/emptycomposer/logsOff/priorreport retained, no new public model acquisition/inference or knowledge writes. Actual new source-follow-up inference/citation/save-preview evidence is local candidate4c4 scope described in TEST-RESULTS, not public-profile generation. Final guards/protocol tests934/intent27/product6/build/static passed. Physical phones/OS-isolated cold offline and broad ambiguous-source reasoning remain open.
+
 # Public v200 — history/list caption contrast (2026-10-27)
 
 App458e549 on codex/ui-design-handoff packages4e640fa6037c076a /135 verified assets, entry index-B7XLhosE.js, CSSindex-DkoiGQYq.css. Site sourcef779386aa0f35718e08c32ccbb6033f25c11c60d retains current and actual previous public7961 assets;20 older delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
