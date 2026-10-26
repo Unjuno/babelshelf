@@ -1,3 +1,11 @@
+# Public v208 — saved correction discovery and review (2026-10-27)
+
+App f6c4a206effa582dffc94347143b0bbe15db7eaa on codex/ui-design-handoff delivers b707f38d8c61407c /135 independently byte/hash-verified assets, entry index-BgupePQP.js. Site source 0fa07106e59845c7787e1ecebfb7b29c70dd41a6 retains current and previous public63f79 assets;19 older generated assets pruned. Delivery gzip/identity, method and offline-shell transport checks passed; one compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_dba4fd30558c81919a059773823e7381(v208), deployment appgdep_6adfe33fee1881919dfcf9e0da9783ba succeeded2026-10-26T23:33:35.062231Z. Native uncompressed tar SHA25670178c2ccbb0cc867f39955e20fa8b0b219f5e001c31bad5148fee00b95571d8,57,190,400bytes/160files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normal Update adopted index-BgupePQP.js; Developer confirms active worker b707f38d8c61407c and retained prior0aa313 Performance report/logsOff. AppOffline correction request for NoSuchFile84917Z returned No matching file; Activity contained only Search Done with no model load, compaction, action selection or proposal. The unrelated QA-draft-v179v1 pin was not substituted. Recovered test input cleared and reload retained original empty composer/pin. No public model acquisition/generation/knowledge writes. Local real4B choice/proposal/Save/Undo and final local choice/Cancel evidence retain their exact build scopes in SAVED-FILE-PLANNING/TEST-RESULTS; no public positive generation or phone claim.
+
 # Public v207 — recorded operation outcomes (2026-10-27)
 
 App commit c6a36a4647b8ba9521c4614322e935c2366a6c4a on codex/ui-design-handoff delivers build 63f791c359c69515 /135 assets, entry index-DfHobCvQ.js. Site source 6c0176701a057f9276dfd4d11c6154b0e715e04f retains current and previous public assets. Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f110a2366e708191b671c474e8d7a8de (v207), deployment appgdep_6adfdd57795481919ae0974e64212902 succeeded 2026-10-26T23:08:24.920106Z. Native uncompressed tar SHA256 c36a74d8542d422e896777dab07fc636712c48148ff46c573fc33531c05deda3, 57,180,160 bytes /160 files. Existing public audience preserved.
