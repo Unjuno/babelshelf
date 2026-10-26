@@ -1,4 +1,12 @@
-## Latest publication — retrieval-bound evidence, Site v187, 2026-10-27
+## Latest publication — bounded citation repair, Site v188, 2026-10-27
+
+After final local adoption off039, actual4B repeated the original broad question successfully with citation-retry and exactv3 Original source. Final local source/receipt screenshots are separate from public adoption proof; no public-profile model generation was performed.
+
+Public audience/domain retained. Product `f039acbf948ac644`,135 verified assets, entry `index-C5sY-4Uo.js`; app `a6d36ca` pushed to `codex/ui-design-handoff`. Site source `cfa04ce3146678b68d484360c2e74c3c44607ca3`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_e38fad81ad3481919a775025962153a3`; deployment `appgdep_6adf9bd1c54881918febd4456cf8f28c` succeeded at `2026-10-26T18:28:49.230087+00:00`. Native archive SHA256 `d1f0a6202307e1e846c651b0ec942344a6b6b1f7eca2b5e6e9a70466b31b2c77`,57,159,680 uncompressed bytes/160 files. One stage/archive reused; actualv187 predecessor retained and19 obsolete generated assets pruned. Independent135-file size/hash and delivery transport passed. Temporary local QA page/parser probe excluded.
+
+Existing public sidebar applied normal Update and showed matching page `index-C5sY-4Uo.js` / active worker `f039acbf948ac644`. Offline restored, detailed logsOff; original file pin and empty composer retained, no storage purge or model acquisition. Previous253f test report remains explicitly dated/build-labelled. Public selected4B unprepared; no new public inference is claimed. Final prototype918, focused conversation/workflow116, intent24, product6, strict build/TypeScript/static/runtime28 passed. Actual local citation-retry output and exactv3 source evidence are documented in USABILITY-EVALUATION.md. No whole-quality, phone, sustained performance or speedup acceptance.
+
+## Prior publication — retrieval-bound evidence, Site v187, 2026-10-27
 
 Public audience/domain retained. Product `969979612954f800`, 135 verified assets, entry `index-Cpq5kgQ_.js`; app commit `2467f79` pushed to `codex/ui-design-handoff`. Site source `8e4cd1683772f5eafc749341c8944e9f7cf654e0`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_458ea72320f08191a0fb133e2433b53f`; deployment `appgdep_6adf9718bf208191b6ce091ead719867` succeeded at `2026-10-26T18:08:44.223793+00:00`. Native saved archive SHA256 `c3b73cf63dd3ffd0ca7ff88fb3974130c9ced985e5b75f147f56835e2accf99e`, 57,149,440 uncompressed bytes /160 files. One stage/archive reused; actual v186 predecessor retained and19 obsolete generated assets pruned. Independent asset hashes/sizes and delivery transport checks passed.
 

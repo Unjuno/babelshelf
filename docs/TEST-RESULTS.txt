@@ -1,4 +1,13 @@
 BOUNDED MULTI-SOURCE CITATION PROTOCOL REPAIR — 2026-10-27 JST
+Finalf039 actual local sidebar rerun passed original broad question, exactv3
+source and citation-retry receipt. Draft restored; no Save or original edit.
+Evidence current-citation-repair-final-activity.txt/final-source.png.
+Final productf039acbf948ac644,918 prototype,116 conversation/workflow,24 intent,
+6 product, strict build/TypeScript/static/runtime28 pass. Published Site188;
+public sidebar page index-C5sY-4Uo.js / active workerf039acbf948ac644 match.
+Public Offline/logsOff/data/pin restored; older report kept its original253f
+identity. No model acquisition or new public inference. Publication identifiers
+and archive integrity recorded in SITES-DEPLOYMENT.md.
 Local diagnostic ae62 reproduced the broad Memory Citation mismatch. Boolean-only
 temporary probe:3 evidence excerpts,2 known citation IDs; one exact quote and one
 17-character quote absent from every excerpt. No raw source/output logged.
@@ -10,7 +19,8 @@ passed. Source change during first generation refuses before a retry.
 Actual candidate368fcc122158b172 selected prepared4B answered original broad
 question with 集合場所は北口。; receipt citation-retry, exactv3 citedQuote;
 Source opened canonical current Original. No Save or knowledge edit; draft restored.
-Final evidence-free retry guard/context error distinction followed this UI run.
+Final evidence-free retry guard/context error distinction followed the candidate
+UI run; the final build was separately rerun successfully as recorded above.
 Details and scope: USABILITY-EVALUATION.md. Not general semantic or phone acceptance.
 
 RETRIEVAL-BOUND EVIDENCE AND DEFERRED TEXT ACQUISITION — 2026-10-27 JST
