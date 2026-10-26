@@ -1,4 +1,12 @@
-## Latest publication — selected original message boundary, Site v190, 2026-10-27
+## Latest publication — bound file context preparation, Site v191, 2026-10-27
+
+Developer confirms active worker `75e86dfed2ea2f8d` and page `index-DAeg0HSQ.js`. Detailed logsOff and the older253f report/date were retained; no device check was rerun simply to refresh its attribution.
+
+Public audience/domain retained. Product `75e86dfed2ea2f8d`,135 verified assets, entry `index-DAeg0HSQ.js`; app `48ecbce` pushed to `codex/ui-design-handoff`. Site source `3ff4010545f1f1b840802d8812ace79c8dda46cf`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_9266489150088191a8344f5be98a3ed8`; deployment `appgdep_6adfa4c917988191b110cf607597cd6c` succeeded at `2026-10-26T19:07:03.669107+00:00`. Native archive SHA256 `cb443bf6a447ff0f523dfe664b0ae053662cf7f97de75790cc3b013ba8ed222b`,57,159,680 uncompressed bytes/160 files. Reused stage/archive; retained actualv190 predecessor and pruned19 obsolete generated assets. Independent135-file size/hash and delivery transport passed.
+
+Existing public sidebar normal Update adopted `index-DAeg0HSQ.js`, retaining35 rows/21 answers and the original file pin/empty composer; app returned Offline without data clearing or model acquisition. Actual prepared4B local same-file/same-question absence answer, exactv3 citation and cancelled Save preview are separate evidence in USABILITY-EVALUATION.md. Final prototype921, focused119, intent24, product6, strict build/TypeScript/static/runtime28 passed. No controlled speedup percentage, universal absence/semantic quality, physical-device or full-offline acceptance.
+
+## Prior publication — selected original message boundary, Site v190, 2026-10-27
 
 Developer confirms active worker `05dd34af511e167c` and page `index-C5qfd_Jz.js` after public adoption. Detailed logsOff and the older253f report remain unchanged and correctly identified; no device test was rerun to relabel it.
 

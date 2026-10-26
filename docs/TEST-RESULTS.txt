@@ -1,4 +1,8 @@
 BOUND FILE QUESTION CONTEXT PREPARATION — 2026-10-27 JST
+Published191/75e86dfed2ea2f8d; public sidebar current page adopted,35 rows/21
+answers retained, Offline/pin/empty composer restored without model acquisition.
+Independent135 asset sizes/hashes and delivery transport checks passed. Release
+IDs/archive metadata: SITES-DEPLOYMENT.md. No new public-profile inference.
 Actual local05dd opened currentv3 place-only file and asked its meeting time.
 4B correctly said evidence does not state a time, with exact source; Save preview
 matched and was cancelled. But Context processed50 past turns, through30->49,
