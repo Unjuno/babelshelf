@@ -1,4 +1,10 @@
 RETAINED COMPLETED-ANSWER OUTCOME — 2026-10-27 JST
+Published189/d21fe8cdbe422c9d. Public sidebar before/after and ordinary appOffline
+reload retained35rows/21answers; stale completed marker1->0, unfinished1->1.
+Old image answer opened exact Visionv1 source and original PNG preview. No new
+generation, downloads, note/history migration or data purge. Prior report kept.
+Independent asset135 hash/size and delivery transport checks pass. Publication
+IDs in SITES-DEPLOYMENT.md, counts/screenshots in current-legacy-status outputs.
 Actual public188/f039 sidebar:35rows/21answers,1 completed answer with stale
 Request interrupted marker and1 genuine unfinished request. Root: older records
 keep their placeholder; UI hides all placeholders under the global send lock,

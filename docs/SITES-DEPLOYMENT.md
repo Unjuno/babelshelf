@@ -1,4 +1,12 @@
-## Latest publication — bounded citation repair, Site v188, 2026-10-27
+## Latest publication — retained dialogue outcome, Site v189, 2026-10-27
+
+Post-reload Developer confirms active worker `d21fe8cdbe422c9d` and page `index-ClGRBCtC.js`; original253f diagnostic report/date and logsOff remain. Public Input was left Offline at the repaired older image-answer row; local draft `ああ` restored.
+
+Public audience/domain retained. Product `d21fe8cdbe422c9d`,135 verified assets, entry `index-ClGRBCtC.js`; app `2001955` pushed to `codex/ui-design-handoff`. Site source `20f9dc81c35a759600691ef057c29c8d7f581de4`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_4e12516e83508191bee53d0d20fb2dd8`; deployment `appgdep_6adf9e1d92a8819187ebecef9a71cad0` succeeded at `2026-10-26T18:38:35.117581+00:00`. Native archive SHA256 `723795171ad79cae909fc4bc832ddfe99af912d79abcf65d87aa335610023d90`,57,159,680 uncompressed bytes/160 files. Reused stage/archive; retained actualv188 predecessor, pruned19 obsolete generated assets. Independent135-file size/hash and delivery transport passed.
+
+Existing public sidebar normal Update adopted `index-ClGRBCtC.js`. Before/after:35 history rows and21 answers retained; stale completed interruption1→0, truly unfinished1→1. App Offline ordinary reload retained35/21/0/1. Old image answer still opened its Visionv1 citation and original `vision-marker.png` preview. No model download/inference, canonical-history migration, note edits, Save or storage clearing. Original pin and empty composer retained; detailed logging unchangedOff and older253f device report retained. This is Windows sidebar UI evidence, not physical-phone or OS-isolated offline acceptance. Final prototype919, focused124, product6, strict build/TypeScript/static/runtime28 passed. Evidence: outputs/current-legacy-status-public.json, current-legacy-status-public.png and current-legacy-status-original.png.
+
+## Prior publication — bounded citation repair, Site v188, 2026-10-27
 
 After final local adoption off039, actual4B repeated the original broad question successfully with citation-retry and exactv3 Original source. Final local source/receipt screenshots are separate from public adoption proof; no public-profile model generation was performed.
 
