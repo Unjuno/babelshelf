@@ -41,6 +41,27 @@ test('Memory search accepts IME width and combining marks without changing origi
  await expect(page.getByRole('button',{name:'Open ガラス',exact:true})).toBeVisible();
 });
 
+test('input file opens directly and explicitly refreshes a restored revision without losing the message draft',async({page})=>{
+ const input=async()=>{await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();};
+ await create(page);await page.getByRole('button',{name:'Cancel',exact:true}).click();await input();
+ await page.getByRole('textbox',{name:'Message',exact:true}).fill('Keep this unsent message');
+ await page.getByRole('button',{name:'Open input file Inbox/Travel.md',exact:true}).click();
+ await expect(page.locator('.file-body')).toHaveText('Meet at 09:00. 青いノート。');
+ await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await input();
+ await expect(page.getByRole('group',{name:'Input file',exact:true})).toContainText('Unavailable');
+ await expect(page.getByRole('button',{name:/^Open (?:latest )?input file /})).toHaveCount(0);
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Local files',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();await page.getByRole('button',{name:'Restore Travel.md',exact:true}).click();await page.getByRole('button',{name:'Close',exact:true}).click();await input();
+ await expect(page.getByRole('group',{name:'Input file',exact:true})).toContainText('v1 · Changed · Open latest');
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Keep this unsent message');
+ await page.getByRole('button',{name:'Open latest input file Inbox/Travel.md',exact:true}).click();
+ await expect(page.locator('.file-body')).toHaveText('Meet at 09:00. 青いノート。');await expect(page.locator('.file-footer > span')).toHaveText('v3');
+ await page.getByRole('button',{name:'History',exact:true}).click();await page.getByRole('dialog').getByText('v1',{exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Meet at 09:00. 青いノート。');await page.getByRole('button',{name:'Close',exact:true}).click();await input();
+ await expect(page.getByRole('group',{name:'Input file',exact:true})).toContainText('v3');await expect(page.getByRole('group',{name:'Input file',exact:true})).not.toContainText('Changed');
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Keep this unsent message');
+ // The selected revision persists; composer reload durability is a separate open gate.
+ await page.reload();await expect(page.getByRole('button',{name:'Open input file Inbox/Travel.md',exact:true})).toBeVisible();
+});
+
 test('breadcrumb exit keeps a dirty draft until reviewed Save, including revision history after reload',async({page})=>{
  await create(page);
  await page.getByRole('textbox',{name:'Markdown content',exact:true}).fill('Meet at 10:00. 青いノート。\n');

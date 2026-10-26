@@ -516,7 +516,9 @@ button.model-picker svg{flex-shrink:0}
 .device-screen:has(.appearance-dark) .compact-composer{--composer-text-surface:#243830}
 .conversation{padding-bottom:max(130px,var(--composer-reserve,130px))}
 .input-file-context{display:flex;align-items:center;gap:8px;min-height:44px;max-width:100%;padding:2px 4px 2px 12px;border:1px solid var(--theme-border,#ccd8d3);border-radius:18px;background:var(--theme-surface,#f8fcfa);color:var(--theme-surface-text,#17241e);font-size:1rem;box-shadow:0 3px 12px #10251c12}
-.input-file-context>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.input-file-context>span,.input-file-context>.input-file-open{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.input-file-open{min-height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.input-file-open:disabled{opacity:.6;cursor:default}
 .input-file-context>.icon-button{color:inherit;min-height:44px;height:44px}
 .device-screen:has(.appearance-dark) .input-file-context{background:var(--theme-surface,#243830);color:var(--theme-surface-text,#eff8f3);border-color:var(--theme-border,#587367)}
 

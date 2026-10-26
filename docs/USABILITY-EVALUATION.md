@@ -1,3 +1,11 @@
+# Selected-file recovery without searching again — 2026-10-27
+
+Actual local/sidebar public203code: created one owned QA-復元確認 note, deleted to Trash and restored without touching existing notes. Input retained its pinnedv1 and correctly marked Changed after restoration tov3, but its label was inert, requiring another Memory search to recover. Candidate6ab4ecd0d9287ae6 makes the existing label a44px button: ordinary pins open the file; changed pins explicitly say Changed · Open latest. Opening the latest record is a deliberate user action through existing openNote/focus queue, not automatic rebasing during background refresh. Missing/deleted records retain Unavailable and removal, without an invalid open action. No authority/storage changes.
+
+Actual sidebar updated normally, appOffline: Open latest opened unchanged restoredQA v3, Historyv1 retained its original body, returning to Input showedv3 and retained unsentああ. Removed only the evaluation pin afterward, restored original no-pin input state. The tiny restored QA note remains with its full history; it was not purged. Controlled editor21 and WindowsWebKit targeted1 pass through create/open/delete/unavailable/restore/changed/explicitlatest/history/draft retention during navigation/pin retention afterreload.
+
+A broader assertion exposed a separate existing issue: unsent composer text is React state only and disappears on browser reload. This is not fixed here or represented as durable. Focused failure output current-input-file-open-focused.txt records it; preserving/recovering the draft across reload is the next gate. The final test checks draft retention through navigation and persistent file pin after reload, not reload durability of the message.
+
 # Memory search with Japanese IME input — 2026-10-27
 
 Actual local/sidebar0aa313: existing QA notes are found by QA or 星見, but full-width ＱＡ shows No files. The Memory browser used lowercase-only substring matching while canonical knowledge search and metadata discovery already used NFKC. Finalb0f6903b0a193479 shares the canonical transient normalizer across those boundaries, folds file paths/body/folder labels, and treats whitespace-only queries as ordinary browsing. It preserves exact stored originals, canonical paths, citation offsets and existing Home/folder scopes.
