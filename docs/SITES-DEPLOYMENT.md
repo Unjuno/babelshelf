@@ -1,3 +1,9 @@
+# Public v207 — recorded operation outcomes (2026-10-27)
+
+App commit c6a36a4647b8ba9521c4614322e935c2366a6c4a on codex/ui-design-handoff delivers build 63f791c359c69515 /135 assets, entry index-DfHobCvQ.js. Site source 6c0176701a057f9276dfd4d11c6154b0e715e04f retains current and previous public assets. Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f110a2366e708191b671c474e8d7a8de (v207), deployment appgdep_6adfdd57795481919ae0974e64212902 succeeded 2026-10-26T23:08:24.920106Z. Native uncompressed tar SHA256 c36a74d8542d422e896777dab07fc636712c48148ff46c573fc33531c05deda3, 57,180,160 bytes /160 files. Existing public audience preserved.
+
+The existing babelshelf.com sidebar tab adopted index-DfHobCvQ.js through normal Update. Returned to app Offline, the earlier-cancel question produced a completed Read earlier message receipt with the original QA cancellation request and Save cancelled outcome. Other partial records were also explicitly visible. The unprepared public model stopped with Model not prepared; this is no public generation or performance result. No model acquisition or knowledge writes. The unrelated QA-draft-v179.md v1 pin and empty composer survived reload; the test attempt remains in dialogue. Local actual prepared Bonsai4B generation on the preceding candidate returned the correct cancellation answer; see OPERATION-OUTCOMES.md for exact scope.
+
 # Public v206 — explicit named saved-note summaries (2026-10-27)
 
 App6182053 on codex/ui-design-handoff deliversa0c72540045ce084 /135 independently byte/hash-verified assets, entry index-CmYF7nMi.js. Site source48d987986fb4c126c2a0133d8500914138a986db retains current and actual previous publicd10ea assets;19 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
