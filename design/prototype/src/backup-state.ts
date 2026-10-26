@@ -1,4 +1,5 @@
 import {validatePendingCorrection,PENDING_CORRECTION_KEY} from './pending-correction.ts';
+import {validateHistoricalSourceRefs as sourceRefs} from './historical-source-refs.ts';
 import {validateDialogueCopyRecord} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 import {validateFileResultLinks} from './file-discovery.ts';
@@ -16,7 +17,7 @@ import {validateVoiceInputs} from './voice-input.ts';
 import {validateTranscriptLinks} from './speech-transcript.ts';
 // Portable local data, never runtime readiness, executable tools or write authority.
 // @ts-expect-error Shared baseline core is JavaScript.
-import {checkNotes,latest,reviseNote,parseBackup,validateRefs} from '../../../dist/core.js';
+import {checkNotes,latest,reviseNote,parseBackup} from '../../../dist/core.js';
 // @ts-expect-error Shared hash is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
 // @ts-expect-error Shared paths are JavaScript.
@@ -32,6 +33,11 @@ export type Entry={key:string;value:any};
 export type StateSnapshot={notes:any[];settings:Entry[];runs:Entry[]};
 export type StatePayload={schema:1|2;createdAt:string;notes:any[];settings?:Entry[];runs?:Entry[];excluded?:string[]};
 export type RestoreConflict={store:'notes'|'settings'|'runs';key:string;label:string};
+export function restoreConflictLabel(conflict:RestoreConflict){
+ if(conflict.store==='notes')return conflict.label;
+ if(conflict.store==='runs')return 'History';
+ return ({'ui-v1-dialogue':'Messages','ui-v1-folders':'Folders','ui-v1-trash':'Trash',[PENDING_CORRECTION_KEY]:'Pending changes'} as Record<string,string>)[conflict.key]??'Settings';
+}
 export type StateRestorePlan={conflicts:RestoreConflict[];added:{notes:number;settings:number;runs:number};writes:StateSnapshot|null};
 const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments'];
 export const MAX_BACKUP_BYTES=200000000;
@@ -54,11 +60,6 @@ function jsonOnly(value:any){
 function entries(list:Entry[]){
  if(!Array.isArray(list)||list.length>20000)throw Error('Invalid backup entries');const keys=new Set<string>();
  for(const item of list){if(!item||typeof item.key!=='string'||!item.key||keys.has(item.key))throw Error('Invalid or duplicate backup key');keys.add(item.key);jsonOnly(item.value);}
-}
-function sourceRefs(notes:any[],refs:unknown){
- // Historical references survive withdrawal. This projection validates bytes only;
- // it does not make the original eligible for current model evidence or restore it.
- if(!Array.isArray(refs)||!validateRefs(notes.map(n=>({...n,state:'active'})),refs).ok)throw Error('Invalid backup source reference');
 }
 function validateState(state:StateSnapshot){
  jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);

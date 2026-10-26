@@ -16,7 +16,7 @@
     "test:turn-intent": "node --test design/prototype/tests/turn-intent.test.mjs design/prototype/tests/turn-request-scope.test.mjs design/prototype/tests/saved-memory-open.test.mjs",
     "test:quality:custom-tools": "npm --prefix design/prototype run test:runtime -- tests/custom-tool-runtime.spec.ts tests/custom-tools-ui.spec.ts --workers=1",
     "test:quality:hash": "npm --prefix design/prototype run test:runtime -- tests/fast-hash.spec.ts",
-    "test:quality:review-store": "npm --prefix design/prototype run test:runtime -- tests/pending-correction-store.spec.ts --workers=1",
+    "test:quality:review-store": "npm --prefix design/prototype run test:runtime -- tests/pending-correction-store.spec.ts tests/note-restore-store.spec.ts --workers=1",
     "test:quality:device-memory": "npm --prefix design/prototype run test:runtime -- tests/device-memory-smoke.spec.ts",
     "test:quality:schedule-ui": "npm --prefix design/prototype run test:runtime -- tests/schedule-screen.spec.ts tests/schedule-memory-ui.spec.ts",
     "test:quality:settings-ui": "npm --prefix design/prototype run test:runtime -- tests/model-catalog-contrast.spec.ts tests/media-vision-navigation.spec.ts tests/settings-home.spec.ts",

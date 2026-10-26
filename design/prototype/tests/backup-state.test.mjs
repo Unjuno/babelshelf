@@ -152,6 +152,40 @@ test('chunked canonical hashing retains the existing payload digest and optional
 
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from '../src/note-restore.ts';
 import {reviseNote} from '../../../dist/core.js';
+
+test('restore conflict labels use familiar controls while retaining their exact internal identities',async()=>{
+ const {restoreConflictLabel}=await import('../src/backup-state.ts');
+ assert.equal(typeof restoreConflictLabel,'function');
+ for(const [key,label] of [['ui-v1-dialogue','Messages'],['ui-v1-folders','Folders'],['ui-v1-trash','Trash'],['ui-v1-pending-correction','Pending changes'],['custom-private-key','Settings']]){
+  const conflict={store:'settings',key,label:key},before=structuredClone(conflict);
+  assert.equal(restoreConflictLabel(conflict),label);assert.deepEqual(conflict,before);
+ }
+ assert.equal(restoreConflictLabel({store:'runs',key:'ui-v1-note-restore-secret',label:'ui-v1-note-restore-secret'}),'History');
+ assert.equal(restoreConflictLabel({store:'notes',key:'id',label:'Notes/travel.md'}),'Notes/travel.md');
+});
+
+test('saved generated answer recovery appends a revision only with unchanged provenance and retains archival source proof',async()=>{
+ const parent=createNote({path:'Notes/source.md',body:'Source fact'}),ref={noteId:parent.id,revision:1,start:0,end:11,quote:'Source fact'};
+ const source={...createNote({path:'Inbox/answer.md',body:'Saved answer',kind:'generated',sources:[ref]}),dialogueCopy:{schema:1,noteRevision:1,turnId:'answer',turnIndex:0,speaker:'assistant',quote:'Saved answer',refs:[ref],edited:false}};
+ const local=reviseNote(source,{body:'Local edit'},1),current={notes:[parent,local],settings:[],runs:[]},incoming={schema:2,createdAt:new Date().toISOString(),notes:[parent,source],settings:[],runs:[]};
+ assert.equal(noteRestoreCandidates(current,incoming).length,1);
+ const {write}=planNoteRestore(current,incoming,local.id);
+ assert.deepEqual(write.revisions.slice(0,2),local.revisions);assert.equal(write.revisions[2].body,'Saved answer');assert.deepEqual(write.sources,local.sources);assert.deepEqual(write.dialogueCopy,local.dialogueCopy);
+ for(const differentParent of [{...parent,revisions:[{...parent.revisions[0],body:'Source fact with different unseen context'}]},{...parent,origin:'different source metadata'}]){
+  assert.equal(noteRestoreCandidates(current,{...incoming,notes:[differentParent,source]}).filter(change=>change.noteId===local.id).length,0,'Matching quote alone is not matching source-version identity');
+ }
+ const receipt={schema:1,type:'note-restore',id:'generated-restore',appliedAt:new Date().toISOString(),backupHash:'b'.repeat(64),noteId:local.id,beforeVersion:2,afterVersion:3,source};
+ const state={notes:[parent,write],settings:[],runs:[{key:'ui-v1-note-restore-generated-restore',value:receipt}]};
+ await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ state.notes[0]={...parent,state:'withdrawn'};state.notes[1]={...write,state:'withdrawn',withdrawnAt:new Date().toISOString()};
+ await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ for(const altered of [{...source,sources:[]},{...source,dialogueCopy:{...source.dialogueCopy,turnId:'different'}},{...source,origin:'different provenance'}]){
+  assert.equal(noteRestoreCandidates(current,{...incoming,notes:[parent,altered]}).length,0);
+  assert.throws(()=>validateNoteRestoreReceipt(state.runs[0].key,{...receipt,source:altered},[parent,write]),/source|recovery/i);
+ }
+ const damagedParent={...parent,revisions:[{...parent.revisions[0],body:'Changed old source'}]};
+ assert.throws(()=>validateNoteRestoreReceipt(state.runs[0].key,receipt,[damagedParent,write]),/source/i);
+});
 test('reviewed divergent ordinary note recovery appends and retains both histories without adopting source paths',async()=>{
  const original=createNote({path:'Notes/work.md',body:'base'}),local=reviseNote(original,{body:'local branch'},1),source=reviseNote(original,{body:'backup branch',path:'Notes/old-name.md'},1),current={notes:[local],settings:[],runs:[]},incoming={schema:2,createdAt:new Date().toISOString(),notes:[source],settings:[],runs:[]},before=structuredClone(current);
  const plan=planNoteRestore(current,incoming,local.id);assert.deepEqual(plan.write.revisions.slice(0,2),local.revisions);assert.equal(plan.write.revisions[2].body,'backup branch');assert.equal(plan.write.revisions[2].path,'Notes/work.md');assert.deepEqual(current,before);

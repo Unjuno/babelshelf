@@ -1,4 +1,10 @@
-## Latest publication — source provenance and one rejected-history replan, Site v182, 2026-10-27
+## Latest publication — reviewed saved-answer recovery, Site v183, 2026-10-27
+
+Public audience/domain retained. Product106af75337a630e1 /135 verified assets, entry index-_PYokBcc.js. Site source ef06668ece37a23a3f5c340e74aca7def5ef99c1; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_080246da7a08819191f6864310519b7a; deployment appgdep_6adf85a025248191bd895e5367362b64 succeeded2026-10-26T16:54:06.979368+00:00. Saved archive SHA256172db0f0f4b9f0f132c75929a508941cac8e122232d4f90d1532e170a1a4c31a,57149440 bytes/160 files. Reused current staging/archive; retained actual publicv182 predecessor and pruned19 older assets. Independent135-file sizes/hash and delivery transport checks passed.
+
+Existing sidebar public profile updated normally without clearing storage. Developer showed active worker106af75337a630e1 and matching page entry. Quick/Performance choices, Run tests and local report actions are visible. Restored appOffline; detailed logs remainOff, selected models and input file retained. This profile's selected model is not prepared, so no public generation speed is claimed. Actual reviewed generated recovery was verified locally with unchanged backend; final local conflict preview showed Messages and disabled strict Restore. PC prototype907, real IDB2, product6, offline enlarged Help1, runtime28, strict product build/TypeScript/static check passed. No physical phone or sustained performance acceptance.
+
+## Prior publication — source provenance and one rejected-history replan, Site v182, 2026-10-27
 
 Public audience/domain retained. Product23ae43723e1c44af /135 verified assets, entry index-Bx_EYrcy.js; application172ab7e pushed to codex/ui-design-handoff. Site source5b1a0c85ddda74c8156f9e6d8479053c7308347e; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_7b5e8c582e50819185a3c6deb6833acd; deployment appgdep_6adf7bb39dd0819183fc5a0eb2fe2048 succeeded2026-10-26T16:11:46.847261+00:00. Saved tar SHA-25642c0b11aa55e71a33d2249f1748855df379c569c10cd958a8eaea36ca7fc4dbf,57139200 bytes/160 files. Exact135 byte/hash and delivery-transport checks passed. Retains actual publicv181 assets and prunes19 obsolete generated assets; one stage/archive reused.
 

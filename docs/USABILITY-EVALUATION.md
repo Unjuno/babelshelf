@@ -73,3 +73,11 @@ Regression: three browser cases first reproduced the missing confirmation on the
 Remaining evaluation: unsent creation/schedule sheets, durable approval-review recovery, model preparation-to-first-answer friction, and longer dialogue/source selection. Do not treat a successful direct-edit flow as whole-app or model-quality acceptance. Durable editor drafts across OS force-close are not implemented by this exit check.
 
 Public v178 follow-up: normal Update adopted the same page and active worker; restored appOffline. The public-origin synthetic file preserved Keep editing/Save, retainedv1/v2 after a separate discarded draft, and reopenedv2 after ordinary reload. No inference was needed. Windows WebKit had one later two-case startup timeout before Input appeared; a dedicated-port rerun passed4/4, but that earlier startup cause remains unproven.
+# Reviewed backup recovery — 2026-10-27
+
+Actual Windows sidebar use found a missing recovery action: a saved generated answer showed a conflict but could not be reviewed as a file. The recovery gate only admitted original notes. Build106af75337a630e1 allows explicit body recovery for saved generated text when immutable origin metadata and the complete referenced source versions match. Different origins or source versions refuse this path. Existing strict restore, whole-state CAS and atomic receipt rules remain.
+
+The actual flow exported a local backup, verified identical reimport caused no canonical changes, edited an owned test note, reviewed the previous body and restored it as v3. History retained v1/v2, references and saved-copy metadata; an independently parsed final export showed all other notes, prior runs and dialogue turns unchanged. Private backup files were never published. The final conflict UI uses Messages instead of an internal storage key. Help documents the short recovery path.
+
+This is PC recovery evidence, not a phone or model-performance result. Developer already offers Quick and Performance modes with one Run tests action and a local copyable report. Performance uses one bounded sample; load/first-token/generation/token/memory fields depend on the actual runtime metrics returned. No automatic upload or model download occurs. Sustained heat, output quality, OS termination and physical-device offline startup remain separate checks.
+
