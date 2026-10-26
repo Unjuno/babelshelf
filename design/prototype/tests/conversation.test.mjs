@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueAgent,planDialogueMessages,readDialogueTurn,resolveDialogueTarget} from '../src/conversation.ts';
 
+test('a completed answer replaces the crash-recovery placeholder without losing its sources on reload',()=>{
+ const pending=appendTurn(emptyDialogue(),{id:'vision',user:'Read this image',status:'Request interrupted · send again if unfinished'});
+ const refs=[{noteId:'image-reading',revision:1,start:0,end:10,quote:'MAPLE-6381'}];
+ const progress=completeTurn(pending,'vision',{refs});
+ assert.equal(progress.turns[0].status,pending.turns[0].status,'An intermediate source update must retain recovery status');
+ const completed=completeTurn(progress,'vision',{answer:'MAPLE-6381',refs});
+ const restored=JSON.parse(JSON.stringify(completed));
+ assert.equal(restored.turns[0].status,undefined);
+ assert.equal(restored.turns[0].answer,'MAPLE-6381');assert.deepEqual(restored.turns[0].refs,refs);
+ assert.equal(completeTurn(pending,'vision',{answer:'MAPLE-6381',status:'Review before saving'}).turns[0].status,'Review before saving');
+ assert.equal(pending.turns[0].answer,undefined);
+});
+
 test('planner serialization keeps retained dialogue before changing selectors without dropping scope or mutating originals',()=>{
  const recent=[{id:'one',user:'The blue lantern meeting is at 10.',answer:'Recorded in this conversation.'}];
  const old={summary:'Earlier discussion stays untrusted.',recent,refs:[],turnCount:1,lastAnswerIndex:0,currentResult:{turnId:'one'},recalled:[{turnId:'archived',turnIndex:0,speaker:'user',quote:'Earlier original',start:0,end:16}]};

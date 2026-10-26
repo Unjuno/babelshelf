@@ -24,7 +24,11 @@ import type {TextEngine as ChatEngine} from './text-inference';
 export const emptyDialogue=():Dialogue=>({schema:1,revision:0,turns:[],compaction:null});
 export function appendTurn(state:Dialogue,turn:DialogueTurn):Dialogue{if(state.turns.some(t=>t.id===turn.id))throw Error('Duplicate turn');return {...state,revision:state.revision+1,turns:[...state.turns,turn]};}
 export function completeTurn(state:Dialogue,id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>):Dialogue{
- if(!state.turns.some(t=>t.id===id))throw Error('Turn unavailable');return {...state,revision:state.revision+1,turns:state.turns.map(t=>t.id===id?{...t,...result}:t),...(result.answer?.trim()?{currentResult:{turnId:id}}:{})};
+ if(!state.turns.some(t=>t.id===id))throw Error('Turn unavailable');
+ // Submission persists a recovery placeholder before inference. A final answer
+ // clears it even on reader-owned routes that have no additional status label.
+ const completed=state.turns.map(t=>t.id===id?{...t,...(result.answer?.trim()&&!Object.hasOwn(result,'status')&&t.status==='Request interrupted · send again if unfinished'?{status:undefined}:{}),...result}:t);
+ return {...state,revision:state.revision+1,turns:completed,...(result.answer?.trim()?{currentResult:{turnId:id}}:{})};
 }
 export function validateDialogue(value:unknown):Dialogue{
  const s=value as Dialogue;

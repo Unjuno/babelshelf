@@ -11,7 +11,7 @@ test('custom Vision setup verifies the selected local package and never budgets 
  const hash=createHash('sha256').update(JSON.stringify(files)).digest('hex');
  const model=validateCustomVisionModel({id:'local-vision-'+hash,label:'Local Vision',role:'vision',engine:'transformers-lfm2-vl-onnx',revision:'sha256:'+hash,files,inspection:{format:'LFM2-VL-ONNX',architecture:'lfm2_vl',device:'webgpu',dtype:'q4f16',maxImageTokens:256,scope:'image-text'}});
  const prefs=initial();prefs.customVisionModels=[model];prefs.visionModel=model.id;prefs.visionLibrary=[model.id];const ready={text:false,speech:false,ocr:false,vision:true};
- const plan=initialPreparationPlan(prefs,ready,'vision');assert.deepEqual(plan.steps,[{role:'vision',label:model.label,readyLabel:'Verified',ready:true,bytes:0}]);assert.equal(plan.bytes,0);
+ const plan=initialPreparationPlan(prefs,ready,'vision');assert.deepEqual(plan.steps,[{role:'vision',label:model.label,readyLabel:'Files verified',ready:true,bytes:0}]);assert.equal(plan.bytes,0);
  assert.throws(()=>initialPreparationPlan(prefs,{...ready,vision:false},'vision'),/Import local Vision files first/);
  assert.throws(()=>initialPreparationPlan({...prefs,customVisionModels:[]},ready,'vision'),/Vision runtime not connected/);
 });

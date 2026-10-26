@@ -41,10 +41,10 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  // Custom packages are imported locally and contribute no network bytes.
  const steps:{role:Role;label:string;readyLabel:string;ready:boolean;bytes:number}[]=[];
  if(text)steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+((isOnnxText(text.id)||isLfmText(text.id,value.customModels)||getQwen3TextManifest(text.id,value.customModels))?0:textManifest.runtime.file.bytes)});
- if(roles.includes('speech'))steps.push({role:'speech',label:selectedSpeech?.label??speechModelLabel(models.transcriptionModel),readyLabel:'Verified',ready:ready.speech,bytes:selectedSpeech?0:builtinSpeech?.files.reduce((n,f)=>n+f.bytes,0)??0});
- if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
- if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
- if(roles.includes('vision'))steps.push({role:'vision',label:selectedVision?.label??'LFM2.5-VL 450M · image understanding',readyLabel:'Verified',ready:ready.vision===true,bytes:selectedVision?0:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
+ if(roles.includes('speech'))steps.push({role:'speech',label:selectedSpeech?.label??speechModelLabel(models.transcriptionModel),readyLabel:'Files verified',ready:ready.speech,bytes:selectedSpeech?0:builtinSpeech?.files.reduce((n,f)=>n+f.bytes,0)??0});
+ if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Files verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
+ if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Files verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
+ if(roles.includes('vision'))steps.push({role:'vision',label:selectedVision?.label??'LFM2.5-VL 450M · image understanding',readyLabel:'Files verified',ready:ready.vision===true,bytes:selectedVision?0:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
  const selected=steps;
  if(!selected.length)throw Error(onlyRole?'Choose a '+onlyRole+' model':'Choose a model');
  return {expected:JSON.stringify(value),models,steps:selected,bytes:selected.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0)};
