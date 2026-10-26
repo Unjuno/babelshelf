@@ -1,3 +1,11 @@
+# Natural-language note to read and correction — 2026-10-27
+
+Actual Windows/sidebar Chrome156, current public197 code c821: QA星見の持ち物は水と充電器。メモして。 loaded the prepared4B and entered prolonged Compacting before reaching review. It was stopped and the original request returned to Input; no note was saved by that attempt. The new literal admission instead opened New file immediately with exact QA星見の持ち物は水と充電器。 and no model/compaction step. Human-reviewed Save as Inbox/QA-星見.md createdv1.
+
+On candidatebbbcb6762870fe63, actual4B answered the pinned-file packing question correctly and opened exactv1 Original. The correction このファイルの充電器を懐中電灯に直して。 produced the right Before/After. Explicit Save createdv2; History displayed both the original charger text and corrected flashlight text. Test note retained for provenance, original input draftああ restored and QA input pin removed. No model download/fixed inference or destructive migration. This is one PC flow, not general multilingual capture or model quality acceptance.
+
+Finalc08dc70a4f07d7ad additionally admits the same new-note form while another file is pinned; controlled workflow verifies exact review without model acquisition or knowledge writes. Contextual/compound requests remain excluded. Node prototype931/intent26/product6/build/static pass; editor/review14 passed onbbb candidate. Exact public pinned-file capture/Cancel is verified after publication separately. Long-history planning for unsupported/ambiguous wording remains an open latency/quality gate.
+
 # Cache diagnostics and creation recheck — 2026-10-27
 
 Public196's144 cache buckets raised a storage question. Inspection found deliberate retention for old lazy-asset clients, with immutable assets deduplicated in a shared pool. Count alone cannot establish size, duplication or safe reclaimability; a future cleanup policy must account for frozen/BFCache clients, optional runtime assets, failed installations and model-data separation. No caches were deleted.

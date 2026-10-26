@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Literal new-note review admission — 2026-10-27
+
+A standalone supplied statement followed by a separate Japanese メモして/記録して command can open the existing capture review with exact body bytes. This recognizes a bounded explicit command form, not general Japanese intent. Attachment/reading scopes, dialogue/file references, question marks and recognized transformations/actions keep the planner path. Existing literal commands retain precedence. A pinned file does not turn an admitted new capture into an edit: capture has no file target and the canonical review/save transaction remains the only writer. No model acquisition, history counting/compaction, retrieval, generation or automatic persistence is needed for this literal review. Unsupported/ambiguous wording remains model-routed. The change does not alter generated-answer Save, correction approval/CAS/history or model safety policy.
+
 ## Current-answer formatting boundary — 2026-10-27
 
 An explicit rewrite/format request about the current answer binds that exact prior assistant turn before planner/history compaction. Quoted target phrases and mixed tool/write/file commands remain outside this shortcut. A semantic read/rewrite now inherits the selected original's existing source IDs, versions and ranges instead of dropping them when plain generation returns no sources. These references establish provenance, not semantic entailment.

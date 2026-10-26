@@ -161,3 +161,13 @@ test('the coordinator treats absent optional routes as unresolved at its public 
  const result=await router.resolveTurnRoute({current:undefined,question:'Please help',check:()=>{},plan:async()=>{calls++;return planned;}});
  assert.equal(calls,1);assert.equal(result.source,'planner');assert.deepEqual(result.request,planned);
 });
+
+test('standalone literal Japanese note requests review exact supplied text without unrelated dialogue',()=>{
+ const clean={...prior,currentFile:undefined};
+ for(const [question,body]of [['QA星見の持ち物は水と充電器。メモして。','QA星見の持ち物は水と充電器。'],['集合は11時。\n持ち物は水。記録してください。','集合は11時。\n持ち物は水。']]){
+  const before=structuredClone(clean),intent=route({question,prior:clean});assert.deepEqual(intent.request,{action:'capture',query:'',body});assert.equal(intent.context.recent.length,0);assert.deepEqual(clean,before);
+ }
+ for(const question of ['今の回答をメモして。','このファイルをメモして。','天気を教えて。メモして。','Explain the plan. メモして。','水の量を計算して。メモして。','予定を検索して。記録して。','水を買う。要約してメモして。','QA星見の持ち物は水。メモして、実行して。'])assert.notEqual(route({question,prior:clean}).request?.action,'capture',question);
+ assert.notEqual(route({question:'QA星見の持ち物は水。メモして。',prior:clean,hasAttachments:true}).request?.action,'capture');
+ assert.deepEqual(route({question:'QA星見の持ち物は水。メモして。'}).request,{action:'capture',query:'',body:'QA星見の持ち物は水。'});
+});

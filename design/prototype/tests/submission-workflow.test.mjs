@@ -193,3 +193,9 @@ test('an unprepared chat request reports needsPreparation and cannot bypass the 
  assert.equal(c.state.outcome.kind,'needsPreparation');assert.equal(c.state.outcome.reason,'model-selection');assert.equal(f.modelCalls(),0);
  assert.equal(f.current().turns.length,1);assert.equal(f.current().turns[0].status,'Model not configured · Settings');
 });
+
+test('literal new-note prose reaches exact review without model acquisition or knowledge writes',async()=>{
+ const f=fixture(),c=createSubmissionController();await f.services.saveDialogue({...f.current(),currentFile:{noteId:'existing',revision:2}});
+ const outcome=await c.run(run=>executeSubmission({text:'QA星見の持ち物は水と充電器。メモして。',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'awaitingApproval');assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,'QA星見の持ち物は水と充電器。');assert.equal(f.reviews[0].kind,'original');assert.equal(f.modelCalls(),0);assert.equal(f.current().turns.at(-1).status,'Review before saving');
+});
