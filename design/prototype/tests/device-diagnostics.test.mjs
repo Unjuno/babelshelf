@@ -35,7 +35,7 @@ test('selected model smoke counts success only for the exact expected structured
 
 test('device diagnostics run bounded local probes and distinguish readiness from model execution',async()=>{
  const storage=memoryStorage();
- const report=await runDeviceDiagnostics({now:()=>new Date('2026-10-21T00:00:00.000Z'),isSecureContext:true,platform:'iPhone',userAgent:'Mobile Safari',standalone:false,online:false,serviceWorker:{controller:{}},appBuild:'0123456789abcdef',bundle:'app-abc.js',cacheStorage:{keys:async()=>['app-shell-v1']},storage,indexedDB:null,gpu:null,selectedModel:'local-model',modelFilesPresent:true,modelLoaded:false,connectionMode:'offline'});
+ const report=await runDeviceDiagnostics({now:()=>new Date('2026-10-21T00:00:00.000Z'),isSecureContext:true,platform:'iPhone',userAgent:'Mobile Safari',standalone:false,online:false,serviceWorker:{controller:{}},appBuild:'0123456789abcdef',bundle:'app-abc.js',cacheStorage:{keys:async()=>['babelshelf-product-0123456789abcdef']},storage,indexedDB:null,gpu:null,selectedModel:'local-model',modelFilesPresent:true,modelLoaded:false,connectionMode:'offline'});
  const checks=Object.fromEntries(report.checks.map(check=>[check.id,check]));
  assert.equal(checks['secure-context'].status,'pass');assert.equal(checks['service-worker'].status,'pass');assert.equal(checks['offline-cache'].status,'pass');
  assert.equal(checks['storage-roundtrip'].status,'pass');assert.equal(checks['indexeddb-roundtrip'].status,'fail');
@@ -218,4 +218,16 @@ test('load phase counters survive local reports and malformed or private fields 
 test('bounded CPU runtime thread and prompt counters survive saved performance reports',()=>{
  const storage=memoryStorage(),value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'cpu',modelRevision:'rev',runtimeRevision:'runtime',testMode:'performance',runtimeMetrics:{requestedThreads:4,runtimeThreads:4,runtimePromptTokens:100,runtimeCachedTokens:0,runtimePrefillMs:10}}};
  writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics.runtimeThreads,4);
+});
+
+test('unrelated and historical cache buckets cannot pass the current-build cache check',async()=>{
+ const env={appBuild:'0123456789abcdef',storage:memoryStorage(),indexedDB:null,gpu:null};
+ const check=async(build,keys)=>(await runDeviceDiagnostics({...env,appBuild:build,cacheStorage:{keys:async()=>keys}})).checks.find(item=>item.id==='offline-cache');
+ const old=['babelshelf-product-fedcba9876543210','babelshelf-product-assets-v1','model-assets','unrelated'];
+ assert.equal((await check(env.appBuild,old)).status,'warning');
+ assert.match((await check(env.appBuild,old)).detail,/Current build cache not listed/);
+ const result=await check(env.appBuild,[...old,'babelshelf-product-'+env.appBuild]);
+ assert.equal(result.status,'pass');assert.match(result.detail,/1 other app build/);assert.match(result.detail,/offline restart not proven/);
+ assert.equal((await check('Unknown',['babelshelf-product-Unknown'])).status,'warning');
+ assert.equal((await check(env.appBuild,[])).status,'warning');
 });

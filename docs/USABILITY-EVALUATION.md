@@ -1,3 +1,11 @@
+# Cache diagnostics and creation recheck — 2026-10-27
+
+Public196's144 cache buckets raised a storage question. Inspection found deliberate retention for old lazy-asset clients, with immutable assets deduplicated in a shared pool. Count alone cannot establish size, duplication or safe reclaimability; a future cleanup policy must account for frozen/BFCache clients, optional runtime assets, failed installations and model-data separation. No caches were deleted.
+
+The diagnostic nevertheless had a real trust defect: any cache name produced a green offline-cache result. It now warns unless the exact current product build cache is listed, separately reports other product-build count, and retains the cold-restart limitation. This is name-level metadata, never proof of valid complete shell bytes or offline model execution.
+
+Actual local New file dirty Cancel and File/Folder switch preserved drafts through Keep editing. Collision with the owned trip note refused overwrite and retained body. Test-only draft explicitly discarded; Input draft retained. These were existing working protections, not new changes. OS-termination draft durability and untested model/package forms remain separate gates.
+
 # Device Performance stop/retry and next steps — 2026-10-27
 
 Actual prepared/resident4B sidebar use confirmed Stop test records Stopped, reenables Run, and a subsequent128-token Performance sample completes with numeric results. The original Input draft remains untouched while using Settings. This is one Windows browser sample, not a model-quality or phone acceptance.

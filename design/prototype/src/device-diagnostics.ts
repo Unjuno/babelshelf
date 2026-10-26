@@ -189,7 +189,11 @@ export async function runDeviceDiagnostics(env:DiagnosticEnvironment={}):Promise
  add('home-screen-launch',standalone?'pass':'warning',standalone?'Installed standalone display mode detected':'Opened in a browser tab; open the Home Screen app before starting the one-run cold-restart check');
 
  const cache=env.cacheStorage===undefined?(typeof caches!=='undefined'?caches:undefined):env.cacheStorage;
- try{const keys=cache?await cache.keys():[];add('offline-cache',keys.length?'pass':'warning',keys.length?`${keys.length} cache bucket(s) present; offline restart not proven`:'No app cache bucket detected');}
+ try{
+  const keys=cache?await cache.keys():[],current=!!env.appBuild&&/^[a-f0-9]{16}$/.test(env.appBuild)&&keys.includes('babelshelf-product-'+env.appBuild);
+  const otherBuilds=keys.filter(name=>/^babelshelf-product-[a-f0-9]{16}$/.test(name)&&name!=='babelshelf-product-'+env.appBuild).length;
+  add('offline-cache',current?'pass':'warning',`${current?'Current build cache listed':'Current build cache not listed'}; ${otherBuilds} other app build(s); offline restart not proven`);
+ }
  catch{add('offline-cache','warning','Cache storage could not be inspected');}
 
  const storage=env.storage===undefined?(typeof localStorage!=='undefined'?localStorage:undefined):env.storage;
