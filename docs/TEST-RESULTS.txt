@@ -1,3 +1,31 @@
+RETRIEVAL-BOUND EVIDENCE AND DEFERRED TEXT ACQUISITION — 2026-10-27 JST
+Controlled red tests reproduced old citations added to an absent explicit Memory
+subject, and an unrelated note added beside a retrieved matching-history source.
+Fresh saved-note/literal scopes now exclude history as replacement evidence;
+other past excerpts extend only retrieved note/revision pairs. No admitted
+evidence stops before compaction/count/generation. Existing deictic follow-up
+and post-generation source-change checks pass. One older invalid-derived-source
+test now expects No matching notes with zero generation, not an uncited model reply.
+Explicit Memory answers defer acquisition through the existing local ownership
+manager. Red app test previously got model-files-not-ready before looking for a
+missing source; final negative English/JA/literal tests require no load/count/
+generate/compaction. Positive protocol test verifies lookup before idle Decision
+release/runtime verification/load, one acquisition with networkfalse, exact source.
+Final969979612954f800 actual sidebar literal answer: QACANOE9360ZXF and Japanese
+saved-note question returned No matching notes; activity only knowledge.answer
+failed, no model.load/dialogue.compact. First Send+AX431ms is host observation,
+not pure app latency. Intermediate7525 had returned absence after needless4Bload.
+Actual final broad positive answer: 集合場所はどこ？ loaded4B then failed Citation
+mismatch; failure retained, no acceptance claimed. Explicitly opening owned
+Inbox/QA-creation-draft.md then asking What place is written in this file?
+generated 集合場所は北口。; citation opened exactv3 original/body. No Save note.
+Prepared4B model8d6557168168f91ea6697a4a49ed2ef622b53adb/runtime
+621e20782f208660f4f58283c2ce58430020f243, configuredwebml-qwen35/webgpu,
+Windows sidebar Chrome156 tab appOnline. Not OS-isolated/phone/general semantic
+citation quality or a generation-speed improvement. UI/data/pins preserved.
+Final prototype916/916, conversation103+workflow11=114, intent/scope24, product6,
+strict build/TypeScript/static/runtime28 pass. Whole quality chain not rerun.
+
 CURRENT ANSWER REWRITE SOURCE BINDING — 2026-10-27 JST
 Published186 sidebar page index-Db-EIzIJ.js and active workerc7e3174232b68299
 matched after normalUpdate; restored appOffline/logsOff, kept older report/pin.

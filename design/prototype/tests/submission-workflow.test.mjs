@@ -52,6 +52,26 @@ test('current-answer rewrite loads once, reads the exact assistant text and neve
  assert.match(c.state.error,/Current result unavailable/);assert.equal(prompts.length,0);
 });
 
+test('explicit missing Memory subjects stop before model acquisition or history compaction',async()=>{
+ const f=fixture(),c=createSubmissionController();let loads=0,counts=0,generated=0;
+ f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:false}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>{counts++;throw Error('Unexpected count');},generate:async()=>{generated++;throw Error('Unexpected generation');},unload:async()=>{},load:async()=>{loads++;throw Error('Unexpected load');}};
+ f.services.knowledge={all:async()=>[],search:async()=>[]};
+ for(const text of ['answer: QACANOE9360ZXF','What is in my saved canoe insurance note?','保存したカヌー保険のメモには何が書いてありますか？'])assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'failed');
+ assert.match(c.state.error,/No matching notes/);assert.equal(loads,0);assert.equal(counts,0);assert.equal(generated,0);
+ assert.equal(f.current().turns.some(turn=>turn.activity.some(a=>a.tool==='model.load'||a.tool==='dialogue.compact')),false);
+});
+
+test('a literal sourced answer acquires through the local ownership manager only after retrieval',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/office.md',body:'The office opens at 09:30.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};let loaded='';const steps=[];
+ f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture',engine:'wllama-lfm2'}],runtime:{revision:'fixture'}},count:async()=>{assert.equal(loaded,'test');steps.push('count');return {prompt_tokens:100};},generate:async()=>{steps.push('generate');return {text:JSON.stringify({answer:'09:30',citations:[{id:'S1',quote:ref.quote}]})};},unload:async()=>{loaded='';},load:async()=>{steps.push('load');loaded='test';}};
+ f.services.decision={loaded:true,busy:false,enabled:false,ready:false,unload:async()=>{steps.push('release-decision');f.services.decision.loaded=false;}};
+ f.services.ensureProductRuntime=async(_role,network)=>{assert.equal(network,false);steps.push('runtime');};
+ f.services.knowledge={all:async()=>[note],search:async()=>{steps.push('search');return [ref];}};
+ assert.equal(await c.run(run=>executeSubmission({text:'answer: office opening time',attachments:[]},f.services,f.view,run)),'completed');
+ assert.ok(steps.indexOf('search')<steps.indexOf('release-decision'));assert.ok(steps.indexOf('runtime')<steps.indexOf('load'));assert.ok(steps.indexOf('load')<steps.indexOf('count'));assert.equal(steps.filter(s=>s==='load').length,1);
+ assert.equal(f.current().turns[0].answer,'09:30');assert.equal(f.current().turns[0].refs[0].noteId,note.id);assert.equal(note.revisions.length,1);
+});
+
 test('explicit Memory search still lists results with no configured model or completion inference',async()=>{
  for(const text of ['search: 集合場所','集合場所について保存したメモを探して']){
   const f=fixture(),c=createSubmissionController(),note=createNote({title:'Meeting',body:'集合場所は北口。',path:'Notes/meeting.md'});

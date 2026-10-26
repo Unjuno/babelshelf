@@ -22,6 +22,7 @@ type Dependencies={
  store:KnowledgeStore;engine:TextRuntime;model:string;question:string;registry:typeof builtinToolRegistry;
  check:()=>void;trace:ReturnType<typeof createTurnActivityTracer>;
  snapshot:()=>Promise<NoteView[]>;
+ acquireModel?:()=>Promise<TextRuntime>;
 };
 
 /** A reader may already have answered the exact current question. Reuse only
@@ -46,13 +47,13 @@ export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependen
 
 // Application execution returns data. The caller owns turn persistence,
 // navigation and explicit review/approval; these methods cannot commit edits.
-export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry}:Dependencies){
+export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel}:Dependencies){
  const host={search:(query:string)=>store.search(query),resolve:(query:string)=>snapshot().then(notes=>resolveToolNotes(notes,query)),check};
  const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search')},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:q=>store.search(q,true)}));
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
   async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[]}={}){
-   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{})},()=>groundedAnswer({store,engine},{...request,check}));
+   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}));
    check();return {kind:'answer' as const,...parsed};
   },
   async schedule(context:DialogueContext){

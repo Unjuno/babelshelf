@@ -2,6 +2,12 @@
 
 See [the current review and migration target](ARCHITECTURE-REVIEW.md) for remaining structural gaps.
 
+## Retrieval-bound evidence and deferred acquisition — 2026-10-27
+
+A question explicitly naming saved Memory, or a literal answer:/summarize: command, starts a fresh stored-source scope. Failed retrieval cannot borrow references from unrelated dialogue. When retrieval returns passages, historical excerpts may extend only the same retrieved note/revision pairs. Deictic follow-ups retain the existing validated-source path; no historical record is deleted or rewritten. Stored-knowledge generation with no eligible evidence (and no checked calculation) stops before token counting, compaction or generation. This validates evidence scope/bytes, not universal semantic relevance of search hits or model claims.
+
+For already explicit Memory answer/summary routes, submission defers Text acquisition to groundedAnswer through a trusted acquireModel callback. Retrieval and source validation run first; only a nonempty admitted source set invokes the existing model execution manager, with its idle-owner release, lease, local-runtime verification, selected-model checks and cancellation rules. General planner routes still need a model to select an action. Source versions are checked again after generation/compaction. No network fallback, new preparation permission or knowledge write authority is introduced.
+
 ## Explicit current-answer rewrites — 2026-10-27
 
 A bounded, single read-only rewrite that explicitly names the current assistant answer (for example, Japanese 今の回答を日本語で短くまとめて or English Summarize your last answer) binds target=current before Decision/Text planning. The canonical dialogue resolver selects the exact retained answer ID and assistant speaker, including legacy records without a persisted currentResult pointer. Missing targets fail rather than falling through to Memory. This uses the same explicit-source principle as current-file/current-attachment routing; it does not infer a target from bare it/that.

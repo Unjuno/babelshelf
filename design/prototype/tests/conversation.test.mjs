@@ -386,6 +386,21 @@ test('an explicit stop reason takes precedence over an estimated token count at 
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Complete answer.',finishReason:'stop',outputTokens:768};}};
  const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a sentence.',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});assert.equal(reply.answer,'Complete answer.');assert.equal(calls,1);
 });
+test('a missing explicitly selected Memory subject cannot borrow an unrelated historical citation',async()=>{
+ const note=createNote({path:'Notes/meeting.md',body:'The meeting is at the north gate.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};let generated=0,counts=0,compactions=0;
+ const store={all:async()=>[note],search:async()=>[]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>{counts++;return {prompt_tokens:100};},generate:async()=>{generated++;return {text:JSON.stringify({answer:'An unrelated answer.',citations:[{id:'S1',quote:ref.quote}]})};}};
+ for(const question of ['What is in my saved canoe insurance note?','保存したカヌー保険のメモには何が書いてありますか？','answer: MISSING-CANOE-9360','summarize: MISSING-CANOE-9360'])await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question,query:'MISSING-CANOE-9360',mode:question.startsWith('summarize:')?'summary':'answer',context:{summary:'',recent:[{id:'old',user:'Where is the meeting?',answer:'North gate.',refs:[ref]}],refs:[ref]},scope:{kind:'knowledge'}}),/No matching notes/);
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'Where is the policy?',mode:'answer',context:{summary:'Earlier dialogue is not stored evidence.',recent:[],refs:[]},prepareContext:async()=>{compactions++;throw Error('Unexpected compaction');},scope:{kind:'knowledge'}}),/No matching notes/);
+ assert.equal(generated,0);assert.equal(counts,0);assert.equal(compactions,0);
+});
+
+test('retrieved passages never admit historical citations from another source',async()=>{
+ const note=createNote({path:'Notes/water.md',body:'Water: 4 liters.'}),other=createNote({path:'Notes/meeting.md',body:'Meeting: north gate.'});const ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),water=ref(note),meeting=ref(other);let seen='';
+ const store={all:async()=>[note,other],search:async()=>[water]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async messages=>{seen=JSON.stringify(messages);return {text:JSON.stringify({answer:'4 liters.',citations:[{id:'S1',quote:water.quote}]})};}};
+ const reply=await groundedAnswer({store,engine:runtime},{model:'4B',question:'How much water?',mode:'answer',context:{summary:'',recent:[],refs:[water,meeting]},scope:{kind:'knowledge'}});
+ assert.equal(seen.includes(meeting.quote),false);assert.equal(reply.sources[0].noteId,note.id);
+});
+
 test('interactive reply uses prior turns and validates pinned source bytes after generation',async()=>{
  let note=createNote({path:'Notes/water.md',body:'水は4Lです。'});const ref={noteId:note.id,revision:1,start:0,end:7,quote:note.revisions[0].body};
  const context={summary:'',recent:[{id:'previous',user:'水を確認して',answer:'水は4Lです。',refs:[ref]}],refs:[ref]};
@@ -407,8 +422,8 @@ test('pinned generated prose cannot reintroduce a changed ancestor as evidence',
  const derived=createNote({path:'Inbox/derived.md',body:'Derived claim',kind:'generated',sources:[parent]}),ref={noteId:derived.id,revision:1,start:0,end:13,quote:'Derived claim'};
  const changed=reviseNote(original,{body:'Corrected fact'},1),store={all:async()=>[changed,derived],search:async()=>[]};
  let received;const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async m=>{received=JSON.stringify(m);return {text:'{"answer":"No current saved source.","citations":[]}'};}};
- await groundedAnswer({store:store,engine:e},{model:'4B',question:'the current fact?',query:'',mode:'answer',context:{summary:'',recent:[],refs:[ref]},scope:{kind:'knowledge'}});
- assert.equal(received.includes('Derived claim'),false);
+ await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'the current fact?',query:'',mode:'answer',context:{summary:'',recent:[],refs:[ref]},scope:{kind:'knowledge'}}),/No matching notes/);
+ assert.equal(received,undefined);
 });
 test('an oversized rejected turn cannot permanently block later short requests',async()=>{
  const long='原文とunique-ID-8382 '.repeat(1000);let state=completeTurn(appendTurn(emptyDialogue(),{id:'oversize',user:long}),'oversize',{status:'Input exceeds context limit'});
