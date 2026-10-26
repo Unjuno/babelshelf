@@ -1,3 +1,11 @@
+PUBLIC193 /b3a08696d9373d68 /index-WDPtQb-2.js — 2026-10-27 JST
+Sidebar normal Update adopted matching current page/worker, no storage purge.
+Same correction on pinnedv1 read its file then correctly stopped Model not
+prepared without model load/generation/acquisition. Draft restored by failure,
+then test text cleared; original pin/older report/logsOff/Offline retained.
+36 rows/21 answers after this one failed attempt; no knowledge file/revision write.
+Actual4B successful proposal is local candidate182 scope, not public inference.
+
 OPENED FILE CORRECTION / MODEL ACQUISITION — 2026-10-27 JST
 Actual4B v192 baseline replaced the whole body with the correction instruction;
 intermediate36e then recalled the previous user message. Both originals retained.
