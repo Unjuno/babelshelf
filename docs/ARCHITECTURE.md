@@ -1,5 +1,29 @@
 # Current application architecture
 
+## One-button device test — 2026-10-26
+
+Settings > Developer now has one Run tests start action. The UI-independent
+`device-test-suite.ts` collects a bounded baseline once. In an installed Home
+Screen app it saves the report before arming the existing one-shot continuation;
+selected Text generation runs only after relaunch. The selected ID is bound in
+the marker and the existing claim-before-execution crash guard prevents repeats.
+The user performs Airplane Mode, app close and Home Screen launch. The browser
+cannot verify those OS actions; existing report warnings remain authoritative.
+
+A browser-tab run checks the prepared selected Text model immediately, then saves
+one report without arming a separate Home Screen storage context. No model files
+or runtime assets are acquired by these tests; unprepared or blocked models are
+not-run. The test's own loaded Text model is unloaded afterward. Model replies
+are discarded, not retained in diagnostics or knowledge. One Run is the explicit
+consent for the short selected-model check; the old separate generation button
+and off-by-default after-restart checkbox have been removed from Developer.
+
+The primary action becomes Cancel test while awaiting a restart. Copy report
+remains a separate output action; Stop remains available during model execution.
+The local report stays bounded and privacy-preserving. Existing schema-1 markers,
+including legacy modelTestRequested=false, still use their original continuation
+semantics. No changes to knowledge storage, model defaults or network settings.
+
 ## Execution outcomes and model acquisition — 2026-10-26
 
 `execution-result.ts` separates host-owned outcomes from transient lifecycle:

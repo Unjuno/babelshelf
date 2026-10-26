@@ -1,3 +1,4 @@
+import {startDeviceTestSuite} from './device-test-suite';
 import {executeScheduledAnswer} from './scheduled-answer';
 import {createModelExecutionManager} from './model-execution';
 import {createSubmissionController,type SubmissionState} from './submission-controller';
@@ -47,7 +48,7 @@ import {isOcrImage,ocrCitationRegion,type OcrText} from './ocr-text';
 import {AssetOperationGate,decisionAssetInput,textAssetInput,speechAssetInput,ocrAssetInput,visionAssetInput,visionDescriptionInput,type AssetTool} from './asset-activity';
 import {processingName,recordProcessingOperation,type ProcessingTool} from './processing-history';
 import {appendDiagnosticLog,clearDiagnosticLogs,readDiagnosticLogs,type DiagnosticLog} from './diagnostic-logs';
-import {runDeviceDiagnostics,canRunSelectedModelDiagnostic,formatDeviceDiagnosticReport,isStandalonePwa,readOfflineRestartMarker,writeOfflineRestartMarker,clearOfflineRestartMarker,claimOfflineRestartAttempt,completeOfflineRestartReport,completeInterruptedOfflineRestartReport,readSavedDeviceTestReport,writeSavedDeviceTestReport,clearSavedDeviceTestReport,parseDeviceModelSmokeAnswer,type OfflineRestartMarker,type DeviceDiagnosticReport} from './device-diagnostics';
+import {runDeviceDiagnostics,formatDeviceDiagnosticReport,isStandalonePwa,readOfflineRestartMarker,writeOfflineRestartMarker,clearOfflineRestartMarker,claimOfflineRestartAttempt,completeOfflineRestartReport,completeInterruptedOfflineRestartReport,readSavedDeviceTestReport,writeSavedDeviceTestReport,clearSavedDeviceTestReport,parseDeviceModelSmokeAnswer,type OfflineRestartMarker,type DeviceDiagnosticReport} from './device-diagnostics';
 import {formatDiagnosticHandoff} from './diagnostic-report-copy';
 import {resolveToolNotes} from './tools/tool-host';
 import {prepareHarnessProfileChange} from './harness-profile-review';
@@ -196,7 +197,7 @@ export default function Prototype() {
  const appRefreshLock=useRef(false),appRefreshState=useRef({blocked:true,online:false});
  const [diagnosticBuild,setDiagnosticBuild]=useState('Not checked'),[runtimeAssetsReady,setRuntimeAssetsReady]=useState<Partial<Record<ProductRuntimeRole,boolean>>>({});
   const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false);
- const [includeModelTestAfterRestart,setIncludeModelTestAfterRestart]=useState(false);
+ const deviceSuiteLock=useRef(false);
  const offlineRestartStartedInPage=useRef(false);
  const customFile=useRef<HTMLInputElement>(null),customDecisionFile=useRef<HTMLInputElement>(null),customSpeechFile=useRef<HTMLInputElement>(null),customVisionFile=useRef<HTMLInputElement>(null),customAbort=useRef<AbortController|null>(null),hfAbort=useRef<AbortController|null>(null);const [customReview,setCustomReview]=useState<{model:CustomLocalModel;files:File[];remove?:()=>Promise<void>}|null>(null),[customDecisionReview,setCustomDecisionReview]=useState<{model:CustomDecisionModel;files:File[]}|null>(null),[customSpeechReview,setCustomSpeechReview]=useState<{model:CustomSpeechModel;files:File[];status:'execution-not-tested'}|null>(null),[customVisionReview,setCustomVisionReview]=useState<{model:CustomVisionModel;files:File[];status:'execution-not-tested'}|null>(null),[customProgress,setCustomProgress]=useState(''),[customBusy,setCustomBusy]=useState(false),[hfBusy,setHfBusy]=useState(false),[hfProgress,setHfProgress]=useState(''),[hfError,setHfError]=useState('');
  const [initialPrep,setInitialPrep]=useState<InitialPreparation|null>(null),[initialPrepBusy,setInitialPrepBusy]=useState(false),[initialPrepStatus,setInitialPrepStatus]=useState('');
@@ -405,7 +406,21 @@ export default function Prototype() {
   try{const saved=readSavedDeviceTestReport(localStorage);if(!saved)throw Error('Baseline report unavailable');const report=completeInterruptedOfflineRestartReport(JSON.parse(saved),marker),text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);toast('Device test interrupted · not repeated');}
   catch{try{clearOfflineRestartMarker(localStorage);}catch{}setOfflineRestartMarker(null);toast('Device test interrupted · start a new check when ready');}
  }
- async function beginOfflineRestartTest(){if(deviceTestRunning||deviceModelTesting)return;setDeviceTestRunning(true);try{const report=await collectDeviceReport(),marker:OfflineRestartMarker={schema:1,startedAt:new Date().toISOString(),appBuild:report.appBuild,modelTestRequested:includeModelTestAfterRestart, ...(includeModelTestAfterRestart&&model?{modelTestModel:model}:{}),baseline:{checkedAt:report.createdAt,appBuild:report.appBuild,standalone:report.standalone,onlineSignal:report.onlineSignal,checks:report.checks}};const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);writeOfflineRestartMarker(localStorage,marker);offlineRestartStartedInPage.current=true;setOfflineRestartMarker(marker);setDeviceTestReport(text);toast(includeModelTestAfterRestart?'Saved · model test requested · switch to Airplane Mode and reopen':'Saved · switch to Airplane Mode and reopen');}catch(error){toast((error as Error).message||'Could not start offline restart test');}finally{setDeviceTestRunning(false);}}
+ async function runAllDeviceTests(){
+  if(deviceSuiteLock.current||deviceTestRunning||deviceModelTesting)return;
+  deviceSuiteLock.current=true;setDeviceTestRunning(true);
+  try{
+   const result=await startDeviceTestSuite({collect:collectDeviceReport,
+    save:async report=>{const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);},
+    arm:async marker=>{writeOfflineRestartMarker(localStorage,marker);offlineRestartStartedInPage.current=true;setOfflineRestartMarker(marker);},
+    testModel:report=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report),
+   });
+   toast(result.marker?'Checks saved · restart the Home Screen app':'Tests complete · copy report');
+  }catch(error){toast((error as Error).message||'Device test failed');}
+  finally{deviceSuiteLock.current=false;setDeviceTestRunning(false);}
+ }
+ function cancelDeviceTest(){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);toast('Restart check cancelled');}
+
  async function protectStorage(){if(storageProtectionBusy)return;setStorageProtectionBusy(true);try{const result=await requestStorageProtection();setDeviceStorage(result.state);setStorageProtectionMessage(result.outcome==='unsupported'?'Unsupported':result.outcome==='not-granted'?'Not granted':'Request completed');}finally{setStorageProtectionBusy(false);}}
  async function exportBackup(){if(backupLock.current)return;backupLock.current=true;setBackupBusy(true);try{await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();await flushStorage();await flushMetadata();const pack=await knowledge.backup(),url=URL.createObjectURL(stateBackupBlob(pack)),link=document.createElement('a');link.href=url;link.download='babelshelf-'+localDate()+'.brainpack';link.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}catch(e){toast((e as Error).message);}finally{backupLock.current=false;setBackupBusy(false);}}
  async function previewRestore(file:File){if(backupLock.current)return;if(sending||bonsai.busy||taskController.active)return toast('Stop generation first');backupLock.current=true;setBackupBusy(true);try{if(file.size>200000000)throw Error('Backup too large');await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();await flushStorage();await flushMetadata();const text=await file.text(),review=await knowledge.reviewBackup(text);setRestoreText(text);setRestoreReview(review);setReviewingSettings(false);setReviewingNote(null);keyboard.hide();setSheet('restore-backup');}catch(e){toast((e as Error).message);}finally{backupLock.current=false;setBackupBusy(false);}}
@@ -945,15 +960,10 @@ export default function Prototype() {
  bundle={document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.src.split('/').at(-1)??'Unknown'}
  deviceTestRunning={deviceTestRunning}
  deviceModelTesting={deviceModelTesting}
- canRunModelTest={canRunSelectedModelDiagnostic({modelSelected:!!model,filesPresent:!!bonsai.assets[model]?.filesPresent,busy:deviceTestRunning||deviceModelTesting||bonsai.busy||sending||!!assetAction,otherModelLoaded:decision.loaded})}
- canSelectModelForRestart={!!model}
- onRunDeviceTest={()=>void runDeviceTest()}
+ onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={()=>bonsai.stop()}
- onRunModelTest={()=>void runDeviceModelTest()}
- includeModelTestAfterRestart={includeModelTestAfterRestart}
- onIncludeModelTestAfterRestart={setIncludeModelTestAfterRestart}
  offlineRestartMarker={offlineRestartMarker}
- onStartOfflineRestartTest={()=>void beginOfflineRestartTest()}
+ onCancelDeviceTest={cancelDeviceTest}
  deviceTestReport={deviceTestReport}
  onCopyDeviceTestReport={()=>void copyDeviceTestReport()}
  onClearDeviceTestReport={()=>{clearSavedDeviceTestReport(localStorage);setDeviceTestReport('');}}
@@ -975,15 +985,10 @@ export default function Prototype() {
  bundle={document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.src.split('/').at(-1)??'Unknown'}
  deviceTestRunning={deviceTestRunning}
  deviceModelTesting={deviceModelTesting}
- canRunModelTest={canRunSelectedModelDiagnostic({modelSelected:!!model,filesPresent:!!bonsai.assets[model]?.filesPresent,busy:deviceTestRunning||deviceModelTesting||bonsai.busy||sending||!!assetAction,otherModelLoaded:decision.loaded})}
- canSelectModelForRestart={!!model}
- onRunDeviceTest={()=>void runDeviceTest()}
+ onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={()=>bonsai.stop()}
- onRunModelTest={()=>void runDeviceModelTest()}
- includeModelTestAfterRestart={includeModelTestAfterRestart}
- onIncludeModelTestAfterRestart={setIncludeModelTestAfterRestart}
  offlineRestartMarker={offlineRestartMarker}
- onStartOfflineRestartTest={()=>void beginOfflineRestartTest()}
+ onCancelDeviceTest={cancelDeviceTest}
  deviceTestReport={deviceTestReport}
  onCopyDeviceTestReport={()=>void copyDeviceTestReport()}
  onClearDeviceTestReport={()=>{clearSavedDeviceTestReport(localStorage);setDeviceTestReport('');}}

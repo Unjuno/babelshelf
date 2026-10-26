@@ -1,3 +1,27 @@
+ONE-BUTTON DEVICE TEST — 2026-10-26 JST
+Local build 4760eba1323a1bcb /135 assets, entry index-CGrvdV5w.js.
+
+- Strict TypeScript and build:app passed; test:prototype 891 passed, including
+  five suite orchestration tests. Product asset acceptance: 6 passed.
+- Windows Chromium Developer/handoff UI: 15 passed.
+- Windows WebKit Developer/handoff UI: 15 passed. Neither suite is physical iOS.
+- Checks cover one Run start, report copy, installed-app continuation, interruption
+  without retry, selected-model binding, Cancel and old marker semantics.
+
+Actual sidebar browser, localhost:4184: one Run tests collected app/storage/GPU
+checks and ran the already prepared selected Bonsai 2 4B. Structured READY smoke
+passed. Model revision 8d6557168168f91ea6697a4a49ed2ef622b53adb, runtime revision
+621e20782f208660f4f58283c2ce58430020f243. Configured route webml-qwen35/webgpu is
+route metadata, not independent hardware-adapter identification.
+Report: load 32531 ms; generation 3225 ms; 5 output tokens; end-to-end generation
+1.55 tokens/s. This tiny structured sample is not sustained speed, Japanese answer
+quality, long-context, thermal or iPhone acceptance. The temporary model was
+unloaded after the check. Home Screen warning is expected for this browser run;
+no OS-offline/restart claim. Existing user draft was restored after Update and
+was never submitted by the test. Knowledge and chosen defaults were preserved.
+Small local evidence: task outputs/device-suite-report.json and device-suite.png.
+No new model download, public deployment or physical-device rerun was performed.
+
 EXECUTION OUTCOMES / MODEL ACQUISITION — 2026-10-26 JST
 Local Windows PC product 7f786e956be29099 /135 verified assets,
 entry index-C1XuwjZ6.js. Public site unchanged; no physical-device run.

@@ -51,7 +51,7 @@ test('device diagnostics run bounded local probes and distinguish readiness from
 test('device diagnostics marks Home Screen app launch when the installed PWA is active',async()=>{
  const report=await runDeviceDiagnostics({standalone:true,isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null});
  const check=report.checks.find(item=>item.id==='home-screen-launch');
- assert.equal(check.status,'pass');assert.match(check.detail,/standalone display mode detected/i);assert.match(report.manualSteps[0],/Start the offline cold-restart check/i);
+ assert.equal(check.status,'pass');assert.match(check.detail,/standalone display mode detected/i);assert.match(report.manualSteps[0],/Select Run tests/i);
 });
 
 test('IndexedDB browser exception text is replaced before it enters the diagnostic report',async()=>{

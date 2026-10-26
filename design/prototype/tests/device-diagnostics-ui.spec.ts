@@ -55,7 +55,7 @@ test('iOS Home Screen standalone signal is retained even when display-mode is un
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
  await expect(page.getByRole('heading',{name:'Developer',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Run device test'}).click();
+ await page.getByRole('button',{name:'Run tests'}).click();
  const details=page.locator('.device-test-report');
  await expect(details).toBeVisible({timeout:30_000});
  await details.locator('summary').click();
@@ -76,11 +76,11 @@ test('Settings device test creates a local report that can be copied for handoff
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
  await expect(page.getByRole('heading',{name:'Device test'})).toBeVisible();
- await expect(page.getByRole('heading',{name:'Offline restart test'})).toBeVisible();
- await expect(page.getByText(/Open from the Home Screen. Use the same app both times./)).toBeVisible();
- await expect(page.getByRole('button',{name:'Start restart test'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Run tests',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Test selected model'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Start restart test'})).toHaveCount(0);
 
- await page.getByRole('button',{name:'Run device test'}).click();
+ await page.getByRole('button',{name:'Run tests'}).click();
  const report=page.locator('.device-test-report');
  await expect(report).toBeVisible({timeout:30000});
  const text=await page.locator('.diagnostic-report').textContent();
@@ -171,20 +171,21 @@ test('app refresh is available online and blocked while a draft could be lost',a
 });
 
 test('one iOS offline handoff stores a local continuation marker and asks for one run',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
- await page.getByRole('button',{name:'Start restart test'}).click();
- await expect(page.getByRole('status').filter({hasText:'Test started'})).toBeVisible({timeout:30_000});
+ await page.getByRole('button',{name:'Run tests'}).click();
+ await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
  const marker=await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'));
  const parsedMarker=JSON.parse(marker??'null');expect(parsedMarker).toMatchObject({schema:1,baseline:{checks:expect.any(Array)}});expect(parsedMarker.baseline.checks.length).toBeGreaterThan(0);
- expect(parsedMarker.modelTestRequested).toBe(false);
- await page.getByText('Restart steps').click();
- await expect(page.locator('.device-test-steps').getByText(/Turn on Airplane Mode. Close BabelShelf./)).toBeVisible();
+ expect(parsedMarker.modelTestRequested).toBe(true);
+ await expect(page.getByText('Turn on Airplane Mode.',{exact:true})).toBeVisible();
 });
 
 test('a saved return check resumes after reload and leaves a copyable handoff',async({page,browserName})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
  await page.addInitScript(()=>{
   Object.defineProperty(window,'__capturedDeviceHandoff',{value:null,writable:true,configurable:true});
   const clipboard=navigator.clipboard;
@@ -197,8 +198,8 @@ test('a saved return check resumes after reload and leaves a copyable handoff',a
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
- await page.getByRole('button',{name:'Start restart test'}).click();
- await expect(page.getByRole('status').filter({hasText:'Test started'})).toBeVisible({timeout:30_000});
+ await page.getByRole('button',{name:'Run tests'}).click();
+ await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
  const baseline=await page.evaluate(()=>JSON.parse(localStorage.getItem('babelshelf.device-test.report.v1')??'{}'));
  await page.evaluate(()=>localStorage.setItem('device-test-offline','true'));
  await page.reload();
@@ -208,7 +209,7 @@ test('a saved return check resumes after reload and leaves a copyable handoff',a
  await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeVisible({timeout:30000});
  const report=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');
  expect(report.offlineRestart).toMatchObject({previousBuild:baseline.appBuild,returnObserved:true});
- expect(report).not.toHaveProperty('modelGeneration');
+ expect(report.modelGeneration).toMatchObject({status:'not-run',failureType:'model-files-not-ready'});
  expect(report.checks.some((check:{id:string})=>check.id==='offline-cold-reopen')).toBe(true);
  expect(await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'))).toBeNull();
  if(browserName==='chromium')await page.context().grantPermissions(['clipboard-read','clipboard-write']);
@@ -222,12 +223,13 @@ test('a saved return check resumes after reload and leaves a copyable handoff',a
 });
 
 test('an interrupted one-run return is reported once without automatically repeating probes or model execution',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
- await page.getByRole('button',{name:'Start restart test'}).click();
- await expect(page.getByRole('status').filter({hasText:'Test started'})).toBeVisible({timeout:30_000});
+ await page.getByRole('button',{name:'Run tests'}).click();
+ await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
  const before=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');
  await page.evaluate(()=>{
   const key='babelshelf.device-test.offline-restart.v1',marker=JSON.parse(localStorage.getItem(key)??'null');
@@ -250,20 +252,14 @@ test('an interrupted one-run return is reported once without automatically repea
  expect(await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'))).toBeNull();
 });
 
-test('selected model smoke test is explicit and bound to the selected model before offline restart',async({page})=>{
- await page.goto('/');
- await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:'Settings'}).click();
- await openSettingsItem(page,'Developer');
- const include=page.getByRole('checkbox',{name:'Test model after restart'});
- await expect(page.getByText(/Unload Decision first if it is loaded/)).toBeVisible();
- await expect(include).not.toBeChecked();
- await include.check();
- await page.getByRole('button',{name:'Start restart test'}).click();
- await expect(page.getByRole('status').filter({hasText:'Test started'})).toBeVisible({timeout:30_000});
+test('one Run binds the selected model before the installed-app restart without another checkbox',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await expect(page.getByRole('checkbox',{name:'Test model after restart'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Run tests'}).click();await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
  const marker=JSON.parse((await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1')))??'null');
- expect(marker.modelTestRequested).toBe(true);
- expect(marker.modelTestModel).toBeTruthy();
+ expect(marker.modelTestRequested).toBe(true);expect(marker.modelTestModel).toBeTruthy();
+ await page.getByRole('button',{name:'Cancel test',exact:true}).click();expect(await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'))).toBeNull();
 });
 
 test('Connection settings label navigator.onLine as a browser signal, not verified reachability',async({page})=>{
@@ -282,7 +278,7 @@ test('diagnostic log review opens an editable chat draft without sending it',asy
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
- await expect(page.getByText('Offline restart test',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Run tests',exact:true})).toBeVisible();
  await expect(page.locator('section[aria-label="Diagnostic logging"]')).toHaveCount(1);
  await expect(page.locator('button').filter({hasText:'Ask model'})).toHaveCount(0);
  await expect(page.locator('section[aria-label="Diagnostic entries"]:visible')).toContainText('The planner response did not match the required action format.');
