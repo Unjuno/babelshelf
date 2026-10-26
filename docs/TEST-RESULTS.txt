@@ -1,3 +1,15 @@
+OWN-DEVICE PERFORMANCE CONTROLS RECHECK — 2026-10-27 JST
+Existing public Site v180 sidebar Developer reports active worker78571b1e36c3e0d6,
+page index-DRAd2Xff.js. Test options opened and Performance was selectable;
+Run tests and Copy report for Codex present. Public selected-model assets were
+not prepared: no generation, download or new timing sample was attempted.
+Local sidebar retained the earlier PC sample (42.2s load,3.01s first token,
+7.42tokens/s,60 input/128 output); this is historical evidence, not a new run.
+Focused current Node device/profile/suite/report-copy regression43/43 passed.
+DEVICE-DIAGNOSTICS.md now describes current single-Run controls and report scope;
+obsolete separate model-test checkbox and button instructions corrected.
+Documentation-only follow-up; no new product build/deployment or phone claim.
+
 DURABLE CORRECTION REVIEW — 2026-10-27 JST
 Product78571b1e36c3e0d6 /135 verified assets, index-DRAd2Xff.js.
 Published Sitev180; public sidebar page/active worker matched after Update,
