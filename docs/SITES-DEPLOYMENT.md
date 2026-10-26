@@ -1,3 +1,11 @@
+# Public v203 — multilingual Memory search (2026-10-27)
+
+App390db7c on codex/ui-design-handoff deliversb0f6903b0a193479 /135 independently byte/hash-verified assets, entry index-BcrYSCqA.js. Site source55cda764896ff4c267967cbfc7248968f4db83a9 retains current and actual previous public0aa313 assets;19 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b3247cedc0108191ae55b752fe016ec8(v203), deployment appgdep_6adfcca986488191bbce90578a277f7f succeeded2026-10-26T21:57:12.230215Z. Native uncompressed tar SHA2568d677c4de0c9288f581192593317dcf953056bbea1c4d8b406aae9268529724c,57,200,640bytes/161files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normalUpdate adopted matchingb0f690 worker/index-BcrYSCqA.js. Restored appOffline; full-width ＱＡ found existing files across Home user roots. Opened QA-draft-v179.md with exact original body atv1, preserving original input pin/emptycomposer/dialogue. Developer retained prior Performance report at2026-10-26T21:46:42.172Z/build0aa313 and logsOff; no new diagnostic run, acquisition, inference or knowledge writes. Actual local old0aa313 failure and corrected candidate are documented in USABILITY-EVALUATION; controlled PC editor20 and targeted WindowsWebKit1 passed. This tests character-width handling, not physical phone IME composition or general multilingual relevance.
+
 # Public v202 — direct device Performance (2026-10-27)
 
 App00e1631 on codex/ui-design-handoff delivers0aa313bfd5e3ff08 /135independently byte/hash-verified assets, entry index-zOBPBjo3.js. Site sourceb78172c418387bca5d0df8c4841d4d813a34ee90 retains current and actual previous public78000 assets;19 older generated delivery assets pruned. Delivery adapter verification passed. One current compressed archive reused.
