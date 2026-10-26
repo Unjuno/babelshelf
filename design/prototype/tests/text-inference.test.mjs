@@ -1,5 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createTextInference} from '../src/text-inference.ts';
+
+test('model loading returns only bounded phase timings and drops runtime identity payloads',async()=>{
+ const p=fixture(),e=createTextInference(()=>p);p.load=async()=>({verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true,device:'PRIVATE-ADAPTER',prompt:'PRIVATE-PROMPT'});
+ assert.deepEqual(await e.load('local'),{verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true});
+ p.load=async()=>({verificationMs:-1,importMs:Infinity,runtimeLoadMs:'PRIVATE',totalLoadMs:NaN,runtimeModuleReused:'true'});assert.equal(await e.load('local'),undefined);
+ p.load=async()=>{};assert.equal(await e.load('local'),undefined);
+});
 const fixture=()=>({manifest:{contextTokens:2048,models:[{id:'local',revision:'weights'}],runtime:{revision:'runtime'}},loaded:'local',assets:{local:{filesPresent:true}},load:async()=>{},stop:()=>{},count:async()=>({prompt_tokens:9}),generate:async()=>({text:'actual port output'})});
 test('inference boundary delegates exact messages and exposes no download or storage authority',async()=>{const p=fixture(),messages=[{role:'user',content:'Original 日本語'}];p.generate=async(m,max)=>{assert.deepEqual(m,messages);assert.equal(max,64);return {text:'port result'};};const e=createTextInference(()=>p);assert.equal((await e.generate(messages,64)).text,'port result');assert.equal(e.prepare,undefined);assert.equal(e.save,undefined);assert.equal(e.manifest.contextTokens,2048);});
 test('inference preserves completion metadata and counts with the exact output format',async()=>{const p=fixture(),messages=[{role:'user',content:'Write prose'}];let counted=[];p.count=async(m,format)=>{counted.push(format);return {prompt_tokens:9};};p.generate=async(m,budget,format)=>{assert.equal(format,'prose');return {text:'Done.',finishReason:'stop',outputTokens:3};};const e=createTextInference(()=>p);assert.deepEqual(await e.generate(messages,64,'prose'),{text:'Done.',finishReason:'stop',outputTokens:3});assert.deepEqual(counted,['prose']);});

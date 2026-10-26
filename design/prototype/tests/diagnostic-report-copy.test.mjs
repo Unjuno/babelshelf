@@ -1,4 +1,9 @@
 import test from 'node:test';
+
+test('load phase report handoff retains only numeric timings and a reuse flag',()=>{
+ const value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt',loadMetrics:{verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true,device:'PRIVATE-ADAPTER',prompt:'PRIVATE-PROMPT'}}};
+ const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/"verificationMs": 12/);assert.match(text,/"runtimeModuleReused": true/);assert.doesNotMatch(text,/PRIVATE-/);
+});
 import assert from 'node:assert/strict';
 import {copyDiagnosticReport,formatDiagnosticHandoff} from '../src/diagnostic-report-copy.ts';
 

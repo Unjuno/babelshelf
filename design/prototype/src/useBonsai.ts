@@ -33,7 +33,7 @@ export function useBonsai(models:CustomLocalModel[]=[],ready=true,selectedModel=
   if(!engine.current)throw Error('Storage not ready');if(engine.current.needsRecovery&&await engine.current.recover()){initialized.current=Promise.resolve();configured.current='';statusTarget.current='';}check();
   await syncRegistry(records.current,check);check();setLoaded('');
   let acquired:InferenceLease|null=null;if(!residentLease.current)acquired=await inferenceLeaseManager.acquire('Text');
-  try{check();await engine.current.load(model,events);if(acquired){residentLease.current=acquired;acquired=null;}check();setLoaded(model);setProgress('Loaded');}
+  try{check();const result=await engine.current.load(model,events);if(acquired){residentLease.current=acquired;acquired=null;}check();setLoaded(model);setProgress('Loaded');return result?.timings;}
   catch(error){if(acquired)await acquired.release();if(!engine.current?.loaded&&residentLease.current){const lease=residentLease.current;residentLease.current=null;await lease.release();}check();try{const currentAssets=await engine.current.call('status',{model});check();setAssets(currentAssets);statusTarget.current=model;}catch{check();}throw error;}
  });}
  async function unload(){return operation(async check=>{await initialized.current;check();await unloadResident(check);setProgress('Unloaded');});}

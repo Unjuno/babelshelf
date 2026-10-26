@@ -1,5 +1,13 @@
 # Device diagnostics
 
+## Optional load phases (2026-10-27)
+
+The WebML worker already measures verificationMs, importMs, runtimeLoadMs and totalLoadMs around actual asset verification, local runtime-module import and from_pretrained initialization (including its warmup). The Text hook now carries these values through the public inference port instead of discarding them. The port permits only finite nonnegative timings and an optional boolean runtimeModuleReused; adapter identities, prompt/output strings, arbitrary metadata and invalid counters are excluded. Device reports and copy handoffs share that projection. Older reports and runtimes without phase counters remain readable; unavailable counters are not filled with zero or inferred from the backend name.
+
+The optional modelGeneration.loadMetrics object is diagnostic evidence, separate from the measured outer loadDurationMs (which includes app/Worker coordination). runtimeLoadMs is not pure GPU transfer or pure kernel compilation; it includes the runtime's complete model initialization. No knowledge edits, asset verification, model defaults, acquisition permissions, execution ownership or cancellation behavior change. Keeping verified local assets and a resident model remains distinct from caching a module import. No timing claim permits skipping hashes or silently downloading missing assets.
+
+Actual final-build Windows sidebar sample a10914e317199055, Chrome156 tab, appOnline, prepared Bonsai2 4B PTQ1_0 with the same model/runtime revisions below, prose-128-v1 60input/128output: outer load35739ms; verification9161.27ms; runtime import86.025ms; model initialization26478.845ms; total worker load35731.615ms; runtimeModuleReused=false. First visible token2939.345ms; generation15403ms/8.31tokens/s; runtime memory after1723039344 bytes. The initial phase counters now survive the actual Settings Report. Compared with the previous sample, no speedup is established: the inference algorithm and verification policy are unchanged and conditions are not a controlled comparison. Model initialization dominates this one run; runtime-module import caching alone cannot remove most of the observed wait. Evidence outputs/current-load-phase-measured.json.
+
 ## Current controls and own-device performance (2026-10-27)
 
 Open **Settings → More → Developer**. There is one **Run tests** action. **Test options** selects **Quick** (default) or **Performance**; it does not start a test by itself. Older control names below are superseded by this flow.

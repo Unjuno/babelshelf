@@ -1,3 +1,28 @@
+AUTOMATIC LOAD STOP/RECOVERY AND PHASE REPORT — 2026-10-27 JST
+Actual253f local Windows sidebar prepared4B ordinary oak-description request:
+Stop during verification returned Stopped/exact input/Send; re-send loaded,
+compacted prior conversation and generated one real oak sentence. No reselection
+or reload required. No Save note action was taken. Not a phone/cancel-every-phase proof.
+Existing worker load timings were dropped by the hook/public port. Now finite
+verification/import/runtimeLoad/total timings and a module-reuse boolean survive
+the optional load result, saved report and copy allowlist. Raw adapter/prompt data
+and invalid counters are rejected/dropped. Unsupported engines retain no metrics.
+Tests firstRED for missing phase return/handoff and invalid report acceptance;
+after fix final prototype911/911, hook11/11, focused inference/report/copy54,
+built diagnostic Chromium18, product6, runtime28, build/strict TypeScript/static
+check passed. Initial strict build caught void narrowing, corrected before final;
+initial full tests caught a redundant hook sanitizer absent in the source-based
+test fixture, removed duplicate sanitization so the public inference port owns it.
+Actual final a10914e317199055 Performance: Bonsai2 4B PTQ1_0,
+model8d6557168168f91ea6697a4a49ed2ef622b53adb/runtime
+621e20782f208660f4f58283c2ce58430020f243; configuredwebml-qwen35/webgpu,
+Chrome156 tab appOnline preparedlocal, prose-128-v1 60input/128output.
+Outer load35739ms; verification9161.27ms; import86.025ms; runtime initialization
+26478.845ms; worker total35731.615ms; moduleReusedfalse. Visible TTFT2939.345ms;
+generation15403ms/8.31tokens/s. Runtime live bytes1723039344, not process total.
+Report actually contains loadMetrics. No speedup/thermal/quality/phone/OS-offline
+or full-quality-chain claim. Evidence outputs/current-load-phase-measured.json.
+
 OWN-DEVICE PERFORMANCE RESULT ATTRIBUTION — 2026-10-27 JST
 Published Site184; existing sidebar page/active worker253fe078ed542759 matched.
 Actual public Quick run completed with no failed app checks and selected4B

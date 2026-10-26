@@ -209,6 +209,12 @@ test('saved device report accepts the prior schema and rejects malformed WebGPU 
  storage.setItem('babelshelf.device-test.report.v1',malformed);assert.equal(readSavedDeviceTestReport(storage),'');assert.throws(()=>writeSavedDeviceTestReport(storage,malformed),/Invalid/);
 });
 
+test('load phase counters survive local reports and malformed or private fields refuse storage',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt'}};
+ for(const loadMetrics of [{verificationMs:-1},{importMs:'private'},{runtimeLoadMs:Infinity},{device:'PRIVATE'}])assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,loadMetrics}})),/Invalid/);
+ const value={...base,modelGeneration:{...base.modelGeneration,loadMetrics:{verificationMs:12,importMs:0,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:false}}};writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.deepEqual(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.loadMetrics,value.modelGeneration.loadMetrics);
+});
+
 test('bounded CPU runtime thread and prompt counters survive saved performance reports',()=>{
  const storage=memoryStorage(),value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'cpu',modelRevision:'rev',runtimeRevision:'runtime',testMode:'performance',runtimeMetrics:{requestedThreads:4,runtimeThreads:4,runtimePromptTokens:100,runtimeCachedTokens:0,runtimePrefillMs:10}}};
  writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics.runtimeThreads,4);

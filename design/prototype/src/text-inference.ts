@@ -1,10 +1,19 @@
 import type {StructuredFormat} from './structured-grammar.ts';
 // Local inference only. This port has no preparation, network, knowledge or write API.
 export type GenerationFormat=StructuredFormat|'prose';
+export type RuntimeLoadMetrics={verificationMs?:number;importMs?:number;runtimeLoadMs?:number;totalLoadMs?:number;runtimeModuleReused?:boolean};
+/** Optional worker-reported load phases only; never adapter identity or raw output. */
+export function safeRuntimeLoadMetrics(value:unknown):RuntimeLoadMetrics|undefined{
+ if(!value||typeof value!=='object'||Array.isArray(value))return;
+ const source=value as Record<string,unknown>,result:RuntimeLoadMetrics={};
+ for(const key of ['verificationMs','importMs','runtimeLoadMs','totalLoadMs'] as const){const n=source[key];if(typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=Number.MAX_SAFE_INTEGER)result[key]=n;}
+ if(typeof source.runtimeModuleReused==='boolean')result.runtimeModuleReused=source.runtimeModuleReused;
+ return Object.keys(result).length?result:undefined;
+}
 export type RuntimeGenerationMetrics={countMs?:number;visibleTextTtftMs?:number;generationMs?:number;outputTokens?:number;generationTokensPerSecond?:number;runtimeTtftMs?:number;runtimePrefillMs?:number;runtimeDecodeMs?:number;runtimeDecodeTokensPerSecond?:number;runtimePromptTokens?:number;runtimeCachedTokens?:number;requestedThreads?:number;runtimeThreads?:number;decodePipelineDepth?:number;memoryBefore?:Record<string,number>;memoryAfter?:Record<string,number>};
 export type GenerationResult={text:string;stopped?:boolean;finishReason?:string;outputTokens?:number;metrics?:RuntimeGenerationMetrics};
 export type TextEngine={pin?:()=>TextEngine;manifest:{contextTokens:number};count:(messages:any[],format?:GenerationFormat)=>Promise<{prompt_tokens:number}>;generate:(messages:any[],maxTokens?:number,format?:GenerationFormat)=>Promise<GenerationResult>};
-export type TextRuntime=Omit<TextEngine,'pin'>&{pin?:()=>TextRuntime;manifest:TextEngine['manifest']&{models:{id:string;revision:string}[];runtime:{revision:string}};readonly loaded:string;readonly assets:Record<string,{filesPresent?:boolean}>;load:(model:string)=>Promise<void>;stop:()=>void};
+export type TextRuntime=Omit<TextEngine,'pin'>&{pin?:()=>TextRuntime;manifest:TextEngine['manifest']&{models:{id:string;revision:string}[];runtime:{revision:string}};readonly loaded:string;readonly assets:Record<string,{filesPresent?:boolean}>;load:(model:string)=>Promise<RuntimeLoadMetrics|void>;stop:()=>void};
 const MAX_COUNT_MEMO_ENTRIES=8,MAX_COUNT_MEMO_CHARS=262144;
 const metricNames=['countMs','visibleTextTtftMs','generationMs','outputTokens','generationTokensPerSecond','runtimeTtftMs','runtimePrefillMs','runtimeDecodeMs','runtimeDecodeTokensPerSecond','decodePipelineDepth'] as const;
 function safeMetricMap(value:unknown):Record<string,number>|undefined{
@@ -51,7 +60,7 @@ export function createTextInference(read:()=>TextRuntime):TextRuntime{
  const api:TextRuntime={
   pin,
   get manifest(){return read().manifest;},get loaded(){return read().loaded;},get assets(){return read().assets;},
-  async load(model){const p=read();if(!p.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');epoch++;countMemo=[];await p.load(model);},
+  async load(model){const p=read();if(!p.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');epoch++;countMemo=[];return safeRuntimeLoadMetrics(await p.load(model));},
   stop(){epoch++;countMemo=[];read().stop();},
   async count(messages,format){return countSnapshot(snapshot(),structuredClone(messages),format);},
   async generate(messages,maxTokens=256,format){

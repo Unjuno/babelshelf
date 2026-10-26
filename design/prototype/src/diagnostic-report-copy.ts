@@ -1,4 +1,5 @@
 import {WEBGPU_DIAGNOSTIC_LIMIT_NAMES} from './device-diagnostics.ts';
+import {safeRuntimeLoadMetrics} from './text-inference.ts';
 
 export type CopyResult='copied'|'select';
 
@@ -40,6 +41,7 @@ function projectModelGeneration(value:unknown):Record<string,unknown>|undefined{
  if(!['model','modelRevision','runtimeRevision'].every(key=>typeof generation[key]==='string'))return;
  for(const [key,allowed] of Object.entries({testMode:['quick','performance'],workload:['ready-v1','prose-128-v1'],loadState:['already-loaded','loaded-for-test']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
  const metrics=projectMetrics(source.runtimeMetrics);if(metrics)generation.runtimeMetrics=metrics;
+ const loadMetrics=safeRuntimeLoadMetrics(source.loadMetrics);if(loadMetrics)generation.loadMetrics=loadMetrics;
  return generation;
 }
 function projectOfflineRestart(value:unknown):Record<string,unknown>|undefined{

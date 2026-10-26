@@ -1,5 +1,13 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — Stop during automatic load and identify the wait
+
+Actual existing Windows sidebar build253fe078ed542759, prepared selected4B: ordinary request Describe an oak tree in one sentence. started automatic local verification. Stop returned Stopped and restored the exact input with Send enabled at the first observation. Re-sending the same request verified/loaded the model, compacted prior conversation and produced a real one-sentence oak description with Save note available. No model reselection, reload or fabricated response was needed. Neither answer was saved as a knowledge note. This complements the earlier stop-during-generation observation; it is not proof of every cancellation point or phone behavior.
+
+Load investigation found that the existing WebML worker returned real phase timings but useBonsai and the inference port discarded them. The new optional bounded metrics path exposes actual verification/import/model-initialization time in the copied local diagnostic report, not raw runtime/device metadata. Controls and canonical data remain unchanged. Builda10914e317199055 actual Performance generated128 tokens and recorded35.739s outer load:9.161s verification,0.086s import and26.479s model initialization. This is a diagnosis, not a measured speed improvement. Runtime initialization deserves further investigation before changing verification or blindly adding preload.
+
+New inference/hook/report/copy regressions cover phase preservation, missing support and rejection/removal of invalid/private fields. Final prototype911, built diagnostic UI18 Chromium, product6, build/strict TypeScript/static/runtime28 passed. Whole quality chain and physical phones were not rerun. Detailed logs remainOff and the original input draft is restored after the test. See DEVICE-DIAGNOSTICS.md for exact execution identity and evidence scope.
+
 ## 2026-10-27 — Own-device timing and retained-result attribution
 
 On the existing local sidebar profile, Developer showed an older successful timing sample beside the new active build without a visible sample date/model/test build. Changing Test options also sat above these old numbers, making the next mode easy to confuse with the completed run. The saved JSON itself retained the correct metadata. The fix displays Last test with recorded mode/date, Test build and model ID/status; selection for the next run cannot alter these labels. Current App build remains separate. No automatic rerun, new telemetry or storage migration was introduced.
