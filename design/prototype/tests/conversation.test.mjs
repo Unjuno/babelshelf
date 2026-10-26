@@ -1,4 +1,20 @@
 import test from 'node:test';
+
+test('planner retains bounded source provenance without exposing unchecked quotes as dialogue facts',()=>{
+ const ref={noteId:'saved-meeting',revision:3,start:0,end:8,quote:'集合場所は北口。',title:'Notes/meeting.md'};
+ const context={summary:'',recent:[{id:'sourced',user:'集合場所は？',answer:'北口です。',refs:[ref,ref,{...ref,revision:0},{...ref,noteId:'x'.repeat(161)}]}],refs:[ref],turnCount:1};
+ const before=structuredClone(context),payload=historyPayload(context);
+ assert.deepEqual(payload.recent[0].sourceReferences,[{noteId:'saved-meeting',revision:3}]);
+ assert.doesNotMatch(JSON.stringify(payload),/集合場所は北口。|Notes\/meeting/);
+ assert.deepEqual(context,before);
+ const planned=planDialogueMessages('その集合の持ち物は何？',context);
+ assert.match(planned[0].content,/new facts.*saved content.*answer.*not chat/i);
+ assert.match(planned[0].content,/filenames.*navigation metadata/i);
+ assert.match(JSON.stringify(planned),/sourceReferences/);
+ assert.match(JSON.stringify(historyMessages(context)),/not source contents/);
+ const plain=planDialogueMessages('What did I just say?',{...context,recent:[{id:'plain',user:'My name is Mira.',answer:'Hello Mira.'}],refs:[]});
+ assert.doesNotMatch(plain[0].content,/new facts.*saved content/i);
+});
 import assert from 'node:assert/strict';
 import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueAgent,planDialogueMessages,readDialogueTurn,resolveDialogueTarget} from '../src/conversation.ts';
 

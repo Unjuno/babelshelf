@@ -8,6 +8,37 @@ import {run as readNotes} from '../src/tools/memory.read/tool.ts';
 import {AgentToolInputError} from '../src/agent-loop.ts';
 import {appendDiagnosticLog} from '../src/diagnostic-logs.ts';
 
+test('an invalid history selector gets one audited replan without guessing an original or executing a tool',async()=>{
+ const {value,calls}=input([
+  '{"action":"recall","target":"history","query":"その集合の持ち物は何？"}',
+  '{"action":"answer","query":"集合 持ち物","target":"knowledge"}',
+ ],{question:'その集合の持ち物は何？',context:{...context(),recent:[{id:'prior',user:'集合場所は？',answer:'北口です。',refs:[{noteId:'meeting',revision:3,start:0,end:3,quote:'北口。'}]}],refs:[{noteId:'meeting',revision:3,start:0,end:3,quote:'北口。'}],turnCount:1}});
+ const receipts=[],prompts=[],generate=value.engine.generate;
+ value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
+ value.trace=(tool,details,work,project)=>recordOperation(tool,details,work,async row=>{receipts.push(row);},project);
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.final.action,'answer');assert.deepEqual(calls,[]);assert.equal(prompts.length,2);
+ assert.deepEqual(receipts.filter(r=>r.status!=='running').map(r=>r.status),['failed','succeeded']);
+ assert.match(prompts[1][0].content,/invalid history selector.*rejected without execution/i);
+ assert.equal(prompts[1].at(-1).content,'その集合の持ち物は何？');
+ assert.doesNotMatch(JSON.stringify(prompts[1]),/"raw"/);
+});
+
+test('history-selector repair is bounded and Stop never triggers another generation',async()=>{
+ const invalid='{"action":"recall","target":"history","query":"meeting"}';
+ const withHistory={context:{...context(),recent:[{id:'prior',user:'Meeting details?'}],turnCount:1}};
+ const {value}=input([invalid,invalid,JSON.stringify({action:'chat',query:''})],withHistory);let generated=0;
+ const generate=value.engine.generate;value.engine.generate=async(...args)=>{generated++;return generate(...args);};
+ await assert.rejects(coordinateAgentTurn(value),error=>error.code==='planner_protocol');assert.equal(generated,2);
+ let stopped=false;const stoppedInput=input([invalid],{...withHistory,check:()=>{if(stopped)throw Error('Stopped');}}).value;
+ stoppedInput.trace=async(_tool,_details,work)=>{try{return await work();}catch(error){stopped=true;throw error;}};
+ await assert.rejects(coordinateAgentTurn(stoppedInput),/Stopped/);
+ const failedSave=input([invalid],withHistory).value;let saveGenerations=0;const saveGenerate=failedSave.engine.generate;
+ failedSave.engine.generate=async(...args)=>{saveGenerations++;return saveGenerate(...args);};
+ failedSave.trace=async(_tool,_details,work)=>{try{return await work();}catch{throw Error('Receipt storage unavailable');}};
+ await assert.rejects(coordinateAgentTurn(failedSave),/Receipt storage unavailable/);assert.equal(saveGenerations,1);
+});
+
 const builtinPackages=[{definition:{id:'memory.search',version:1,readOnly:true,network:'none',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string'}}}},entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local notes.'},{path:'Tools/memory.search/tool.ts',body:'Trusted adapter.'}],run:async(args,host)=>host.search(args.query)}];
 const calculatorPackage={definition:{id:'math.calculate',version:1,readOnly:true,network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string'}}}},entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate explicit arithmetic.'},{path:'Tools/math.calculate/tool.ts',body:'Trusted pure calculator.'}],run:calculate};
 const readPackage={definition:{id:'memory.read',version:2,readOnly:true,network:'none',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string'}}}},entry:'Tools/memory.read/tool.ts',sources:[{path:'Tools/memory.read/SKILL.md',body:'Read exact local record.'},{path:'Tools/memory.read/tool.ts',body:'Trusted exact reader.'}],run:readNotes};

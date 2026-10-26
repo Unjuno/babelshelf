@@ -1,5 +1,17 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — source-dependent follow-ups and invalid history recovery
+
+Actual local sidebar on100d2301fc13e22d: after a sourced answer about the meeting place, 「その集合の持ち物は何？」 selected chat and answered that the belongings were the filenames QA-creation-draft and QA-旅程, with no source. Planner1638 input/15 output took37573ms. Model-facing history retained found titles but dropped all answer source identities; the planner could not distinguish a sourced answer from unsupported dialogue. Evidence: outputs/followup-before.png. The erroneous historical answer was retained, not rewritten.
+
+The history projection now retains bounded source ID/revision metadata, separately from verified evidence, and labels file names/IDs as navigation metadata. Quotes/paths/arbitrary reference fields are excluded; originals and stored dialogue are unchanged. A first provenance-only candidate96b6a6dcf9d14fef refused a model-selected recall/history plan missing its original selectors. This did not establish a successful follow-up and was not published as a completed fix.
+
+Final23ae43723e1c44af adds one per-turn replan only for the fixed history-target validator rejection. No raw rejected output is used as instructions and no index/speaker is guessed. Validation, context limits, Stop, receipt persistence and tool budgets remain authoritative. An invalid repeated plan, other protocol errors or runtime failure do not loop. Controlled coordinator tests verify failed/success receipts, exact human request, no tool execution from the invalid plan, bounded attempts and no retry after Stop or failed receipt save.
+
+Actual prepared Bonsai2 4B on final build: the same request first hit the invalid history selector, then selected answer/knowledge on its one retry. Retry1825 input/19 output took42844ms. Final answer 「青いノート。」 had a citation opening Inbox/QA-旅程.md v2 with the exact original 「集合は午前10時。持ち物は青いノート。」. No knowledge edit, model download or fake inference; outputs/followup-source.png. This verifies this source-backed fact, not general event disambiguation or multilingual quality. The records' wider relationship was not independently established; latency and ambiguous cross-record subjects remain open.
+
+Final prototype905, coordinator15, combined conversation/native/coordinator146, product6, check/build/strict TypeScript and protected runtime28 passed. Physical phones, broad follow-up quality and the full quality chain were not rerun.
+
 ## 2026-10-27 — finish a search-and-answer request
 
 Actual local sidebar on78571b1e36c3e0d6: 「集合場所について保存したメモを探して、今の集合場所を教えて。」 selected search/集合場所 and found two records, but stopped at the list instead of answering. Planner1676 input/10 output tokens took80197ms; no general speed claim. A shared final-outcome prompt experiment on69a3c526eced5053 still stopped at the list and was removed rather than shipped as a fix.

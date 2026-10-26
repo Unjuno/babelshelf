@@ -2,6 +2,27 @@
 
 See [the current review and migration target](ARCHITECTURE-REVIEW.md) for remaining structural gaps.
 
+## Dialogue provenance and rejected history selectors — 2026-10-27
+
+The model-facing history projection now retains at most12 distinct source ID/
+revision pairs per turn. It does not copy reference quotes, paths or arbitrary
+reference fields into dialogue. Planner and reply history label these identities
+as navigation/provenance metadata, never source contents. Canonical dialogue,
+originals, backups and source validation contracts are unchanged. Factual
+follow-ups about saved content still require the grounded answer path; provenance
+metadata alone cannot authorize a citation, write, tool or network operation.
+
+The agent coordinator may replan once per submitted turn after the fixed
+validator category `history target` rejects a missing history selector. The
+rejected plan executes nothing and keeps its failed receipt. A fixed host-owned
+hint asks the model to re-evaluate; raw diagnostic/model output is not fed back
+as an instruction and no original index or speaker is filled in by the host.
+The new plan goes through the complete existing validator and scope checks.
+Other planner protocol errors, runtime failures, Stop and receipt-storage failures are
+terminal. Repeated history-selector rejection is terminal, and the tool-call
+budget does not increase. This is bounded protocol recovery, not a guarantee of
+correct semantic routing or factual answers from any model.
+
 ## User device performance samples — 2026-10-26
 
 Developer retains one Run tests action. Test options selects Quick (default) or
