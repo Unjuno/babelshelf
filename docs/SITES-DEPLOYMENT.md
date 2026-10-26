@@ -1,4 +1,10 @@
-## Latest publication — attributed own-device test results, Site v184, 2026-10-27
+## Latest publication — preserved load phases, Site v185, 2026-10-27
+
+Public audience/domain retained. Producta10914e317199055 /135 verified assets, entry index-BuqPxned.js; app6812842 pushed to codex/ui-design-handoff. Site source2ef8d146f5734415499a519c9a9cedd457fc0cba; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_0c7beeee21588191ac27c0b94e4de925; deployment appgdep_6adf8b56b6c08191af388527e1992183 succeeded2026-10-26T17:18:29.937719+00:00. Saved archive SHA2565a0a9e7e7e2c52ae58687a58040949f93c714e55d32e497429125a4b5b47b7aa,58060800 bytes/162 files. Reused one stage/archive, retained actual publicv184 predecessor and pruned19 obsolete generated assets. Independent135-file sizes/hash and delivery transport checks passed.
+
+Existing sidebar public profile updated through normal Update: entry index-BuqPxned.js and active workera10914e317199055 matched. Existing253f diagnostic report remained readable with its original date/build/4B Not prepared status. AppOffline/logsOff restored; original input pin/empty composer retained, no storage purge or public model acquisition/inference. Actual final-build local4B Performance retained phase counters and generated128 tokens; see DEVICE-DIAGNOSTICS.md. Prototype911, Chromium diagnostic18, product6, strict build/TypeScript/static/runtime28 passed; no whole-quality/phone or measured speedup claim. Screenshot outputs/current-public-verification.png; local report outputs/current-load-phase-measured.json.
+
+## Prior publication — attributed own-device test results, Site v184, 2026-10-27
 
 Actual existing public sidebar adopted page index-CR65vYm1.js and active worker253fe078ed542759 through normal Update, without storage clearing. Restored appOffline and retained file pin/empty composer and detailed logsOff. Old0557 timing/report attribution was visible as the old build. One new public Quick run finished on253f with no failed app checks; selected4B remained not-run/model-files-not-ready and UI4B · Not prepared, with current time/build. No model download or inference was requested for this unprepared model. Local4B performance sample is separate. Evidence: outputs/current-public-diagnostic-after.json and current-public-verification.png. Public/local browser UI retained.
 
