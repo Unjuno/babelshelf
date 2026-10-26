@@ -1,3 +1,11 @@
+# Public v204 — direct selected-file opening (2026-10-27)
+
+Appda5b746 on codex/ui-design-handoff delivers6ab4ecd0d9287ae6 /135 independently byte/hash-verified assets, entry index-CBc9vYDk.js. Site source3d0c1e695aee732a477f61b3acb042c0ad83ab71 retains current and actual previous publicb0f690 assets;20 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_4b06391303dc8191b6caebb79013f7bd(v204), deployment appgdep_6adfcf445fe8819194cf08f5cd45f5ce succeeded2026-10-26T22:08:22.174676Z. Native uncompressed tar SHA2560a89f9a2cd59bf5613eab3841645ace26af9f495e9424b2a248975e6d44cb6d9,57,231,360bytes/161files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normalUpdate adopted matching6ab4ecd0 worker/index-CBc9vYDk.js. Restored appOffline, clicked existing Open input file Inbox/QA-draft-v179.md and read unchanged originalv1. Returned Input with the same pin/emptycomposer/dialogue; Developer retained prior0aa313 Performance report and logsOff. No public knowledge writes/model acquisition/inference. Full delete/restore/Changed/Openlatest/v1history flow is actual local profile plus PC controlled editor21/WindowsWebKit1 evidence, not a public-profile deletion or phone test. Unsent composer text still does not survive ordinary reload; that separate finding remains in REMAINING-GATES.
+
 # Public v203 — multilingual Memory search (2026-10-27)
 
 App390db7c on codex/ui-design-handoff deliversb0f6903b0a193479 /135 independently byte/hash-verified assets, entry index-BcrYSCqA.js. Site source55cda764896ff4c267967cbfc7248968f4db83a9 retains current and actual previous public0aa313 assets;19 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
