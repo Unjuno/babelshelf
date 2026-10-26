@@ -1,3 +1,11 @@
+# History request readability — 2026-10-27
+
+Actual local Windows/sidebar7961 history of the owned QA-星見.md v1->v2 correction showed an almost unreadable request caption. Computed foreground rgb(82,104,93) against the opaque dark sheet rgb(36,56,48) gives2.077:1. The common .trash-item small rule retained a fixed light-theme color while its parent correctly changed with appearance.
+
+The caption now inherits its surrounding text color. On4e640fa6037c076a, the same note/request/history remained unchanged; foreground rgb(239,248,243) against the same background gives11.519:1. Actual screenshot confirms readability. Layout, glass surfaces, font size, model/storage contracts and original data are unchanged. The common rule also serves Trash/list metadata; no separate hard-coded dark override was added.
+
+Two browser cases exercise real deterministic profile-change approval and its stored History in Dark/Light. Dark reproduced2.077:1 before the fix; Light passed. A first test draft incorrectly treated transparent light sheet background as black and was corrected to use an opaque ancestor before establishing that red result. Both themes and all19 editor/review browser cases now pass. This checks these default themes/foreground-background samples, not all glass backdrops/custom palettes or universal accessibility compliance. Product6/build/static passed; Node/model tests were not rerun for this CSS-only product change.
+
 # Capture Cancel outcome — 2026-10-27
 
 Public198 actual use closed New file without saving, but left Review before saving on the dialogue turn. Two disposable built-app browser tests reproduced the missing Save cancelled outcome for untouched Cancel and edited-draft explicit Discard. Only local sheet state had been cleared.

@@ -349,7 +349,7 @@ button.model-picker svg{flex-shrink:0}
 .nav-items button:nth-child(4){left:-7.02px;top:79.86px}
 .arc-choice{left:163px;top:111px}
 
-.trash-item{display:flex;flex:1;min-width:0;flex-direction:column;overflow-wrap:anywhere;padding:10px 0}.trash-item small{font-size:0.875rem;color:#52685d}
+.trash-item{display:flex;flex:1;min-width:0;flex-direction:column;overflow-wrap:anywhere;padding:10px 0}.trash-item small{font-size:0.875rem;color:inherit}
 
 /* Attachment and notification records remain visible beside their input. */
 .pending-attachments{max-height:180px;overflow-y:auto;margin-bottom:8px;display:grid;gap:6px}

@@ -88,3 +88,13 @@ test('an old review cannot approve or discard a different proposal created by an
  await expect(page.getByRole('region',{name:'Profile after',exact:true})).toContainText('Conversation');
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
 });
+
+for(const theme of ['Dark','Light'])test(`history request text is readable in ${theme} appearance`,async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();await page.getByRole('group',{name:'Theme',exact:true}).getByRole('button',{name:theme,exact:true}).click();await page.getByRole('button',{name:'Back to Settings',exact:true}).click();await page.getByText('More',{exact:true}).click();await page.getByRole('button',{name:'Assistant',exact:true}).click();await page.getByRole('button',{name:'Harness profile',exact:true}).click();await page.getByRole('button',{name:'Source first',exact:true}).click();await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByRole('button',{name:'Edit harness file',exact:true}).click();await page.getByRole('button',{name:'History',exact:true}).click();
+ const request=page.locator('.version-list .trash-item small');await expect(request).toContainText('Use profile: Source first');
+ const contrast=await request.evaluate(element=>{
+  const channels=(value:string)=>value.match(/[\d.]+/g)!.slice(0,3).map(Number);
+  const lum=(rgb:number[])=>rgb.map(n=>n/255).map(n=>n<=0.04045?n/12.92:((n+0.055)/1.055)**2.4).reduce((sum,n,i)=>sum+n*[0.2126,0.7152,0.0722][i],0);
+  let background='rgb(255,255,255)';for(let parent:Element|null=element;parent;parent=parent.parentElement){const color=getComputedStyle(parent).backgroundColor,parts=color.match(/[\d.]+/g)?.map(Number);if(parts&&(parts.length<4||parts[3]>=0.99)){background=color;break;}}const a=lum(channels(getComputedStyle(element).color)),b=lum(channels(background));return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+ });expect(contrast).toBeGreaterThanOrEqual(4.5);
+});
