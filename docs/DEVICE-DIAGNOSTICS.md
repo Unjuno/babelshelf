@@ -10,6 +10,8 @@ Actual final-build Windows sidebar sample a10914e317199055, Chrome156 tab, appOn
 
 ## Current controls and own-device performance (2026-10-27)
 
+Public sidebar confirmation on Site187/product969979612954f800: **Settings → More → Developer → Test options** exposes Quick/Performance and the single Run tests action. Current worker/page match the published build; the older report retains its original date/build. Selected4B is currently Not prepared in this public profile, so no new performance run or download was initiated. This confirms delivery and discoverability, not public-profile inference performance. The48-test Node diagnostic/model/suite/copy regression passed again. Existing local measured samples below remain scoped to their recorded builds and conditions.
+
 Open **Settings → More → Developer**. There is one **Run tests** action. **Test options** selects **Quick** (default) or **Performance**; it does not start a test by itself. Older control names below are superseded by this flow.
 
 Prepare the desired text model in Models first. Tests use only locally prepared assets and never download missing models. In a browser tab, Run tests performs the checks and one selected-model generation immediately when its local files are ready. An installed Home Screen app instead saves the baseline and arms one post-restart attempt in that app's storage. Missing assets are reported as not-run, not as a generation pass.

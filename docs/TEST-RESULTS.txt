@@ -1,4 +1,13 @@
 RETRIEVAL-BOUND EVIDENCE AND DEFERRED TEXT ACQUISITION — 2026-10-27 JST
+Published Site187/product969979612954f800; existing public sidebar adopted
+matching page index-Cpq5kgQ_.js and active worker through normal Update.
+Offline absent-subject answer returned No matching notes without model load or
+compaction, despite a retained unrelated file pin. Empty composer restored.
+Current Models UI confirms4B Not prepared; no public generation is claimed.
+Developer Performance options/Run tests present. Previous report retained with
+original253f build/date; current worker is not substituted into old results.
+Follow-up diagnostic/model/suite/copy Node48/48 passed; no phone rerun requested.
+Publication identifiers and bounded evidence: docs/SITES-DEPLOYMENT.md.
 Controlled red tests reproduced old citations added to an absent explicit Memory
 subject, and an unrelated note added beside a retrieved matching-history source.
 Fresh saved-note/literal scopes now exclude history as replacement evidence;
