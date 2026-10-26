@@ -62,6 +62,45 @@ test('an explicitly bound file question never counts or compacts unrelated dialo
  const current=f.current(),turn=current.turns.at(-1);assert.equal(generations,1);assert.ok(seen.length);assert.deepEqual(current.compaction,prior.compaction);assert.deepEqual(current.turns.slice(0,24),prior.turns);assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.activity.some(a=>a.tool==='dialogue.compact'),false);assert.equal(turn.activity.some(a=>a.tool==='dialogue.plan'),false);assert.equal(turn.answer,'The provided evidence does not state a meeting time.');
 });
 
+test('bound file admission reports unavailable or empty originals before any text model acquisition',async()=>{
+ for(const scenario of ['missing','withdrawn','empty']){
+  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/preflight.md',body:scenario==='empty'?'':'Meeting at the north gate.'});
+  if(scenario==='withdrawn')note.state='withdrawn';
+  const records=scenario==='missing'?[]:[note],snapshot=structuredClone(records);let loads=0;
+  await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
+  f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{loads++;throw Error('Unexpected model acquisition');}};
+  f.services.knowledge={all:async()=>records,search:async()=>{throw Error('Unrelated search');}};
+  assert.equal(await c.run(run=>executeSubmission({text:'What time does this file say we should meet?',attachments:[]},f.services,f.view,run)),'failed');
+  assert.match(c.state.error,scenario==='missing'?/Working file original unavailable/:scenario==='withdrawn'?/Working file changed/:/Working file is not eligible evidence/);
+  assert.equal(loads,0);assert.deepEqual(records,snapshot);
+  assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);
+ }
+});
+
+test('bound file answer admits evidence before releasing another model and loading the selected text runtime',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/preflight.md',body:'Meeting at 09:30.'}),steps=[];let loaded='';
+ await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
+ f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',engine:'wllama-lfm2',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>{assert.equal(loaded,'test');return {prompt_tokens:100};},generate:async()=>({text:JSON.stringify({answer:'09:30',citations:[{id:'S1',quote:note.revisions[0].body}]})}),load:async()=>{steps.push('load');loaded='test';},unload:async()=>{loaded='';}};
+ f.services.decision={loaded:true,busy:false,enabled:false,ready:false,unload:async()=>{steps.push('release-decision');f.services.decision.loaded=false;}};
+ f.services.ensureProductRuntime=async(_role,network)=>{assert.equal(network,false);steps.push('runtime');};
+ f.services.knowledge={all:async()=>{steps.push('read');return [note];},search:async()=>{throw Error('Unrelated search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'What time does this file say we should meet?',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.ok(steps.indexOf('read')<steps.indexOf('release-decision'));assert.ok(steps.indexOf('runtime')<steps.indexOf('load'));assert.equal(steps.filter(s=>s==='load').length,1);
+ assert.equal(f.current().turns.at(-1).answer,'09:30');assert.equal(f.current().turns.at(-1).refs[0].noteId,note.id);assert.equal(note.revisions.length,1);
+});
+
+test('an opened-file correction reads its pinned original then loads only for an exact-span proposal, without replaying old dialogue',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/place.md',body:'集合場所は北口。まだ作成途中です。'}),before=structuredClone(note),steps=[];let loaded='',generations=0,review;
+ const old={id:'old',user:'UNRELATED instructions',answer:'Old answer'};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[old],currentFile:{noteId:note.id,revision:1}});
+ f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{steps.push('load');loaded='test';},unload:async()=>{loaded='';},count:async messages=>{assert.equal(loaded,'test');assert.doesNotMatch(JSON.stringify(messages),/UNRELATED/);return {prompt_tokens:100};},generate:async messages=>{generations++;assert.match(JSON.stringify(messages),/集合場所は北口/);return {text:JSON.stringify({action:'replace',find:'北口',with:'南口'})};}};
+ f.services.knowledge={all:async()=>{steps.push('read');return [note];}};
+ f.view.reviewCorrection=async proposal=>{review=proposal;};
+ assert.equal(await c.run(run=>executeSubmission({text:'集合場所を南口に直して。',attachments:[]},f.services,f.view,run)),'awaitingApproval',c.state.error);
+ assert.ok(steps.indexOf('read')<steps.indexOf('load'));assert.equal(generations,1);assert.equal(review.path,'Inbox/place.md');assert.equal(review.before,before.revisions[0].body);assert.equal(review.after,'集合場所は南口。まだ作成途中です。');assert.equal(review.operation.name,'text.replace');assert.deepEqual(note,before);assert.deepEqual(f.current().turns[0],old);
+ assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.plan'||a.tool==='dialogue.compact'),false);
+});
+
 test('explicit missing Memory subjects stop before model acquisition or history compaction',async()=>{
  const f=fixture(),c=createSubmissionController();let loads=0,counts=0,generated=0;
  f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:false}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>{counts++;throw Error('Unexpected count');},generate:async()=>{generated++;throw Error('Unexpected generation');},unload:async()=>{},load:async()=>{loads++;throw Error('Unexpected load');}};

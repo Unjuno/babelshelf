@@ -79,7 +79,18 @@ export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boole
  if(!asks)return null;
  return {action:'answer' as const,query:text,target:'file' as const};
 }
-/** Select one submitted turn's read-only scope before model planning. */
+/** A single explicit correction uses the user's already opened file. This only
+ * selects a proposal route; it cannot choose replacement bytes or commit them. */
+export function explicitWorkingFileCorrection(question:string,hasWorkingFile:boolean,hasOtherInput=false){
+ const text=question.trim();
+ if(!hasWorkingFile||hasOtherInput||!text||text.length>500||/[\r\n;；?？]/u.test(text)||requestNamesEarlierDialogue(text)||namesExplicitSavedKnowledge(text)||namedSavedSubject(text))return null;
+ if(/\b(?:another|other|different|all)\b|\b(?:files|notes|documents)\b|(?:別の|他の|すべての|全ての)/iu.test(text)||(text.match(/直して|変更して|訂正して|修正して|変えて/gu)?.length??0)>1)return null;
+ if(/\b(?:and|then|answer|reply|response|message|timer|alarm|schedule|notification|settings|model|theme|download)\b|(?:回答|返答|応答|発言|メッセージ|タイマー|通知|設定|モデル|テーマ|それから)/iu.test(text)||/[\w.-]+\.(?:md|txt|json)\b|[\\/]/iu.test(text))return null;
+ const english=/^(?:(?:in|within)\s+(?:this|the\s+current)\s+(?:file|note|document)[,\s]+)?(?:please\s+)?(?:change|correct|update|set|replace)\s+[^.!?]{1,180}\s+(?:to|with)\s+[^.!?]{1,180}[.!]?$/iu.test(text);
+ const japanese=/^[^。！？!?]{1,160}を[^。！？!?]{1,160}に(?:直して|変更して|訂正して|修正して|変えて)(?:ください|下さい)?[。！!]?$/u.test(text);
+ return english||japanese?{action:'edit' as const,query:question,target:'file' as const}:null;
+}
+/** Select one submitted turn's scope before model planning. */
 export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  question:string;
  literalRequest:LiteralRequest;
@@ -92,13 +103,14 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
+ const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
  const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
- const priorContext:DialogueContext=explicitSavedRequest||explicitFileQuestion||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
- const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!answerRewrite?contextIndependentConversation(question,attachments,priorContext):null;
+ const priorContext:DialogueContext=explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
+ const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=answerRewrite??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const request=answerRewrite??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??fileCorrection??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=contextIndependent?.context??priorContext;
  return {literalRequest,explicitSavedRequest,explicitFileQuestion,inputQuestion,priorContext,contextIndependent,request,context};
 }

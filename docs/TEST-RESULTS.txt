@@ -1,3 +1,15 @@
+OPENED FILE CORRECTION / MODEL ACQUISITION — 2026-10-27 JST
+Actual4B v192 baseline replaced the whole body with the correction instruction;
+intermediate36e then recalled the previous user message. Both originals retained.
+Candidate182 actual same file/request proposes exact 北口->南口 replacement,
+keeps tail and v3 base, no planner/context/history processing; cancelled/no writes.
+Finalb3a08696d9373d68 adds only ambiguous/compound command refusal guards.
+Red workflow tests also prove source checks preceded by unnecessary model Load;
+fixed missing/withdrawn/empty admission and valid local ownership/load order.
+Prototype925, intent25, product6, strict TypeScript/build/static pass;
+editor/pending-correction PC13 pass on182. Full conditions and evidence in
+USABILITY-EVALUATION.md. Not broad semantic, phone, thermal or speedup acceptance.
+
 PUBLIC v192 /1785f67c18da0c98 adopted through normal Update in sidebar.
 Worker and page index-DnKy4VRm.js match; original history/pin/report retained,
 Offline restored. Save preview/optional source choices checked, no file write.

@@ -1,12 +1,18 @@
+# Current application architecture
+
+## Opened-file correction commands and evidence admission — 2026-10-27
+
+A bounded single imperative correction in English/Japanese can bind the already opened file before general planning. This selects only edit/file, not replacement bytes. Attachments, explicit dialogue references, named/other/plural file targets, compound commands and unsupported wording retain the existing routes. The exact pinned original is read before Text acquisition. Correction inference receives the original and human instruction without unrelated history; local names/places/times/numbers are requested as the smallest exact text.replace span. Whole-note reorganization/translation retains the separate rewrite path. All proposals retain full Before/After, pending-review persistence, explicit approval, CAS, history and Undo. No general multilingual intent or semantic-correctness guarantee follows from these bounded rules or a successful model sample.
+
+Initially resolved file answers/summaries similarly defer acquisition to the existing groundedAnswer callback after canonical eligibility/source checks. Missing, withdrawn or empty files fail without load, compaction or releasing an unrelated resident. Valid sources still use the same local-only runtime/lease manager and generation/source revalidation. No new runtime, permission, storage migration or network fallback is introduced.
+
 ## Reviewed answer source selection — 2026-10-27
 
 Save note starts from its already pinned answer. DialogueCopySource owns only optional, bounded source browsing (12 original previews per page, NFKC search); dialogue-copy.ts remains the read-only selector and commit-time original/reference validator. Internal message numbers are no longer a second mutable form field. Same-source selection preserves manual edits; choosing another source after edits uses the existing discard review. Stored original bytes, revision refs, approval and compare-and-swap contracts are unchanged. No generation occurs during selection or saving.
 
-# Current application architecture
-
 ## Bound file questions do not prepare dialogue context — 2026-10-27
 
-When the initial resolved answer/summary already targets a file, Send skips dialogue counting/compaction. The grounding layer validates that pinned revision and already excludes unrelated conversation for file evidence, so preparing global dialogue first served no answering purpose. It could nevertheless generate/persist an unrelated compaction. Explicit saved-Memory, attachment and original-message paths retain their existing context policy; unresolved requests still prepare history when planning needs it. File source validation, acquisition ownership, token limits, generation/citation checks, source-change refusal and reviewed Save are unchanged. Model loading still precedes file validation in this initial path; no claim is made that every source-preflight latency is eliminated.
+When the initial resolved answer/summary already targets a file, Send skips dialogue counting/compaction. The grounding layer validates that pinned revision and already excludes unrelated conversation for file evidence, so preparing global dialogue first served no answering purpose. It could nevertheless generate/persist an unrelated compaction. Explicit saved-Memory, attachment and original-message paths retain their existing context policy; unresolved requests still prepare history when planning needs it. File source validation, acquisition ownership, token limits, generation/citation checks, source-change refusal and reviewed Save are unchanged. Initially bound file answer/summary now validates original eligibility before acquiring the selected model through the existing manager. Unresolved planner routes still acquire a model to classify intent. No claim is made that every source-preflight latency is eliminated.
 
 ## Selected dialogue originals use native messages — 2026-10-27
 
@@ -106,8 +112,8 @@ answered, imported, displayed, awaitingApproval, needsPreparation, needsInput,
 partial, cancelled and failed. Submission functions return an outcome on every
 normal path. Preparation/input requirements produce blocked lifecycle state;
 an unread original produces partial rather than an implied successful answer.
-Existing dialogue status strings and schemas are unchanged. Review handoff is
-still transient; durable review restoration is separate additive storage work.
+Existing dialogue status strings and schemas are unchanged. Correction reviews are durable as described in PENDING-REVIEWS.md. Capture and
+new-task review handoffs still have separate recovery work.
 
 `model-execution.ts` centralizes acquisition policy for Text, Decision and
 release before reader operations. Existing engine clients still own Workers,
@@ -126,7 +132,7 @@ the host has a typed preparation requirement; model error text cannot declare
 new capabilities or change outcomes by resembling a UI label.
 
 Normal Send, generated capture and ordinary conversation all use this policy
-before grounded answering, including routes that previously reached the answer
+when grounded answering needs a model, including routes that previously reached the answer
 helper directly. `scheduled-answer.ts` moves scheduled answering out of the
 screen and shares acquisition plus grounded answering. It receives only the
 read-only all/search storage contract, selects a knowledge scope and has no

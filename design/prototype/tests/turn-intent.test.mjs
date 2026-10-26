@@ -11,6 +11,17 @@ const route=(overrides={})=>{
  });
 };
 
+test('a single correction command with an opened file binds a review, never an earlier dialogue transform',()=>{
+ for(const question of ['集合場所を南口に直して。','このファイルの時刻を10時に変更してください。','Change the meeting place to the south gate.','In this file, replace north with south.']){
+  const before=structuredClone(prior),intent=route({question});
+  assert.deepEqual(intent.request,{action:'edit',query:question,target:'file'});
+  assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});assert.deepEqual(prior,before);
+ }
+ for(const question of ['Change your last answer to French.','Change another file to south.','別のファイルの集合場所を南口に直して。','集合場所を南口に直して、時刻を10時に変更して。','Replace the text in Notes/other.md with south.','Change the meeting place to south and save a new note.','集合場所を南口に直して。それから保存して。','Set the timer to ten minutes.','What would change the meeting place to south?'])assert.notEqual(route({question}).request?.action,'edit',question);
+ assert.equal(route({question:'集合場所を南口に直して。',hasAttachments:true}).request,null);
+ assert.equal(route({question:'集合場所を南口に直して。',prior:{...prior,currentFile:undefined}}).request,null);
+});
+
 test('an explicit rewrite of the current answer binds its immutable dialogue target before planning',()=>{
  for(const question of ['今の回答を日本語で短くまとめて。','直前の回答を英語に翻訳して。','Summarize your last answer in Japanese.','Please translate your previous response into French.']){
   const before=structuredClone(prior),intent=route({question});
