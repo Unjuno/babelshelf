@@ -1,5 +1,9 @@
 USER JOURNEY: CREATION AND SCHEDULE DRAFTS — 2026-10-26 JST
 Producte9b520a1d40fb091 /135 verified assets, index-CTjwxKtj.js.
+Published Sitev179; public sidebar Update adopted matching active worker/page,
+returned Offline. New Japanese/English file survived Escape/Keep editing/Save,
+then reload/search/reopen asv1. Weekly prompt/conditions survived Cancel/Keep;
+explicit discard left No schedules. Existing dialogue/originals retained, logsOff.
 Actual sidebar on previous6178 build lost new-file name/body and schedule prompt
 on Escape/reopen. Two red browser cases reproduced the missing confirmation.
 Fix uses one discard review independent of form identity, preserving copy/task
