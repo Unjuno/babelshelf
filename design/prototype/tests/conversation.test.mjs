@@ -49,6 +49,17 @@ test('one selected dialogue original uses its native speaker role and exact text
  assert.deepEqual(historyMessages({...context,selectedOriginal:{speaker:'user',text:'An original user statement.'}}),[{role:'user',content:'An original user statement.'}]);
 });
 
+test('line formatting uses exact original content, preserves checkbox state and records a read-only operation',()=>{
+ const original={turnId:'packing',turnIndex:2,speaker:'assistant',quote:'- 青いノート\r\n\r\n2. ＡＢＣ 🌳\n- [x] 済み'},before=structuredClone(original);
+ const result=applyTextTransform('{"action":"format_lines","format":"checklist"}',original);
+ assert.equal(result.answer,'- [ ] 青いノート\n- [ ] ＡＢＣ 🌳\n- [x] 済み');assert.equal(result.toolCalls[0].name,'text.format_lines');assert.equal(result.toolCalls[0].result.matches,3);assert.deepEqual(result.toolCalls[0].target,{turnId:'packing',turnIndex:2,speaker:'assistant'});assert.deepEqual(original,before);
+ assert.equal(applyTextTransform('{"action":"format_lines","format":"bullets"}',{...original,quote:'A\nB'}).answer,'- A\n- B');
+ assert.equal(applyTextTransform('{"action":"format_lines","format":"checklist"}',{...original,quote:'2026. Annual plan\n3.14 liters'}).answer,'- [ ] 2026. Annual plan\n- [ ] 3.14 liters');
+ assert.equal(applyTextTransform('{"action":"format_lines","format":"numbered"}',{...original,quote:'A\nB'}).answer,'1. A\n2. B');
+ for(const raw of ['{"action":"format_lines","format":"html"}','{"action":"format_lines","format":"checklist","body":"invented"}'])assert.throws(()=>applyTextTransform(raw,original),/Invalid/);
+ for(const quote of ['```js\ncode\n```','- A\n  - nested','| A | B |','x'.repeat(30001),'x\n'.repeat(1001)])assert.equal(applyTextTransform('{"action":"format_lines","format":"checklist"}',{...original,quote}).answer,undefined);
+});
+
 test('planner serialization keeps retained dialogue before changing selectors without dropping scope or mutating originals',()=>{
  const recent=[{id:'one',user:'The blue lantern meeting is at 10.',answer:'Recorded in this conversation.'}];
  const old={summary:'Earlier discussion stays untrusted.',recent,refs:[],turnCount:1,lastAnswerIndex:0,currentResult:{turnId:'one'},recalled:[{turnId:'archived',turnIndex:0,speaker:'user',quote:'Earlier original',start:0,end:16}]};

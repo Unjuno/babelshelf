@@ -53,6 +53,15 @@ test('current-answer rewrite loads once, reads the exact assistant text and neve
  assert.match(c.state.error,/Current result unavailable/);assert.equal(prompts.length,0);
 });
 
+test('current-answer formatting reads only the exact answer and preserves its source references without Memory search or compaction',async()=>{
+ const f=fixture(),c=createSubmissionController(),answer='青いノート',ref={noteId:'trip',revision:2,start:0,end:5,quote:answer},old={id:'packing-answer',user:'旅程の持ち物は？',answer,refs:[ref]};let calls=0;
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'irrelevant',user:'UNRELATED HISTORY',answer:'Other topic'},old],currentResult:{turnId:old.id}});
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async messages=>{assert.doesNotMatch(JSON.stringify(messages),/UNRELATED HISTORY/);return {prompt_tokens:100};},generate:async messages=>{calls++;assert.match(JSON.stringify(messages),/青いノート/);return {text:calls===1?'{"action":"read"}':'- [ ] 青いノート',finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
+ f.services.knowledge={all:async()=>{throw Error('Must not reread unrelated Memory');},search:async()=>{throw Error('Must not search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'今の回答をチェックリストにして。',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ const turn=f.current().turns.at(-1);assert.equal(calls,2);assert.equal(turn.answer,'- [ ] 青いノート');assert.deepEqual(turn.refs,[ref]);assert.equal(turn.readTurn.turnId,old.id);assert.deepEqual(f.current().turns[1],old);assert.equal(turn.activity.some(a=>a.tool==='dialogue.plan'||a.tool==='dialogue.compact'),false);
+});
+
 test('an explicitly bound file question never counts or compacts unrelated dialogue before answering',async()=>{
  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/place.md',body:'集合場所は北口。まだ作成途中です。'}),prior={schema:1,revision:1,turns:Array.from({length:24},(_,i)=>({id:'prior-'+i,user:'UNRELATED_DIALOGUE '+i,answer:'Keep earlier original '+i})),compaction:{through:12,summary:'UNRELATED_DIALOGUE summary'},currentFile:{noteId:note.id,revision:1}};
  await f.services.saveDialogue(prior);let generations=0;const seen=[];

@@ -50,6 +50,14 @@ test('schedule proposal inference is source-only, bounded and cannot accept stop
  const quarantined={...n,ui:{...n.ui,requiresReview:true}};const before=calls.length;await assert.rejects(proposeCorrection(base,'Move',quarantined),/Review restored schedule/);assert.equal(calls.length,before);const prepared=prepareCorrection(quarantined,'Move',patch({time:'10:00'}));assert.throws(()=>applyCorrection([quarantined],prepared),/Review restored schedule/);
 });
 const note=()=>createNote({path:'Notes/rewrite.md',body:'Water: three liters.\nMeeting Monday at ten. Keep the venue.'}),raw=body=>JSON.stringify({action:'rewrite',body});
+
+test('line-format corrections keep reviewed history, Undo and backup operation validation',async()=>{
+ const n=note(),before=structuredClone(n),proposal=prepareCorrection(n,'Format existing lines as a checklist',JSON.stringify({action:'format_lines',format:'checklist'}));
+ assert.equal(proposal.operation.name,'text.format_lines');assert.deepEqual(n,before);
+ const applied=applyCorrection([n],proposal);assert.equal(latest(applied.note).body,'- [ ] Water: three liters.\n- [ ] Meeting Monday at ten. Keep the venue.');
+ const pack=await makeStateBackup({notes:[applied.note],settings:[],runs:[{key:'ui-v1-correction-'+applied.receipt.id,value:applied.receipt}]});assert.equal((await parseStateBackup(JSON.stringify(pack))).notes[0].revisions.length,2);
+ assert.equal(latest(undoCorrection([applied.note],applied.receipt).note).body,latest(n).body);
+});
 test('semantic body rewrite is only a proposal until explicit approval; IDs, metadata, original history and Undo survive',()=>{
  const n=note();n.legacy={retained:'原文'};const before=structuredClone(n),p=prepareCorrection(n,'Organize as bullets without changing facts',raw('- Water: three liters.\n- Meeting: Monday at ten; same venue.'));assert.deepEqual(n,before);assert.equal(p.operation.name,'text.rewrite');const applied=applyCorrection([n],p);assert.equal(applied.note.id,n.id);assert.equal(applied.note.revisions[0].body,n.revisions[0].body);assert.deepEqual(applied.note.legacy,n.legacy);assert.equal(latest(applied.note).path,latest(n).path);assert.equal(latest(applied.note).body,p.after);assert.deepEqual(applied.note.sources,n.sources);const undone=undoCorrection([applied.note],applied.receipt);assert.equal(latest(undone.note).body,latest(n).body);assert.equal(undone.note.revisions.length,3);assert.equal(undone.note.revisions[1].body,p.after);
 });

@@ -1,3 +1,11 @@
+# Current answer to checklist — 2026-10-27
+
+Actual Windows sidebar use with prepared Bonsai 4B first answered the owned trip-note question correctly and opened its exact v2 source. On public-code build6010c76359fe6111, the follow-up current-answer checklist request unnecessarily compacted history and entered general planning; it was stopped. Bounded current-answer routing removed that work, but two actual candidates still generated checklists of response rules rather than the original content. The shorter-prose-prompt experiment was reverted.
+
+Candidate4950db56c5c6ee77 instead offered a read-only line-format tool. Actual 4B selected format_lines/checklist and returned exactly `- [ ] 青いノート`. Activity showed Read earlier message and Process original, without Context, general Select action or final prose Answer. The citation opened the unchanged trip note v2; Save note preview matched the result and was cancelled. Failed attempts remain in dialogue; no knowledge was edited. Final e52f3b4847d79846 adds a tested year/number-preservation guard; the actual model sample is candidate4950 scope, not a separate final-build model run. There is no measured speedup percentage or general rewriting-quality claim.
+
+Users can evaluate their own prepared selected model in Settings > Developer > Test options > Performance > Run tests, then copy the local report. The existing public194 UI was inspected: Quick and Performance are selectable; Performance states one sample up to128 output tokens and time/battery cost. This run did not overwrite the user's older device report. No silent acquisition, automatic report upload or phone compatibility claim follows.
+
 ## 2026-10-27 — Do not generate another correction while a review is pending
 
 Actual public193/b3a08696d9373d68 sidebar: Standard -> Source first profile proposal, Escape without Save, Input with existingv1 file pin, then 集合場所を南口に直して。. Returned Model not prepared instead of identifying the already pending review. Canonical staging would refuse a competing proposal only after generation in a prepared profile. No settings/note were approved.

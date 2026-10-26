@@ -59,8 +59,8 @@ export function correctionOperationRaw(operation:Operation,after:string){
  if(operation.name==='settings.patch')return settingsPatchRaw(operation,after);
  if(operation.name==='schedule.patch')return schedulePatchRaw(operation,after);
  if(operation.name==='text.rewrite')return JSON.stringify({action:'rewrite',body:after});
- if(!['text.replace','text.split_lines'].includes(operation.name))throw Error('Invalid correction operation');
- return JSON.stringify({action:operation.name==='text.replace'?'replace':'split_lines',...operation.arguments});
+ if(!['text.replace','text.split_lines','text.format_lines'].includes(operation.name))throw Error('Invalid correction operation');
+ return JSON.stringify({action:operation.name==='text.replace'?'replace':operation.name==='text.format_lines'?'format_lines':'split_lines',...operation.arguments});
 }
 function operationResult(note:Canonical,raw:string,records?:Canonical[],historical=false):{after:string;operation:Operation}{
  if(note.ui?.managed)return settingsPatchResult(note,raw);

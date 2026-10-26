@@ -1,5 +1,11 @@
 # Current application architecture
 
+## Current-answer formatting boundary — 2026-10-27
+
+An explicit rewrite/format request about the current answer binds that exact prior assistant turn before planner/history compaction. Quoted target phrases and mixed tool/write/file commands remain outside this shortcut. A semantic read/rewrite now inherits the selected original's existing source IDs, versions and ranges instead of dropping them when plain generation returns no sources. These references establish provenance, not semantic entailment.
+
+The read-only text inspector can select text.format_lines with a closed checklist/bullets/numbered enum. Host code formats existing nonempty lines; the model does not compose the resulting items. The operation has no network or storage ports, caps input/output at 30,000 characters and 1,000 lines, refuses code fences, nested lists and pipe tables, and preserves checked boxes and nonsequential numbers such as years. It does not perform semantic extraction, table construction or summarization. Receipts identify the exact original turn. Reviewed ordinary-note corrections may use the same operation through the existing approval/CAS/history/Undo and backup validator; no automatic overwrite is added.
+
 ## Pending correction preflight — 2026-10-27
 
 The edit branch checks the canonical pending-review slot before Text acquisition/proposal generation. An occupied slot refreshes the review surface and returns a host-owned needsInput outcome while preserving both the existing review and new request draft. Malformed records remain inert and block replacement until explicitly handled. Staging and approval retain their complete transactional validation for cross-tab races. Read/chat routes are unaffected; classification of unresolved intents may still need a model. See PENDING-REVIEWS.md.

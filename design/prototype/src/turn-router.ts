@@ -12,10 +12,10 @@ import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralReque
  * The canonical dialogue resolver owns its exact turn/speaker and missing target.
  */
 export function explicitCurrentAnswerRewrite(question:string){
- const text=question.trim();if(!text||text.length>500||/[\r\n;；]/u.test(text))return null;
- if(/\b(?:save|store|record|remember|delete|remove|overwrite|edit|update|schedule|notify|search|find|open|read|compare|files?|notes?|documents?|images?|attachments?|recordings?|videos?)\b|(?:保存|記録|削除|上書|訂正|更新|予定|通知|検索|探して|比較|ファイル|メモ|ノート|文書|画像|添付|録音|動画)/iu.test(text))return null;
- const english=/^(?:(?:please|can you|could you|would you)\s+)?(?:summari[sz]e|translate|rephrase|rewrite|shorten)\b.*\b(?:your\s+(?:(?:last|previous|latest|current)\s+)?(?:answer|reply|response)|the\s+(?:last|previous|latest|current)\s+(?:answer|reply|response))\b/iu.test(text);
- const japanese=/^(?:今の|直前の)(?:あなたの)?(?:回答|返答|応答)(?:を|について).*(?:まとめ|要約|翻訳|訳して|言い換え|書き直|短く)/u.test(text);
+ const text=question.trim();if(!text||text.length>500||/[\r\n;；"“”「」『』`]/u.test(text))return null;
+ if(/\b(?:save|store|record|remember|delete|remove|overwrite|edit|update|schedule|notify|search|find|open|read|compare|tools?|mcp|execute|run|call|files?|notes?|documents?|images?|attachments?|recordings?|videos?)\b|(?:保存|記録|削除|上書|訂正|更新|予定|通知|検索|探して|比較|ツール|実行|呼び出|ファイル|メモ|ノート|文書|画像|添付|録音|動画)/iu.test(text))return null;
+ const english=/^(?:(?:please|can you|could you|would you)\s+)?(?:summari[sz]e|translate|rephrase|rewrite|shorten|format|reformat|convert|put|turn|make)\b.*\b(?:your\s+(?:(?:last|previous|latest|current)\s+)?(?:answer|reply|response)|the\s+(?:last|previous|latest|current)\s+(?:answer|reply|response))\b/iu.test(text);
+ const japanese=/^(?:今の|直前の)(?:あなたの)?(?:回答|返答|応答)(?:を|について).*(?:まとめ|要約|翻訳|訳して|言い換え|書き直|短く|に(?:して|変えて|変換して)|整形して)/u.test(text);
  return english||japanese?{action:'recall' as const,query:question,target:'current' as const}:null;
 }
 
