@@ -1,3 +1,11 @@
+# Capture Cancel outcome — 2026-10-27
+
+Public198 actual use closed New file without saving, but left Review before saving on the dialogue turn. Two disposable built-app browser tests reproduced the missing Save cancelled outcome for untouched Cancel and edited-draft explicit Discard. Only local sheet state had been cleared.
+
+On7961a4952ed69fa0, exits acknowledge cancellation through the dialogue CAS writer before closing. The transition changes only the exact still-pending capture; saved/newer outcomes remain untouched. Dirty Keep editing retains the exact body, while explicit Discard persists cancellation. Actual local sidebar: edited capture -> File/Folder switch confirmation -> Keep editing retained edited body -> Cancel/Discard -> Save cancelled -> ordinary reload retained status. No note created; original Input draft restored. Browser17 cases additionally verify unchanged Cancel, no canonical note-count change across reload, successful capture Save remains Saved, and prior editor/correction-review flows.
+
+Historical stale labels remain historical; this fixes new exits, not inferred migration. Capture review draft recovery after OS termination and larger model-quality gates remain open.
+
 # Natural-language note to read and correction — 2026-10-27
 
 Actual Windows/sidebar Chrome156, current public197 code c821: QA星見の持ち物は水と充電器。メモして。 loaded the prepared4B and entered prolonged Compacting before reaching review. It was stopped and the original request returned to Input; no note was saved by that attempt. The new literal admission instead opened New file immediately with exact QA星見の持ち物は水と充電器。 and no model/compaction step. Human-reviewed Save as Inbox/QA-星見.md createdv1.

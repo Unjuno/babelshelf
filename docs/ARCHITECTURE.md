@@ -1,5 +1,11 @@
 # Current application architecture
 
+## Capture cancellation acknowledgement — 2026-10-27
+
+CAPTURE_REVIEW_STATUS is shared by admission and cancellation. cancelCaptureReview is a pure dialogue transition: only the exact turn still in Review before saving becomes Save cancelled; original user/answer/source references and other turns remain, and newer settled outcomes are no-ops. Creation-sheet exits commit that transition through the existing queued CAS writer before closing. Dirty Keep editing/dismissal never requests cancellation. Explicit discard clears form fields only after cancellation succeeds; failures retain the form and expose an error. A local lock prevents repeated exits during acknowledgement. Successful note creation skips this cancellation path, including the existing note-saved/conversation-acknowledgement-failed outcome. File/Folder switching abandons the original capture only after the existing dirty-form confirmation. Ordinary manual creation and generated-answer copy have no capture turn to cancel.
+
+This does not migrate historical stale labels or add durable capture-draft recovery after OS termination. Existing note/revision/source and correction-review contracts remain unchanged.
+
 ## Literal new-note review admission — 2026-10-27
 
 A standalone supplied statement followed by a separate Japanese メモして/記録して command can open the existing capture review with exact body bytes. This recognizes a bounded explicit command form, not general Japanese intent. Attachment/reading scopes, dialogue/file references, question marks and recognized transformations/actions keep the planner path. Existing literal commands retain precedence. A pinned file does not turn an admitted new capture into an edit: capture has no file target and the canonical review/save transaction remains the only writer. No model acquisition, history counting/compaction, retrieval, generation or automatic persistence is needed for this literal review. Unsupported/ambiguous wording remains model-routed. The change does not alter generated-answer Save, correction approval/CAS/history or model safety policy.
