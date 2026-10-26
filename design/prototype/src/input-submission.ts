@@ -1,4 +1,4 @@
-import {appendTurn,type Dialogue} from './conversation.ts';
+import {appendTurn,INTERRUPTED_TURN_STATUS,type Dialogue} from './conversation.ts';
 import {prepareOriginal,readOriginal,originalRef,originalText,checkAttachmentBatch,type OriginalAsset,type OriginalRef,type OriginalKind} from './original-assets.ts';
 import {readingRef,readingStatus,type ReviewedText,type InputReadingRef} from './input-readings.ts';
 import {bindVoice,type VoiceInput} from './voice-input.ts';
@@ -45,7 +45,7 @@ export function createInputSubmission<T extends SubmissionAttachment>(id:string,
     return {...rest,asset:originalRef(raw.get(item.id)!),...(item.voice?{voice:bindVoice(item.voice.transcript,text)}:{}),...(reviewedText?{reading:readingRef(reviewedText)}:{}),
      status:reviewedText?readingStatus(reviewedText,!automatic.has(item.id)):item.voice?(item.kind==='video'?'Audio transcript reviewed · frames not processed':'Transcript reviewed'):originalText(raw.get(item.id)!).status==='Text available'?'Text available':item.status};
    });
-   const next=appendTurn(snapshot.prior,{id,user:text,status:'Request interrupted · send again if unfinished',attachments:sent.map(a=>({id:a.id,name:a.name,kind:a.kind,status:a.status,size:a.size,asset:a.asset,...(a.voice?{voice:a.voice}:{}),...(a.reading?{reading:a.reading}:{})}))});
+   const next=appendTurn(snapshot.prior,{id,user:text,status:INTERRUPTED_TURN_STATUS,attachments:sent.map(a=>({id:a.id,name:a.name,kind:a.kind,status:a.status,size:a.size,asset:a.asset,...(a.voice?{voice:a.voice}:{}),...(a.reading?{reading:a.reading}:{})}))});
    check();
    const saved=await ports.commit({...snapshot,next,originals,readings:items.flatMap(a=>a.reviewedText?[a.reviewedText]:[])});
    committed={text,attachments:sent};

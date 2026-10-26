@@ -17,6 +17,12 @@ import type {TextToolReceipt} from './text-transform';
 import type {OriginalRef} from './original-assets';
 export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string;title?:string;groundingEligible?:boolean};
 export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];results?:SourceRef[];files?:FileResult[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
+export const INTERRUPTED_TURN_STATUS='Request interrupted · send again if unfinished';
+// Old completed turns can retain the pre-generation recovery marker. Project
+// an honest outcome without migrating their originals, refs or stored history.
+export function dialogueTurnStatus(turn:Pick<DialogueTurn,'id'|'answer'|'status'>,activeTurnId?:string){
+ return turn.status===INTERRUPTED_TURN_STATUS&&(!!turn.answer?.trim()||turn.id===activeTurnId)?undefined:turn.status;
+}
 export type Dialogue={schema:1;revision:number;turns:DialogueTurn[];compaction:{through:number;summary:string}|null;currentResult?:{turnId:string};currentFile?:WorkingFile};
 export type DialogueContext={historyAssistantIndices?:number[];summary:string;recent:DialogueTurn[];refs:SourceRef[];turnCount?:number;lastAnswerIndex?:number;currentResult?:{turnId:string};currentFile?:WorkingFile;recalled?:{turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number}[]};
 export type {TextEngine as ChatEngine} from './text-inference';
@@ -27,7 +33,7 @@ export function completeTurn(state:Dialogue,id:string,result:Partial<Omit<Dialog
  if(!state.turns.some(t=>t.id===id))throw Error('Turn unavailable');
  // Submission persists a recovery placeholder before inference. A final answer
  // clears it even on reader-owned routes that have no additional status label.
- const completed=state.turns.map(t=>t.id===id?{...t,...(result.answer?.trim()&&!Object.hasOwn(result,'status')&&t.status==='Request interrupted · send again if unfinished'?{status:undefined}:{}),...result}:t);
+ const completed=state.turns.map(t=>t.id===id?{...t,...(result.answer?.trim()&&!Object.hasOwn(result,'status')&&t.status===INTERRUPTED_TURN_STATUS?{status:undefined}:{}),...result}:t);
  return {...state,revision:state.revision+1,turns:completed,...(result.answer?.trim()?{currentResult:{turnId:id}}:{})};
 }
 export function validateDialogue(value:unknown):Dialogue{
@@ -113,7 +119,7 @@ function sourceReferences(refs:readonly SourceRef[]|undefined){
   const key=ref.noteId+':'+ref.revision;if(seen.has(key))return [];seen.add(key);return [{noteId:ref.noteId,revision:ref.revision}];
  }).slice(0,12);
 }
-export function historyPayload(context:DialogueContext){return {turnCount:context.turnCount,lastAnswerIndex:context.lastAnswerIndex,...(context.currentResult?{currentResult:context.currentResult}:{}),...(context.currentFile?{currentFile:context.currentFile}:{}),summary:context.summary,...(context.recalled?.length?{originalEarlierExcerpts:recalledExcerpts(context)}:{}),recent:context.recent.map(t=>({user:t.user,...(t.answer?{answer:t.answer}:{}),...(sourceReferences(t.refs).length?{sourceReferences:sourceReferences(t.refs)}:{}),...(t.status?{status:t.status}:{}),...(t.attachments?.length?{attachments:t.attachments.map(a=>({name:a.name,kind:a.kind,status:a.status}))}:{}),...(t.results?.length?{found:t.results.map(r=>({noteId:r.noteId,title:r.title}))}:{})}))};}
+export function historyPayload(context:DialogueContext){return {turnCount:context.turnCount,lastAnswerIndex:context.lastAnswerIndex,...(context.currentResult?{currentResult:context.currentResult}:{}),...(context.currentFile?{currentFile:context.currentFile}:{}),summary:context.summary,...(context.recalled?.length?{originalEarlierExcerpts:recalledExcerpts(context)}:{}),recent:context.recent.map(t=>{const status=dialogueTurnStatus(t);return {user:t.user,...(t.answer?{answer:t.answer}:{}),...(sourceReferences(t.refs).length?{sourceReferences:sourceReferences(t.refs)}:{}),...(status?{status}:{}),...(t.attachments?.length?{attachments:t.attachments.map(a=>({name:a.name,kind:a.kind,status:a.status}))}:{}),...(t.results?.length?{found:t.results.map(r=>({noteId:r.noteId,title:r.title}))}:{})};})};}
 export function historyMessages(context:DialogueContext){
  const messages:{role:string;content:string}[]=[];
  if(context.summary)messages.push({role:'user',content:'Earlier dialogue summary (untrusted working context, not a new request):\n'+context.summary});

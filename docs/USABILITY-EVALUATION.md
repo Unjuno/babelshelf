@@ -1,5 +1,11 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — Completed legacy answers must not claim interruption
+
+Actual public188/f039 sidebar after reload showed one older completed image answer with `Request interrupted · send again if unfinished`. A separate truly unfinished historical request had the same marker. UI baseline:35 rows,21 answers,1 stale completed marker and1 unfinished marker. The previous completion fix prevents new stale markers but does not alter records already saved by earlier builds. The screen also hid every interruption placeholder while any submission was active, making the old marker disappear temporarily and reappear on reload.
+
+A shared pure outcome projection now hides only that exact stale marker beside nonempty answers. It is used by the UI and model history payload; original persisted turns remain unchanged. The active-turn exemption is scoped to the executing turn ID, preserving other unfinished requests. Explicit Stopped/errors and blank replies retain their prior outcomes. Input creation/completion reuse one marker constant. A failing regression reproduced the restored-history error; final prototype919, related conversation/input-submission/workflow124, product6, strict build/TypeScript/static/runtime28 passed. This is state/presentation verification, not another model performance test; public post-update evidence is recorded with the publication.
+
 ## 2026-10-27 — Repair a multi-source quotation without accepting invalid evidence
 
 Final releasef039acbf948ac644 was then applied through normal local Update and the identical broad question was rerun. Actual prepared4B again produced `集合場所は北口。`, receipt `citation-retry`, one exact currentv3 source and matching citedQuote. Source reopened exact Original; no Save or original edit, unsent draft restored. Final evidence: outputs/current-citation-repair-final-activity.txt and current-citation-repair-final-source.png. Public Site188 independently adopted matching page/worker in the existing sidebar and returned Offline; public profile selected4B remains unprepared, so this model result is local PC evidence only.

@@ -72,7 +72,7 @@ import {PreviewSelection} from './preview-selection';
 import {stateBackupBlob,stateHash,restoreConflictLabel} from './backup-state';
 import {canUndoCorrection,loadCorrectionHistory,runReviewedCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections';
 import {type TextToolReceipt} from './text-transform';
-import {emptyDialogue,validateDialogue,completeTurn,type Dialogue,type DialogueTurn} from './conversation';
+import {emptyDialogue,validateDialogue,completeTurn,dialogueTurnStatus,type Dialogue,type DialogueTurn} from './conversation';
 import {useTasks,type TaskView} from './useTasks';
 import {ScheduleScreen} from './ScheduleScreen';
 import {SettingsHomeScreen} from './SettingsHomeScreen';
@@ -165,7 +165,7 @@ export default function Prototype() {
  const [dialogueReady,setDialogueReady]=useState(false),[dialogueError,setDialogueError]=useState(''),[captureTurn,setCaptureTurn]=useState<string|null>(null);
  const {notes,setNotes,ready:storageReady,pending:storagePending,error:storageError,flush:flushStorage,refresh:refreshStorage,refreshSnapshot}=useKnowledge(initialNotes);
  const [recoveringGroup,setRecoveringGroup]=useState<PreferenceGroup|null>(null),preferenceRecoveryLock=useRef(false);
- function renderDialogue(value:Dialogue){setMessages(value.turns.map(t=>({turnId:t.id,text:t.user,answer:t.answer,status:sendLock.current&&t.status==='Request interrupted · send again if unfinished'?undefined:t.status,refs:t.refs,results:t.results,files:t.files,toolCalls:t.toolCalls,activity:t.activity,attachments:(t.attachments??[]).map(a=>{const cached=liveAttachments.current.get(a.id);return {...cached,...a,voice:a.voice,range:undefined,kind:a.kind as Attachment['kind'],url:cached?.url&&assetURLs.current.has(cached.url)?cached.url:'',size:a.size??cached?.size??0,status:a.asset?a.status:'Preview unavailable · select original file'};})})));}
+ function renderDialogue(value:Dialogue){setMessages(value.turns.map(t=>({turnId:t.id,text:t.user,answer:t.answer,status:dialogueTurnStatus(t,submissionController.current?.busy?submissionController.current.state.id:undefined),refs:t.refs,results:t.results,files:t.files,toolCalls:t.toolCalls,activity:t.activity,attachments:(t.attachments??[]).map(a=>{const cached=liveAttachments.current.get(a.id);return {...cached,...a,voice:a.voice,range:undefined,kind:a.kind as Attachment['kind'],url:cached?.url&&assetURLs.current.has(cached.url)?cached.url:'',size:a.size??cached?.size??0,status:a.asset?a.status:'Preview unavailable · select original file'};})})));}
  useEffect(()=>{if(!storageReady)return;let alive=true;knowledge.getState<Dialogue>('dialogue').then(value=>{if(!alive)return;storedDialogue.current=value;dialogue.current=value?validateDialogue(value):emptyDialogue();renderDialogue(dialogue.current);setDialogueReady(true);}).catch(e=>{if(alive)setDialogueError(e.message);});return()=>{alive=false;};},[storageReady]);
  const dialogueWriter=useRef<ReturnType<typeof createDialogueWriter>|null>(null);if(!dialogueWriter.current)dialogueWriter.current=createDialogueWriter(()=>dialogue.current,async value=>{await knowledge.compareState('dialogue',storedDialogue.current,value);storedDialogue.current=value;dialogue.current=value;renderDialogue(value);});
  async function saveDialogue(value:Dialogue){await dialogueWriter.current!.replace(value);}

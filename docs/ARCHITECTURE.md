@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Retained dialogue outcome projection — 2026-10-27
+
+`dialogueTurnStatus` is the shared UI/history projection for the fixed interrupted-request marker. A nonempty completed answer suppresses a stale marker retained by older builds, without rewriting stored turns, answers, source refs, revisions or activity. Genuine errors such as Stopped remain visible even beside answer text. Blank/missing answers remain unfinished. The UI can additionally suppress the placeholder for the exact currently executing turn; another running request must not hide historical unfinished turns. The history/model boundary uses the completed-answer rule without any active execution exemption. Input submission and completion share the marker constant; canonical note storage and dialogue schema are unchanged.
+
 ## Bounded citation protocol repair — 2026-10-27
 
 Grounded answers can make one protocol retry for a citation mismatch when the existing single-source exact-quote recovery does not apply. The retry keeps the original question, evidence and output budget; a fixed application instruction requests verbatim quotes from the matching source labels. It does not splice guessed quotations into output or silently remove invalid citations. Sources are revalidated against current originals before retry, actual tokenizer limits and cancellation remain enforced, and the final response must pass the unchanged parser and current-revision validation. A second mismatch fails; no retry loop or automatic model change occurs. Successful repairs are identified as `recovery: citation-retry` in the existing operation receipt. Syntax repair and citation repair share one retry branch; single-source exact-quote recovery retains its prior scope. This verifies byte provenance, not general semantic entailment or model answer quality.

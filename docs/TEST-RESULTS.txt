@@ -1,3 +1,14 @@
+RETAINED COMPLETED-ANSWER OUTCOME — 2026-10-27 JST
+Actual public188/f039 sidebar:35rows/21answers,1 completed answer with stale
+Request interrupted marker and1 genuine unfinished request. Root: older records
+keep their placeholder; UI hides all placeholders under the global send lock,
+then exposes them after reload. Pure shared UI/model-history projection now
+suppresses only the fixed stale marker beside nonempty answers, without any
+stored-history migration. Active exemption scoped to current execution ID;
+blank/unfinished/Stopped remain. New red test failed before implementation.
+Finald21fe8cdbe422c9d prototype919, related124, product6, strict build/TypeScript,
+static/runtime28 pass. No new model download, inference or phone run required.
+
 BOUNDED MULTI-SOURCE CITATION PROTOCOL REPAIR — 2026-10-27 JST
 Finalf039 actual local sidebar rerun passed original broad question, exactv3
 source and citation-retry receipt. Draft restored; no Save or original edit.

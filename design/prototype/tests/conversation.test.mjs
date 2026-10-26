@@ -31,6 +31,16 @@ test('a completed answer replaces the crash-recovery placeholder without losing 
  assert.equal(pending.turns[0].answer,undefined);
 });
 
+test('restored completed legacy answers omit only the stale interruption outcome without rewriting retained turns',()=>{
+ const marker='Request interrupted · send again if unfinished',ref={noteId:'original',revision:3,start:0,end:5,quote:'MAPLE'};
+ const state=appendTurn(appendTurn(appendTurn(appendTurn(emptyDialogue(),{id:'legacy',user:'Read image',answer:'MAPLE',status:marker,refs:[ref]}),{id:'unfinished',user:'Pending request',status:marker}),{id:'empty',user:'Blank reply',answer:'  ',status:marker}),{id:'error',user:'Another request',answer:'Partial text',status:'Stopped'});
+ const before=structuredClone(state),payload=historyPayload(dialogueContext(conversation.validateDialogue(JSON.parse(JSON.stringify(state))))),messages=historyMessages(dialogueContext(state));
+ assert.equal(payload.recent[0].status,undefined);assert.equal(payload.recent[0].answer,'MAPLE');assert.deepEqual(payload.recent[0].sourceReferences,[{noteId:'original',revision:3}]);
+ assert.equal(payload.recent[1].status,marker);assert.equal(payload.recent[2].status,marker);assert.equal(payload.recent[3].status,'Stopped');
+ assert.equal(conversation.dialogueTurnStatus(state.turns[0]),undefined);assert.equal(conversation.dialogueTurnStatus(state.turns[1],'unfinished'),undefined);assert.equal(conversation.dialogueTurnStatus(state.turns[1],'another-running-turn'),marker);assert.equal(conversation.dialogueTurnStatus(state.turns[3],'error'),'Stopped');
+ assert.doesNotMatch(messages[0].content,/Request interrupted/);assert.equal(messages[1].content,'MAPLE');assert.deepEqual(state,before);
+});
+
 test('planner serialization keeps retained dialogue before changing selectors without dropping scope or mutating originals',()=>{
  const recent=[{id:'one',user:'The blue lantern meeting is at 10.',answer:'Recorded in this conversation.'}];
  const old={summary:'Earlier discussion stays untrusted.',recent,refs:[],turnCount:1,lastAnswerIndex:0,currentResult:{turnId:'one'},recalled:[{turnId:'archived',turnIndex:0,speaker:'user',quote:'Earlier original',start:0,end:16}]};
