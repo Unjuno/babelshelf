@@ -1,4 +1,10 @@
-## Latest publication — preserved load phases, Site v185, 2026-10-27
+## Latest publication — current-answer rewrite binding, Site v186, 2026-10-27
+
+Public audience/domain retained. Productc7e3174232b68299 /135 verified assets, entry index-Db-EIzIJ.js; app1723787 pushed to codex/ui-design-handoff. Site source4f17096d1cd5ea27f5c0c996f0eb1096a2180142; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_af69dddfaa84819180a0aea63f3ea5a7; deployment appgdep_6adf90394da881919be495afc83ed6d0 succeeded2026-10-26T17:39:21.646549+00:00. Saved archive SHA256dc76cbeab76c759d016ddfc58757beb864393428606f7ae1d4940a0e1ec3f404,57149440 bytes/160 files. Reused stage/archive, retained actual publicv185 predecessor and pruned21 obsolete generated assets. Independent135-file sizes/hash and delivery transport passed.
+
+Existing public sidebar normal Update adopted matching page index-Db-EIzIJ.js and active workerc7e3174232b68299, without clearing storage. Prior report retained; appOffline/logsOff and original file pin/empty composer preserved. Public profile selected4B remains unprepared, so no new public inference is claimed. Actual final-build local4B greeting/current-answer Japanese rewrite/target receipt passed and preserved previous failures; role-prefix and broader semantic citation quality remain open. Prototype912, intent/scope24, workflow/intent24, product6, build/strict TypeScript/static/runtime28 passed. No whole-quality, physical-phone or measured speedup claim. Source/target evidence in USABILITY-EVALUATION.md and current-answer-scope outputs; public AX proof current-public-verification.txt.
+
+## Prior publication — preserved load phases, Site v185, 2026-10-27
 
 Public audience/domain retained. Producta10914e317199055 /135 verified assets, entry index-BuqPxned.js; app6812842 pushed to codex/ui-design-handoff. Site source2ef8d146f5734415499a519c9a9cedd457fc0cba; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_0c7beeee21588191ac27c0b94e4de925; deployment appgdep_6adf8b56b6c08191af388527e1992183 succeeded2026-10-26T17:18:29.937719+00:00. Saved archive SHA2565a0a9e7e7e2c52ae58687a58040949f93c714e55d32e497429125a4b5b47b7aa,58060800 bytes/162 files. Reused one stage/archive, retained actual publicv184 predecessor and pruned19 obsolete generated assets. Independent135-file sizes/hash and delivery transport checks passed.
 
