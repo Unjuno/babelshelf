@@ -1,5 +1,9 @@
 DURABLE CORRECTION REVIEW — 2026-10-27 JST
 Product78571b1e36c3e0d6 /135 verified assets, index-DRAd2Xff.js.
+Published Sitev180; public sidebar page/active worker matched after Update,
+returned Offline. Profile review survived Escape/reload/resume at originalv1;
+Cancel/reload removed only pending data. Standard/Balanced/empty guidance and old
+dialogue/originals remained; logsOff. No public model generation/download needed.
 Olde9b520a1d40fb091 actual profile Before/After disappeared on reload; original
 settings remained unchanged. Three red UI cases confirmed missing recovery.
 New pending proposal is inert local metadata with exact target/dependencies;

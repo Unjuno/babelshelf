@@ -10,6 +10,8 @@ Actual local sidebar, intermediate06bfae0ca4b35c48: selected prepared Bonsai2 4B
 
 Final78571b1e36c3e0d6 has fresh Chromium editor/review12-case verification and four WebKit recovery/concurrency cases, plus isolated production IndexedDB cancellation/transaction tests. Prior5f7b1f36e03a8030 passed the full12 on both browsers; an earlier06bfae0ca4b35c48 WebKit run had two existing-editor failures, retained as an unresolved repeatability observation. Do not claim a device guarantee from later focused passes. Physical iOS, OS force-close and capture/new-task pending review recovery remain open.
 
+Publicv180 sidebar adopted matching page/worker and returned Offline. A profile proposal survived Escape/reload/resume with originalv1; Cancel removed only the proposal. Reload confirmed Standard/Balanced/empty guidance and no Review changes button. This did not approve or alter the user's profile. Local final page adoption retained the actual correction/Undo history, restored the held Input draft and confirmed no pending review remained.
+
 ## 2026-10-26 — creation forms and schedule conditions
 
 Observed in the sidebar on6178c8ec9ee2f989: a new note's name/body disappeared after Escape and reopening. A new schedule prompt disappeared the same way. Both forms closed or reset their fields without testing whether the user changed them.
