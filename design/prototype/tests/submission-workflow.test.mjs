@@ -53,6 +53,15 @@ test('current-answer rewrite loads once, reads the exact assistant text and neve
  assert.match(c.state.error,/Current result unavailable/);assert.equal(prompts.length,0);
 });
 
+test('an explicitly bound file question never counts or compacts unrelated dialogue before answering',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/place.md',body:'集合場所は北口。まだ作成途中です。'}),prior={schema:1,revision:1,turns:Array.from({length:24},(_,i)=>({id:'prior-'+i,user:'UNRELATED_DIALOGUE '+i,answer:'Keep earlier original '+i})),compaction:{through:12,summary:'UNRELATED_DIALOGUE summary'},currentFile:{noteId:note.id,revision:1}};
+ await f.services.saveDialogue(prior);let generations=0;const seen=[];
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async messages=>{const raw=JSON.stringify(messages);seen.push(raw);assert.doesNotMatch(raw,/UNRELATED_DIALOGUE/);return {prompt_tokens:100};},generate:async messages=>{generations++;assert.doesNotMatch(JSON.stringify(messages),/UNRELATED_DIALOGUE/);return {text:JSON.stringify({answer:'The provided evidence does not state a meeting time.',citations:[{id:'S1',quote:note.revisions[0].body}]}),finishReason:'stop'};},load:async()=>{throw Error('Already resident');}};
+ f.services.knowledge={all:async()=>[note],search:async()=>{throw Error('Do not search other files');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'What time does this file say we should meet?',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ const current=f.current(),turn=current.turns.at(-1);assert.equal(generations,1);assert.ok(seen.length);assert.deepEqual(current.compaction,prior.compaction);assert.deepEqual(current.turns.slice(0,24),prior.turns);assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.activity.some(a=>a.tool==='dialogue.compact'),false);assert.equal(turn.activity.some(a=>a.tool==='dialogue.plan'),false);assert.equal(turn.answer,'The provided evidence does not state a meeting time.');
+});
+
 test('explicit missing Memory subjects stop before model acquisition or history compaction',async()=>{
  const f=fixture(),c=createSubmissionController();let loads=0,counts=0,generated=0;
  f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:false}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>{counts++;throw Error('Unexpected count');},generate:async()=>{generated++;throw Error('Unexpected generation');},unload:async()=>{},load:async()=>{loads++;throw Error('Unexpected load');}};

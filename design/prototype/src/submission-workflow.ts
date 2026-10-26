@@ -122,7 +122,9 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const decisionFirst=!request&&decision.enabled&&decision.ready;
    const deferredKnowledge=!!(literalRequest||explicitSavedRequest)&&request?.target==='knowledge'&&['answer','summary'].includes(request.action)&&!inputReadings.length;
    if(text&&!decisionFirst&&(!request||['answer','summary','recall','transform'].includes(request.action))){
-    if(deferredKnowledge)deferredContext=prepareContext;else{await ensureText();if(request&&['answer','summary'].includes(request.action)&&!explicitSavedRequest&&!inputQuestion)context=await prepareContext();}
+    // A bound file answer uses only its validated revision. Grounding drops
+    // dialogue for this scope, so counting/compacting it here is wasted work.
+    if(deferredKnowledge)deferredContext=prepareContext;else{await ensureText();if(request&&['answer','summary'].includes(request.action)&&request.target!=='file'&&!explicitSavedRequest&&!inputQuestion)context=await prepareContext();}
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));

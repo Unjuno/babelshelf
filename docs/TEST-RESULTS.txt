@@ -1,3 +1,16 @@
+BOUND FILE QUESTION CONTEXT PREPARATION — 2026-10-27 JST
+Actual local05dd opened currentv3 place-only file and asked its meeting time.
+4B correctly said evidence does not state a time, with exact source; Save preview
+matched and was cancelled. But Context processed50 past turns, through30->49,
+before answering solely from the opened file. No answer-quality fix was needed.
+Red workflow fixture caught unrelated history at model count. Initial bound-file
+answers/summaries now skip dialogue preparation; unresolved planning unchanged.
+Final75e86dfed2ea2f8d actual4B same query/source/answer, no Context activity;
+Load model/Read file/Answer remain. Exactv3 original/source and matching Save
+preview verified; cancelled, no note write, original no-file pin/draft restored.
+Final prototype921, focused119, intent24, product6, strict build/TypeScript,
+static/runtime28 pass. No speedup percentage/general semantic or phone claim.
+
 SELECTED ORIGINAL MESSAGE BOUNDARY — 2026-10-27 JST
 Published190/05dd34af511e167c. Existing public sidebar adopted current page,
 retained35rows/21answers and0 stale completed markers. Offline restored, prior
