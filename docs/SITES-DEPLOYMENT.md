@@ -1,3 +1,9 @@
+## Latest publication — reviewed answer source UX, Site v192, 2026-10-27
+
+Public audience/domain retained. Product `1785f67c18da0c98`, entry `index-DnKy4VRm.js`,135 independently verified asset sizes/hashes and delivery transport. Application commit `b7ab20c` pushed to `codex/ui-design-handoff`. Source `96cf3fb4f6a7db8c2463d556998d168ef491855b`; saved `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_3cbb4e11c614819199bf5b5d13e7a1be`; deployment `appgdep_6adfa974dc4c8191b32a23f0e6cd8f80` succeeded `2026-10-26T19:27:00.131627+00:00`. Native tar SHA256 `f3ccd04a7dc144c1f9207f6bcae73eb73566a62df2ba38500633094efdf390ef`,57,221,120 uncompressed bytes/161 files. Current stage/archive reused; actualv191 predecessor retained,19 obsolete generated assets pruned.
+
+Existing public sidebar normal Update adopted the current page and worker. Saved video answer preview remains exactly Maple 42; Change shows original previews and same-source selection/cancel does not create a file. Original file pin, empty composer,35 rows/21 answers, logsOff and older dated diagnostic report retained; Offline restored. Developer shows exact current worker/bundle and both Quick/Performance choices. No model download or new public inference. Current screenshots: current-public-save-source.png, current-public-performance-options.png. Local actual4B performance is separate evidence below and is not phone acceptance.
+
 ## Latest publication — bound file context preparation, Site v191, 2026-10-27
 
 Developer confirms active worker `75e86dfed2ea2f8d` and page `index-DAeg0HSQ.js`. Detailed logsOff and the older253f report/date were retained; no device check was rerun simply to refresh its attribution.
