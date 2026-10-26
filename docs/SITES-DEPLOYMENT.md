@@ -1,3 +1,11 @@
+# Public v198 — literal new-note review without model/history work (2026-10-27)
+
+App52536f5 on codex/ui-design-handoff packagesc08dc70a4f07d7ad /135 verified assets, entry index-C5y1AUui.js. Site sourced529a60123fab3f83429ee2beb86b95a5c9148f4 retains current and actual previous publicc821 assets;19 older delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_cbd5914c28c4819182cb99be39460bed(v198), deployment appgdep_6adfbde8b2288191b55da38f8c630e5a succeeded2026-10-26T20:54:16.900167Z. Native uncompressed tar SHA25676cfbad8a79506a86e72d49289f59bd5aac9080493623ef431e3acaf30cf80de,57,169,920bytes/160files. Public audience retained; one current compressed archive reused.
+
+Existing babelshelf.com sidebar normal Update adopted matching c08dc worker/index-C5y1AUui.js. Offline, unprepared4B and existing QA-draft-v179.md v1 pin: natural Japanese supplied-text note command opened New file with exact body, no model preparation/generation. Cancel performed no note write and left the old file pin/composer empty/logsOff/prior diagnostic report intact. One test dialogue turn retained. Local real4B Save/read/citation/correction/v1-v2 evidence is candidatebbb scope; public test proves final pinned-file capture review/Cancel only. After Cancel the turn still says Review before saving; this stale outcome is an observed open UX issue, not a durable pending-review claim.
+
 # Public v197 — current-build cache diagnostic identity (2026-10-27)
 
 App159e100 on codex/ui-design-handoff packagesc821024468a405c0 /135 verified assets, entry index-Djf--NnK.js. Site sourceb95bd8a92d288257ef05b404e0b6df1fe2deb7c5 retained current and actual previous public9706 assets;19 old delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
