@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Explicit saved-note summaries — 2026-10-27
+
+A bounded summary command with a concrete saved-Memory descriptor selects summary/knowledge before model action selection. Retrieval uses the descriptor; grounded generation still sees the full request. No old dialogue compression or custom-tool planning is needed for that scope. Canonical source validation precedes acquisition; missing evidence fails without a model run. Current input, deictic/vague/earlier-dialogue or compound actions retain existing routes. Generated text still passes citation validation; saving is the existing exact-copy review and explicit new-note commit. No permissions or canonical migrations change.
+
 ## Unsent composer boundary — 2026-10-27
 
 composer-draft.ts isolates exact unsent text in tab-local sessionStorage. It restores editable input only; canonical notes, shared dialogue and backups are unchanged. A synchronous functional setter preserves the newest local text during consumption/recovery and exposes denied reads/writes without throwing away input. Failed writes and pending attachments participate in ordinary reload protection. No files or source receipts are fabricated; closed-session/OS recovery is not claimed. See [Composer draft contract](COMPOSER-DRAFT.md).

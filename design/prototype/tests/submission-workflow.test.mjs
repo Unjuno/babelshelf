@@ -126,9 +126,16 @@ test('explicit missing Memory subjects stop before model acquisition or history 
  const f=fixture(),c=createSubmissionController();let loads=0,counts=0,generated=0;
  f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:false}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>{counts++;throw Error('Unexpected count');},generate:async()=>{generated++;throw Error('Unexpected generation');},unload:async()=>{},load:async()=>{loads++;throw Error('Unexpected load');}};
  f.services.knowledge={all:async()=>[],search:async()=>[]};
- for(const text of ['answer: QACANOE9360ZXF','What is in my saved canoe insurance note?','保存したカヌー保険のメモには何が書いてありますか？'])assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'failed');
+ for(const text of ['answer: QACANOE9360ZXF','What is in my saved canoe insurance note?','保存したカヌー保険のメモには何が書いてありますか？','保存したカヌー保険のメモを短く要約して。','Summarize the saved canoe insurance note briefly.'])assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'failed');
  assert.match(c.state.error,/No matching notes/);assert.equal(loads,0);assert.equal(counts,0);assert.equal(generated,0);
  assert.equal(f.current().turns.some(turn=>turn.activity.some(a=>a.tool==='model.load'||a.tool==='dialogue.compact')),false);
+});
+
+test('a named saved summary preserves the full request and current evidence without action selection',async()=>{
+ const f=fixture(),c=createSubmissionController(),text='保存したQA星見のメモを短く要約して。',note=createNote({path:'Inbox/QA-星見.md',body:'QA星見の持ち物は水と懐中電灯。'}),before=structuredClone(note),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};let generated=0;
+ f.services.model='test';f.services.bonsai={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{generated++;const prompt=JSON.stringify(messages);assert.ok(prompt.includes(text));assert.ok(prompt.includes('summary'));assert.ok(prompt.includes(ref.quote));return {text:JSON.stringify({answer:'持ち物は水と懐中電灯。',citations:[{id:'S1',quote:ref.quote}]})};}};
+ f.services.knowledge={all:async()=>[note],search:async query=>{assert.equal(query,'QA星見');return [ref];}};
+ assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'completed');assert.equal(generated,1);const turn=f.current().turns.at(-1);assert.equal(turn.status,'Summary · selected excerpts');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.activity.some(a=>a.tool==='dialogue.compact'||a.tool==='dialogue.plan'),false);assert.deepEqual(note,before);
 });
 
 test('a literal sourced answer acquires through the local ownership manager only after retrieval',async()=>{

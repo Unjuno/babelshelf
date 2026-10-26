@@ -54,6 +54,20 @@ export function explicitSavedKnowledgeOpen(question:string,currentInputs=false){
  return {action:'read' as const,query,target:'knowledge' as const};
 }
 
+/** A single summary command naming saved Memory needs retrieval and generation,
+ * not dialogue planning. The descriptor selects evidence; the full user request
+ * still reaches the grounded summarizer. No write or implicit file selection. */
+export function explicitSavedKnowledgeSummary(question:string,currentInputs=false){
+ const text=question.trim();if(currentInputs||text.length>500||/[\r\n\0;；]/u.test(text)||requestNamesEarlierDialogue(text))return null;
+ const englishNamed=/^(?:(?:please|can you|could you|would you)\s+)?(?:(?:briefly|concisely)\s+)?summari[sz]e\s+(?:(?:my|the)\s+)?(?:saved|stored)\s+(.{2,120}?)\s+(?:notes?|files?|documents?|records?)(?:\s+(?:briefly|concisely))?[.!?]*$/iu;
+ const englishAbout=/^(?:(?:please|can you|could you|would you)\s+)?(?:(?:briefly|concisely)\s+)?summari[sz]e\s+(?:(?:my|the)\s+)?(?:saved|stored)\s+(?:notes?|files?|documents?|records?)\s+(?:about|on|for|named|titled)\s+(.{2,120}?)(?:\s+(?:briefly|concisely))?[.!?]*$/iu;
+ const japanese=/^(?:保存した|保存済みの?|私の|自分の)(.{2,120}?)(?:についての|に関する|の)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:短く|簡潔に|手短に)?(?:要約して|まとめて)(?:ください)?[。！？?!]*$/u;
+ const found=englishNamed.exec(text)??englishAbout.exec(text)??japanese.exec(text);if(!found)return null;
+ const query=found[1].trim().replace(/^["'“”‘’`]+|["'“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
+ if(query.length<2||query.length>140||/[?？。.!！,、]/u.test(query)||/\b(?:and|then|also|send|email|upload|download|install|call)\b|(?:して|ください)/iu.test(query)||/^(?:これ|それ|あれ|この|その|あの|今の)$|^(?:this|that|these|those|it|them|current)\b/iu.test(query)||/\b(?:save|store|delete|remove|edit|update|rewrite|translate|execute|run|search|find|open|read|compare|schedule|notify|tools?|mcp)\b|(?:保存して|削除|上書|訂正|修正|実行|検索|比較|翻訳|ツール)/iu.test(query))return null;
+ return {action:'summary' as const,query,target:'knowledge' as const};
+}
+
 // A question explicitly anchored to saved knowledge needs only the read-only
 // answer path. This narrow route is independent of the selected text engine:
 // small models need not choose between unrelated dialogue and write actions.
@@ -127,7 +141,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const {question,literalRequest,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
- const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
+ const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
  const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??source?.request??null;
  const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);

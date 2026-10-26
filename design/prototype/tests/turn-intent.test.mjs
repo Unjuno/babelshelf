@@ -11,6 +11,24 @@ const route=(overrides={})=>{
  });
 };
 
+test('a named saved-note summary has an explicit knowledge scope without unrelated dialogue',()=>{
+ for(const [question,query] of [
+  ['保存したQA星見のメモを短く要約して。','QA星見'],
+  ['保存済みの避難準備のノートを簡潔にまとめてください。','避難準備'],
+  ['Summarize my saved blue lantern meeting note briefly.','blue lantern meeting'],
+  ['Please summarize the stored notes about the blue lantern meeting.','blue lantern meeting'],
+ ]){
+  const before=structuredClone(prior),intent=route({question});assert.deepEqual(intent.request,{action:'summary',query,target:'knowledge'},question);assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});assert.deepEqual(prior,before);
+ }
+});
+
+test('saved-summary admission refuses mixed actions, vague sources and current inputs',()=>{
+ assert.equal(typeof router.explicitSavedKnowledgeSummary,'function');
+ for(const question of ['保存したメモを要約して。','保存したこのメモを要約して。','保存したQA星見のメモを要約して、保存して。','保存したQA星見のメモを要約して。そして削除して。','前の会話で保存したQA星見のメモを要約して。','Summarize my saved note.','Summarize the stored notes about trip and email the result.','保存したメモをメールして、旅行のメモを要約して。','Summarize my saved note about trip and save it.','Summarize the stored notes about trip and delete them.','Summarize my saved notes from the previous chat.','Summarize your last answer.','このファイルを要約して。'])assert.equal(router.explicitSavedKnowledgeSummary(question),null,question);
+ assert.equal(router.explicitSavedKnowledgeSummary('保存したQA星見のメモを短く要約して。',true),null);
+ for(const inputs of [{hasAttachments:true},{hasCurrentInputReadings:true}])assert.equal(route({question:'保存したQA星見のメモを短く要約して。',...inputs}).explicitSavedRequest,null);
+});
+
 test('a single correction command with an opened file binds a review, never an earlier dialogue transform',()=>{
  for(const question of ['集合場所を南口に直して。','このファイルの時刻を10時に変更してください。','Change the meeting place to the south gate.','In this file, replace north with south.']){
   const before=structuredClone(prior),intent=route({question});
