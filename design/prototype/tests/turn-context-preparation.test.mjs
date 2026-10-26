@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 
 const {prepareTurnContext}=await import('../src/turn-context-preparation.ts');
 
+test('explicit saved-file work does not compact or expose unrelated dialogue and selection',async()=>{
+ const prior={schema:1,revision:3,turns:[{id:'old',user:'Old request',answer:'Old answer'}],compaction:{through:1,summary:'Old summary'},currentResult:{turnId:'old'},currentFile:{noteId:'unrelated',revision:7}},before=structuredClone(prior);
+ const context=await prepareTurnContext({prior,engine:{count:()=>{throw Error('Unrelated count');},generate:()=>{throw Error('Unrelated compaction');}},model:'local',question:'保存したQA星見のメモの水をお茶に直して。',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:()=>{throw Error('No compaction write');},trace:()=>{throw Error('No compaction trace');}});
+ assert.deepEqual(context,{summary:'',recent:[],refs:[],turnCount:0});assert.deepEqual(prior,before);
+ let traced=0;const withInputs=await prepareTurnContext({prior:{...prior,compaction:null},currentInputs:true,engine:fakeEngine(),model:'local',question:'Compare this attachment and the saved meeting note.',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:()=>{throw Error('No compaction write');},trace:async(_tool,_input,work)=>{traced++;return work();}});assert.equal(traced,1);assert.equal(withInputs.recent[0].id,'old');
+});
+
 function fakeEngine(contextTokens=2048){
  return {
   manifest:{contextTokens},

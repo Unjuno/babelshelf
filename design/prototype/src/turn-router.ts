@@ -1,6 +1,6 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
-import {contextIndependentConversation,currentDialogueResult,dialogueContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
+import {contextIndependentConversation,currentDialogueResult,dialogueContext,independentSavedKnowledgeContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
 import {explicitInputQuestion} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
@@ -67,6 +67,18 @@ export function explicitSavedKnowledgeSummary(question:string,currentInputs=fals
  const query=found[1].trim().replace(/^["'“”‘’`]+|["'“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
  if(query.length<2||query.length>140||/[?？。.!！,、]/u.test(query)||/\b(?:and|then|also|send|email|upload|download|install|call)\b|(?:して|ください)/iu.test(query)||/^(?:これ|それ|あれ|この|その|あの|今の)$|^(?:this|that|these|those|it|them|current)\b/iu.test(query)||/\b(?:save|store|delete|remove|edit|update|rewrite|translate|execute|run|search|find|open|read|compare|schedule|notify|tools?|mcp)\b|(?:保存して|削除|上書|訂正|修正|実行|検索|比較|翻訳|ツール)/iu.test(query))return null;
  return {action:'summary' as const,query,target:'knowledge' as const};
+}
+
+/** An explicit correction nominates a saved subject, not replacement bytes or
+ * permission to save. Discovery/choice and canonical validation own its target. */
+export function explicitSavedKnowledgeCorrection(question:string,currentInputs=false){
+ const text=question.trim();if(currentInputs||text.length>500||/[\r\n;；?？]/u.test(text)||requestNamesEarlierDialogue(text)||namesDeicticFile(text))return null;
+ const ja=/^(?:保存した|保存済みの?)(.{2,100}?)(?:の)?(?:メモ|ノート|ファイル|文書)(?:の|内の).{1,120}を.{1,120}に(?:直して|変更して|訂正して|修正して|変えて)(?:ください)?[。!！]?$/u;
+ const en=/^(?:in|within)\s+(?:(?:my|the)\s+)?(?:saved|stored)\s+(.{2,100}?)\s+(?:note|file|document)[,\s]+(?:please\s+)?(?:replace|change|correct|update|set)\s+[^.!?]{1,120}\s+(?:to|with)\s+[^.!?]{1,120}[.!]?$/iu;
+ const match=ja.exec(text)??en.exec(text);if(!match)return null;
+ if(/\b(?:and|then|also|delete|remove|send|email|upload|execute|run)\b|(?:してから|それから|削除|上書き保存|実行)/iu.test(text)||(text.match(/直して|変更して|訂正して|修正して|変えて/gu)?.length??0)>1)return null;
+ const query=match[1].trim();if(!query||/[。!?！？]/u.test(query))return null;
+ return {action:'edit' as const,query,target:'path' as const};
 }
 
 // A question explicitly anchored to saved knowledge needs only the read-only
@@ -147,15 +159,16 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
  const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??source?.request??null;
  const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
+ const namedCorrection=literalRequest?null:explicitSavedKnowledgeCorrection(question,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
  const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
- const priorContext:DialogueContext=noteCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
+ const priorContext:DialogueContext=noteCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:independentSavedKnowledgeContext(question,hasAttachments||hasCurrentInputReadings)??dialogueContext(prior,question);
  const contextIndependent=!operationContext&&!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??fileCorrection??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const request=noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??namedCorrection??fileCorrection??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=operationContext??contextIndependent?.context??priorContext;
- return {literalRequest,explicitSavedRequest,explicitFileQuestion,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
+ return {literalRequest,explicitSavedRequest,explicitFileQuestion,namedCorrection,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};
 export type TurnRoute<Request>=
@@ -196,11 +209,14 @@ export function scopeResolvedTurnRequest<Request extends {action:string;query:st
  }):{request:Request|undefined;inputs:CurrentInputRef[];fileBinding:{request:Request;binding:'explicit'|'default-working-file'|undefined}|undefined}{
  let {request}=input;
  const inputs=['read','search'].includes(input.literalAction??'')?[]:input.inputs;
- if(request&&!input.literal&&!inputs.length)request=bindExplicitCurrentFileQuestion(request,input.question,input.currentFile);
+ const saved=!input.literal&&independentSavedKnowledgeContext(input.question,inputs.length>0);
+ if(saved&&request?.target==='file')throw Error('Saved content scope · choose an exact saved file');
+ const currentFile=saved?undefined:input.currentFile;
+ if(request&&!input.literal&&!inputs.length)request=bindExplicitCurrentFileQuestion(request,input.question,currentFile);
  if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputs.length)throw Error('Choose the opened file or current attachments');
  if(request&&inputs.length)request=routeInputRequest(request,inputs,input.literal);
  if(request)request=bindCurrentInputRequest(request,inputs.length>0);
  let fileBinding:{request:Request;binding:'explicit'|'default-working-file'|undefined}|undefined;
- if(request){fileBinding=bindWorkingFileRequest(request,input.currentFile,inputs.length>0);request=fileBinding.request;}
+ if(request){fileBinding=bindWorkingFileRequest(request,currentFile,inputs.length>0);request=fileBinding.request;}
  return {request,inputs,fileBinding};
 }

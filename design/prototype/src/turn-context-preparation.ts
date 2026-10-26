@@ -1,4 +1,4 @@
-import {boundedDialogueContext,compactDialogue,type ChatEngine,type Dialogue,type DialogueContext} from './conversation.ts';
+import {boundedDialogueContext,compactDialogue,independentSavedKnowledgeContext,type ChatEngine,type Dialogue,type DialogueContext} from './conversation.ts';
 import type {ActivityTool} from './harness-activity.ts';
 
 type Trace=<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(value:T)=>unknown)=>Promise<T>;
@@ -9,6 +9,7 @@ export async function prepareTurnContext(input:{
  engine:ChatEngine;
  model:string|undefined;
  question:string;
+ currentInputs?:boolean;
  check:()=>void;
  setProgress:(value:string)=>void;
  currentDialogue:()=>Dialogue;
@@ -17,6 +18,7 @@ export async function prepareTurnContext(input:{
  fitsPlanner?:(context:DialogueContext)=>Promise<boolean>;
 }):Promise<DialogueContext>{
  input.check();
+ const saved=independentSavedKnowledgeContext(input.question,input.currentInputs);if(saved)return saved;
  const prepared=await input.trace('dialogue.compact',{model:input.model,question:input.question,priorTurns:input.prior.turns.length,through:input.prior.compaction?.through??0},async()=>{
   const compact=await compactDialogue(input.prior,input.engine,input.question,()=>{input.check();input.setProgress('Compacting…');},input.fitsPlanner);
   return {compact,context:await boundedDialogueContext(compact,input.engine,input.question)};

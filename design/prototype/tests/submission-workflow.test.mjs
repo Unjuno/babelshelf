@@ -6,7 +6,7 @@ import {createSubmissionController} from '../src/submission-controller.ts';
 import {createToolRegistry} from '../src/tools/tool-registry.ts';
 import {definition,run as calculate} from '../src/tools/math.calculate/tool.ts';
 import {emptyDialogue,completeTurn,validateDialogue} from '../src/conversation.ts';
-import {createNote,searchNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,searchNotes} from '../../../dist/core.js';
 import {definition as searchDefinition,run as searchRun} from '../src/tools/memory.search/tool.ts';
 function fixture(){
  let dialogue=emptyDialogue();const events=[],reviews=[];let modelCalls=0;
@@ -23,6 +23,41 @@ function fixture(){
  const view={adopt:()=>{},consume:()=>events.push('consume'),composer:()=>({text:'',attachments:[]}),restore:()=>{},toast:message=>events.push(message),failure:message=>events.push(message),openNote:()=>{},reviewCapture:value=>reviews.push(value),reviewCorrection:()=>{},reviewSchedule:()=>{},startToolPackageFromChat:()=>{}};
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
 }
+
+test('saved-file correction searches canonical Memory before proposing changes, without using unrelated dialogue or pinned files',async()=>{
+ const f=fixture(),c=createSubmissionController(),target=createNote({path:'Notes/meeting.md',body:'Bring water.'}),other=createNote({path:'Notes/other.md',body:'Unrelated file'}),records=[target,other],before=structuredClone(records),proposals=[],prompts=[];
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'old',user:'UNRELATED-OLD-REQUEST',answer:'UNRELATED-OLD-ANSWER'}],compaction:{through:1,summary:'UNRELATED-SUMMARY'},currentFile:{noteId:other.id,revision:1},currentResult:{turnId:'old'}});const prior=structuredClone(f.current());
+ const responses=[JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})}),JSON.stringify({action:'edit',query:'Notes/meeting.md',target:'path'}),JSON.stringify({action:'replace',find:'water',with:'tea'})];
+ f.services.model='test';f.services.bonsai={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{prompts.push(messages);assert.doesNotMatch(JSON.stringify(messages),/UNRELATED-|Unrelated file/);return {text:responses.shift(),finishReason:'stop'};}};
+ f.services.knowledge={getState:async()=>undefined,all:async()=>records,search:async query=>{assert.equal(query,'meeting');return [{noteId:target.id,revision:1,start:0,end:11,quote:'Bring water',title:'Notes/meeting.md'}];}};
+ f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory'},{path:'Tools/memory.search/tool.ts',body:'Trusted search adapter'}],run:searchRun}];f.services.activeHarnessProfile={enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000};f.view.reviewCorrection=proposal=>proposals.push(proposal);
+ assert.equal(await c.run(run=>executeSubmission({text:'Could you replace water with tea in my saved meeting note?',attachments:[]},f.services,f.view,run)),'awaitingApproval',JSON.stringify({state:c.state,events:f.events,prompts:prompts.length}));assert.equal(prompts.length,3);assert.equal(proposals.length,1);assert.equal(proposals[0].path,'Notes/meeting.md');assert.equal(proposals[0].before,'Bring water.');assert.equal(proposals[0].after,'Bring tea.');assert.deepEqual(records,before);assert.deepEqual(f.current().currentFile,prior.currentFile);assert.deepEqual(f.current().compaction,prior.compaction);assert.deepEqual(f.current().turns[0],prior.turns[0]);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.compact'),false);
+});
+
+test('discovered corrections revalidate canonical identity and revision before proposal generation',async()=>{
+ for(const mismatch of ['revision','identity']){
+  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/meeting.md',body:'Bring water.'}),other=createNote({path:'Notes/other.md',body:'Do not change.'});
+  const records=[mismatch==='revision'?reviseNote(note,{body:'Newer original'},1):note,other],before=structuredClone(records);let generated=0;
+  const plans=[JSON.stringify({action:'tool',query:'memory.search',body:'{"query":"meeting"}'}),JSON.stringify({action:'edit',query:'Notes/meeting.md',target:'path'})];
+  f.services.model='test';f.services.bonsai={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{generated++;assert.ok(plans.length,'No correction generation after stale discovery');return {text:plans.shift(),finishReason:'stop'};}};
+  f.services.knowledge={getState:async()=>undefined,all:async()=>records,search:async()=>[{kind:'file',noteId:mismatch==='identity'?other.id:note.id,revision:1,path:'Notes/meeting.md'}]};
+  f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory'},{path:'Tools/memory.search/tool.ts',body:'Trusted adapter'}],run:searchRun}];f.services.activeHarnessProfile={enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000};
+  assert.equal(await c.run(run=>executeSubmission({text:'Could you replace water with tea in my saved meeting note?',attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/changed/i);assert.equal(generated,2);assert.deepEqual(records,before);assert.equal(f.reviews.length,0);
+ }
+});
+
+test('named corrections discover first, choose among canonical files and generate only a reviewed proposal',async()=>{
+ for(const mode of ['unique','choose','cancel','stale']){
+  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/meeting.md',body:'Bring water.'}),other=createNote({path:'Inbox/meeting-copy.md',body:'Other water.'}),proposals=[];let records=[note,other],generated=0,choices=0;
+  f.services.model='test';f.services.bonsai={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{generated++;assert.match(JSON.stringify(messages),/Bring water/);assert.doesNotMatch(JSON.stringify(messages),/Other water/);return {text:'{"action":"replace","find":"water","with":"tea"}',finishReason:'stop'};}};
+  f.services.knowledge={getState:async()=>undefined,all:async()=>records,search:async query=>{assert.equal(query,'meeting');return (mode==='unique'?[note]:[note,other]).map(n=>({kind:'file',noteId:n.id,revision:1,path:n.revisions[0].path}));}};
+  f.view.chooseCorrectionTarget=async options=>{choices++;assert.equal(generated,0);assert.equal(options.length,2);if(mode==='cancel')return null;if(mode==='stale')records=[reviseNote(note,{body:'Newer source'},1),other];return {noteId:note.id,revision:1};};f.view.reviewCorrection=p=>proposals.push(p);
+  const outcome=await c.run(run=>executeSubmission({text:'In my saved meeting note, replace water with tea.',attachments:[]},f.services,f.view,run));
+  assert.equal(outcome,mode==='cancel'?'cancelled':mode==='stale'?'failed':'awaitingApproval');assert.equal(choices,mode==='unique'?0:1);assert.equal(generated,mode==='cancel'||mode==='stale'?0:1);
+  if(proposals.length){assert.equal(proposals[0].before,'Bring water.');assert.equal(proposals[0].after,'Bring tea.');assert.equal(proposals[0].path,'Notes/meeting.md');}else assert.equal(mode==='cancel'||mode==='stale',true);
+  assert.equal(note.revisions.length,1);assert.equal(other.revisions.length,1);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.plan'||a.tool==='dialogue.compact'),false);
+ }
+});
 
 test('earlier operation outcomes generate from retained receipts without planner, compaction or knowledge reads',async()=>{
  const f=fixture(),c=createSubmissionController(),text='QA取消確認のメモは保存されましたか？前の会話の操作結果を教えて。';let generated=0;

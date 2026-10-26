@@ -24,6 +24,8 @@ import {inspectDialogueText} from './text-transform.ts';
 import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
 import {prepareTurnContext} from './turn-context-preparation.ts';
 import {PENDING_CORRECTION_STATE} from './pending-correction.ts';
+import {agentCorrectionTarget} from './agent-correction-target.ts';
+import {discoverCorrectionTarget,type CorrectionTargetOption} from './saved-correction-target.ts';
 import {projectNote,type NoteView} from './knowledge-store.ts';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {localRequest} from '../../../dist/requests.js';
@@ -39,7 +41,7 @@ import type {DecisionRuntime} from './decision-port.ts';
 import type {AutomaticReadingAdapterPorts} from './automatic-reading-adapters.ts';
 import type {ProcessingTool} from './processing-history.ts';
 import type {ProductRuntimeRole} from './product-runtime-assets.ts';
-import type {CorrectionProposal} from './note-corrections.ts';
+import {resolveCorrectionTarget,type CorrectionProposal} from './note-corrections.ts';
 import type {Task} from './task-records.ts';
 import type {OriginalRef,OriginalAsset} from './original-assets.ts';
 import type {ReviewedText,InputReadingRef,CurrentInputRef} from './input-readings.ts';
@@ -60,6 +62,7 @@ export type SubmissionView={
  openNote:(id:string,path:string)=>void;
  reviewCapture:(review:CaptureReview)=>void;
  reviewCorrection:(proposal:CorrectionProposal,turnId:string)=>void|Promise<void>;
+ chooseCorrectionTarget?:(options:CorrectionTargetOption[])=>Promise<{noteId:string;revision:number}|null>;
  reviewSchedule:(task:Task,turnId:string)=>void;
  startToolPackageFromChat:(idea:string)=>void;
 };
@@ -97,7 +100,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const ensureText=async()=>{
     inference=await models.text(model,checkSend,work=>trace('model.load',{model},work));
    };
-  const prepareContext=(fitsPlanner?:(candidate:DialogueContext)=>Promise<boolean>)=>prepareTurnContext({prior,engine:inference,model,question:text,check:checkSend,setProgress:setChatProgress,currentDialogue:()=>currentDialogue(),saveDialogue,trace,fitsPlanner});
+  const prepareContext=(fitsPlanner?:(candidate:DialogueContext)=>Promise<boolean>)=>prepareTurnContext({prior,engine:inference,model,question:text,currentInputs:items.length>0,check:checkSend,setProgress:setChatProgress,currentDialogue:()=>currentDialogue(),saveDialogue,trace,fitsPlanner});
    const readingAdapters=createAutomaticReadingAdapters({
     prompt:text,ocrModel,ocrReady:ocr.ready,ocrLanguage,
     speechModel,speechReady:speech.ready,speechLanguage:modelPreferences.transcriptionLanguage,customSpeechModels:modelPreferences.customSpeechModels,
@@ -192,6 +195,24 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     // proposal that staging would refuse. The transaction still checks races.
     const pending=await knowledge.getState(PENDING_CORRECTION_STATE);checkSend();
     if(pending!==undefined){await refreshStorage();checkSend();await finishTurn(id,{status:'Review pending changes first'});recoverDraft();view.toast('Review pending changes first');return {kind:'needsInput',reason:'pending-correction'};}
+    if(intent.namedCorrection){
+     const selected=await discoverCorrectionTarget({query:intent.namedCorrection.query,search:query=>trace('memory.search',{query},()=>knowledge.search(query)),all:()=>knowledge.all(),choose:view.chooseCorrectionTarget,check:checkSend});checkSend();
+     if(!selected){await finishTurn(id,{status:'Edit cancelled'});recoverDraft();return {kind:'cancelled'};}
+     selectedFile=await trace('memory.read',{target:'path',binding:'named-correction',...selected},async()=>{
+      const records=await knowledge.all(),target=resolveCorrectionTarget(records,selected.path);
+      if(target.id!==selected.noteId)throw Error('Discovered file changed · search again');
+      return workingFileNote(records,{noteId:selected.noteId,revision:selected.revision});
+     },workingFileMetadata);checkSend();request={...request,query:selected.path};
+    }
+    if(agentToolCalls.length){
+     const pin=agentCorrectionTarget(request,agentToolCalls);
+     const query=request.query;
+     selectedFile=await trace('memory.read',{target:'path',binding:'agent-discovery',query,...pin},async()=>{
+      const records=await knowledge.all(),target=resolveCorrectionTarget(records,query);
+      if(target.id!==pin.noteId)throw Error('Discovered file changed · search again');
+      return workingFileNote(records,pin);
+     },workingFileMetadata);checkSend();
+    }
     await ensureText();checkSend();
     const {proposal}=await actions().correction(request.query,selectedFile);checkSend();
     await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+proposal.expected.revisions.at(-1).version});checkSend();await view.reviewCorrection(proposal,id);return {kind:'awaitingApproval'};

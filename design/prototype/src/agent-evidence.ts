@@ -1,5 +1,6 @@
 import type {AgentToolResult} from './agent-loop.ts';
 import type {SourceRef} from './conversation.ts';
+import type {FileResult} from './file-discovery.ts';
 import type {ToolHost} from './tools/tool-host.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
 
@@ -65,7 +66,11 @@ export function projectAgentToolResult(tool:string,result:unknown):unknown{
   if(result.length!==1)throw Error('Invalid calculation result');
   return [checkedCalculation(result[0])];
  }
- if(tool==='memory.search')return result.slice(0,5).flatMap((item:any)=>{
+ if(tool==='memory.search')return result.slice(0,5).flatMap<SourceRef|FileResult>((item:any)=>{
+  if(item?.kind==='file'){
+   if(typeof item.noteId!=='string'||!item.noteId||item.noteId.length>160||!Number.isSafeInteger(item.revision)||item.revision<1||typeof item.path!=='string'||!item.path||item.path.length>1024)return [];
+   return [{kind:'file',noteId:item.noteId,revision:item.revision,path:item.path}];
+  }
   if(!item||typeof item.noteId!=='string'||!Number.isSafeInteger(item.revision)||!Number.isSafeInteger(item.start)||typeof item.quote!=='string'||item.start<0||item.revision<1||item.end-item.start!==item.quote.length)return [];
   const quote=item.quote.slice(0,500);return [{noteId:item.noteId,revision:item.revision,start:item.start,end:item.start+quote.length,quote,...(typeof item.title==='string'?{title:item.title}:{})}];
  });

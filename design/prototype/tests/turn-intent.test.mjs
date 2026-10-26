@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 import * as router from '../src/turn-router.ts';
 
 const prior={schema:1,revision:1,turns:[{id:'turn-1',user:'What did we decide about the workshop?',answer:'Move it to Monday at 10.',refs:[{noteId:'meeting',revision:2,start:0,end:31,quote:'Workshop moved to Monday at 10.'}]}],compaction:null,currentFile:{noteId:'opened-file',revision:3}};
+
+test('saved-file planning keeps the agent loop but excludes unrelated dialogue and implicit current-file edits',()=>{
+ const question='保存したQA星見のメモの水をお茶に直して。',intent=route({question});
+ assert.deepEqual(intent.request,{action:'edit',query:'QA星見',target:'path'});assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
+ const scoped=router.scopeResolvedTurnRequest({request:{action:'edit',query:'Notes/target.md'},question,literal:false,inputs:[],currentFile:prior.currentFile});
+ assert.equal(scoped.request.target,undefined);assert.equal(scoped.fileBinding.binding,undefined);
+ assert.throws(()=>router.scopeResolvedTurnRequest({request:{action:'edit',query:'',target:'file'},question,literal:false,inputs:[],currentFile:prior.currentFile}),/saved|scope/i);
+ assert.equal(route({question:'What did I say earlier about my saved meeting note?'}).context.currentFile?.noteId,'opened-file');
+});
+
+test('explicit named corrections nominate a search subject without inventing a transformation or swallowing mixed requests',()=>{
+ assert.deepEqual(router.explicitSavedKnowledgeCorrection('In my saved meeting note, replace water with tea.'),{action:'edit',query:'meeting',target:'path'});
+ for(const text of ['このメモの水をお茶に直して。','前の会話で保存したQA星見のメモの水をお茶に直して。','保存したQA星見のメモの水をお茶に直して。それから削除して。','In my saved meeting note, replace water with tea and email it.'])assert.equal(router.explicitSavedKnowledgeCorrection(text),null,text);
+ assert.equal(router.explicitSavedKnowledgeCorrection('保存したQA星見のメモの水をお茶に直して。',true),null);
+});
 const route=(overrides={})=>{
  assert.equal(typeof router.resolveSubmittedTurnIntent,'function');
  return router.resolveSubmittedTurnIntent({

@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Saved-file planning boundary — 2026-10-27
+
+Explicit saved-content work excludes unrelated dialogue/current-file selectors before context preparation and planning. Existing read-only discovery can terminate in a reviewed edit only when its exact target is present in successful built-in results and a fresh canonical ID/version/path read agrees. The model still proposes the transformation; full review/approval/CAS/history own all knowledge writes. Navigation-only file metadata remains distinct from source content. See [Saved-file planning](SAVED-FILE-PLANNING.md).
+
 ## Recorded conversation outcomes — 2026-10-27
 
 Archived original snippets now carry separately projected application outcomes. A bounded earlier-operation information scope reads retained requests/statuses directly, omitting lossy summaries and excluding inquiry retries. It owns no write or network capability and does not inspect knowledge files. A dialogue.read receipt records the bounded snapshot before acquisition; local generation reports historical outcomes rather than inferring success from requests. Long outcomes remain stored but are omitted from model context as unknown. Native single-original copy/rewrite remains unchanged. See [Recorded conversation outcomes](OPERATION-OUTCOMES.md) for limits and provenance.

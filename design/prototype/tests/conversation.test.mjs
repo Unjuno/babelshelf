@@ -1,5 +1,17 @@
 import test from 'node:test';
 
+test('explicit saved-file work cannot select an unrelated current answer, history or pinned file',async()=>{
+ const question='保存したQA星見のメモの水をお茶に直して。';
+ const context={summary:'Earlier unrelated summary',recent:[{id:'old',user:'Unrelated old request',answer:'Unrelated current answer'}],refs:[],turnCount:1,currentResult:{turnId:'old'},currentFile:{noteId:'unrelated',revision:1}};
+ const before=structuredClone(context),scope=conversation.plannerScope(context,false,question);
+ assert.equal(scope.current,false);assert.equal(scope.file,false);assert.equal(scope.historyCount,0);
+ const prompts=planDialogueMessages(question,context);assert.doesNotMatch(JSON.stringify(prompts),/Earlier unrelated summary|Unrelated old request|Unrelated current answer|"noteId":"unrelated"/);
+ const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'{"action":"transform","query":"","target":"current"}'})};
+ await assert.rejects(planDialogue(engine,question,context));assert.deepEqual(context,before);
+ assert.equal(conversation.plannerScope(context,false,'What did I say earlier about my saved note?').historyCount,1);
+ assert.equal(conversation.plannerScope(context,false,'Compare this file with the saved meeting note.').file,true);
+});
+
 test('planner retains bounded source provenance without exposing unchecked quotes as dialogue facts',()=>{
  const ref={noteId:'saved-meeting',revision:3,start:0,end:8,quote:'集合場所は北口。',title:'Notes/meeting.md'};
  const context={summary:'',recent:[{id:'sourced',user:'集合場所は？',answer:'北口です。',refs:[ref,ref,{...ref,revision:0},{...ref,noteId:'x'.repeat(161)}]}],refs:[ref],turnCount:1};
@@ -71,7 +83,7 @@ test('planner serialization keeps retained dialogue before changing selectors wi
  const recent=[{id:'one',user:'The blue lantern meeting is at 10.',answer:'Recorded in this conversation.'}];
  const old={summary:'Earlier discussion stays untrusted.',recent,refs:[],turnCount:1,lastAnswerIndex:0,currentResult:{turnId:'one'},recalled:[{turnId:'archived',turnIndex:0,speaker:'user',quote:'Earlier original',start:0,end:16}]};
  const next={...old,recent:[...recent,{id:'two',user:'The venue is the library.',answer:'Use the library.'}],turnCount:2,lastAnswerIndex:1,currentResult:{turnId:'two'}};
- const before=structuredClone([old,next]),question='Find my saved meeting notes.';
+ const before=structuredClone([old,next]),question='What did we decide about the meeting?';
  const a=planDialogueMessages(question,old),b=planDialogueMessages(question,next);
  assert.deepEqual(a[0],b[0]);
  let prefix=0;while(prefix<a[1].content.length&&a[1].content[prefix]===b[1].content[prefix])prefix++;
