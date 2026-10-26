@@ -210,7 +210,7 @@ export function requestNamesEarlierDialogue(question:string){
  // Bare "before"/"prior" also describe dates and arithmetic ("minutes before
  // 15:00"); they must not redirect a saved-note question to dialogue history.
  return /\b(?:earlier|previous(?:ly)?|last time|past conversation|conversation history|earlier message|previous message|what did (?:i|we|you) (?:say|ask|tell|decide|mention)|our conversation|chat history|my first message)\b/i.test(question)
-  ||/(?:前に|以前|さっき|先ほど|前回|過去の会話|会話履歴|前のメッセージ|以前の発言|私が(?:言った|聞いた|話した)|話した内容|決めたこと)/.test(question)
+  ||/(?:前に|以前|さっき|先ほど|前回|前の会話|過去の会話|会話履歴|前のメッセージ|以前の発言|私が(?:言った|聞いた|話した)|話した内容|決めたこと)/.test(question)
   ||/(?:之前|以前|刚才|上次|以前的对话|历史对话|之前我说|我们讨论)/.test(question);
 }
 // Match the model payload to the already restricted request scope. This is a

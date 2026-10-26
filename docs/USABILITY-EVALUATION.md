@@ -1,3 +1,11 @@
+# Corrected note and deictic source follow-up — 2026-10-27
+
+Actual Windows/sidebar Chrome156, prepared Bonsai4B, appOffline, build4e640fa6037c076a: saved-QA星見 packing question answered 水と懐中電灯 and cited exact originalv2. Earlier retained dialogue/sourcev1 still mentioned充電器. The follow-up そのメモの持ち物に充電器は含まれていますか？ compacted history and then failed Invalid model action. Its actual selector returned {action:recall,target:history} without required query/index. Stop was attempted after terminal completion and found no Stop control; this was a failed completed attempt, not a stopped run.
+
+Candidate4c4b92c4967a1d67 bound that exact prior answer's single cited source before planning. Same-question retry, stillOffline, real4B: 含まれていません。 Source opened unchanged QA-星見.md v2 with水と懐中電灯. Save note preview reused exact answer and was cancelled. Activity contained Read file/Answer/Load model, without Context/general Select action; file pin was not set and no knowledge revision was written. Original draft restored, model returned to unloaded/files-present state. Offline is app policy, not proof of OS network isolation or a force-close cycle.
+
+Final78000fcf335235b7 additionally distinguishes English contractions such as What's from quoted standalone reference phrases; Japanese actual-model evidence is candidate4c4 scope, final guards are controlled-test scope. Prototype934/intent27/product6/build/static pass, focused38 includes no-source/multiple-source/intervening-topic/pin/attachment exclusions and changed/missing/withdrawn admission before load. This fixes the observed one-source follow-up failure, not universal multilingual/deictic/multi-source semantics or model quality. No fixed/model-mock output is used as actual inference evidence.
+
 # History request readability — 2026-10-27
 
 Actual local Windows/sidebar7961 history of the owned QA-星見.md v1->v2 correction showed an almost unreadable request caption. Computed foreground rgb(82,104,93) against the opaque dark sheet rgb(36,56,48) gives2.077:1. The common .trash-item small rule retained a fixed light-theme color while its parent correctly changed with appearance.

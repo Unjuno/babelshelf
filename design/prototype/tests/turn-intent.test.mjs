@@ -171,3 +171,17 @@ test('standalone literal Japanese note requests review exact supplied text witho
  assert.notEqual(route({question:'QA星見の持ち物は水。メモして。',prior:clean,hasAttachments:true}).request?.action,'capture');
  assert.deepEqual(route({question:'QA星見の持ち物は水。メモして。'}).request,{action:'capture',query:'',body:'QA星見の持ち物は水。'});
 });
+
+test('a deictic question can read the sole source of the immediate current answer without changing file selection',()=>{
+ const question='そのメモの持ち物に充電器は含まれていますか？',ref={noteId:'packing',revision:2,start:0,end:4,quote:'水と灯り'};
+ const answer={id:'latest',user:'持ち物は？',answer:'水と灯り',refs:[ref]},state={...prior,turns:[answer],currentFile:undefined,currentResult:{turnId:'latest'}};
+ assert.deepEqual(route({question:"What's in that note?",prior:state}).sourceFile,{noteId:'packing',revision:2});
+ const before=structuredClone(state),intent=route({question,prior:state});assert.deepEqual(intent.sourceFile,{noteId:'packing',revision:2});assert.deepEqual(intent.request,{action:'answer',query:question,target:'file'});assert.equal(intent.context.recent.length,0);assert.deepEqual(state,before);
+ const failed={id:'failed',user:question,status:'Invalid model action'};
+ assert.deepEqual(route({question,prior:{...state,turns:[answer,failed]}}).sourceFile,intent.sourceFile);
+ for(const changed of [{...state,turns:[{...answer,refs:[]}]},{...state,turns:[{...answer,refs:[ref,{...ref,noteId:'other'}]}]},{...state,turns:[answer,{id:'cancelled',user:'note: new topic',status:'Save cancelled'}]},{...state,turns:[answer,{...failed,user:'Another request'}]}])assert.equal(route({question,prior:changed}).sourceFile,undefined);
+ assert.equal(route({question,prior:state,hasAttachments:true}).sourceFile,undefined);
+ assert.equal(route({question,prior:{...state,currentFile:{noteId:'opened',revision:1}}}).sourceFile,undefined);
+ assert.deepEqual(route({question,prior:{...state,turns:[{...answer,refs:[ref,{...ref,start:1,end:3}]}]}}).sourceFile,{noteId:'packing',revision:2});
+ for(const text of ["What does 'that note' mean?",'そのメモと他のメモの違いは？','そのメモを削除できますか？','そのメモを要約して保存できますか？','前の会話でそのメモについて何を言いましたか？'])assert.equal(route({question:text,prior:state}).sourceFile,undefined,text);
+});

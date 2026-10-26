@@ -199,3 +199,24 @@ test('literal new-note prose reaches exact review without model acquisition or k
  const outcome=await c.run(run=>executeSubmission({text:'QA星見の持ち物は水と充電器。メモして。',attachments:[]},f.services,f.view,run));
  assert.equal(outcome,'awaitingApproval');assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,'QA星見の持ち物は水と充電器。');assert.equal(f.reviews[0].kind,'original');assert.equal(f.modelCalls(),0);assert.equal(f.current().turns.at(-1).status,'Review before saving');
 });
+
+test('a current-answer source follow-up bypasses history/planning and keeps its exact source without selecting a file',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/packing.md',body:'持ち物は水と懐中電灯。'}),before=structuredClone(note);let calls=0;
+ const ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'answer',user:'Packing?',answer:'水と懐中電灯',refs:[ref]}],currentResult:{turnId:'answer'}});
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;return {text:JSON.stringify({answer:'充電器は記載されていません。',citations:[{id:'S1',quote:note.revisions[0].body}]})};}};
+ f.services.knowledge={all:async()=>[note],search:async()=>{throw Error('Unrelated search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'そのメモの持ち物に充電器は含まれていますか？',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.equal(calls,1);assert.equal(f.current().currentFile,undefined);assert.equal(f.current().turns.at(-1).refs[0].noteId,note.id);assert.deepEqual(note,before);assert.equal(f.current().turns.at(-1).activity.some(a=>['dialogue.compact','dialogue.plan'].includes(a.tool)),false);
+});
+
+test('a missing, changed or withdrawn current-answer source refuses before model acquisition rather than substituting evidence',async()=>{
+ for(const scenario of ['missing','changed','withdrawn']){
+  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/packing.md',body:'Old text'});
+  if(scenario==='changed')note.revisions.push({...note.revisions[0],version:2,body:'Changed text'});if(scenario==='withdrawn')note.state='withdrawn';
+  const records=scenario==='missing'?[]:[note],before=structuredClone(records);
+  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'answer',user:'Packing?',answer:'Old text',refs:[{noteId:note.id,revision:1,start:0,end:8,quote:'Old text'}]}],currentResult:{turnId:'answer'}});
+  f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:true}},load:async()=>{throw Error('Unexpected model acquisition');}};f.services.knowledge={all:async()=>records,search:async()=>{throw Error('Unrelated search');}};
+  assert.equal(await c.run(run=>executeSubmission({text:'What is in that note?',attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/Source changed/);assert.equal(f.current().currentFile,undefined);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);assert.deepEqual(records,before);
+ }
+});

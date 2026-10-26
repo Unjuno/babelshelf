@@ -1,6 +1,6 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
-import {contextIndependentConversation,dialogueContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
+import {contextIndependentConversation,currentDialogueResult,dialogueContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
 import {explicitInputQuestion} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
@@ -79,6 +79,21 @@ export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boole
  if(!asks)return null;
  return {action:'answer' as const,query:text,target:'file' as const};
 }
+/** A question about the sole cited source of the immediate answer has a
+ * read-only target even when the user has not opened/pinned that file. */
+export function explicitCurrentSourceQuestion(question:string,prior:Dialogue,hasInputs=false){
+ const text=question.trim();
+ if(hasInputs||prior.currentFile||!namesDeicticFile(text)||/["“”「」『』`]/u.test(text)||/(?:^|\s)'[^']+'(?:\s|[?.!]|$)/u.test(text)||/\b(?:other|another|all|files|notes|documents|edit|delete|save|write|replace|change|summari[sz]e|translate|execute|run|search|compare)\b|(?:他の|別の|複数|全部|すべて|全て|削除|保存|変更|訂正|修正|直して|要約|翻訳|実行|検索|比較)/iu.test(text))return null;
+ const request=explicitWorkingFileQuestion(text,true);if(!request)return null;
+ let result;try{result=currentDialogueResult(prior);}catch{return null;}if(!result)return null;
+ const following=prior.turns.slice(result.turnIndex+1);
+ if(following.some(turn=>turn.user.trim()!==text||turn.answer?.trim()||!['Invalid model action','Stopped','Model not prepared','Source changed · retry'].includes(turn.status??'')))return null;
+ const refs=result.refs.filter(ref=>ref.groundingEligible!==false),pins=new Map(refs.map(ref=>[ref.noteId+':'+ref.revision,{noteId:ref.noteId,revision:ref.revision}]));
+ if(pins.size!==1)return null;const file=[...pins.values()][0];
+ if(!file.noteId||!Number.isSafeInteger(file.revision)||file.revision<1)return null;
+ return {request,file};
+}
+
 /** A single explicit correction uses the user's already opened file. This only
  * selects a proposal route; it cannot choose replacement bytes or commit them. */
 export function explicitWorkingFileCorrection(question:string,hasWorkingFile:boolean,hasOtherInput=false){
@@ -113,7 +128,8 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
- const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
+ const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
+ const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??source?.request??null;
  const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
  const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
@@ -123,7 +139,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  // Optional chaining otherwise produces undefined, which is not a selected route.
  const request=noteCapture??answerRewrite??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??fileCorrection??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=contextIndependent?.context??priorContext;
- return {literalRequest,explicitSavedRequest,explicitFileQuestion,inputQuestion,priorContext,contextIndependent,request,context};
+ return {literalRequest,explicitSavedRequest,explicitFileQuestion,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};
 export type TurnRoute<Request>=
