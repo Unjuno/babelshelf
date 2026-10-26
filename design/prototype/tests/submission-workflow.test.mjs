@@ -94,11 +94,23 @@ test('an opened-file correction reads its pinned original then loads only for an
  const old={id:'old',user:'UNRELATED instructions',answer:'Old answer'};
  await f.services.saveDialogue({...emptyDialogue(),turns:[old],currentFile:{noteId:note.id,revision:1}});
  f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{steps.push('load');loaded='test';},unload:async()=>{loaded='';},count:async messages=>{assert.equal(loaded,'test');assert.doesNotMatch(JSON.stringify(messages),/UNRELATED/);return {prompt_tokens:100};},generate:async messages=>{generations++;assert.match(JSON.stringify(messages),/集合場所は北口/);return {text:JSON.stringify({action:'replace',find:'北口',with:'南口'})};}};
- f.services.knowledge={all:async()=>{steps.push('read');return [note];}};
+ f.services.knowledge={all:async()=>{steps.push('read');return [note];},getState:async()=>undefined};
  f.view.reviewCorrection=async proposal=>{review=proposal;};
  assert.equal(await c.run(run=>executeSubmission({text:'集合場所を南口に直して。',attachments:[]},f.services,f.view,run)),'awaitingApproval',c.state.error);
  assert.ok(steps.indexOf('read')<steps.indexOf('load'));assert.equal(generations,1);assert.equal(review.path,'Inbox/place.md');assert.equal(review.before,before.revisions[0].body);assert.equal(review.after,'集合場所は南口。まだ作成途中です。');assert.equal(review.operation.name,'text.replace');assert.deepEqual(note,before);assert.deepEqual(f.current().turns[0],old);
  assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.plan'||a.tool==='dialogue.compact'),false);
+});
+
+test('a saved correction review blocks another proposal before model acquisition and retains both requests',async()=>{
+ for(const saved of [{type:'pending-correction',proposal:{id:'existing'}},{malformed:'inert saved data'}]){
+  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/place.md',body:'集合場所は北口。'}),before=structuredClone(saved),original=structuredClone(note);let loads=0,refreshed=0,recovered;
+  await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
+  f.services.model='test';f.services.bonsai={loaded:'',assets:{test:{filesPresent:true}},manifest:{models:[]},load:async()=>{loads++;throw Error('Must not load');}};
+  f.services.knowledge={all:async()=>[note],getState:async key=>{assert.equal(key,'pending-correction');return saved;}};
+  f.services.refreshStorage=async()=>{refreshed++;};f.view.restore=value=>{recovered=value;};
+  assert.equal(await c.run(run=>executeSubmission({text:'集合場所を南口に直して。',attachments:[]},f.services,f.view,run)),'blocked');
+  assert.equal(c.state.outcome.reason,'pending-correction');assert.equal(loads,0);assert.equal(refreshed,1);assert.deepEqual(saved,before);assert.deepEqual(note,original);assert.equal(recovered.text,'集合場所を南口に直して。');assert.equal(f.current().turns.at(-1).status,'Review pending changes first');assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'||a.tool==='memory.propose_correction'),false);
+ }
 });
 
 test('explicit missing Memory subjects stop before model acquisition or history compaction',async()=>{

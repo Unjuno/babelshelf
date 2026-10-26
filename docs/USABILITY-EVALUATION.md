@@ -1,3 +1,9 @@
+## 2026-10-27 — Do not generate another correction while a review is pending
+
+Actual public193/b3a08696d9373d68 sidebar: Standard -> Source first profile proposal, Escape without Save, Input with existingv1 file pin, then 集合場所を南口に直して。. Returned Model not prepared instead of identifying the already pending review. Canonical staging would refuse a competing proposal only after generation in a prepared profile. No settings/note were approved.
+
+Send now checks the pending slot before acquiring Text/generating another correction. Controlled application cases prove typed needsInput/pending-correction, exact draft restoration, refreshed review surface, no model calls, no proposal/knowledge mutation; malformed saved data also blocks safely. Built PC flow checks existing Source first Before/After survives the blocked request and reload, then explicit Cancel retains Standard. First regression run exposed an older Cancel test reloading before async discard acknowledgement; waiting for review closure (after committed discard) fixed the test, with no product Cancel change. Final Node prototype926, editor/review PC14, product6, strict build/static pass. No new model benchmark or phone acceptance.
+
 ## 2026-10-27 — Correct the opened file, not the previous instruction
 
 Actual local public-v192 code1785f67c18da0c98, prepared4B, Windows sidebar Chrome156/appOnline: opened Inbox/QA-creation-draft.md v3 (集合場所は北口。まだ作成途中です。) and sent 集合場所を南口に直して。. Planner selected edit/file with an unrelated old path in query; the host correctly retained the pinned file, but semantic rewrite proposed the instruction itself as the whole new body. Cancel retained original v3. current-correction-before.png and current-correction-activity.txt record the failure.

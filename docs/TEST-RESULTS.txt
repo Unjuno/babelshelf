@@ -1,3 +1,12 @@
+PENDING REVIEW PREFLIGHT — 2026-10-27 JST
+Public193 actual pending profile review + new correction wrongly reaches model
+preparation; original review retained. Edit now checks canonical pending slot,
+returns needsInput, restores input, refreshes review, no Text acquisition/proposal.
+Malformed slot stays inert; transactional staging/CAS still checks later races.
+Final6010c76359fe6111: prototype926, editor/review PC14, product6,
+strict TypeScript/build/static passed. Existing Cancel test now awaits committed
+review closure before reload; first13/14 then final14/14. No Cancel product change.
+
 PUBLIC193 /b3a08696d9373d68 /index-WDPtQb-2.js — 2026-10-27 JST
 Sidebar normal Update adopted matching current page/worker, no storage purge.
 Same correction on pinnedv1 read its file then correctly stopped Model not

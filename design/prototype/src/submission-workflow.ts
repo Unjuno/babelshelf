@@ -22,6 +22,7 @@ import {createTurnActivityTracer} from './harness-activity.ts';
 import {inspectDialogueText} from './text-transform.ts';
 import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
 import {prepareTurnContext} from './turn-context-preparation.ts';
+import {PENDING_CORRECTION_STATE} from './pending-correction.ts';
 import {projectNote,type NoteView} from './knowledge-store.ts';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {localRequest} from '../../../dist/requests.js';
@@ -185,6 +186,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     await finishTurn(id,{status:'Review schedule · Paused'});checkSend();view.reviewSchedule(result.task,id);return {kind:'awaitingApproval'};
    }
    if(request?.action==='edit'){
+    // Existing reviews are inert but exclusive. Do not spend a model run on a
+    // proposal that staging would refuse. The transaction still checks races.
+    const pending=await knowledge.getState(PENDING_CORRECTION_STATE);checkSend();
+    if(pending!==undefined){await refreshStorage();checkSend();await finishTurn(id,{status:'Review pending changes first'});recoverDraft();view.toast('Review pending changes first');return {kind:'needsInput',reason:'pending-correction'};}
     await ensureText();checkSend();
     const {proposal}=await actions().correction(request.query,selectedFile);checkSend();
     await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+proposal.expected.revisions.at(-1).version});checkSend();await view.reviewCorrection(proposal,id);return {kind:'awaitingApproval'};
