@@ -1,5 +1,13 @@
 # Current application architecture
 
+## Public media follow-up — 2026-10-26
+
+The bounded current-input question recognizer includes literal English/Japanese PDF nouns; a self-contained PDF question uses the submitted original IDs/revisions rather than another model-selected dialogue target. Mixed actions, earlier-dialogue requests and absent inputs retain their existing refusal/planning behavior.
+
+When one current reading/one revision receives a malformed answer shape, grounded answering may use the existing bounded verbatim generation route. This is another real model call under the answer-only schema, not extraction of a guessed answer from malformed JSON. Only a contiguous substring of current source evidence can become an answer, with host-owned source pins and a final original/revision eligibility check. Attachment citation mismatches, invented text, Stop and budget failures remain refusals. The receipt identifies `verbatim-source` recovery when used.
+
+Sampled-video construction projects only `model`, `revision` and `runtime` from frame replies. A real frame reply's `scope: single-image` must never overwrite the host-owned video schema, sampled-video scope, prompt, plan or ranges. Each sampled frame and the audio transcript remain separate coverage within the resulting observation. Public PC sidebar execution is recorded in SITES-DEPLOYMENT.md; it is not a general media-quality or physical-device claim.
+
 ## Vision preparation and answering — 2026-10-26
 
 `vision-assets-worker.ts` is a small core-shell worker for local file verification,
