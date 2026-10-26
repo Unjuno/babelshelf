@@ -8,9 +8,14 @@ test('unprepared models are recorded without loading or downloading anything',as
 test('a failed baseline save cannot arm an automatic restart test',async()=>{const f=setup(report());f.ports.save=async()=>{throw Error('Storage full');};await assert.rejects(startDeviceTestSuite(f.ports),/Storage full/);assert.deepEqual(f.events,[]);});
 test('blocked model execution remains not-run rather than claiming a generation passed',async()=>{const f=setup(report(false));f.ports.testModel=async()=>null;const result=await startDeviceTestSuite(f.ports);assert.equal(result.report.modelGeneration.status,'not-run');assert.equal(result.report.modelGeneration.failureType,'model-test-not-run');});
 
-test('performance selection is bound across restart and older default mode stays Quick',async()=>{const f=setup(report());const result=await startDeviceTestSuite(f.ports,'performance');assert.equal(result.marker.modelTestMode,'performance');const g=setup(report(false));let selected;g.ports.testModel=async(r,mode)=>{selected=mode;return r;};await startDeviceTestSuite(g.ports);assert.equal(selected,'quick');});
+test('installed Performance runs immediately while the older default still uses Quick',async()=>{
+ const f=setup(report());let selected;f.ports.testModel=async(r,mode)=>{selected=mode;f.events.push(['model']);return {...r,modelGeneration:{status:'pass',model:'chosen',modelRevision:'revision',runtimeRevision:'runtime'}};};
+ const result=await startDeviceTestSuite(f.ports,'performance');assert.equal(selected,'performance');assert.equal(result.marker,null);assert.deepEqual(f.events.map(e=>e[0]),['model','save']);assert.equal(result.report.manualSteps.some(step=>/Airplane|Home Screen/i.test(step)),false);assert.equal(result.report.scope.some(step=>/this browser run/.test(step)),false);
+ const g=setup(report(false));g.ports.testModel=async(r,mode)=>{selected=mode;return r;};await startDeviceTestSuite(g.ports);assert.equal(selected,'quick');
+ const skipped=setup(report(true,false)),notReady=await startDeviceTestSuite(skipped.ports,'performance');assert.equal(notReady.marker,null);assert.deepEqual(skipped.events.map(e=>e[0]),['save']);assert.equal(notReady.report.modelGeneration.testMode,'performance');assert.equal(notReady.report.modelGeneration.failureType,'model-files-not-ready');
+});
 
-test('performance test mode survives the persisted marker and invalid modes are discarded',async()=>{
- const {writeOfflineRestartMarker,readOfflineRestartMarker}=await import('../src/device-diagnostics.ts');const f=setup(report()),result=await startDeviceTestSuite(f.ports,'performance');const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
+test('legacy Performance restart markers remain readable and invalid modes are discarded',async()=>{
+ const {writeOfflineRestartMarker,readOfflineRestartMarker}=await import('../src/device-diagnostics.ts');const f=setup(report()),result=await startDeviceTestSuite(f.ports,'quick');result.marker.modelTestMode='performance';const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
  writeOfflineRestartMarker(storage,result.marker);assert.equal(readOfflineRestartMarker(storage).modelTestMode,'performance');const key=[...values.keys()][0],value=JSON.parse(values.get(key));values.set(key,JSON.stringify({...value,modelTestMode:'execute external command'}));assert.equal(readOfflineRestartMarker(storage),null);assert.equal(values.size,0);
 });

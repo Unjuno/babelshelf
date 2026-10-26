@@ -1,3 +1,7 @@
+# Own-device Performance without a restart — 2026-10-27
+
+The existing standalone branch required closing/reopening even for a timing sample. Performance now runs in place after one Run; Quick retains Home Screen restart testing. The selected mode stays visible in a skipped/unprepared report; empty timing rows are hidden. Controlled PC standalone fixtures verify no restart marker or model download, saved-report retention after opening Developer again, and compatibility with old Performance restart markers. Real phone timing remains user-operated; no repeated model benchmark was needed to change this coordinator.
+
 # Corrected note and deictic source follow-up — 2026-10-27
 
 Actual Windows/sidebar Chrome156, prepared Bonsai4B, appOffline, build4e640fa6037c076a: saved-QA星見 packing question answered 水と懐中電灯 and cited exact originalv2. Earlier retained dialogue/sourcev1 still mentioned充電器. The follow-up そのメモの持ち物に充電器は含まれていますか？ compacted history and then failed Invalid model action. Its actual selector returned {action:recall,target:history} without required query/index. Stop was attempted after terminal completion and found no Stop control; this was a failed completed attempt, not a stopped run.
