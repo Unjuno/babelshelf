@@ -77,3 +77,69 @@ test('browser reload can be cancelled and reverting the exact draft removes the 
  await expect(page.getByRole('button',{name:'Edit',exact:true})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toHaveCount(0);
 });
+
+test('new file dismissal and kind switching protect the exact draft until explicit save',async({page})=>{
+ await page.goto('/');await memory(page);
+ await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('textbox',{name:'File name',exact:true}).fill('Draft');
+ await page.getByRole('textbox',{name:'New file content',exact:true}).fill('集合は北口。\n');
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue('集合は北口。\n');
+ await page.getByRole('tab',{name:'Folder',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(page.getByRole('tab',{name:'File',exact:true})).toHaveAttribute('aria-selected','true');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.locator('.file-body')).toHaveText('集合は北口。');
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toHaveCount(0);
+});
+
+test('schedule repeat choices preserve dirty prompt through cancellation, and Save bypasses discard',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Schedule',exact:true}).click();
+ await page.getByRole('button',{name:'New schedule',exact:true}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt',exact:true}).fill('明日の予定をまとめる。\n');
+ await page.getByRole('button',{name:'Repeat',exact:true}).click();
+ await page.getByRole('button',{name:'Every day',exact:true}).click();
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Schedule prompt',exact:true})).toHaveValue('明日の予定をまとめる。\n');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Schedule',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/明日の予定をまとめる。/}).first()).toBeVisible();
+});
+
+test('empty creation closes directly; folder changes can be discarded without creating a folder',async({page})=>{
+ await page.goto('/');await memory(page);
+ await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('tab',{name:'Folder',exact:true}).click();
+ await page.getByRole('textbox',{name:'Folder name',exact:true}).fill('Uncommitted folder');
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Discard changes',exact:true}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Open Uncommitted folder',exact:true})).toHaveCount(0);
+});
+
+test('answer-copy provenance survives dismiss and Keep editing without regeneration',async({page})=>{
+ await page.goto('/');await page.getByRole('textbox',{name:'Message',exact:true}).fill('Calculate 6 * 7');
+ await page.getByRole('button',{name:'Send',exact:true}).click();
+ await page.getByRole('button',{name:'Save note',exact:true}).click();
+ const source=await page.getByRole('textbox',{name:'New file content',exact:true}).inputValue();
+ await page.getByRole('textbox',{name:'File name',exact:true}).fill('Reviewed calculation');
+ await page.keyboard.press('Escape');
+ await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue(source);
+ await expect(page.getByRole('group',{name:'Original speaker',exact:true})).toBeVisible();
+ await expect(page.getByText('Original copy',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.locator('.file-body')).toHaveText([source,source]);
+ await expect(page.getByRole('button',{name:'Edit',exact:true})).toBeVisible();
+});

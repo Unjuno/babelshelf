@@ -1,3 +1,19 @@
+USER JOURNEY: CREATION AND SCHEDULE DRAFTS — 2026-10-26 JST
+Producte9b520a1d40fb091 /135 verified assets, index-CTjwxKtj.js.
+Actual sidebar on previous6178 build lost new-file name/body and schedule prompt
+on Escape/reopen. Two red browser cases reproduced the missing confirmation.
+Fix uses one discard review independent of form identity, preserving copy/task
+provenance and Schedule Repeat changes; committed Save bypasses discard review.
+Local actual create/Keep editing/Save and Schedule Repeat/Keep editing/discard
+passed. No schedules were created by the local manual trial; no model inference.
+Built Windows Chromium8/8 and Windows WebKit8/8 passed; root169/prototype897,
+product6, strict TS/build, static/pins and protected runtime28 passed. One new
+test locator was scoped to both saved/original-copy bodies after its initial
+strict-mode failure; no product change was needed for that test correction.
+Delivery verified all135 asset size/SHA256 entries and gzip/method/offline shell.
+No physical iOS/Android, durable OS-termination draft recovery, broader model
+quality or whole-app acceptance is claimed. See USABILITY-EVALUATION.md.
+
 USER JOURNEY: UNSAVED EDIT PROTECTION — 2026-10-26 JST
 Product6178c8ec9ee2f989 /135 verified assets, index-BKaVmK83.js; Site v178.
 Actual sidebar Windows PC: create Japanese note, edit meeting09:00 to10:00,

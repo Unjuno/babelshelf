@@ -1,5 +1,17 @@
 # Task-based usability evaluation
 
+## 2026-10-26 — creation forms and schedule conditions
+
+Observed in the sidebar on6178c8ec9ee2f989: a new note's name/body disappeared after Escape and reopening. A new schedule prompt disappeared the same way. Both forms closed or reset their fields without testing whether the user changed them.
+
+Fix on e9b520a1d40fb091: share the existing unsaved-work review with creation and schedule cancellation. The confirmation has separate state from the underlying form, preserving body/path and pinned answer-copy/task provenance while the confirmation is visible. Snapshot a form only when it opens; returning from Schedule Repeat does not rebase an edited task. Keep editing and dismissal of the confirmation retain the draft. Explicit discard performs the pending action once; successful Save closes without asking to discard. Switching File/Folder also checks the outgoing dirty form. Untouched forms close directly. Browser beforeunload protection covers these dirty forms where supported; it is not durable OS-termination recovery.
+
+Actual local sidebar: created a Japanese note, used Escape/Keep editing and saved the exact body asv1. Entered a schedule prompt, selected Every day, cancelled/kept editing and observed both prompt and condition preserved; explicit discard left No schedules. No model loading or inference was needed. The pre-existing Input draft is retained without submission.
+
+Built-app regression: original editor4 plus new-file dismissal/kind switching, empty form/folder discard, schedule Repeat/cancellation/Save, and answer-copy provenance,8 cases each on Windows Chromium and WebKit. The answer-copy test uses the real deterministic calculator tool and checks the saved answer and original-copy preview; it does not simulate model inference. Initial creation and schedule tests failed on the previous artifact before the fix. Root169/prototype897/product6, strict TS/build, static/pins and protected runtime28 passed. Publication evidence is recorded separately after deployment.
+
+Remaining: durable pending reviews and drafts across OS termination, creation/package/model-registration drafts outside this tested scope, and broad intent/model-quality acceptance. A pass in these bounded PC tasks does not finish the full application goal.
+
 ## 2026-10-26 — direct editing and navigation
 
 Scope: existing Windows Codex sidebar profile, local product build6178c8ec9ee2f989; accepted UI and canonical IndexedDB data retained. Synthetic Japanese note only; no inference, model acquisition or user-document export needed for this task.
