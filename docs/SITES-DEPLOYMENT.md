@@ -1,3 +1,11 @@
+# Public v195 — bounded current-answer list formatting (2026-10-27)
+
+App implementation b16f6bf on codex/ui-design-handoff packages product e52f3b4847d79846 /135 verified assets, entry index-DZgcaSe1.js. Site source344df894d366279deef757e8a6f4d535640f912c retained the current shell and actual previous public6010 assets;19 obsolete/intermediate assets were pruned. Delivery adapter and independently recomputed135 byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b4d33f6fcff08191835af96fa93ae7ee (v195), deployment appgdep_6adfb78b85108191ab9303f7ff3f9399 succeeded2026-10-26T20:27:09.748314Z. Native uncompressed tar metadata: SHA25661288c80e3ac14100b9391c678e2d26748c6063746d85a0e8fbb0e3344d82718,57,169,920bytes,160files. One local current-site.tar.gz was reused; native tar metadata does not identify compressed bytes. Audience remains public.
+
+Actual existing babelshelf.com sidebar tab: temporarily Online -> normal Update -> new entry index-DZgcaSe1.js and active worker e52f3b4847d79846. Retained old dialogue, input file QA-draft-v179.md v1, empty composer, previous device report and logsOff; restored Offline. New Developer UI still exposes Quick/Performance and Run tests. No new public-profile inference/model acquisition or replacement of its existing report occurred. Actual4B format/source/save-preview evidence is the local4950 candidate described in TEST-RESULTS, not a public-profile or phone result.
+
 ## Latest publication — pending review preflight, Site v194, 2026-10-27
 
 Public audience/domain retained. Product `6010c76359fe6111`, entry `index-8XaDHaIS.js`,135 independent asset size/hash and delivery checks passed. App `5d46377` pushed to `codex/ui-design-handoff`. Site source `d04e6b34921b32c6bf3783cb0e46781aa1c14e87`; saved `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_0ac48f7929dc8191bb0a1a2c1cb908c2`; deployment `appgdep_6adfaf84d08c8191b7efcee9f8114314` succeeded `2026-10-26T19:52:52.315734+00:00`. Native tar SHA256 `31938256ded68c5a9965bf2997c7d7213841544cb683bd684b4ec3859413db58`,57,159,680 uncompressed bytes/160 files. Reused stage/archive, retained actualv193 predecessor and pruned19 obsolete generated assets.
