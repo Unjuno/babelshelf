@@ -1,3 +1,11 @@
+# Public v200 — history/list caption contrast (2026-10-27)
+
+App458e549 on codex/ui-design-handoff packages4e640fa6037c076a /135 verified assets, entry index-B7XLhosE.js, CSSindex-DkoiGQYq.css. Site sourcef779386aa0f35718e08c32ccbb6033f25c11c60d retains current and actual previous public7961 assets;20 older delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_446fd217af9081918e3a92d9f2319a8d(v200), deployment appgdep_6adfc23e6df4819191db61fa9c190563 succeeded2026-10-26T21:12:45.263245Z. Native uncompressed tar SHA256fdc59c22fb64b66133103ef72b4cc2f0120a23087b153730e62f8f718286c31b,57,231,360bytes/161files. Public audience retained; one compressed current archive reused.
+
+Existing babelshelf.com sidebar normal Update adopted matching4e640 worker/index-B7XLhosE.js and index-DkoiGQYq.css. Browser CSSOM confirmed .trash-item small color:inherit. RestoredOffline; existing dialogue/filepin/emptycomposer/logsOff/priorreport retained, no model acquisition/inference or knowledge writes. Actual rendered History contrast11.519:1 and before2.077:1 were measured on the local PC profile's existing correction receipt, not a new public-profile correction or physical-phone measurement. DefaultLight/Dark and all19 editor/review browser tests passed; product6/build/static passed. No universal custom-palette/glass-background accessibility claim.
+
 # Public v199 — persisted capture cancellation (2026-10-27)
 
 App1dee4c9 on codex/ui-design-handoff packages7961a4952ed69fa0 /135 verified assets, entry index-MuFj3Yry.js. Site sourceac21e0cebe744efaee6f56f8b6a3b5623b1494f8 retains current and actual previous publicc08dc assets;19 older delivery assets pruned. Adapter verification and independently recomputed135 byte/hash entries passed.
