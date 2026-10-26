@@ -1,3 +1,11 @@
+# Public v199 — persisted capture cancellation (2026-10-27)
+
+App1dee4c9 on codex/ui-design-handoff packages7961a4952ed69fa0 /135 verified assets, entry index-MuFj3Yry.js. Site sourceac21e0cebe744efaee6f56f8b6a3b5623b1494f8 retains current and actual previous publicc08dc assets;19 older delivery assets pruned. Adapter verification and independently recomputed135 byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_fcc2f6237bd081918d2447f5d931fbad(v199), deployment appgdep_6adfc01c85f4819198d163b7d78c5d15 succeeded2026-10-26T21:03:39.469237Z. Native uncompressed tar SHA256a73a6aa3e124a211e0773a3c765dc400aa09f9a3f4ef53ee4078212bfda58242,57,190,400bytes/161files. Public audience retained; one current compressed archive reused.
+
+Existing babelshelf.com sidebar normal Update adopted matching7961 worker/index-MuFj3Yry.js. RestoredOffline. Exact new capture review->unchangedCancel produced Save cancelled; ordinary reload retained it. No new knowledge/model acquisition/inference. Original QA-draft-v179.md v1 pin, emptycomposer, logsOff and older device report retained. Old stale Review before saving turn remains historical, not silently rewritten. Local dirtyDiscard/reload and PC17 browser cases cover the other exit/save flows. Node932/product6/strict build/static passed. Physical-phone/OS-termination draft recovery remains unverified.
+
 # Public v198 — literal new-note review without model/history work (2026-10-27)
 
 App52536f5 on codex/ui-design-handoff packagesc08dc70a4f07d7ad /135 verified assets, entry index-C5y1AUui.js. Site sourced529a60123fab3f83429ee2beb86b95a5c9148f4 retains current and actual previous publicc821 assets;19 older delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
