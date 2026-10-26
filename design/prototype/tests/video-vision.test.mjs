@@ -15,6 +15,13 @@ test('one bounded image batch follows decoding; no audio model or network is inv
  const f=await fixture(),value=await describeVideoOriginal(f.asset,'What is visible?',new AbortController().signal,()=>{},{sample:f.sample,describe:f.describe,audio:{selected:false,ready:false}});
  assert.deepEqual(f.events,['sample','decode-disposed','describe']);assert.equal(value.frames.length,3);assert.equal(value.audio.status,'not-selected');assert.match(value.frames[0].imageSha256,/^[a-f0-9]{64}$/);assert.equal(value.plan.timebase,'container-presentation');
 });
+
+test('real frame-result image scope cannot overwrite sampled-video provenance',async()=>{
+ const f=await fixture();
+ const describe=async images=>({frames:(await f.describe(images)).frames.map(frame=>({...frame,scope:'single-image',schema:1,prompt:'frame-local prompt'}))});
+ const value=await describeVideoOriginal(f.asset,'What is visible?',new AbortController().signal,()=>{},{sample:f.sample,describe,audio:{selected:false,ready:false}});
+ assert.equal(value.schema,2);assert.equal(value.scope,'sampled-video');assert.equal(value.prompt,'What is visible?');assert.equal(value.frames.length,3);assert.equal(value.model,visionManifest.id);
+});
 test('Stop or changed model output cannot commit late sampled observations or start audio',async()=>{
  for(const phase of ['decode','describe','identity']){const f=await fixture(),controller=new AbortController();let audio=0;
   const sample=async(...args)=>{const p=await f.sample(...args);if(phase==='decode')controller.abort();return p;};

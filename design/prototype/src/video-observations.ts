@@ -16,7 +16,9 @@ function render(frames:VideoFrameObservation[],audio:VideoAudioReading){
  return {text,frames:mapped,...(audioStart!==undefined?{audioStart}:{})};
 }
 export function makeVideoVisionText(asset:OriginalAsset,prompt:string,plan:VideoFramePlan,frames:VideoFrameObservation[],audio:VideoAudioReading,identity:VisionModelIdentity={model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime}):VideoVisionText{
- const value:VideoVisionText={schema:2,scope:'sampled-video',...identity,original:originalRef(asset),prompt,width:plan.width,height:plan.height,plan:structuredClone(plan),audio:structuredClone(audio),...render(frames,audio)};
+ // Worker frame replies also contain image-local scope and dimensions. Only
+ // project model identity; those fields cannot redefine this video's coverage.
+ const value:VideoVisionText={schema:2,scope:'sampled-video',model:identity.model,revision:identity.revision,runtime:identity.runtime,original:originalRef(asset),prompt,width:plan.width,height:plan.height,plan:structuredClone(plan),audio:structuredClone(audio),...render(frames,audio)};
  validateVideoVisionText(value,asset);return value;
 }
 export function validateVideoVisionText(value:VideoVisionText,asset:OriginalAsset){
