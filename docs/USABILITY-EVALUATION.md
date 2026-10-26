@@ -1,3 +1,9 @@
+# Device Performance stop/retry and next steps — 2026-10-27
+
+Actual prepared/resident4B sidebar use confirmed Stop test records Stopped, reenables Run, and a subsequent128-token Performance sample completes with numeric results. The original Input draft remains untouched while using Settings. This is one Windows browser sample, not a model-quality or phone acceptance.
+
+The resulting report incorrectly retained the baseline collector's iPhone/Airplane Mode/Home Screen instructions, despite finishing as a browser run that never armed restart. Browser completion now replaces those manual steps with Review results/Copy report. The separate installed-app restart procedure and scope limitations are retained. Two existing suite cases reproduce and protect this correction. No UI redesign, knowledge mutation or report upload is involved.
+
 # Current answer to checklist — 2026-10-27
 
 Actual Windows sidebar use with prepared Bonsai 4B first answered the owned trip-note question correctly and opened its exact v2 source. On public-code build6010c76359fe6111, the follow-up current-answer checklist request unnecessarily compacted history and entered general planning; it was stopped. Bounded current-answer routing removed that work, but two actual candidates still generated checklists of response rules rather than the original content. The shorter-prose-prompt experiment was reverted.

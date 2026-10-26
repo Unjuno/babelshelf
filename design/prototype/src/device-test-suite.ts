@@ -16,5 +16,6 @@ export async function startDeviceTestSuite(ports:Ports,mode:DeviceTestMode='quic
  report.scope.push('Restart testing requires the Home Screen app; this browser run does not arm a restart test in another storage context.');
  if(report.selectedModel?.filesPresent){report=await ports.testModel(report,mode)??report;if(!report.modelGeneration)notRun(report,'model-test-not-run');}
  else notRun(report,'model-files-not-ready');
+ report.manualSteps=['Review the results in Developer.','Copy report for Codex to share the results.'];
  await ports.save(report);return {report,marker:null};
 }
