@@ -1,5 +1,25 @@
 # Current application architecture
 
+See [the current review and migration target](ARCHITECTURE-REVIEW.md) for remaining structural gaps.
+
+## User device performance samples — 2026-10-26
+
+Developer retains one Run tests action. Test options selects Quick (default) or
+Performance. Quick validates exact structured READY; Performance runs one fixed
+prose-128-v1 sample with at most128 output tokens. Home Screen continuation
+persists the finite test mode; unknown persisted modes are rejected, and old
+markers default to Quick. The UI reports actual Load time, available TTFT,
+end-to-end generation speed, token counts and runtime memory counters. It hides
+old success/metrics and disables copying the previous report during a new run.
+
+The bounded report includes workload, configured engine/backend, registered
+quantization metadata, model/runtime revisions, input/output tokens and load
+state. Known CPU thread/prompt/cache counters are accepted; no physical-core
+or GPU-selection claim follows from configuration or prerequisites. Copying
+projects only allowed metadata and never includes generated reply text.
+One timing sample is not sustained performance, thermal or answer-quality proof.
+
+
 ## One-button device test — 2026-10-26
 
 Settings > Developer now has one Run tests start action. The UI-independent

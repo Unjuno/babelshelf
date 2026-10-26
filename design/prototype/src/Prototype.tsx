@@ -1,3 +1,4 @@
+import {deviceModelTestProfile,validateDeviceModelTest,type DeviceTestMode} from './device-model-test';
 import {startDeviceTestSuite} from './device-test-suite';
 import {executeScheduledAnswer} from './scheduled-answer';
 import {createModelExecutionManager} from './model-execution';
@@ -21,7 +22,7 @@ import {speechReady as preparedSpeech} from './speech-assets';
 import {ocrReady as preparedOcr} from './ocr-assets';
 import {initialPreparationPlan,preparationRoles,runInitialPreparation,assertPreparationSettings,textPreparationStatus,type InitialPreparation,type PreparationRole} from './initial-preparation';
 import {textModelControls} from './text-model-controls';
-import {textExecutionIdentity} from './text-execution-route';
+import {textExecutionIdentity,textExecutionQuantization} from './text-execution-route';
 import type {CustomDecisionModel,CustomLocalModel,CustomVisionModel} from './preference-records';
 import type {CustomSpeechModel} from './preference-records';
 import type {HuggingFaceModelFile,HuggingFaceRepository} from './huggingface-models';
@@ -48,7 +49,7 @@ import {isOcrImage,ocrCitationRegion,type OcrText} from './ocr-text';
 import {AssetOperationGate,decisionAssetInput,textAssetInput,speechAssetInput,ocrAssetInput,visionAssetInput,visionDescriptionInput,type AssetTool} from './asset-activity';
 import {processingName,recordProcessingOperation,type ProcessingTool} from './processing-history';
 import {appendDiagnosticLog,clearDiagnosticLogs,readDiagnosticLogs,type DiagnosticLog} from './diagnostic-logs';
-import {runDeviceDiagnostics,formatDeviceDiagnosticReport,isStandalonePwa,readOfflineRestartMarker,writeOfflineRestartMarker,clearOfflineRestartMarker,claimOfflineRestartAttempt,completeOfflineRestartReport,completeInterruptedOfflineRestartReport,readSavedDeviceTestReport,writeSavedDeviceTestReport,clearSavedDeviceTestReport,parseDeviceModelSmokeAnswer,type OfflineRestartMarker,type DeviceDiagnosticReport} from './device-diagnostics';
+import {runDeviceDiagnostics,formatDeviceDiagnosticReport,isStandalonePwa,readOfflineRestartMarker,writeOfflineRestartMarker,clearOfflineRestartMarker,claimOfflineRestartAttempt,completeOfflineRestartReport,completeInterruptedOfflineRestartReport,readSavedDeviceTestReport,writeSavedDeviceTestReport,clearSavedDeviceTestReport,type OfflineRestartMarker,type DeviceDiagnosticReport} from './device-diagnostics';
 import {formatDiagnosticHandoff} from './diagnostic-report-copy';
 import {resolveToolNotes} from './tools/tool-host';
 import {prepareHarnessProfileChange} from './harness-profile-review';
@@ -197,7 +198,7 @@ export default function Prototype() {
  const appRefreshLock=useRef(false),appRefreshState=useRef({blocked:true,online:false});
  const [diagnosticBuild,setDiagnosticBuild]=useState('Not checked'),[runtimeAssetsReady,setRuntimeAssetsReady]=useState<Partial<Record<ProductRuntimeRole,boolean>>>({});
   const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false);
- const deviceSuiteLock=useRef(false);
+ const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>('quick');
  const offlineRestartStartedInPage=useRef(false);
  const customFile=useRef<HTMLInputElement>(null),customDecisionFile=useRef<HTMLInputElement>(null),customSpeechFile=useRef<HTMLInputElement>(null),customVisionFile=useRef<HTMLInputElement>(null),customAbort=useRef<AbortController|null>(null),hfAbort=useRef<AbortController|null>(null);const [customReview,setCustomReview]=useState<{model:CustomLocalModel;files:File[];remove?:()=>Promise<void>}|null>(null),[customDecisionReview,setCustomDecisionReview]=useState<{model:CustomDecisionModel;files:File[]}|null>(null),[customSpeechReview,setCustomSpeechReview]=useState<{model:CustomSpeechModel;files:File[];status:'execution-not-tested'}|null>(null),[customVisionReview,setCustomVisionReview]=useState<{model:CustomVisionModel;files:File[];status:'execution-not-tested'}|null>(null),[customProgress,setCustomProgress]=useState(''),[customBusy,setCustomBusy]=useState(false),[hfBusy,setHfBusy]=useState(false),[hfProgress,setHfProgress]=useState(''),[hfError,setHfError]=useState('');
  const [initialPrep,setInitialPrep]=useState<InitialPreparation|null>(null),[initialPrepBusy,setInitialPrepBusy]=useState(false),[initialPrepStatus,setInitialPrepStatus]=useState('');
@@ -377,27 +378,27 @@ export default function Prototype() {
   try{let report=await collectDeviceReport();const marker=completeOfflineRestart?readOfflineRestartMarker(localStorage):null;
    if(marker)report=completeOfflineRestartReport(report,marker);
    if(marker?.modelTestRequested){
-    if(model&&model===marker.modelTestModel&&bonsai.assets[model]?.filesPresent){const modelReport=await runDeviceModelTest(report);if(modelReport){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);return;}const identity=textExecutionIdentity(model,modelPreferences.customModels);report.modelGeneration={status:'not-run',model,modelRevision:identity?.revision??'custom',runtimeRevision:identity?.runtimeRevision??'unknown',failureType:decision.loaded?'another-model-loaded':'model-test-not-run'};report.scope.push(decision.loaded?'The selected model test was not run because the Decision model is already loaded; no other model was unloaded.':'The requested model test could not start; no model was loaded or changed.');}
+    if(model&&model===marker.modelTestModel&&bonsai.assets[model]?.filesPresent){const modelReport=await runDeviceModelTest(report,marker.modelTestMode??'quick');if(modelReport){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);return;}const identity=textExecutionIdentity(model,modelPreferences.customModels);report.modelGeneration={status:'not-run',model,modelRevision:identity?.revision??'custom',runtimeRevision:identity?.runtimeRevision??'unknown',failureType:decision.loaded?'another-model-loaded':'model-test-not-run'};report.scope.push(decision.loaded?'The selected model test was not run because the Decision model is already loaded; no other model was unloaded.':'The requested model test could not start; no model was loaded or changed.');}
     else {const requested=marker.modelTestModel??model??'unknown',identity=textExecutionIdentity(requested,modelPreferences.customModels);report.modelGeneration={status:'not-run',model:requested,modelRevision:identity?.revision??'custom',runtimeRevision:identity?.runtimeRevision??'unknown',failureType:!model?'no-model-selected':model!==requested?'selected-model-changed':'model-files-not-ready'};report.scope.push('A model test was explicitly requested before restart but the exact selected model was unavailable; no model was loaded.');}
    }
    const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);if(marker){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);}
   }catch(error){toast((error as Error).message||'Device test failed');}finally{setDeviceTestRunning(false);}
  }
- async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport):Promise<DeviceDiagnosticReport|null>{
+ async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceTestMode='quick'):Promise<DeviceDiagnosticReport|null>{
    if(deviceModelTesting||!model)return null;
   if(decision.loaded){toast('Unload the Decision model before testing the selected Text model');return null;}
   if(!bonsai.assets[model]?.filesPresent){toast('Prepare the selected model before testing it');return null;}
   if(bonsai.busy||sending||!!assetAction||decision.busy||speech.busy||ocr.busy||vision.busy){toast('Wait for current work to finish');return null;}
-   setDeviceModelTesting(true);let loadedByTest=false,loadDurationMs=0,durationMs=0,outputTokens:number|undefined,answerCharacters=0,runtimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined,failure:unknown=null;
+   setDeviceModelTesting(true);const profile=deviceModelTestProfile(testMode),loadedAtStart=bonsai.loaded===model;let inputTokens:number|undefined,loadedByTest=false,loadDurationMs=0,durationMs=0,outputTokens:number|undefined,answerCharacters=0,runtimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined,failure:unknown=null;
    try{await assetGate.current.run(async()=>{try{
    if(bonsai.loaded!==model){const role=selectedTextRuntimeRole(model);if(role)await ensureProductRuntime(role,false);setAssetAction('model.load');const loadStarted=performance.now();await bonsai.load(model);loadDurationMs=Math.round(performance.now()-loadStarted);loadedByTest=true;}
-    setAssetAction('model.load');const generationStarted=performance.now();const generated=await bonsai.generate([{role:'system',content:'Return exactly one JSON object with no additional properties. Set the answer field to the exact string READY.'},{role:'user',content:'Return the required answer now.'}],64,'dialogue-answer');durationMs=Math.round(performance.now()-generationStarted);outputTokens=generated.outputTokens;runtimeMetrics=generated.metrics;const answer=parseDeviceModelSmokeAnswer(generated.text);answerCharacters=answer.length;
+    setAssetAction('model.load');inputTokens=(await bonsai.count(profile.messages,profile.format)).prompt_tokens;const generationStarted=performance.now();const generated=await bonsai.generate(profile.messages,profile.maxTokens,profile.format);durationMs=Math.round(performance.now()-generationStarted);outputTokens=generated.outputTokens;runtimeMetrics=generated.metrics;answerCharacters=validateDeviceModelTest(testMode,generated);
     }catch(error){failure=error;}finally{if(loadedByTest){try{setAssetAction('model.load');await bonsai.unload();}catch(error){failure??=error;}}setAssetAction(null);}});
    }catch(error){failure??=error;}
    try{const report=baseReport??await collectDeviceReport(),modelIdentity=textExecutionIdentity(model,modelPreferences.customModels),stopped=(failure as Error|null)?.message==='Stopped';
-    report.modelGeneration={status:failure?(stopped?'stopped':'fail'):'pass',model,modelRevision:modelIdentity?.revision??'custom',runtimeRevision:modelIdentity?.runtimeRevision??'unknown',...(loadDurationMs?{loadDurationMs}:{}),...(durationMs?{durationMs}:{}),...(outputTokens!==undefined?{outputTokens,tokensPerSecond:durationMs>0?Math.round(outputTokens*100000/durationMs)/100:0}:{}),...(answerCharacters?{answerCharacters}:{}),...(runtimeMetrics?{runtimeMetrics}:{}),...(failure?{failureType:stopped?'stopped':(failure as Error).name||'generation-failed'}:{})};
-    const modelCheck=report.checks.find(check=>check.id==='selected-model');if(modelCheck){modelCheck.status=failure?(stopped?'warning':'fail'):'pass';modelCheck.detail=failure?(stopped?`${model}: generation stopped by user`:`${model}: local generation failed · ${report.modelGeneration.failureType}`):`${model}: one local structured generation passed`;}
-    report.scope.push('One short structured generation was run locally; output text was discarded and not saved. Prepared models are loaded from local assets only, and a model loaded by this test is unloaded afterward. Timings are a single sample, not a sustained benchmark.');setDiagnosticBuild(report.appBuild);const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);toast(failure?(stopped?'Model test stopped':'Local generation test failed'):'Device and model test complete');return report;
+    report.modelGeneration={status:failure?(stopped?'stopped':'fail'):'pass',testMode,quantization:textExecutionQuantization(model,modelPreferences.customModels),workload:profile.workload,maxOutputTokens:profile.maxTokens,loadState:loadedAtStart?'already-loaded':'loaded-for-test',...(inputTokens!==undefined?{inputTokens}:{}),model,modelRevision:modelIdentity?.revision??'custom',runtimeRevision:modelIdentity?.runtimeRevision??'unknown',...(loadDurationMs?{loadDurationMs}:{}),...(durationMs?{durationMs}:{}),...(outputTokens!==undefined?{outputTokens,tokensPerSecond:durationMs>0?Math.round(outputTokens*100000/durationMs)/100:0}:{}),...(answerCharacters?{answerCharacters}:{}),...(runtimeMetrics?{runtimeMetrics}:{}),...(failure?{failureType:stopped?'stopped':(failure as Error).name||'generation-failed'}:{})};
+    const modelCheck=report.checks.find(check=>check.id==='selected-model');if(modelCheck){modelCheck.status=failure?(stopped?'warning':'fail'):'pass';modelCheck.detail=failure?(stopped?`${model}: generation stopped by user`:`${model}: local generation failed · ${report.modelGeneration.failureType}`):`${model}: one local ${testMode==='performance'?'timing sample':'structured generation'} passed`;}
+    report.scope.push('One '+(testMode==='performance'?'bounded prose timing sample (up to 128 output tokens)':'short structured generation')+' was run locally; output text was discarded and not saved. Prepared models are loaded from local assets only, and a model loaded by this test is unloaded afterward. Timings are a single sample, not a sustained benchmark.');setDiagnosticBuild(report.appBuild);const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);toast(failure?(stopped?'Model test stopped':'Local generation test failed'):'Device and model test complete');return report;
    }catch(error){toast((error as Error).message||'Could not create model test report');return null;}
   finally{setDeviceModelTesting(false);}
  }
@@ -413,8 +414,8 @@ export default function Prototype() {
    const result=await startDeviceTestSuite({collect:collectDeviceReport,
     save:async report=>{const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);},
     arm:async marker=>{writeOfflineRestartMarker(localStorage,marker);offlineRestartStartedInPage.current=true;setOfflineRestartMarker(marker);},
-    testModel:report=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report),
-   });
+    testModel:(report,mode)=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report,mode),
+   },deviceTestMode);
    toast(result.marker?'Checks saved · restart the Home Screen app':'Tests complete · copy report');
   }catch(error){toast((error as Error).message||'Device test failed');}
   finally{deviceSuiteLock.current=false;setDeviceTestRunning(false);}
@@ -686,7 +687,7 @@ export default function Prototype() {
   // cannot cause a costly model test to run again on the next launch.
   offlineResumeAutoRun.current=true;
   if(!claimOfflineRestartAttempt(localStorage,marker)){offlineResumeAutoRun.current=false;return;}
-  setOfflineRestartMarker({...marker,returnAttempted:true});navigate('settings');setSettingsPanel('diagnostics');void runDeviceTest(true);
+  setOfflineRestartMarker({...marker,returnAttempted:true});setDeviceTestMode(marker.modelTestMode??'quick');navigate('settings');setSettingsPanel('diagnostics');void runDeviceTest(true);
  },[page,settingsPanel,storageReady,storagePending,sending,bonsai.busy,deviceTestRunning,deviceModelTesting]);
  async function traceProcessing<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown,stopped:()=>boolean):Promise<T>{
   let id:string|undefined;try{return await recordProcessingOperation(tool,input,work,async a=>{await knowledge.recordProcessing(a);id=a.id;if(a.status==='running')activeProcessing.current.add(a.id);else activeProcessing.current.delete(a.id);if(connectionPreferences.diagnosticLogs&&(a.status==='failed'||a.status==='stopped'))try{appendDiagnosticLog(localStorage,{tool:a.tool,status:a.status,code:a.error?.code??a.status,message:a.error?.message??a.status});}catch{/* Diagnostics must never change the operation result. */}},project,stopped);}finally{if(id)activeProcessing.current.delete(id);}
@@ -959,6 +960,8 @@ export default function Prototype() {
  diagnosticBuild={diagnosticBuild}
  bundle={document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.src.split('/').at(-1)??'Unknown'}
  deviceTestRunning={deviceTestRunning}
+ testMode={deviceTestMode}
+ onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={()=>bonsai.stop()}
@@ -984,6 +987,8 @@ export default function Prototype() {
  diagnosticBuild={diagnosticBuild}
  bundle={document.querySelector<HTMLScriptElement>('script[type="module"][src]')?.src.split('/').at(-1)??'Unknown'}
  deviceTestRunning={deviceTestRunning}
+ testMode={deviceTestMode}
+ onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={()=>bonsai.stop()}

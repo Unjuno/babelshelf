@@ -287,3 +287,14 @@ test('diagnostic log review opens an editable chat draft without sending it',asy
  await expect(composer).toHaveValue(/Diagnose these local operation failures/);
  await expect(composer).toHaveValue(/planner_protocol/);
 });
+
+test('performance remains an option under the single Run action and is retained for the return check',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await page.getByText('Test options · Quick',{exact:true}).click();await page.getByRole('button',{name:'Performance',exact:true}).click();await expect(page.getByRole('button',{name:'Run tests',exact:true})).toHaveCount(1);await page.getByRole('button',{name:'Run tests',exact:true}).click();await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible();
+ const marker=await page.evaluate(()=>JSON.parse(localStorage.getItem('babelshelf.device-test.offline-restart.v1')??'null'));expect(marker.modelTestMode).toBe('performance');await page.reload();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeVisible();await expect(page.getByText('Test options · Performance',{exact:true})).toBeVisible();await expect.poll(()=>page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'))).toBeNull();
+});
+
+test('a new run cannot copy the previous result as if it were the current test',async({page})=>{
+ await page.addInitScript(()=>{localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'old',modelRevision:'old-rev',runtimeRevision:'old-runtime'}}));Object.defineProperty(navigator,'gpu',{configurable:true,value:{requestAdapter:()=>new Promise(resolve=>{(window as any).__releaseGpuProbe=()=>resolve(null);})}});});
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run tests'}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await expect(page.getByText('Previous report',{exact:true})).toBeVisible();await page.waitForFunction(()=>typeof (window as any).__releaseGpuProbe==='function');await page.evaluate(()=>(window as any).__releaseGpuProbe());await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
+});

@@ -74,3 +74,8 @@ test('reports when neither clipboard copy path is available',async()=>{
  const result=await copyDiagnosticReport('ios-report',null,doc);
  assert.equal(result,'select');assert.equal(doc.state.selected,true);
 });
+
+test('performance metadata survives the private handoff but reply text and unknown memory fields do not',()=>{
+ const value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',workload:'prose-128-v1',inputTokens:42,maxOutputTokens:128,loadState:'loaded-for-test',rawReply:'PRIVATE-ANSWER',runtimeMetrics:{memoryAfter:{liveBytes:123,peakBytes:456,privateNote:'PRIVATE-ANSWER'}}}};
+ const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/prose-128-v1/);assert.match(text,/"inputTokens": 42/);assert.match(text,/"liveBytes": 123/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
+});

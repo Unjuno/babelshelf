@@ -3,7 +3,7 @@ import {WEBGPU_DIAGNOSTIC_LIMIT_NAMES} from './device-diagnostics.ts';
 export type CopyResult='copied'|'select';
 
 const objectRecord=(value:unknown):Record<string,unknown>|null=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:null;
-const stringLimits:Record<string,number>={createdAt:64,appBuild:40,bundle:256,platform:128,userAgent:512,id:120,status:32,detail:180,model:120,modelRevision:120,runtimeRevision:120,failureType:80,revision:120,engine:80,backend:16,startedAt:64,previousBuild:40,checkedAt:64};
+const stringLimits:Record<string,number>={createdAt:64,appBuild:40,bundle:256,platform:128,userAgent:512,id:120,status:32,detail:180,model:120,modelRevision:120,runtimeRevision:120,failureType:80,quantization:100,revision:120,engine:80,backend:16,startedAt:64,previousBuild:40,checkedAt:64};
 function pickFields(value:unknown,keys:readonly string[]):Record<string,unknown>|undefined{
  const record=objectRecord(value);if(!record)return;
  const projected:Record<string,unknown>={};
@@ -26,18 +26,19 @@ function projectChecks(value:unknown):Record<string,unknown>[]|undefined{
  }).filter((check):check is Record<string,unknown>=>!!check);
 }
 function projectMetrics(value:unknown):Record<string,unknown>|undefined{
- const metrics=pickFields(value,['countMs','visibleTextTtftMs','generationMs','outputTokens','generationTokensPerSecond','runtimeTtftMs','runtimeDecodeMs','runtimeDecodeTokensPerSecond','decodePipelineDepth'])??{};
+ const metrics=pickFields(value,['countMs','visibleTextTtftMs','generationMs','outputTokens','generationTokensPerSecond','requestedThreads','runtimeThreads','runtimePromptTokens','runtimeCachedTokens','runtimePrefillMs','runtimeTtftMs','runtimeDecodeMs','runtimeDecodeTokensPerSecond','decodePipelineDepth'])??{};
  const source=objectRecord(value);if(!source)return;
  for(const name of ['memoryBefore','memoryAfter']){
-  const memory=objectRecord(source[name]);if(memory)metrics[name]=pickFields(memory,['gpuBytes','heapBytes'])??{};
+  const memory=objectRecord(source[name]);if(memory)metrics[name]=pickFields(memory,['gpuBytes','heapBytes','liveBytes','peakBytes'])??{};
  }
  return metrics;
 }
 function projectModelGeneration(value:unknown):Record<string,unknown>|undefined{
- const generation=pickFields(value,['status','model','modelRevision','runtimeRevision','loadDurationMs','durationMs','outputTokens','tokensPerSecond','answerCharacters','failureType'])??{};
+ const generation=pickFields(value,['status','model','modelRevision','runtimeRevision','loadDurationMs','durationMs','outputTokens','tokensPerSecond','answerCharacters','failureType','quantization','inputTokens','maxOutputTokens'])??{};
  const source=objectRecord(value);if(!source)return;
  if(!['pass','fail','not-run','stopped','interrupted'].includes(String(generation.status)))return;
  if(!['model','modelRevision','runtimeRevision'].every(key=>typeof generation[key]==='string'))return;
+ for(const [key,allowed] of Object.entries({testMode:['quick','performance'],workload:['ready-v1','prose-128-v1'],loadState:['already-loaded','loaded-for-test']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
  const metrics=projectMetrics(source.runtimeMetrics);if(metrics)generation.runtimeMetrics=metrics;
  return generation;
 }

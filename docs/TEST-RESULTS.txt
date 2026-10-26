@@ -1,3 +1,29 @@
+USER DEVICE PERFORMANCE AND ARCHITECTURE REVIEW — 2026-10-26 JST
+Release candidate 0557d8f0a3f5ebe7 /135 verified assets, index-BXu_3Y7K.js.
+Architecture review/target: docs/ARCHITECTURE-REVIEW.md. Publication evidence is
+recorded separately in SITES-DEPLOYMENT.md after the native deployment succeeds.
+
+Checks: strict TypeScript/build/check passed; root Node169, prototype897,
+product6; Developer UI Chromium17 and Windows WebKit17 passed. Performance mode,
+restart-mode persistence, bounded report copy/CPU counters and suppression of
+stale Passed/copy state are covered. Stage checked all135 exact size/SHA256
+assets and gzip/identity/HTTP-method/offline-shell transport; actual previous
+public build9258580d6a72e027 is retained explicitly.
+
+Actual sidebar Windows PC sample on build21f6e89a0574486e:
+Bonsai2 4B PTQ1_0, model8d6557168168f91ea6697a4a49ed2ef622b53adb,
+runtime621e20782f208660f4f58283c2ce58430020f243, configured webml-qwen35/webgpu.
+prose-128-v1, loaded-for-test, input60/output128 tokens, Load42192ms,
+first visible token3012.515ms, generation17245ms, end-to-end7.42tokens/s;
+reported runtime decode8.926tokens/s, live memory after1723039344bytes.
+Generated reply text was discarded; the test-loaded model was unloaded. Existing
+user draft/defaults/knowledge were preserved; no model download or upload.
+The sample ran on a development PC with build/test activity, not a quiet or
+sustained benchmark. Route metadata and runtime counters do not independently
+identify the hardware adapter or total device memory. No iPhone/Android, heat,
+answer quality or closed-app offline performance acceptance is claimed.
+Evidence: local task outputs/device-performance-report.json and device-performance.png.
+
 ONE-BUTTON DEVICE TEST — 2026-10-26 JST
 Local build 4760eba1323a1bcb /135 assets, entry index-CGrvdV5w.js.
 

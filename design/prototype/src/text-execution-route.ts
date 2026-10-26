@@ -34,3 +34,12 @@ export function textExecutionIdentity(modelId:string,customModels:readonly Custo
  if(typeof revision!=='string'||!revision||typeof runtimeRevision!=='string'||!runtimeRevision)return null;
  return {...route,revision,runtimeRevision};
 }
+
+/** Registered format metadata only; custom tensor type IDs are not guessed into quantization names. */
+export function textExecutionQuantization(id:string,customModels:readonly CustomLocalModel[]=[]):string|undefined{
+ const custom=customModels.find(model=>model.id===id);
+ if(custom)return ('GGUF tensor types: '+custom.inspection.tensorTypes.join(',')).slice(0,100);
+ const model=baseManifest.models.find(model=>model.id===id)??getLfmTextManifest(id)??getQwen3TextManifest(id)??getOnnxTextManifest(id);
+ const value=(model as {format?:unknown;dtype?:unknown}|undefined)?.format??(model as {dtype?:unknown}|undefined)?.dtype;
+ return typeof value==='string'?value.slice(0,100):undefined;
+}

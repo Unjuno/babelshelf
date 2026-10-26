@@ -208,3 +208,8 @@ test('saved device report accepts the prior schema and rejects malformed WebGPU 
  const malformed=JSON.stringify({schema:1,createdAt:'2026-10-20T00:00:00.000Z',checks:[],webgpu:{available:true,features:['x'.repeat(65)],fallbackAdapter:null,limits:{}}});
  storage.setItem('babelshelf.device-test.report.v1',malformed);assert.equal(readSavedDeviceTestReport(storage),'');assert.throws(()=>writeSavedDeviceTestReport(storage,malformed),/Invalid/);
 });
+
+test('bounded CPU runtime thread and prompt counters survive saved performance reports',()=>{
+ const storage=memoryStorage(),value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'cpu',modelRevision:'rev',runtimeRevision:'runtime',testMode:'performance',runtimeMetrics:{requestedThreads:4,runtimeThreads:4,runtimePromptTokens:100,runtimeCachedTokens:0,runtimePrefillMs:10}}};
+ writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics.runtimeThreads,4);
+});
