@@ -1,4 +1,10 @@
-## Latest publication — search completion, Site v181, 2026-10-27
+## Latest publication — source provenance and one rejected-history replan, Site v182, 2026-10-27
+
+Public audience/domain retained. Product23ae43723e1c44af /135 verified assets, entry index-Bx_EYrcy.js; application172ab7e pushed to codex/ui-design-handoff. Site source5b1a0c85ddda74c8156f9e6d8479053c7308347e; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_7b5e8c582e50819185a3c6deb6833acd; deployment appgdep_6adf7bb39dd0819183fc5a0eb2fe2048 succeeded2026-10-26T16:11:46.847261+00:00. Saved tar SHA-25642c0b11aa55e71a33d2249f1748855df379c569c10cd958a8eaea36ca7fc4dbf,57139200 bytes/160 files. Exact135 byte/hash and delivery-transport checks passed. Retains actual publicv181 assets and prunes19 obsolete generated assets; one stage/archive reused.
+
+Sidebar normal Update adopted matching page/active worker, restoredOffline and opened old QA-draft-v179.md v1 original text from its existing result. LogsOff, prior data/pin/defaults retained. Public models remain unprepared; actual4B follow-up/replan/answer/source/reload was verified on the same final build at localhost. No new public inference/download or phone acceptance. Prototype905/coordinator15/combined146/product6, strict product TypeScript/build/check/runtime28 passed; whole quality chain not rerun. Source screenshots in outputs/followup-source.png (local real answer) and current-public-verification.png (public retained source). Slow prefill, extra retry cost, broad language/semantic quality and cross-record disambiguation remain open.
+
+## Prior publication — search completion, Site v181, 2026-10-27
 
 Public audience/domain retained. Product100d2301fc13e22d /135 verified assets, entry index-CLW7y54T.js; application65afc87 pushed to codex/ui-design-handoff. Site source7389df88ce19104df7cc1b64a45b266547239e1d; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_51ae8cf74a2481919be98304c86ab582; deployment appgdep_6adf75ea4adc8191b89264837c572466 succeeded2026-10-26T15:47:06.947994+00:00. Saved tar SHA-2563485aecce670cd6e24bb9e1f3bf7858d39f956294a932c1daaa0c4d612b92dc1,57139200 bytes/160 files. Delivery verifies exact135 asset bytes/hash and transport; retains actual publicv180 assets, prunes20 older generated assets. One staging/archive reused.
 

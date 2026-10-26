@@ -1,3 +1,29 @@
+SOURCED FOLLOW-UP AND HISTORY SELECTOR RECOVERY — 2026-10-27 JST
+Final23ae43723e1c44af /135 assets, index-Bx_EYrcy.js, app172ab7e.
+Old100d local4B 「その集合の持ち物は何？」 chose chat and hallucinated file
+titles as belongings without citations. Intermediate96b provenance-only build
+rejected recall/history with missing selectors; it was not a successful fix.
+Final preserves bounded source identities in model history without raw quotes,
+and retries exactly once for fixed history-target rejection. Raw rejected model
+text is not fed back; the host never guesses an original index or speaker.
+Runtime/other planner errors, Stop and failed receipt writes do not retry.
+Actual final prepared Bonsai2 4B first hit the missing history selector, then
+replanned answer/knowledge and returned 青いノート。 with a citation opening the
+current Inbox/QA-旅程.md v2 exact original. Retry1825 input/19 output took42844ms;
+this is an extra cost, not a speed improvement. Normal reload retained answer,
+source and both failed/succeeded receipts. User draft restored; no file pin.
+Same registered4B revision8d6557168168f91ea6697a4a49ed2ef622b53adb/runtime
+621e20782f208660f4f58283c2ce58430020f243, configuredwebml-qwen35/webgpu.
+Prototype905/coordinator15/combined conversation-native-coordinator146/product6,
+strict product TS/build/check/runtime28 passed.135 delivery bytes/hashes and
+gzip/identity/method/offline-shell checks passed. No full quality or phone rerun.
+Public Site182 deployment succeeded. Sidebar normal Update adopted matching
+23ae43723e1c44af active worker/page; returnedOffline; old QA-draft-v179 original
+v1 remained readable from its source. LogsOff, default model/pin/data retained.
+Public model unprepared: no public inference/download or general quality claim.
+Event disambiguation across records, broad languages, latency and phones remain
+open. Evidence: followup-before.png, followup-source.png, current-public-verification.png.
+
 SEARCH-AND-ANSWER COMPLETION — 2026-10-27 JST
 Final100d2301fc13e22d /135 assets, index-CLW7y54T.js, app65afc87.
 Actual old public-build local4B selected search for the compound Japanese saved-
