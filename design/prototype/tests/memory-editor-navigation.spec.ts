@@ -14,6 +14,33 @@ async function create(page:Page){
  await page.getByRole('button',{name:'Edit',exact:true}).click();
 }
 
+test('Memory search accepts IME width and combining marks without changing originals or scope',async({page})=>{
+ await page.goto('/');await memory(page);
+ await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('textbox',{name:'File name',exact:true}).fill('QA-ガラス');
+ const original='Cafe\u0301で集合。ＡＢＣ１２３。';
+ await page.getByRole('textbox',{name:'New file content',exact:true}).fill(original);
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Home',exact:true}).click();
+ const find=page.getByRole('textbox',{name:'Find files',exact:true});
+ for(const query of ['ｑａ-ｶﾞﾗｽ','café','abc123']){
+  await find.fill(query);await expect(page.getByRole('button',{name:'Open Inbox/QA-ガラス.md',exact:true})).toBeVisible();
+ }
+ await page.getByRole('button',{name:'Open Inbox/QA-ガラス.md',exact:true}).click();
+ await expect(page.locator('.file-body')).toHaveText(original);
+ await page.getByRole('button',{name:'Home',exact:true}).click();await find.fill('　 ');
+ await expect(page.getByRole('button',{name:'Open Inbox',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Open Inbox/QA-ガラス.md',exact:true})).toHaveCount(0);
+ await find.fill('');await page.getByRole('button',{name:'Open Notes',exact:true}).click();
+ await find.fill('ｑａ-ｶﾞﾗｽ');await expect(page.getByRole('button',{name:'Open Inbox/QA-ガラス.md',exact:true})).toHaveCount(0);
+ await find.fill('');await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('tab',{name:'Folder',exact:true}).click();
+ await page.getByRole('textbox',{name:'Folder name',exact:true}).fill('ガラス');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Notes',exact:true}).click();await find.fill('ｶﾞﾗｽ');
+ await expect(page.getByRole('button',{name:'Open ガラス',exact:true})).toBeVisible();
+});
+
 test('breadcrumb exit keeps a dirty draft until reviewed Save, including revision history after reload',async({page})=>{
  await create(page);
  await page.getByRole('textbox',{name:'Markdown content',exact:true}).fill('Meet at 10:00. 青いノート。\n');

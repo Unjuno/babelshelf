@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Shared search folding — 2026-10-27
+
+Canonical core exports normalizeSearchText (NFKC, fixed Japanese case folding, whitespace collapse/trim). Indexed search retains its existing alias and scoring. Metadata discovery and the Memory browser reuse the same normalizer instead of maintaining separate width-sensitive rules. The browser applies the normalized query to visibility, search labels and scope selection; an empty folded query stays normal browsing. Comparison strings are never saved or used as citation offsets; paths, bodies, versions and source validation remain literal.
+
 ## Direct device Performance runs — 2026-10-27
 
 startDeviceTestSuite runs Performance immediately in both browser tabs and installed PWAs. Only Quick on the Home Screen arms the existing one-shot restart continuation. Legacy Performance markers remain readable and complete once; no marker migration or user-data reset is required. Both paths use the existing selected-model test, local prepared assets, stop controls and bounded report. Skipped runs retain their mode and omit empty timing rows. Performance is one bounded sample, not offline cold-restart, thermal or quality certification.

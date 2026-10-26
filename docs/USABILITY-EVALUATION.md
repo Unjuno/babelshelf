@@ -1,3 +1,9 @@
+# Memory search with Japanese IME input — 2026-10-27
+
+Actual local/sidebar0aa313: existing QA notes are found by QA or 星見, but full-width ＱＡ shows No files. The Memory browser used lowercase-only substring matching while canonical knowledge search and metadata discovery already used NFKC. Finalb0f6903b0a193479 shares the canonical transient normalizer across those boundaries, folds file paths/body/folder labels, and treats whitespace-only queries as ordinary browsing. It preserves exact stored originals, canonical paths, citation offsets and existing Home/folder scopes.
+
+Actual local sidebar candidate adopted normally, restored appOffline: ＱＡ found existing Inbox/QA-星見.md and opened the unchanged body at v2. No file/revision/model write. Original input draftああ and no file pin restored. Controlled browser regression additionally covers half-width kana, decomposed café, full-width body codes, blank queries and folder scope/labels. It first failed on the old artifact. The later test-only Create label was corrected to the existing Save action. Chromium editor/review20 and WindowsWebKit targeted1 passed; no physical IME/device claim.
+
 # Own-device Performance without a restart — 2026-10-27
 
 The existing standalone branch required closing/reopening even for a timing sample. Performance now runs in place after one Run; Quick retains Home Screen restart testing. The selected mode stays visible in a skipped/unprepared report; empty timing rows are hidden. Controlled PC standalone fixtures verify no restart marker or model download, saved-report retention after opening Developer again, and compatibility with old Performance restart markers. Real phone timing remains user-operated; no repeated model benchmark was needed to change this coordinator.

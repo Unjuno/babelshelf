@@ -1,8 +1,10 @@
 // Metadata discovery is navigation, never extracted content or a citation.
 // @ts-expect-error Shared canonical paths are JavaScript.
 import {notePath} from '../../../dist/files.js';
+// @ts-expect-error Shared search folding is JavaScript.
+import {normalizeSearchText} from '../../../dist/core.js';
 export type FileResult={kind:'file';noteId:string;revision:number;path:string};
-const normalize=(text:string)=>text.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
+const normalize:(text:string)=>string=normalizeSearchText;
 export function findStoredFiles(notes:any[],query:string,limit=12):FileResult[]{
  const q=normalize(query);if(!q||q.length>2000)return [];
  const terms=q.split(' ');

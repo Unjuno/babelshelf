@@ -2,7 +2,9 @@ import {normalizePath,defaultPath,notePath,assertPaths} from './files.js';
 // Pure knowledge operations. Offsets are UTF-16 code units, matching String.slice.
 export const latest=n=>n.revisions.at(-1);
 const clone=v=>structuredClone(v);
-const norm=s=>s.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
+// Search folding is transient. Originals and UTF-16 citation offsets stay literal.
+export const normalizeSearchText=s=>s.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
+const norm=normalizeSearchText;
 export function createNote({title='',body='',aliases=[],kind='original',sources=[],path}={}){
  if(typeof title!=='string'||typeof body!=='string'||!['original','generated'].includes(kind))throw Error('Invalid note');
  const at=new Date().toISOString(),id=crypto.randomUUID();return {id,kind,state:'active',createdAt:at,aliases:[...aliases],sources:clone(sources),revisions:[{version:1,title,body,path:path===undefined?defaultPath(title,id):normalizePath(path),at}]};

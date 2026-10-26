@@ -17,6 +17,8 @@ import {offlineShellStatus,subscribeOfflineShell,initializeOfflineShell,refreshA
 import {CorrectionConflictError} from './note-corrections';
 import {searchResultRows,searchDisplayStatus} from './search-display';
 import type {FileResult} from './file-discovery';
+// @ts-expect-error Shared search folding is JavaScript.
+import {normalizeSearchText} from '../../../dist/core.js';
 import {readDeviceStorage,requestStorageProtection,storageBytes,type DeviceStorage} from './device-storage';
 import {videoCapabilityStatus,processorAssetControls} from './local-capabilities';
 import {selectedTextFileGuidance,selectedDecisionFileGuidance,mediaReadingStatus} from './model-file-guidance';
@@ -980,19 +982,20 @@ export default function Prototype() {
    setActiveFolder(path=>path===from||path.startsWith(from+'/')?result.to+path.slice(from.length):path);setSheet(null);keyboard.hide();toast('Renamed');
   }catch(e){reportSheetError(committed?'Renamed · reopen app to refresh':(e as Error).message);}finally{folderRenameLock.current=false;setFolderRenaming(false);}
  }
- const visible=notes.filter(n=>(n.path+' '+n.body).toLowerCase().includes(query.toLowerCase()));
+ const memoryQuery:string=normalizeSearchText(query);
+ const visible=notes.filter(n=>normalizeSearchText(n.path+' '+n.body).includes(memoryQuery));
  const allFolders=[...new Set([...SYSTEM_FOLDERS,...extraFolders,...notes.map(n=>n.path.split('/').slice(0,-1).join('/'))].flatMap(path=>path?path.split('/').map((_,i,a)=>a.slice(0,i+1).join('/')):[]))].sort((a,b)=>{const ai=SYSTEM_FOLDERS.indexOf(a),bi=SYSTEM_FOLDERS.indexOf(b);return (ai<0?5:ai)-(bi<0?5:bi)||a.localeCompare(b);});
  const crumbs=memoryBreadcrumbs(memoryScope,activeFolder);
  const folderEntries=memoryFolderEntries(memoryScope,activeFolder,allFolders);
- const scopedNotes=visible.filter(n=>memoryScope==='folder'?(query?n.path.startsWith(activeFolder+'/'):n.path.split('/').slice(0,-1).join('/')===activeFolder):memoryScope==='home'&&query?['Inbox','Notes','Attachments'].some(root=>n.path.startsWith(root+'/')):false);
- const visibleFolders=query?folderEntries.filter(f=>f.label.toLowerCase().includes(query.toLowerCase())):folderEntries;
+ const scopedNotes=visible.filter(n=>memoryScope==='folder'?(memoryQuery?n.path.startsWith(activeFolder+'/'):n.path.split('/').slice(0,-1).join('/')===activeFolder):memoryScope==='home'&&memoryQuery?['Inbox','Notes','Attachments'].some(root=>n.path.startsWith(root+'/')):false);
+ const visibleFolders=memoryQuery?folderEntries.filter(f=>normalizeSearchText(f.label).includes(memoryQuery)):folderEntries;
  const creationParent=memoryCreationFolder(memoryScope,activeFolder,sheet==='folder'?'folder':'file');
  const deletionUndoBatch=trash.find(batch=>batch.id===undoDeleteId);
  const directSaveWarning=!!(current&&lastDirectSave&&current.id===lastDirectSave.id&&current.version===lastDirectSave.version&&dialogueError);
  const fileSaveWarning=!editing&&(current?.id===fileSaveWarningId||directSaveWarning)?'Saved · conversation status unavailable':'';
  const deletionUndoVisible=notice==='Deleted'&&!!deletionUndoBatch&&!dialogueError&&!storageError&&!taskController.error&&!sending&&!bonsai.busy&&!storagePending;
  const renderBreadcrumbs=()=> <nav className="memory-breadcrumbs" aria-label="Memory path">{crumbs.map((crumb,i)=><span className="crumb" key={crumb.scope+crumb.path}>{i>0&&<CaretRight size={13}/>}<button aria-current={i===crumbs.length-1?'location':undefined} onClick={()=>browseMemory(crumb.scope,crumb.path)}>{crumb.label}</button></span>)}</nav>;
- const renderListing=()=> <>{visibleFolders.map(entry=><MemoryItem key={entry.scope+entry.path} label={entry.label} folder protectedItem={entry.scope!=='folder'||isSystemFolder(entry.path)} onOpen={()=>browseMemory(entry.scope,entry.path)} onActions={()=>itemActions({kind:'folder',value:entry.path,label:entry.label})}/>)}{scopedNotes.map(n=><MemoryItem key={n.id} label={query?n.path:n.path.split('/').at(-1)!} folder={false} protectedItem={n.protected} pathProtected={n.managed} onOpen={()=>openNote(n.id)} onActions={()=>itemActions({kind:'file',value:n.id,label:n.path.split('/').at(-1)!})}/>)}{!visibleFolders.length&&!scopedNotes.length&&<div className="empty-state">No files</div>}</>;
+ const renderListing=()=> <>{visibleFolders.map(entry=><MemoryItem key={entry.scope+entry.path} label={entry.label} folder protectedItem={entry.scope!=='folder'||isSystemFolder(entry.path)} onOpen={()=>browseMemory(entry.scope,entry.path)} onActions={()=>itemActions({kind:'folder',value:entry.path,label:entry.label})}/>)}{scopedNotes.map(n=><MemoryItem key={n.id} label={memoryQuery?n.path:n.path.split('/').at(-1)!} folder={false} protectedItem={n.protected} pathProtected={n.managed} onOpen={()=>openNote(n.id)} onActions={()=>itemActions({kind:'file',value:n.id,label:n.path.split('/').at(-1)!})}/>)}{!visibleFolders.length&&!scopedNotes.length&&<div className="empty-state">No files</div>}</>;
 
  useEffect(()=>{if(page!=='settings'||settingsPanel!=='files')return;let alive=true;void readDeviceStorage().then(value=>{if(alive)setDeviceStorage(value);});return()=>{alive=false;};},[page,settingsPanel]);
  useEffect(()=>{const node=composerElement.current;if(!node)return;const update=()=>setComposerHeight(Math.ceil(node.getBoundingClientRect().height+Math.max(0,Number.parseFloat(getComputedStyle(node).marginBottom)||0)));update();const observer=new ResizeObserver(update);observer.observe(node);return()=>observer.disconnect();},[page,sheet,storageReady,metadataReady,dialogueReady]);
