@@ -7,6 +7,7 @@
     "check:runtime": "node scripts/check-mobile-runtime.mjs",
     "update:runtime-lock": "node scripts/update-mobile-runtime-lock.mjs",
     "test:runtime": "playwright test",
+    "test:editor:built": "playwright test -c playwright.editor.config.ts",
     "test:help:built": "playwright test -c playwright.help.config.ts",
     "test:ios-handoff": "npm run build:app --prefix ../.. && npm run test:ios-handoff:built && npm run test:ios-handoff:webkit:built",
     "test:ios-handoff:built": "playwright test -c playwright.device.config.ts",

@@ -1,3 +1,26 @@
+USER JOURNEY: UNSAVED EDIT PROTECTION — 2026-10-26 JST
+Product6178c8ec9ee2f989 /135 verified assets, index-BKaVmK83.js; Site v178.
+Actual sidebar Windows PC: create Japanese note, edit meeting09:00 to10:00,
+tap breadcrumb, Keep editing, explicit Save, inspect original v1, search body.
+The old0557 build silently lost the uncommitted edit; three pre-fix browser
+regressions reproduced the missing question. The corrected build protects
+body/path changes on navigation and Cancel; explicit discard writes no revision.
+Root Node169, prototype897, product6, static/model pins, strict TS/build and
+28 protected runtime-file checks passed. Built editor Chromium4 and Windows
+WebKit4 passed (including cancelled native reload and exact draft reversion).
+Test-only fixes scoped History locators to its dialog and bounded the cancelled
+Playwright reload wait; neither changed app behavior or the release artifact.
+Delivery checked all135 size/SHA256 entries plus gzip/method/offline-shell bytes.
+
+Public sidebar adopted index-BKaVmK83.js via explicit Update; appOffline restored.
+Created Inbox/QA-editor-guard-v178.md, retained edit through Keep editing, saved
+10:00 asv2; discarded a second draft withoutv3; Historyv1 retained09:00. After
+normal reload, Memory search/reopen showed10:00/v2. Old dialogue/originals retained.
+No model download, inference or private-data upload. Screenshot/task evidence:
+outputs/current-public-verification.png; docs/USABILITY-EVALUATION.md.
+No physical iOS, OS force-close, durable editor-draft recovery or broad usability
+acceptance is claimed; beforeunload protection depends on browser support.
+
 USER DEVICE PERFORMANCE AND ARCHITECTURE REVIEW — 2026-10-26 JST
 Release candidate 0557d8f0a3f5ebe7 /135 verified assets, index-BXu_3Y7K.js.
 Architecture review/target: docs/ARCHITECTURE-REVIEW.md. Publication evidence is
