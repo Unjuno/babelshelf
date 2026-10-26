@@ -1,3 +1,11 @@
+# Public v196 — correct browser diagnostic next steps (2026-10-27)
+
+App cf5f019 on codex/ui-design-handoff packages9706bf0d93208521 /135 verified assets, entry index-Ww9FE1hc.js. Site source696a0e35d96f7b0fe9c695433148dd9376a2c4a2 retains current and actual previous publice52f assets;19 older assets pruned. Adapter verification and independently recomputed135 asset byte/hash entries passed.
+
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_c6bcd1ddee30819199abb89a957789d3(v196) deployed successfully as appgdep_6adfb94619bc8191aab283c5920fdc46 at2026-10-26T20:34:28.876705Z. Native uncompressed tar SHA256ec995cbb31c8d7510988d68891d2cac2449148ceca6e2e10b83e225995a9bc5f,57,169,920bytes/160files. One current compressed archive reused; public audience retained.
+
+Existing babelshelf.com sidebar normal Update adopted matching9706 worker/index-Ww9FE1hc.js. Dialogue and input filev1 remained; restoredOffline. Actual public Quick then completed without model acquisition:4B not prepared/not-run, no restart marker, and manualSteps now Review results/Copy report. This intentionally replaced the older diagnostic report with the new run; knowledge/dialogue were not rewritten. Logs remainOff. Local prepared4B Stop/retry and warm timing evidence is separate4950 scope. Diagnostic browser suite18/18, prototype929, product6, strict build/static checks passed. No physical-phone/thermal/cold-model claim.
+
 # Public v195 — bounded current-answer list formatting (2026-10-27)
 
 App implementation b16f6bf on codex/ui-design-handoff packages product e52f3b4847d79846 /135 verified assets, entry index-DZgcaSe1.js. Site source344df894d366279deef757e8a6f4d535640f912c retained the current shell and actual previous public6010 assets;19 obsolete/intermediate assets were pruned. Delivery adapter and independently recomputed135 byte/hash entries passed.
