@@ -1,3 +1,19 @@
+SELECTED ORIGINAL MESSAGE BOUNDARY — 2026-10-27 JST
+Final05dd actual sidebar4B: same Hello greeting32chars, same Japanese rewrite
+now returns こんにちは！今日何お手伝いできるでしょうか？ without added role prefix.
+Receipt pins index47/current assistant/exact0–32. No planner/Memory call, no Save.
+Original reply/past failures retained, draft restored. Actual output retained
+unchanged; not a general Japanese/paraphrase quality or speedup acceptance.
+Model/runtime identity and bounded evidence: USABILITY-EVALUATION.md.
+Actual local d21fe8cdbe422c9d prepared4B reproduced assistant: prefix on an
+explicit Japanese rewrite of a freshly generated exact32-character greeting.
+One selected original had entered generation as archive JSON with speaker/IDs.
+Application now sends its exact native user/assistant message and latest request;
+IDs/ranges remain in read/inspection receipts. No prefix stripping, original
+rewrite, model substitution or permission change. General archive context intact.
+Red boundary/workflow checks failed first. Final05dd34af511e167c prototype920,
+conversation/workflow118,intent24,product6,build/TypeScript/static/runtime28 pass.
+
 RETAINED COMPLETED-ANSWER OUTCOME — 2026-10-27 JST
 Published189/d21fe8cdbe422c9d. Public sidebar before/after and ordinary appOffline
 reload retained35rows/21answers; stale completed marker1->0, unfinished1->1.

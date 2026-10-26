@@ -46,6 +46,7 @@ test('current-answer rewrite loads once, reads the exact assistant text and neve
  f.services.knowledge={all:async()=>{throw Error('Unrelated Memory read');},search:async()=>{throw Error('Unrelated Memory search');}};
  const outcome=await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run));
  assert.equal(outcome,'completed');assert.equal(loads,1);assert.equal(prompts.length,2);assert.ok(prompts.every(messages=>JSON.stringify(messages).includes(original)));
+ assert.deepEqual(prompts[1].slice(1),[{role:'assistant',content:original},{role:'user',content:'今の回答を日本語で短くまとめて。'}]);
  const answer=f.current().turns.at(-1);assert.equal(answer.answer,'家具や樽に使います。');assert.equal(answer.readTurn.turnId,'oak-answer');assert.equal(answer.readTurn.speaker,'assistant');assert.deepEqual(answer.refs,[]);assert.equal(answer.activity.some(a=>a.tool==='dialogue.plan'),false);assert.equal(f.current().turns[0].answer,original);
  await f.services.saveDialogue(emptyDialogue());prompts.length=0;
  assert.equal(await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run)),'failed');

@@ -1,5 +1,11 @@
 # Current application architecture
 
+## Selected dialogue originals use native messages — 2026-10-27
+
+After the application resolves one exact prior message for recall/rewrite, its transient context uses `selectedOriginal: {speaker, text}`. The generation boundary emits that exact text under its native user/assistant message role and the latest instruction separately. Canonical turn ID/index, speaker and original range remain in the existing read/inspection receipts; they are no longer encoded as archive JSON for this single-source generation. This avoids giving the model administrative labels to reproduce. The fixed system still treats earlier text as untrusted context and grants no tool/write/network authority; selected-original output asks for no added speaker labels unless requested. No prefix stripping or original-text rewriting is performed, so literal labels remain available for exact quotation.
+
+General multi-turn history, archive retrieval/compaction, canonical source selection, literal split/replace tools, output budgeting/continuation, cancellation and reviewed Save retain their existing paths. The new field is transient application context, not a persisted dialogue/schema migration or a user-supplied role-control setting. Controlled tests verify native speaker roles/exact bytes, exclusion of unrelated archive metadata and retained canonical target receipts. Runtime/model output quality remains evidence-scoped.
+
 ## Retained dialogue outcome projection — 2026-10-27
 
 `dialogueTurnStatus` is the shared UI/history projection for the fixed interrupted-request marker. A nonempty completed answer suppresses a stale marker retained by older builds, without rewriting stored turns, answers, source refs, revisions or activity. Genuine errors such as Stopped remain visible even beside answer text. Blank/missing answers remain unfinished. The UI can additionally suppress the placeholder for the exact currently executing turn; another running request must not hide historical unfinished turns. The history/model boundary uses the completed-answer rule without any active execution exemption. Input submission and completion share the marker constant; canonical note storage and dialogue schema are unchanged.

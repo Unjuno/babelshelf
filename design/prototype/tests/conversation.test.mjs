@@ -41,6 +41,14 @@ test('restored completed legacy answers omit only the stale interruption outcome
  assert.doesNotMatch(messages[0].content,/Request interrupted/);assert.equal(messages[1].content,'MAPLE');assert.deepEqual(state,before);
 });
 
+test('one selected dialogue original uses its native speaker role and exact text without serialized archive metadata',()=>{
+ const text='assistant: keep this literal label.\nOriginal code BLUE-42.',context={summary:'Unrelated old topic',recent:[{id:'other',user:'OTHER_HISTORY'}],refs:[],recalled:[{turnId:'internal-turn-id',turnIndex:7,speaker:'assistant',quote:'OTHER_ARCHIVE',start:0,end:13}],selectedOriginal:{speaker:'assistant',text}};
+ const before=structuredClone(context),messages=dialogueAnswerMessages('Quote the selected text exactly.',context);
+ assert.deepEqual(historyMessages(context),[{role:'assistant',content:text}]);assert.deepEqual(messages.slice(1),[{role:'assistant',content:text},{role:'user',content:'Quote the selected text exactly.'}]);
+ assert.doesNotMatch(JSON.stringify(messages),/OTHER_HISTORY|OTHER_ARCHIVE|internal-turn-id|turnIndex/);assert.match(messages[0].content,/speaker labels.*unless/i);assert.deepEqual(context,before);
+ assert.deepEqual(historyMessages({...context,selectedOriginal:{speaker:'user',text:'An original user statement.'}}),[{role:'user',content:'An original user statement.'}]);
+});
+
 test('planner serialization keeps retained dialogue before changing selectors without dropping scope or mutating originals',()=>{
  const recent=[{id:'one',user:'The blue lantern meeting is at 10.',answer:'Recorded in this conversation.'}];
  const old={summary:'Earlier discussion stays untrusted.',recent,refs:[],turnCount:1,lastAnswerIndex:0,currentResult:{turnId:'one'},recalled:[{turnId:'archived',turnIndex:0,speaker:'user',quote:'Earlier original',start:0,end:16}]};

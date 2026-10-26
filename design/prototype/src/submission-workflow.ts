@@ -190,7 +190,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     const selection=request.target?request:{...request,target:'history' as const};
     const original=await trace('dialogue.read',dialogueTargetInput(prior,selection),async()=>resolveDialogueTarget(prior,selection));checkSend();
     if(request.action==='capture'){request.historyIndex=original.turnIndex;request.historyPart=original.speaker as 'user'|'assistant';captureSource=makeDialogueCopyReview(prior,selection);}
-    inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,recalled:[original]};
+    inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,selectedOriginal:{speaker:original.speaker==='assistant'?'assistant':'user',text:original.quote}};
     await finishTurn(id,{readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},status:'Reading earlier message'});
     if(request.action==='recall'||request.action==='transform'){const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(inference,text,original,checkSend),value=>value,value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined);checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:original.refs});return result.status?{kind:'failed',reason:'text-operation'}:{kind:'answered'};}request.action='recall';}
     if(request.action==='capture')request.body=original.quote;else request.action='chat';
