@@ -11,6 +11,15 @@ const route=(overrides={})=>{
  });
 };
 
+test('an explicit rewrite of the current answer binds its immutable dialogue target before planning',()=>{
+ for(const question of ['今の回答を日本語で短くまとめて。','直前の回答を英語に翻訳して。','Summarize your last answer in Japanese.','Please translate your previous response into French.']){
+  const before=structuredClone(prior),intent=route({question});
+  assert.deepEqual(intent.request,{action:'recall',query:question,target:'current'});
+  assert.deepEqual(prior,before);
+ }
+ for(const question of ['Summarize the saved note about your last answer.','Translate your last answer and save it.','今の回答を保存して。','その内容を短くして。','Read: Notes/last-answer.md'])assert.notDeepEqual(route({question}).request,{action:'recall',query:question,target:'current'});
+});
+
 test('explicit saved-note questions get a clean knowledge scope without mutating retained history',()=>{
  assert.equal(typeof router.resolveSubmittedTurnIntent,'function');
  const before=structuredClone(prior);

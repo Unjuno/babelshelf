@@ -120,9 +120,9 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const calculation=items.length?null:explicitCalculationInput(text);
    if(calculation){const {expression,showExpression}=calculation;const result=await runCalculationAction(expression,builtinToolRegistry,{search:q=>knowledge.search(q),resolve:q=>refreshSnapshot().then(notes=>resolveToolNotes(notes,q)),check:checkSend},trace);checkSend();await finishTurn(id,{answer:showExpression?expression+' = '+String(result[0].result):String(result[0].result),status:'Calculated',refs:[]});return {kind:'answered'};}
    const decisionFirst=!request&&decision.enabled&&decision.ready;
-   if(text&&!decisionFirst&&(!request||['answer','summary'].includes(request.action))){
+   if(text&&!decisionFirst&&(!request||['answer','summary','recall','transform'].includes(request.action))){
     await ensureText();
-    if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else if(request&&!explicitSavedRequest&&!inputQuestion)context=await prepareContext();
+    if(literalRequest&&request?.target==='knowledge'&&!inputReadings.length)deferredContext=prepareContext;else if(request&&['answer','summary'].includes(request.action)&&!explicitSavedRequest&&!inputQuestion)context=await prepareContext();
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));

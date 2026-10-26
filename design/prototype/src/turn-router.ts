@@ -7,6 +7,18 @@ import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
 import {namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest,type WorkingFile} from './working-file.ts';
 
+/** The user names the current assistant answer, not a Memory search subject.
+ * Bind only a single read-only rewrite; the model still performs the rewrite.
+ * The canonical dialogue resolver owns its exact turn/speaker and missing target.
+ */
+export function explicitCurrentAnswerRewrite(question:string){
+ const text=question.trim();if(!text||text.length>500||/[\r\n;；]/u.test(text))return null;
+ if(/\b(?:save|store|record|remember|delete|remove|overwrite|edit|update|schedule|notify|search|find|open|read|compare|files?|notes?|documents?|images?|attachments?|recordings?|videos?)\b|(?:保存|記録|削除|上書|訂正|更新|予定|通知|検索|探して|比較|ファイル|メモ|ノート|文書|画像|添付|録音|動画)/iu.test(text))return null;
+ const english=/^(?:(?:please|can you|could you|would you)\s+)?(?:summari[sz]e|translate|rephrase|rewrite|shorten)\b.*\b(?:your\s+(?:(?:last|previous|latest|current)\s+)?(?:answer|reply|response)|the\s+(?:last|previous|latest|current)\s+(?:answer|reply|response))\b/iu.test(text);
+ const japanese=/^(?:今の|直前の)(?:あなたの)?(?:回答|返答|応答)(?:を|について).*(?:まとめ|要約|翻訳|訳して|言い換え|書き直|短く)/u.test(text);
+ return english||japanese?{action:'recall' as const,query:question,target:'current' as const}:null;
+}
+
 // The rest of a question can overwhelm the lexical index. Keep a named saved
 // file's descriptor as the query; the full request is still used for answering.
 export function savedKnowledgeSearchQuery(question:string){
@@ -81,11 +93,12 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
- const priorContext:DialogueContext=explicitSavedRequest||explicitFileQuestion||inputQuestion?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
- const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion?contextIndependentConversation(question,attachments,priorContext):null;
+ const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
+ const priorContext:DialogueContext=explicitSavedRequest||explicitFileQuestion||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
+ const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!answerRewrite?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const request=answerRewrite??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=contextIndependent?.context??priorContext;
  return {literalRequest,explicitSavedRequest,explicitFileQuestion,inputQuestion,priorContext,contextIndependent,request,context};
 }

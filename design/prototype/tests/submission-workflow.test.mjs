@@ -38,6 +38,20 @@ test('a planned search asking for information finishes with a grounded answer ra
  assert.deepEqual(records,[note]);assert.equal(f.reviews.length,0);
 });
 
+test('current-answer rewrite loads once, reads the exact assistant text and never retrieves unrelated Memory',async()=>{
+ const f=fixture(),c=createSubmissionController(),original='Oak wood is used for furniture and barrels.';let loaded='',loads=0;const prompts=[];
+ await f.services.saveDialogue({schema:1,revision:1,turns:[{id:'oak-answer',user:'List two uses.',answer:original}],compaction:null,currentResult:{turnId:'oak-answer'},currentFile:{noteId:'unrelated-file',revision:1}});
+ f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{prompts.push(messages);return {text:prompts.length===1?'{"action":"read"}':'家具や樽に使います。',finishReason:'stop'};},unload:async()=>{loaded='';},load:async()=>{loads++;loaded='test';}};
+ // Controlled protocol responses check routing, not model quality.
+ f.services.knowledge={all:async()=>{throw Error('Unrelated Memory read');},search:async()=>{throw Error('Unrelated Memory search');}};
+ const outcome=await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed');assert.equal(loads,1);assert.equal(prompts.length,2);assert.ok(prompts.every(messages=>JSON.stringify(messages).includes(original)));
+ const answer=f.current().turns.at(-1);assert.equal(answer.answer,'家具や樽に使います。');assert.equal(answer.readTurn.turnId,'oak-answer');assert.equal(answer.readTurn.speaker,'assistant');assert.deepEqual(answer.refs,[]);assert.equal(answer.activity.some(a=>a.tool==='dialogue.plan'),false);assert.equal(f.current().turns[0].answer,original);
+ await f.services.saveDialogue(emptyDialogue());prompts.length=0;
+ assert.equal(await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run)),'failed');
+ assert.match(c.state.error,/Current result unavailable/);assert.equal(prompts.length,0);
+});
+
 test('explicit Memory search still lists results with no configured model or completion inference',async()=>{
  for(const text of ['search: 集合場所','集合場所について保存したメモを探して']){
   const f=fixture(),c=createSubmissionController(),note=createNote({title:'Meeting',body:'集合場所は北口。',path:'Notes/meeting.md'});

@@ -1,3 +1,26 @@
+CURRENT ANSWER REWRITE SOURCE BINDING — 2026-10-27 JST
+Actual a109 sidebar4B planned 今の回答を日本語で短くまとめて。 as summary/knowledge,
+then returned oak prose with unrelated QA-creation-draft v3 meeting-place source.
+Failed turn/source retained. Planner timings: ordinary1575input/20output75.409s,
+TTFT73.097s; failed rewrite1829input/20output41.931s. Resident model not reloaded.
+New application route binds explicit read-only current-answer rewrites to the
+canonical assistant ID before planner/Decision selection; actual model still
+inspects/rewrites the original. Model acquisition is retained, unrelated context
+compaction is avoided; no Memory substitution or missing-target fallback.
+New tests firstRED for null route and wrong workflow, thenGREEN. Final prototype
+912/912, workflow+intent24, intent+scope24, product6, build/strict TypeScript,
+static check and protected runtime28 pass. Whole quality chain not rerun.
+Actual final c7e3174232b68299 Hello generated Hello! How can I help you today?
+Same Japanese rewrite then read exact turn5e922f70-503f-45d1-8ca7-3e8727ef8051,
+index34,assistant,range0..32, no refs. Activities: dialogue.read/text.inspect/
+knowledge.answer only; no model.load/dialogue.plan/memory.search/memory.read.
+Generated assistant: こんにちは！今日どうお手伝いできますか？ without unrelated citation.
+Role prefix is a remaining quality issue. No Save note action; original input
+draft restored. Runtime inspection of pinned SHA-matching local bundle shows
+prefill/decode warmup; no supported skip-warmup option identified. No runtime,
+model, network permission or format pins changed; no measured speedup claim.
+PC sidebar only, no phone/general semantic citation or rewrite acceptance.
+
 AUTOMATIC LOAD STOP/RECOVERY AND PHASE REPORT — 2026-10-27 JST
 Public185 sidebar page and active workera10914e317199055 match after normalUpdate.
 Older253f report remains readable; appOffline/logsOff restored without data purge.

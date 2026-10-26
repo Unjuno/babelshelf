@@ -2,6 +2,12 @@
 
 See [the current review and migration target](ARCHITECTURE-REVIEW.md) for remaining structural gaps.
 
+## Explicit current-answer rewrites — 2026-10-27
+
+A bounded, single read-only rewrite that explicitly names the current assistant answer (for example, Japanese 今の回答を日本語で短くまとめて or English Summarize your last answer) binds target=current before Decision/Text planning. The canonical dialogue resolver selects the exact retained answer ID and assistant speaker, including legacy records without a persisted currentResult pointer. Missing targets fail rather than falling through to Memory. This uses the same explicit-source principle as current-file/current-attachment routing; it does not infer a target from bare it/that.
+
+The application verifies/loads the selected local Text model when needed, without compacting unrelated history for this already bound target. Existing read-only text inspection and conversation generation perform the actual requested rewrite from the selected original. Opened-file metadata or stored-note excerpts cannot become replacement input. Original turns and knowledge remain unchanged; writes, mixed source commands and unsupported phrasing retain their existing approval/planner routes. This is a scoped routing correction, not general semantic source validation or a fixed translated answer.
+
 ## Dialogue provenance and rejected history selectors — 2026-10-27
 
 The model-facing history projection now retains at most12 distinct source ID/
