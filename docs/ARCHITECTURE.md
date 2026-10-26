@@ -1,8 +1,8 @@
+# Current application architecture
+
 ## Direct device Performance runs — 2026-10-27
 
 startDeviceTestSuite runs Performance immediately in both browser tabs and installed PWAs. Only Quick on the Home Screen arms the existing one-shot restart continuation. Legacy Performance markers remain readable and complete once; no marker migration or user-data reset is required. Both paths use the existing selected-model test, local prepared assets, stop controls and bounded report. Skipped runs retain their mode and omit empty timing rows. Performance is one bounded sample, not offline cold-restart, thermal or quality certification.
-
-# Current application architecture
 
 ## Immediate-answer source questions — 2026-10-27
 

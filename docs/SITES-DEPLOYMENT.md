@@ -1,3 +1,11 @@
+# Public v202 — direct device Performance (2026-10-27)
+
+App00e1631 on codex/ui-design-handoff delivers0aa313bfd5e3ff08 /135independently byte/hash-verified assets, entry index-zOBPBjo3.js. Site sourceb78172c418387bca5d0df8c4841d4d813a34ee90 retains current and actual previous public78000 assets;19 older generated delivery assets pruned. Delivery adapter verification passed. One current compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_641386a8f7248191a2fc62f2e07ce047(v202), deployment appgdep_6adfc9f828208191978cc448fbdc41fc succeeded2026-10-26T21:45:42.816703Z. Native uncompressed tar SHA2562454303fdfbef2c0d30af0f3c26e2aa32760d9cf7fbe30c1a9814314308bcae5,57,169,920bytes/160files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normalUpdate adopted matching0aa313 worker/index-zOBPBjo3.js. Restored appOffline. Explicit Performance Run completed locally with4B Not prepared, not-run/performance/model-files-not-ready; no timing rows, acquisition or model execution. Report createdAt2026-10-26T21:46:42.172Z persisted after ordinary reload and reopening Developer. Prior report intentionally replaced by this explicit run. Existing QA-draft-v179.md v1 input pin/dialogue/emptycomposer/logsOff retained. Browser run is Windows Chrome156, not an installed or physical-iPhone measurement. The generic report still records browser-tab/Home-Screen cold-restart availability separately; Performance scope explicitly states no restart scheduled. Physical-device performance and OS-isolated offline cold restart remain unverified.
+
 # Public v201 — immediate cited-source follow-ups (2026-10-27)
 
 Appa0372ca on codex/ui-design-handoff packages78000fcf335235b7 /135verified assets, entry index-BD02r2lQ.js. Site source68a41377657541904de399517eb6a25ff184ce40 retained current and actual previous public4e640 assets;20 older delivery assets pruned. Adapter and independently recomputed135 byte/hash entries passed.
