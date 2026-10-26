@@ -1,4 +1,8 @@
 OWN-DEVICE PERFORMANCE RESULT ATTRIBUTION — 2026-10-27 JST
+Published Site184; existing sidebar page/active worker253fe078ed542759 matched.
+Actual public Quick run completed with no failed app checks and selected4B
+not-run/model-files-not-ready. New date/build/Not prepared attribution visible.
+AppOffline/logsOff restored; no storage reset, model acquisition or public inference.
 Actual local Windows sidebar on106af75337a630e1 completed Performance with prepared
 Bonsai2 4B PTQ1_0, model8d6557168168f91ea6697a4a49ed2ef622b53adb/runtime
 621e20782f208660f4f58283c2ce58430020f243, configuredwebml-qwen35/webgpu,
