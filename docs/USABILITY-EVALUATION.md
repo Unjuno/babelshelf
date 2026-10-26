@@ -1,5 +1,13 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — Repair a multi-source quotation without accepting invalid evidence
+
+The public187 code's broad Memory question `answer: 集合場所はどこ？` had failed Citation mismatch. Local-only diagnostic buildae62cf53d8992f40 reproduced it with prepared actual4B on Windows sidebar Chrome156. A temporary boolean-only parser probe observed3 admitted excerpts and2 returned citations: both IDs existed; the first quote was exact, the second17-character quote was absent from every admitted excerpt (including case-insensitive comparison with its declared source). No raw prompt, answer or quote was logged. This narrows the failure to quotation output, rather than missing evidence or an unknown citation ID. The probe was removed before the release build. An attempted standalone QA page was intercepted by the existing offline navigation shell; it did not run a model or create synthetic notes, and its tab/files were removed.
+
+New red regressions showed that multi-source quote errors had no bounded repair route. The harness now shares its existing one-retry protocol path with this error, revalidates source bytes before another generation, and still rejects a second mismatch or malformed/uncited reply. It never broadens single-source verbatim fallback to arbitrary files. Conversation/workflow116 and prototype918 passed, including refusal after a source changes during the first generation.
+
+Actual candidate368fcc122158b172 repeated the original question using the same selected4B and prepared local assets. It answered `集合場所は北口。`; operation receipt records `recovery: citation-retry`, matching note revision3 and exact `citedQuote`. The source control opened `Inbox/QA-creation-draft.md` v3 Original with the preserved body. Previous failed turns remain; no note was saved/edited, original unsent draft `ああ` restored. Evidence: outputs/current-citation-shape.json, current-citation-repair-activity.txt and current-citation-repair-source.png. Two subsequent guards only prevent retry without evidence and distinguish retry context exhaustion; final product/static/Node verification is recorded separately. No general multi-source quality, speedup, sustained behavior or phone pass is inferred.
+
 ## 2026-10-27 — Missing Memory must not borrow history or load a model
 
 Review of the prior unrelated-citation failure found a shared evidence path that appended validated historical references even after an explicit new Memory subject retrieved nothing. It could also append a different old note when the top retrieved note happened to match one prior reference. New red regressions reproduced both evidence leaks; no model-quality inference is claimed from these controlled responses.

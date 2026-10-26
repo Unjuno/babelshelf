@@ -603,7 +603,23 @@ test('exact-quote recovery remains disabled when retrieved excerpts span differe
  const note=createNote({body:'The emergency water reserve is exactly 24 litres.'}),other=createNote({body:'A different note.'});const refs=[{noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},{noteId:other.id,revision:1,start:0,end:other.revisions[0].body.length,quote:other.revisions[0].body}];
  const store={all:async()=>[note,other],search:async()=>refs};let calls=0;
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls===1?JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'bad source'}]}):'{"answer":"24 litres"}'})};
- await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}}),/Citation mismatch/);assert.equal(calls,1);
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}}),/Invalid answer or sources/);assert.equal(calls,2);
+});
+
+test('multiple-source citation mismatch gets one bounded retry with identical evidence and exact source validation',async()=>{
+ const notes=[createNote({body:'集合場所は北口。まだ作成途中です。'}),createNote({body:'集合は午前10時。持ち物は青いノート。'})];
+ const refs=notes.map(n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}));let calls=0;const requests=[];
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget)=>{requests.push({messages,budget});return {text:JSON.stringify(++calls===1?{answer:'集合場所は北口。',citations:[{id:'S1',quote:'集合場所は北口。'},{id:'S2',quote:'集合場所は北口です。'}]}:{answer:'集合場所は北口。',citations:[{id:'S1',quote:'集合場所は北口。'}]})};}};
+ const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'answer: 集合場所はどこ？',scope:{kind:'knowledge'}});
+ assert.equal(result.answer,'集合場所は北口。');assert.equal(result.sources[0].noteId,notes[0].id);assert.equal(calls,2);assert.deepEqual(requests[0].messages.slice(1),requests[1].messages.slice(1));assert.equal(requests[0].budget,requests[1].budget);assert.match(requests[1].messages[0].content,/previous.*citation.*exact/i);assert.equal(result.recovery,'citation-retry');
+ calls=0;runtime.generate=async()=>{calls++;return {text:JSON.stringify({answer:'Invented place',citations:[{id:'S1',quote:'Invented place'}]})};};
+ await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'}}),/Citation mismatch/);assert.equal(calls,2);
+});
+
+test('citation retry refuses changed originals before spending another generation',async()=>{
+ const notes=[createNote({body:'The place is North.'}),createNote({body:'Bring a notebook.'})],refs=notes.map(n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}));let records=notes,calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;records=[reviseNote(notes[0],{body:'The place is South.'},1),notes[1]];return {text:JSON.stringify({answer:'North',citations:[{id:'S1',quote:'Not original'}]})};}};
+ await assert.rejects(groundedAnswer({store:{all:async()=>records,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'}}),/Source changed/);assert.equal(calls,1);
 });
 
 test('single-source exact-quote recovery refuses a model answer outside the excerpt',async()=>{

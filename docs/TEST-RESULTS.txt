@@ -1,3 +1,18 @@
+BOUNDED MULTI-SOURCE CITATION PROTOCOL REPAIR — 2026-10-27 JST
+Local diagnostic ae62 reproduced the broad Memory Citation mismatch. Boolean-only
+temporary probe:3 evidence excerpts,2 known citation IDs; one exact quote and one
+17-character quote absent from every excerpt. No raw source/output logged.
+Probe removed; core parser unchanged. One bounded protocol retry uses identical
+question/evidence/budget, rechecks current originals first and never accepts a
+second mismatch or silently drops an invalid citation. Receipt names citation-retry.
+New red tests failed before implementation; conversation/workflow116 and app918
+passed. Source change during first generation refuses before a retry.
+Actual candidate368fcc122158b172 selected prepared4B answered original broad
+question with 集合場所は北口。; receipt citation-retry, exactv3 citedQuote;
+Source opened canonical current Original. No Save or knowledge edit; draft restored.
+Final evidence-free retry guard/context error distinction followed this UI run.
+Details and scope: USABILITY-EVALUATION.md. Not general semantic or phone acceptance.
+
 RETRIEVAL-BOUND EVIDENCE AND DEFERRED TEXT ACQUISITION — 2026-10-27 JST
 Published Site187/product969979612954f800; existing public sidebar adopted
 matching page index-Cpq5kgQ_.js and active worker through normal Update.

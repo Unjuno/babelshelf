@@ -130,7 +130,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const singleInputRecovery=mode==='answer'&&inputReadings.length===1&&oneSourceRevision;
  const recoverableShape=(error:unknown)=>error instanceof Error&&['Invalid answer','Invalid answer or sources'].includes(error.message);
  const canRecover=(error:unknown)=>singleSourceRecovery&&recoverableSourceShape(error)||singleInputRecovery&&recoverableShape(error);
- let recovery:'verbatim-source'|undefined;
+ let recovery:'verbatim-source'|'citation-retry'|undefined;
  const exactSingleSourceFallback=async()=>{
   if(!singleSourceRecovery&&!singleInputRecovery)throw Error('Invalid model JSON · retry');
   // Retrieval can return several excerpts from one revision, including a
@@ -152,16 +152,20 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  else {
  if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
  try{parsed=parse(generated.text);}catch(error){
-  if(!(error instanceof SyntaxError)){
+  const citationMismatch=evidence.length>0&&error instanceof Error&&error.message==='Citation mismatch'&&!canRecover(error);
+  if(!(error instanceof SyntaxError)&&!citationMismatch){
    if(canRecover(error))parsed=await exactSingleSourceFallback();
    else throw error;
   }else{
-  // Retry syntax once, using the identical evidence. Never patch guessed quotes
-  // into a model response or treat malformed output as a successful answer.
-  const retry=messages.map((message,index)=>index===0?{...message,content:message.content+' Output valid compact JSON. Escape quotation marks inside strings. No markdown or extra text.'}:message);
-  if((await engine.count(retry)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
+  // One protocol repair, with identical evidence and the original question.
+  // A multi-source model may paraphrase an otherwise valid citation. Ask it
+  // to correct that output; never drop the invalid citation or guess its span.
+  if(citationMismatch){const fresh=await store.all(),valid=new Set(buildIndex(fresh).docs.map((d:any)=>d.n.id));check();if(evidence.some(ref=>!valid.has(ref.noteId))||!validateRefs(fresh,evidence,{currentOnly:true}).ok)throw Error('Source changed · retry');}
+  const instruction=citationMismatch?' The previous response contained a citation that was not an exact quote of its source. Answer the original question again. Cite only relevant supplied excerpts. Every citation id must equal its source label, and its quote must be an exact contiguous substring of that same source. Do not paraphrase quotes or cite unrelated sources.':' Output valid compact JSON. Escape quotation marks inside strings. No markdown or extra text.';
+  const retry=messages.map((message,index)=>index===0?{...message,content:message.content+instruction}:message);
+  if((await engine.count(retry)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error(citationMismatch?'Context limit · citation retry':'Invalid model JSON · retry');check();
   generated=await engine.generate(retry,replyTokens);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
-  try{parsed=parse(generated.text);}catch(retryError){
+  try{parsed=parse(generated.text);if(citationMismatch)recovery='citation-retry';}catch(retryError){
    if(canRecover(retryError)||retryError instanceof SyntaxError&&(singleSourceRecovery||singleInputRecovery))parsed=await exactSingleSourceFallback();
    else throw retryError;
   }
