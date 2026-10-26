@@ -29,6 +29,20 @@ async function openSettingsItem(page:Page,name:string){
  await item.click();
 }
 
+test('saved timing results identify their model, time and build independently of next test options',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'previous-build',checks:[],modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'model-revision',runtimeRevision:'runtime-revision',outputTokens:128,tokensPerSecond:7.42}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();
+ await expect(page.locator('time[datetime="2026-10-20T01:02:03.000Z"]')).toBeVisible();
+ await expect(page.getByText('4B · Passed',{exact:true})).toBeVisible();
+ await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
+ await page.locator('.device-test-steps > summary').filter({hasText:'Test options'}).click();
+ await page.getByRole('button',{name:'Quick',exact:true}).click();
+ await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();
+ await expect(page.getByText('7.42 tokens/s',{exact:true})).toBeVisible();
+ await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
+});
+
 test('Settings keeps common choices visible and groups advanced actions under More',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();

@@ -1,4 +1,8 @@
-## Latest publication — reviewed saved-answer recovery, Site v183, 2026-10-27
+## Latest publication — attributed own-device test results, Site v184, 2026-10-27
+
+Public audience/domain retained. Product253fe078ed542759 /135 verified assets, entry index-CR65vYm1.js. Site source9b718b5f0a7f247591dbd7fe12bd74dfe0007405; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_7367cf2539d081918f40861c98dfc422; deployment appgdep_6adf882d2e4c81919e8cbd7bad8b99e2 succeeded2026-10-26T17:05:00.799556+00:00. Saved archive SHA256f674410b8837068b63785e4ba47aabce02ac1e7abf954bf50a3131c2f60e5169,57149440 bytes/160 files. Reused staging/archive, retained actual publicv183 predecessor and pruned19 obsolete generated assets; independent135-file hash/size and delivery transport checks passed. Diagnostic browser18/18 Chromium and18/18 Windows WebKit, Node43, product6, runtime28, strict build/TypeScript/static checks passed. Actual local sidebar4B timing and attribution evidence is in DEVICE-DIAGNOSTICS.md; not a new speedup or phone result.
+
+## Prior publication — reviewed saved-answer recovery, Site v183, 2026-10-27
 
 Public audience/domain retained. Product106af75337a630e1 /135 verified assets, entry index-_PYokBcc.js. Site source ef06668ece37a23a3f5c340e74aca7def5ef99c1; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_080246da7a08819191f6864310519b7a; deployment appgdep_6adf85a025248191bd895e5367362b64 succeeded2026-10-26T16:54:06.979368+00:00. Saved archive SHA256172db0f0f4b9f0f132c75929a508941cac8e122232d4f90d1532e170a1a4c31a,57149440 bytes/160 files. Reused current staging/archive; retained actual publicv182 predecessor and pruned19 older assets. Independent135-file sizes/hash and delivery transport checks passed.
 

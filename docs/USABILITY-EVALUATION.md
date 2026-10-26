@@ -1,5 +1,13 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — Own-device timing and retained-result attribution
+
+On the existing local sidebar profile, Developer showed an older successful timing sample beside the new active build without a visible sample date/model/test build. Changing Test options also sat above these old numbers, making the next mode easy to confuse with the completed run. The saved JSON itself retained the correct metadata. The fix displays Last test with recorded mode/date, Test build and model ID/status; selection for the next run cannot alter these labels. Current App build remains separate. No automatic rerun, new telemetry or storage migration was introduced.
+
+The real UI Performance run completed on Bonsai2 4B PTQ1_0:60input/128output tokens,40.738s load,3.13563s first visible token,16.986s generation/7.54tokens/s, reported runtime live memory1723039344 bytes. Conditions and exact revisions are in DEVICE-DIAGNOSTICS.md; this is a single Windows sidebar sample on106af75337a630e1, not a performance improvement or phone/thermal/quality result. After updating normally to253fe078ed542759, the retained sample still showed its actual106a build, timestamp and4B identity. Original user draft restored without submission; no knowledge file edits or model selection changes.
+
+Copy displayed success, but the tool's clipboard read was empty. This observed limitation is not a byte-equality pass. Built diagnostic/copy flows passed18/18 each on Windows Chromium and WebKit; the new attribution test failed before the change and passed afterward. Screenshot: outputs/current-performance-result.png. Detailed logs remainOff. Next evaluation should address model preparation-to-first-answer friction, realistic multi-turn ambiguity and creation/schedule draft preservation; bounded diagnostics do not close those gates.
+
 ## 2026-10-27 — Stop, recover input, and generate again
 
 Actual unchanged23ae43723e1c44af Windows sidebar, selected prepared Bonsai2 4B: sent a synthetic original-story request of at least1500 words, waited through local model verification/warmup to Generating, then pressed Stop. The first post-click AX observation showed Stopped, the exact story request restored to Message, and attachment/voice/Send enabled. The host interaction plus observation took446ms; this is not an instrumented cancellation latency measurement or proof of immediate GPU-kernel shutdown. The stopped turn had no completed answer or Save note action.

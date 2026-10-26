@@ -1,3 +1,23 @@
+OWN-DEVICE PERFORMANCE RESULT ATTRIBUTION — 2026-10-27 JST
+Actual local Windows sidebar on106af75337a630e1 completed Performance with prepared
+Bonsai2 4B PTQ1_0, model8d6557168168f91ea6697a4a49ed2ef622b53adb/runtime
+621e20782f208660f4f58283c2ce58430020f243, configuredwebml-qwen35/webgpu,
+Chrome156.0.0.0, tab, appOnline. Workload prose-128-v1;60input/128output tokens;
+load40.738s, first visible token3.13563s, generation16.986s/7.54tokens/s;
+runtime live memory after1723039344 bytes (not total process/device memory).
+Result and copy-success toast appeared. CUA clipboard reader returned empty,
+so actual sidebar clipboard byte equality is unverified, not claimed passing.
+Observed UX defect: older timing results had no visible model/date/test build and
+appeared next to the current build. New UI253fe078ed542759 attributes retained
+results to recorded time/mode/model/build; next mode selection cannot relabel them.
+New browser regression firstRED for missing attribution, thenGREEN. All built
+diagnostic UI18/18 Chromium and18/18 Windows WebKit passed; protocol/report/copy
+Node43/43, product6/6, protected runtime28, build/strict TypeScript/static check pass.
+Actual sidebar retained old106a sample under current253f App build without rerun.
+Evidence outputs/current-performance-measured.json/current-performance-result.png.
+No phone, sustained/thermal, OS-network isolation, prose quality, speedup or full
+quality-chain claim. No user knowledge changed; original draft retained.
+
 REVIEWED SAVED-ANSWER RECOVERY — 2026-10-27 JST
 Product106af75337a630e1/135 assets. Actual Windows sidebar local profile exported
 24notes/1settings/2runs, reviewed/reimported the same file (0 writes), then exported
