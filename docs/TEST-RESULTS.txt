@@ -10,6 +10,10 @@ Root Node169, prototype897, product6, static/model pins, strict TS/build and
 WebKit4 passed (including cancelled native reload and exact draft reversion).
 Test-only fixes scoped History locators to its dialog and bounded the cancelled
 Playwright reload wait; neither changed app behavior or the release artifact.
+A subsequent Windows WebKit run timed out twice before Input existed (no editor
+interaction reached). A fresh dedicated port4188 run with failure tracing passed
+all4. Cause of the earlier startup timeouts is unproven; do not claim repeated
+WebKit-startup stability from this focused pass. The product artifact is unchanged.
 Delivery checked all135 size/SHA256 entries plus gzip/method/offline-shell bytes.
 
 Public sidebar adopted index-BKaVmK83.js via explicit Update; appOffline restored.
