@@ -117,8 +117,12 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const recoverableSourceShape=(error:unknown)=>error instanceof Error&&['Invalid answer or sources','Citation mismatch'].includes(error.message);
  const oneSourceRevision=evidence.length>0&&evidence.every(ref=>ref.noteId===evidence[0].noteId&&ref.revision===evidence[0].revision);
  const singleSourceRecovery=mode==='answer'&&!inputReadings.length&&oneSourceRevision;
+ const singleInputRecovery=mode==='answer'&&inputReadings.length===1&&oneSourceRevision;
+ const recoverableShape=(error:unknown)=>error instanceof Error&&['Invalid answer','Invalid answer or sources'].includes(error.message);
+ const canRecover=(error:unknown)=>singleSourceRecovery&&recoverableSourceShape(error)||singleInputRecovery&&recoverableShape(error);
+ let recovery:'verbatim-source'|undefined;
  const exactSingleSourceFallback=async()=>{
-  if(!singleSourceRecovery)throw Error('Invalid model JSON · retry');
+  if(!singleSourceRecovery&&!singleInputRecovery)throw Error('Invalid model JSON · retry');
   // Retrieval can return several excerpts from one revision, including a
   // pinned opened file. Permit recovery only within that immutable revision,
   // then cite the exact span containing the model's verbatim answer.
@@ -129,6 +133,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   let value:unknown;try{value=JSON.parse(safe.text);}catch{throw Error('Invalid model JSON · retry');}
   if(!value||typeof value!=='object'||Array.isArray(value)||typeof (value as any).answer!=='string'||!(value as any).answer.trim()||Object.keys(value).some(key=>key!=='answer'))throw Error('Invalid model JSON · retry');
   const answer=(value as any).answer.trim(),source=evidence.find(ref=>ref.quote.toLocaleLowerCase().includes(answer.toLocaleLowerCase()));if(!source)throw Error('Answer needs a verified quote · retry');
+  recovery='verbatim-source';
   const {noteId,revision,start,end,quote,title}=source;return {answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
  };
  check();let generated=await engine.generate(messages,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);
@@ -138,7 +143,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
  try{parsed=parse(generated.text);}catch(error){
   if(!(error instanceof SyntaxError)){
-   if(recoverableSourceShape(error)&&singleSourceRecovery)parsed=await exactSingleSourceFallback();
+   if(canRecover(error))parsed=await exactSingleSourceFallback();
    else throw error;
   }else{
   // Retry syntax once, using the identical evidence. Never patch guessed quotes
@@ -147,7 +152,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if((await engine.count(retry)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
   generated=await engine.generate(retry,replyTokens);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
   try{parsed=parse(generated.text);}catch(retryError){
-   if(recoverableSourceShape(retryError)&&singleSourceRecovery||retryError instanceof SyntaxError&&singleSourceRecovery)parsed=await exactSingleSourceFallback();
+   if(canRecover(retryError)||retryError instanceof SyntaxError&&(singleSourceRecovery||singleInputRecovery))parsed=await exactSingleSourceFallback();
    else throw retryError;
   }
   }
@@ -160,5 +165,5 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if(parsed.sources.some((r:any)=>!currentEligible.has(r.noteId))||!validateRefs(current,parsed.sources,{currentOnly:true}).ok)throw Error('Source changed · retry');
  }
  check();
- return {answer:parsed.answer as string,sources:parsed.sources as any[],model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+ return {answer:parsed.answer as string,sources:parsed.sources as any[],...(recovery?{recovery}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
 }

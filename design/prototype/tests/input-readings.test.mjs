@@ -10,6 +10,23 @@ import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts
 // Metadata fixtures exercise provenance/selection, not real OCR or PDF extraction.
 async function fixture(){const raw=await prepareOriginal(new File(['png'],'page.png',{type:'image/png'}),'image-input');const value=makeOcrText(raw,'eng',{width:100,height:100,processedWidth:100,processedHeight:100,frame:0,orientation:'browser-decoded'},'The violet code is CEDAR-5821.',[]);const review={kind:'ocr',id:'reading-input',value};const runs=[{key:originalKey(raw.id),value:raw}],notes=[originalNote(raw),...buildInputReadings([review],runs)];return {raw,review,runs,notes};}
 
+test('one current reading can recover a malformed answer shape only through a bounded generated verbatim quote',async()=>{
+ const {groundedAnswer}=await import('../src/grounded-answer.ts'),{review,notes}=await fixture();let calls=0,changed=false,stopped=false;const formats=[];
+ const store={all:async()=>changed?[withdrawNote(notes[0],1),notes[1]]:notes,search:async()=>{throw Error('Must not broaden current inputs');}};
+ const runtime={loaded:'test',assets:{},manifest:{contextTokens:2048,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1}),generate:async(messages,budget,format)=>{
+  calls++;formats.push(format);assert.ok(budget<=128);const data=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.ok(data.evidence.every(ref=>ref.noteId===review.id));
+  return {text:JSON.stringify(calls%2?{code:'CEDAR-5821'}:{answer:'CEDAR-5821'}),finishReason:'stop'};
+ }};
+ const request={model:'test',question:'Which code is in the attached file?',scope:{kind:'attachments',readings:[readingRef(review)]},context:{summary:'',recent:[],refs:[]},check:()=>{if(stopped)throw Error('Stopped');}};
+ const result=await groundedAnswer({store,engine:runtime},request);assert.equal(calls,2);assert.equal(formats[1],'dialogue-answer');assert.equal(result.answer,'CEDAR-5821');assert.equal(result.sources[0].noteId,review.id);assert.equal(result.recovery,'verbatim-source');
+ calls=0;runtime.generate=async()=>({text:JSON.stringify(++calls===1?{code:'CEDAR-5821'}:{answer:'Invented answer'}),finishReason:'stop'});
+ await assert.rejects(groundedAnswer({store,engine:runtime},request),/verified quote/);assert.equal(calls,2);
+ calls=0;runtime.generate=async()=>{calls++;if(calls===2)changed=true;return {text:JSON.stringify(calls===1?{code:'CEDAR-5821'}:{answer:'CEDAR-5821'}),finishReason:'stop'};};
+ await assert.rejects(groundedAnswer({store,engine:runtime},request),/changed|unavailable/i);
+ changed=false;calls=0;runtime.generate=async()=>{if(++calls===2)stopped=true;return {text:JSON.stringify(calls===1?{code:'CEDAR-5821'}:{answer:'CEDAR-5821'}),finishReason:'stop'};};
+ await assert.rejects(groundedAnswer({store,engine:runtime},request),/Stopped/);
+});
+
 test('grounded current readings exclude a stale planner fact from retrieval while keeping citation refusal',async()=>{
  const {groundedAnswer}=await import('../src/grounded-answer.ts'),{review,notes}=await fixture(),question='What is the violet code in this image?',context={summary:'Earlier code OLD-481; respond briefly.',recent:[],refs:[]};
  const store={all:async()=>notes,search:async()=>{throw Error('Must not search unrelated knowledge');}};
