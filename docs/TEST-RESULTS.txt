@@ -1,3 +1,11 @@
+PUBLIC194 /6010c76359fe6111 /index-8XaDHaIS.js — 2026-10-27 JST
+Sidebar Update preserved a pending profile review. After actual page adoption,
+same new correction returns Review pending changes first with exact restored
+input, no model load/generation. Resume keeps Standard->Source first v1 proposal;
+explicit Cancel retains Standard and no note/settings revision is written.
+Original pin/older diagnostic report/logsOff preserved, empty input/Offline restored.
+An extra old-build attempt during update is retained and not counted as new code.
+
 PENDING REVIEW PREFLIGHT — 2026-10-27 JST
 Public193 actual pending profile review + new correction wrongly reaches model
 preparation; original review retained. Edit now checks canonical pending slot,
