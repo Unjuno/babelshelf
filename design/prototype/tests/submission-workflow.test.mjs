@@ -6,6 +6,8 @@ import {createSubmissionController} from '../src/submission-controller.ts';
 import {createToolRegistry} from '../src/tools/tool-registry.ts';
 import {definition,run as calculate} from '../src/tools/math.calculate/tool.ts';
 import {emptyDialogue,completeTurn,validateDialogue} from '../src/conversation.ts';
+import {createNote,searchNotes} from '../../../dist/core.js';
+import {definition as searchDefinition,run as searchRun} from '../src/tools/memory.search/tool.ts';
 function fixture(){
  let dialogue=emptyDialogue();const events=[],reviews=[];let modelCalls=0;
  const services={
@@ -21,6 +23,30 @@ function fixture(){
  const view={adopt:()=>{},consume:()=>events.push('consume'),composer:()=>({text:'',attachments:[]}),restore:()=>{},toast:message=>events.push(message),failure:message=>events.push(message),openNote:()=>{},reviewCapture:value=>reviews.push(value),reviewCorrection:()=>{},reviewSchedule:()=>{},startToolPackageFromChat:()=>{}};
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
 }
+
+test('a planned search asking for information finishes with a grounded answer rather than a terminal list',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({title:'Meeting',body:'集合場所は北口。',path:'Notes/meeting.md'}),records=[note];
+ const responses=['{"action":"search","query":"集合場所"}','{"completion":"answer"}',JSON.stringify({answer:'集合場所は北口です。',citations:[{id:'S1',quote:'集合場所は北口。'}]})];
+ let generated=0;
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{generated++;return {text:responses.shift(),finishReason:'stop'};},unload:async()=>{},load:async()=>{throw Error('Already resident');}};
+ f.services.activeHarnessProfile={enabledTools:[],maxToolCalls:3,maxResultChars:8000};
+ f.services.knowledge={all:async()=>records,search:async query=>searchNotes(records,query)};
+ f.services.builtinToolRegistry=createToolRegistry([{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Read-only search.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:searchRun}]);
+ const outcome=await c.run(run=>executeSubmission({text:'集合場所について保存したメモを探して、今の集合場所を教えて。',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed');assert.equal(generated,3);
+ const turn=f.current().turns[0];assert.equal(turn.answer,'集合場所は北口です。');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.refs[0].revision,1);assert.equal(turn.results,undefined);
+ assert.deepEqual(records,[note]);assert.equal(f.reviews.length,0);
+});
+
+test('explicit Memory search still lists results with no configured model or completion inference',async()=>{
+ for(const text of ['search: 集合場所','集合場所について保存したメモを探して']){
+  const f=fixture(),c=createSubmissionController(),note=createNote({title:'Meeting',body:'集合場所は北口。',path:'Notes/meeting.md'});
+  f.services.knowledge={search:async query=>searchNotes([note],query)};
+  f.services.builtinToolRegistry=createToolRegistry([{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search.'},{path:'Tools/memory.search/tool.ts',body:'Trusted adapter.'}],run:searchRun}]);
+  assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'completed');
+  assert.equal(f.current().turns[0].answer,undefined);assert.equal(f.current().turns[0].results[0].noteId,note.id);assert.equal(f.modelCalls(),0);
+ }
+});
 test('application executes real local calculation and persists its result without invoking a model',async()=>{
  const f=fixture(),c=createSubmissionController();
  assert.equal(await c.run(run=>executeSubmission({text:'12 * 7',attachments:[]},f.services,f.view,run)),'completed');

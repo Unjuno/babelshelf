@@ -58,6 +58,33 @@ test('Application explicit search preserves fallback and never starts a model or
  assert.deepEqual(events,['meeting','Find meeting']);assert.equal(result.kind,'search');assert.equal(result.status,'No matching notes');assert.deepEqual(result.files,[]);
 });
 
+test('model-selected search resolves the full requested outcome before ending at a list',async()=>{
+ const hit={noteId:'meeting',revision:3,start:0,end:6,quote:'北口で集合。',title:'Notes/meeting.md',score:1};
+ const {engine}=fixture();let messages;
+ engine.generate=async m=>{messages=m;return {text:'{"completion":"answer"}'};};
+ const {actions}=fixture({engine,question:'集合場所について保存したメモを探して、今の集合場所を教えて。',store:{search:async()=>[hit]}});
+ const result=await actions.search('集合場所',{complete:true});
+ assert.equal(result.kind,'continue');assert.equal(result.action,'answer');assert.equal(result.query,'集合場所');
+ assert.equal(messages.at(-1).content,'集合場所について保存したメモを探して、今の集合場所を教えて。');
+ for(const completion of ['summary','search']){
+  engine.generate=async()=>({text:JSON.stringify({completion})});
+  const next=await actions.search('集合場所',{complete:true});assert.equal(next.kind,completion==='search'?'search':'continue');
+ }
+ engine.generate=async()=>({text:'{"completion":"delete"}'});
+ await assert.rejects(actions.search('集合場所',{complete:true}),/Invalid search completion/);
+ engine.generate=async()=>({text:'{"completion":"answer"}',stopped:true});
+ await assert.rejects(actions.search('集合場所',{complete:true}),/Stopped/);
+});
+
+test('an empty or navigation-only search does not start an answer or reinterpret file metadata as evidence',async()=>{
+ const {engine}=fixture();let generated=0;engine.generate=async()=>{generated++;throw Error('Unexpected classification');};
+ for(const results of [[],[{kind:'file',noteId:'binary',revision:1,path:'Files/video.mp4'}]]){
+  const {actions}=fixture({engine,store:{search:async()=>results}});
+  assert.equal((await actions.search('video',{complete:true})).kind,'search');
+ }
+ assert.equal(generated,0);
+});
+
 test('Application explicit saved-file read returns navigation data and exact source pins without inference',async()=>{
  const body='The meeting starts at 14:30.',note={id:'meeting',version:2,path:'Notes/meeting.md',body};
  const hit={noteId:note.id,revision:2,start:0,end:body.length,quote:body,title:'Meeting',score:1};

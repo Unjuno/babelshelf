@@ -1,5 +1,15 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — finish a search-and-answer request
+
+Actual local sidebar on78571b1e36c3e0d6: 「集合場所について保存したメモを探して、今の集合場所を教えて。」 selected search/集合場所 and found two records, but stopped at the list instead of answering. Planner1676 input/10 output tokens took80197ms; no general speed claim. A shared final-outcome prompt experiment on69a3c526eced5053 still stopped at the list and was removed rather than shipped as a fix.
+
+Fix on100d2301fc13e22d: model-selected searches with text passages use the existing bounded completion-decision pattern shared with read. The classifier receives only the exact human request, may select list/answer/summary, and cannot write or grant tool permissions. Answer/summary proceeds through existing canonical source validation. Explicit search commands remain model-free; empty or file-metadata-only results remain navigation. Invalid or stopped classification fails without inventing an answer. Decision-origin searches acquire the selected prepared Text route through the shared manager, without network acquisition.
+
+Actual local prepared Bonsai2 4B on the final build selected search, then search-completion=answer, and returned the exact original text 「集合場所は北口。まだ作成途中です。」 with a citation. Source opened Inbox/QA-creation-draft.md v3, the current post-Undo revision; old v2南口 was not used. Save note opened the exact assistant-message copy review; explicit Save created Inbox/QA-recall-completion.md v1 with matching bytes and Original message provenance. No model download, original overwrite or fake inference. Existing retained dialogue also exercised compaction. This is one Windows sidebar flow, not broad multilingual quality or physical-device acceptance. Extra completion inference and slow prefill remain latency costs.
+
+Regression: production-scope application tests cover planned search -> answer/citation without writes, explicit literal/natural searches without a model, list/summary choice, invalid/Stop refusal and metadata-only results. Full prototype903 passed before the final additional explicit-search test; final submission25 passed. Product6, check, build/strict TypeScript and protected-runtime28 passed. Delivery135 assets verified. Screenshot: task outputs/recall-current-source.png.
+
 ## 2026-10-27 — resuming an unapproved correction
 
 Observed on e9b520a1d40fb091: choosing another Assistant profile opened the real Before/After review, but ordinary reload removed the unapproved proposal and offered no way to resume it. The active profile correctly stayed Standard; loss of the proposal was the defect. Three built UI tests reproduced missing recovery on the old artifact.

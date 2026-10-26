@@ -11,7 +11,7 @@ import {resolveToolNotes} from './tools/tool-host.ts';
 import {openUniqueSavedMemory} from './saved-memory-open.ts';
 import {isMemoryPassageResult,type MemorySearchResult} from './memory-search-types.ts';
 import {searchMemoryWithQuestionFallback} from './memory-search-fallback.ts';
-import {resolveReadCompletion} from './read-completion.ts';
+import {resolveReadCompletion,resolveSearchCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
 import type {CurrentInputRef} from './input-readings.ts';
 import {validVisionModelIdentity} from './vision-model-identity.ts';
@@ -63,7 +63,14 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
    const proposal=await trace('memory.propose_correction',{model,question,query},async()=>{const records=await store.all(),target=selectedFile??resolveCorrectionTarget(records,query);return proposeCorrection(engine,question,target,check,records);},value=>({id:value.id,path:value.path,revision:value.expected.revisions.at(-1).version,before:value.before,after:value.after,operation:value.operation}));
    check();return {kind:'correction' as const,proposal};
   },
-  async search(query:string){const result=await searchMemoryWithQuestionFallback(query,question,search);check();return searchResult(result.results);},
+  async search(query:string,options:{complete?:boolean}={}){
+   const result=await searchMemoryWithQuestionFallback(query,question,search);check();
+   if(options.complete&&result.results.some(isMemoryPassageResult)){
+    const completion=await trace('dialogue.plan',{stage:'search-completion',model,question},()=>resolveSearchCompletion(engine,question,check));check();
+    if(completion!=='search')return {kind:'continue' as const,action:completion,query:result.query};
+   }
+   return searchResult(result.results);
+  },
   async read(query:string,options:{explicitSavedOpen:boolean;literalRead:boolean}){
    if(options.explicitSavedOpen){
     const opening=await openUniqueSavedMemory<NoteView,MemorySearchResult>({question,query,search,snapshot,check});

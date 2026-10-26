@@ -203,7 +203,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     workingFile=result.workingFile;request={...request,action:result.action,target:'file',query:result.query};
    }
    if(request?.action==='search'){
-    const result=await actions().search(request.query);checkSend();await finishTurn(id,{results:result.results,files:result.files,status:result.status,refs:importedRefs});return {kind:'displayed'};
+    if(resolution.source!=='explicit')await ensureText();
+    const result=await actions().search(request.query,{complete:resolution.source!=='explicit'});checkSend();
+    if(result.kind==='search'){await finishTurn(id,{results:result.results,files:result.files,status:result.status,refs:importedRefs});return {kind:'displayed'};}
+    request={...request,action:result.action,query:result.query,target:'knowledge'};
    }
    if(text&&request){await ensureText();run.progress('','generating');if(request.action!=='answer'&&request.action!=='summary'&&request.action!=='chat')throw Error('Unresolved answer action');const answerQuery=groundingQuery(text,request.query,inputReadings.length>0),answerMode=request.action,toolEvidence=agentToolCalls.length?{used:true as const,refs:agentEvidenceFromCalls(agentToolCalls,customAccessEvidence),calculations:agentCalculationsFromCalls(agentToolCalls),memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0}:undefined,parsed=await actions().answer({model:model,question:text,query:answerQuery,mode:answerMode,context:context,check:checkSend,scope:(workingFile?{kind:'file',file:workingFile}:(inputReadings.length?{kind:'attachments',readings:inputReadings}:(answerMode==='chat'?{kind:'conversation'}:{kind:'knowledge'}))),prepareContext:deferredContext,toolEvidence:toolEvidence,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{toolCalls:agentToolCalls.map(call=>call.tool)});checkSend();await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:request.action==='summary'?'Summary · selected excerpts':undefined});return {kind:'answered'};}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
