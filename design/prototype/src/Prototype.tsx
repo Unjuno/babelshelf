@@ -1,3 +1,5 @@
+import {executeScheduledAnswer} from './scheduled-answer';
+import {createModelExecutionManager} from './model-execution';
 import {createSubmissionController,type SubmissionState} from './submission-controller';
 import {executeSubmission,type SubmissionAttachment} from './submission-workflow';
 import {makeAnswerCopyReview,selectDialogueCopy,reviewedDialogueCopy,type DialogueCopyReview} from './dialogue-copy';
@@ -11,7 +13,6 @@ import {CorrectionConflictError} from './note-corrections';
 import {searchResultRows,searchDisplayStatus} from './search-display';
 import type {FileResult} from './file-discovery';
 import {readDeviceStorage,requestStorageProtection,storageBytes,type DeviceStorage} from './device-storage';
-import {prepareTextRuntime} from './text-runtime-preparation';
 import {videoCapabilityStatus,processorAssetControls} from './local-capabilities';
 import {selectedTextFileGuidance,selectedDecisionFileGuidance,mediaReadingStatus} from './model-file-guidance';
 import {canAddModel,modelCatalogStatus,textModelChoiceHint} from './model-catalog-status'; import {checkTextDevice,describeTextDeviceCheck,type TextDeviceCheck} from './text-device-check';
@@ -62,9 +63,7 @@ import {createOriginalLoader} from './original-loader';
 import {MicrophoneGate,saveReviewedTranscript} from './speech-control';
 import {useSpeech} from './useSpeech';
 import {useVision} from './useVision';
-import {releaseIdleInference} from './inference-ownership';
 import {makeTranscript,type Transcript} from './speech-transcript';
-import {groundedAnswer} from './grounded-answer';
 import {MetadataWriter} from './metadata-writer';
 import {PreviewSelection} from './preview-selection';
 import {stateBackupBlob,stateHash} from './backup-state';
@@ -228,8 +227,9 @@ export default function Prototype() {
  useEffect(()=>setTextTestStatus(''),[model]);
  useEffect(()=>{textDeviceEpoch.current++;setTextDeviceCheck(null);setTextDeviceChecking(false);},[model]);  const selectedCustomDecision=modelPreferences.customDecisionModels.find(m=>m.id===decisionModel);
  const decision=useDecision(decisionModel,modelPreferences.customDecisionModels);
- const selectedCustomSpeech=modelPreferences.customSpeechModels.find(m=>m.id===speechModel),speechSupported=!!getSpeechManifest(speechModel)||!!selectedCustomSpeech,speech=useSpeech(speechModel,modelPreferences.customSpeechModels,check=>releaseIdleInference([bonsai,decision],check));
- const vision=useVision(visionModel,modelPreferences.customVisionModels,check=>releaseIdleInference([bonsai,decision],check));
+ const modelExecution=createModelExecutionManager({text:bonsai,decision,ensureRuntime:ensureProductRuntime});
+ const selectedCustomSpeech=modelPreferences.customSpeechModels.find(m=>m.id===speechModel),speechSupported=!!getSpeechManifest(speechModel)||!!selectedCustomSpeech,speech=useSpeech(speechModel,modelPreferences.customSpeechModels,check=>modelExecution.releaseForReader(check));
+ const vision=useVision(visionModel,modelPreferences.customVisionModels,check=>modelExecution.releaseForReader(check));
  const [visionPreparationError,setVisionPreparationError]=useState('');
  useEffect(()=>{let current=true;setVisionPreparationError('');setRuntimeAssetsReady(value=>({...value,vision:false}));if(visionModel)void verifyProductRuntimeAssets('vision').then(()=>{if(current)setRuntimeAssetsReady(value=>({...value,vision:true}));}).catch(()=>{});return()=>{current=false;};},[visionModel]);
  const visionAvailable=vision.ready&&runtimeAssetsReady.vision===true,visionNeedsRuntime=vision.ready&&!visionAvailable;
@@ -297,7 +297,7 @@ export default function Prototype() {
  const folderRenameLock=useRef(false),[folderRenaming,setFolderRenaming]=useState(false),recoveryLock=useRef(false),[recoverySaving,setRecoverySaving]=useState(false);
  const [itemTarget,setItemTarget]=useState<ItemTarget|null>(null),[trash,setTrash]=useState<TrashBatch[]>([]),[rename,setRename]=useState(''),[undoDeleteId,setUndoDeleteId]=useState<string|null>(null);
  const [scheduleExpected,setScheduleExpected]=useState<number|undefined>(),[selectedTask,setSelectedTask]=useState<string|null>(null),[selectedExecution,setSelectedExecution]=useState<string|null>(null),[selectedExecutionRevision,setSelectedExecutionRevision]=useState<number|undefined>();
-  const taskController=useTasks(notes,storageReady,()=>fileSaver.current.busy||assetGate.current.busy||correctionReview.current||correctionLock.current||taskReview.current||scheduleSaveLock.current||pdfLock.current||bonsai.busy||decision.busy||storagePending||sendLock.current||sending||backupBusy||sheet==='restore-backup'||sheet==='restore-defaults',refreshStorage,async(prompt,signal)=>{const request=localRequest(prompt),selectedModel=model,check=()=>{if(signal.aborted)throw Error('Stopped');};if(request?.action==='capture')throw Error('Scheduled work is read-only');if(!selectedModel)throw Error('Model not configured · Settings');const inference=await prepareTextRuntime({model:selectedModel,loadedModel:bonsai.loaded,check,releaseCompeting:()=>releaseIdleInference([decision],check),prepareSelected:()=>loadSelectedTextModel(selectedModel,check),pin:()=>bonsai.pin!()});return groundedAnswer({store:knowledge,engine:inference},{model:selectedModel,question:prompt,query:request?.query??prompt,mode:request?.action==='summary'?'summary':'answer',check:check,scope:{kind:'knowledge'},replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance});},()=>bonsai.stop());
+  const taskController=useTasks(notes,storageReady,()=>fileSaver.current.busy||assetGate.current.busy||correctionReview.current||correctionLock.current||taskReview.current||scheduleSaveLock.current||pdfLock.current||bonsai.busy||decision.busy||storagePending||sendLock.current||sending||backupBusy||sheet==='restore-backup'||sheet==='restore-defaults',refreshStorage,(prompt,signal)=>executeScheduledAnswer({store:knowledge,models:modelExecution},{prompt,model,signal,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance}),()=>bonsai.stop());
  const {tasks:schedules,notifications,executions}=taskController;
  const [attachments,setAttachments]=useState<Attachment[]>([]),[selectedAttachment,setSelectedAttachment]=useState<Attachment|null>(null),[selectedNotification,setSelectedNotification]=useState<string|null>(null);
  const composerSnapshot=useRef({text:draft,attachments});composerSnapshot.current={text:draft,attachments};
@@ -557,7 +557,7 @@ export default function Prototype() {
  function operationOriginal(){const turn=dialogue.current.turns.find(t=>t.id===operation?.target.turnId);return operation?.target.speaker==='assistant'?turn?.answer:turn?.user;}
  function selectedTextRuntimeRole(id:string){const entry=(bonsai.manifest.models as any[]).find(item=>item.id===id);return runtimeRoleForModelEngine(entry?.engine);}
  async function ensureProductRuntime(role:ProductRuntimeRole,acquire:boolean){try{if(acquire){const controller=new AbortController();runtimeAssetAbort.current=controller;try{await prepareProductRuntimeAssets(role,{signal:controller.signal});}finally{if(runtimeAssetAbort.current===controller)runtimeAssetAbort.current=null;}}else await verifyProductRuntimeAssets(role);setRuntimeAssetsReady(current=>({...current,[role]:true}));}catch(error){setRuntimeAssetsReady(current=>({...current,[role]:false}));throw error;}}
- async function loadSelectedTextModel(selectedModel:string|undefined,check:()=>void=()=>{}){check();if(!selectedModel)throw Error('Model not configured · Settings');if(!bonsai.assets[selectedModel]?.filesPresent)throw Error('Model not prepared · Settings');const role=selectedTextRuntimeRole(selectedModel);if(role)await ensureProductRuntime(role,downloads);check();await bonsai.load(selectedModel);check();return {loaded:selectedModel};}
+ async function loadSelectedTextModel(selectedModel:string|undefined,check:()=>void=()=>{}){return modelExecution.loadText(selectedModel,check,{allowNetwork:downloads});}
  async function manageAssets(tool:AssetTool,files?:File[],verifyOnly=false,runtimeRole?:ProductRuntimeRole){
   if(bonsai.busy||speech.busy||ocr.busy||decision.busy||vision.busy||ocrLock.current||pdfLock.current||sendLock.current||taskController.busy||speechDecodeLock.current||recorder.current||microphoneGate.current.pending)return toast('Model busy');
   try{const selected=tool==='model.unload'?bonsai.loaded:model,customDecision=modelPreferences.customDecisionModels.find(m=>m.id===decisionModel);if(tool==='runtime.prepare'&&!runtimeRole)throw Error('Runtime role missing');if(tool.startsWith('decision.')&&decisionModel!=='d1-omni-600M'&&!customDecision)throw Error('Decision runtime not connected');if(tool==='speech.prepare'&&!speechSupported)throw Error('Speech model not configured');if(tool==='ocr.prepare'&&ocrModel!=='tesseract-7')throw Error('Image reader not configured');if(tool==='vision.prepare'&&visionModel!=='lfm25-vl-450m-q4f16'&&!selectedCustomVision)throw Error('Vision model not configured');
@@ -565,14 +565,14 @@ export default function Prototype() {
    await assetGate.current.run(async()=>{assetCancelled.current=false;setAssetAction(tool);try{await traceProcessing(tool,input,async()=>{
     if(tool==='runtime.prepare'){await ensureProductRuntime(runtimeRole!,downloads&&!verifyOnly);return {completed:true,effect:'verified-assets',role:runtimeRole};}
     if(tool==='decision.prepare'){await ensureProductRuntime('decision',downloads&&!verifyOnly);return {...await decision.prepare(input.allowNetwork,files),effect:'verified-assets',role:'decision'};}
-    if(tool==='decision.load'){await releaseIdleInference([bonsai],()=>{if(assetCancelled.current)throw Error('Stopped');});return {...await decision.load(),effect:'loaded',role:'decision'};}
+    if(tool==='decision.load'){await modelExecution.decision(()=>{if(assetCancelled.current)throw Error('Stopped');});return {loaded:true,effect:'loaded',role:'decision'};}
     if(tool==='decision.unload')return {...await decision.unload(),effect:'unloaded',role:'decision'};
     if(tool==='ocr.prepare'){await ensureProductRuntime('ocr',downloads&&!verifyOnly);await ocr.prepare(input.allowNetwork,ocrLanguage);return {completed:true,effect:'verified-assets',role:'ocr'};}
     if(tool==='vision.prepare'){setVisionPreparationError('');if(!files)await ensureProductRuntime('vision',downloads&&!verifyOnly);await vision.prepare(input.allowNetwork,files);return {completed:true,effect:'verified-assets',role:'vision'};}
 
     if(tool==='speech.prepare'){await ensureProductRuntime('speech',downloads&&!verifyOnly);await speech.prepare(input.allowNetwork);return {completed:true,effect:'verified-assets',role:'speech'};}
     if(tool==='model.prepare'){const role=selectedTextRuntimeRole(selected);if(role)await ensureProductRuntime(role,downloads&&!verifyOnly);if(verifyOnly)await bonsai.verify(selected);else await bonsai.prepare(selected,input.allowNetwork,files);return {completed:true,effect:'verified-assets',role:'text'};}
-    if(tool==='model.load'){const role=selectedTextRuntimeRole(selected);if(role)await ensureProductRuntime(role,downloads);await releaseIdleInference([decision],()=>{if(assetCancelled.current)throw Error('Stopped');});await bonsai.load(selected);return {completed:true,effect:'loaded',loadedModel:bonsai.loaded};}
+    if(tool==='model.load'){const result=await loadSelectedTextModel(selected,()=>{if(assetCancelled.current)throw Error('Stopped');});return {completed:true,effect:'loaded',loadedModel:result.loaded};}
     await bonsai.unload();return {completed:true,effect:'unloaded',loadedModel:bonsai.loaded};
    },r=>r,()=>assetCancelled.current);}finally{setAssetAction(null);}});
   }catch(e){if(tool==='vision.prepare')setVisionPreparationError(runtimeStatus((e as Error).message));toast((e as Error).message);}
@@ -698,7 +698,7 @@ export default function Prototype() {
  async function readPdf(input:File|OriginalRef,pendingId?:string,name?:string){
   if(assetGate.current.busy||bonsai.busy||decision.busy||taskController.busy)return toast('Model busy');if(sendLock.current)return toast('Input busy');if(ocrLock.current||speechDecodeLock.current||speech.busy||recorder.current||microphoneGate.current.pending)return toast('Reading attachments');if(pdfLock.current)return;pdfLock.current=true;setPdfReading(true);setPdfProgress('Reading');setPdfReview(null);const controller=new AbortController();pdfController.current=controller;setSheet('pdf-reading');
   try{const result=await traceProcessing('pdf.read',{...processingInput(input,name),ocrPolicy:{model:ocrModel,prepared:ocr.ready,language:ocrLanguage}},async()=>{
-   if(controller.signal.aborted)throw Error('Stopped');await ensureProductRuntime('pdf',false);if(ocr.ready)await ensureProductRuntime('ocr',false);const fresh=input instanceof File,asset=fresh?await prepareOriginal(input,pendingId):await knowledge.original(input);const {extractPdf}=await import('./pdf-engine');const value=await extractPdf(asset,controller.signal,(page,total)=>setPdfProgress('Page '+page+' / '+total),pdfOcrOptions(setPdfProgress,()=>releaseIdleInference([bonsai,decision],()=>{if(controller.signal.aborted)throw Error('Stopped');})));if(controller.signal.aborted)throw Error('Stopped');return {asset,value,fresh};
+   if(controller.signal.aborted)throw Error('Stopped');await ensureProductRuntime('pdf',false);if(ocr.ready)await ensureProductRuntime('ocr',false);const fresh=input instanceof File,asset=fresh?await prepareOriginal(input,pendingId):await knowledge.original(input);const {extractPdf}=await import('./pdf-engine');const value=await extractPdf(asset,controller.signal,(page,total)=>setPdfProgress('Page '+page+' / '+total),pdfOcrOptions(setPdfProgress,()=>modelExecution.releaseForReader(()=>{if(controller.signal.aborted)throw Error('Stopped');})));if(controller.signal.aborted)throw Error('Stopped');return {asset,value,fresh};
   },r=>({original:originalRef(r.asset),processor:r.value.processor,totalPages:r.value.totalPages,pagesRead:r.value.pages.length,ocrPages:r.value.pages.filter(p=>p.ocr).map(p=>({page:p.page,...p.ocr})),coverage:r.value.status,characters:r.value.text.length,textStateHash:stateHash(r.value.text),reviewRequired:true}),()=>controller.signal.aborted);
    if(controller.signal.aborted)return;setPdfReview({id:crypto.randomUUID(),...result});setSheet('pdf-review');
   }catch(e){const message=(e as Error).message;if(!controller.signal.aborted){toast(message);setSheet(null);}else if(/record unavailable/.test(message))toast(message);}finally{pdfLock.current=false;setPdfReading(false);}
@@ -785,7 +785,7 @@ export default function Prototype() {
    knowledge,builtinToolRegistry,builtinToolPackages,bonsai,decision,ocr,speech,vision,model,ocrModel,ocrLanguage,speechModel,visionModel,visionAvailable,decisionModel,modelPreferences,harnessPreferences,activeHarnessProfile,connectionPreferences,diagnostics:localStorage,
    currentDialogue:()=>dialogue.current,storedDialogue:()=>storedDialogue.current,
    settled:async()=>{await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();},
-   saveDialogue,finishTurn,flushStorage,refreshStorage,refreshSnapshot,ensureProductRuntime,loadSelectedTextModel,traceProcessing,
+   saveDialogue,finishTurn,flushStorage,refreshStorage,refreshSnapshot,ensureProductRuntime,traceProcessing,
   },{
    adopt:(next,sent)=>{storedDialogue.current=next;dialogue.current=next;sent.forEach(a=>liveAttachments.current.set(a.id,a));renderDialogue(next);},
    consume:text=>{composerSnapshot.current={text:composerSnapshot.current.text===text?'':composerSnapshot.current.text,attachments:[]};setDraft(current=>current===text?'':current);setAttachments([]);keyboard.hide();},

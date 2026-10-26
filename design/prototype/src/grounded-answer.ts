@@ -54,7 +54,7 @@ export type GroundedAnswerRequest={
  context?:DialogueContext;check?:()=>void;prepareContext?:()=>Promise<DialogueContext>;
  toolEvidence?:AnswerToolEvidence;replyStyle?:ReplyStyle;userGuidance?:string;
 };
-export type GroundedAnswerDependencies={store:KnowledgeStore;engine:TextRuntime};
+export type GroundedAnswerDependencies={store:Pick<KnowledgeStore,'all'|'search'>;engine:TextRuntime};
 export async function groundedAnswer(dependencies:GroundedAnswerDependencies,request:GroundedAnswerRequest){
  let {engine}=dependencies;const {store}=dependencies;
  const {model,question,context,check=()=>{},prepareContext,toolEvidence,replyStyle='balanced',userGuidance=''}=request;

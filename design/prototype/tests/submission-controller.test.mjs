@@ -13,7 +13,7 @@ test('one owner rejects overlap until the original work settles, including Stop'
 test('state is observable without React and stale progress cannot change the next run',async()=>{
  const c=createSubmissionController(),seen=[];let stale;
  const unsubscribe=c.subscribe(s=>seen.push(s.phase));
- assert.equal(await c.run(async run=>{stale=run;run.progress('Reading','reading',{id:'a',label:'Reading'});assert.equal(c.state.reading.id,'a');return 'awaitingApproval';}),'awaitingApproval');
+ assert.equal(await c.run(async run=>{stale=run;run.progress('Reading','reading',{id:'a',label:'Reading'});assert.equal(c.state.reading.id,'a');return {kind:'awaitingApproval'};}),'awaitingApproval');
  assert.equal(c.state.progress,'');assert.equal(c.state.reading,null);
  await c.run(async run=>{stale.progress('Old');assert.equal(c.state.progress,'');run.progress('New','generating');assert.equal(c.state.stage,'generating');});
  assert.equal(c.state.phase,'completed');assert.ok(seen.includes('awaitingApproval'));unsubscribe();
@@ -31,4 +31,13 @@ test('Stop does not discard a committed receipt or release ownership before adop
 test('observer errors cannot strand execution or turn committed success into failure',async()=>{
  const c=createSubmissionController();c.subscribe(()=>{throw Error('View detached');});
  assert.equal(await c.run(async()=>{}),'completed');assert.equal(c.busy,false);
+});
+
+test('a preparation requirement is blocked and cannot be reported as completed',async()=>{
+ const c=createSubmissionController();assert.equal(await c.run(async()=>({kind:'needsPreparation',reason:'model-files'})),'blocked');
+ assert.equal(c.state.phase,'blocked');assert.equal(c.state.outcome.kind,'needsPreparation');assert.equal(c.busy,false);
+});
+test('partial and successful results remain distinguishable without parsing display labels',async()=>{
+ const c=createSubmissionController();await c.run(async()=>({kind:'partial',reason:'unsupported-input'}));assert.equal(c.state.outcome.kind,'partial');
+ await c.run(async()=>({kind:'answered'}));assert.equal(c.state.outcome.kind,'answered');
 });

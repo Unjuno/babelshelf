@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {executeScheduledAnswer} from '../src/scheduled-answer.ts';
+const run=()=>{let calls=0;return {get calls(){return calls;},dependencies:{store:{},models:{text:async()=>{calls++;throw Error('Controlled acquisition refusal');}}}};};
+test('scheduled capture is refused before any model acquisition',async()=>{const f=run();await assert.rejects(executeScheduledAnswer(f.dependencies,{prompt:'note: Change the memory',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/read-only/);assert.equal(f.calls,0);});
+test('scheduled Stop prevents runtime acquisition',async()=>{const f=run(),c=new AbortController();c.abort();await assert.rejects(executeScheduledAnswer(f.dependencies,{prompt:'Summarize my notes',model:'selected',signal:c.signal,replyStyle:'balanced',userGuidance:''}),/Stopped/);assert.equal(f.calls,0);});
+test('scheduled work propagates the shared acquisition failure without another engine or retry',async()=>{const f=run();await assert.rejects(executeScheduledAnswer(f.dependencies,{prompt:'Summarize my notes',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/Controlled acquisition refusal/);assert.equal(f.calls,1);});

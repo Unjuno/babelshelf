@@ -16,7 +16,7 @@ function fixture(){
   diagnostics:{getItem:()=>null,setItem:()=>{}},
   currentDialogue:()=>dialogue,storedDialogue:()=>dialogue,settled:async()=>{},flushStorage:async()=>{},refreshStorage:async()=>{},refreshSnapshot:async()=>[],
   saveDialogue:async next=>{validateDialogue(next);dialogue=next;events.push('save');},finishTurn:async(id,result)=>{dialogue=completeTurn(dialogue,id,result);},
-  ensureProductRuntime:async()=>{throw Error('Unexpected acquisition');},loadSelectedTextModel:async()=>{modelCalls++;throw Error('Unexpected model');},traceProcessing:async()=>{throw Error('Unexpected processing');},
+  ensureProductRuntime:async()=>{throw Error('Unexpected acquisition');},traceProcessing:async()=>{throw Error('Unexpected processing');},
  };
  const view={adopt:()=>{},consume:()=>events.push('consume'),composer:()=>({text:'',attachments:[]}),restore:()=>{},toast:message=>events.push(message),failure:message=>events.push(message),openNote:()=>{},reviewCapture:value=>reviews.push(value),reviewCorrection:()=>{},reviewSchedule:()=>{},startToolPackageFromChat:()=>{}};
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
@@ -54,5 +54,12 @@ test('unsupported input retains its original and exposes the real preparation st
  f.services.knowledge.submitInput=async(_expected,next,values)=>{originals=values;await f.services.saveDialogue(next);return values.map(originalNote);};
  f.view.restore=()=>{recovery++;};const file=new File(['opaque file'],'unknown.bin',{type:'application/octet-stream'});
  await c.run(run=>executeSubmission({text:'What is in this file?',attachments:[{id:'binary',name:file.name,kind:'file',size:file.size,status:'Ready',file,url:''}]},f.services,f.view,run));
- assert.equal(originals.length,1);assert.match(f.current().turns[0].status,/Original saved · Unsupported/);assert.equal(f.modelCalls(),0);assert.equal(recovery,1);
+ assert.equal(c.state.outcome.kind,'partial');assert.equal(originals.length,1);assert.match(f.current().turns[0].status,/Original saved · Unsupported/);assert.equal(f.modelCalls(),0);assert.equal(recovery,1);
+});
+
+test('an unprepared chat request reports needsPreparation and cannot bypass the model manager',async()=>{
+ const f=fixture(),c=createSubmissionController();
+ assert.equal(await c.run(run=>executeSubmission({text:'Hello',attachments:[]},f.services,f.view,run)),'blocked');
+ assert.equal(c.state.outcome.kind,'needsPreparation');assert.equal(c.state.outcome.reason,'model-selection');assert.equal(f.modelCalls(),0);
+ assert.equal(f.current().turns.length,1);assert.equal(f.current().turns[0].status,'Model not configured · Settings');
 });

@@ -1,3 +1,42 @@
+EXECUTION OUTCOMES / MODEL ACQUISITION — 2026-10-26 JST
+Local Windows PC product 7f786e956be29099 /135 verified assets,
+entry index-C1XuwjZ6.js. Public site unchanged; no physical-device run.
+
+- npm test: 169 passed, including the four former Text preparation ordering
+  cases migrated to the shared manager (obsolete helper/test removed).
+- test:prototype: 886 passed; test:submission: 23 passed (subset).
+- test:turn-intent: 23 passed; test:agent-coordinator: 13 passed.
+- Strict TypeScript, build:app, check and test:app (6) passed.
+- Final-build offline-calculation Chromium test: 1 passed, three real bounded
+  calculations and activity receipts after context-offline reload.
+
+Policy tests check local-only automatic runtime verification, prepared files
+before eviction, resident Text reuse, explicit Load permission, busy-resident
+refusal, cancellation after release/verification, and no retry/network fallback.
+Resolved Load calls must also acknowledge actual residency before a successful
+load result is exposed; a false Decision Load is not reported as loaded.
+Controller/workflow tests distinguish blocked preparation/input, partial data,
+answers and review handoff without parsing display labels. The greeting route
+now uses the same acquisition service; an unprepared greeting is a typed blocked
+requirement rather than a generic failure/direct answer-helper load. Scheduled
+capture and Stop are refused before acquisition; the scheduled answer boundary
+has read-only all/search storage and no tool/proposal/write port. These tests
+use controlled adapters for orchestration, not fabricated inference acceptance.
+
+Sidebar localhost:4184 retained all existing local notes/history across normal
+Online/Update and restored app Offline afterwards. On intermediate build
+0e00d594d10b224e, Hello reported Model not prepared and restored the draft;
+then (18 + 6) / 3 returned 8, Save note reviewed exact content 8 and saved
+Inbox/QA-model-execution.md. On final entry index-C1XuwjZ6.js, explicit local
+read reopened that unchanged v1 file after update. Screenshot retained at task
+outputs/model-execution-saved.png. No storage reset or existing-note deletion.
+
+No new model download, actual model/GPU generation, speed/thermal benchmark,
+iPhone/Android rerun or claim of OS offline isolation. App Offline is a policy
+setting; Chromium context-offline testing is separately scoped above. Existing
+large-chunk build warning remains. Durable review recovery, config activation
+snapshots and incremental search remain separate migration work.
+
 SEND APPLICATION BOUNDARY — 2026-10-26 JST
 Local Windows PC build 61e5eaf756332bb7 /135 verified assets,
 entry index-C5bZAyVW.js. Not a public deployment or physical-device run.

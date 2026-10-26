@@ -1,5 +1,48 @@
 # Current application architecture
 
+## Execution outcomes and model acquisition — 2026-10-26
+
+`execution-result.ts` separates host-owned outcomes from transient lifecycle:
+answered, imported, displayed, awaitingApproval, needsPreparation, needsInput,
+partial, cancelled and failed. Submission functions return an outcome on every
+normal path. Preparation/input requirements produce blocked lifecycle state;
+an unread original produces partial rather than an implied successful answer.
+Existing dialogue status strings and schemas are unchanged. Review handoff is
+still transient; durable review restoration is separate additive storage work.
+
+`model-execution.ts` centralizes acquisition policy for Text, Decision and
+release before reader operations. Existing engine clients still own Workers,
+pinned identities and inference leases. The manager is bound to runtime
+adapters; it does not introduce another Worker pool, global lock or model cache.
+Automatic Text/Decision acquisition verifies local runtime assets only. A missing
+Text selection/file returns a typed requirement before releasing another
+resident. A loaded Text route is reused and pinned. A completed Load must report the
+selected Text resident or a positive Decision loaded receipt before success.
+Release/verification/Load
+boundaries check cancellation; a busy resident is never forcibly interrupted.
+Explicit Text Load may prepare runtime assets only with the caller's existing
+download permission; it does not acquire model weights. Asset preparation stays
+an explicit user operation. Runtime verification errors remain errors unless
+the host has a typed preparation requirement; model error text cannot declare
+new capabilities or change outcomes by resembling a UI label.
+
+Normal Send, generated capture and ordinary conversation all use this policy
+before grounded answering, including routes that previously reached the answer
+helper directly. `scheduled-answer.ts` moves scheduled answering out of the
+screen and shares acquisition plus grounded answering. It receives only the
+read-only all/search storage contract, selects a knowledge scope and has no
+planner/tool registry, approval or knowledge-write port. Scheduled capture is
+refused before acquisition. Scheduling still requires foreground/resume support;
+this change does not create suspended/closed-PWA execution.
+
+Speech/Vision retain their bounded operation lifecycle and existing lease-owned
+cleanup; this increment centralizes their release-before-entry callback, not
+model-residency duration. It adds no automatic startup preload, parallel model
+residency, performance claim or arbitrary engine/model support. The obsolete
+Text-only preparation helper was replaced; its ordering tests now target the
+shared manager. Next: durable approval recovery and validated configuration
+activation snapshots, then command-based storage and incremental indexing.
+
 ## Send application boundary — 2026-10-26
 
 The accepted UI and canonical schemas remain unchanged. Normal Send now enters
@@ -22,9 +65,9 @@ stage, progress and per-attachment display data. It has no React, storage,
 model, tool or network dependency. One active owner is retained until the work
 settles, even after Stop; a second Send cannot overlap a cancelled operation's
 pending commit. Obsolete progress callbacks cannot update a later attempt.
-A completed phase means this workflow returned, not that a model is prepared
-or that the user's entire objective was satisfied; existing capability/status
-results remain authoritative.
+The outcome contract above now distinguishes preparation/input requirements and
+partial results from answers; completed lifecycle alone still does not certify
+model compatibility, source completeness or the user's entire objective.
 
 The workflow receives the selected model/settings, existing runtime interfaces,
 tool packages/registry, storage functions and bounded diagnostics store through
@@ -210,7 +253,7 @@ Image OCR and scanned-PDF OCR now release idle, resident Text/Decision workers i
 
 The shared inference lease now permits one active inference role per app tab. Same-role references share the tab lease; a different role is refused until the current role releases. This makes role transitions fail explicitly if a reader or route omits its unload boundary, while the Web Locks API still excludes cooperating tabs. It is a conservative overlap guard, not a memory-capacity estimate or proof that a browser/GPU driver reclaimed memory.
 
-`text-runtime-preparation.ts` now owns the same-tab Text acquisition sequence used by both normal Send and foreground scheduled execution: invoke the caller's guard, release idle Decision inference, prepare the selected Text model and its runtime only when needed, invoke the guard again, then pin the Text route. Send binds its guard to Stop and the active request. Scheduled execution also propagates Stop through its task signal to the local Text engine; cancellation observed before completion records a stopped run and discards the pending answer. Callers retain their own operation receipts and progress. Scheduled work remains read-only and calls `groundedAnswer` directly; it does not gain the planner's tool allowlist. This closes a preparation/ownership gap without broadening scheduled authority.
+`model-execution.ts` now owns acquisition policy for normal Send and foreground scheduled execution; `scheduled-answer.ts` owns the read-only scheduled answer operation. Both use the selected runtime and Stop guard, without granting scheduled execution the planner's tool allowlist. Existing engine clients retain leases, resource cleanup and pinned-identity checks.
 
 `Prototype.tsx` owns the accepted layered UI shell, interaction guards, view/storage/runtime adapters, media preparation controls, review sheets, memory navigation and task/settings actions. Normal Send orchestration now lives in `submission-workflow.ts`, with transient state owned by `submission-controller.ts`. Other workflows still originate in the screen; moving them is separate work. The shared read-intent rule below remains used by both working-file and search-discovered-file branches.
 
