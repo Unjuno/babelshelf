@@ -1,4 +1,8 @@
 SELECTED ORIGINAL MESSAGE BOUNDARY — 2026-10-27 JST
+Published190/05dd34af511e167c. Existing public sidebar adopted current page,
+retained35rows/21answers and0 stale completed markers. Offline restored, prior
+report/pin/empty composer retained; no public generation or acquisition.
+Asset135 size/hash and delivery checks pass. Native release IDs in deployment doc.
 Final05dd actual sidebar4B: same Hello greeting32chars, same Japanese rewrite
 now returns こんにちは！今日何お手伝いできるでしょうか？ without added role prefix.
 Receipt pins index47/current assistant/exact0–32. No planner/Memory call, no Save.

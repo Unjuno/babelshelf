@@ -1,4 +1,12 @@
-## Latest publication — retained dialogue outcome, Site v189, 2026-10-27
+## Latest publication — selected original message boundary, Site v190, 2026-10-27
+
+Developer confirms active worker `05dd34af511e167c` and page `index-C5qfd_Jz.js` after public adoption. Detailed logsOff and the older253f report remain unchanged and correctly identified; no device test was rerun to relabel it.
+
+Public audience/domain retained. Product `05dd34af511e167c`,135 verified assets, entry `index-C5qfd_Jz.js`; app `a2b4f00` pushed to `codex/ui-design-handoff`. Site source `c46dc68dfc48522f25beb377b7188161ab11aa5e`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_29da2c85633881918f3431bc4ec38714`; deployment `appgdep_6adfa172e8388191842232ce367cbda5` succeeded at `2026-10-26T18:52:50.661562+00:00`. Native archive SHA256 `cbca1b07e2464c5cf25d1e6a942a839cb04b7e9fbe8a66eed185ba7e8258968a`,57,159,680 uncompressed bytes/160 files. Reused stage/archive; retained actualv189 predecessor and pruned19 obsolete generated assets. Independent135-file size/hash and delivery transport passed.
+
+Existing public sidebar normal Update adopted `index-C5qfd_Jz.js`;35 history rows/21 answers retained and the prior stale-completed-marker fix remained at0. Offline restored, original pin/empty composer and old diagnostic report retained; no data clearing, model acquisition or public-profile inference. Actual prepared4B local before/after greeting rewrite and exact target receipt are separate evidence in USABILITY-EVALUATION.md. Prototype920, related conversation/workflow118, intent24, product6, strict build/TypeScript/static/runtime28 passed. No broad paraphrase/Japanese quality, other-model, physical-phone, thermal or speedup acceptance.
+
+## Prior publication — retained dialogue outcome, Site v189, 2026-10-27
 
 Post-reload Developer confirms active worker `d21fe8cdbe422c9d` and page `index-ClGRBCtC.js`; original253f diagnostic report/date and logsOff remain. Public Input was left Offline at the repaired older image-answer row; local draft `ああ` restored.
 
