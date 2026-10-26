@@ -6,6 +6,7 @@ import {createModelExecutionManager} from './model-execution';
 import {createSubmissionController,type SubmissionState} from './submission-controller';
 import {executeSubmission,type SubmissionAttachment} from './submission-workflow';
 import {makeAnswerCopyReview,selectDialogueCopy,reviewedDialogueCopy,type DialogueCopyReview} from './dialogue-copy';
+import {DialogueCopySource} from './DialogueCopySource';
 import {runtimeStatus} from './runtime-status';
 import {harnessGuidanceBytes,validateHarnessGuidance} from './harness-guidance';
 import {useGuidanceDraft} from './useGuidanceDraft';
@@ -223,7 +224,7 @@ export default function Prototype() {
  const [modelSetDraft,setModelSetDraft]=useState<ModelSetId|null>(null),[modelSetExpected,setModelSetExpected]=useState(''),[modelSetApplying,setModelSetApplying]=useState(false),[modelSetApplied,setModelSetApplied]=useState(false),[modelSetName,setModelSetName]=useState(''),[modelSetDetail,setModelSetDetail]=useState('');const modelSetLock=useRef(false);
  function reportSheetError(message:string){if(sheet)setSheetError(message);else toast(message);}
  function setSheet(next:typeof sheet,confirmed=false){if(sheet==='harness-profile'&&correctionLock.current&&next!=='correction')return;if(restoreDefaultsLock.current&&next!==sheet)return;if(sheet==='initial-preparation'&&initialPrepBusy&&next!==sheet)return;if(sheet==='model-set-review'&&modelSetLock.current&&next!==sheet)return;if(sheet==='huggingface'&&hfBusy&&next!==sheet)return;if((sheet==='custom-model'||sheet==='custom-decision-model'||sheet==='custom-speech-model'||sheet==='custom-vision-model')&&customBusy&&next!==sheet)return;if(sheet==='custom-model'&&next!==sheet&&customReview?.remove)void customReview.remove().catch(()=>{});if(sheet==='tool-package'&&toolPackageDrafting&&next!==sheet)return;if((sheet==='file'||sheet==='folder'||sheet==='tool-package')&&fileSaver.current.busy&&next!==sheet)return;
-  if(!confirmed&&next!==sheet&&creationIsDirty()){reviewDiscard(sheet==='file'?(fileName||'New file'):(folderName||'New folder'),()=>{if(sheet==='file'){setFileName('');setFileBody('');setDialogueCopyReview(null);setCopyMessage('');setFileSources([]);setFileKind('original');}else setFolderName('');setSheet(next,true);});return;}
+  if(!confirmed&&next!==sheet&&creationIsDirty()){reviewDiscard(sheet==='file'?(fileName||'New file'):(folderName||'New folder'),()=>{if(sheet==='file'){setFileName('');setFileBody('');setDialogueCopyReview(null);setFileSources([]);setFileKind('original');}else setFolderName('');setSheet(next,true);});return;}
   if(sheet==='file'&&next!=='file'&&next!=='folder')setCaptureTurn(null);
   correctionReview.current=next==='correction';taskReview.current=next==='schedule'||next==='schedule-repeat';if(sheet==='ocr-reading'&&next!=='ocr-reading')ocrController.current?.abort();if(sheet==='vision-result'&&next!=='vision-result'&&vision.busy)stopVision();if(sheet==='pdf-reading'&&next!=='pdf-reading')pdfController.current?.abort();previewSelection.current.cancel();if(sheet==='voice'&&next!=='voice'){speechEpoch.current++;microphoneGate.current.cancel();setPermissionPending(false);if(speech.busy)speech.stop();cancelRecording.current?.();cancelRecording.current=null;recorder.current=null;setRecording(false);}if(next!==sheet)setSheetError('');if((sheet==='file'||sheet==='folder')&&next!=='file'&&next!=='folder')setDialogueCopyReview(null);setSheetState(next);}
  const modelRead=readPreferenceWithFallback('models',notes),appearanceRead=readPreferenceWithFallback('appearance',notes),connectionRead=readPreferenceWithFallback('connection',notes),harnessRead=readPreferenceWithFallback('harness',notes);
@@ -301,19 +302,19 @@ export default function Prototype() {
  const fileSaver=useRef(createReviewedFileSaver()),[fileSaving,setFileSaving]=useState(false),[fileSaveWarningId,setFileSaveWarningId]=useState<string|null>(null);
  const [lastDirectSave,setLastDirectSave]=useState<{id:string;version:number}|null>(null);
  const [fileSources,setFileSources]=useState<Citation[]>([]),[fileKind,setFileKind]=useState<'original'|'generated'>('original');
- const [dialogueCopyReview,setDialogueCopyReview]=useState<DialogueCopyReview|null>(null),[copyMessage,setCopyMessage]=useState('');
+ const [dialogueCopyReview,setDialogueCopyReview]=useState<DialogueCopyReview|null>(null);
  const [creationError,setCreationError]=useState('');const [fileName,setFileName]=useState(''),[fileBody,setFileBody]=useState(''),[activeFolder,setActiveFolder]=useState(''),[extraFolders,setExtraFolders]=useState<string[]>([]),[folderName,setFolderName]=useState('');
- const creationBase=useRef<{kind:string;name:string;body:string;review:DialogueCopyReview|null;message:string}|null>(null),scheduleBase=useRef(''),lastFormSheet=useRef<typeof sheet>(null);
+ const creationBase=useRef<{kind:string;name:string;body:string;review:DialogueCopyReview|null}|null>(null),scheduleBase=useRef(''),lastFormSheet=useRef<typeof sheet>(null);
  function scheduleDraftKey(){return JSON.stringify([scheduleId,schedulePrompt,scheduleRepeat,scheduleTime,scheduleNotify,scheduleDays,scheduleDate,scheduleMonthDay,scheduleInterval,scheduleUnit]);}
  // A confirmation changes only discardLabel, so the form and its pinned copy/task
  // provenance stay intact. Returning from Repeat must not rebase the task draft.
  useLayoutEffect(()=>{
-  if(sheet==='file')creationBase.current={kind:sheet,name:fileName,body:fileBody,review:dialogueCopyReview,message:copyMessage};
-  if(sheet==='folder')creationBase.current={kind:sheet,name:folderName,body:'',review:null,message:''};
+  if(sheet==='file')creationBase.current={kind:sheet,name:fileName,body:fileBody,review:dialogueCopyReview};
+  if(sheet==='folder')creationBase.current={kind:sheet,name:folderName,body:'',review:null};
   if(sheet==='schedule'&&lastFormSheet.current!=='schedule-repeat')scheduleBase.current=scheduleDraftKey();
   lastFormSheet.current=sheet;
  },[sheet]);
- function creationIsDirty(){const base=creationBase.current;if(!base||base.kind!==sheet)return false;return sheet==='file'?fileName!==base.name||fileBody!==base.body||dialogueCopyReview!==base.review||copyMessage!==base.message:sheet==='folder'&&folderName!==base.name;}
+ function creationIsDirty(){const base=creationBase.current;if(!base||base.kind!==sheet)return false;return sheet==='file'?fileName!==base.name||fileBody!==base.body||dialogueCopyReview!==base.review:sheet==='folder'&&folderName!==base.name;}
  function scheduleIsDirty(){return (sheet==='schedule'||sheet==='schedule-repeat')&&scheduleBase.current!==scheduleDraftKey();}
  function reviewDiscard(label:string,action:()=>void){pendingDiscard.current=action;keyboard.hide();setDiscardLabel(label);}
  function keepDraft(){pendingDiscard.current=null;setDiscardLabel(null);}
@@ -853,27 +854,35 @@ export default function Prototype() {
    toast,failure:setDialogueError,openNote,startToolPackageFromChat,
    reviewSchedule:(task,id)=>editSchedule(undefined,task,id),
    reviewCorrection:(proposal,id)=>presentCorrection(proposal,id,run.signal),
-   reviewCapture:review=>{setCaptureTurn(review.turnId);setDialogueCopyReview(review.source);setCopyMessage(review.source?String(review.source.source.turnIndex+1):'');setFileSources(review.sources);setFileKind(review.kind);setFileName(suggestedNoteName(review.body));setFileBody(review.body);setActiveFolder('Inbox');setMemoryScope('folder');setSheet('file');},
+   reviewCapture:review=>{setCaptureTurn(review.turnId);setDialogueCopyReview(review.source);setFileSources(review.sources);setFileKind(review.kind);setFileName(suggestedNoteName(review.body));setFileBody(review.body);setActiveFolder('Inbox');setMemoryScope('folder');setSheet('file');},
   },run));
  }
 
  function openAnswerCopy(turnId:string,expectedBody:string){
   if(fileSaver.current.busy)return;
-  try{const review=makeAnswerCopyReview(dialogue.current,turnId,expectedBody);setDialogueCopyReview(review);setCopyMessage(String(review.source.turnIndex+1));setCaptureTurn(null);setFileKind('generated');setFileSources(review.source.refs);setFileBody(review.source.quote);setFileName('Answer-'+localDate());setActiveFolder('Inbox');setMemoryScope('folder');setCreationError('');keyboard.hide();setSheet('file');}catch(error){toast((error as Error).message);}
+  try{const review=makeAnswerCopyReview(dialogue.current,turnId,expectedBody);setDialogueCopyReview(review);setCaptureTurn(null);setFileKind('generated');setFileSources(review.source.refs);setFileBody(review.source.quote);setFileName('Answer-'+localDate());setActiveFolder('Inbox');setMemoryScope('folder');setCreationError('');keyboard.hide();setSheet('file');}catch(error){toast((error as Error).message);}
  }
  function chooseCopySource(index:number,speaker:'user'|'assistant'){
-  if(!dialogueCopyReview||fileSaver.current.busy)return;
-  try{const review=selectDialogueCopy(dialogue.current,dialogueCopyReview,index,speaker);setFileName(name=>name===suggestedNoteName(dialogueCopyReview.source.quote)?suggestedNoteName(review.source.quote):name);setDialogueCopyReview(review);setCopyMessage(String(index+1));setFileBody(review.source.quote);setFileSources(review.source.refs);setFileKind(speaker==='assistant'?'generated':'original');setCreationError('');}catch(error){setCreationError((error as Error).message);}
+  if(!dialogueCopyReview||fileSaver.current.busy)return false;
+  try{
+   const review=selectDialogueCopy(dialogue.current,dialogueCopyReview,index,speaker);
+   if(JSON.stringify(review.source)===JSON.stringify(dialogueCopyReview.source))return true;
+   const apply=()=>{
+    setFileName(name=>name===suggestedNoteName(dialogueCopyReview.source.quote)?suggestedNoteName(review.source.quote):name);
+    setDialogueCopyReview(review);setFileBody(review.source.quote);setFileSources(review.source.refs);
+    setFileKind(speaker==='assistant'?'generated':'original');setCreationError('');
+   };
+   if(fileBody!==dialogueCopyReview.source.quote){reviewDiscard('Change source',apply);return false;}
+   apply();return true;
+  }catch(error){setCreationError((error as Error).message);return false;}
  }
  function copySourceControls(){
-  if(!dialogueCopyReview)return null;const review=dialogueCopyReview,index=/^[1-9]\d*$/.test(copyMessage)?Number(copyMessage)-1:-1,candidate=review.candidates.find(c=>c.turnIndex===index);
-  return <fieldset className="dialogue-copy-source"><legend>Source</legend><label>Message<KeyboardInput aria-label="Source message number" inputMode="numeric" disabled={fileSaving} value={copyMessage} onChange={e=>setCopyMessage(e.target.value)} onBlur={()=>{if(index!==review.source.turnIndex)chooseCopySource(index,review.source.speaker as 'user'|'assistant');}}/></label><div className="appearance-options" role="group" aria-label="Original speaker">{(['user','assistant'] as const).map(speaker=><button type="button" key={speaker} disabled={fileSaving||!candidate?.[speaker]} aria-pressed={review.source.turnIndex===index&&review.source.speaker===speaker} onClick={()=>chooseCopySource(index,speaker)}>{speaker==='user'?'You':'Assistant'}</button>)}</div><span className="source-revision" role="status">{fileBody===review.source.quote?'Original copy':'Edited copy'}</span></fieldset>;
+  return dialogueCopyReview?<DialogueCopySource dialogue={dialogue.current} review={dialogueCopyReview} body={fileBody} busy={fileSaving} onSelect={chooseCopySource}/>:null;
  }
  async function createFile(){
   if(fileSaver.current.busy)return;if(!storageReady)return toast('Saving');setCreationError('');setFileSaving(true);const turn=captureTurn;
   try{const result=await fileSaver.current.save(async()=>{
    const path=filePath(memoryCreationFolder(memoryScope,activeFolder,'file'),fileName,[...notes.map(n=>n.path),...allFolders]);
-   if(dialogueCopyReview&&copyMessage!==String(dialogueCopyReview.source.turnIndex+1))throw Error('Choose a source message');
    const copy=dialogueCopyReview?reviewedDialogueCopy(dialogue.current,dialogueCopyReview,fileBody):undefined;
    const n:Note={id:crypto.randomUUID(),path,body:fileBody,version:1,history:[],kind:fileKind,sources:structuredClone(fileSources),...(copy??{})};
    setNotes(a=>[...a,n]);await flushStorage();return n;
@@ -928,7 +937,7 @@ export default function Prototype() {
   }catch(error){try{await refreshStorage();}catch{}toast((error as Error).message||'Tool package could not be imported');}
   finally{setFileSaving(false);if(toolPackageImport.current)toolPackageImport.current.value='';}
  }
- function startFile(){requestEditorExit(()=>{setEditing(false);setCreationError('');setDialogueCopyReview(null);setCopyMessage('');setCaptureTurn(null);setFileSources([]);setFileKind('original');keyboard.hide();setSheet('file');setOpened(null);setFileName('');setFileBody('');setFolderName('');});}
+ function startFile(){requestEditorExit(()=>{setEditing(false);setCreationError('');setDialogueCopyReview(null);setCaptureTurn(null);setFileSources([]);setFileKind('original');keyboard.hide();setSheet('file');setOpened(null);setFileName('');setFileBody('');setFolderName('');});}
  async function save(){if(directSaveLock.current||!current)return;if(current.version!==editVersion)return toast('Version conflict · reopen editor');if(current.managed){if(editPath!==current.path)return toast('Settings file path is protected');try{parsePreference(preferenceGroup(current.path)!,editBody);}catch(e){return toast((e as Error).message);}}if(current.protected)return toast('Built-in definition is protected');let path:string;try{path=editPath.trim()===current.path?current.path:validateFilePath(editPath.trim());}catch(e){return toast((e as Error).message);}if(notes.some(n=>n.id!==current.id&&n.path===path))return toast('Path already exists');const target=current.id,expectedVersion=editVersion,body=editBody;directSaveLock.current=true;setEditSaving(true);try{setNotes(all=>all.map(n=>{if(n.id!==target)return n;if(n.version!==expectedVersion)throw Error('Version conflict · reopen editor');return {...n,path,body,version:n.version+1,history:[...n.history,n.body],paths:[...(n.paths??n.history.map(()=>n.path)),n.path]};}));await flushStorage();setLastDirectSave({id:target,version:expectedVersion+1});setActiveFolder(path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setEditing(false);keyboard.hide();toast('Saved');}catch(e){toast((e as Error).message);}finally{directSaveLock.current=false;setEditSaving(false);}}
  async function exportNoteMarkdown(id:string,revision:number,closeMenu=false){
   if(markdownExportLock.current)return;markdownExportLock.current=true;setMarkdownExporting(true);if(closeMenu)setSheet(null);

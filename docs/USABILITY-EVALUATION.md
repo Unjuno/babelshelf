@@ -1,3 +1,9 @@
+## 2026-10-27 — Save the answer the user actually chose
+
+Sidebar local current baseline showed a Message 52 numeric field and speaker buttons despite no numbered chat. Save note now shows Answer / Original copy and the exact content; Change opens optional original previews with search and older/newer paging. Current screenshots inspected: current-save-source-01-input.png, 02-before.png, 03-after.png. Actual dark sidebar selected historical 84 by text, verified exact content, then cancelled/discarded the new draft without saving. Existing originals were not edited. Default content is higher; at this viewport the footer still requires scrolling. No claim of complete accessibility, keyboard/IME or physical-phone acceptance.
+
+PC browser regression verifies selecting the earlier answer, preserving manual edits on same-source selection, rejecting accidental source replacement through Keep editing, and Save/reload retaining both the reviewed body and exact original. This is calculator-backed real tool execution, not proof of LLM inference. Device Performance already provides a bounded prepared-model timing sample, local report and explicit copy; its fixed workload avoids private notes and user prompts. One sample cannot establish sustained speed, heat or answer quality.
+
 # Task-based usability evaluation
 
 ## 2026-10-27 — A fixed file question must not compact unrelated history

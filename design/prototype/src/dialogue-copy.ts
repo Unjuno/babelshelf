@@ -3,6 +3,21 @@ import {resolveDialogueTarget,readDialogueTurn,type Dialogue,type DialogueTarget
 export type DialogueCopy={schema:1;noteRevision:1;turnId:string;turnIndex:number;speaker:'user'|'assistant';quote:string;refs:SourceRef[];edited:boolean};
 type Candidate={turnId:string;turnIndex:number;user:boolean;assistant:boolean};
 export type DialogueCopyReview={candidates:Candidate[];source:ReturnType<typeof readDialogueTurn>};
+export type DialogueCopyOption={turnId:string;index:number;speaker:'user'|'assistant';preview:string;selected:boolean};
+/** Read-only labels for the existing snapshot-bound source selector. Full
+ * originals and validation remain with selectDialogueCopy/reviewedDialogueCopy. */
+export function dialogueCopyPage(state:Dialogue,review:DialogueCopyReview,query='',page=0){
+ if(!Number.isSafeInteger(page)||page<0||typeof query!=='string'||query.length>200)throw Error('Invalid source search');
+ const needle=query.trim().normalize('NFKC').toLocaleLowerCase(),items:DialogueCopyOption[]=[],size=12,skip=page*size;let matched=0;
+ for(let i=review.candidates.length-1;i>=0;i--){const candidate=review.candidates[i],turn=state.turns[candidate.turnIndex];if(turn?.id!==candidate.turnId)continue;
+  for(const speaker of ['assistant','user'] as const){const text=speaker==='assistant'?turn.answer:turn.user;if(!candidate[speaker]||!text||needle&&!text.normalize('NFKC').toLocaleLowerCase().includes(needle))continue;
+   if(matched++<skip)continue;if(items.length===size)return {items,hasMore:true};
+   const preview=Array.from(text.slice(0,240)).slice(0,120).join('').replace(/\s+/gu,' ').trim();
+   items.push({turnId:turn.id,index:candidate.turnIndex,speaker,preview,selected:review.source.turnId===turn.id&&review.source.speaker===speaker});
+  }
+ }
+ return {items,hasMore:false};
+}
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 const changed=()=>Error('Dialogue source changed · choose again');
 

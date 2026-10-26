@@ -137,9 +137,34 @@ test('answer-copy provenance survives dismiss and Keep editing without regenerat
  await page.keyboard.press('Escape');
  await page.getByRole('button',{name:'Keep editing',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue(source);
- await expect(page.getByRole('group',{name:'Original speaker',exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Source message number',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Change source',exact:true})).toBeVisible();
  await expect(page.getByText('Original copy',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.locator('.file-body')).toHaveText([source,source]);
  await expect(page.getByRole('button',{name:'Edit',exact:true})).toBeVisible();
+});
+
+test('answer copy chooses an earlier source by text and preserves its original through edited Save',async({page})=>{
+ await page.goto('/');
+ for(const question of ['Calculate 6 * 7','Calculate 5 * 9']){await page.getByRole('textbox',{name:'Message',exact:true}).fill(question);await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.sent-message').last()).toContainText('Calculated');}
+ const first=await page.locator('.reply-text').first().evaluate(node=>{const copy=node.cloneNode(true) as HTMLElement;copy.querySelectorAll('button').forEach(b=>b.remove());return copy.textContent!.trim();});
+ await page.getByRole('button',{name:'Save note',exact:true}).last().click();
+ await expect(page.getByRole('textbox',{name:'Source message number',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Change source',exact:true}).click();
+ await page.getByRole('searchbox',{name:'Find message',exact:true}).fill('42');
+ await page.getByRole('button',{name:/^Answer · .*42/}).click();
+ await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue(first);
+ await page.getByRole('textbox',{name:'File name',exact:true}).fill('Earlier reviewed answer');
+ const edited='Reviewed: '+first;await page.getByRole('textbox',{name:'New file content',exact:true}).fill(edited);
+ await expect(page.getByText('Edited copy',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Change source',exact:true}).click();await page.getByRole('button',{name:/^Answer · .*42/}).click();
+ await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue(edited);
+ await page.getByRole('button',{name:'Change source',exact:true}).click();await page.getByRole('searchbox',{name:'Find message',exact:true}).fill('Calculate 5 * 9');await page.getByRole('button',{name:/^Your message · Calculate 5/}).click();
+ await expect(page.getByRole('heading',{name:'Unsaved changes',exact:true})).toBeVisible();await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue(edited);
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue(edited);
+ await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('.file-body')).toHaveText([edited,first]);
+ await page.reload();await memory(page);await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open Earlier reviewed answer.md',exact:true}).click();await expect(page.locator('.file-body')).toHaveText([edited,first]);
 });

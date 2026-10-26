@@ -1,3 +1,7 @@
+## Reviewed answer source selection — 2026-10-27
+
+Save note starts from its already pinned answer. DialogueCopySource owns only optional, bounded source browsing (12 original previews per page, NFKC search); dialogue-copy.ts remains the read-only selector and commit-time original/reference validator. Internal message numbers are no longer a second mutable form field. Same-source selection preserves manual edits; choosing another source after edits uses the existing discard review. Stored original bytes, revision refs, approval and compare-and-swap contracts are unchanged. No generation occurs during selection or saving.
+
 # Current application architecture
 
 ## Bound file questions do not prepare dialogue context — 2026-10-27

@@ -1,3 +1,14 @@
+REVIEWED ANSWER SOURCE UX — 2026-10-27 JST
+Product1785f67c18da0c98 / index-DnKy4VRm.js /135 assets.
+Removed internal numeric message selection. Optional bounded original previews,
+search and source changes retain approval, exact originals and Save validation.
+Red test observed old number field; final Node prototype922, targeted17,
+PC browser editor/correction13, product6, strict TypeScript/build and static
+checks pass. First added UI test used textbox for search input and was corrected
+to searchbox; all13 then pass. Actual local sidebar default/search/cancel checked.
+Performance uses prepared local assets only; public release verification follows.
+No phone, sustained performance or universal quality claim.
+
 BOUND FILE QUESTION CONTEXT PREPARATION — 2026-10-27 JST
 Published191/75e86dfed2ea2f8d; public sidebar current page adopted,35 rows/21
 answers retained, Offline/pin/empty composer restored without model acquisition.
