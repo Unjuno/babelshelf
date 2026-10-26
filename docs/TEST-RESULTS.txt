@@ -1,3 +1,41 @@
+SEND APPLICATION BOUNDARY — 2026-10-26 JST
+Local Windows PC build 61e5eaf756332bb7 /135 verified assets,
+entry index-C5bZAyVW.js. Not a public deployment or physical-device run.
+
+- npm test: 169 passed.
+- npm run test:prototype: 873 passed, including the 10 new submission tests.
+- npm run test:submission: 10 passed (subset, not an additional 10).
+- npm run test:turn-intent: 23 passed; test:agent-coordinator: 13 passed.
+- TypeScript strict project check, npm run check and build:app passed.
+- npm run test:app: 6 passed on the final built artifact.
+- test:quality:offline-calculation: 1 Playwright Chromium test passed,
+  three arithmetic requests after offline reload, including real tool receipts.
+
+Application tests exercise the real bounded calculator (not model output),
+exact note-capture review, failed persistence, unsupported originals and Stop
+while attachment commit is pending. The last case adopts one acknowledged
+original/turn before recovery, blocks overlap until settling and never replays
+that transaction. Controller tests cover failure release, stale progress,
+review completion and observer failures. Model-call stubs only reject unexpected
+calls; these tests are not inference or answer-quality evidence.
+
+Sidebar in-app browser at http://127.0.0.1:4184/:
+- 12 * 7 -> 84; note capture -> existing review -> approved exact save.
+- Reload retained the calculation, saved note and dialogue status.
+- Used the normal Online/Update control to apply the final artifact without
+  clearing data; observed entry /assets/index-C5bZAyVW.js.
+- Returned to app Offline, removed only the input-file selection, then
+  (9 + 3) / 2 -> 6 -> Save note -> review with exact content 6 -> approved
+  Inbox/QA-submission-answer.md. Previous QA note remained available.
+- Screenshot is local at task outputs/submission-boundary-saved.png; only
+  synthetic QA notes were created. App Offline is policy state, not proof of
+  OS network isolation. Browser context-offline coverage is the separate test.
+
+No storage migration/reset, original rewrite, approval bypass, model download,
+new model/GPU benchmark or iOS rerun. Existing large-chunk build warning remains;
+this refactor claims maintainability/lifecycle improvement, not faster inference.
+Public site was not changed during this task.
+
 REAL GROUNDED ANSWER AND RESTART — 2026-10-25 JST
 An isolated Windows PC Chrome installed-PWA profile used local model files already
 present in that QA profile; no new model download was required. On exact product

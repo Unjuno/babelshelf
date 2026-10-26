@@ -1,5 +1,60 @@
 # Current application architecture
 
+## Send application boundary — 2026-10-26
+
+The accepted UI and canonical schemas remain unchanged. Normal Send now enters
+`submission-controller.ts` and `submission-workflow.ts`; the screen no longer
+contains the submission, routing, agent dispatch and answer pipeline.
+
+```text
+Prototype: interaction guards + view/storage/runtime adapters
+  -> SubmissionController: attempt identity, AbortSignal, ownership, transient state
+  -> executeSubmission: atomic input -> current scope/context -> route -> action
+       -> input-submission / turn-router / agent-coordinator / resolved-actions
+       -> existing canonical storage transactions and pinned inference adapters
+  -> typed view ports: consume/restore composer, adopt receipt, show result/review
+  -> existing explicit approval -> existing CAS/history transaction
+```
+
+The controller exposes idle, running, stopping, completed, awaitingApproval,
+cancelled and failed phases, with separate saving/reading/planning/generating
+stage, progress and per-attachment display data. It has no React, storage,
+model, tool or network dependency. One active owner is retained until the work
+settles, even after Stop; a second Send cannot overlap a cancelled operation's
+pending commit. Obsolete progress callbacks cannot update a later attempt.
+A completed phase means this workflow returned, not that a model is prepared
+or that the user's entire objective was satisfied; existing capability/status
+results remain authoritative.
+
+The workflow receives the selected model/settings, existing runtime interfaces,
+tool packages/registry, storage functions and bounded diagnostics store through
+explicit services. It has no React imports, JSX, browser-global storage access,
+UI setter or navigation implementation. View ports receive review data and
+cannot grant additional authority. The retained use of KnowledgeStore and the
+existing broad attachment view contract is an incremental seam, not a claim
+that every domain/platform dependency has already been separated.
+
+The controller owns transient lifecycle only. Durable dialogue schema 1, the
+legacy interrupted-turn recovery sentinel, activity receipts, source checks,
+original bytes, IDs, revisions, approval and CAS remain unchanged. The screen's
+legacy sendLock is a synchronous compatibility gate for other screen actions
+and explicit dialogue recovery, mirrored from controller ownership during Send;
+it no longer owns Send cancellation or attempt identity. Future durable lifecycle
+changes require an explicit backward-compatible design rather than rewriting
+stored status strings during this refactor.
+
+Stop during input commit cannot roll back an acknowledged transaction. The
+workflow adopts its receipt and clears the submitted composer before checking
+cancellation; recovery restores only pinned references into an empty composer.
+Correction, Schedule, capture and tool-draft routes end at awaitingApproval;
+existing review callbacks perform no automatic knowledge overwrite. Scheduled
+work retains its separate read-only execution path in this increment.
+
+Focused coverage: `npm run test:submission`. See the implementation checklist
+in [the plan](superpowers/plans/2026-10-26-submission-boundary.md) and dated
+[verification results](TEST-RESULTS.txt). This boundary does not certify new
+model support, physical-device performance or suspended-PWA scheduling.
+
 ## Public media follow-up — 2026-10-26
 
 The bounded current-input question recognizer includes literal English/Japanese PDF nouns; a self-contained PDF question uses the submitted original IDs/revisions rather than another model-selected dialogue target. Mixed actions, earlier-dialogue requests and absent inputs retain their existing refusal/planning behavior.
@@ -115,7 +170,8 @@ IndexedDB `mlb-memory-v1` is the canonical knowledge store. The Memory tree proj
 
 ```text
 Product UI (Prototype.tsx shell + focused screen components, product entry)
-  -> application adapters/hooks (useKnowledge, useBonsai, useTasks, useSpeech, useOcr)
+  -> Send application boundary (submission-controller, submission-workflow)
+  -> existing adapters/hooks (useKnowledge, useBonsai, useTasks, useSpeech, useOcr)
   -> domain rules (conversation, knowledge-store, task-records, corrections, citations)
   -> local platform adapters (IndexedDB core, OPFS assets, workers, Service Worker)
 ```
@@ -148,7 +204,7 @@ Files, extracted text, history, and model output are data. They never grant tool
 
 `SettingsHomeScreen.tsx` similarly owns only the Settings entry list and its grouping: primary destinations remain visible, while secondary assistant/tool/developer actions stay under More. `Prototype.tsx` retains navigation, keyboard dismissal, recovery, diagnostics refresh, and preference actions through explicit callbacks. Its Settings interaction is covered by `test:quality:settings-ui` alongside dark-catalog contrast and the Files & media → Vision configuration route.
 
-`input-submission.ts` now owns one Send submission attempt through explicit snapshot/original/read/commit ports. It prepares and verifies originals, sequences optional extraction, builds the dialogue turn and remembers the acknowledged commit before any UI projection. It cannot select a model or grant tools. Recovery stages pinned durable references only into an empty composer. Stop before commit prevents submission; Stop during commit preserves its receipt and prevents subsequent inference. `Prototype.tsx` adopts that result, renders it and continues the existing routing/review flow. It also owns the attempt ID and AbortSignal used by the coordinator's checks.
+`input-submission.ts` now owns one Send submission attempt through explicit snapshot/original/read/commit ports. It prepares and verifies originals, sequences optional extraction, builds the dialogue turn and remembers the acknowledged commit before any UI projection. It cannot select a model or grant tools. Recovery stages pinned durable references only into an empty composer. Stop before commit prevents submission; Stop during commit preserves its receipt and prevents subsequent inference. `submission-workflow.ts` receives and adopts the acknowledged result through view ports, then continues routing/review. `submission-controller.ts` owns the attempt ID and AbortSignal used by the coordinator's checks.
 
 Image OCR and scanned-PDF OCR now release idle, resident Text/Decision workers immediately before the OCR work begins. PDF pages with an existing text layer do not trigger that release. If a resident model is busy, or cancellation occurs while releasing it, the reader stops before OCR rather than interrupting inference or proceeding into a likely memory conflict. This coordinates only these same-tab Text/Decision → OCR entries; it does not estimate browser/GPU memory, force driver reclamation, coordinate unexposed engines, or certify phone behavior.
 
@@ -156,7 +212,7 @@ The shared inference lease now permits one active inference role per app tab. Sa
 
 `text-runtime-preparation.ts` now owns the same-tab Text acquisition sequence used by both normal Send and foreground scheduled execution: invoke the caller's guard, release idle Decision inference, prepare the selected Text model and its runtime only when needed, invoke the guard again, then pin the Text route. Send binds its guard to Stop and the active request. Scheduled execution also propagates Stop through its task signal to the local Text engine; cancellation observed before completion records a stopped run and discards the pending answer. Callers retain their own operation receipts and progress. Scheduled work remains read-only and calls `groundedAnswer` directly; it does not gain the planner's tool allowlist. This closes a preparation/ownership gap without broadening scheduled authority.
 
-`Prototype.tsx` owns the accepted layered UI shell and currently coordinates the Send transaction, media preparation, user review sheets, memory navigation, and task/settings actions. Domain rules are separate modules, but several feature workflows still originate in this component. In particular, a selected working file and a search-discovered file had separate branches for deciding whether a read should open the source or continue to an answer/summary.
+`Prototype.tsx` owns the accepted layered UI shell, interaction guards, view/storage/runtime adapters, media preparation controls, review sheets, memory navigation and task/settings actions. Normal Send orchestration now lives in `submission-workflow.ts`, with transient state owned by `submission-controller.ts`. Other workflows still originate in the screen; moving them is separate work. The shared read-intent rule below remains used by both working-file and search-discovered-file branches.
 
 `read-intent.ts` is the first shared application seam for that workflow: both branches now produce the same explicit `open` result or a pinned `answer`/`summary` continuation. It creates no model output, storage writes, or new authority. Its unit coverage is in `design/prototype/tests/conversation.test.mjs`.
 

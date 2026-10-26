@@ -1,0 +1,33 @@
+export type SubmissionStage='saving'|'reading'|'planning'|'generating';
+export type SubmissionPhase='idle'|'running'|'stopping'|'completed'|'awaitingApproval'|'cancelled'|'failed';
+export type SubmissionState=Readonly<{phase:SubmissionPhase;id?:string;stage?:SubmissionStage;progress:string;reading:{id:string;label:string}|null;error?:string}>;
+export type SubmissionRun={id:string;signal:AbortSignal;check:()=>void;progress:(label:string,stage?:SubmissionStage,reading?:SubmissionState['reading'])=>void};
+type Completion='completed'|'awaitingApproval';
+
+/** Owns transient execution only. Storage receipts must be adopted before check(). */
+export function createSubmissionController(){
+ let state:SubmissionState=Object.freeze({phase:'idle',progress:'',reading:null});
+ let owner:{id:string;abort:AbortController}|null=null;
+ const observers=new Set<(state:SubmissionState)=>void>();
+ const publish=(next:SubmissionState)=>{state=Object.freeze(next);for(const notify of observers)try{notify(state);}catch{/* A detached view cannot change an execution result. */}};
+ return {
+  get state(){return state;},get busy(){return owner!==null;},
+  subscribe(notify:(state:SubmissionState)=>void){observers.add(notify);return ()=>{observers.delete(notify);};},
+  stop(){if(!owner||owner.abort.signal.aborted)return false;owner.abort.abort();publish({...state,phase:'stopping',progress:'Stopping…'});return true;},
+  async run(work:(run:SubmissionRun)=>Promise<Completion|void>):Promise<Completion|'cancelled'|'failed'|'busy'>{
+   if(owner)return 'busy';
+   const own={id:crypto.randomUUID(),abort:new AbortController()};owner=own;
+   const check=()=>{if(owner!==own||own.abort.signal.aborted)throw Error('Stopped');};
+   const run:SubmissionRun={id:own.id,signal:own.abort.signal,check,progress:(label,stage,reading)=>{
+    if(owner!==own||own.abort.signal.aborted)return;
+    publish({...state,progress:label,...(stage?{stage}:{}),reading:reading??null});
+   }};
+   publish({id:own.id,phase:'running',stage:'saving',progress:'',reading:null});
+   let phase:Completion|'cancelled'|'failed',error:string|undefined;
+   try{check();phase=await work(run)??'completed';check();}
+   catch(e){phase=own.abort.signal.aborted?'cancelled':'failed';if(phase==='failed')error=e instanceof Error?e.message:String(e);}
+   finally{owner=null;}
+   publish({id:own.id,phase:phase!,progress:'',reading:null,...(error?{error}:{})});return phase!;
+  },
+ };
+}
