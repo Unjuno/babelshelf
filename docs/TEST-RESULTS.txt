@@ -1,3 +1,26 @@
+SEARCH-AND-ANSWER COMPLETION — 2026-10-27 JST
+Final100d2301fc13e22d /135 assets, index-CLW7y54T.js, app65afc87.
+Actual old public-build local4B selected search for the compound Japanese saved-
+note question and stopped at Found2. A prompt-only candidate also stopped and
+was discarded. Final read/search shared completion classified answer, then real
+4B returned the exact current source text. Citation opened originalv3北口 after
+the earlier Undo; Save note reviewed/copied the exact answer to newv1 with
+Original message provenance. No original update, new model download or mock reply.
+Prepared local model revision8d6557168168f91ea6697a4a49ed2ef622b53adb,
+runtime621e20782f208660f4f58283c2ce58430020f243; configuredwebml-qwen35/webgpu.
+Old first plan1676 input/10 output,80197ms wall; slow prefill remains unresolved.
+One successful request is not broad quality/performance/phone acceptance.
+Final prototype904/submission25/product6 passed, strict TS/build/check and runtime28
+passed. Isolated tests reject invalid/Stop classification, retain metadata-only
+navigation, and preserve model-free literal/natural explicit searches. Delivery
+all135 bytes/hashes plus gzip/identity/method/offline-shell passed.
+Published Site181; native deployment succeeded. Sidebar normal Update adopted
+matching100d2301fc13e22d active worker/page, returnedOffline. Explicit search found
+old QA-draft-v179 v1 and Source showed its original Japanese/English text. Public
+models unprepared: no new public inference claim. LogsOff; old data/pin retained.
+Local held draft restored, no file pin. Evidence: recall-current-source.png and
+current-public-verification.png. Full quality chain and physical phones not rerun.
+
 OWN-DEVICE PERFORMANCE CONTROLS RECHECK — 2026-10-27 JST
 Existing public Site v180 sidebar Developer reports active worker78571b1e36c3e0d6,
 page index-DRAd2Xff.js. Test options opened and Performance was selectable;

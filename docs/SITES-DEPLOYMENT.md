@@ -1,4 +1,10 @@
-## Latest publication — durable correction review, Site v180, 2026-10-27
+## Latest publication — search completion, Site v181, 2026-10-27
+
+Public audience/domain retained. Product100d2301fc13e22d /135 verified assets, entry index-CLW7y54T.js; application65afc87 pushed to codex/ui-design-handoff. Site source7389df88ce19104df7cc1b64a45b266547239e1d; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_51ae8cf74a2481919be98304c86ab582; deployment appgdep_6adf75ea4adc8191b89264837c572466 succeeded2026-10-26T15:47:06.947994+00:00. Saved tar SHA-2563485aecce670cd6e24bb9e1f3bf7858d39f956294a932c1daaa0c4d612b92dc1,57139200 bytes/160 files. Delivery verifies exact135 asset bytes/hash and transport; retains actual publicv180 assets, prunes20 older generated assets. One staging/archive reused.
+
+Existing sidebar adopted matching active worker/page through normal Update, returnedOffline, and executed literal search without a prepared model. Old QA-draft-v179.md v1 original Japanese/English text opened from the result source. LogsOff, prior dialogue/attachments/file pin retained. Public source screenshot outputs/current-public-verification.png. Actual search-completion/real4B answer/citation/exactSave was verified separately on the same final build at localhost; no public generation/download or physical-device acceptance claimed. Prototype904/submission25/product6, check/build/strict TS/runtime28 and delivered135 hashes passed. Slow inference and broad semantic quality remain open.
+
+## Prior publication — durable correction review, Site v180, 2026-10-27
 
 Public audience/domain retained. Product `78571b1e36c3e0d6` /135 verified assets, entry `index-DRAd2Xff.js`; application commit `0309d18` pushed to `codex/ui-design-handoff`. Site source `38a8b23962dbe69ef4a014e8c75706ded37fb750`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_262fccd85cfc819197a951708358d788`; deployment `appgdep_6adf6d43e13481919b4ef34f5184f375` succeeded at2026-10-26T15:10:22.148635Z. Saved tar SHA-256 `7a9e466091bf14e246c6bf27c5dae238f211ff1d0f5b03d873e50acc291b9203`,57,159,680 bytes/161 files. All135 size/hash and transport checks passed. Final staging explicitly retained actual public v179 assets rather than either unpublished review candidate.
 
