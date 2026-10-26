@@ -1,3 +1,11 @@
+# Public v205 — tab-local unsent composer recovery (2026-10-27)
+
+App72e007a on codex/ui-design-handoff deliversd10ea4867f33bb11 /135 independently byte/hash-verified assets, entry index-BLOF13Ot.js. Site source6482960f5691962739d312bfcf70dd1413e4d80b retains current and actual previous public6ab4ec assets;20 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_7fe9356ee5a88191a44bc5c2d6982ff7(v205), deployment appgdep_6adfd225f3548191ae5aad94c6b17ea2 succeeded2026-10-26T22:20:37.651194Z. Native uncompressed tar SHA256b214ac1b5413750743f897f191bf768594c2d6217c6d851ec209b428c80a24c1,57,180,160bytes/160files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normalUpdate adopted matchingd10ea worker/index-BLOF13Ot.js. Restored appOffline, typed synthetic multilineJapanese/English text and ordinary reload retained it exactly. Explicitly emptied the input and reloaded: remained empty, preserving original public composer state. Existing QA-draft-v179v1 pin/dialogue/prior0aa313 Performance report/logsOff retained. No sending, model acquisition/generation or knowledge writes. Actual localOffline reload additionally retained originalああ. Per-tab isolation/Send/newer-message/clear/denial/attachment guards are PC controlled Chromium/WebKit scope. This is not evidence of phone force-close, closed-tab/browser-session recovery, session eviction or binary attachment persistence.
+
 # Public v204 — direct selected-file opening (2026-10-27)
 
 Appda5b746 on codex/ui-design-handoff delivers6ab4ecd0d9287ae6 /135 independently byte/hash-verified assets, entry index-CBc9vYDk.js. Site source3d0c1e695aee732a477f61b3acb042c0ad83ab71 retains current and actual previous publicb0f690 assets;20 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
