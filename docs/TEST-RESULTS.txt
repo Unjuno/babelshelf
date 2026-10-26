@@ -1,3 +1,30 @@
+DURABLE CORRECTION REVIEW — 2026-10-27 JST
+Product78571b1e36c3e0d6 /135 verified assets, index-DRAd2Xff.js.
+Olde9b520a1d40fb091 actual profile Before/After disappeared on reload; original
+settings remained unchanged. Three red UI cases confirmed missing recovery.
+New pending proposal is inert local metadata with exact target/dependencies;
+resume revalidates, Cancel uses pending-record CAS, and approval atomically writes
+note/receipt/deletes pending. Stale/replaced proposals cannot write or cancel a
+different tab's proposal. Backup retains/validates proposals and refuses conflicts.
+An isolated real-IDB test covers reopen/backup, competing proposal, wrong Cancel,
+aborted approval rollback, duplicate approval and stale-target refusal. Stop test
+first failed Already stopped proposal was staged; abortable staging then passed
+pre-abort and abort-after-queued-put without any partial data change.
+Root169/prototype900/product6, static/model pins, strict TS/build and protected
+runtime28 passed. Final built Chromium12; final WebKit recovery/concurrency4.
+Prior5f7 build passed full Chromium12/WebKit12. Earlier06b WebKit had two existing
+editor failures; traces were inspected but cause remains unproven. Later passes
+do not prove repeated startup stability or physical iOS compatibility.
+
+Actual prepared local Bonsai2 4B on06bfae0ca4b35c48 proposed exact 北口->南口 for
+synthetic QA-creation-draft.md. Escape/reload retained unapprovedv1 and exposed
+Review changes. Resume retained Before/After; explicit Save createdv2/one receipt;
+History retainedv1 and Undo appendedv3. Selected4B model revision8d6557168168f91ea6697a4a49ed2ef622b53adb,
+runtime621e20782f208660f4f58283c2ce58430020f243; configured webml-qwen35/webgpu.
+No hardware backend, performance or broad quality claim; no download or fake reply.
+Evidence: task outputs/pending-review-recovered.png and PENDING-REVIEWS.md.
+Physical-device/force-close and all other pending-review types remain open.
+
 USER JOURNEY: CREATION AND SCHEDULE DRAFTS — 2026-10-26 JST
 Producte9b520a1d40fb091 /135 verified assets, index-CTjwxKtj.js.
 Published Sitev179; public sidebar Update adopted matching active worker/page,

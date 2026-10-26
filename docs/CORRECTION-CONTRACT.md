@@ -1,3 +1,7 @@
+## Durable pending review — 2026-10-26
+
+Correction proposals now survive normal reload in the existing local store and can be reopened with Input > Review changes. Dismissal retains the proposal; explicit Cancel removes only its exact pending snapshot. Save atomically commits the note/receipt and clears the proposal. Reopen and approval both revalidate current records; no startup approval, regeneration or stale overwrite. See [pending-review contract](PENDING-REVIEWS.md) for bounds, backup, concurrency and evidence scopes.
+
 ## Managed settings proposals (Unit35)
 
 Finite settings.patch supports canonical managed Settings/appearance.md and Settings/models.md through settings-corrections.ts. It validates ID/path/schema and allowed changes; registered model selections and reader languages do not imply readiness. Libraries/downloads/network/runtime/permissions are outside this patch. All existing review/CAS/history/Undo/backup checks remain; generic rewrite/replace of managed settings stays forbidden. Tools and protected README records remain unsupported.

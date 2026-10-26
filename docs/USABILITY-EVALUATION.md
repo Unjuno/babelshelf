@@ -1,5 +1,15 @@
 # Task-based usability evaluation
 
+## 2026-10-27 — resuming an unapproved correction
+
+Observed on e9b520a1d40fb091: choosing another Assistant profile opened the real Before/After review, but ordinary reload removed the unapproved proposal and offered no way to resume it. The active profile correctly stayed Standard; loss of the proposal was the defect. Three built UI tests reproduced missing recovery on the old artifact.
+
+Fix: one validated local pending-correction record; Input > Review changes resumes it without inference or approval. Dismissal retains it, explicit Cancel compares and removes only its own record, and Save commits the revision/receipt/record deletion atomically. Changed targets and replaced proposals refuse approval. An old screen cannot cancel a different proposal created by another tab. Staging is abortable; already committed proposals remain inert/manual after Stop. See PENDING-REVIEWS.md for the storage/backup contract and limits.
+
+Actual local sidebar, intermediate06bfae0ca4b35c48: selected prepared Bonsai2 4B received In this file, replace 北口 with 南口 for the synthetic QA-creation-draft.md. Actual model proposed the correct exact replacement. Escape/reload showed Review changes and the working file stillv1. Resume showed identical Before/After; explicit Save createdv2. History retained originalv1 and one correction receipt; Undo appendedv3 with original text. Models subsequently showed Files present/Load (unloaded); default selections were not changed. No model download or fake inference was used. Original Input draft remains held for restoration after update verification.
+
+Final78571b1e36c3e0d6 has fresh Chromium editor/review12-case verification and four WebKit recovery/concurrency cases, plus isolated production IndexedDB cancellation/transaction tests. Prior5f7b1f36e03a8030 passed the full12 on both browsers; an earlier06bfae0ca4b35c48 WebKit run had two existing-editor failures, retained as an unresolved repeatability observation. Do not claim a device guarantee from later focused passes. Physical iOS, OS force-close and capture/new-task pending review recovery remain open.
+
 ## 2026-10-26 — creation forms and schedule conditions
 
 Observed in the sidebar on6178c8ec9ee2f989: a new note's name/body disappeared after Escape and reopening. A new schedule prompt disappeared the same way. Both forms closed or reset their fields without testing whether the user changed them.

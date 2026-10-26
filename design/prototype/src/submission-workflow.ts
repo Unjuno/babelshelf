@@ -57,7 +57,7 @@ export type SubmissionView={
  failure:(message:string)=>void;
  openNote:(id:string,path:string)=>void;
  reviewCapture:(review:CaptureReview)=>void;
- reviewCorrection:(proposal:CorrectionProposal,turnId:string)=>void;
+ reviewCorrection:(proposal:CorrectionProposal,turnId:string)=>void|Promise<void>;
  reviewSchedule:(task:Task,turnId:string)=>void;
  startToolPackageFromChat:(idea:string)=>void;
 };
@@ -183,7 +183,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    if(request?.action==='edit'){
     const {proposal}=await actions().correction(request.query,selectedFile);checkSend();
-    await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+proposal.expected.revisions.at(-1).version});checkSend();view.reviewCorrection(proposal,id);return {kind:'awaitingApproval'};
+    await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+proposal.expected.revisions.at(-1).version});checkSend();await view.reviewCorrection(proposal,id);return {kind:'awaitingApproval'};
    }
    let captureSource:DialogueCopyReview|null=null;
    if(request&&(request.target==='current'||request.historyIndex!=null)&&['recall','capture','transform'].includes(request.action)){

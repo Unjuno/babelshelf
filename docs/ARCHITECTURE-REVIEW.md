@@ -30,7 +30,7 @@ A run should pin: request/scope, configuration revision, selected model/runtime 
 ## Migration order and gates
 
 1. Completed foundations: isolate Send, outcomes, Text/Decision acquisition and scheduled answering. Preserve local transactions and existing interface.
-2. Add a versioned pending-review record: target ID, expected version, proposal and originating run. Reopen safely after restart; never automatically approve or repeat inference. Test changed/withdrawn sources, cancellation, backup and legacy records.
+2. Correction-review persistence is implemented for existing note/settings/schedule/tool-source proposals: one versioned local record, exact target/dependency snapshots, explicit resume, atomic approval/receipt/deletion and CAS cancellation. See PENDING-REVIEWS.md. Extend durable recovery separately to capture/new-task reviews; neither startup nor restore may automatically approve or repeat inference.
 3. Add validated active configuration snapshots and last-known-good activation. A settings edit cannot mutate an in-flight run or widen capabilities. Preserve standard/default recovery and source history.
 4. Introduce command/query storage ports, then incremental search. Keep the current store as the transaction implementation during migration. Test conflicts, restore, source references and interrupted rebuild; never rebuild by deleting canonical data.
 5. Extend runtime residency only for a measured bottleneck. Optional preload and warm reuse must not acquire missing assets silently, interrupt another active role or claim that browser GPU limits imply model fit.

@@ -1,3 +1,4 @@
+import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorrection,PENDING_CORRECTION_KEY,type PendingCorrection} from './pending-correction.ts';
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
@@ -219,10 +220,26 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve(rows);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery history unavailable'));
   });
  }
- async approveCorrection(proposal:CorrectionProposal){
+ async stageCorrection(proposal:CorrectionProposal,turnId?:string,signal?:AbortSignal):Promise<PendingCorrection>{
+  if(signal?.aborted)throw Error('Stopped');const pending=makePendingCorrection(proposal,turnId),db=await this.open();if(signal?.aborted)throw Error('Stopped');
+  return new Promise((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),prior=settings.get(PENDING_CORRECTION_KEY),rows=tx.objectStore('notes').getAll();let left=2,result=pending,error:unknown,stopped=false;
+   const abort=()=>{stopped=true;try{tx.abort();}catch{}};signal?.addEventListener('abort',abort,{once:true});
+   const cleanup=()=>signal?.removeEventListener('abort',abort);
+   const commit=()=>{if(--left)return;try{if(signal?.aborted)throw Error('Stopped');applyCorrection(rows.result,proposal);if(prior.result!==undefined){const existing=validatePendingCorrection(prior.result);if(!equal(existing.proposal,proposal)||existing.turnId!==turnId)throw Error('Review pending changes first');result=existing;}else settings.put(pending,PENDING_CORRECTION_KEY);}catch(e){error=e;tx.abort();}};prior.onsuccess=commit;rows.onsuccess=commit;
+   tx.oncomplete=()=>{cleanup();resolve(result);};tx.onabort=tx.onerror=()=>{cleanup();reject(stopped?Error('Stopped'):error??tx.error??Error('Could not save review'));};
+  });
+ }
+ async discardCorrection(expected:unknown){
+  const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_CORRECTION_KEY);let error:unknown;
+   q.onsuccess=()=>{if(!equal(q.result,expected)){error=new PendingCorrectionConflictError();tx.abort();return;}settings.delete(PENDING_CORRECTION_KEY);};
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not discard review'));
+  });
+ }
+ async approveCorrection(proposal:CorrectionProposal,pending?:PendingCorrection){
   const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
-   const tx=db.transaction(['notes','runs'],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
-   prior.onsuccess=()=>{if(prior.result){error=Error('Correction already applied');tx.abort();return;}const q=notes.getAll();q.onsuccess=()=>{try{const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
+   const tx=db.transaction(['notes','runs',...(pending?['settings']:[])],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
+   const saved=pending?tx.objectStore('settings').get(PENDING_CORRECTION_KEY):null;
+   prior.onsuccess=()=>{if(prior.result){error=Error('Correction already applied');tx.abort();return;}const q=notes.getAll();q.onsuccess=()=>{try{if(pending){validatePendingCorrection(pending);if(!equal(saved?.result,pending)||!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);if(pending)tx.objectStore('settings').delete(PENDING_CORRECTION_KEY);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
    tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Correction save failed'));
   });
  }
