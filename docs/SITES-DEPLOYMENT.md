@@ -1,3 +1,13 @@
+# Public v206 — explicit named saved-note summaries (2026-10-27)
+
+App6182053 on codex/ui-design-handoff deliversa0c72540045ce084 /135 independently byte/hash-verified assets, entry index-CmYF7nMi.js. Site source48d987986fb4c126c2a0133d8500914138a986db retains current and actual previous publicd10ea assets;19 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
+
+Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_727b78fec1588191ae2dc4a09d2d6800(v206), deployment appgdep_6adfd693e44c8191852d498657b1aa98 succeeded2026-10-26T22:39:31.896845Z. Native uncompressed tar SHA256e2765026cd2629aa5a78428b110a6f68346b4eb766cf02d1799ccaccb34c6888,57,180,160bytes/160files. Existing public audience preserved.
+
+Existing babelshelf.com sidebar normalUpdate adopted matchinga0c725 worker/index-CmYF7nMi.js. Restored appOffline; with existing QA-draft-v179v1 input pin, 保存したQASUMMARY-NO-SUCH-7491のメモを短く要約して。 returned No matching notes. Activity showed only Answer Failed, queryQASUMMARY-NO-SUCH-7491/modesummary, no Load/Context/Select action. Thus the unrelated selected file was not substituted. One explicit failed dialogue attempt retained; no public model acquisition/generation or knowledge writes. Cleared recovered test input and reloaded; original emptycomposer/pin/prior0aa313 Performance report/logsOff retained.
+
+Final local a0c725 missing-topic check also stopped before model acquisition, with AnswerFailed-only activity. Positive real4B summary/v2source/exactSave/generatedexport evidence is localad728 candidate scope described in TEST-RESULTS/USABILITY-EVALUATION, not a public-profile generation or phone result. Final guards and protocol937/intent29/focused41/product6/build/static pass; general language/compaction quality and device gates remain open.
+
 # Public v205 — tab-local unsent composer recovery (2026-10-27)
 
 App72e007a on codex/ui-design-handoff deliversd10ea4867f33bb11 /135 independently byte/hash-verified assets, entry index-BLOF13Ot.js. Site source6482960f5691962739d312bfcf70dd1413e4d80b retains current and actual previous public6ab4ec assets;20 older generated delivery assets pruned. Delivery adapter verification passed; one current compressed archive reused.
