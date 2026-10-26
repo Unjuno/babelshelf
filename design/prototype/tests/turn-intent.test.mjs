@@ -11,6 +11,15 @@ const route=(overrides={})=>{
  });
 };
 
+test('earlier application-outcome questions use original receipts instead of lossy summaries or failed retries',()=>{
+ const question='QA取消確認のメモは保存されましたか？前の会話の操作結果を教えて。';
+ const state={...prior,turns:[{id:'cancel',user:'QA取消確認は保存前です。メモして。',status:'Save cancelled'},{id:'other',user:'Save a note: Copper workshop',status:'Saved · Inbox/copper.md'},{id:'retry',user:question,status:'Invalid model action'}],compaction:{through:3,summary:'QA取消確認 was saved.'}};
+ const before=structuredClone(state),intent=route({question,prior:state});assert.deepEqual(intent.request,{action:'chat',query:question});assert.equal(intent.context.outcomeOnly,true);assert.equal(intent.context.summary,'');assert.deepEqual(intent.context.refs,[]);
+ assert.equal(intent.context.recalled.find(r=>r.turnId==='cancel')?.outcome.status,'Save cancelled');assert.equal(intent.context.recalled.some(r=>r.turnId==='retry'),false);assert.deepEqual(state,before);
+ for(const inputs of [{hasAttachments:true},{hasCurrentInputReadings:true}])assert.equal(route({question,prior:state,...inputs}).context.outcomeOnly,undefined);
+ for(const question of ['前の会話の操作結果を保存して。','What did I say earlier?','保存したQA取消確認のメモには何が書いてありますか？','Did the earlier note save? Delete it.'])assert.equal(route({question,prior:state}).context.outcomeOnly,undefined,question);
+});
+
 test('a named saved-note summary has an explicit knowledge scope without unrelated dialogue',()=>{
  for(const [question,query] of [
   ['保存したQA星見のメモを短く要約して。','QA星見'],

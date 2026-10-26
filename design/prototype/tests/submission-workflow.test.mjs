@@ -24,6 +24,14 @@ function fixture(){
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
 }
 
+test('earlier operation outcomes generate from retained receipts without planner, compaction or knowledge reads',async()=>{
+ const f=fixture(),c=createSubmissionController(),text='QA取消確認のメモは保存されましたか？前の会話の操作結果を教えて。';let generated=0;
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'cancel',user:'QA取消確認は保存前です。メモして。',status:'Save cancelled'}],compaction:{through:1,summary:'The QA note was saved.'},currentFile:{noteId:'unrelated-file',revision:5}});const before=structuredClone(f.current());
+ f.services.model='test';f.services.bonsai={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{generated++;const payload=JSON.stringify(messages);assert.ok(payload.includes('Save cancelled'));assert.ok(!payload.includes('The QA note was saved.'));assert.ok(payload.includes(text));return {text:'保存はキャンセルされています。',finishReason:'stop'};}};
+ f.services.knowledge={all:async()=>{throw Error('No knowledge read');},search:async()=>{throw Error('No knowledge search');}};
+ assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'completed');assert.equal(generated,1);const turn=f.current().turns.at(-1);assert.equal(turn.answer,'保存はキャンセルされています。');assert.deepEqual(turn.refs,[]);assert.deepEqual(f.current().turns[0],before.turns[0]);assert.deepEqual(f.current().compaction,before.compaction);assert.equal(turn.activity.some(a=>a.tool==='dialogue.compact'||a.tool==='dialogue.plan'),false);assert.equal(turn.activity.find(a=>a.tool==='dialogue.read').output[0].outcome.status,'Save cancelled');
+});
+
 test('a planned search asking for information finishes with a grounded answer rather than a terminal list',async()=>{
  const f=fixture(),c=createSubmissionController(),note=createNote({title:'Meeting',body:'集合場所は北口。',path:'Notes/meeting.md'}),records=[note];
  const responses=['{"action":"search","query":"集合場所"}','{"completion":"answer"}',JSON.stringify({answer:'集合場所は北口です。',citations:[{id:'S1',quote:'集合場所は北口。'}]})];

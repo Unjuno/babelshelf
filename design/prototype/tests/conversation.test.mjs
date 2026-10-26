@@ -18,6 +18,13 @@ test('planner retains bounded source provenance without exposing unchecked quote
 import assert from 'node:assert/strict';
 import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueAgent,planDialogueMessages,readDialogueTurn,resolveDialogueTarget} from '../src/conversation.ts';
 
+test('archived original excerpts retain bounded application outcomes without trusting a contradictory summary',()=>{
+ const state={...emptyDialogue(),turns:[{id:'cancel',user:'QA取消確認は保存前です。メモして。',status:'Save cancelled'}],compaction:{through:1,summary:'The note was saved.'}},before=structuredClone(state);
+ const context=dialogueContext(state,'QA取消確認の操作結果');const original=context.recalled.find(r=>r.turnId==='cancel');assert.equal(original.outcome.status,'Save cancelled');assert.equal(state.turns[0].user.slice(original.start,original.end),original.quote);
+ assert.equal(historyPayload(context).originalEarlierExcerpts[0].outcome.status,'Save cancelled');assert.match(JSON.stringify(historyMessages(context)),/Save cancelled/);assert.deepEqual(state,before);
+ const huge=dialogueContext({...state,turns:[{...state.turns[0],status:'Saved '+ 'x'.repeat(1000)}]},'QA取消確認');assert.deepEqual(huge.recalled[0].outcome,{omitted:true});
+});
+
 test('a completed answer replaces the crash-recovery placeholder without losing its sources on reload',()=>{
  const pending=appendTurn(emptyDialogue(),{id:'vision',user:'Read this image',status:'Request interrupted · send again if unfinished'});
  const refs=[{noteId:'image-reading',revision:1,start:0,end:10,quote:'MAPLE-6381'}];

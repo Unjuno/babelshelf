@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Recorded conversation outcomes — 2026-10-27
+
+Archived original snippets now carry separately projected application outcomes. A bounded earlier-operation information scope reads retained requests/statuses directly, omitting lossy summaries and excluding inquiry retries. It owns no write or network capability and does not inspect knowledge files. A dialogue.read receipt records the bounded snapshot before acquisition; local generation reports historical outcomes rather than inferring success from requests. Long outcomes remain stored but are omitted from model context as unknown. Native single-original copy/rewrite remains unchanged. See [Recorded conversation outcomes](OPERATION-OUTCOMES.md) for limits and provenance.
+
 ## Explicit saved-note summaries — 2026-10-27
 
 A bounded summary command with a concrete saved-Memory descriptor selects summary/knowledge before model action selection. Retrieval uses the descriptor; grounded generation still sees the full request. No old dialogue compression or custom-tool planning is needed for that scope. Canonical source validation precedes acquisition; missing evidence fails without a model run. Current input, deictic/vague/earlier-dialogue or compound actions retain existing routes. Generated text still passes citation validation; saving is the existing exact-copy review and explicit new-note commit. No permissions or canonical migrations change.

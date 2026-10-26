@@ -6,6 +6,7 @@ import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
 import {namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest,type WorkingFile} from './working-file.ts';
+import {earlierOperationContext} from './dialogue-outcomes.ts';
 
 /** The user names the current assistant answer, not a Memory search subject.
  * Bind only a single read-only rewrite; the model still performs the rewrite.
@@ -139,6 +140,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  attachments:{name:string;kind:string;status:string}[];
 }){
  const {question,literalRequest,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
+ const operationContext=literalRequest?null:earlierOperationContext(prior,question,hasAttachments||hasCurrentInputReadings);
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
@@ -148,11 +150,11 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
  const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
  const priorContext:DialogueContext=noteCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
- const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture?contextIndependentConversation(question,attachments,priorContext):null;
+ const contextIndependent=!operationContext&&!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=noteCapture??answerRewrite??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??fileCorrection??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
- const context=contextIndependent?.context??priorContext;
+ const request=noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??fileCorrection??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const context=operationContext??contextIndependent?.context??priorContext;
  return {literalRequest,explicitSavedRequest,explicitFileQuestion,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};
