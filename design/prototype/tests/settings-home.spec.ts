@@ -1,5 +1,18 @@
 import {expect,test} from '@playwright/test';
 
+test('local Vision file errors stay visible without an installed inference runtime',async({page})=>{
+ const remote:string[]=[];page.on('request',request=>{if(/^https?:/.test(request.url())&&!request.url().startsWith('http://127.0.0.1:'))remote.push(request.url());});
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();await page.getByRole('button',{name:'Browse vision models',exact:true}).click();await page.getByRole('button',{name:/^Add LFM2\.5-VL.*450M/}).click();
+ const section=page.locator('[data-model-role="vision"]');
+ await page.getByLabel('Pinned vision model files',{exact:true}).setInputFiles({name:'config.json',mimeType:'application/json',buffer:Buffer.from('{}')});
+ await expect(section.getByRole('alert')).toContainText('Vision file size mismatch');
+ await page.getByRole('button',{name:'Prepare vision model',exact:true}).waitFor({state:'visible'});
+ // The transient toast disappears; the actionable error remains beside its model.
+ await expect(page.locator('.preview-toast')).toHaveCount(0,{timeout:6000});
+ await expect(section.getByRole('alert')).toContainText('config.json');expect(remote).toEqual([]);
+});
+
 test('Settings keeps core categories visible and secondary tools grouped under More',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();

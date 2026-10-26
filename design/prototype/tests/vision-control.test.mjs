@@ -2,6 +2,27 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {VisionClient} from '../src/vision-control.ts';
 
+test('local preparation waits for the invisible initial status check; Stop prevents a delayed import',async()=>{
+ const workers=[];const client=new VisionClient(()=>{const worker={postMessage(message){worker.last=message;},terminate(){worker.terminated=true;}};workers.push(worker);return worker;},()=>{});
+ const status=client.call('status'),prepared=client.callAfterStatus('prepare',{allowNetwork:false});
+ workers[0].onmessage({data:{id:workers[0].last.id,value:{ready:false}}});await status;await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(workers[0].last.type,'prepare');workers[0].onmessage({data:{id:workers[0].last.id,value:{ready:true}}});await prepared;
+ const checking=client.call('status');checking.catch(()=>{});const stopped=client.callAfterStatus('prepare');const refused=assert.rejects(stopped,/Stopped/);client.stop();await refused;await assert.rejects(checking,/Stopped/);assert.equal(workers.length,1);assert.equal(workers[0].last.type,'status');
+});
+
+test('Vision asset preparation stays on its lightweight worker and inference switches factories',async()=>{
+ const assets=[],inference=[];
+ const make=group=>()=>{const worker={postMessage(message){worker.last=message;},terminate(){worker.terminated=true;}};group.push(worker);return worker;};
+ const client=new VisionClient(make(inference),()=>{},undefined,undefined,make(assets));
+ const status=client.call('status');assert.equal(inference.length,0);assert.equal(assets.length,1);
+ assets[0].onmessage({data:{id:assets[0].last.id,value:{ready:false}}});await status;
+ const prepared=client.call('prepare',{localFiles:[{name:'config.json'}],allowNetwork:false});assert.equal(assets.length,1);assert.equal(assets[0].last.type,'prepare');
+ assets[0].onmessage({data:{id:assets[0].last.id,value:{ready:true}}});await prepared;
+ const described=client.call('describe',{prompt:'Read this image.'});assert.equal(assets[0].terminated,true);assert.equal(inference.length,1);
+ assets[0].onmessage({data:{id:inference[0].last.id,value:{text:'stale asset result'}}});
+ inference[0].onmessage({data:{id:inference[0].last.id,value:{text:'Actual description'}}});assert.deepEqual(await described,{text:'Actual description'});assert.equal(inference[0].terminated,true);
+});
+
 test('vision client serializes requests and resolves only the active response',async()=>{
  const workers=[],states=[],client=new VisionClient(()=>{const worker={postMessage(message){worker.last=message;},terminate(){worker.terminated=true;}};workers.push(worker);return worker;},(busy,progress)=>states.push({busy,progress}));
  const pending=client.call('prepare',{allowNetwork:false});assert.deepEqual(workers[0].last,{id:1,type:'prepare',allowNetwork:false});await assert.rejects(client.call('describe'),/busy/i);

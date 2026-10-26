@@ -74,9 +74,24 @@ test('natural Memory search does not steal attachment, question, capture, or ope
 });
 
 test('explicit current-image questions select input evidence and exclude the open-file context',()=>{
+ const formatted='What code is printed on the attached image? Reply with the code only.';
+ const formattedRoute=route({question:formatted,hasAttachments:true,hasCurrentInputReadings:true});
+ assert.deepEqual(formattedRoute.request,{action:'answer',query:formatted,target:'inputs'});assert.deepEqual(formattedRoute.context,{summary:'',recent:[],refs:[],turnCount:0});
  const result=route({question:'What color is visible in this attached image?',hasAttachments:true,hasCurrentInputReadings:true,attachments:[{name:'photo.jpg',kind:'image',status:'Image text extracted'}]});
  assert.deepEqual(result.request,{action:'answer',query:'What color is visible in this attached image?',target:'inputs'});
  assert.deepEqual(result.context,{summary:'',recent:[],refs:[],turnCount:0});
+});
+
+test('questions naming the currently open file use that pinned file and exclude unrelated chat history',()=>{
+ const question='What exact marker is written in the currently open transcript file?';
+ assert.deepEqual(route({question:'What is the complete emergency marker in the currently open transcript file? Include every digit.'}).request,{action:'answer',query:'What is the complete emergency marker in the currently open transcript file? Include every digit.',target:'file'});
+ const before=structuredClone(prior),intent=route({question});
+ assert.deepEqual(intent.request,{action:'answer',query:question,target:'file'});
+ assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
+ assert.deepEqual(prior,before);
+ assert.equal(route({question,hasAttachments:true}).request,null);
+ assert.equal(route({question,hasCurrentInputReadings:true}).request,null);
+ assert.equal(route({question:'What did we say earlier about this file?'}).request,null);
 });
 
 test('source-free greetings receive a clean model context while prior dialogue stays retained',()=>{

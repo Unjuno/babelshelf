@@ -1,8 +1,8 @@
 import {expect,test} from '@playwright/test';
+import {prepareOfflineShell} from './pwa-offline-setup.ts';
 
 test('Help and license text open offline on a prepared product with enlarged text',async({page,context})=>{
- await page.goto('/');
- await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+ await page.goto('/');await prepareOfflineShell(page);
  // First visit to either page happens after going offline and reloading.
  await context.setOffline(true);await page.reload();
  await page.getByRole('button',{name:'Input',exact:true}).click();

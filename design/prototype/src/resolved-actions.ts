@@ -13,12 +13,36 @@ import {isMemoryPassageResult,type MemorySearchResult} from './memory-search-typ
 import {searchMemoryWithQuestionFallback} from './memory-search-fallback.ts';
 import {resolveReadCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
+import type {CurrentInputRef} from './input-readings.ts';
+import {validVisionModelIdentity} from './vision-model-identity.ts';
+// @ts-expect-error Shared canonical source validation is JavaScript.
+import {validateGroundingRefs} from '../../../dist/core.js';
 
 type Dependencies={
  store:KnowledgeStore;engine:TextRuntime;model:string;question:string;registry:typeof builtinToolRegistry;
  check:()=>void;trace:ReturnType<typeof createTurnActivityTracer>;
  snapshot:()=>Promise<NoteView[]>;
 };
+
+/** A reader may already have answered the exact current question. Reuse only
+ * that immutable single-image result; never reinterpret it as tool authority,
+ * a response to a different question, or a combined answer across files. */
+export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependencies,'store'|'check'|'trace'>,question:string,readings:CurrentInputRef[]){
+ check();if(readings.length!==1||readings[0].kind!=='vision')return null;
+ const select=(records:any[])=>{
+  const ref=readings[0],note=records.find(note=>note.id===ref.noteId),value=note?.visionText,version=note?.revisions?.at(-1);
+  if(value?.schema!==1||value.scope!=='single-image'||value.prompt!==question.trim()||ref.revision!==1||version?.version!==1)return null;
+  const source={noteId:note.id,revision:1,start:0,end:version.body.length,quote:version.body,title:version.title};
+  if(typeof value.model!=='string'||!validVisionModelIdentity(value)||typeof value.text!=='string'||!value.text.trim()||value.text.length>50000||version.body!==value.text||
+   !note.mediaSource?.id||!value.original||note.mediaSource.revision!==1||!/^[a-f0-9]{64}$/.test(note.mediaSource.sha256)||
+   !['id','revision','sha256'].every(key=>note.mediaSource?.[key]===value.original?.[key])||!validateGroundingRefs(records,[source]).ok)throw Error('Source changed · retry');
+  return {answer:value.text,sources:[source],model:{id:value.model,revision:value.revision,runtime:value.runtime}};
+ };
+ const result=select(await store.all());check();if(!result)return null;
+ return trace('knowledge.answer',{model:result.model.id,question,mode:'answer',execution:'current-vision-result',inputReadings:readings},async()=>{
+  const fresh=select(await store.all());check();if(!fresh||JSON.stringify(fresh)!==JSON.stringify(result))throw Error('Source changed · retry');return result;
+ });
+}
 
 // Application execution returns data. The caller owns turn persistence,
 // navigation and explicit review/approval; these methods cannot commit edits.

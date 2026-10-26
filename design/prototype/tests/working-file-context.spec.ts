@@ -1,4 +1,5 @@
 import {expect,test} from '@playwright/test';
+import {prepareOfflineShell} from './pwa-offline-setup.ts';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
@@ -12,7 +13,7 @@ async function openScheduleFile(page:any){
 }
 
 test('input exposes file context and removal persists offline without deleting the file',async({page,context})=>{
- await page.goto('/');await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+ await page.goto('/');await prepareOfflineShell(page);
  await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('File scope check');
  await page.getByRole('textbox',{name:'Schedule date'}).fill('2099-01-01');

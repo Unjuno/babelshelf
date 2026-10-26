@@ -32,7 +32,9 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  if(roles.includes('speech')&&value.transcriptionModel&&!builtinSpeech&&!selectedSpeech)throw Error('Speech runtime not connected');
  if(roles.includes('ocr')&&value.ocrModel&&value.ocrModel!=='tesseract-7')throw Error('Image text runtime not connected');
  if(roles.includes('decision')&&value.decisionModel&&capabilityState('decision.classify',value.decisionModel,false,value.customDecisionModels).status==='Runtime not connected')throw Error('Decision runtime not connected');
- if(roles.includes('vision')&&value.visionModel&&capabilityState('image.describe',value.visionModel,false).status==='Unsupported')throw Error('Vision runtime not connected');
+ const selectedVision=value.customVisionModels.find(model=>model.id===value.visionModel);
+ if(roles.includes('vision')&&value.visionModel&&capabilityState('image.describe',value.visionModel,false,[],[],value.customVisionModels).status==='Unsupported')throw Error('Vision runtime not connected');
+ if(roles.includes('vision')&&selectedVision&&!ready.vision)throw Error('Import local Vision files first');
  if(text?.localModel&&!ready.text)throw Error('Import local text model files first');
  // A reviewed model set may deliberately select text alone. Preparation must
  // never add readers or spend storage on roles that were left unselected.
@@ -42,7 +44,7 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  if(roles.includes('speech'))steps.push({role:'speech',label:selectedSpeech?.label??speechModelLabel(models.transcriptionModel),readyLabel:'Verified',ready:ready.speech,bytes:selectedSpeech?0:builtinSpeech?.files.reduce((n,f)=>n+f.bytes,0)??0});
  if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
  if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
- if(roles.includes('vision'))steps.push({role:'vision',label:'LFM2.5-VL 450M · image understanding',readyLabel:'Verified',ready:ready.vision===true,bytes:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
+ if(roles.includes('vision'))steps.push({role:'vision',label:selectedVision?.label??'LFM2.5-VL 450M · image understanding',readyLabel:'Verified',ready:ready.vision===true,bytes:selectedVision?0:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
  const selected=steps;
  if(!selected.length)throw Error(onlyRole?'Choose a '+onlyRole+' model':'Choose a model');
  return {expected:JSON.stringify(value),models,steps:selected,bytes:selected.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0)};

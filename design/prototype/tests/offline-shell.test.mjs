@@ -1,8 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild,enforceOfflineNetwork} from '../src/offline-shell.ts';
+import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild,enforceOfflineNetwork,initializeOfflineShell,offlineShellStatus} from '../src/offline-shell.ts';
 import {refreshAppVersion,appUpdateOutcome} from '../src/offline-shell.ts';
 class Worker extends EventTarget {constructor(state){super();this.state=state;}set(state){this.state=state;this.dispatchEvent(new Event('statechange'));}}
+
+test('offline shell is registered only by an explicit Online choice and reuses an existing registration offline',async()=>{
+ const registration=new EventTarget();registration.active=new Worker('activated');let registered=0,current;
+ const container={getRegistration:async()=>current,register:async path=>{assert.equal(path,'./sw.js');registered++;current=registration;return registration;}};
+ await initializeOfflineShell(container,false);assert.equal(offlineShellStatus(),'Not prepared');assert.equal(registered,0);
+ await initializeOfflineShell(container,true);assert.equal(offlineShellStatus(),'Installed');assert.equal(registered,1);
+ await initializeOfflineShell(container,false);assert.equal(offlineShellStatus(),'Installed');assert.equal(registered,1);
+});
 
 test('Refresh returns a retryable error when the browser update check never settles',async()=>{
  let release,activations=0;const worker=new Worker('installed');worker.postMessage=()=>activations++;

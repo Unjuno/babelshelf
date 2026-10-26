@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import {mkdir,readFile,stat,writeFile} from 'node:fs/promises';
+import {isAbsolute,join} from 'node:path';
+import {chromium} from '../../design/prototype/node_modules/playwright-core/index.mjs';
+import {parseStateBackup} from '../../design/prototype/src/backup-state.ts';
+import {validateGroundingRefs} from '../../dist/core.js';
+
+const [profileDir,outputDir,url='http://127.0.0.1:4184/']=process.argv.slice(2);
+for(const path of [profileDir,outputDir])assert.ok(path&&isAbsolute(path),'Supply absolute existing isolated QA profile and fresh output paths');
+assert.equal(new URL(url).hostname,'127.0.0.1','This verification must use the local product server');
+await stat(profileDir);
+try{await stat(outputDir);assert.fail('Refusing to overwrite QA evidence: '+outputDir);}catch(error){if(error.code!=='ENOENT')throw error;}
+await mkdir(outputDir,{recursive:true});
+
+const productBuild=JSON.parse(await readFile('design/prototype/dist/app/build.json','utf8')).build;
+const fixtureCode='PINE-'+productBuild.slice(0,8).toUpperCase();const fixture={title:'QA Water Reserve '+fixtureCode,pathSuffix:'QA Water Reserve '+fixtureCode+'.md',body:'# Water Reserve '+fixtureCode+'\n\nThe emergency water reserve is exactly 24 litres. Identifier: '+fixtureCode+'.'};
+const evidence={scope:'Isolated Windows PC Chrome installed PWA; local model/runtime already registered; Chromium network isolation; synthetic knowledge fixture only',build:productBuild,fixture,model:{id:'lfm25-230m-qad-q4-0',revision:'03502067c64ce32ac4fe87b0cec0310a1a13d3e9',bytes:149081056,sha256:'e75f83268de11b2a1bcfab5f3b5c5c0c97569ddbbc0990aad88437e45b8ba292',runtime:'Wllama 3.8.1 / llama.cpp b11364',backend:'cpu-wasm'},phases:[],externalRequests:[],pass:false};
+let context,page;
+function observe(ctx,phase){ctx.on('request',r=>{if(!r.url().startsWith(url)&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:'))phase.external.push(r.url());});}
+async function persist(){await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));}
+async function checkpoint(name,details={}){evidence.phases.push({name,...details});await persist();}
+async function build(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const channel=new MessageChannel(),timer=setTimeout(()=>reject(Error('No service worker build reply')),5000);channel.port1.onmessage=e=>{clearTimeout(timer);resolve(e.data);};navigator.serviceWorker.controller.postMessage('build',[channel.port2]);}));}
+async function launch(label){
+ context=await chromium.launchPersistentContext(profileDir,{channel:'chrome',headless:true,offline:true,viewport:{width:390,height:844},acceptDownloads:true});context.setDefaultTimeout(30000);
+ const phase={label,network:'Chromium offline emulation',external:[],browserVersion:context.browser().version()};observe(context,phase);
+ const session=await context.browser().newBrowserCDPSession();
+ try{await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});const [appPage,launched]=await Promise.all([context.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);page=appPage;phase.launch=launched;}finally{await session.detach();}
+ await page.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:30000});
+ phase.serviceWorkerBuild=await build(page);assert.equal(phase.serviceWorkerBuild.build,productBuild,'Installed app is serving a different build');
+ phase.display=await page.evaluate(()=>({standalone:matchMedia('(display-mode: standalone)').matches,onlineSignal:navigator.onLine,crossOriginIsolated}));
+ assert.equal(phase.display.standalone,true,'Expected installed standalone PWA display');
+ const processSession=await context.browser().newBrowserCDPSession();try{phase.browserPid=(await processSession.send('SystemInfo.getProcessInfo')).processInfo.find(p=>p.type==='browser')?.id;}finally{await processSession.detach();}assert.ok(phase.browserPid);
+ evidence.phases.push(phase);await persist();return phase;
+}
+async function go(destination){await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:destination,exact:true}).click();}
+async function input(){const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await home.click();}
+async function connectionMode(mode){await go('Settings');await page.getByRole('button',{name:'Connection',exact:true}).click();const button=page.getByRole('button',{name:mode,exact:true});if(await button.getAttribute('aria-pressed')!=='true')await button.click();}
+async function models(){await go('Settings');await page.getByRole('button',{name:'Models',exact:true}).click();}
+async function backup(name){await go('Settings');await page.getByRole('button',{name:'Local files',exact:true}).click();const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export backup',exact:true}).click();const path=join(outputDir,name+'.brainpack');await(await download).saveAs(path);return parseStateBackup(await readFile(path,'utf8'));}
+async function send(question,timeout=240000,expectReply=true){const before=await page.locator('.sent-message').count();await page.getByRole('textbox',{name:'Message',exact:true}).fill(question);await page.getByRole('button',{name:'Send',exact:true}).click();await page.waitForFunction(({before})=>document.querySelectorAll('.sent-message').length>before,{before},{timeout});const turn=page.locator('.sent-message').last();if(!expectReply){await turn.locator('.turn-status').waitFor({timeout});return {turn,text:''};}await page.waitForFunction(({index})=>{const turn=document.querySelectorAll('.sent-message')[index],reply=turn?.querySelector('.reply-text')?.textContent?.trim(),status=turn?.querySelector('.turn-status')?.textContent?.trim();return !!reply||!!status&&status!=='Generating';},{index:await page.locator('.sent-message').count()-1},{timeout});const reply=turn.locator('.reply-text');if(!await reply.count())throw Error('Model turn ended · '+await turn.locator('.turn-status').innerText().catch(()=> 'no answer'));await reply.waitFor({timeout:1000});const text=await reply.evaluate(node=>{const copy=node.cloneNode(true);copy.querySelectorAll('button').forEach(b=>b.remove());return copy.textContent.trim();});return {turn,text};}
+
+try{
+ const first=await launch('offline-prepare-source');await connectionMode('Offline');
+ const before=await backup('before');let source=before.notes.find(n=>n.revisions.at(-1)?.title===fixture.title);
+ if(source){assert.equal(source.revisions.at(-1).body,fixture.body,'Refusing to overwrite a changed QA note');assert.equal(source.revisions.length,1);}
+ else{
+  await go('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'New file',exact:true}).click();
+  const create=page.getByRole('dialog');await create.getByRole('textbox',{name:'File name',exact:true}).fill(fixture.title);await create.getByRole('textbox',{name:'New file content',exact:true}).fill(fixture.body);await create.getByRole('button',{name:'Save',exact:true}).click();await page.getByRole('button',{name:'History',exact:true}).waitFor();
+  const sourceBackup=await backup('source');source=sourceBackup.notes.find(n=>n.revisions.at(-1)?.title===fixture.title);assert.ok(source);assert.equal(source.revisions.at(-1).version,1);assert.equal(source.revisions.at(-1).body,fixture.body);
+ }
+ evidence.source={id:source.id,path:source.revisions.at(-1).path,revision:1};await checkpoint('source-present-and-export-verified',{source:evidence.source});
+ await context.close();context=null;page=null;
+
+ const cold=await launch('offline-cold-restart-source-search');assert.deepEqual(cold.external,[],'Cold launch made an external request');assert.notEqual(cold.browserPid,first.browserPid,'Cold restart must use a new browser process');
+ await input();cold.pendingAttachmentsBeforeSearch=await page.locator('.media-card').count();for(const remove of await page.getByRole('button',{name:/^Remove /}).all())await remove.click();await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===0);cold.pendingAttachmentsAfterRemoval=await page.locator('.media-card').count();assert.equal(cold.pendingAttachmentsAfterRemoval,0);
+ const found=await send('Find my notes about emergency water '+fixtureCode+'.',60000,false);cold.searchStatus=await found.turn.locator('.turn-status').innerText();assert.match(cold.searchStatus,/Found · [1-9]\d*/);const visible= (await page.locator('body').innerText()).replace(/\s+/g,' ');assert.ok(visible.includes(fixture.pathSuffix));const excerpt=fixture.body.split('\n\n')[1];assert.ok(visible.includes(excerpt.replace(/\s+/g,' ')));cold.openedSource=evidence.source.path;await checkpoint('offline-search-open-and-exact-source-verified');
+
+ await input();await models();const selected=await page.getByRole('button',{name:'Text model',exact:true}).innerText();cold.selectedTextModel=selected;assert.match(selected,/LFM2\.5.*230M/i,'Expected the pre-registered LFM2.5-230M model');
+ if(await page.getByRole('button',{name:'Load',exact:true}).count())await page.getByRole('button',{name:'Load',exact:true}).click();await page.getByRole('button',{name:'Unload',exact:true}).waitFor({timeout:180000});cold.modelLoadedOffline=true;
+ await input();const question='In the saved QA Water Reserve '+fixtureCode+' note, exactly how many litres are stored?';const answer=await send(question);cold.answer=answer.text;await page.screenshot({path:join(outputDir,'grounded-answer.png')});
+ const answered=await backup('answered');const dialogue=answered.settings.find(s=>s.key==='ui-v1-dialogue')?.value;const record=dialogue.turns.at(-1);cold.refs=record.refs;assert.match(answer.text,/24|twenty[- ]four/i,'Model answer did not state the expected fact');assert.ok(record.refs?.some(r=>r.noteId===source.id&&r.revision===1&&r.quote&&source.revisions.at(-1).body.slice(r.start,r.end)===r.quote),'Exact source/revision/range citation missing');assert.equal(validateGroundingRefs(answered.notes,record.refs).ok,true,'Grounding reference validation failed');await input();
+ const viewSource=answer.turn.getByRole('button',{name:/^View source(?: \d+)?$/});await viewSource.first().click();const sourceSurface=await page.locator('body').innerText();assert.ok(sourceSurface.includes(source.revisions.at(-1).path));assert.ok(sourceSurface.includes(record.refs.find(r=>r.noteId===source.id).quote));await page.screenshot({path:join(outputDir,'source-preview.png')});await page.getByRole('button',{name:'Close',exact:true}).click();
+ const answerTitle='QA Answer '+fixtureCode;await input();await answer.turn.getByRole('button',{name:'Save note',exact:true}).click();const review=page.getByRole('dialog');const content=review.getByRole('textbox',{name:'New file content',exact:true});cold.reviewBody=await content.inputValue();assert.equal(cold.reviewBody,answer.text,'Save review changed the generated answer');await review.getByRole('textbox',{name:'File name',exact:true}).fill(answerTitle);const answerCalls=record.activity?.filter(a=>a.tool==='knowledge.answer')??[];await review.getByRole('button',{name:'Save',exact:true}).click();await page.getByRole('button',{name:'History',exact:true}).waitFor();const savedBackup=await backup('after-answer-save');const saved=savedBackup.notes.find(n=>n.revisions.at(-1)?.title===answerTitle);assert.ok(saved);assert.equal(saved.revisions.at(-1).body,answer.text);const savedTurn=savedBackup.settings.find(s=>s.key==='ui-v1-dialogue').value.turns.find(t=>t.id===record.id);assert.deepEqual(savedTurn.activity?.filter(a=>a.tool==='knowledge.answer')??[],answerCalls,'Save must not regenerate the answer');evidence.saved={id:saved.id,path:saved.revisions.at(-1).path,exactBody:true,generationCount:answerCalls.length};await checkpoint('exact-answer-reviewed-and-saved-once');
+ await context.close();context=null;page=null;
+
+ const afterSave=await launch('offline-cold-restart-saved-answer');assert.deepEqual(afterSave.external,[],'Post-save cold launch made an external request');assert.notEqual(afterSave.browserPid,cold.browserPid,'Second cold restart must use a new browser process');await input();await page.getByRole('textbox',{name:'Message',exact:true}).fill('Read: '+saved.revisions.at(-1).path);await page.getByRole('button',{name:'Send',exact:true}).click();await page.getByRole('button',{name:'History',exact:true}).waitFor({timeout:60000});assert.equal(await page.locator('.file-body').first().innerText(),answer.text);afterSave.reopenedAnswer=true;evidence.externalRequests=evidence.phases.flatMap(p=>p.external??[]);assert.deepEqual(evidence.externalRequests,[]);evidence.pass=true;await page.screenshot({path:join(outputDir,'cold-read-saved-answer.png')});
+}catch(error){evidence.error=String(error);if(page&&!page.isClosed()){evidence.failureScreen=await page.locator('body').innerText().catch(()=>null);await page.screenshot({path:join(outputDir,'failure.png')}).catch(()=>{});}process.exitCode=1;}
+finally{await context?.close();await persist();console.log(JSON.stringify({pass:evidence.pass,error:evidence.error,build:evidence.build,model:evidence.model,phases:evidence.phases.map(p=>p.name??p.label),source:evidence.source,answer:evidence.answer,refs:evidence.refs,saved:evidence.saved,externalRequests:evidence.externalRequests},null,2));}

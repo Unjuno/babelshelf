@@ -180,7 +180,7 @@ export async function compactDialogue(state:Dialogue,engine:ChatEngine,question:
  throw Error('Context limit · original retained');
 }
 export function requestNamesWorkingFile(question:string){
- return /\b(?:(?:in|from|about|within|inside|on)\s+)?(?:(?:this|that|the|current|opened)\s+)?(?:file|note|document|memo)\b/i.test(question)
+ return /\b(?:(?:in|from|about|within|inside|on)\s+)?(?:(?:this|that|the|current|currently\s+open(?:ed)?(?:\s+[\w-]+){0,2}|open(?:ed)?)\s+)?(?:file|note|document|memo)\b/i.test(question)
   ||/(?:この|その|当該|今(?:開いている)?|現在の|開いた)?(?:ファイル|メモ|ノート|文書|資料)(?:の|に|で|から|について|を|内|中)/.test(question)
   ||/(?:这(?:个|份|篇)?(?:文件|文档|笔记)|(?:文件|文档|笔记)(?:中|里|内))/.test(question)
   ||/\b(?:en|dentro de|sobre|desde)\s+(?:(?:este|esta|ese|esa|el|la|actual)\s+)?(?:archivo|documento|nota)\b/i.test(question)
@@ -281,6 +281,7 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  if(!sourceReferent.test(question)&&question.length<=80&&(
   /^(?:(?:こんにちは|おはよう(?:ございます)?|こんばんは)[。.!！\s]*)?(?:(?:短い|ひとことの|一文の)\s*)?挨拶を(?:(?:一文で|短く)\s*)?(?:返して|書いて|作って)(?:ください|下さい)?[。.!！?？\s]*$/u.test(question.trim())
   ||/^(?:please\s+)?(?:say\s+(?:hello|hi)|(?:write|give me)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|one-sentence)\s+)?greeting)[.!?\s]*$/i.test(question.trim())
+  ||/^(?:(?:hello|hi|hey|hiya)[.!?,\s]+)?(?:please\s+)?(?:reply with|respond with)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|one-sentence)\s+)?greeting[.!?\s]*$/i.test(question.trim())
  ))return {action:'chat',query:''};
  if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');

@@ -3,6 +3,7 @@ let status:OfflineShellStatus='Not prepared';const listeners=new Set<()=>void>()
 export const offlineShellStatus=()=>status;
 export function subscribeOfflineShell(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
 function report(next:OfflineShellStatus){status=next;for(const listener of listeners)listener();}
+let initialization=0,stopObserving:(()=>void)|null=null;
 // Installed describes worker lifecycle only, never model readiness or durable
 // offline certification. Failed updates do not invalidate an existing worker.
 export function observeOfflineRegistration(registration:ServiceWorkerRegistration,publish:(status:OfflineShellStatus)=>void){
@@ -17,9 +18,10 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
  };
  registration.addEventListener('updatefound',refresh);refresh();return()=>{stopped=true;registration.removeEventListener('updatefound',refresh);for(const worker of observed)worker.removeEventListener('statechange',refresh);};
 }
-export async function initializeOfflineShell(container:ServiceWorkerContainer|undefined){
+export async function initializeOfflineShell(container:ServiceWorkerContainer|undefined,allowRegister=false){
+ const current=++initialization;stopObserving?.();stopObserving=null;
  if(!container){report('Unavailable');return;}report('Checking');
- try{const registration=await container.getRegistration()??await container.register('./sw.js');observeOfflineRegistration(registration,report);}catch{report('Preparation failed');}
+ try{const registration=await container.getRegistration()??(allowRegister?await container.register('./sw.js'):undefined);if(current!==initialization)return;if(!registration){report('Not prepared');return;}stopObserving=observeOfflineRegistration(registration,report);}catch{if(current===initialization)report('Preparation failed');}
 }
 const updateTimeout=()=>Error('Update timed out · try again');
 async function boundedUpdateCheck(check:Promise<unknown>,timeoutMs:number){

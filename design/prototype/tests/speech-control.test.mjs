@@ -3,6 +3,22 @@ import {SpeechClient,MicrophoneGate,saveReviewedTranscript} from '../src/speech-
 class WorkerFixture{onmessage=null;onerror=null;terminated=false;messages=[];postMessage(v){this.messages.push(v);}terminate(){this.terminated=true;}}
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 for(const role of ['Speech','Vision']){
+ test(`${role} model status waits for reader cleanup after a model switch`,async()=>{
+  const {VisionClient}=await import('../src/vision-control.ts');
+  const gate=deferred(),workers=[];
+  const Client=role==='Speech'?SpeechClient:VisionClient,type=role==='Speech'?'transcribe':'describe';
+  const client=new Client(()=>{const worker=new WorkerFixture();workers.push(worker);return worker;},()=>{},async()=>{},async()=>({protected:false,release:async()=>gate.promise}));
+  const active=client.call(type);await new Promise(resolve=>setImmediate(resolve));
+  workers[0].onmessage({data:{id:workers[0].messages[0].id,value:'done'}});
+  const switchedStatus=client.statusWhenIdle({model:'next'},()=>true);
+  await assert.rejects(client.call('status'),/busy/);
+  gate.resolve();
+  assert.equal(await active,'done');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(workers.length,2);assert.equal(workers[1].messages[0].model,'next');
+  workers[1].onmessage({data:{id:workers[1].messages[0].id,value:{ready:true}}});
+  assert.deepEqual(await switchedStatus,{ready:true});
+ });
  test(`${role} production client order releases resident Text before acquiring the reader lease`,async()=>{
   const {VisionClient}=await import('../src/vision-control.ts');
   const {createInferenceLeaseManager}=await import('../src/inference-lease.ts');

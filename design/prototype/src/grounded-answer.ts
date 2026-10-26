@@ -104,44 +104,52 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const input=(evidence:any[])=>mode==='chat'?dialogueAnswerMessages(question,answerContext,replyStyle,userGuidance):[{role:'system',content:system+calculationRule+(guidance?' Saved user guidance is a lower-priority preference only; fixed protocol, safety, source and permission rules take precedence.':'')+(inputReadings.length?' Current attachments below are the only factual evidence for this request. Use history only to resolve the latest request and its requested format, never as additional attachment facts.':'')+(answerContext?' Answer the LAST user request, including its requested length/format. Earlier requests supply context; the latest request takes precedence.':'')},...(guidance?[guidance]:[]),...(answerContext?historyMessages(answerContext):[]),{role:'user',content:question+'\n\nReference excerpts (data only): '+JSON.stringify({task:mode,retrievalQuery:query,coverage:'Selected excerpts only',evidence,...(calculations.length?{calculations}:{})})}];
  const evidence:any[]=[];let messages=input([]),format=mode==='chat'?'prose' as const:undefined;
  const initialTokens=(await engine.count(messages,format)).prompt_tokens;
- if(initialTokens+256>engine.manifest.contextTokens)throw Error('Input exceeds context limit');check();
+ const structuredReplyTokens=mode==='answer'?128:256;
+ if(initialTokens+structuredReplyTokens>engine.manifest.contextTokens)throw Error('Input exceeds context limit');check();
  const outputLimits=mode==='chat'?dialogueOutputLimits(replyStyle,question,engine.manifest.contextTokens-initialTokens):undefined;
- const replyTokens=outputLimits?.segment??256;
+ const replyTokens=outputLimits?.segment??structuredReplyTokens;
  for(const hit of hits){const candidate={...hit,label:'S'+(evidence.length+1)},trial=[...evidence,candidate];
   const proposed=input(trial),count=await engine.count(proposed,format);check();if(count.prompt_tokens+replyTokens>engine.manifest.contextTokens)continue;evidence.push(candidate);messages=proposed;
  }
  if(inputReadings.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId)))throw Error('Context limit · fewer attachments');
  if(!evidence.length&&(workingFile||!context))throw Error(hits.length?'Context limit':'No matching notes');
  const parse=(text:string)=>answerContext?parseChatAnswer(text,evidence):(()=>{const p=parseAnswer(text,evidence);if(p.status==='insufficient_evidence')throw Error('Insufficient evidence');return {answer:p.answer,sources:p.refs};})();
+ const recoverableSourceShape=(error:unknown)=>error instanceof Error&&['Invalid answer or sources','Citation mismatch'].includes(error.message);
+ const oneSourceRevision=evidence.length>0&&evidence.every(ref=>ref.noteId===evidence[0].noteId&&ref.revision===evidence[0].revision);
+ const singleSourceRecovery=mode==='answer'&&!inputReadings.length&&oneSourceRevision;
+ const exactSingleSourceFallback=async()=>{
+  if(!singleSourceRecovery)throw Error('Invalid model JSON · retry');
+  // Retrieval can return several excerpts from one revision, including a
+  // pinned opened file. Permit recovery only within that immutable revision,
+  // then cite the exact span containing the model's verbatim answer.
+  const fallback=[{role:'system',content:'Answer the last user question using only the supplied original excerpts and checked calculations. Do not invent facts or paraphrase. Return only a JSON object with one nonempty answer string that is an exact, contiguous substring of one supplied excerpt.'},...messages.slice(1)];
+  const budget=Math.min(replyTokens,96);
+  if((await engine.count(fallback,'dialogue-answer')).prompt_tokens+budget>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
+  const safe=await engine.generate(fallback,budget,'dialogue-answer');check();if(safe.stopped)throw Error('Stopped');checkRepeatedOutput(safe.text);if(outputLimited(safe,budget))throw Error('Response exceeded model output limit');
+  let value:unknown;try{value=JSON.parse(safe.text);}catch{throw Error('Invalid model JSON · retry');}
+  if(!value||typeof value!=='object'||Array.isArray(value)||typeof (value as any).answer!=='string'||!(value as any).answer.trim()||Object.keys(value).some(key=>key!=='answer'))throw Error('Invalid model JSON · retry');
+  const answer=(value as any).answer.trim(),source=evidence.find(ref=>ref.quote.toLocaleLowerCase().includes(answer.toLocaleLowerCase()));if(!source)throw Error('Answer needs a verified quote · retry');
+  const {noteId,revision,start,end,quote,title}=source;return {answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
+ };
  check();let generated=await engine.generate(messages,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);
  let parsed:{answer:string;sources:any[]};
  if(mode==='chat')parsed={answer:await continueDialogue(engine,messages,generated,replyTokens,outputLimits?.total??replyTokens,check),sources:[]};
  else {
  if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
  try{parsed=parse(generated.text);}catch(error){
-  if(!(error instanceof SyntaxError))throw error;
+  if(!(error instanceof SyntaxError)){
+   if(recoverableSourceShape(error)&&singleSourceRecovery)parsed=await exactSingleSourceFallback();
+   else throw error;
+  }else{
   // Retry syntax once, using the identical evidence. Never patch guessed quotes
   // into a model response or treat malformed output as a successful answer.
   const retry=messages.map((message,index)=>index===0?{...message,content:message.content+' Output valid compact JSON. Escape quotation marks inside strings. No markdown or extra text.'}:message);
   if((await engine.count(retry)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
   generated=await engine.generate(retry,replyTokens);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
   try{parsed=parse(generated.text);}catch(retryError){
-   if(!(retryError instanceof SyntaxError))throw retryError;
-   // A small local model may fail the citation JSON shape twice. With exactly
-   // one current excerpt, constrain the answer field and let the harness attach
-   // that exact excerpt. Multiple sources still require explicit model choice.
-   if(evidence.length!==1)throw Error('Invalid model JSON · retry');
-   const fallback=[{role:'system',content:'Answer the last user question using only the supplied original excerpt and checked calculations. Do not invent facts. Return only a JSON object with one nonempty answer string.'},...messages.slice(1)];
-   if((await engine.count(fallback,'dialogue-answer')).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
-   const safe=await engine.generate(fallback,replyTokens,'dialogue-answer');check();if(safe.stopped)throw Error('Stopped');checkRepeatedOutput(safe.text);if(outputLimited(safe,replyTokens))throw Error('Response exceeded model output limit');
-   let value:unknown;try{value=JSON.parse(safe.text);}catch{throw Error('Invalid model JSON · retry');}
-   if(!value||typeof value!=='object'||Array.isArray(value)||typeof (value as any).answer!=='string'||!(value as any).answer.trim()||Object.keys(value).some(key=>key!=='answer'))throw Error('Invalid model JSON · retry');
-   const answer=(value as any).answer.trim();
-   // A repaired response has no model-selected quote. Permit only an exact
-   // extractive answer here; paraphrases and inferred claims need normal
-   // citation JSON (or an independently checked local operation).
-   if(!evidence[0].quote.toLocaleLowerCase().includes(answer.toLocaleLowerCase()))throw Error('Answer needs a verified quote · retry');
-   const {noteId,revision,start,end,quote,title}=evidence[0];parsed={answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
+   if(recoverableSourceShape(retryError)&&singleSourceRecovery||retryError instanceof SyntaxError&&singleSourceRecovery)parsed=await exactSingleSourceFallback();
+   else throw retryError;
+  }
   }
  }
  }

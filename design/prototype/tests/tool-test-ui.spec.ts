@@ -1,11 +1,12 @@
 import {expect,test,type Page} from '@playwright/test';
+import {prepareOfflineShell} from './pwa-offline-setup.ts';
 
 async function settings(page:Page,item:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  const target=page.getByRole('button',{name:item,exact:true});if(!await target.isVisible())await page.getByText('More',{exact:true}).click();await target.click();
 }
 test('saved tool runs offline before profile activation, preserves source and reports real failures',async({page,context})=>{
- await page.goto('/');await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+ await page.goto('/');await prepareOfflineShell(page);
  await settings(page,'Connection');await page.getByRole('button',{name:'Online',exact:true}).click();
  await settings(page,'Tools');await page.getByRole('button',{name:'Prepare runtime',exact:true}).click();
  await expect(page.getByText('Prepared · verified',{exact:true})).toBeVisible();
@@ -39,7 +40,7 @@ test('saved tool runs offline before profile activation, preserves source and re
 });
 
 test('a Memory tool can opt into the local calculator and test the real QuickJS result before profile activation',async({page})=>{
- await page.goto('/');await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+ await page.goto('/');await prepareOfflineShell(page);
  await settings(page,'Connection');await page.getByRole('button',{name:'Online',exact:true}).click();
  await settings(page,'Tools');await page.getByRole('button',{name:'Prepare runtime',exact:true}).click();
  await expect(page.getByText('Prepared · verified',{exact:true})).toBeVisible();

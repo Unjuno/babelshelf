@@ -1,6 +1,6 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
-import {contextIndependentConversation,dialogueContext,requestNamesEarlierDialogue,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
+import {contextIndependentConversation,dialogueContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
 import {explicitInputQuestion} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
@@ -56,6 +56,17 @@ export function explicitSavedKnowledgeQuestion(question:string,currentInputs=fal
  if((namesSavedKnowledge(text)||savedSubject)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。.]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:savedKnowledgeSearchQuery(text),target:'knowledge' as const};
  return null;
 }
+/** A question that explicitly names the already opened file has one safe
+ * evidence scope. Resolve it before Decision/Text planning so unrelated chat
+ * history cannot redirect a small model to a recall action. */
+export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boolean,hasOtherInput=false){
+ const text=question.trim();
+ if(!hasWorkingFile||hasOtherInput||!text||text.length>500||requestNamesEarlierDialogue(text)||!requestNamesWorkingFile(text))return null;
+ if(namesExplicitSavedKnowledge(text)||namedSavedSubject(text))return null;
+ const asks=/\b(?:what|when|where|who|which|why|how|is|are|does|do|did|can|could|would)\b/iu.test(text)||/[?？]/u.test(text)||/(?:何|いつ|どこ|誰|どれ|なぜ|どう|いくつ|何時|何日|ですか|ますか)/u.test(text);
+ if(!asks)return null;
+ return {action:'answer' as const,query:text,target:'file' as const};
+}
 /** Select one submitted turn's read-only scope before model planning. */
 export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  question:string;
@@ -68,14 +79,15 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const {question,literalRequest,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
+ const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
- const priorContext:DialogueContext=explicitSavedRequest||inputQuestion?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
- const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest?contextIndependentConversation(question,attachments,priorContext):null;
+ const priorContext:DialogueContext=explicitSavedRequest||explicitFileQuestion||inputQuestion?{summary:'',recent:[],refs:[],turnCount:0}:dialogueContext(prior,question);
+ const contextIndependent=!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const request=(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=contextIndependent?.context??priorContext;
- return {literalRequest,explicitSavedRequest,inputQuestion,priorContext,contextIndependent,request,context};
+ return {literalRequest,explicitSavedRequest,explicitFileQuestion,inputQuestion,priorContext,contextIndependent,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};
 export type TurnRoute<Request>=

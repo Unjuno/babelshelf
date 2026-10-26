@@ -3,7 +3,7 @@ import {AutoProcessor,AutoModelForImageTextToText,RawImage,env} from '@huggingfa
 import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
 import {configureLocalTransformerRuntime} from './transformers-runtime';
-import {visionManifest,visionReady,prepareVision,visionRuntimeResponse} from './vision-assets';
+import {visionManifest,visionReady,visionRuntimeResponse} from './vision-assets';
 import {customVisionModelDescriptor,customVisionReady,customVisionRuntimeResponse,readCustomVisionFile,validateCustomVisionModel} from './custom-vision-assets.ts';
 import type {CustomVisionModel} from './preference-records.ts';
 import type {VisionModelIdentity} from './vision-model-identity.ts';
@@ -58,9 +58,7 @@ self.onmessage=async({data}:MessageEvent<any>)=>{
   activeModelId=activeCustomModel?.id??'lfm25-vl-450m';
   activeIdentity=activeCustomModel?customVisionModelDescriptor(activeCustomModel):{model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime};
   let value:any;
-  if(data.type==='status')value={ready:await ready(),...activeIdentity};
-  else if(data.type==='prepare'){if(activeCustomModel)throw Error('Import custom Vision files locally before use');await prepareVision(data.allowNetwork===true,data.signal??new AbortController().signal,progress,data.localFiles);value={ready:true,...activeIdentity};}
-  else if(data.type==='describe'){
+  if(data.type==='describe'){
    const batch=data.images!==undefined,images=batch?data.images:[data.image];
    if(!Array.isArray(images)||images.length<1||images.length>3||batch&&data.image!==undefined||images.some(image=>!(image instanceof Blob)||!image.type.startsWith('image/')||image.size<1||image.size>(batch?2:32)*1024*1024))throw Error('Image file unsupported · maximum 3 sampled frames');
    const prompt=typeof data.prompt==='string'?data.prompt.trim():'';if(!prompt||prompt.length>2000)throw Error('Image question required · maximum 2,000 characters');

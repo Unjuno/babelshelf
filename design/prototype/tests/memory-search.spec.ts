@@ -1,4 +1,5 @@
 import {expect,test} from '@playwright/test';
+import {prepareOfflineShell} from './pwa-offline-setup.ts';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
@@ -9,7 +10,7 @@ async function returnToInput(page:any){
 }
 
 test('plain natural-language Memory search and open work offline without preparing a model',async({page,context})=>{
- await page.goto('/');await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+ await page.goto('/');await prepareOfflineShell(page);
  await navigate(page,'Memory');
  await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
  await page.getByRole('button',{name:'New file',exact:true}).click();

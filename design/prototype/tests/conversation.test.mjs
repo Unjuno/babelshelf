@@ -530,6 +530,45 @@ test('one-source structured recovery cites the exact current excerpt after malfo
  assert.equal(calls,3);assert.equal(format,'dialogue-answer');assert.equal(result.answer,'Cedar Room');assert.deepEqual(result.sources,[ref]);
 });
 
+test('one-source invalid citations retry as a bounded exact quote and retain canonical provenance',async()=>{
+ const note=createNote({body:'The emergency water reserve is exactly 24 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const store={all:async()=>[note],search:async()=>[ref]};let calls=0,budgets=[];
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,budget,format)=>{calls++;budgets.push({budget,format});return calls===1?{text:JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'24 litres'}]})}:{text:'{"answer":"24 litres"}'};}};
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'In the saved water note, how many litres are stored?',scope:{kind:'knowledge'}});
+ assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[ref]);assert.equal(calls,2);assert.equal(budgets[0].budget,128);assert.equal(budgets[1].format,'dialogue-answer');assert.ok(budgets[1].budget<=96);
+});
+
+test('opened-file answer recovers only an exact quote from its pinned revision',async()=>{
+ const note=createNote({body:'The emergency marker is cedar 472.'});let calls=0;
+ const store={all:async()=>[note],search:async()=>{throw Error('Opened-file scope must not search global Memory');}};
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,_budget,format)=>{calls++;return calls===1?{text:JSON.stringify({answer:'Cedar 472',citations:[{id:'S0',quote:'Cedar 472'}]})}:{text:'{"answer":"cedar 472"}'};}};
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'What exact marker is written in the currently open transcript file?',scope:{kind:'file',file:{noteId:note.id,revision:1}}});
+ assert.equal(result.answer,'cedar 472');assert.equal(calls,2);assert.equal(result.sources.length,1);assert.equal(result.sources[0].noteId,note.id);assert.equal(result.sources[0].revision,1);assert.ok(note.revisions[0].body.slice(result.sources[0].start,result.sources[0].end).includes(result.answer));
+});
+
+test('same-file excerpts allow exact-quote recovery while preserving the matching range',async()=>{
+ const note=createNote({body:'# Water Reserve\n\nThe emergency water reserve is exactly 24 litres. Identifier: LARCH-8402.'});const body=note.revisions[0].body;
+ const refs=[{noteId:note.id,revision:1,start:0,end:14,quote:body.slice(0,14)},{noteId:note.id,revision:1,start:16,end:body.length,quote:body.slice(16)}];
+ const store={all:async()=>[note],search:async()=>refs};let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls===1?JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'24 litres'}]}):'{"answer":"24 litres"}'})};
+ const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}});
+ assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[refs[1]]);assert.equal(calls,2);
+});
+
+test('exact-quote recovery remains disabled when retrieved excerpts span different files',async()=>{
+ const note=createNote({body:'The emergency water reserve is exactly 24 litres.'}),other=createNote({body:'A different note.'});const refs=[{noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},{noteId:other.id,revision:1,start:0,end:other.revisions[0].body.length,quote:other.revisions[0].body}];
+ const store={all:async()=>[note,other],search:async()=>refs};let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls===1?JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'bad source'}]}):'{"answer":"24 litres"}'})};
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}}),/Citation mismatch/);assert.equal(calls,1);
+});
+
+test('single-source exact-quote recovery refuses a model answer outside the excerpt',async()=>{
+ const note=createNote({body:'The emergency water reserve is exactly 24 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const store={all:async()=>[note],search:async()=>[ref]};let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls===1?JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'bad source'}]}):'{"answer":"25 litres"}'})};
+ await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}}),/verified quote/);assert.equal(calls,2);
+});
+
 test('single-excerpt JSON recovery rejects an answer absent from the original',async()=>{
  const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0;
@@ -597,7 +636,7 @@ test('standalone greetings use a fresh answer context without deleting retained 
 test('explicit greeting requests skip action selection but source-based greetings keep the evidence planner',async()=>{
  const context={summary:'',recent:[],refs:[],turnCount:0};let calls=0;
  const engine={manifest:{contextTokens:2048},count:async()=>{calls++;return {prompt_tokens:1};},generate:async()=>{calls++;return {text:'{"action":"answer","query":"saved greeting","target":"knowledge"}'};}};
- for(const request of ['こんにちは。短い挨拶を一文で返してください。','短い挨拶を書いてください。','Please write a brief greeting.'])assert.deepEqual(await planDialogue(engine,request,context),{action:'chat',query:''});
+ for(const request of ['こんにちは。短い挨拶を一文で返してください。','短い挨拶を書いてください。','Please write a brief greeting.','Hi. Reply with a brief greeting.','Reply with a brief greeting.'])assert.deepEqual(await planDialogue(engine,request,context),{action:'chat',query:''});
  assert.equal(calls,0);
  assert.deepEqual(await planDialogue(engine,'このメモの挨拶を一文で返してください。',context),{action:'answer',query:'saved greeting',target:'knowledge'});
  assert.equal(calls,2);

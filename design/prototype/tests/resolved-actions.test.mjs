@@ -1,6 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createResolvedActions} from '../src/resolved-actions.ts';
+import * as application from '../src/resolved-actions.ts';
+import {prepareOriginal,originalNote} from '../src/original-assets.ts';
+import {makeVisionText,visionTextNote} from '../src/vision-text.ts';
+import {visionManifest} from '../src/vision-assets.ts';
+
+async function visionFixture(){
+ const question='What code is in this image? Reply with the code only.';
+ const asset=await prepareOriginal(new File(['synthetic image bytes'],'image.png',{type:'image/png'}),'image-original');
+ const value=makeVisionText(asset,{model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,prompt:question,text:'MAPLE-6381',width:960,height:320});
+ const note=visionTextNote('image-reading',asset,value),records=[originalNote(asset),note],readings=[{kind:'vision',noteId:note.id,revision:1}],events=[];
+ const dependencies={store:{all:async()=>records},check:()=>{},trace:async(tool,input,work)=>{events.push({tool,input});return work();}};
+ return {question,note,records,readings,events,dependencies};
+}
+
+test('a single current image answer is reused unchanged with its actual model and original-linked revision',async()=>{
+ assert.equal(typeof application.answerCurrentVisionInput,'function');const f=await visionFixture(),before=structuredClone(f.records);
+ const answer=await application.answerCurrentVisionInput(f.dependencies,f.question,f.readings);
+ assert.equal(answer.answer,'MAPLE-6381');assert.equal(answer.model.id,visionManifest.id);assert.equal(answer.model.revision,visionManifest.revision);
+ assert.deepEqual(answer.sources,[{noteId:f.note.id,revision:1,start:0,end:10,quote:'MAPLE-6381',title:'image.png · image notes'}]);
+ assert.deepEqual(f.events.map(event=>event.tool),['knowledge.answer']);assert.equal(f.events[0].input.execution,'current-vision-result');assert.deepEqual(f.records,before);
+});
+
+test('Vision reuse cannot answer a different prompt, merge files, use edited text or a withdrawn original',async()=>{
+ assert.equal(typeof application.answerCurrentVisionInput,'function');const f=await visionFixture();
+ assert.equal(await application.answerCurrentVisionInput(f.dependencies,'What else is shown?',f.readings),null);
+ assert.equal(await application.answerCurrentVisionInput(f.dependencies,f.question,[...f.readings,...f.readings]),null);
+ f.records[1]={...f.note,mediaSource:undefined,visionText:{...f.note.visionText,original:undefined}};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+ f.records[1]={...f.note,revisions:[{...f.note.revisions[0],body:'Changed after recognition'}]};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+ f.records[1]=f.note;f.records[0]={...f.records[0],state:'withdrawn'};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+});
+
+test('Vision reuse revalidates the source at delivery and observes Stop without generating or writing',async()=>{
+ assert.equal(typeof application.answerCurrentVisionInput,'function');const f=await visionFixture();let reads=0;
+ f.dependencies.store.all=async()=>{if(++reads===2)return [{...f.records[0],state:'withdrawn'},f.note];return f.records;};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+ f.dependencies.check=()=>{throw Error('Stopped');};await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Stopped/);
+});
 
 const context={summary:'',recent:[],refs:[]};
 function fixture(overrides={}){

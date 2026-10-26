@@ -5,6 +5,17 @@ import {initialPreparationPlan,runInitialPreparation,textPreparationStatus} from
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
 
+test('custom Vision setup verifies the selected local package and never budgets a builtin-model download',async()=>{
+ const {visionManifest}=await import('../src/vision-assets.ts');const {validateCustomVisionModel}=await import('../src/custom-vision-assets.ts');
+ const files=visionManifest.files.map(({path,bytes,sha256})=>({path,bytes,sha256}));
+ const hash=createHash('sha256').update(JSON.stringify(files)).digest('hex');
+ const model=validateCustomVisionModel({id:'local-vision-'+hash,label:'Local Vision',role:'vision',engine:'transformers-lfm2-vl-onnx',revision:'sha256:'+hash,files,inspection:{format:'LFM2-VL-ONNX',architecture:'lfm2_vl',device:'webgpu',dtype:'q4f16',maxImageTokens:256,scope:'image-text'}});
+ const prefs=initial();prefs.customVisionModels=[model];prefs.visionModel=model.id;prefs.visionLibrary=[model.id];const ready={text:false,speech:false,ocr:false,vision:true};
+ const plan=initialPreparationPlan(prefs,ready,'vision');assert.deepEqual(plan.steps,[{role:'vision',label:model.label,readyLabel:'Verified',ready:true,bytes:0}]);assert.equal(plan.bytes,0);
+ assert.throws(()=>initialPreparationPlan(prefs,{...ready,vision:false},'vision'),/Import local Vision files first/);
+ assert.throws(()=>initialPreparationPlan({...prefs,customVisionModels:[]},ready,'vision'),/Vision runtime not connected/);
+});
+
 test('custom Qwen3 persists its own CPU identity and prepares without WebML assets',async()=>{
  const {formatPreference,parsePreference}=await import('../src/preference-records.ts');
  const {combinedLocalTextManifest}=await import('../src/lfm-text-manifest.ts');

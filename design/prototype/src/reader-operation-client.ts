@@ -12,8 +12,10 @@ export class ReaderOperationClient {
  private worker:any=null;
  private sequence=0;
  private pending:Pending|null=null;
+ private idleWaiters:Array<()=>void>=[];
  private label:string;private inferenceType:string;
  private factory:()=>any;private update:(busy:boolean,progress?:string)=>void;
+ private assetFactory?:(()=>any);private workerFactory:(()=>any)|null=null;
  private before?: (check:()=>void)=>Promise<void>;
  private acquire?:()=>Promise<InferenceLease>;
  constructor(
@@ -21,7 +23,8 @@ export class ReaderOperationClient {
   factory:()=>any, update:(busy:boolean,progress?:string)=>void,
   before?: (check:()=>void)=>Promise<void>,
   acquire?:()=>Promise<InferenceLease>,
- ){this.label=label;this.inferenceType=inferenceType;this.factory=factory;this.update=update;this.before=before;this.acquire=acquire;}
+  assetFactory?:()=>any,
+ ){this.label=label;this.inferenceType=inferenceType;this.factory=factory;this.update=update;this.before=before;this.acquire=acquire;this.assetFactory=assetFactory;}
  private finish(operation:Pending,value?:any,error?:unknown){
   if(operation.finishing)return;
   operation.finishing=true;
@@ -29,7 +32,7 @@ export class ReaderOperationClient {
    const worker=this.worker;this.worker=null;worker?.terminate();
   }
   const complete=(failure?:unknown)=>{
-   if(this.pending===operation){this.pending=null;this.update(false,failure instanceof Error?failure.message:undefined);}
+   if(this.pending===operation){this.pending=null;this.update(false,failure instanceof Error?failure.message:undefined);for(const resolve of this.idleWaiters.splice(0))resolve();}
    if(failure)operation.reject(failure);else operation.resolve(value);
   };
   if(operation.starting || operation.lease){
@@ -40,8 +43,10 @@ export class ReaderOperationClient {
   }else complete(error);
  }
  private dispatch(operation:Pending,values:any){
+  const factory=operation.type===this.inferenceType?this.factory:this.assetFactory??this.factory;
+  if(this.worker&&this.workerFactory!==factory){this.worker.terminate();this.worker=null;}
   if(!this.worker){
-   const worker=this.factory();this.worker=worker;
+   const worker=factory();this.worker=worker;this.workerFactory=factory;
    worker.onerror=()=>{
     if(this.worker!==worker)return;
     const current=this.pending;if(current)this.finish(current,undefined,Error(`${this.label} runtime failed`));
@@ -71,6 +76,24 @@ export class ReaderOperationClient {
     void operation.starting.then(()=>{check();this.dispatch(operation,values);}).catch(error=>this.finish(operation,undefined,error));
    }else{try{this.dispatch(operation,values);}catch(error){this.finish(operation,undefined,error);}}
   });
+ }
+ whenIdle():Promise<void>{return this.pending?new Promise(resolve=>this.idleWaiters.push(resolve)):Promise.resolve();}
+ async callAfterStatus(type:string,values:any={}):Promise<any>{
+  if(this.pending?.type==='status'){
+   const sequence=this.sequence;await this.whenIdle();
+   if(sequence!==this.sequence)throw Error('Stopped');
+  }
+  return this.call(type,values);
+ }
+ async statusWhenIdle(values:any={},isCurrent:()=>boolean=()=>true):Promise<any>{
+  while(isCurrent()){
+   try{return await this.call('status',values);}
+   catch(error){
+    if(!(error instanceof Error)||!error.message.includes('model busy'))throw error;
+    await this.whenIdle();
+   }
+  }
+  throw Error('Status check superseded');
  }
  stop(){
   this.sequence++;

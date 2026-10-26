@@ -1,7 +1,8 @@
 import {expect,test} from '@playwright/test';
+import {prepareOfflineShell} from './pwa-offline-setup.ts';
 
 test('explicit calculator wording keeps parentheses offline without a model',async({page,context})=>{
- await page.goto('/');await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+ await page.goto('/');await prepareOfflineShell(page);
  await context.setOffline(true);await page.reload();
  for(const [question,expression,result] of [
   ['Use the calculator to work out (84 + 16) / 5, and give just the result.','(84 + 16) / 5',20],

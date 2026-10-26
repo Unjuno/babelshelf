@@ -29,6 +29,10 @@ test('production manifest keeps optional inference and PDF worker chunks out of 
   assert.deepEqual(matches[0].roles,[role],`${prefix} must be acquired through its selected feature role`);
  };
  roleFor('decision-worker-','decision');roleFor('speech-worker-','speech');roleFor('vision-worker-','vision');
+ const visionAssets=manifest.files.filter(file=>file.path.startsWith('./assets/vision-assets-worker-'));
+ assert.equal(visionAssets.length,1,'Local Vision inspection needs its lightweight asset worker');
+ assert.equal(visionAssets[0].roles,undefined,'Local Vision file import must work before inference runtime preparation');
+ assert.ok(visionAssets[0].bytes<128*1024,'Asset inspection must not bundle the inference engine');
  roleFor('onnx-text-worker-','text-onnx');roleFor('lfm-text-worker-','text-wllama');roleFor('qwen3-text-worker-','text-wllama');
  roleFor('pdf-engine-','pdf');
  const pdfChunks=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-')&&file.path.endsWith('.js'));

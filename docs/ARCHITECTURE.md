@@ -1,5 +1,37 @@
 # Current application architecture
 
+## Vision preparation and answering — 2026-10-26
+
+`vision-assets-worker.ts` is a small core-shell worker for local file verification,
+cache repair and readiness. It contains no inference engine. `vision-worker.ts`
+is the separately prepared WebGPU inference worker. `ReaderOperationClient`
+selects the asset factory for status/prepare, disposes it before switching to
+inference, and retains its existing lease/cancellation ownership. A preparation
+request may wait for the invisible initial status operation; Stop invalidates
+that continuation. Local file import never acquires the inference runtime or
+permits network access. The UI distinguishes verified files from a prepared
+runtime and retains preparation errors beside the model.
+
+Initial preparation probes the selected builtin or registered custom LFM2-VL
+package through the same asset worker. A custom package must already be imported;
+it never acquires builtin weights as a substitute. Its label and activity identity
+follow the selected package. Actual custom-model inference acceptance is separate.
+
+For a self-contained question about one current image, a bounded output-format
+suffix does not require another planner pass. `answerCurrentVisionInput` can
+return the already generated Vision result when its original prompt matches the
+current question exactly. It accepts only an unchanged revision-1 single-image
+observation, validates its active original/source links, rechecks the snapshot
+before delivery, and records the actual Vision model identity. It has no model
+generation, write, delete or network port. The existing explicit Save review
+owns persistence. Multiple inputs, different questions, transformations, dialogue
+dependence and additional response preferences retain the normal answer path.
+
+Build `9873e37317e6a138` passed one actual offline Windows Chrome image-answer,
+source-preview, exact-save and cold-restart/read workflow. This is PC evidence
+for that scoped route; video, broad recognition accuracy and physical-device
+acceptance remain separate. See the dated harness acceptance report.
+
 ## Harness boundary update — 2026-10-25
 
 The current source adds the bounded execution seams below. Acceptance and exact
@@ -63,7 +95,7 @@ The product served by `npm run dev:app` is built from `design/prototype/product/
 
 Startup ownership is role-lazy except for the selected Text runtime's lightweight status worker. On app mount, `useBonsai` creates that worker and reads asset status, but the model-specific inference package and GPU session are loaded only after explicit model Load or a user operation that requires generation. Decision, Speech, Vision and OCR Workers are not created when their roles are unselected; their clients instantiate workers only when a status/preparation/inference call is made. Current defaults leave those optional roles unselected. This distinction matters on phones: the worker entry itself and a loaded model session have different costs, and an asset-status check must not be reported as model preparation or inference.
 
-The latest full local quality run used product build `ccfc10bc7fde7215` /134 assets and passed on Windows PC/Node/browser; it is a local build, separate from any published Site artifact. It covers Chromium/WebKit and isolated offline-PWA fixtures, but not physical iOS/Android, actual model generation, GPU fit/performance, answer quality or thermal stability. The current entry bundle is about 883 kB raw. Diagnostics, document processing and optional runtimes remain separately emitted chunks. The raw entry size is an optimization candidate, not evidence by itself of slow phone startup; moving `Prototype.tsx` wholesale behind an immediate dynamic import would only add another request without reducing executed code. Any future split should follow a user-visible feature boundary, preserve offline precache/verification and keep unselected processor workers dormant. See [test results](TEST-RESULTS.txt) and [remaining gates](REMAINING-GATES.md) for exact scopes.
+The latest full local quality run used product build `60a5edd9c61b12c5` /134 assets and passed on Windows PC/Node/browser; it is a local build, separate from any published Site artifact. An isolated installed-PWA run on that exact build also completed a real LFM2.5-230M QAD Q4_0 grounded answer offline, verified the exact source revision/range, saved the unchanged answer through review, and reopened it after two separate cold browser-process launches with zero external requests. This remains one Windows PC CPU-WASM scenario, not physical iOS/Android, WebGPU fit/performance, broad answer quality or thermal acceptance. The current entry bundle is about 900 kB raw. Diagnostics, document processing and optional runtimes remain separately emitted chunks. The raw entry size is an optimization candidate, not evidence by itself of slow phone startup; moving `Prototype.tsx` wholesale behind an immediate dynamic import would only add another request without reducing executed code. Any future split should follow a user-visible feature boundary, preserve offline precache/verification and keep unselected processor workers dormant. Speech/Vision role-lease ordering is covered by tests; a real current-build Text→Speech/Vision→Text sequence remains an open gate. See [test results](TEST-RESULTS.txt) and [remaining gates](REMAINING-GATES.md) for exact scopes.
 
 Connection settings store the user's asset/update policy separately from browser network observations. `navigator.onLine` is shown only as a browser network signal: it can remain `true` while all requests fail, so it never authorizes fallback cloud inference or proves Internet reachability. Offline policy blocks application/model asset acquisition; existing local inference and data processing remain local.
 
@@ -157,3 +189,9 @@ Image input now shares the same typed submission boundary as OCR/PDF/speech. inp
 `scopeResolvedTurnRequest()` now owns the next step after Decision/Text selection: it combines the selected intent with the actual submitted readings and pinned working file, preserves literal file commands, rejects mixed saved-knowledge and current-attachment scopes, and returns the working-file binding metadata consumed by the existing execution receipt. This keeps those precedence rules out of the UI component while leaving extraction, inference, tool execution, persistence, and review presentation behind their current owners. Its route-composition regressions run with `test:turn-intent`.
 
 `automatic-reading.ts` owns per-attachment capability selection, processing receipts, and the source-pinned extracted result. `automatic-reading-adapters.ts` now composes its Send-time Vision, OCR, PDF, and Speech operations from the selected local runtimes and workers, leaving `Prototype.tsx` to provide current preferences, worker hooks, cancellation, and progress. Every automatic runtime check is explicitly local (`allowNetwork: false`); image OCR and scanned-PDF OCR release idle Text/Decision inference only at the point OCR begins. Video-frame Vision now verifies the local Vision runtime before opening its frame reader, matching the image route. A video may request audio transcription only when the selected Speech model is prepared, and the original video and extracted observations/transcript remain separately source-pinned. Adapter tests use controlled processor ports and prove order, cancellation, and no-network policy; they do not establish OCR/ASR accuracy or real model inference.
+
+For a fresh install, the connection mode starts Offline and does not register or update the service worker until the user explicitly switches Online. Test and setup flows must exercise that consent boundary before waiting for control, then return the app to Offline before simulating network loss. This prevents the product's install/update shell from silently fetching while the user has selected Offline. The PC regression flow verified separate-process restarts, import/search/source/history/index rebuild and non-destructive backup conflict handling against the same 134-asset build with the fixture network unreachable; it does not exercise model generation or mobile Safari.
+
+`ReaderOperationClient.whenIdle()` resolves only after the active operation's cleanup and owned lease release. Speech/Vision readiness checks use this boundary before taking an exclusive inference role, so a transient resident-role handoff is awaited instead of misreported as a permanently busy model. Actual role changes, same-origin cross-tab exclusion, Stop and offline-shell setup are covered by the full PC quality gate. A real offline PC LFM2.5-230M CPU-WASM conversation, exact review-save and cold-restart read succeeded; this is not grounded answer acceptance. Bonsai 4B loaded but its generation lost the Windows D3D12 device, and a follow-up 2B load did not reach ready. Do not infer general incompatibility or iOS behavior from those machine-specific outcomes.
+
+On local build `d97a31e96c553918`, an isolated PC Chrome PWA completed one real media handoff: pinned Whisper tiny (Transformers.js 4.3.0, WASM q8) transcribed a synthetic local WAV offline, saved the transcript as an immutable source, released Speech, then loaded pinned LFM2.5-230M QAD Q4_0 through Wllama 3.8.1 / llama.cpp b11364 CPU-WASM and answered a question scoped to the open transcript. The citation was revalidated to transcript revision 1 and previewed with an estimated audio range; the reviewed answer was saved unchanged and reopened after a cold offline browser restart. No external requests occurred in the offline phases and existing profile records were compared before and after. This demonstrates the Speech→Text handoff and one narrow English fact path only. Vision inference, the full role matrix, general recognition/answer quality, GPU execution and physical devices remain unverified. Detailed PC evidence is in `outputs/harness-current/speech-role-current-20261025/run-21/evidence.json`.

@@ -9,12 +9,13 @@ const builtinVision='lfm25-vl-450m-q4f16';
 export function useVision(model:string,customModels:readonly CustomVisionModel[]=[],beforeDescribe?:(check:()=>void)=>Promise<void>){
  const before=useRef(beforeDescribe);before.current=beforeDescribe;
  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false),[progress,setProgress]=useState('');
- const client=useRef<VisionClient|null>(null),importAbort=useRef<AbortController|null>(null);client.current??=new VisionClient(()=>new Worker(new URL('./vision-worker.ts',import.meta.url),{type:'module'}),(active,text)=>{setBusy(active);if(text)setProgress(text);},async check=>{check();await before.current?.(check);check();},()=>inferenceLeaseManager.acquire('Vision'));
+ const client=useRef<VisionClient|null>(null),importAbort=useRef<AbortController|null>(null);client.current??=new VisionClient(()=>new Worker(new URL('./vision-worker.ts',import.meta.url),{type:'module'}),(active,text)=>{setBusy(active);if(text)setProgress(text);},async check=>{check();await before.current?.(check);check();},()=>inferenceLeaseManager.acquire('Vision'),()=>new Worker(new URL('./vision-assets-worker.ts',import.meta.url),{type:'module'}));
  const customModel=customModels.find(item=>item.id===model),customModelId=customModel?.id??'';
- useEffect(()=>{let alive=true;setReady(false);if(!model){client.current!.stop();return()=>{alive=false;};}client.current!.call('status',{model,customModel}).then(value=>{if(alive)setReady(value.ready===true);}).catch(()=>{if(alive)setReady(false);});return()=>{alive=false;client.current!.stop();importAbort.current?.abort();};},[model,customModelId,customModel?.revision]);
+ useEffect(()=>{let alive=true;setReady(false);if(!model){client.current!.stop();return()=>{alive=false;};}client.current!.statusWhenIdle({model,customModel},()=>alive).then(value=>{if(alive)setReady(value.ready===true);}).catch(()=>{if(alive)setReady(false);});return()=>{alive=false;client.current!.stop();importAbort.current?.abort();};},[model,customModelId,customModel?.revision]);
  const describe=async(values:Record<string,unknown>)=>{return client.current!.call('describe',{...values,model,...(customModel?{customModel}: {})});};
+ const checkFiles=async()=>{const result=await client.current!.callAfterStatus('status',{model,customModel});return result.ready===true;};
  const prepare=async(allowNetwork:boolean,localFiles?:File[])=>{
-  if(model===builtinVision){setReady(false);await client.current!.call('prepare',{model,allowNetwork,localFiles});setReady(true);setProgress('Verified');return;}
+  if(model===builtinVision){setReady(false);await client.current!.callAfterStatus('prepare',{model,allowNetwork,localFiles});setReady(true);setProgress('Verified');return;}
   if(!customModel)throw Error('Vision model not configured');
   setReady(false);setBusy(true);const controller=new AbortController();importAbort.current=controller;
   try{
@@ -24,5 +25,5 @@ export function useVision(model:string,customModels:readonly CustomVisionModel[]
   }
   finally{if(importAbort.current===controller)importAbort.current=null;setBusy(false);}
  };
- return {ready,busy,progress,stop:()=>{importAbort.current?.abort();importAbort.current=null;client.current!.stop();},prepare,describe:async(image:Blob,prompt:string)=>{if(!ready)throw Error('Vision model not prepared');return describe({image,prompt});},describeFrames:async(images:Blob[],prompt:string)=>{if(!ready)throw Error('Vision model not prepared');return describe({images,prompt});}};
+ return {ready,busy,progress,checkFiles,stop:()=>{importAbort.current?.abort();importAbort.current=null;client.current!.stop();},prepare,describe:async(image:Blob,prompt:string)=>{if(!ready)throw Error('Vision model not prepared');return describe({image,prompt});},describeFrames:async(images:Blob[],prompt:string)=>{if(!ready)throw Error('Vision model not prepared');return describe({images,prompt});}};
 }
