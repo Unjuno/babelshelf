@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Unsent composer boundary — 2026-10-27
+
+composer-draft.ts isolates exact unsent text in tab-local sessionStorage. It restores editable input only; canonical notes, shared dialogue and backups are unchanged. A synchronous functional setter preserves the newest local text during consumption/recovery and exposes denied reads/writes without throwing away input. Failed writes and pending attachments participate in ordinary reload protection. No files or source receipts are fabricated; closed-session/OS recovery is not claimed. See [Composer draft contract](COMPOSER-DRAFT.md).
+
 ## Shared search folding — 2026-10-27
 
 Canonical core exports normalizeSearchText (NFKC, fixed Japanese case folding, whitespace collapse/trim). Indexed search retains its existing alias and scoring. Metadata discovery and the Memory browser reuse the same normalizer instead of maintaining separate width-sensitive rules. The browser applies the normalized query to visibility, search labels and scope selection; an empty folded query stays normal browsing. Comparison strings are never saved or used as citation offsets; paths, bodies, versions and source validation remain literal.

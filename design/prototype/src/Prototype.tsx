@@ -1,4 +1,5 @@
 import {cancelCaptureReview} from './capture-review';
+import {useComposerDraft} from './composer-draft';
 import {PendingCorrectionConflictError,validatePendingCorrection,pendingCorrectionProblem,PENDING_CORRECTION_STATE,type PendingCorrection} from './pending-correction';
 import {deviceModelTestProfile,validateDeviceModelTest,type DeviceTestMode} from './device-model-test';
 import {startDeviceTestSuite} from './device-test-suite';
@@ -159,7 +160,7 @@ export default function Prototype() {
  const [visionPrompt,setVisionPrompt]=useState('Describe this image.'),[visionOutput,setVisionOutput]=useState(''),[visionError,setVisionError]=useState(''),[visionReceipt,setVisionReceipt]=useState<{id:string;asset:OriginalAsset;fresh:boolean;value:VisionText}|null>(null),[visionSaving,setVisionSaving]=useState(false);const visionSaveLock=useRef(false),visionStopped=useRef(false);
  const [recording,setRecording]=useState(false),[transcript,setTranscript]=useState<{id:string;asset:OriginalAsset;value:Transcript;fresh:boolean;url:string}|null>(null),[transcriptSaving,setTranscriptSaving]=useState(false);
  const keyboard=useKeyboard(), {bottomInset,availableHeight}=useKeyboardInsets();
- const [page,setPage]=useState<Page>('input'),[draft,setDraft]=useState('');
+ const [page,setPage]=useState<Page>('input');const [draft,setDraft,draftError]=useComposerDraft();
  const [deviceStorage,setDeviceStorage]=useState<DeviceStorage|null>(null),[textDeviceCheck,setTextDeviceCheck]=useState<TextDeviceCheck|null>(null),[textDeviceChecking,setTextDeviceChecking]=useState(false),textDeviceEpoch=useRef(0),[storageProtectionBusy,setStorageProtectionBusy]=useState(false),[storageProtectionMessage,setStorageProtectionMessage]=useState('');
  const [messages,setMessages]=useState<Message[]>([]),[opened,setOpenedState]=useState<string|null>(null);
  const historyEpoch=useRef(0);function setOpened(id:string|null){previewSelection.current.cancel();historyEpoch.current++;setOpenedState(id);}
@@ -580,7 +581,7 @@ export default function Prototype() {
  useEffect(()=>{if(sheet)keyboard.hide();},[sheet]);
  const current=notes.find(n=>n.id===opened);
  const editorDirty=editing&&(!editBase.current||editBody!==editBase.current.body||editPath!==editBase.current.path);
- useEffect(()=>{if(!editing&&!['file','folder','schedule','schedule-repeat'].includes(sheet??''))return;const protect=(event:BeforeUnloadEvent)=>{if(!editorDirty&&!creationIsDirty()&&!scheduleIsDirty())return;event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',protect);return()=>window.removeEventListener('beforeunload',protect);});
+ useEffect(()=>{if(!editing&&!attachments.length&&!['file','folder','schedule','schedule-repeat'].includes(sheet??''))return;const protect=(event:BeforeUnloadEvent)=>{if(!editorDirty&&!attachments.length&&!creationIsDirty()&&!scheduleIsDirty())return;event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',protect);return()=>window.removeEventListener('beforeunload',protect);});
  function requestEditorExit(action:()=>void){
   if(directSaveLock.current){toast('Saving · wait');return;}
   if(editorDirty){reviewDiscard(editBase.current?.path??'File',action);return;}
@@ -1080,6 +1081,7 @@ export default function Prototype() {
 
   </nav>
   {page==='input'&&sheet===null&&<div ref={composerElement} className="composer-dock" style={{bottom:bottomInset+12}}>
+   {draftError&&<div className="input-file-context" role="alert">{draftError==='read'?'Draft unavailable':'Draft not saved'}</div>}
    {(pendingCorrection||pendingCorrectionError)&&<div className="input-file-context" role="group" aria-label="Pending changes">{pendingCorrection?<button type="button" className="quiet-button" aria-label="Review pending changes" disabled={sending||correctionSaving||storagePending||!storageReady} onClick={()=>void resumeCorrection()}>Review changes</button>:<><span role="alert">{pendingCorrectionError}</span><button type="button" className="quiet-button danger-button" disabled={correctionSaving||storagePending} onClick={()=>void cancelCorrection()}>Discard saved review</button></>}</div>}
    {inputFile&&attachments.length===0&&<div className="input-file-context" role="group" aria-label="Input file"><FileText size={18} aria-hidden="true"/>{inputFileNote?<button type="button" className="input-file-open" title={inputFilePath} aria-label={(inputFileStatus?'Open latest input file ':'Open input file ')+inputFilePath} disabled={sending||bonsai.busy||storagePending||!dialogueReady} onClick={()=>openNote(inputFile.noteId)}>{inputFilePath.split('/').at(-1)} · v{inputFile.revision}{inputFileStatus?' · Changed · Open latest':''}</button>:<span title={inputFilePath}>{inputFilePath.split('/').at(-1)} · v{inputFile.revision} · Unavailable</span>}<button type="button" className="icon-button" aria-label="Remove file from input" title="Remove file from input" disabled={sending||bonsai.busy||storagePending||!dialogueReady} onClick={()=>void fileFocusQueue.current!.clear(inputFile).catch(error=>setDialogueError(error.message))}><X size={18}/></button></div>}
    {attachments.length>0&&<div className="pending-attachments">{attachments.map(item=>attachmentCard(item,true))}</div>}

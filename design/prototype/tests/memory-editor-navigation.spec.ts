@@ -58,8 +58,28 @@ test('input file opens directly and explicitly refreshes a restored revision wit
  await page.getByRole('button',{name:'History',exact:true}).click();await page.getByRole('dialog').getByText('v1',{exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Meet at 09:00. 青いノート。');await page.getByRole('button',{name:'Close',exact:true}).click();await input();
  await expect(page.getByRole('group',{name:'Input file',exact:true})).toContainText('v3');await expect(page.getByRole('group',{name:'Input file',exact:true})).not.toContainText('Changed');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Keep this unsent message');
- // The selected revision persists; composer reload durability is a separate open gate.
- await page.reload();await expect(page.getByRole('button',{name:'Open input file Inbox/Travel.md',exact:true})).toBeVisible();
+ // Both the explicit revision selection and the unsent text survive ordinary reload.
+ await page.reload();await expect(page.getByRole('button',{name:'Open input file Inbox/Travel.md',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Keep this unsent message');
+});
+
+test('composer reload keeps exact text per tab and successful Send clears only its own draft',async({page,context})=>{
+ await page.goto('/');const composer=page.getByRole('textbox',{name:'Message',exact:true});
+ const text='  Cafe\u0301とｶﾞﾗｽ。\nKeep these spaces.　';await composer.fill(text);await page.reload();await expect(composer).toHaveValue(text);
+ const other=await context.newPage();await other.goto('/');const otherComposer=other.getByRole('textbox',{name:'Message',exact:true});await expect(otherComposer).toHaveValue('');await otherComposer.fill('Other tab');
+ await composer.fill('Calculate 6 * 7');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.reply-text')).toContainText('6 * 7 = 42');await page.reload();await expect(composer).toHaveValue('');
+ await composer.fill('Calculate 8 + 5');await page.getByRole('button',{name:'Send',exact:true}).click();await composer.fill('Next unsent message');await expect(page.locator('.reply-text').last()).toContainText('8 + 5 = 13');await page.reload();await expect(composer).toHaveValue('Next unsent message');await composer.fill('');
+ await other.reload();await expect(otherComposer).toHaveValue('Other tab');await otherComposer.fill('');await other.reload();await expect(otherComposer).toHaveValue('');await other.close();
+});
+
+test('a blocked draft write keeps live text and allows cancelling reload',async({page})=>{
+ await page.addInitScript(()=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='babelshelf.composer-draft.v1')throw new DOMException('Full','QuotaExceededError');return original.call(this,key,value);};});
+ await page.goto('/');const composer=page.getByRole('textbox',{name:'Message',exact:true});await composer.click();await composer.fill('Keep this live text');await expect(page.getByRole('alert')).toHaveText('Draft not saved');
+ const blocked=page.waitForEvent('dialog'),reload=page.reload({timeout:3000}).catch(()=>null);const dialog=await blocked;expect(dialog.type()).toBe('beforeunload');await dialog.dismiss();await reload;await expect(composer).toHaveValue('Keep this live text');
+});
+
+test('pending attachments protect reload instead of pretending files are durable composer text',async({page})=>{
+ await page.goto('/');await page.getByRole('textbox',{name:'Message',exact:true}).fill('Read the attachment');const pending=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Add attachment',exact:true}).click();await (await pending).setFiles({name:'tiny.txt',mimeType:'text/plain',buffer:Buffer.from('Original attachment')});await expect(page.locator('.pending-attachments')).toContainText('tiny.txt');
+ const blocked=page.waitForEvent('dialog'),reload=page.reload({timeout:3000}).catch(()=>null);const dialog=await blocked;expect(dialog.type()).toBe('beforeunload');await dialog.dismiss();await reload;await expect(page.locator('.pending-attachments')).toContainText('tiny.txt');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Read the attachment');
 });
 
 test('breadcrumb exit keeps a dirty draft until reviewed Save, including revision history after reload',async({page})=>{
