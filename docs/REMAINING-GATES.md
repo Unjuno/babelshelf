@@ -1,3 +1,7 @@
+## Update investigation (2026-10-27)
+
+The public v261 trial required a second explicit update check, but the first check's network response and UI outcome were not captured; propagation, caching and timing remain unproven causes. Current public sw.js responds with Cache-Control: public, max-age=0, must-revalidate (one HEAD observation). The existing refresh helper waits for installation and confirmed controller activation, and isolated PC Chromium regression passed one-check update, corrupt-asset rejection, offline reload and preserved synthetic local data; 15 Node lifecycle tests also passed. These do not reproduce the public timing issue or prove iOS behavior. At the next actual deployment, capture the first update outcome, controlling build and response/build timing before retrying; do not delete user storage.
+
 ## Public v261 yen calculation trial (2026-10-27)
 
 On the PC sidebar browser with app Offline, v260 routed '1,200円＋800円' through model selection and compaction and was stopped without an answer. On public v261, active worker 5bb96053bdee6dd2 / index-BOSm7vKA.js, the same input returned '1200 + 800 = 2000' with Calculated status. The first update check still had v260 active; a second check applied v261. The cause of that delay was not established. Existing data and selected QA file were retained. This is one calculation on one PC browser, not general arithmetic, iPhone or offline cold-restart verification.
