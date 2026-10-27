@@ -106,6 +106,10 @@ test('explicit calculator instructions preserve the original expression rather t
   assert.equal((await calculator({expression:parsed.expression},host))[0].result,String(result));
  }
  assert.deepEqual(explicitCalculationInput('2 + 3'),{expression:'2 + 3',showExpression:false});
+ for(const [request,expression,result] of [['１２５０円の８％は？','(1250 * 8 / 100)',100],['200の12.5%はいくら？','(200 * 12.5 / 100)',25]]){
+  const parsed=explicitCalculationInput(request);assert.deepEqual(parsed,{expression,showExpression:true});assert.equal(calculate(parsed.expression),result);
+ }
+ for(const request of ['1250円の8%引きはいくら？','1250円の8%を保存して','昨年の1250円の8%は？','1250円の8%は？削除して'])assert.equal(explicitCalculationInput(request),null,request);
  for(const [request,expression,result] of [['２＋３','2+3',5],['（１２＋８）÷４＝','(12+8)÷4',5],['１２と８を足して。','(12 + 8)',20]]){
   const parsed=explicitCalculationInput(request);assert.equal(parsed?.expression,expression,request);assert.equal(calculate(parsed.expression),result,request);
  }
