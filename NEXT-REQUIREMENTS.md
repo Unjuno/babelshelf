@@ -1,13 +1,12 @@
 # Current requirements and next work
 
-Updated 2026-10-26 JST. The accepted mobile UI and the bounded 2026-10-19 input-submission refactor are milestones, not completion of the user's broader active goal: a polished local-first PWA agent with offline operation, replaceable local inference, a safe memory-defined harness, useful tools, and controlled self-improvement. Preserve existing local data and distinguish implementation evidence from actual device/model acceptance. Continue from a concrete unmet product requirement; do not restart broad model comparisons or repeat successful samples without a specific reason. Current public-site and unpublished local-build evidence are kept separately in [REMAINING-GATES.md](docs/REMAINING-GATES.md) and [TEST-RESULTS.txt](docs/TEST-RESULTS.txt).
+Updated 2026-10-28 JST. The accepted mobile UI and the bounded 2026-10-19 input-submission refactor are milestones, not completion of the broader local-first PWA goal. Preserve local data and distinguish code, PC/browser, installed-PWA, physical-device, and model evidence. Continue from a concrete unmet requirement; do not repeat broad model comparisons or successful samples without a specific reason. The short current release snapshot is at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md); detailed dated evidence lives in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt).
 
 ## Read in this order
 
-1. [Accepted product/UI behavior](docs/PRODUCT-SPEC.md).
-2. [Current evidence and exact build scopes](docs/MVP-ACCEPTANCE.md).
-3. [Remaining gates](docs/REMAINING-GATES.md).
-4. [Implementation map](docs/IMPLEMENTATION-PLAN.md), the relevant operation contract, and [original test results](docs/TEST-RESULTS.txt).
+1. [Accepted product/UI behavior](docs/PRODUCT-SPEC.md) and the relevant sections of [architecture](docs/ARCHITECTURE.md).
+2. The `Current status` block at the top of [remaining gates](docs/REMAINING-GATES.md).
+3. For a concrete change, the relevant row in [MVP acceptance](docs/MVP-ACCEPTANCE.md), [implementation map](docs/IMPLEMENTATION-PLAN.md), operation contract, and only matching entries in [test history](docs/TEST-RESULTS.txt).
 
 Historical unit notes and research reports are observations at their recorded build, not current requirements. Earlier versions of this handoff remain in Git history; detailed failures remain in TEST-RESULTS.txt and research/.
 

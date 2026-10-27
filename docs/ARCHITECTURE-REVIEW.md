@@ -1,6 +1,28 @@
-# Architecture review and target — 2026-10-26
+# Architecture review and target — 2026-10-28
 
 Scope: current local application after the Send boundary, shared model acquisition and one-button device-test changes. This is a code/design review, not proof of all model/device combinations. Accepted UI, canonical knowledge and history remain invariants.
+
+## Current source inspection · 2026-10-28
+
+`design/prototype/src/Prototype.tsx` is 271,618 bytes across 1,148 lines. Its final render line is 56,647 characters and contains 50 conditional sheet branches spanning 41 sheet identifiers (model/profile setup, media reading, task execution, Memory/file actions, source previews and others). Several focused presenters already exist, but the remaining sheet tree still concentrates presentation and callbacks in the root component. This is a verified ownership/readability concern, not evidence of a runtime defect or justification for a large prop bag.
+
+Next refactor: review the classified active diff for duplicate ownership and stale paths, then group one complete sheet workflow behind a typed, domain-specific view model while leaving validation, persistence, revision checks and model/tool authority in their current application/domain owners. Avoid a single omnibus modal component and avoid moving code solely to lower the line count. Verify the same user-visible flow, keyboard dismissal, cancellation and approval behavior before extending the seam.
+
+## Active worktree map · 2026-10-28
+
+The current local diff spans several independent product areas. Keep these changes reviewed and tested as coherent groups; do not stage generated `dist/` output separately from its source build changes.
+
+| Change group | Current owners | Boundary to preserve |
+| --- | --- | --- |
+| Answer, intent and source integrity | `turn-router.ts`, `grounded-answer.ts`, `conversation.ts`, `submission-workflow.ts`, `dialogue-writer.ts`, `grounding-conflict.ts`, `execution-source.ts`, `sourced-calculation.ts` | Model proposals remain candidates; source/version checks, calculator execution and commits remain application-owned and review-gated. |
+| Reading and attachments | `automatic-reading.ts`, `input-readings.ts`, `vision-worker.ts`, `vision-output.ts`, `PdfPreview.tsx`, `backup-state.ts` | Original assets and derived readings retain separate lineage; the answer route receives only explicitly selected, validated evidence. |
+| Tasks and schedules | `scheduled-answer.ts`, `scheduled-calculation.ts`, `task-records.ts`, `task-status.ts`, `useTasks.ts` | Schedules are paused until enabled; execution receipts are validated against their stored prompt and answer. |
+| Memory and recovery | `knowledge-store.ts`, `note-corrections.ts`, `note-provenance.ts`, `memory-trash.ts`, `backup-state.ts`, `StartupRecovery.tsx` | IndexedDB remains canonical; revisions, compare-and-swap checks and conflict refusal stay inside storage operations. |
+| Models, tools and diagnostics | `app-settings.json`, `model-diagnostics.ts`, `model-file-guidance.ts`, `device-diagnostics.ts`, `agent-loop.ts` | User configuration selects bounded registered capabilities; it does not grant arbitrary network, filesystem or write authority. |
+| App lifecycle and delivery | `offline-shell.ts`, `startup-recovery.ts`, `scripts/build-product.mjs`, `scripts/product-worker.mjs`, `scripts/qa/*`, `dist/*` | Build outputs must correspond to source and manifest; cache updates must preserve offline assets and local user data. |
+| Screen integration | `Prototype.tsx`, `SettingsHomeScreen.tsx`, `HelpPage.tsx`, `PdfPreview.tsx`, `prototype.css` | The root composes workflows; domain validation and persistence should not migrate into presentation components during extraction. |
+
+The main cross-group seams to review first are `Prototype.tsx` (routing, modal state and presentation are still coupled), `input-readings.ts` (shared by answer preparation and stored reading validation), and `knowledge-store.ts` (canonical read/write and grounded dialogue commit share transaction authority). These are not all refactor targets: preserve the shared invariants, and split only where an application-facing operation can own a complete user workflow without duplicating the transaction rules.
 
 ## Assessment
 

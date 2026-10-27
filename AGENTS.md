@@ -5,8 +5,9 @@ Updated 2026-10-21. This file is the current operational guide. Historical exper
 ## Start here
 
 - Read `NEXT-REQUIREMENTS.md` for current product invariants and next work.
-- Read `docs/PRODUCT-SPEC.md`, `docs/ARCHITECTURE.md`, and `docs/MVP-ACCEPTANCE.md` for product behavior, system boundaries, and evidence scope.
-- Use `docs/REMAINING-GATES.md` and `docs/TEST-RESULTS.txt` for current open gates and dated verification. Do not treat historical test results as current proof.
+- Read `docs/PRODUCT-SPEC.md` and the relevant sections of `docs/ARCHITECTURE.md` for behavior and boundaries; consult `docs/ARCHITECTURE-REVIEW.md` for structural gaps.
+- Read only the `Current status` block at the top of `docs/REMAINING-GATES.md` for the current release snapshot. Search `docs/TEST-RESULTS.txt` for a specific build, feature, or test ID; do not load the full historical log.
+- Treat `docs/MVP-ACCEPTANCE.md` as the acceptance matrix, not a substitute for current-build evidence. Keep detailed dated run evidence in `docs/TEST-RESULTS.txt`; link to it instead of copying it into status/requirements documents.
 
 ## Product invariants
 
@@ -20,6 +21,8 @@ Updated 2026-10-21. This file is the current operational guide. Historical exper
 ## Engineering and verification
 
 - Make focused, reviewable changes that improve the user-facing system. Preserve unrelated working-tree edits; do not stage or commit broad dirty trees.
+- At each coherent milestone, review architecture and repository organization: identify duplicated behavior, unclear ownership, stale instructions, and oversized source or test files. Refactor only where it reduces duplication or coupling; preserve contracts and avoid unrelated rewrites. Prefer updating the existing canonical document over adding another status or memory file.
+- Keep a short current-state summary separate from append-only evidence. Historical evidence may be moved to its canonical archive, but never silently deleted or copied into multiple active summaries. Read only the relevant sections needed for the current task.
 - Run the narrowest relevant tests plus required regressions. Report the actual environment and scope: Node, PC browser, installed PWA, physical iOS/Android, and model/GPU acceptance are distinct.
 - Do not use mocked inference as evidence of model behavior. Do not repeat broad experiments when existing evidence answers the question; collect new measurements only to resolve a concrete uncertainty.
 - The Settings > Developer iOS handoff is a one-run device check. The PWA cannot verify iOS Airplane Mode or force-close. Copy its bounded report/context and analyze it before requesting a repeat.
