@@ -34,12 +34,15 @@ test('production manifest keeps optional inference and PDF worker chunks out of 
  assert.equal(visionAssets[0].roles,undefined,'Local Vision file import must work before inference runtime preparation');
  assert.ok(visionAssets[0].bytes<128*1024,'Asset inspection must not bundle the inference engine');
  roleFor('onnx-text-worker-','text-onnx');roleFor('lfm-text-worker-','text-wllama');roleFor('qwen3-text-worker-','text-wllama');
- roleFor('pdf-engine-','pdf');
+ const pdfEngine=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-engine-')&&file.path.endsWith('.js'));
+ assert.equal(pdfEngine.length,1,'Expected one PDF engine');
+ assert.equal(pdfEngine[0].roles,undefined,'PDF engine is part of the verified core shell for offline updates');
  const pdfText=manifest.files.find(file=>file.path.startsWith('./assets/pdf-text-')&&file.path.endsWith('.js'));
  if(pdfText)assert.equal(pdfText.roles,undefined,'The startup text helper must be available offline');
  const pdfChunks=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-')&&!file.path.startsWith('./assets/pdf-text-')&&file.path.endsWith('.js'));
- assert.ok(pdfChunks.length>=2,'The PDF engine and PDF.js chunks must be role-gated');
- for(const file of pdfChunks)assert.deepEqual(file.roles,['pdf'],file.path+' must be acquired through PDF preparation');
+ assert.ok(pdfChunks.length>=2,'The PDF engine and PDF.js chunks must be in the core shell');
+ for(const file of pdfChunks)assert.equal(file.roles,undefined,file.path+' must be available in the core shell');
+ roleFor('pdf.worker.min-','pdf');
  const sw=await fs.readFile(root+'sw.js','utf8');
  assert.match(sw,/INSTALL_FILES=FILES\.filter\(file=>!Array\.isArray\(file\.roles\)\|\|file\.roles\.length===0\)/);
 });

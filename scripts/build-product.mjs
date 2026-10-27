@@ -22,7 +22,11 @@ function optionalRoles(file){
  // The application imports this lightweight text helper during startup; it is
  // part of the offline shell, unlike the optional PDF.js processing engine.
  if(name.startsWith('pdf-text-'))return [];
- if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return ['pdf'];
+ // The PDF JS chunks can change when the app's shared chunks change, even
+ // without a PDF dependency update. Cache them with every verified shell so
+ // an ordinary app update does not strand a previously prepared PDF reader.
+ // PDF worker, fonts and cmaps remain explicitly prepared optional assets.
+ if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return [];
  if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['text-onnx','decision','speech','vision'];
  if(/^(default|compat)-.*\.wasm$/.test(name))return ['text-wllama'];
  if(/^wllama-.*\.wasm$/.test(name))return ['text-lfm-check'];

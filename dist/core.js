@@ -61,8 +61,8 @@ function buildNoteIndex(notes,force,stored){
  const cache=stored?storedIndexCache:indexCache;if(!force&&cache.has(notes))return cache.get(notes);
  const map=new Map(notes.map(n=>[n.id,n])),docs=[],postings=new Map();
  for(const n of notes){if(stored?n.state!=='active':!eligible(n,map))continue;const v=latest(n);for(const c of searchChunks(v.body)){
-  const filename=notePath(n).split('/').at(-1).replace(/\.md$/i,''),text=norm(c.quote),head=norm(v.title+' '+filename+' '+n.aliases.join(' ')),tokens=searchTerms(text),textWords=words(text),headWords=words(head),i=docs.length;docs.push({n,v,c,text,head,tokens,textWords,headWords});
-  for(const term of new Set([...tokens,...searchTerms(head),...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
+  const filename=notePath(n).split('/').at(-1).replace(/\.md$/i,''),text=norm(c.quote),head=norm(v.title+' '+filename+' '+n.aliases.join(' ')),tokens=searchTerms(text),textWords=words(text),headWords=[...words(head),...words(head.replace(/[-_]/g,' '))],i=docs.length;docs.push({n,v,c,text,head,tokens,textWords,headWords});
+  for(const term of new Set([...tokens,...searchTerms(head),...headWords,...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
  }}
  const index={docs,postings,avg:docs.reduce((s,d)=>s+d.tokens.length,0)/Math.max(1,docs.length)};cache.set(notes,index);return index;
 }

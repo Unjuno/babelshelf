@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const core=await import('../dist/core.js').catch(()=>({}));
+test('search discovers separated filename words without changing original citations',()=>{
+ const note=core.createNote({path:'Inbox/zephyr-meeting.md',body:'Friday at noon.'});
+ for(const search of [core.searchNotes,core.searchStoredNotes]){const hits=search([note],'zephyr meeting');assert.equal(hits[0]?.noteId,note.id);assert.equal(hits[0].quote,'Friday at noon.');assert.equal(core.validateRefs([note],hits).ok,true);}
+});
 test('new note preserves literal source and immutable revisions',()=>{
  assert.equal(typeof core.createNote,'function');
  const n=core.createNote({title:'設計',body:'<script>原文</script>\n\n予算は240万円。'});

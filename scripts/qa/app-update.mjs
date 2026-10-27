@@ -18,6 +18,10 @@ function generation(number){
  window.update=async()=>refreshAppVersion(await navigator.serviceWorker.getRegistration(),navigator.serviceWorker,5000);
  window.activeBuild=()=>activeAppBuild(navigator.serviceWorker);
  window.events=[];
+ // A first install now checks the same explicit Online preference as an
+ // update. This disposable fixture must establish it before registration.
+ const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('mlb-memory-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('notes',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+ await new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite');tx.objectStore('notes').put({id:'settings-connection',state:'active',ui:{managed:true},revisions:[{path:'Settings/connection.md',body:'# Connection\\n\\n\`\`\`json\\n{"downloads":true,"diagnosticLogs":false}\\n\`\`\`\\n'}]});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();
  const reg=await navigator.serviceWorker.getRegistration()??await navigator.serviceWorker.register('./sw.js');
  let workerId=0;
  reg.addEventListener('updatefound',()=>{const worker=reg.installing,id=++workerId;window.events.push({worker:id,event:'found',state:worker?.state});worker?.addEventListener('statechange',()=>window.events.push({worker:id,event:'state',state:worker.state}));});

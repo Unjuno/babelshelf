@@ -65,7 +65,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   await afterBootstrap?.();
   await phase(true,async(p,entry)=>{
    entry.search=await search(p,marker,original);assert.ok(entry.search.includes('18リットル'));
-   await p.getByRole('button',{name:'View source',exact:true}).last().click();entry.source=await p.getByRole('dialog').innerText();assert.ok(entry.source.includes('v1 · Original'));
+   await p.getByRole('button',{name:'View source',exact:true}).last().click();entry.source=await p.getByRole('dialog').innerText();assert.match(entry.source,/\bv1\b/);assert.ok(entry.source.includes(original),'Source must contain the saved original');
    await p.getByRole('button',{name:'Open file',exact:true}).click();await p.getByRole('button',{name:'Edit',exact:true}).click();await p.getByRole('textbox',{name:'Markdown content'}).fill(edited);await p.getByRole('button',{name:'Save',exact:true}).click();
    await p.getByRole('button',{name:'History',exact:true}).click();for(const version of ['v1','v2'])await p.getByRole('dialog').getByText(version,{exact:true}).click();entry.history=await p.getByRole('dialog').innerText();assert.ok(entry.history.includes('18リットル')&&entry.history.includes('24リットル'));await p.screenshot({path:join(outputDir,'history.png')});
    await p.getByRole('button',{name:'Close',exact:true}).click();await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();await p.getByRole('button',{name:'Rebuild index',exact:true}).click();await input(p);
@@ -73,7 +73,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(offlineInputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text offline-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();entry.offlineImportedOriginals=2;
    await input(p);entry.offlineMarkdownSearch=await search(p,'防災用電池','防災用電池は台所の棚。');assert.ok(entry.offlineMarkdownSearch.includes('台所の棚'));
-   await go(p,'Settings');await p.getByText('More',{exact:true}).click();await p.getByRole('button',{name:'Developer',exact:true}).click();await p.getByRole('heading',{name:'Device test'}).waitFor();await p.getByRole('button',{name:'Run device test',exact:true}).waitFor();entry.offlineDiagnosticsChunkLoaded=true;
+   await go(p,'Settings');await p.getByText('More',{exact:true}).click();await p.getByRole('button',{name:'Developer',exact:true}).click();await p.getByRole('heading',{name:'Device test'}).waitFor();await p.getByRole('button',{name:'Run tests',exact:true}).waitFor();entry.offlineDiagnosticsChunkLoaded=true;
    afterEdit=await backup(p,'after-edit.brainpack');
   });
   await phase(true,async(p,entry)=>{

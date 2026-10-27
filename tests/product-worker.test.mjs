@@ -62,7 +62,7 @@ test('inference and PDF worker bundles are fetched only when their exact feature
  const features=[
   ['decision-worker-ABCDEFGH.js','decision'],['speech-worker-ABCDEFGH.js','speech'],['vision-worker-ABCDEFGH.js','vision'],
   ['onnx-text-worker-ABCDEFGH.js','text-onnx'],['lfm-text-worker-ABCDEFGH.js','text-wllama'],
-  ['qwen3-text-worker-ABCDEFGH.js','text-wllama'],['pdf-engine-ABCDEFGH.js','pdf'],['pdf-ABCDEFGH.js','pdf']
+  ['qwen3-text-worker-ABCDEFGH.js','text-wllama'],['pdf.worker.min-ABCDEFGH.mjs','pdf']
  ];
  const files=[pinned('./index.html','INDEX'),...features.map(([name,role])=>({...pinned('./assets/'+name,name),roles:[role]}))];
  const h=await harness(url=>url.endsWith('/index.html')?'INDEX':features.find(([name])=>url.endsWith('/'+name))?.[0]??'UNKNOWN',{files});
@@ -101,6 +101,24 @@ test('cached feature runtimes remain usable offline; missing pieces are never ac
  const files=[pinned('./index.html','INDEX'),{...pinned('./assets/ort-RUNTIM12.wasm','RUNTIME'),roles:['speech']},{...pinned('./assets/ort-MISSIN12.wasm','MISSING'),roles:['speech']}],body=url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('RUNTIM')?'RUNTIME':'MISSING',connection=connectionDatabase(true),h=await harness(body,{files,connection});await install(h);
  const partial=await prepareRole(h,'speech');assert.equal(partial.status,'prepared');connection.set(false);const pool=h.caches.entries.get('babelshelf-product-assets-v1');pool.delete(origin+'/.babelshelf-app-assets/'+files[2].sha256);
  assert.equal(await(await h.request('/assets/ort-RUNTIM12.wasm')).text(),'RUNTIME');const failed=await prepareRole(h,'speech');assert.equal(failed.status,'failed');assert.match(failed.error,/Downloads are off/);assert.deepEqual(h.network,[origin+'/index.html',origin+'/assets/ort-RUNTIM12.wasm',origin+'/assets/ort-MISSIN12.wasm']);
+});
+test('PDF update caches changed shell code and reuses verified optional worker offline',async()=>{
+ const connection=connectionDatabase(true),caches=storage();
+ const worker={...pinned('./assets/pdf.worker.min-WORKER12.mjs','WORKER'),roles:['pdf']};
+ const oldFiles=[pinned('./index.html','OLD INDEX'),{...pinned('./assets/pdf-engine-OLDabc12.js','OLD PDF'),roles:['pdf']},worker];
+ const old=await harness(url=>String(url).endsWith('index.html')?'OLD INDEX':String(url).includes('pdf-engine')?'OLD PDF':'WORKER',{files:oldFiles,caches,connection,build:previous});
+ await install(old);assert.equal((await prepareRole(old,'pdf')).status,'prepared');
+ const nextFiles=[pinned('./index.html','NEW INDEX'),pinned('./assets/pdf-engine-NEWabc12.js','NEW PDF'),worker];
+ const next=await harness(url=>String(url).endsWith('index.html')?'NEW INDEX':'NEW PDF',{files:nextFiles,caches,connection,build:current});
+ await install(next);assert.ok(next.network.some(url=>url.endsWith('pdf-engine-NEWabc12.js')));
+ connection.set(false);next.network.length=0;
+ assert.equal((await prepareRole(next,'pdf','tab-a',false)).status,'prepared');
+ assert.equal(await(await next.request('/assets/pdf-engine-NEWabc12.js')).text(),'NEW PDF');
+ assert.equal(await(await next.request('/assets/pdf.worker.min-WORKER12.mjs')).text(),'WORKER');
+ assert.deepEqual(next.network,[]);
+ const changed={...pinned('./assets/pdf.worker.min-NEWwork1.mjs','NEW WORKER'),roles:['pdf']};
+ const newer=await harness('unused',{files:[changed],caches,connection,build:'3333333333333333'});
+ assert.match((await prepareRole(newer,'pdf','tab-a',false)).error,/not prepared/i);assert.deepEqual(newer.network,[]);
 });
 test('old shared-aware lazy modules remain available after a new build removes them',async()=>{const old=await harness('OLD',{files:[pinned('./assets/reader-OLDabc12.js','OLD')]});await install(old);const next=await harness('NEW',{caches:old.caches,build:'3333333333333333'});await install(next);next.network.length=0;assert.equal(await (await next.request('/assets/reader-OLDabc12.js')).text(),'OLD');assert.deepEqual(next.network,[]);});
 
@@ -169,6 +187,21 @@ test('Offline prevents replacement app asset acquisition while first preparation
  await assert.rejects(install(h),/App is offline/);assert.deepEqual(h.network,[]);
  assert.equal(await(await (await h.caches.open('babelshelf-product-'+previous)).match(origin+'/index.html')).text(),'OLD');
  connection.set(true);await install(h);assert.equal(h.network.length,1);
+});
+test('selecting Offline during first installation prevents the next asset request',async()=>{
+ const connection=connectionDatabase(true),files=[pinned('./index.html','NEW'),pinned('./assets/main-NEWabc12.js','NEW')];
+ const h=await harness('NEW',{connection,files,fetcher:async()=>{connection.set(false);return new Response('NEW');}});
+ await assert.rejects(install(h),/App is offline/);assert.equal(h.network.length,1);
+});
+test('first installation cannot fetch an uncached shell while Offline is already selected',async()=>{
+ const connection=connectionDatabase(false),h=await harness('NEW',{connection});
+ await assert.rejects(install(h),/App is offline/);assert.deepEqual(h.network,[]);
+});
+test('Offline aborts an in-flight first-install asset request',async()=>{
+ const connection=connectionDatabase(true);let started,notify;started=new Promise(resolve=>{notify=resolve;});
+ const h=await harness('NEW',{connection,fetcher:async(_url,options)=>new Promise((_resolve,reject)=>{notify();options.signal?.addEventListener('abort',()=>reject(Error('aborted')),{once:true});})});
+ const task=install(h).then(()=>false,()=>true);await started;connection.set(false);
+ const stopped=await Promise.race([task,new Promise(resolve=>setTimeout(()=>resolve(false),1200))]);assert.equal(stopped,true);assert.equal(h.network.length,1);
 });
 test('explicit HF access is one-use, exact URL/range and scoped to its initiating tab',async()=>{
  const h=await harness(),url='https://huggingface.co/api/models/owner/model?blobs=true';

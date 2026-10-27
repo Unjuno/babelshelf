@@ -72,16 +72,22 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE),pool=await caches.open(SHARED),assets=[];
  for(const file of INSTALL_FILES){
   if(immutable(file.path)){const saved=await pool.match(poolKey(file));if(saved&&await verified(saved,file)){assets.push(file);continue;}}
-  if(self.registration.active&&!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('App is offline');
-  let response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin'});
-  if(!response.ok)throw Error('App asset missing');if(!await verified(response,file))throw Error('App asset verification failed');
-  if(file.path==='./index.html'&&file.downloadPath){
-   const headers=new Headers(response.headers);headers.set('Content-Type','text/html; charset=utf-8');
-   headers.delete('Content-Encoding');headers.delete('Content-Length');
-   response=new Response(response.body,{status:200,headers});
-  }
-  const store=immutable(file.path)?pool:cache,key=immutable(file.path)?poolKey(file):absolute(file.path);
+  if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('App is offline');
+  const controller=new AbortController();networkRequests.add(controller);let stopped=false,timer;
+  const poll=async()=>{if(stopped)return;const allowed=await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB);if(stopped)return;if(!allowed){controller.abort();return;}timer=setTimeout(poll,250);};
+  timer=setTimeout(poll,250);
+  try{
+   let response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+   if(!response.ok)throw Error('App asset missing');if(!await verified(response,file))throw Error('App asset verification failed');
+   if(controller.signal.aborted||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('App is offline');
+   if(file.path==='./index.html'&&file.downloadPath){
+    const headers=new Headers(response.headers);headers.set('Content-Type','text/html; charset=utf-8');
+    headers.delete('Content-Encoding');headers.delete('Content-Length');
+    response=new Response(response.body,{status:200,headers});
+   }
+   const store=immutable(file.path)?pool:cache,key=immutable(file.path)?poolKey(file):absolute(file.path);
    await putVerified(store,key,response,file);
+  }finally{stopped=true;clearTimeout(timer);networkRequests.delete(controller);}
   if(immutable(file.path))assets.push(file);
  }
  // Publish references only after all shell/shared responses verify. Older caches
@@ -133,7 +139,7 @@ self.addEventListener('message',event=>{
     if(job.stopped)throw Error('Stopped');
     const file=selected[index],key=poolKey(file),saved=await pool.match(key);
     if(saved&&await verified(saved,file)){bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});continue;}
-    if(!acquire)throw Error('Runtime not prepared · prepare this feature while Downloads are on');
+    if(!acquire)throw Error('Runtime not prepared · switch Online to prepare');
     if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)throw Error('Downloads are off');
     const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);let response;
     try{
