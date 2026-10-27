@@ -8,6 +8,14 @@ test('unspecified saved search excludes topics, context, compound actions and at
  assert.equal(router.unspecifiedSavedSearch('保存したメモを探して',true),false);
 });
 
+test('clarification accepts only a short topic after the immediately preceding search question',()=>{
+ const prior={schema:1,revision:1,turns:[{id:'q',user:'保存したメモを探して',status:'What should I search for?'}],compaction:null};
+ assert.deepEqual(router.clarifiedSavedSearch('集合場所',prior),{action:'search',query:'集合場所',target:'knowledge'});
+ for(const text of ['保存して','メモを削除して','hello?','2 + 2'])assert.equal(router.clarifiedSavedSearch(text,prior),null,text);
+ assert.equal(router.clarifiedSavedSearch('集合場所',prior,true),null);
+ assert.equal(router.clarifiedSavedSearch('集合場所',{...prior,turns:[...prior.turns,{id:'next',user:'hi'}]}),null);
+});
+
 const prior={schema:1,revision:1,turns:[{id:'turn-1',user:'What did we decide about the workshop?',answer:'Move it to Monday at 10.',refs:[{noteId:'meeting',revision:2,start:0,end:31,quote:'Workshop moved to Monday at 10.'}]}],compaction:null,currentFile:{noteId:'opened-file',revision:3}};
 
 test('saved-file planning keeps the agent loop but excludes unrelated dialogue and implicit current-file edits',()=>{

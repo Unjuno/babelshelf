@@ -9,6 +9,20 @@ async function returnToInput(page:any){
  const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await expect(home).toHaveAttribute('aria-expanded','true');await home.click();
 }
 
+test('a search topic answers the preceding clarification without a model',async({page})=>{
+ await page.goto('/'); await navigate(page,'Memory'); await page.getByRole('button',{name:'Open Inbox'}).click();
+ await page.getByRole('button',{name:'New file'}).click();
+ await page.getByRole('textbox',{name:'File name'}).fill('meeting-topic');
+ await page.getByRole('textbox',{name:'New file content'}).fill('集合場所は北口。');
+ await page.getByRole('button',{name:'Save',exact:true}).click(); await returnToInput(page);
+ const message=page.getByRole('textbox',{name:'Message'}),send=page.getByRole('button',{name:'Send',exact:true});
+ await message.fill('保存したメモを探して'); await send.click();
+ await expect(page.locator('.sent-message').last()).toContainText('What should I search for?');
+ await message.fill('集合場所'); await send.click();
+ const result=page.locator('.sent-message').last(); await expect(result).toContainText('Found · 1');
+ await expect(result.getByRole('button',{name:'Inbox/meeting-topic.md'})).toBeVisible();
+});
+
 test('deleted search result reports unavailability without leaving input',async({page})=>{
  await page.goto('/'); await navigate(page,'Memory');
  await page.getByRole('button',{name:'Open Inbox'}).click();

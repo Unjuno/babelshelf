@@ -36,6 +36,13 @@ export function unspecifiedSavedSearch(question:string,currentInputs=false){
   || /^(?:please\s+)?(?:find|search|look for)\s+(?:my|saved|stored)\s+(?:notes?|files?|documents?)[.!]*$/iu.test(text);
 }
 
+export function clarifiedSavedSearch(question:string,prior:Dialogue,currentInputs=false){
+ const previous=prior.turns.at(-1),text=question.trim();
+ if(currentInputs||previous?.status!=='What should I search for?'||!unspecifiedSavedSearch(previous.user)||text.length<2||text.length>80)return null;
+ if(!/^[\p{L}\p{N}\p{M} _.-]+$/u.test(text)||/(?:探して|検索|開いて|読んで|教えて|保存|削除|変更|修正|要約|見せて|ください|\b(?:find|search|open|read|tell|save|delete|change|summarize|please)\b)/iu.test(text))return null;
+ return {action:'search' as const,query:text,target:'knowledge' as const};
+}
+
 // Remove one balanced Japanese quotation pair only when it surrounds the
 // entire subject. Interior and mismatched marks may be part of a filename.
 function savedSubjectQuery(value:string){
