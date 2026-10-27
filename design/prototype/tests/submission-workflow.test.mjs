@@ -220,6 +220,13 @@ test('application executes real local calculation and persists its result withou
  assert.equal(f.current().turns[0].activity[0].tool,'math.calculate');assert.equal(f.current().turns[0].activity[0].status,'succeeded');
  assert.deepEqual(f.events,['save','consume']);assert.equal(f.modelCalls(),0);
 });
+test('decimal calculations keep exact output and mark rounded division without a model',async()=>{
+ for(const [text,answer] of [['０．１＋０．２','0.3'],['9007199254740993+1','9007199254740994'],['1/3','≈ 0.333333333333333333']]){
+  const f=fixture(),c=createSubmissionController();assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'completed');
+  assert.equal(f.current().turns[0].answer,answer);assert.equal(f.modelCalls(),0);
+  assert.equal(f.current().turns[0].activity[0].tool,'math.calculate');
+ }
+});
 test('capture requests a review with exact content and never writes a new knowledge note',async()=>{
  const f=fixture(),c=createSubmissionController();
  assert.equal(await c.run(run=>executeSubmission({text:'note: Keep original words',attachments:[]},f.services,f.view,run)),'awaitingApproval');

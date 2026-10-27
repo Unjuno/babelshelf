@@ -1,6 +1,8 @@
 import * as calculateTool from './tools/math.calculate/tool.ts';
 import calculateSkill from './tools/math.calculate/SKILL.md?raw';
 import calculateCode from './tools/math.calculate/tool.ts?raw';
+import decimalCode from './tools/math.calculate/decimal-calculation.ts?raw';
+import receiptCode from './tools/math.calculate/decimal-receipt.ts?raw';
 import * as searchTool from './tools/memory.search/tool.ts';
 import * as readTool from './tools/memory.read/tool.ts';
 import {createToolRegistry} from './tools/tool-registry.ts';
@@ -14,6 +16,7 @@ export const builtinPackageNotes = [
  ['memory.search/SKILL.md',searchSkill],['memory.search/tool.ts',searchCode],
  ['memory.read/SKILL.md',readSkill],['memory.read/tool.ts',readCode],
  ['math.calculate/SKILL.md',calculateSkill],['math.calculate/tool.ts',calculateCode],
+ ['math.calculate/decimal-calculation.ts',decimalCode],['math.calculate/decimal-receipt.ts',receiptCode],
  ['tool-host.ts',hostCode],
 ].map(([relative,body])=>({id:'builtin-package-'+relative,path:'Tools/'+relative,body,version:1,history:[] as string[],protected:true}));
 

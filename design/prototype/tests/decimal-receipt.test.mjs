@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeDecimalReceipt,validateDecimalReceipt} from '../src/decimal-receipt.ts';
+import {makeDecimalReceipt,validateDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
 
 test('decimal receipts preserve exact strings and disclose rounding',()=>{
  const exact=makeDecimalReceipt('9007199254740993+0.1');

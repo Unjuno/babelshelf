@@ -3,7 +3,7 @@ import type {SourceRef} from './conversation.ts';
 import type {FileResult} from './file-discovery.ts';
 import type {ToolHost} from './tools/tool-host.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
-import {validateDecimalReceipt,type DecimalReceipt} from './decimal-receipt.ts';
+import {validateDecimalReceipt,type DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 
 export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
 const maxObservedEvidenceRefs=12,maxObservedEvidenceChars=24_000;

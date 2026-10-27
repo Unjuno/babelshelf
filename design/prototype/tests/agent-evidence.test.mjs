@@ -41,7 +41,7 @@ test('agent calculations retain only exact local arithmetic and never become sou
 });
 
 test('decimal tool results are independently verified without reinterpreting legacy binary results',async()=>{
- const {makeDecimalReceipt}=await import('../src/decimal-receipt.ts');
+ const {makeDecimalReceipt}=await import('../src/tools/math.calculate/decimal-receipt.ts');
  const expression='0.1+0.2',receipt=makeDecimalReceipt(expression),call={tool:'math.calculate',arguments:{expression},result:[receipt]};
  assert.deepEqual(agentCalculationsFromCalls([call]),[receipt]);
  assert.deepEqual(projectAgentToolResult(call.tool,call.result),[receipt]);

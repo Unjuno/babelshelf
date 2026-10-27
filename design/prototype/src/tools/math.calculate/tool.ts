@@ -1,5 +1,6 @@
 import type {ToolHost} from '../tool-host.ts';
-export const definition=Object.freeze({id:'math.calculate',version:2,readOnly:true,network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:200}}}});
+import {makeDecimalReceipt} from './decimal-receipt.ts';
+export const definition=Object.freeze({id:'math.calculate',version:3,readOnly:true,network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:200}}}});
 // Only whole, explicit arithmetic inputs bypass planning. No document or history scan.
 export function calculatorInput(text:string):string|null {
  if(/^\d{4}-\d{2}-\d{2}$/.test(text.trim()))return null;
@@ -23,8 +24,8 @@ export function calculate(expression:string):number {
 }
 export async function run(args:unknown,host:ToolHost){
  if(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==1||!Object.hasOwn(args,'expression'))throw Error('Invalid tool arguments');
- host.check();const expression=(args as {expression:string}).expression,result=calculate(expression);host.check();
- return [{expression,result,precision:'IEEE-754 binary64'}];
+ host.check();const expression=(args as {expression:string}).expression,result=makeDecimalReceipt(expression);host.check();
+ return [result];
 }
 // A whole-request finite grammar, not a scan of arbitrary prose or a repair of
 // model output. Each explicit "then" folds the previous result as one operand.

@@ -32,7 +32,7 @@ test('registered calculator rejects nonfinite or mismatched result records',asyn
 });
 
 test('decimal results preserve precision and must match the requested expression',async()=>{
- const {makeDecimalReceipt}=await import('../src/decimal-receipt.ts');const receipt=makeDecimalReceipt('0.1+0.2');
+ const {makeDecimalReceipt}=await import('../src/tools/math.calculate/decimal-receipt.ts');const receipt=makeDecimalReceipt('0.1+0.2');
  assert.deepEqual(await runBuiltinTool(registry('math.calculate',[receipt]),'math.calculate',{expression:'0.1+0.2'},host),[receipt]);
  await assert.rejects(runBuiltinTool(registry('math.calculate',[receipt]),'math.calculate',{expression:'1+2'},host),/calculation/i);
  await assert.rejects(runBuiltinTool(registry('math.calculate',[{...receipt,result:'0.4'}]),'math.calculate',{expression:'0.1+0.2'},host));

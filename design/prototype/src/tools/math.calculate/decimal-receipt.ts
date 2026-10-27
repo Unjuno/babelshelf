@@ -1,6 +1,6 @@
 import {calculateDecimal} from './decimal-calculation.ts';
 
-// Candidate schema: places controls recurring-decimal rounding; terminating
+// Versioned schema: places controls recurring-decimal rounding; terminating
 // values retain their exact digits (subject to evaluator limits).
 export type DecimalReceipt={schema:1;expression:string;result:string;precision:'decimal';rounding:'half-even';places:18;rounded:boolean};
 export function makeDecimalReceipt(expression:string):DecimalReceipt{

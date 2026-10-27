@@ -81,7 +81,9 @@ test('local arithmetic obeys precedence, signs, bounds and never evaluates code'
  for(const s of ['1/0','1e309','2**3','globalThis.alert(1)','1;2','2(3)','('.repeat(40)+'1'+')'.repeat(40)])assert.throws(()=>calculate(s));
  assert.equal(calculatorInput(' (1200 + 800) / 4 = '),'(1200 + 800) / 4');
  for(const s of ['2026-10-18 meeting','read 2+3','what is 2+3','Inbox/a.md'])assert.equal(calculatorInput(s),null);
- assert.equal((await calculator({expression:'2+3'},host))[0].result,5);
+ assert.equal((await calculator({expression:'2+3'},host))[0].result,'5');
+ assert.equal((await calculator({expression:'0.1+0.2'},host))[0].result,'0.3');
+ assert.equal((await calculator({expression:'1/3'},host))[0].rounded,true);
  await assert.rejects(calculator({expression:'2+3',write:true},host));
  await assert.rejects(calculator({expression:'2+3'},{...host,check(){throw Error('Stopped')}}),/Stopped/);
 });
@@ -101,7 +103,7 @@ test('explicit calculator instructions preserve the original expression rather t
   ['Evaluate −2 × (3 + 4).','−2 × (3 + 4)',-14],
  ]){
   const parsed=explicitCalculationInput(question);assert.deepEqual(parsed,{expression,showExpression:true});
-  assert.equal((await calculator({expression:parsed.expression},host))[0].result,result);
+  assert.equal((await calculator({expression:parsed.expression},host))[0].result,String(result));
  }
  assert.deepEqual(explicitCalculationInput('2 + 3'),{expression:'2 + 3',showExpression:false});
  for(const [request,expression,result] of [['２＋３','2+3',5],['（１２＋８）÷４＝','(12+8)÷4',5],['１２と８を足して。','(12 + 8)',20]]){

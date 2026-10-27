@@ -1,11 +1,11 @@
 # Decimal calculation transition
 
-Status: a bounded decimal evaluator and receipt validator exist. Built-in result,
-agent projection and grounded-answer boundaries can validate either the decimal
-candidate or the legacy result; the registered calculator still emits only
-binary64, so the user-facing decimal switch is not implemented. Existing calculations use finite
-IEEE-754 binary64, including their tool result and independent receipt checks.
-The existing calculator must remain available to validate historical records.
+Status: the registered calculator version 3 uses the bounded decimal evaluator;
+direct input and model tool results carry a decimal receipt, and rounded direct
+results are marked with `≈`. Result validation retains the legacy IEEE-754
+binary64 evaluator for old receipts. Existing custom-tool `calculate` callbacks
+retain their number-returning binary64 contract; a separately versioned decimal
+capability is still needed for custom code. Phone acceptance remains open.
 
 ## User-visible contract
 

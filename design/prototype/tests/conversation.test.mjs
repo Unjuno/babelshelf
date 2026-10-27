@@ -940,7 +940,7 @@ test('a local arithmetic result reaches the sourced answer without becoming a ci
  const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);
  assert.deepEqual(input.calculations,[calculation]);assert.equal(answer.answer,'One quarter is 500 credits.');assert.equal(answer.sources[0].noteId,note.id);assert.equal(searches,0);
  await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[{...calculation,result:501}],memoryUsed:true}}),/Invalid calculation result/);
- const {makeDecimalReceipt}=await import('../src/decimal-receipt.ts');const decimal=makeDecimalReceipt('(1200+800)/4');
+ const {makeDecimalReceipt}=await import('../src/tools/math.calculate/decimal-receipt.ts');const decimal=makeDecimalReceipt('(1200+800)/4');
  await groundedAnswer({store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[decimal],memoryUsed:true}});
  assert.deepEqual(JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]).calculations,[decimal]);
  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[{...decimal,result:'501'}],memoryUsed:true}}),/Invalid decimal receipt/);

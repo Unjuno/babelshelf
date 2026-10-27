@@ -1,4 +1,3 @@
-// Standalone candidate: this is not yet connected to the versioned tool.
 // Fractions use bounded BigInts, and rounded results use ties-to-even.
 type Fraction={n:bigint;d:bigint};
 const abs=(n:bigint)=>n<0n?-n:n;

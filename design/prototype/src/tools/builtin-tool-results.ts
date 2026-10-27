@@ -2,7 +2,7 @@ import type {MemorySearchResult,MemoryPassageResult} from '../memory-search-type
 import {validateFileResults} from '../file-discovery.ts';
 import type {ToolNote,ToolHost} from './tool-host.ts';
 import type {createToolRegistry} from './tool-registry.ts';
-import {validateDecimalReceipt,type DecimalReceipt} from '../decimal-receipt.ts';
+import {validateDecimalReceipt,type DecimalReceipt} from './math.calculate/decimal-receipt.ts';
 import {calculate} from './math.calculate/tool.ts';
 
 export type CalculationToolResult={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;

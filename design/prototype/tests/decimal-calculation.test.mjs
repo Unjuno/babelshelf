@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {calculateDecimal} from '../src/decimal-calculation.ts';
+import {calculateDecimal} from '../src/tools/math.calculate/decimal-calculation.ts';
 
 test('decimal expressions preserve exact decimal values and precedence',()=>{
  for(const [expression,value] of [['0.1+0.2','0.3'],['9007199254740993+1','9007199254740994'],['−2.5 × (3+4)','-17.5'],['1e-3 + .002','0.003'],['1/8','0.125'],['-0+0','0']]){

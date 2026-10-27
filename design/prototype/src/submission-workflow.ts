@@ -31,6 +31,9 @@ import {projectNote,type NoteView} from './knowledge-store.ts';
 import {localRequest} from '../../../dist/requests.js';
 import type {builtinToolPackages,builtinToolRegistry} from './tool-package-records.ts';
 import {agentEvidenceFromCalls,agentCalculationsFromCalls} from './agent-evidence.ts';
+import type {CalculationToolResult} from './tools/builtin-tool-results.ts';
+
+function calculationText(item:CalculationToolResult){return (item.precision==='decimal'&&item.rounded?'≈ ':'')+String(item.result);}
 
 import type {SubmissionRun} from './submission-controller.ts';
 import type {KnowledgeStore} from './knowledge-store.ts';
@@ -124,7 +127,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const unread=sent.find(a=>a.status!=='Text available'&&!a.voice&&!a.reading);if(unread&&text&&(!request||['answer','summary'].includes(request.action)||request.action==='capture'&&inputReadings.length>0)){await finishTurn(id,{refs:importedRefs,status:'Original saved · '+unread.status});recoverDraft();return {kind:'partial',reason:'unread-input'};}
    if(inputQuestion?.action==='answer'&&harnessPreferences.replyStyle==='balanced'&&!harnessPreferences.userGuidance.trim()){const readyAnswer=await answerCurrentVisionInput({store:knowledge,check:checkSend,trace},text,inputReadings);checkSend();if(readyAnswer){await finishTurn(id,{answer:readyAnswer.answer,refs:readyAnswer.sources});return {kind:'answered'};}}
    const calculation=items.length?null:explicitCalculationInput(text);
-   if(calculation){const {expression,showExpression}=calculation;const result=await runCalculationAction(expression,builtinToolRegistry,{search:q=>knowledge.search(q),resolve:q=>refreshSnapshot().then(notes=>resolveToolNotes(notes,q)),check:checkSend},trace);checkSend();await finishTurn(id,{answer:showExpression?expression+' = '+String(result[0].result):String(result[0].result),status:'Calculated',refs:[]});return {kind:'answered'};}
+   if(calculation){const {expression,showExpression}=calculation;const result=await runCalculationAction(expression,builtinToolRegistry,{search:q=>knowledge.search(q),resolve:q=>refreshSnapshot().then(notes=>resolveToolNotes(notes,q)),check:checkSend},trace);checkSend();await finishTurn(id,{answer:showExpression?expression+' = '+calculationText(result[0]):calculationText(result[0]),status:'Calculated',refs:[]});return {kind:'answered'};}
    const decisionFirst=!request&&decision.enabled&&decision.ready;
    const deferredKnowledge=!!(literalRequest||explicitSavedRequest)&&request?.target==='knowledge'&&['answer','summary'].includes(request.action)&&!inputReadings.length;
    const deferredFile=request?.target==='file'&&['answer','summary'].includes(request.action)&&!inputReadings.length;
@@ -171,7 +174,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    if(request?.action==='answer'&&!inputReadings.length&&!prior.currentFile&&agentToolCalls.length&&agentToolCalls.every(call=>call.tool==='math.calculate')){
     const calculations=agentCalculationsFromCalls(agentToolCalls);
-    await finishTurn(id,{answer:calculations.map(item=>item.expression+' = '+String(item.result)).join('\n'),status:'Calculated',refs:[]});return {kind:'answered'};
+    await finishTurn(id,{answer:calculations.map(item=>item.expression+' = '+calculationText(item)).join('\n'),status:'Calculated',refs:[]});return {kind:'answered'};
    }
     const scoped=scopeResolvedTurnRequest({request,question:text,literal:!!literalRequest,literalAction:literalRequest?.action,inputs:inputReadings,currentFile:sourceFile??prior.currentFile});
     request=scoped.request;inputReadings=scoped.inputs;const fileBinding=scoped.fileBinding;
@@ -183,7 +186,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      if(request.action==='read'){const completion=literalRequest?.action==='read'||explicitSavedRequest?.action==='read'?'open':await trace('dialogue.plan',{stage:'read-completion',model,question:text,...workingFile},()=>resolveReadCompletion(inference,text,checkSend));checkSend();const metadata=workingFileMetadata(selectedFile),resolution=resolveReadIntent(text,completion,{noteId:selectedFile.id,path:metadata.path,revision:workingFile.revision,body:selectedFile.revisions.at(-1).body});if(resolution.kind==='continue'){request={...request,action:resolution.action,target:'file',query:resolution.query};workingFile=resolution.workingFile;}else{await finishTurn(id,{status:resolution.status,refs:resolution.refs});openNote(selectedFile.id,resolution.path);return {kind:'displayed'};}}
    }
    if(request?.action==='calculate'){
-    const expression=request.query;const result=await runCalculationAction(expression,builtinToolRegistry,{search:q=>knowledge.search(q),resolve:q=>refreshSnapshot().then(notes=>resolveToolNotes(notes,q)),check:checkSend},trace);checkSend();await finishTurn(id,{answer:expression+' = '+String(result[0].result),status:'Calculated',refs:[]});return {kind:'answered'};
+    const expression=request.query;const result=await runCalculationAction(expression,builtinToolRegistry,{search:q=>knowledge.search(q),resolve:q=>refreshSnapshot().then(notes=>resolveToolNotes(notes,q)),check:checkSend},trace);checkSend();await finishTurn(id,{answer:expression+' = '+calculationText(result[0]),status:'Calculated',refs:[]});return {kind:'answered'};
    }
    if(request?.action==='schedule'){
     const result=await actions().schedule(context);checkSend();
