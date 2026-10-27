@@ -1,3 +1,7 @@
+## Public v261 yen calculation trial (2026-10-27)
+
+On the PC sidebar browser with app Offline, v260 routed '1,200円＋800円' through model selection and compaction and was stopped without an answer. On public v261, active worker 5bb96053bdee6dd2 / index-BOSm7vKA.js, the same input returned '1200 + 800 = 2000' with Calculated status. The first update check still had v260 active; a second check applied v261. The cause of that delay was not established. Existing data and selected QA file were retained. This is one calculation on one PC browser, not general arithmetic, iPhone or offline cold-restart verification.
+
 ## Public v260 calculator recovery trial (2026-10-27)
 
 PC sidebar in-app browser, app Offline, existing public v260 page. Entering '１２÷０' displayed 'Cannot divide by zero' and retained the input; changing it to '１２÷３' returned 4 with Calculated status. Save note opened a New file review containing exactly 4, and Cancel returned to chat without creating a file. Existing selected QA file was retained. This is one error/recovery and review flow, not proof of all arithmetic, persistence, device or offline-restart behavior.
