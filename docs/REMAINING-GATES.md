@@ -1,3 +1,7 @@
+## Public v262 schedule validation trial (2026-10-27)
+
+PC sidebar browser, app Offline, active worker e758f489250fee74 / index-DWld7RXI.js. In New schedule, monthly day 32 triggered 'Day must be 1–31'; after changing to 31 the stale alert disappeared and the correct next occurrence appeared while the prompt stayed. Discarded the synthetic draft without saving; selected QA file retained. One update check applied this build; that does not explain the earlier v261 delay. The 8 schedule UI tests and product build passed. This does not validate iPhone scheduling, notification delivery or background execution.
+
 ## Update investigation (2026-10-27)
 
 The public v261 trial required a second explicit update check, but the first check's network response and UI outcome were not captured; propagation, caching and timing remain unproven causes. Current public sw.js responds with Cache-Control: public, max-age=0, must-revalidate (one HEAD observation). The existing refresh helper waits for installation and confirmed controller activation, and isolated PC Chromium regression passed one-check update, corrupt-asset rejection, offline reload and preserved synthetic local data; 15 Node lifecycle tests also passed. These do not reproduce the public timing issue or prove iOS behavior. At the next actual deployment, capture the first update outcome, controlling build and response/build timing before retrying; do not delete user storage.
