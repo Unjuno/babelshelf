@@ -84,6 +84,14 @@ test('literal Latin words and identifiers do not retrieve incidental bigram over
  assert.equal(core.searchNotes(notes,'a').length,0);
  assert.deepEqual(core.searchNotes(notes,'Water CEDAR-8642').map(h=>h.noteId),[wanted.id]);
 });
+test('mixed-script search ignores a short Latin fragment alone while retaining meaningful partial matches',()=>{
+ const wanted=core.createNote({title:'QA避難案内',body:'集合場所は北口。'}),noise=core.createNote({title:'Public QA',body:'Unrelated update.'}),partial=core.createNote({title:'避難準備',body:'備蓄品。'}),longLatin=core.createNote({title:'Aurora',body:'Project meeting.'});
+ for(const search of [core.searchNotes,core.searchStoredNotes]){
+  const mixed=search([noise,wanted,partial,longLatin],'QA避難案内').map(hit=>hit.noteId);assert.ok(mixed.includes(wanted.id));assert.ok(mixed.includes(partial.id));assert.ok(!mixed.includes(noise.id));
+  assert.ok(search([noise],'QA').some(hit=>hit.noteId===noise.id));
+  assert.ok(search([longLatin],'Aurora避難案内').some(hit=>hit.noteId===longLatin.id));
+ }
+});
 test('hybrid lexical search retains multilingual aliases and exact UTF-16 citation ranges',()=>{
  const n=core.createNote({body:'🪴備蓄。\n\n'.repeat(150)+'台帳 ABC_7294 を確認。',aliases:['Aurora Ledger']});
  const distractor=core.createNote({body:'台帳 ABC_72940 を確認。'});
