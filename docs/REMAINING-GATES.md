@@ -1,3 +1,7 @@
+## Public v260 calculator recovery trial (2026-10-27)
+
+PC sidebar in-app browser, app Offline, existing public v260 page. Entering '１２÷０' displayed 'Cannot divide by zero' and retained the input; changing it to '１２÷３' returned 4 with Calculated status. Save note opened a New file review containing exactly 4, and Cancel returned to chat without creating a file. Existing selected QA file was retained. This is one error/recovery and review flow, not proof of all arithmetic, persistence, device or offline-restart behavior.
+
 ## Public v260 previous-utterance trial (2026-10-27)
 
 PC sidebar browser, app Offline, active worker 023535e7555ce428 (index-zak1mUIn.js). After updating and loading the model, 'こんにちは' returned a greeting. The immediately following '私が直前に言った挨拶は何ですか？' returned 'あなたが直前に言った挨拶は「こんにちは」です。' within the first 12-second observation. Actual local model generation; one example and coarse timing, not general accuracy or a benchmark. Model warmup on the updated page took over 40 seconds before the greeting. Prior turns and selected QA file were retained. This route only covers explicitly bounded previous-user-message forms; other dialogue, device behavior and offline cold restart remain unverified by this trial.
