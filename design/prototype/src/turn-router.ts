@@ -107,7 +107,11 @@ export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boole
  if(!hasWorkingFile||hasOtherInput||!text||text.length>500||requestNamesEarlierDialogue(text)||!requestNamesWorkingFile(text))return null;
  if(namesExplicitSavedKnowledge(text)||namedSavedSubject(text))return null;
  const asks=/\b(?:what|when|where|who|which|why|how|is|are|does|do|did|can|could|would)\b/iu.test(text)||/[?？]/u.test(text)||/(?:何|いつ|どこ|誰|どれ|なぜ|どう|いくつ|何時|何日|ですか|ますか)/u.test(text);
- if(!asks)return null;
+ // Only a complete, read-only command about this file. Mixed operations
+ // remain with the planner and never acquire a new write capability here.
+ const answerCommand=/^(?:この|現在の)ファイルに書かれた[\p{L}\p{N}]{1,60}を(?:日本語で)?答えて(?:ください)?[。.!！]?$/u.test(text)
+  &&!/(?:保存|削除|変更|修正|訂正|送信|送って|メール|実行|検索|比較|翻訳|編集|追加|作成|書き換|それから|してから)/u.test(text);
+ if(!asks&&!answerCommand)return null;
  return {action:'answer' as const,query:text,target:'file' as const};
 }
 /** A question about the sole cited source of the immediate answer has a

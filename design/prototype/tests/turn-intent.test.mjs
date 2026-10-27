@@ -256,3 +256,14 @@ test('a follow-up about the cited place uses only the matching pinned file and r
  for(const text of ['そこへ持っていくものは？削除して','そこへ持っていくものを保存できますか？','そこへ持っていくものは？別のメモも探して','そこへメールを送れますか？','前の会話ではそこへ何を持っていくと言った？'])assert.notEqual(route({question:text,prior:state}).request?.target,'file',text);
  assert.notEqual(route({question,prior:state,hasAttachments:true}).request?.target,'file');
 });
+
+
+test('read-only answer commands for the pinned file bypass planning without swallowing extra actions',()=>{
+ const text='このファイルに書かれた持ち物だけを日本語で答えてください。';
+ const intent=route({question:text});
+ assert.deepEqual(intent.request,{action:'answer',query:text,target:'file'});
+ assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
+ for(const other of ['このファイルを削除して結果を答えてください。','このファイルに書かれた内容を保存してから答えてください。','このファイルの内容を答えてください。別のファイルを消して。','このファイルに書かれた内容を答えて、メールを送ってください。'])assert.notEqual(route({question:other}).request?.target,'file',other);
+ assert.equal(route({question:text,hasAttachments:true}).explicitFileQuestion,null);
+ assert.equal(route({question:text,prior:{...prior,currentFile:undefined,turns:[]}}).explicitFileQuestion,null);
+});
