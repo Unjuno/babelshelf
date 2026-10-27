@@ -11,7 +11,7 @@ test('retained running occurrence stays visible after local owner disappears and
 test('schedule status keeps definition, occurrence, review and timezone boundaries',()=>{
  assert.equal(scheduleStatus(task,[{...run('running'),definition:'old'}],null,'Asia/Tokyo'),'Paused');
  assert.equal(scheduleStatus(task,[{...run('running'),dueAt:'2098-01-01T00:00:00.000Z'}],null,'Asia/Tokyo'),'Paused');
- assert.equal(scheduleStatus({...task,requiresReview:true},[run('running')],task.id,'Asia/Tokyo'),'Review restored task');
+ assert.equal(scheduleStatus({...task,requiresReview:true},[run('running')],task.id,'Asia/Tokyo'),'Review schedule');
  assert.equal(scheduleStatus(task,[run('running')],null,'UTC'),'Timezone changed');
  assert.equal(scheduleStatus({...task,nextAt:null},[run('running')],null,'Asia/Tokyo'),'Completed');
  assert.equal(scheduleStatus(task,[],task.id,'Asia/Tokyo'),'Running');assert.equal(scheduleRunAction(undefined),'Run now');

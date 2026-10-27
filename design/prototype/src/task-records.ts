@@ -50,7 +50,7 @@ export function taskRunView(note:any):RunData{
 }
 export function skipTaskRun(records:any[],taskId:string,owner:string,now=new Date()){
  const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule'||task.ui.requiresReview)throw Error('Review schedule first');
- const definition=parseTask(latest(task).body),cursor=task.taskCursor;if(!cursor?.nextAt||cursor.definition!==taskDefinition(definition))throw Error('No pending occurrence');
+ const definition=parseTask(latest(task).body),cursor=task.taskCursor;if(definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone)throw Error('Timezone changed · review schedule');if(!cursor?.nextAt||cursor.definition!==taskDefinition(definition))throw Error('No pending occurrence');
  const old=records.find(n=>n.ui?.recordType==='execution'&&(()=>{const data=taskRunView(n);return data.taskId===task.id&&data.definition===cursor.definition&&data.dueAt===cursor.nextAt;})());
  if(old&&taskRunView(old).status==='running')throw Error('Stop execution before skipping');
  if(old&&old.state!=='active')throw Error('Execution is in Trash · restore it first');
@@ -69,7 +69,7 @@ export function taskNotice(task:any,run:any){const data=taskRunView(run),origina
  return typedRecord('notification','Notifications/'+localDate()+'-'+crypto.randomUUID()+'.md',noticeBody(value));
 }
 export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Date(),options:{retry?:boolean;manual?:boolean}={}){
- const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');
+ const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');if(task.ui.requiresReview)throw Error('Review schedule first');
  const definition=parseTask(latest(task).body);if(!definition.enabled&&!options.manual)throw Error('Task is disabled');
  if(definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone)throw Error('Timezone changed · review schedule');
  const signature=taskDefinition(definition),cursor=task.taskCursor;if(!cursor||cursor.definition!==signature||!cursor.nextAt)throw Error('Task has no pending occurrence');
@@ -109,8 +109,14 @@ export function finishTaskRun(records:any[],runId:string,owner:string,result:{st
  const completed={...data,...result,finishedAt:now.toISOString()};const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
  if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition&&task.taskCursor.nextAt===data.dueAt){
-  const after=new Date(Math.max(+now,+asDate(data.dueAt))),nextAt=definition.repeat==='once'?null:nextScheduleOccurrence(definition,after).toISOString();
-  updated={...task,taskCursor:{...task.taskCursor,nextAt}};
+  if(definition.repeat!=='once'&&definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone){
+   // Retain the completed run and its occurrence until the user reviews the
+   // schedule; do not calculate the next occurrence in a different zone.
+   updated={...task,ui:{...task.ui,requiresReview:true}};
+  }else{
+   const after=new Date(Math.max(+now,+asDate(data.dueAt))),nextAt=definition.repeat==='once'?null:nextScheduleOccurrence(definition,after).toISOString();
+   updated={...task,taskCursor:{...task.taskCursor,nextAt}};
+  }
  }
  return {task:updated,run};
 }

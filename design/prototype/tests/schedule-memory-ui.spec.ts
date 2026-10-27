@@ -45,3 +45,16 @@ test.describe('custom schedule across daylight-saving change',()=>{
   await expect(page.locator('button.schedule-detail',{hasText:'Check supplies'})).toContainText('Paused');
  });
 });
+
+import {createNote} from '../../../dist/core.js';
+import {formatTask,taskDefinition} from '../src/task-records';
+test('skipping a schedule from another timezone leaves the occurrence and history intact',async({page})=>{
+ const current=Intl.DateTimeFormat().resolvedOptions().timeZone,other=current==='Asia/Tokyo'?'America/New_York':'Asia/Tokyo';
+ const task={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:other,enabled:false,notify:true,prompt:'Timezone skip fixture'};
+ const note=createNote({path:'Schedule/zone-fixture.md',body:formatTask(task)});note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(task),nextAt:'2099-01-01T00:00:00.000Z'};
+ await page.goto('/');await navigate(page,'Memory');await page.evaluate(async record=>{await new Promise<void>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readwrite');tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},note);
+ await page.reload();await navigate(page,'Schedule');await expect(page.locator('button.schedule-detail',{hasText:'Timezone skip fixture'})).toContainText('Timezone changed');
+ await page.getByRole('button',{name:'Schedule actions for Timezone skip fixture'}).click();await page.getByRole('button',{name:'Skip occurrence'}).click();await expect(page.getByText('Timezone changed · review schedule',{exact:true})).toBeVisible();
+ const result=await page.evaluate(async id=>new Promise<any[]>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').getAll();q.onsuccess=()=>resolve(q.result.filter((n:any)=>n.id===id||n.ui?.recordType==='execution'||n.ui?.recordType==='notification'));tx.oncomplete=()=>db.close();};}),note.id);
+ expect(result).toEqual([note]);
+});
