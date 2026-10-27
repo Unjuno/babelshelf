@@ -125,6 +125,20 @@ export function explicitCurrentSourceQuestion(question:string,prior:Dialogue,has
  return {request,file};
 }
 
+/** A short follow-up about what to bring to a just-answered location may
+ * use the same pinned source. This is read-only and deliberately narrow. */
+export function explicitPinnedPlaceFollowup(question:string,prior:Dialogue,hasInputs=false){
+ const text=question.trim(),pin=prior.currentFile;
+ if(hasInputs||!pin||!/^そこ(?:へ|に)(?:持っていく|持参する)(?:もの|物|荷物)は[？?]$/u.test(text))return null;
+ let result;try{result=currentDialogueResult(prior);}catch{return null;}
+ if(!result||!/(?:場所|どこ)/u.test(prior.turns[result.turnIndex]?.user??''))return null;
+ const following=prior.turns.slice(result.turnIndex+1);
+ if(following.some(turn=>turn.user.trim()!==text||turn.answer?.trim()||!['Invalid model action','Stopped','Model not prepared','Source changed · retry'].includes(turn.status??'')))return null;
+ const refs=result.refs.filter(ref=>ref.groundingEligible!==false);
+ if(!refs.length||refs.some(ref=>ref.noteId!==pin.noteId||ref.revision!==pin.revision))return null;
+ return {action:'answer' as const,query:text,target:'file' as const};
+}
+
 /** A single explicit correction uses the user's already opened file. This only
  * selects a proposal route; it cannot choose replacement bytes or commit them. */
 export function explicitWorkingFileCorrection(question:string,hasWorkingFile:boolean,hasOtherInput=false){
@@ -162,7 +176,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
- const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??source?.request??null;
+ const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitPinnedPlaceFollowup(question,prior,hasAttachments||hasCurrentInputReadings)??source?.request??null;
  const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
  const namedCorrection=literalRequest?null:explicitSavedKnowledgeCorrection(question,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);

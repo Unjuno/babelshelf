@@ -241,3 +241,18 @@ test('a deictic question can read the sole source of the immediate current answe
  assert.deepEqual(route({question,prior:{...state,turns:[{...answer,refs:[ref,{...ref,start:1,end:3}]}]}}).sourceFile,{noteId:'packing',revision:2});
  for(const text of ["What does 'that note' mean?",'そのメモと他のメモの違いは？','そのメモを削除できますか？','そのメモを要約して保存できますか？','前の会話でそのメモについて何を言いましたか？'])assert.equal(route({question:text,prior:state}).sourceFile,undefined,text);
 });
+
+
+test('a follow-up about the cited place uses only the matching pinned file and rejects competing intent',()=>{
+ const ref={noteId:'opened-file',revision:3,start:0,end:8,quote:'集合は北口。'};
+ const answer={id:'place',user:'このファイルの集合場所はどこ？',answer:'北口です。',refs:[ref]};
+ const state={...prior,turns:[answer],currentResult:{turnId:'place'}};
+ const question='そこへ持っていくものは？';
+ const result=route({question,prior:state});
+ assert.deepEqual(result.request,{action:'answer',query:question,target:'file'});
+ assert.deepEqual(result.context,{summary:'',recent:[],refs:[],turnCount:0});
+ assert.deepEqual(route({question,prior:{...state,turns:[answer,{id:'retry',user:question,status:'Invalid model action'}]}}).request,result.request);
+ for(const s of [{...state,currentFile:{noteId:'other',revision:3}},{...state,currentFile:{noteId:'opened-file',revision:4}},{...state,turns:[{...answer,refs:[]}]},{...state,turns:[{...answer,refs:[ref,{...ref,noteId:'other'}]}]},{...state,turns:[answer,{id:'new',user:'別の話題',answer:'別の場所'}]}])assert.notDeepEqual(route({question,prior:s}).request,result.request);
+ for(const text of ['そこへ持っていくものは？削除して','そこへ持っていくものを保存できますか？','そこへ持っていくものは？別のメモも探して','そこへメールを送れますか？','前の会話ではそこへ何を持っていくと言った？'])assert.notEqual(route({question:text,prior:state}).request?.target,'file',text);
+ assert.notEqual(route({question,prior:state,hasAttachments:true}).request?.target,'file');
+});
