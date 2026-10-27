@@ -109,7 +109,8 @@ test('explicit calculator instructions preserve the original expression rather t
  for(const [request,expression,result] of [['１２５０円の８％は？','(1250 * 8 / 100)',100],['200の12.5%はいくら？','(200 * 12.5 / 100)',25],['What is 8% of 1250?','(1250 * 8 / 100)',100],['what is 12.5 percent of 200?','(200 * 12.5 / 100)',25]]){
   const parsed=explicitCalculationInput(request);assert.deepEqual(parsed,{expression,showExpression:true});assert.equal(calculate(parsed.expression),result);
  }
- for(const request of ['1250円の8%引きはいくら？','1250円の8%を保存して','昨年の1250円の8%は？','1250円の8%は？削除して','What is 8% off 1250?','What is 8% of 1250 and save it?','What is 8% of the 1250 in my note?'])assert.equal(explicitCalculationInput(request),null,request);
+ for(const [request,expression,result] of [['1250円の８％引きはいくら？','(1250 - (1250 * 8 / 100))',1150],['200円の12.5%引きは？','(200 - (200 * 12.5 / 100))',175]]){const parsed=explicitCalculationInput(request);assert.deepEqual(parsed,{expression,showExpression:true});assert.equal(calculate(parsed.expression),result);}
+ for(const request of ['1250円の8%引きはいくら？保存して','1250円の8%を保存して','昨年の1250円の8%は？','1250円の8%は？削除して','What is 8% off 1250?','What is 8% of 1250 and save it?','What is 8% of the 1250 in my note?'])assert.equal(explicitCalculationInput(request),null,request);
  for(const [request,expression,result] of [['２＋３','2+3',5],['（１２＋８）÷４＝','(12+8)÷4',5],['１２と８を足して。','(12 + 8)',20]]){
   const parsed=explicitCalculationInput(request);assert.equal(parsed?.expression,expression,request);assert.equal(calculate(parsed.expression),result,request);
  }

@@ -8,9 +8,10 @@ export function explicitCalculationInput(text:string):{expression:string;showExp
  const input=text.replace(/[０-９＋－＊／（）．＝％]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xfee0));
  const direct=calculatorInput(input);if(direct!==null)return {expression:direct,showExpression:false};
  const ordered=orderedCalculationInput(input);if(ordered!==null)return {expression:ordered,showExpression:true};
- // Only an entire, unambiguous "what is X percent of Y" question. In
- // particular, a discount, tax-inclusive price, or instruction to save is
- // not equivalent and must remain on the normal planning path.
+ // Whole-request forms only: a discount is a different calculation from
+ // a percentage, and mixed instructions must remain on the planning path.
+ const discount=input.trim().match(/^(\d+(?:\.\d+)?)(?:円)?\s*の\s*(\d+(?:\.\d+)?)\s*%\s*引き\s*は(?:いくら)?[？?。.!！]?$/);
+ if(discount)return {expression:`(${discount[1]} - (${discount[1]} * ${discount[2]} / 100))`,showExpression:true};
  const percent=input.trim().match(/^(\d+(?:\.\d+)?)(?:円)?\s*の\s*(\d+(?:\.\d+)?)\s*%\s*は(?:いくら)?[？?。.!！]?$/);
  if(percent)return {expression:`(${percent[1]} * ${percent[2]} / 100)`,showExpression:true};
  const englishPercent=input.trim().match(/^what\s+is\s+(\d+(?:\.\d+)?)\s*(?:%|percent)\s+of\s+(\d+(?:\.\d+)?)[?.!]?$/i);
