@@ -442,11 +442,82 @@ test('a missing explicitly selected Memory subject cannot borrow an unrelated hi
  assert.equal(generated,0);assert.equal(counts,0);assert.equal(compactions,0);
 });
 
+test('a named Japanese saved note refuses partial matches from unrelated sources',async()=>{
+ const wrong=createNote({path:'Attachments/recording.md',body:'明日の会議は午前九時です。'}),right=createNote({path:'Inbox/meeting.md',body:'QA空想会議は火曜日の14時に西口で行います。'});
+ const ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body});let calls=0;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;return {text:JSON.stringify({answer:'火曜日の14時、西口です。',citations:[{id:'S1',quote:right.revisions[0].body}]})};}};
+ const request={model:'4B',question:'保存したQA空想会議のメモでは、会議はいつどこで行いますか？',query:'QA空想会議',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}};
+ await assert.rejects(groundedAnswer({store:{all:async()=>[wrong],search:async()=>[ref(wrong)]},engine:runtime},request),/No matching notes/);assert.equal(calls,0);
+ const result=await groundedAnswer({store:{all:async()=>[wrong,right],search:async()=>[ref(wrong),ref(right)]},engine:runtime},request);assert.equal(result.sources[0].noteId,right.id);assert.equal(calls,1);
+});
+
+test('a named English saved note does not cite a different meeting',async()=>{
+ const wrong=createNote({path:'Inbox/meeting.md',body:'The meeting is on Monday at ten.'}),right=createNote({path:'Inbox/zephyr-meeting.md',body:'The meeting is on Friday at noon.'});
+ const ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body});let calls=0;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;return {text:JSON.stringify({answer:'Friday at noon.',citations:[{id:'S1',quote:right.revisions[0].body}]})};}};
+ const request={model:'4B',question:'What time is the meeting in my saved zephyr meeting note?',query:'zephyr meeting',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}};
+ await assert.rejects(groundedAnswer({store:{all:async()=>[wrong],search:async()=>[ref(wrong)]},engine:runtime},request),/No matching notes/);assert.equal(calls,0);
+ const records=[wrong,right];const result=await groundedAnswer({store:{all:async()=>records,search:async query=>searchNotes(records,query)},engine:runtime},request);assert.equal(result.sources[0].noteId,right.id);assert.equal(calls,1);
+});
+
+test('a shared filename word does not ground a different named note',async()=>{
+ const note=createNote({path:'Inbox/QA-lunar-dock.md',body:'The water reserve is eight liters.'}),records=[note];let calls=0;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;return {text:'unexpected'};}};
+ const store={all:async()=>records,search:async query=>searchNotes(records,query)};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'How much water is in my saved solar dock note?',query:'solar dock',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}}),/No matching notes/);assert.equal(calls,0);
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'How much water is in my solar dock note?',query:'solar dock',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}}),/No matching notes/);assert.equal(calls,0);
+});
+
+test('a named English source does not match the prefix of another filename word',async()=>{
+ const note=createNote({path:'Inbox/solar-docker.md',body:'Water is 99 liters.'}),records=[note];let calls=0;
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;return {text:'unexpected'};}};
+ const store={all:async()=>records,search:async query=>searchNotes(records,query)};
+ assert.ok(searchNotes(records,'solar dock').length,'partial search candidate exists');
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'How much water is in my solar dock note?',query:'solar dock',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}}),/No matching notes/);assert.equal(calls,0);
+});
+
 test('retrieved passages never admit historical citations from another source',async()=>{
  const note=createNote({path:'Notes/water.md',body:'Water: 4 liters.'}),other=createNote({path:'Notes/meeting.md',body:'Meeting: north gate.'});const ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),water=ref(note),meeting=ref(other);let seen='';
  const store={all:async()=>[note,other],search:async()=>[water]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async messages=>{seen=JSON.stringify(messages);return {text:JSON.stringify({answer:'4 liters.',citations:[{id:'S1',quote:water.quote}]})};}};
  const reply=await groundedAnswer({store,engine:runtime},{model:'4B',question:'How much water?',mode:'answer',context:{summary:'',recent:[],refs:[water,meeting]},scope:{kind:'knowledge'}});
  assert.equal(seen.includes(meeting.quote),false);assert.equal(reply.sources[0].noteId,note.id);
+});
+
+test('single-excerpt summary retry binds only the model-selected actual source label',async()=>{
+ const note=createNote({path:'Inbox/meeting.md',body:'集合場所は北口。持ち物は水。'}),records=[note],quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};let calls=0;
+ const store={all:async()=>records,search:async()=>[ref]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify(++calls===1?{answer:'北口で集合し水を持参。',citations:[{id:'S1',quote:'北口で集合し水を持参。'}]}:{answer:'北口で集合し水を持参。',sources:['S1']})})};
+ const request={model:'4B',question:'短く要約して',mode:'summary',scope:{kind:'knowledge'}};const result=await groundedAnswer({store,engine:runtime},request);assert.equal(calls,2);assert.equal(result.answer,'北口で集合し水を持参。');assert.equal(result.sources[0].quote,quote);assert.equal(result.sources[0].noteId,note.id);
+ calls=0;runtime.generate=async()=>({text:JSON.stringify(++calls===1?{answer:'x',citations:[{id:'S1',quote:'invented'}]}:{answer:'x',sources:['S2']})});await assert.rejects(groundedAnswer({store,engine:runtime},request),/Invalid answer or sources/);
+});
+
+test('one-sentence summary retries once and still requires a real citation',async()=>{
+ const note=createNote({path:'Inbox/meeting.md',body:'集合場所は北口。持ち物は水。'}),records=[note],quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};let calls=0;
+ const store={all:async()=>records,search:async()=>[ref]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:++calls===1?'集合は北口。持ち物は水。':'北口に水を持参する。',citations:[{id:'S1',quote}]})})};
+ const request={model:'4B',question:'一文で要約して',mode:'summary',scope:{kind:'knowledge'}};const result=await groundedAnswer({store,engine:runtime},request);assert.equal(result.answer,'北口に水を持参する。');assert.equal(calls,2);assert.equal(result.sources[0].quote,quote);
+ calls=0;runtime.generate=async()=>({text:JSON.stringify({answer:'北口。水。',citations:[{id:'S1',quote}]})});await assert.rejects(groundedAnswer({store,engine:runtime},request),/One sentence requested/);
+ calls=0;runtime.generate=async()=>({text:JSON.stringify({answer:++calls===1?'北口。水。':'北口に水を持参。',citations:[{id:'S1',quote:calls===1?quote:'invented'}]})});await assert.rejects(groundedAnswer({store,engine:runtime},request),/Citation mismatch/);
+});
+
+test('one-sentence retry retains verified source-label protocol after citation repair',async()=>{
+ const note=createNote({body:'集合場所は北口。持ち物は水。'}),quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};let calls=0;
+ const store={all:async()=>[note],search:async()=>[ref]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify(++calls===1?{answer:'北口。水。',citations:[{id:'S1',quote:'paraphrase'}]}:calls===2?{answer:'北口。水。',sources:['S1']}:{answer:'北口に水を持参。',sources:['S1']})})};
+ const request={model:'4B',question:'一文で要約して',mode:'summary',scope:{kind:'knowledge'}};const result=await groundedAnswer({store,engine:runtime},request);assert.equal(calls,3);assert.equal(result.answer,'北口に水を持参。');assert.equal(result.sources[0].quote,quote);assert.equal(result.recovery,'citation-retry');
+ calls=0;runtime.generate=async()=>({text:JSON.stringify(++calls===1?{answer:'北口。水。',citations:[{id:'S1',quote:'paraphrase'}]}:calls===2?{answer:'北口。水。',sources:['S1']}:{answer:'北口に水を持参。',sources:['S2']})});await assert.rejects(groundedAnswer({store,engine:runtime},request),/Invalid answer or sources/);
+});
+
+test('a summary cannot present the repeated request as a sourced answer',async()=>{
+ const question='このファイルを一文で短く要約してください。',note=createNote({body:'集合場所は北口。持ち物は水。'}),quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};
+ let calls=0;const store={all:async()=>[note],search:async()=>[ref]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify(++calls===1?{answer:question,citations:[{id:'S1',quote}]}:{answer:question,sources:['S1']})})};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question,mode:'summary',scope:{kind:'knowledge'}}),/Summary repeated the request/);
+ calls=0;runtime.generate=async()=>({text:JSON.stringify(++calls===1?{answer:question,citations:[{id:'S1',quote}]}:{answer:'北口に水を持参する。',sources:['S1']})});
+ const result=await groundedAnswer({store,engine:runtime},{model:'4B',question,mode:'summary',scope:{kind:'knowledge'}});assert.equal(result.answer,'北口に水を持参する。');assert.equal(result.sources[0].quote,quote);assert.equal(calls,2);
+});
+
+test('a cited quantity is not presented as an answer to a color question',async()=>{
+ const note=createNote({path:'Inbox/shelter.md',body:'避難所の水は七リットルです。'}),records=[note],quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};
+ const store={all:async()=>records,search:async()=>[ref]},runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'七リットル',citations:[{id:'S1',quote}]})})};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'水の容器は何色ですか？',mode:'answer',scope:{kind:'knowledge'}}),/does not match question/);
+ const result=await groundedAnswer({store,engine:runtime},{model:'4B',question:'水は何リットルですか？',mode:'answer',scope:{kind:'knowledge'}});assert.equal(result.answer,'七リットル');
 });
 
 test('interactive reply uses prior turns and validates pinned source bytes after generation',async()=>{
@@ -659,7 +730,7 @@ test('multiple-source citation mismatch gets one bounded retry with identical ev
  const refs=notes.map(n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}));let calls=0;const requests=[];
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget)=>{requests.push({messages,budget});return {text:JSON.stringify(++calls===1?{answer:'集合場所は北口。',citations:[{id:'S1',quote:'集合場所は北口。'},{id:'S2',quote:'集合場所は北口です。'}]}:{answer:'集合場所は北口。',citations:[{id:'S1',quote:'集合場所は北口。'}]})};}};
  const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'answer: 集合場所はどこ？',scope:{kind:'knowledge'}});
- assert.equal(result.answer,'集合場所は北口。');assert.equal(result.sources[0].noteId,notes[0].id);assert.equal(calls,2);assert.deepEqual(requests[0].messages.slice(1),requests[1].messages.slice(1));assert.equal(requests[0].budget,requests[1].budget);assert.match(requests[1].messages[0].content,/previous.*citation.*exact/i);assert.equal(result.recovery,'citation-retry');
+ assert.equal(result.answer,'集合場所は北口。');assert.equal(result.sources[0].noteId,notes[0].id);assert.equal(calls,2);assert.deepEqual(requests[0].messages.slice(1),requests[1].messages.slice(1));assert.equal(requests[0].budget,requests[1].budget);assert.match(requests[1].messages[0].content,/previous.*citation.*exact/i);assert.match(requests[1].messages[0].content,/quote directly from that same item.s quote field/);assert.equal(result.recovery,'citation-retry');
  calls=0;runtime.generate=async()=>{calls++;return {text:JSON.stringify({answer:'Invented place',citations:[{id:'S1',quote:'Invented place'}]})};};
  await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'}}),/Citation mismatch/);assert.equal(calls,2);
 });

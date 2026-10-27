@@ -21,7 +21,7 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
 export async function initializeOfflineShell(container:ServiceWorkerContainer|undefined,allowRegister=false){
  const current=++initialization;stopObserving?.();stopObserving=null;
  if(!container){report('Unavailable');return;}report('Checking');
- try{const registration=await container.getRegistration()??(allowRegister?await container.register('./sw.js'):undefined);if(current!==initialization)return;if(!registration){report('Not prepared');return;}stopObserving=observeOfflineRegistration(registration,report);}catch{if(current===initialization)report('Preparation failed');}
+ try{const existing=await container.getRegistration();if(current!==initialization)return;const registration=existing??(allowRegister?await container.register('./sw.js'):undefined);if(current!==initialization)return;if(!registration){report('Not prepared');return;}stopObserving=observeOfflineRegistration(registration,report);}catch{if(current===initialization)report('Preparation failed');}
 }
 const updateTimeout=()=>Error('Update timed out · try again');
 async function boundedUpdateCheck(check:Promise<unknown>,timeoutMs:number){

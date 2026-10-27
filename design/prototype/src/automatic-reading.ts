@@ -7,7 +7,7 @@ import type {VisionText} from './vision-text.ts';
 import {originalKey,originalRef,type OriginalAsset} from './original-assets.ts';
 import {stateHash} from './backup-state.ts';
 import type {ProcessingTool} from './processing-history.ts';
-export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string;visionModel?:string;visionReady?:boolean;customSpeechModels?:readonly {id:string;role:string;engine:string}[];customVisionModels?:readonly {id:string;role:string;engine:string}[]};
+export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string;visionModel?:string;visionReady?:boolean;videoAudioOnly?:boolean;customSpeechModels?:readonly {id:string;role:string;engine:string}[];customVisionModels?:readonly {id:string;role:string;engine:string}[]};
 type Adapter<T>=(asset:OriginalAsset,signal:AbortSignal,progress:(s:string)=>void)=>Promise<T>;
 export type ReadingAdapters={ocr?:Adapter<OcrText>;pdf?:Adapter<PdfText>;speech?:Adapter<Transcript>;vision?:Adapter<VisionText>};
 type RecordRead=<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown)=>Promise<T>;
@@ -18,7 +18,7 @@ export async function readInputOriginal(asset:OriginalAsset,policy:ReadingPolicy
  // An unavailable frame model may leave a video with a useful, explicit audio
  // transcript. Runtime/inference failures from a ready Vision adapter do not
  // trigger this partial fallback.
- const kind=asset.kind==='video'?(videoFrameReady?'vision':videoAudioReady?'speech':policy.visionModel?'vision':'speech'):isOcrImage(asset)?(policy.visionModel?'vision':'ocr'):isPdf(asset)?'pdf':asset.kind==='audio'?'speech':undefined;
+ const kind=asset.kind==='video'?(policy.videoAudioOnly?'speech':videoFrameReady?'vision':videoAudioReady?'speech':policy.visionModel?'vision':'speech'):isOcrImage(asset)?(policy.visionModel?'vision':'ocr'):isPdf(asset)?'pdf':asset.kind==='audio'?'speech':undefined;
  if(!kind)return {status:'Unsupported'};
  let workError:unknown;
  const tool=kind==='vision'?'image.describe':kind==='ocr'?'image.read':kind==='pdf'?'pdf.read':'speech.transcribe';

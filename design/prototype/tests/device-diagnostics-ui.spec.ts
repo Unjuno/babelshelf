@@ -20,7 +20,9 @@ for(const action of ['type','offline'] as const)test(`working during app update:
  await expect(page.getByText('Update checked · save current work, then update again',{exact:true})).toBeVisible();
  if(action==='type')await expect(message).toHaveValue('Keep the new draft written during update');
  else await expect(page.getByRole('button',{name:'Offline · Tap to switch Online'})).toBeVisible();
- await expect(page.getByRole('button',{name:'Update app'})).toBeDisabled();
+ const update=page.getByRole('button',{name:'Update app'});
+ if(action==='type')await expect(update).toHaveAttribute('data-blocked','true');
+ else await expect(update).toBeDisabled();
 });
 
 async function openSettingsItem(page:Page,name:string){
@@ -154,6 +156,19 @@ test('chat connection mode survives a full page reload',async({page})=>{
  await expect(page.getByRole('button',{name:'Online · Tap to switch Offline'})).toHaveAttribute('aria-pressed','true');
 });
 
+test('explicit online update retries a missing app registration',async({page})=>{
+ await page.addInitScript(()=>{
+  const sw=navigator.serviceWorker;let attempts=0;
+  Object.defineProperty(sw,'getRegistration',{configurable:true,value:async()=>undefined});
+  Object.defineProperty(sw,'register',{configurable:true,value:async()=>{attempts++;(window as any).__registrationAttempts=attempts;if(attempts===1)throw Error('initial failure');const registration=new EventTarget() as ServiceWorkerRegistration;Object.defineProperty(registration,'active',{value:{state:'activated'}});return registration;}});
+ });
+ await page.goto('/');await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).__registrationAttempts)).toBe(1);
+ await page.getByRole('button',{name:'Update app'}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).__registrationAttempts)).toBe(2);
+ await expect(page.getByRole('status').filter({hasText:'App prepared · update again to reopen'})).toBeVisible();
+});
+
 test('chat exposes an explicit app refresh beside the online/offline control',async({page})=>{
  await page.goto('/');
  const refresh=page.getByRole('button',{name:'Update app'});
@@ -167,7 +182,8 @@ test('chat exposes an explicit app refresh beside the online/offline control',as
  await expect(refresh).toHaveAttribute('title','Check for and apply app updates');
  const message=page.getByRole('textbox',{name:'Message'});
  await message.fill('Keep this unsent note');
- await expect(refresh).toBeDisabled();
+ await expect(refresh).toBeEnabled();await expect(refresh).toHaveAttribute('title','Finish or save current work before updating');
+ await refresh.click();await expect(page.getByRole('status').filter({hasText:'Send or clear the draft before updating'})).toBeVisible();await expect(message).toHaveValue('Keep this unsent note');
  await message.fill('');
  await expect(refresh).toBeEnabled();
 });

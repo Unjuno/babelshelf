@@ -29,6 +29,7 @@ test('configuration rejects unsupported models, budgets and missing fields',()=>
 test('validated defaults are copied and immutable and preserve protected roots',()=>{
  const candidate=structuredClone(settings),validated=validateSettings(candidate);
  candidate.defaults.background='sand';assert.equal(validated.defaults.background,'paper');
+ assert.equal(validated.defaults.theme,'light');
  assert.throws(()=>validated.storage.protectedRoots.pop(),TypeError);
  candidate.storage.protectedRoots[0]='Other';assert.throws(()=>validateSettings(candidate));
 });

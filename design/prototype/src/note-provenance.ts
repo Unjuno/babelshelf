@@ -21,6 +21,6 @@ export function noteProvenance(records:any[],noteId:string,revision:number):Note
   const status:SourceState=!historicalAvailable?'unavailable':original.state!=='active'?'removed':validateGroundingRefs(records,[ref]).ok?'current':'changed';
   return {ref,path:original?notePath(original,version?.version??latest(original).version):'Unavailable source',...(original?{currentRevision:latest(original).version}:{}),status,historicalAvailable};
  });
- const status:NoteProvenance['status']=!items.length?(note.kind==='generated'?'unavailable':'none'):items.some((item:NoteProvenance['items'][number])=>item.status==='unavailable')?'unavailable':items.some((item:NoteProvenance['items'][number])=>item.status==='removed')?'removed':items.some((item:NoteProvenance['items'][number])=>item.status==='changed')?'changed':'current';
+ const status:NoteProvenance['status']=!items.length?'none':items.some((item:NoteProvenance['items'][number])=>item.status==='unavailable')?'unavailable':items.some((item:NoteProvenance['items'][number])=>item.status==='removed')?'removed':items.some((item:NoteProvenance['items'][number])=>item.status==='changed')?'changed':'current';
  return {noteId,revision,status,items};
 }

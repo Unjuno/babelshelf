@@ -21,6 +21,8 @@ test('one current reading can recover a malformed answer shape only through a bo
  const result=await groundedAnswer({store,engine:runtime},request);assert.equal(calls,2);assert.equal(formats[1],'dialogue-answer');assert.equal(result.answer,'CEDAR-5821');assert.equal(result.sources[0].noteId,review.id);assert.equal(result.recovery,'verbatim-source');
  calls=0;runtime.generate=async()=>({text:JSON.stringify(++calls===1?{code:'CEDAR-5821'}:{answer:'Invented answer'}),finishReason:'stop'});
  await assert.rejects(groundedAnswer({store,engine:runtime},request),/verified quote/);assert.equal(calls,2);
+ calls=0;runtime.generate=async()=>({text:JSON.stringify(++calls===1?{code:'CEDAR-5821'}:{status:'insufficient_evidence',answer:'Not found in the supplied excerpts'}),finishReason:'stop'});
+ await assert.rejects(groundedAnswer({store,engine:runtime},request),/Insufficient evidence/);assert.equal(calls,2);
  calls=0;runtime.generate=async()=>{calls++;if(calls===2)changed=true;return {text:JSON.stringify(calls===1?{code:'CEDAR-5821'}:{answer:'CEDAR-5821'}),finishReason:'stop'};};
  await assert.rejects(groundedAnswer({store,engine:runtime},request),/changed|unavailable/i);
  changed=false;calls=0;runtime.generate=async()=>{if(++calls===2)stopped=true;return {text:JSON.stringify(calls===1?{code:'CEDAR-5821'}:{answer:'CEDAR-5821'}),finishReason:'stop'};};

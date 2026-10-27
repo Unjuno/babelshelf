@@ -71,7 +71,7 @@ test('tool evidence and arguments are stable after a handler or planner mutates 
    history[0].arguments.query='changed by planner';
    return {kind:'final',value:{action:'answer'}};
   },
-  execute:async call=>{call.arguments.query='changed by handler';return [source];},
+  execute:async call=>{call.tool='memory.search';call.arguments.query='changed by handler';return [source];},
  });
  source.quote='changed after execution';
  assert.deepEqual(observed,[{tool:'memory.read',arguments:{query:'Notes/meeting.md'},result:[{noteId:'n1',revision:1,quote:'Monday at 10'}]}]);

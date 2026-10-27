@@ -7,6 +7,15 @@ import {formatTask,taskDefinition,createTaskNote,claimTaskRun,finishTaskRun} fro
 import {formatPreference,initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeStateBackup} from '../src/backup-state.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from '../src/settings-restore.ts';
+import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
+
+test('calculation execution survives backup and rejects a forged result',async()=>{
+ const now=new Date('2026-10-17T00:00:00Z'),task={repeat:'once',time:'09:00',days:[],date:'2026-10-18',monthDay:1,interval:1,unit:'days',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,enabled:false,notify:false,prompt:'Calculate 12 + 10'};
+ const original={...createTaskNote([],task,crypto.randomUUID(),now),taskCursor:{definition:taskDefinition(task),nextAt:'2026-10-18T00:00:00Z'}},claim=claimTaskRun([original],original.id,'owner',now,{manual:true});
+ const done=finishTaskRun([original,claim.run],claim.run.id,'owner',{status:'succeeded',answer:'12 + 10 = 22',sources:[],calculation:makeDecimalReceipt('12 + 10')},now);
+ const state={notes:[done.task,done.run],settings:[],runs:[]};const restored=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(restored.notes,state.notes);
+ const forged=structuredClone(state);forged.notes[1].revisions.at(-1).body=forged.notes[1].revisions.at(-1).body.replace('12 + 10 = 22','12 + 10 = 23');await assert.rejects(()=>makeStateBackup(forged),/Invalid scheduled calculation/);
+});
 
 test('reviewed settings recovery appends destination history and retains source versions without network permission',async()=>{
  const pref=(group,value)=>{const n=createNote({path:'Settings/'+group+'.md',body:formatPreference(group,{...readPreference(group,initialPreferenceNotes),...value})});n.id='settings-'+group;n.ui={managed:true};n.unknown={retained:true};return n;};

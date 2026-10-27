@@ -4,7 +4,7 @@ import {contextIndependentConversation,currentDialogueResult,dialogueContext,ind
 import {explicitInputQuestion} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
-import {namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
+import {namedEnglishSavedSubject,namedJapaneseSavedSubject,namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest,type WorkingFile} from './working-file.ts';
 import {earlierOperationContext} from './dialogue-outcomes.ts';
 import {explicitLiteralReplacement,namedCorrectionClause,unquotedCorrectionText} from './correction-request.ts';
@@ -24,8 +24,7 @@ export function explicitCurrentAnswerRewrite(question:string){
 // The rest of a question can overwhelm the lexical index. Keep a named saved
 // file's descriptor as the query; the full request is still used for answering.
 export function savedKnowledgeSearchQuery(question:string){
- const named=/\b(?:saved|stored)\s+((?:(?:[\p{L}\p{N}-]+)\s+){1,8})(?:notes?|files?|documents?|records?)\b/iu.exec(question);
- return named?.[1].trim()||namedSavedSubject(question)?.trim()||question;
+ return namedEnglishSavedSubject(question)||namedJapaneseSavedSubject(question)||namedSavedSubject(question)?.trim()||question;
 }
 
 /** A standalone request without a subject cannot select a search query. */
@@ -34,6 +33,12 @@ export function unspecifiedSavedSearch(question:string,currentInputs=false){
  const text=question.trim();
  return /^(?:保存した|保存済みの?|自分の|私の)(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|見つけて)(?:ください|下さい)?[。！!]*$/u.test(text)
   || /^(?:please\s+)?(?:find|search|look for)\s+(?:my|saved|stored)\s+(?:notes?|files?|documents?)[.!]*$/iu.test(text);
+}
+
+/** Give a recovery hint only when this exact short search was ambiguous because a file was selected. */
+export function searchScopeFailure(status:string,question:string,hasFile:boolean,hasAttachments:boolean){
+ if(hasFile&&!hasAttachments&&/^(?:Model not prepared|Model not configured)(?: · Settings)?$/.test(status)&&shortLocalSearch(question))return status.replace(/ · Settings$/, '')+' · remove input file to search Memory';
+ return status;
 }
 
 function hasPendingSavedSearch(prior:Dialogue,currentInputs:boolean){const previous=prior.turns.at(-1);return !currentInputs&&previous?.status==='What should I search for?'&&unspecifiedSavedSearch(previous.user);}
@@ -67,6 +72,19 @@ function savedSubjectQuery(value:string){
  return (unquoted?(unquoted[1]??unquoted[2]):subject).trim().replace(/^["'“”‘’`]+|["'“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
 }
 
+function japaneseAdditionalAction(text:string){return /(?:保存して|削除(?:して|する|しろ|せよ)|消して|消去(?:して|する)|上書(?:きして|きする|して)|訂正(?:して|する)|修正(?:して|する)|変更して|編集して|実行(?:して|する)|送信(?:して|する)|メール(?:して|する)|開いて|要約して|それから|してから)/u.test(text);}
+
+/** A short, unscoped imperative defaults to this local app's Memory. Any
+ * reference to another scope or another operation stays on the planner path. */
+export function shortLocalSearch(question:string,scoped=false){
+ if(scoped)return null;
+ const found=/^([\p{L}\p{N}\p{M} _.-]{2,80}?)を(?:探して|検索して)(?:ください|下さい)?[。！!]*$/u.exec(question.trim());
+ if(!found)return null;
+ const query=found[1].trim();
+ if(query.length<2||/(?:これ|それ|あれ|この|その|あの|会話|チャット|さっき|先ほど|前回|ウェブ|ネット|インターネット|オンライン|添付|ファイルから|保存|削除|編集|変更|訂正|修正|実行|送信|メール|検索|探して|開いて|要約|して|ください|それから|\b(?:web|online|internet|search|delete|save|edit|open|read|summarize)\b)/iu.test(query))return null;
+ return {action:'search' as const,query,target:'knowledge' as const};
+}
+
 /** Only an imperative search that names saved Memory and a concrete topic is
  * deterministic. Questions, writes, attachments and vague searches keep their
  * existing routes so this optimization cannot guess the user's source. */
@@ -77,10 +95,11 @@ export function explicitSavedKnowledgeSearch(question:string,currentInputs=false
  const japanese=/(?:^|\s)(.{2,120}?)(?:について|に関する)\s*(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|検索|見つけて)[。！？?！]*$/u;
  const japaneseReverse=/^(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:から|で)\s*(.{2,120}?)(?:を)?(?:探して|検索して|見つけて)[。！？?！]*$/u;
  const japanesePossessive=/^(?:保存した|保存済みの|自分の|私の)(.{2,120}?)の(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|見つけて)(?:ください|下さい)?[。！？?!]*$/u;
- const named=japanesePossessive.exec(text);if(named&&(/[\r\n\0,、;；。！？?!]/u.test(named[1])||/(?:保存して|削除|変更|訂正|修正|実行|送信|メール|検索して|探して|開いて|要約して|それから)/u.test(named[1])||/^(?:これ|それ|あれ|この|その|あの)$/u.test(named[1])))return null;
+ const named=japanesePossessive.exec(text);if(named&&(/[\r\n\0,、;；。！？?!]/u.test(named[1])||japaneseAdditionalAction(named[1])||/(?:検索して|探して)/u.test(named[1])||/^(?:これ|それ|あれ|この|その|あの)$/u.test(named[1])))return null;
  const found=english.exec(text)??englishReverse.exec(text)??japanese.exec(text)??japaneseReverse.exec(text)??named;if(!found)return null;
  const query=savedSubjectQuery(found[1]);
  if(query.length<2||query.length>140||/[\r\n\0]/u.test(query)||/\s+(?:and|then)\s+(?:summari[sz]e|open|read|answer|explain|tell|show|compare|list|edit|delete|save|write)\b/iu.test(query))return null;
+ if(japaneseAdditionalAction(query))return null;
  return {action:'search' as const,query,target:'knowledge' as const};
 }
 
@@ -126,8 +145,11 @@ export function explicitSavedKnowledgeCorrection(question:string,currentInputs=f
 // still needs a current source citation. Ambiguous requests keep the planner.
 export function explicitSavedKnowledgeQuestion(question:string,currentInputs=false,workingFile=false){
  const text=question.trim();
- const savedSubject=namedSavedSubject(text);
+ const savedSubject=namedSavedSubject(text)||namedEnglishSavedSubject(text)||namedJapaneseSavedSubject(text);
  if(currentInputs||workingFile&&(!(namesExplicitSavedKnowledge(text)||savedSubject)||namesDeicticFile(text))||text.length>500||requestNamesEarlierDialogue(text))return null;
+ // Do not turn a multi-action request into an answer while silently dropping
+ // a requested write or external action. The normal planner must handle it.
+ if(/\b(?:delete|remove|erase|edit|update|change|rewrite|save|store|create|send|email|upload|download|execute|run|schedule|notify)\b|(?:削除|消して|消去|編集|変更|訂正|修正|書き換|保存して|記録して|作成して|送信|実行して|通知して)/iu.test(text))return null;
  const englishQuestion=/\b(?:what|when|where|who|which|how\s+(?:many|much))\b/i;
  const japaneseQuestion=/(?:何|いつ|どこ|誰|どれ|いくつ|何時|何日|何件|何について)/u;
  if((namesSavedKnowledge(text)||savedSubject)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。.]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:savedKnowledgeSearchQuery(text),target:'knowledge' as const};
@@ -153,7 +175,7 @@ export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boole
  * answer, and the normal source/revision checks remain authoritative. */
 export function explicitWorkingFileSummary(question:string,hasWorkingFile:boolean,hasOtherInput=false){
  const text=question.trim();if(!hasWorkingFile||hasOtherInput||!text||text.length>500||requestNamesEarlierDialogue(text))return null;
- const japanese=/^(?:この|現在の|今開いている)(?:ファイル|メモ|ノート|文書|資料)(?:を|について)(?:短く|簡潔に|手短に)?(?:要約して|まとめて)(?:ください|下さい)?[。.!！]?$/u;
+ const japanese=/^(?:この|現在の|今開いている)(?:ファイル|メモ|ノート|文書|資料)(?:を|について)(?:一文で|1文で)?(?:短く|簡潔に|手短に)?(?:要約して|まとめて)(?:ください|下さい)?[。.!！]?$/u;
  const english=/^(?:(?:please|can you|could you|would you)\s+)?(?:(?:briefly|concisely)\s+)?summari[sz]e\s+(?:this|the current|the open|the opened)\s+(?:file|note|document|memo)(?:\s+(?:briefly|concisely))?[.!?]?$/iu;
  return japanese.test(text)||english.test(text)?{action:'summary' as const,query:text,target:'file' as const}:null;
 }
@@ -195,7 +217,10 @@ export function explicitWorkingFileCorrection(question:string,hasWorkingFile:boo
  if(/\b(?:another|other|different|all)\b|\b(?:files|notes|documents)\b|(?:別の|他の|すべての|全ての)/iu.test(text)||(text.match(/直して|変更して|訂正して|修正して|変えて/gu)?.length??0)>1)return null;
  if(/\b(?:and|then|answer|reply|response|message|timer|alarm|schedule|notification|settings|model|theme|download)\b|(?:回答|返答|応答|発言|メッセージ|タイマー|通知|設定|モデル|テーマ|それから)/iu.test(text)||/[\w.-]+\.(?:md|txt|json)\b|[\\/]/iu.test(text))return null;
  const english=/^(?:(?:in|within)\s+(?:this|the\s+current)\s+(?:file|note|document)[,\s]+)?(?:please\s+)?(?:change|correct|update|set|replace)\s+[^.!?]{1,180}\s+(?:to|with)\s+[^.!?]{1,180}[.!]?$/iu.test(text);
- const japanese=/^[^。！？!?]{1,160}を[^。！？!?]{1,160}に(?:直して|変更して|訂正して|修正して|変えて)(?:ください|下さい)?[。！!]?$/u.test(text);
+ const preserve=/^([\p{L}\p{N}・ー]{1,32})(?:は|を)(?:変えないで|変更しないで|そのままにして)(?:ください|下さい)?[。！!]?$/u;
+ const clauses=text.split('。');const rest=clauses.slice(1).filter(Boolean);
+ const safePreserve=rest.length===0||rest.length===1&&preserve.test(rest[0])&&!/(?:削除|保存|送信|実行|検索|追加|作成|上書き)/u.test(rest[0]);
+ const japanese=safePreserve&&/^[^。！？!?]{1,160}を[^。！？!?]{1,160}に(?:直して|変更して|訂正して|修正して|変えて)(?:ください|下さい)?[！!]?$/u.test(clauses[0]);
  return english||japanese?{action:'edit' as const,query:question,target:'file' as const}:null;
 }
 /** A supplied statement plus a separate, literal note command needs no model
@@ -222,7 +247,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const previousUtterance=!literalRequest?previousUserUtterance(question,prior,hasAttachments||hasCurrentInputReadings):null;
  const operationContext=literalRequest?null:earlierOperationContext(prior,question,hasAttachments||hasCurrentInputReadings);
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
- const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
+ const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings)??shortLocalSearch(question,hasAttachments||hasCurrentInputReadings||!!prior.currentFile),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
  const explicitFileQuestion=literalRequest?null:explicitWorkingFileSummary(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitPinnedPlaceFollowup(question,prior,hasAttachments||hasCurrentInputReadings)??source?.request??null;

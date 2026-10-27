@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import {formatTask,parseTask,taskDefinition,taskNextAt,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,taskRunView} from '../src/task-records.ts';
 import {projectNote,applyKnowledgeChanges} from '../src/knowledge-store.ts';
 import {createNote,latest} from '../../../dist/core.js';
+import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
 
 const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
 const task={repeat:'once',time:'09:00',days:[1],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:zone,enabled:true,notify:true,prompt:'  要約して\nOriginal bytes.\n'};
 function registered(){const n=createNote({path:'Schedule/test.md',body:formatTask(task)});n.ui={recordType:'schedule'};n.taskCursor={definition:taskDefinition(task),nextAt:taskNextAt(task,new Date(2026,9,19)).toISOString()};return n;}
+test('scheduled calculation preserves a validated receipt and rejects mismatched answers',()=>{const definition={...task,prompt:'Calculate 12 + 10'},note=createNote({path:'Schedule/calculation.md',body:formatTask(definition)});note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(definition),nextAt:taskNextAt(definition,new Date(2026,9,19)).toISOString()};const now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now),receipt=makeDecimalReceipt('12 + 10');const result={status:'succeeded',answer:'12 + 10 = 22',sources:[],calculation:receipt};assert.throws(()=>finishTaskRun([note,run],run.id,'owner',{...result,answer:'12 + 10 = 23'},now),/Invalid scheduled calculation/);assert.throws(()=>finishTaskRun([note,run],run.id,'owner',{...result,sources:[{}]},now),/Invalid scheduled calculation/);const finished=finishTaskRun([note,run],run.id,'owner',result,now);assert.deepEqual(taskRunView(finished.run).calculation,receipt);assert.equal(latest(finished.task).body,latest(note).body);assert.equal(finished.task.taskCursor.nextAt,null);});
 test('task Markdown preserves exact prompt and validation rejects execution directives',()=>{
  const body=formatTask(task);assert.equal(parseTask(body).prompt,task.prompt);
  assert.throws(()=>parseTask(body.replace('"enabled": true','"enabled": "yes"')),/Invalid/);

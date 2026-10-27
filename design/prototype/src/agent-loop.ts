@@ -71,19 +71,19 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   }
   if(plan.kind!=='tool'||!exactKeys(plan,['kind','tool','arguments'])||typeof plan.tool!=='string'||!allowed.has(plan.tool)||!validRecord(plan.arguments))throw new AgentProtocolError('Tool is not registered or call is invalid');
   if(step>=maxToolCalls)throw new AgentProtocolError('Agent tool call limit reached');
-  const recordedArguments=structuredClone(plan.arguments);
-  const call:AgentToolCall={kind:'tool',tool:plan.tool,arguments:structuredClone(recordedArguments)};
+  const recordedTool=plan.tool,recordedArguments=structuredClone(plan.arguments);
+  const call:AgentToolCall={kind:'tool',tool:recordedTool,arguments:structuredClone(recordedArguments)};
   input.check();
   let result:unknown;
   try{result=await input.execute(call);}catch(error){
    input.check();
    if(!(error instanceof AgentToolInputError))throw error;
    // A rejected attempt consumes the same budget, but is never source evidence.
-   history.push({tool:plan.tool,arguments:recordedArguments,result:null,error:{code:'invalid_tool_input'}});
+   history.push({tool:recordedTool,arguments:recordedArguments,result:null,error:{code:'invalid_tool_input'}});
    continue;
   }
   input.check();
-  history.push({tool:call.tool,arguments:recordedArguments,result:snapshotBoundedResult(result,maxResultChars)});
+  history.push({tool:recordedTool,arguments:recordedArguments,result:snapshotBoundedResult(result,maxResultChars)});
  }
  throw new AgentProtocolError('Agent tool call limit reached');
 }

@@ -30,6 +30,17 @@ test('thanks after a search clarification keeps that turn without old history or
 
 const prior={schema:1,revision:1,turns:[{id:'turn-1',user:'What did we decide about the workshop?',answer:'Move it to Monday at 10.',refs:[{noteId:'meeting',revision:2,start:0,end:31,quote:'Workshop moved to Monday at 10.'}]}],compaction:null,currentFile:{noteId:'opened-file',revision:3}};
 
+test('mixed attachment requests do not become direct read-only answers at the turn boundary',()=>{
+ const attachments=[{name:'photo.png',kind:'image',status:'ready'}];
+ for(const question of ['What is in this image and delete the file?','このファイルの値は何で、削除してください？','Using only the attached text, what is the phrase and search the memory?']){
+  const result=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:true,hasCurrentInputReadings:true,prior,attachments});
+  assert.equal(result.inputQuestion,null,question);assert.equal(result.request,null,question);
+ }
+ const question='Using only the attached text, what is the phrase? Reply with the phrase.';
+ const result=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:true,hasCurrentInputReadings:true,prior,attachments});
+ assert.deepEqual(result.request,{action:'answer',query:question,target:'inputs'});
+});
+
 test('saved-file planning keeps the agent loop but excludes unrelated dialogue and implicit current-file edits',()=>{
  const question='保存したQA星見のメモの水をお茶に直して。',intent=route({question});
  assert.deepEqual(intent.request,{action:'edit',query:'QA星見',target:'path'});assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
@@ -90,12 +101,12 @@ test('saved-summary admission refuses mixed actions, vague sources and current i
 });
 
 test('a single correction command with an opened file binds a review, never an earlier dialogue transform',()=>{
- for(const question of ['集合場所を南口に直して。','このファイルの時刻を10時に変更してください。','Change the meeting place to the south gate.','In this file, replace north with south.']){
+ for(const question of ['集合場所を南口に直して。','このファイルの時刻を10時に変更してください。','このファイルの集合場所を北口から南口に直して。持ち物は変えないで。','Change the meeting place to the south gate.','In this file, replace north with south.']){
   const before=structuredClone(prior),intent=route({question});
   assert.deepEqual(intent.request,{action:'edit',query:question,target:'file'});
   assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});assert.deepEqual(prior,before);
  }
- for(const question of ['Change your last answer to French.','Change another file to south.','別のファイルの集合場所を南口に直して。','集合場所を南口に直して、時刻を10時に変更して。','Replace the text in Notes/other.md with south.','Change the meeting place to south and save a new note.','集合場所を南口に直して。それから保存して。','Set the timer to ten minutes.','What would change the meeting place to south?'])assert.notEqual(route({question}).request?.action,'edit',question);
+ for(const question of ['Change your last answer to French.','Change another file to south.','別のファイルの集合場所を南口に直して。','集合場所を南口に直して、時刻を10時に変更して。','Replace the text in Notes/other.md with south.','Change the meeting place to south and save a new note.','集合場所を南口に直して。それから保存して。','集合場所を南口に直して。保存して持ち物は変えないで。','Set the timer to ten minutes.','What would change the meeting place to south?'])assert.notEqual(route({question}).request?.action,'edit',question);
  assert.equal(route({question:'集合場所を南口に直して。',hasAttachments:true}).request,null);
  assert.equal(route({question:'集合場所を南口に直して。',prior:{...prior,currentFile:undefined}}).request,null);
 });
@@ -142,6 +153,39 @@ test('explicit natural-language Memory searches skip model routing and keep the 
 test('saved-topic search does not absorb compound instructions or ambiguous targets',()=>{
  for(const question of ['保存したメモを探して。','保存した集合場所のメモを探して保存して。','保存した集合場所のメモを探して、削除して。','前の会話で保存した集合場所のメモを探して。','保存したこのメモを探して。'])assert.equal(router.explicitSavedKnowledgeSearch(question),null,question);
  assert.equal(router.explicitSavedKnowledgeSearch('保存した集合場所のメモを探して。',true),null);
+ for(const text of ['削除してから会議について保存したメモを探して','送信してから備蓄について保存したメモを探して','メモから削除してから会議を探して'])assert.equal(router.explicitSavedKnowledgeSearch(text),null,text);
+ assert.deepEqual(router.explicitSavedKnowledgeSearch('会議について保存したメモを探して'),{action:'search',query:'会議',target:'knowledge'});
+ for(const text of ['削除履歴について保存したメモを探して','保存した削除履歴のメモを探して'])assert.deepEqual(router.explicitSavedKnowledgeSearch(text),{action:'search',query:'削除履歴',target:'knowledge'},text);
+});
+
+test('saved-note questions with additional write or external actions do not bypass planning',()=>{
+ for(const question of ['What time is my saved zephyr meeting note? Delete it.','What is in my saved water note? Save the answer.','保存した備蓄のメモの量は何ですか？訂正してください。']){
+  assert.equal(router.explicitSavedKnowledgeQuestion(question),null,question);
+  const state={schema:1,revision:0,turns:[],compaction:null};
+  const intent=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:state,attachments:[]});
+  assert.equal(intent.explicitSavedRequest,null,question);
+ }
+ assert.equal(router.explicitSavedKnowledgeQuestion('What time is my saved zephyr meeting note?')?.action,'answer');
+});
+
+test('a named my-note question selects Memory even with a different file open',()=>{
+ const input={question:'How much water is in my solar dock note?',literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]};
+ assert.deepEqual(router.resolveSubmittedTurnIntent(input).request,{action:'answer',query:'solar dock',target:'knowledge'});
+ assert.equal(router.explicitSavedKnowledgeQuestion('What is in my current note?',false,true),null);
+ const current='In my current note, is the example tool enabled?';
+ assert.deepEqual(router.explicitWorkingFileQuestion(current,true),{action:'answer',query:current,target:'file'});
+ assert.equal(router.explicitSavedKnowledgeQuestion(current,false,true),null);
+});
+
+test('short Japanese search is local only for an unscoped single subject',()=>{
+ assert.deepEqual(router.shortLocalSearch('QA銀の灯台を探して'),{action:'search',query:'QA銀の灯台',target:'knowledge'});
+ for(const text of ['これを探して','前の会話を探して','ウェブで灯台を探して','灯台を探して保存して','灯台を探して、削除して','添付の灯台を探して'])assert.equal(router.shortLocalSearch(text),null,text);
+ assert.equal(router.shortLocalSearch('QA銀の灯台を探して',true),null);
+ const state={schema:1,revision:0,turns:[],compaction:null};
+ const input={question:'QA銀の灯台を探して',literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:state,attachments:[]};
+ assert.deepEqual(router.resolveSubmittedTurnIntent(input).request,{action:'search',query:'QA銀の灯台',target:'knowledge'});
+ assert.equal(router.resolveSubmittedTurnIntent({...input,prior:{...state,currentFile:{noteId:'pinned',revision:1}}}).explicitSavedRequest,null);
+ assert.equal(router.resolveSubmittedTurnIntent({...input,hasAttachments:true}).explicitSavedRequest,null);
 });
 
 test('explicit saved-note open commands select a direct read route without changing context',async()=>{
@@ -303,10 +347,10 @@ test('read-only answer commands for the pinned file bypass planning without swal
 });
 
 test('a single explicit current-file summary selects only its pinned source',()=>{
- for(const question of ['このファイルを短く要約してください。','このメモをまとめて。','Please summarize this file briefly.','Summarize the current document.']){
+ for(const question of ['このファイルを短く要約してください。','このファイルを一文で短く要約してください。','このメモを1文でまとめて。','このメモをまとめて。','Please summarize this file briefly.','Summarize the current document.']){
   const intent=route({question});assert.deepEqual(intent.request,{action:'summary',query:question,target:'file'},question);assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
  }
- for(const question of ['このファイルを要約して保存して。','このファイルを要約して、別のファイルを削除して。','Summarize this file and email it.','Summarize your last answer.','Summarize another file.'])assert.notEqual(route({question}).request?.action,'summary',question);
+ for(const question of ['このファイルを要約して保存して。','このファイルを一文で短く要約してください。削除して。','このファイルを要約して、別のファイルを削除して。','Summarize this file and email it.','Summarize your last answer.','Summarize another file.'])assert.notEqual(route({question}).request?.action,'summary',question);
  assert.equal(route({question:'このファイルを短く要約してください。',hasAttachments:true}).explicitFileQuestion,null);
  assert.equal(route({question:'このファイルを短く要約してください。',prior:{...prior,currentFile:undefined}}).explicitFileQuestion,null);
 });
@@ -327,4 +371,11 @@ test('explicit opened-file requests to explain named contents keep the pinned fi
  for(const text of ['このファイルの集合場所を教えて保存してください。','このファイルの内容を削除して教えてください。','別のファイルの内容を教えてください。'])assert.equal(router.explicitWorkingFileQuestion(text,true),null,text);
  assert.equal(router.explicitWorkingFileQuestion(question,false),null);
  assert.equal(router.explicitWorkingFileQuestion(question,true,true),null);
+});
+
+test('ambiguous short search with a selected file gives a recovery hint only when a model is missing',()=>{
+ const hint='Model not prepared · remove input file to search Memory';
+ assert.equal(router.searchScopeFailure('Model not prepared · Settings','QA雨の日を探して',true,false),hint);
+ assert.equal(router.searchScopeFailure('Model not configured','QA雨の日を探して',true,false),'Model not configured · remove input file to search Memory');
+ for(const [status,question,file,attachments] of [['Stopped','QA雨の日を探して',true,false],['Model not prepared','QA雨の日を探して',false,false],['Model not prepared','QA雨の日を探して',true,true],['Model not prepared','削除して',true,false]])assert.equal(router.searchScopeFailure(status,question,file,attachments),status);
 });

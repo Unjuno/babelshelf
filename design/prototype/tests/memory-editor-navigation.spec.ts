@@ -16,13 +16,13 @@ test('saved generated notes expose changed provenance and open the pinned origin
  await expect(page.locator('.note-sources > summary')).toHaveAccessibleName('Sources · 1 · Source changed');await page.locator('.note-sources > summary').click();const source=page.getByRole('button',{name:'View saved source 1',exact:true});await expect(source).toContainText('Inbox/QA-source.md · v1');await expect(source).toContainText('Now v2');
  for(const target of [page.locator('.note-sources > summary'),source])expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(44);
  await page.evaluate(()=>{document.documentElement.style.fontSize='24px';});await expect(source).toBeVisible();expect((await source.boundingBox())!.height).toBeGreaterThanOrEqual(44);await source.click();
- await expect(page.getByRole('dialog')).toContainText('Meet at the north gate.');await expect(page.getByRole('dialog')).toContainText('Current file · v2');await expect(page.getByRole('dialog')).not.toContainText('Meet at the south gate.');const newest=reviseNote(changed,{body:'Meet at the east gate.'},2);await writeSourceRecords(page,[newest]);await page.getByRole('button',{name:'Open file',exact:true}).click();await expect(page.getByRole('dialog')).toBeHidden();await expect(page.locator('.file-body')).toHaveText('Meet at the east gate.');
+ await expect(page.getByRole('dialog')).toContainText('Meet at the north gate.');await expect(page.getByRole('dialog')).toContainText('Current file · v2');await expect(page.getByRole('dialog')).not.toContainText('Meet at the south gate.');const newest=reviseNote(changed,{body:'Meet at the east gate.'},2);await writeSourceRecords(page,[newest]);await page.getByRole('button',{name:'Open current file',exact:true}).click();await expect(page.getByRole('dialog')).toBeHidden();await expect(page.locator('main .file-body')).toHaveText('Meet at the east gate.');
  const retained=await page.evaluate(async ids=>new Promise<any[]>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('notes','readonly'),records:any[]=[];for(const id of ids){const read=tx.objectStore('notes').get(id);read.onsuccess=()=>records.push(read.result);}tx.oncomplete=()=>{db.close();resolve(records);};};}),[changed.id,saved.id]);expect(retained).toEqual([newest,saved]);
 });
 
 test('a removed source remains inspectable at its original version without an unavailable current-file action',async({page})=>{
  const original=createNote({path:'Inbox/QA-removed-source.md',body:'Original source text.'}),saved=createNote({path:'Inbox/QA-removed-summary.md',body:'Saved summary.',kind:'generated',sources:[{noteId:original.id,revision:1,start:0,end:21,quote:'Original source text.'}]}),removed=withdrawNote(original,1);
- await sourceFixture(page,[original,saved]);await page.getByRole('button',{name:'Open QA-removed-summary.md',exact:true}).click();await expect(page.locator('.note-sources > summary')).toHaveAccessibleName('Sources · 1');await writeSourceRecords(page,[removed]);await page.locator('.note-sources > summary').click();await expect(page.locator('.note-sources')).toContainText('Source removed');await page.getByRole('button',{name:'View saved source 1',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Original source text.');await expect(page.getByRole('dialog')).toContainText('File removed');await expect(page.getByRole('button',{name:'Open file',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('Saved summary.');
+ await sourceFixture(page,[original,saved]);await page.getByRole('button',{name:'Open QA-removed-summary.md',exact:true}).click();await expect(page.locator('.note-sources > summary')).toHaveAccessibleName('Sources · 1');await writeSourceRecords(page,[removed]);await page.locator('.note-sources > summary').click();await expect(page.locator('.note-sources')).toContainText('Source removed');await page.getByRole('button',{name:'View saved source 1',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Original source text.');await expect(page.getByRole('dialog')).toContainText('File removed');await expect(page.getByRole('button',{name:'Open file',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.locator('main .file-body')).toHaveText('Saved summary.');
 });
 
 async function memory(page:Page){
@@ -47,7 +47,7 @@ test('Memory search accepts IME width and combining marks without changing origi
  await page.getByRole('textbox',{name:'New file content',exact:true}).fill(original);
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'Home',exact:true}).click();
- const find=page.getByRole('textbox',{name:'Find files',exact:true});
+ const find=page.getByRole('textbox',{name:'Find files or text',exact:true});
  for(const query of ['ｑａ-ｶﾞﾗｽ','café','abc123']){
   await find.fill(query);await expect(page.getByRole('button',{name:'Open Inbox/QA-ガラス.md',exact:true})).toBeVisible();
  }
@@ -67,6 +67,7 @@ test('Memory search accepts IME width and combining marks without changing origi
 });
 
 test('input file opens directly and explicitly refreshes a restored revision without losing the message draft',async({page})=>{
+ test.setTimeout(45_000); // A cold IndexedDB reopen after trash restore can exceed the suite's 20s default.
  const input=async()=>{await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();};
  await create(page);await page.getByRole('button',{name:'Cancel',exact:true}).click();await input();
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Keep this unsent message');
@@ -75,7 +76,7 @@ test('input file opens directly and explicitly refreshes a restored revision wit
  await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await input();
  await expect(page.getByRole('group',{name:'Input file',exact:true})).toContainText('Unavailable');
  await expect(page.getByRole('button',{name:/^Open (?:latest )?input file /})).toHaveCount(0);
- await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Local files',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();await page.getByRole('button',{name:'Restore Travel.md',exact:true}).click();await page.getByRole('button',{name:'Close',exact:true}).click();await input();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Local files',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();await page.getByRole('button',{name:'Restore Inbox/Travel.md',exact:true}).click();await page.getByRole('button',{name:'Close',exact:true}).click();await input();
  await expect(page.getByRole('group',{name:'Input file',exact:true})).toContainText('v1 · Changed · Open latest');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Keep this unsent message');
  await page.getByRole('button',{name:'Open latest input file Inbox/Travel.md',exact:true}).click();

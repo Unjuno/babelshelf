@@ -74,3 +74,13 @@ test('operation identity checked after snapshot prevents stale submission',async
  await assert.rejects(operation.run(ports({snapshot:async()=>{current='turn-9';return {prior:emptyDialogue(),expected:undefined};},commit:async()=>{commits++;}})),/Stopped/);
  assert.equal(commits,0);assert.equal(operation.committed,null);
 });
+
+test('retry after a processed PDF was committed reuses the original and extraction',async()=>{
+ const file=new File(['synthetic PDF bytes'],'retry.pdf',{type:'application/pdf'});
+ const item={id:'pdf-original-1',name:'retry.pdf',kind:'file',size:file.size,status:'Ready',file};
+ const reading={kind:'pdf',id:'pdf-reading-1',value:{pages:[{page:1}],totalPages:1}};
+ const first=createInputSubmission('pdf-turn-1','What is in this PDF?',[item],()=>{});
+ const result=await first.run(ports({read:async()=>({status:'Read',reading}),commit:async value=>{assert.equal(value.originals.length,1);assert.equal(value.readings.length,1);return value.originals;}}));
+ const retry=createInputSubmission('pdf-turn-2','What is in this PDF?',first.recover({text:'',attachments:[]}).attachments,()=>{});
+ await retry.run(ports({original:async()=>result.saved[0],read:async()=>{throw Error('extraction repeated');},commit:async value=>{assert.equal(value.originals.length,0);assert.equal(value.readings.length,0);assert.equal(value.next.turns[0].attachments[0].reading.noteId,'pdf-reading-1');}}));
+});

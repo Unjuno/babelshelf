@@ -16,7 +16,7 @@ export function taskViews(notes:NoteView[]){
  }catch(e){errors.push(n.path+' · '+(e as Error).message);}
  executions.sort((a,b)=>b.startedAt.localeCompare(a.startedAt));notifications.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));return {tasks,executions,notifications,errors};
 }
-export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boolean),refresh:()=>Promise<void>,execute:(prompt:string,signal:AbortSignal)=>Promise<{answer:string;sources:any[];model?:RunData['model']}>,stopInference:()=>void=()=>{}){
+export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boolean),refresh:()=>Promise<void>,execute:(prompt:string,signal:AbortSignal)=>Promise<{answer:string;sources:any[];model?:RunData['model'];calculation?:RunData['calculation']}>,stopInference:()=>void=()=>{}){
  const views=taskViews(notes),[active,setActive]=useState<string|null>(null),[stopping,setStopping]=useState(false),[finishing,setFinishing]=useState(false),[error,setError]=useState(''),[saving,setSaving]=useState(false),savingLock=useRef(false),owner=useRef(crypto.randomUUID()),locked=useRef(false),cancellation=useRef<ReturnType<typeof createTaskCancellation>|null>(null);
  const latest=useRef({views,blocked,refresh,execute,stopInference});latest.current={views,blocked,refresh,execute,stopInference};
  const isBlocked=()=>typeof latest.current.blocked==='function'?latest.current.blocked():latest.current.blocked;

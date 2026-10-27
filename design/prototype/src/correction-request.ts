@@ -26,3 +26,15 @@ export function explicitLiteralReplacement(question:string):{action:'replace';fi
  if(!find.length)throw Error('Replacement search text is empty');
  return {action:'replace',find,with:replacement};
 }
+
+/** A bounded from/to instruction is usable only when both operands are explicit
+ * and the named original occurs exactly once. Review remains mandatory. */
+export function explicitFromToReplacement(question:string,body:string):{action:'replace';find:string;with:string}|null{
+ const text=question.trim();if(text.length>500||/[\r\n;；?？]/u.test(text))return null;
+ const match=/^(?:この|その|今開いている|現在の)(?:ファイル|メモ|ノート|文書)の([\p{L}\p{N}・ー]{1,32})を([\p{L}\p{N}・ー]{1,32}?)から([\p{L}\p{N}・ー]{1,32}?)に(?:直して|変更して|訂正して|修正して|変えて)(?:ください|下さい)?(?:。([\p{L}\p{N}・ー]{1,32})(?:は|を)(?:変えないで|変更しないで|そのままにして)(?:ください|下さい)?)?[。！!]?$/u.exec(text);
+ if(!match||/(?:削除|保存|送信|実行|検索|追加|作成|上書き)/u.test(text)||match[2]===match[3])return null;
+ const [subject,find,replacement,preserved]=match.slice(1),first=body.indexOf(find);if(first<0||body.indexOf(find,first+1)!==-1)return null;
+ const sentence=body.slice(0,first).split(/[。！？!?\r\n]/u).at(-1)!+body.slice(first).split(/[。！？!?\r\n]/u)[0];
+ if(!sentence.includes(subject)||preserved&&sentence.includes(preserved))return null;
+ return {action:'replace',find,with:replacement};
+}

@@ -24,7 +24,7 @@ import {SHA256} from '../../../dist/sha256.js';
 import {notePath} from '../../../dist/files.js';
 import {validateDialogue} from './conversation.ts';
 import {parsePreference,preferenceGroup,formatPreference} from './preference-records.ts';
-import {parseTask,taskDefinition,taskRunView,noticeView,validateNoticeLinks} from './task-records.ts';
+import {parseTask,taskDefinition,taskRunView,noticeView,validateNoticeLinks,validateRunCalculation} from './task-records.ts';
 import {verifyHistoricalCorrection,correctionOperationRaw} from './note-corrections.ts';
 import {memoryFolderPath} from './memory-paths.ts';
 import {validateOriginalLinks} from './original-assets.ts';
@@ -66,7 +66,7 @@ function validateState(state:StateSnapshot){
  for(const n of state.notes){validateDialogueCopyRecord(n);const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
-  if(n.ui?.recordType==='execution'){const r=taskRunView(n);if(typeof r.startedAt!=='string'||!['running','succeeded','failed','stopped','missed','interrupted','skipped'].includes(r.status)||!state.notes.some(t=>t.id===r.taskId&&t.revisions.some((v:any)=>v.version===r.taskRevision)))throw Error('Invalid execution target');sourceRefs(state.notes,r.sources??[]);}
+  if(n.ui?.recordType==='execution'){const r=taskRunView(n);if(typeof r.startedAt!=='string'||!['running','succeeded','failed','stopped','missed','interrupted','skipped'].includes(r.status)||!state.notes.some(t=>t.id===r.taskId&&t.revisions.some((v:any)=>v.version===r.taskRevision)))throw Error('Invalid execution target');sourceRefs(state.notes,r.sources??[]);for(const revision of n.revisions){const history=taskRunView({...n,revisions:[revision]});if(history.calculation!==undefined){validateRunCalculation(history);const source=state.notes.find(t=>t.id===history.taskId)?.revisions.find((v:any)=>v.version===history.taskRevision);if(!source||parseTask(source.body).prompt!==history.prompt||taskDefinition(parseTask(source.body))!==history.definition)throw Error('Invalid scheduled calculation target');}}}
   if(n.ui?.recordType==='notification')validateNoticeLinks(state.notes,n);
  }
  for(const {key,value} of state.settings){
@@ -88,6 +88,9 @@ function validateState(state:StateSnapshot){
  }
 }
 export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]},pack={format:'mobile-local-brainpack',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
+// Emergency inspection copy: preserve data without accepting it for restore.
+// In particular, invalid paths must not prevent reading the original records.
+export function makeRecoverySnapshot(state:StateSnapshot){jsonOnly(state);entries(state.settings);entries(state.runs);if(!Array.isArray(state.notes))throw Error('Invalid recovery data');const encoded=encode(state),payload={schema:1,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]};const pack={format:'babelshelf-unverified-recovery',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
 export async function parseStateBackup(text:string):Promise<StatePayload>{
  checkBackupText(text);const pack=JSON.parse(text);
  if(pack.payload?.schema===1){const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;}

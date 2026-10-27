@@ -76,6 +76,18 @@ test('schedule proposal inference is source-only, bounded and cannot accept stop
 });
 const note=()=>createNote({path:'Notes/rewrite.md',body:'Water: three liters.\nMeeting Monday at ten. Keep the venue.'}),raw=body=>JSON.stringify({action:'rewrite',body});
 
+test('explicit from/to correction proposes only a unique original and still requires review',async()=>{
+ const n=createNote({path:'Inbox/meeting.md',body:'集合場所は北口です。持ち物は水です。'}),before=structuredClone(n);let invoked=false;
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async()=>{invoked=true;throw Error('model required');}};
+ const prompt='このファイルの集合場所を北口から南口に直して。持ち物は変えないで。';const proposal=await proposeCorrection(engine,prompt,n);
+ assert.equal(invoked,false);assert.equal(proposal.after,'集合場所は南口です。持ち物は水です。');assert.deepEqual(n,before);
+ const {explicitFromToReplacement}=await import('../src/correction-request.ts');assert.equal(explicitFromToReplacement(prompt,'北口と北口'),null);assert.equal(explicitFromToReplacement(prompt,'西口'),null);
+ assert.equal(explicitFromToReplacement(prompt,'集合場所は西口。持ち物は北口です。'),null);
+ assert.equal(explicitFromToReplacement(prompt,'集合場所と持ち物は北口です。'),null);
+ assert.equal(explicitFromToReplacement('このファイルの記号をaaからbに直して。','記号はaaaです。'),null);
+ assert.equal(explicitFromToReplacement('このファイルの集合場所を北口から南口に直して。保存して持ち物は変えないで。',before.revisions[0].body),null);
+});
+
 test('a nonmatching model replacement may retry once against the same original without writing it',async()=>{
  const n=createNote({path:'Notes/meeting.md',body:'集合場所は北口。\nBring the blue notebook.'}),before=structuredClone(n);let calls=0;
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async messages=>{calls++;if(calls===2)assert.match(messages[0].content,/exact substring/);return {text:JSON.stringify(calls===1?{action:'replace',find:'集合場所は東口',with:'南口'}:{action:'replace',find:'北口',with:'南口'})};}};
@@ -114,4 +126,14 @@ test('correction inference snapshots the selected original before awaiting; late
 });
 test('invalid correction requests are rejected before any inference work',async()=>{
  let calls=0;const engine={manifest:{contextTokens:2048},count:async()=>{calls++;return {prompt_tokens:1};},generate:async()=>{calls++;return {text:'{"action":"reply"}'};}};for(const request of ['', ' ', 'x'.repeat(30001)])await assert.rejects(proposeCorrection(engine,request,note()),/request/i);assert.equal(calls,0);
+});
+
+test('bullet rewrite does not mistake delimiter splitting for requested formatting',async()=>{
+ const note=createNote({path:'Home/bullets.md',body:'水は三リットルです。'});let calls=0;
+ const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:200}),generate:async()=>({text:++calls===1?JSON.stringify({action:'split_lines',delimiter:'。'}):JSON.stringify({body:'- 水は三リットルです。'})})};
+ const proposal=await proposeCorrection(engine,'このファイルを、事実を変えずに短い箇条書きに書き直してください。',note);
+ assert.equal(proposal.after,'- 水は三リットルです。');assert.equal(latest(note).version,1);
+ calls=0;const retryMessages=[];const retried=await proposeCorrection({...engine,generate:async messages=>{retryMessages.push(messages);return {text:++calls===1?JSON.stringify({action:'rewrite'}):JSON.stringify({body:calls===2?'REJECTED incorrect format':'- 水は三リットルです。'})};}},'このファイルを箇条書きに書き直してください。',note);
+ assert.equal(retried.after,'- 水は三リットルです。');assert.equal(calls,3);assert.doesNotMatch(JSON.stringify(retryMessages[2]),/REJECTED/);assert.equal(latest(note).version,1);
+ calls=0;await assert.rejects(proposeCorrection({...engine,generate:async()=>({text:++calls===1?JSON.stringify({action:'split_lines',delimiter:'。'}):JSON.stringify({body:'水は三リットルです。'})})},'このファイルを箇条書きに書き直してください。',note),/Bullet format not produced/);
 });

@@ -4,6 +4,13 @@ import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild,enforceO
 import {refreshAppVersion,appUpdateOutcome} from '../src/offline-shell.ts';
 class Worker extends EventTarget {constructor(state){super();this.state=state;}set(state){this.state=state;this.dispatchEvent(new Event('statechange'));}}
 
+test('a stale Online lookup cannot register a worker after Offline supersedes it',async()=>{
+ let release,lookups=0,registrations=0;
+ const container={getRegistration:()=>++lookups===1?new Promise(resolve=>{release=resolve;}):Promise.resolve(undefined),register:async()=>{registrations++;throw Error('must not register');}};
+ const stale=initializeOfflineShell(container,true);await initializeOfflineShell(container,false);release(undefined);await stale;
+ assert.equal(registrations,0);assert.equal(offlineShellStatus(),'Not prepared');
+});
+
 test('offline shell is registered only by an explicit Online choice and reuses an existing registration offline',async()=>{
  const registration=new EventTarget();registration.active=new Worker('activated');let registered=0,current;
  const container={getRegistration:async()=>current,register:async path=>{assert.equal(path,'./sw.js');registered++;current=registration;return registration;}};

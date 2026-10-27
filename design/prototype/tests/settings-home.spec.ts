@@ -22,7 +22,11 @@ test('Settings keeps core categories visible and secondary tools grouped under M
   await expect(page.getByRole('button',{name:label,exact:true})).toBeVisible();
  }
  await expect(page.getByRole('button',{name:'Assistant',exact:true})).toHaveCount(0);
- await page.getByText('More',{exact:true}).click();
+ const more=page.locator('.settings-more');
+ const moreDisclosure=more.locator('summary');
+ await expect(moreDisclosure.locator('svg')).toBeVisible();
+ await moreDisclosure.click();
+ await expect(more).toHaveAttribute('open','');
  for(const label of ['Assistant','Tools','Developer','Tool files','Restore defaults']){
   await expect(page.getByRole('button',{name:label,exact:true})).toBeVisible();
  }
@@ -61,6 +65,7 @@ test('offline initial setup offers a local import path for a missing selected te
  await expect(page.getByRole('heading',{name:'Initial preparation'})).toBeVisible();
  await expect(page.getByRole('switch',{name:'Allow model downloads'})).not.toBeChecked();
  await expect(page.getByRole('button',{name:'Prepare',exact:true})).toBeDisabled();
+ await expect(page.getByRole('dialog',{name:'Initial preparation'})).toContainText('Turn on downloads to prepare missing files.');
  const chooserPromise=page.waitForEvent('filechooser');
  await page.getByRole('button',{name:'Choose local files',exact:true}).click();
  const chooser=await chooserPromise;

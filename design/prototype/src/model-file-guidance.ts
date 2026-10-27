@@ -18,11 +18,11 @@ export function selectedDecisionFileGuidance(custom:boolean,selected=true):strin
   : 'Selected built-in D1 only · six pinned files including ONNX weights, config, tokenizer and license. This does not add a model.';
 }
 
-export function mediaReadingStatus(input:{ocrSelected:boolean;ocrReady:boolean;visionSelected:boolean;visionReady:boolean;speechStatus:string}){
+export function mediaReadingStatus(input:{pdfReady?:boolean;ocrSelected:boolean;ocrReady:boolean;visionSelected:boolean;visionReady:boolean;speechStatus:string}){
  const state=(selected:boolean,ready:boolean)=>!selected?'model not selected':ready?'files verified':'not prepared';
  const speech=input.speechStatus==='Ready'?'files verified':input.speechStatus==='Speech model required'?'model not selected':input.speechStatus==='Speech model not prepared'?'not prepared':input.speechStatus;
  return {
-  pdf:['Text layer · ready','Scanned pages · OCR '+state(input.ocrSelected,input.ocrReady)],
+  pdf:['Text layer · '+(input.pdfReady===true?'files verified':input.pdfReady===false?'check failed':'not checked'),'Scanned pages · OCR '+state(input.ocrSelected,input.ocrReady)],
   image:['Text · OCR '+state(input.ocrSelected,input.ocrReady),'Description · '+state(input.visionSelected,input.visionReady)],
   audio:['Transcription · '+speech],
   video:['Original preview · browser-dependent','Audio track transcription · '+speech,'Sampled video frames · '+state(input.visionSelected,input.visionReady)],

@@ -115,7 +115,7 @@ type DiagnosticEnvironment={
  online?:boolean;
  serviceWorker?:Pick<ServiceWorkerContainer,'controller'>|null;
  appBuild?:string;
- cacheStorage?:Pick<CacheStorage,'keys'>|null;
+ cacheStorage?:(Pick<CacheStorage,'keys'>&Partial<Pick<CacheStorage,'open'|'delete'>>)|null;
  storage?:Pick<Storage,'setItem'|'getItem'|'removeItem'>|null;
  indexedDB?:Pick<IDBFactory,'open'|'deleteDatabase'>|null;
  opfs?:{getDirectory:()=>Promise<Pick<FileSystemDirectoryHandle,'getFileHandle'|'removeEntry'>>}|null;
@@ -165,6 +165,33 @@ async function opfsProbe(storage:{getDirectory:()=>Promise<Pick<FileSystemDirect
  if(testError)throw testError;
 }
 
+export async function cacheRoundtripProbe(cache:Pick<CacheStorage,'keys'|'open'|'delete'>,timeoutMs=5000):Promise<DiagnosticCheck>{
+ let expired=false,timer:ReturnType<typeof setTimeout>|undefined;
+ const id='cache-roundtrip';
+ const work=(async():Promise<DiagnosticCheck>=>{
+  let name='',created=false,passed=false,cleaned=false;
+  try{
+   name=`babelshelf-diagnostic-${probeId()}`;
+   if((await cache.keys()).includes(name))throw Error('Temporary cache name collision');
+   if(expired)return {id,status:'warning',detail:'Cache check timed out'};
+   const temporary=await cache.open(name);created=true;
+   if(expired)return {id,status:'warning',detail:'Cache check timed out'};
+   const key=typeof location!=='undefined'?new URL('./.babelshelf-diagnostic',location.href).href:'https://babelshelf.invalid/.babelshelf-diagnostic';
+   await temporary.put(key,new Response('cache-check'));
+   if(!expired)passed=(await (await temporary.match(key))?.text())==='cache-check';
+  }catch{}finally{if(created)try{cleaned=await cache.delete(name);}catch{}}
+  return {id,status:passed&&cleaned?'pass':'fail',detail:passed&&cleaned?'Temporary cache write/read/delete passed':created&&!cleaned?'Temporary cache check failed · cleanup not confirmed':'Temporary cache write/read check failed'};
+ })();
+ try{return await Promise.race([work,new Promise<DiagnosticCheck>(resolve=>{timer=setTimeout(()=>{expired=true;resolve({id,status:'warning',detail:'Cache check timed out · temporary cleanup may be pending'});},Math.max(0,timeoutMs));})]);}
+ finally{if(timer!==undefined)clearTimeout(timer);}
+}
+
+async function boundedCacheKeys(cache:Pick<CacheStorage,'keys'>,timeoutMs=5000):Promise<string[]>{
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{return await Promise.race([cache.keys(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('Cache check timed out')),timeoutMs);})]);}
+ finally{if(timer!==undefined)clearTimeout(timer);}
+}
+
 async function inspectWebGpuAdapter(gpu:NonNullable<DiagnosticEnvironment['gpu']>):Promise<WebGpuDiagnostic>{
  let timer:ReturnType<typeof setTimeout>|undefined;
  try{
@@ -190,11 +217,14 @@ export async function runDeviceDiagnostics(env:DiagnosticEnvironment={}):Promise
 
  const cache=env.cacheStorage===undefined?(typeof caches!=='undefined'?caches:undefined):env.cacheStorage;
  try{
-  const keys=cache?await cache.keys():[],current=!!env.appBuild&&/^[a-f0-9]{16}$/.test(env.appBuild)&&keys.includes('babelshelf-product-'+env.appBuild);
+  const keys=cache?await boundedCacheKeys(cache):[],current=!!env.appBuild&&/^[a-f0-9]{16}$/.test(env.appBuild)&&keys.includes('babelshelf-product-'+env.appBuild);
   const otherBuilds=keys.filter(name=>/^babelshelf-product-[a-f0-9]{16}$/.test(name)&&name!=='babelshelf-product-'+env.appBuild).length;
   add('offline-cache',current?'pass':'warning',`${current?'Current build cache listed':'Current build cache not listed'}; ${otherBuilds} other app build(s); offline restart not proven`);
  }
  catch{add('offline-cache','warning','Cache storage could not be inspected');}
+
+ if(!cache?.open||!cache.delete)add('cache-roundtrip','not-run','Cache write/read check unavailable');
+ else {const check=await cacheRoundtripProbe(cache as Pick<CacheStorage,'keys'|'open'|'delete'>);add(check.id,check.status,check.detail);}
 
  const storage=env.storage===undefined?(typeof localStorage!=='undefined'?localStorage:undefined):env.storage;
  if(!storage)add('storage-roundtrip','fail','Local storage unavailable');

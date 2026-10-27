@@ -568,3 +568,88 @@ button.model-picker svg{flex-shrink:0}
 .device-screen:has(.appearance-dark) .model-choice-sheet .settings-action { color: var(--theme-accent, #b8edcf) !important; border-bottom-color: #58736780; }
 
 .note-sources{margin:16px 0;overflow-wrap:anywhere}.note-sources>summary{min-height:44px;padding:10px 0;cursor:pointer}.note-source-state{margin-left:8px;font-size:.875rem;font-weight:600}.note-sources .note-source-link{width:100%;min-height:48px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;color:inherit!important;font:inherit}.note-source-link small{font-size:.875rem}.note-source-link:disabled{opacity:.75}
+
+/* Editorial light appearance: quiet paper surfaces and ink rules. The existing
+   background choices still select different paper tints; custom palettes and
+   dark appearance retain their own colors. No external fonts or images. */
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)){--app-bg:#f8f6ef}
+.device-screen:has(.appearance-light.background-sage):not(:has(.custom-appearance)){--app-bg:#f4f5ed}
+.device-screen:has(.appearance-light.background-sand):not(:has(.custom-appearance)){--app-bg:#f5efe3}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .knowledge-scroll{color:#22221f}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.secondary-screen h1,.sheet-title){font-family:Georgia,'Times New Roman','Yu Mincho','Hiragino Mincho ProN',serif;font-weight:600;letter-spacing:0}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.user-bubble,.file-tree,.settings-screen section,.schedule-group,.attachment-preview,.file-search,.compact-composer,.input-file-context,.bottom-sheet,.chat-home,.connection-status,.app-refresh-button){background:#fcfbf6;color:#262622;border:1px solid #bcb8aa;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.user-bubble,.file-tree,.settings-screen section,.schedule-group,.bottom-sheet){border-radius:8px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .user-bubble{background:#ece9de;line-height:1.6}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .reply-text{color:#22221f;line-height:1.7;letter-spacing:0}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.page-heading,.settings-header){border-bottom:1px solid #aaa596;padding-bottom:12px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.settings-screen h2,.source-revision,.file-heading,.file-footer,.schedule-scope){color:#55534d}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.compact-composer,.input-file-context){border-radius:12px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .compact-composer textarea{color:#22221f}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .compact-composer textarea::placeholder{color:#625f56}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.chat-home,.connection-status,.app-refresh-button){border-radius:12px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .chat-home.selected{color:#183d32;background:#e8ede4}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.appearance-options button,.model-picker){border-radius:6px;border-color:#a6a194}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .appearance-options button[aria-pressed=true]{background:#243d35;color:#fff;border-color:#243d35}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.send-button,.solid-button){background:#243d35;color:#fff!important}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.source-inline,.source-link,.quiet-button,.back-button,.settings-action){color:#23463b!important}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(button:focus-visible,textarea:focus-visible,input:focus-visible){outline:2px solid #155540;outline-offset:2px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.creation-types,.creation-form input:not([type=checkbox]),.creation-form textarea,.edit-form input,.edit-form textarea){background:#fffef9;border:1px solid #bcb8aa;border-radius:6px;box-shadow:none;color:#22221f;backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .creation-types [aria-selected=true]{background:#e7e9df;color:#193f32;border-radius:4px;box-shadow:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .sheet-overlay{background:rgba(35,33,27,.35);backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.quiet-button,.back-button){box-shadow:none}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) :is(.secondary-screen h1,.sheet-title){font-family:Georgia,'Times New Roman','Yu Mincho','Hiragino Mincho ProN',serif;letter-spacing:0}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) :is(.page-heading,.settings-header){border-bottom:1px solid #72857a;padding-bottom:12px}
+/* Keep the editorial geometry in dark mode while retaining the dark palette. */
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) :is(.user-bubble,.file-tree,.settings-screen section,.schedule-group,.attachment-preview,.file-search,.compact-composer,.input-file-context,.bottom-sheet,.chat-home,.connection-status,.app-refresh-button){box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) :is(.user-bubble,.file-tree,.settings-screen section,.schedule-group,.bottom-sheet){border-radius:8px}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) :is(.compact-composer,.input-file-context,.chat-home,.connection-status,.app-refresh-button){border-radius:12px}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) :is(.appearance-options button,.model-picker){border-radius:6px}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .sheet-overlay{background:rgba(0,0,0,.55);backdrop-filter:none;-webkit-backdrop-filter:none}
+/* Disabled controls still need a legible label against their own surface. */
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .app-refresh-button:disabled{opacity:1;background:#e9e7de;color:#55534d;border-color:#bcb8aa}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .app-refresh-button:disabled{opacity:1;background:#293b32;color:#c1d0c7;border:1px solid #60786b}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .creation-types{background:#1b2d25;border:1px solid #60786b;box-shadow:none}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .creation-types button{color:#d5e3db}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .creation-types button[aria-selected=true]{background:#dce8df;color:#193f32;border-color:#dce8df;box-shadow:none}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .new-file-location{color:#c9dfd2}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .creation-form :is(input,textarea)::placeholder{color:#b5c7bc;opacity:1}
+.device-screen:has(.appearance-dark) :is(.page-heading>.icon-button,.memory-actions .icon-button){background:var(--theme-surface,#243830);color:var(--theme-surface-text,#eff8f3);border:1px solid var(--theme-border,#587367);box-shadow:none}
+.schedule-form input[aria-invalid=true]{border:2px solid #a7342b}
+.correction-change{background:#f2dfa1;color:#201c10;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:2px}
+.conversation-warning{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;padding:6px 12px;border:1px solid var(--theme-border,#bcb8aa);border-radius:8px;background:var(--theme-surface,#fcfbf6);color:var(--theme-surface-text,#262622);font-size:1rem}
+.conversation-warning button{flex-shrink:0;min-height:44px;border:0;background:transparent;color:inherit;text-decoration:underline;font:inherit}
+.device-screen:has(.appearance-dark) .conversation-warning{background:var(--theme-surface,#243830);color:var(--theme-surface-text,#eff8f3);border-color:var(--theme-border,#587367)}
+.device-screen:has(.appearance-dark) .schedule-form input[aria-invalid=true]{border-color:#ffb3ac}
+
+/* Paper controls use the same ink and rule as the surrounding page. */
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) :is(.page-heading>.icon-button,.memory-actions .icon-button,.settings-header .icon-button){background:#fcfbf6;color:#23463b;border:1px solid #bcb8aa;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .model-option{background:#fcfbf6;color:#262622;border:1px solid #bcb8aa;border-radius:6px;box-shadow:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .model-option[aria-pressed=true]{background:#e7e9df;color:#193f32;border-color:#677a6b;box-shadow:none}
+
+/* Navigation and header controls share the paper surface and fine ink rules. */
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .nav-curve{filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .curve-edge{stroke:#bcb8aa}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .curve-surface{stroke:#fcfbf6}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .nav-items button.selected::before{background:#e7e9df;border:1px solid #87978a;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .arc-choice{background:#fcfbf6;border-color:#bcb8aa;border-radius:8px;box-shadow:none;color:#23463b}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .nav-scrim{background:rgba(248,246,239,.78);backdrop-filter:none;-webkit-backdrop-filter:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .settings-header .icon-button{border-radius:8px}
+.device-screen:has(.appearance-dark):not(:has(.custom-appearance)) .settings-header .icon-button{border-radius:8px}
+
+.settings-more>summary{display:flex;align-items:center;justify-content:space-between;list-style:none}
+.settings-more>summary::-webkit-details-marker{display:none}
+.settings-more>summary svg{flex:none;transition:transform 140ms ease}
+.settings-more[open]>summary svg{transform:rotate(90deg)}
+
+/* Default paper mode: keep the primary controls as quiet, opaque paper too. */
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .glass-nav{background:#fcfbf6;border-color:#bcb8aa;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;color:#262622}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .nav-items button:hover{background:#eeece3}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .nav-items button.selected{color:#183d32}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .rail-handle>span{background:#77756d}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .compact-composer{box-shadow:none}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .compact-composer:focus-within{outline:2px solid #155540;outline-offset:2px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .compact-composer textarea{background:transparent!important;color:#22221f!important}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .conversation{gap:20px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .user-bubble{border-left:3px solid #9a9a83;padding-left:13px}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .reply-text{max-width:68ch}
+.device-screen:has(.appearance-light):not(:has(.custom-appearance)) .knowledge-scroll{background:var(--app-bg)!important;color:#22221f}

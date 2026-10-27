@@ -27,7 +27,7 @@ export function SettingsHomeScreen({recoveryNeeded,recoveryGroups,recoveringGrou
    {id:'files',label:'Local files'},
   ] as const).map(item=><button className="settings-action" key={item.id} onClick={()=>onOpenPanel(item.id)}>{item.label}<CaretRight size={18}/></button>)}
   <details className="settings-more">
-   <summary>More</summary>
+   <summary><span>More</span><CaretRight size={18} aria-hidden="true"/></summary>
    <div className="settings-more-items">
     <button className="settings-action" onClick={()=>onOpenPanel('agent')}>Assistant<CaretRight size={18}/></button>
     <button className="settings-action" onClick={()=>onOpenPanel('tools')}>Tools<CaretRight size={18}/></button>

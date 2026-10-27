@@ -78,6 +78,10 @@ test('GPU failure display stays short while original operation diagnostics remai
  const {runtimeStatus,needsModelSettings}=await import('../src/runtime-status.ts');const raw='the GPU device was lost (unknown): ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n at CheckHRESULTImpl (...D3DError.cpp:121)';
  const receipt=finishActivity(startActivity('dialogue.plan',{question:'Read my local file'}),{error:Error(raw)}),before=structuredClone(receipt);
  assert.equal(runtimeStatus(raw),'GPU unavailable');assert.equal(runtimeStatus('GPU disconnected: device removed'),'GPU unavailable');assert.equal(receipt.error.message,raw);assert.deepEqual(receipt,before);
+ for(const value of ['Invalid model JSON','Invalid model JSON · retry','Invalid model action'])assert.equal(runtimeStatus(value),'Could not understand · try again');
+ for(const value of ['Invalid candidate source','Invalid candidate source shape','Invalid candidate source index','Invalid candidate source unit','Candidate quote not found','Candidate quote must be unique','Invalid calculation candidate'])assert.equal(runtimeStatus(value),'Could not prepare calculation · check values');
+ assert.equal(runtimeStatus('Invalid model JSON','What is in my note? Delete it.'),'Could not understand · try one request at a time');
+ assert.equal(runtimeStatus('Invalid model JSON','What is in my note?'),'Could not understand · try again');
  for(const value of ['Stopped','Source changed · retry','Generating…','Saved · Inbox/notes.md','Saved · Inbox/DXGI_ERROR_DEVICE_HUNG.md',''])assert.equal(runtimeStatus(value),value);
  const unavailable='Model not prepared · Settings',modelReceipt=finishActivity(startActivity('model.load',{model:'4B'}),{error:Error(unavailable)});
  assert.equal(runtimeStatus(unavailable),'Model not prepared');assert.equal(needsModelSettings(unavailable),true);assert.equal(modelReceipt.error.message,unavailable);

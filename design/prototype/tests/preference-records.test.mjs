@@ -73,7 +73,7 @@ test('harness user guidance is bounded, versioned text and remains configuration
 test('file edits reject malformed values and execution/readiness fields without changing active records',()=>{
  const original=structuredClone(initialPreferenceNotes);
  assert.throws(()=>updatePreference('appearance',original,p=>({...p,theme:'unknown'})),/appearance/);
- assert.equal(readPreference('appearance',original).theme,'system');
+ assert.equal(readPreference('appearance',original).theme,'light');
  assert.throws(()=>parsePreference('connection','# Connection\n\n```json\n{"downloads":true,"remoteInference":true}\n```'),/Unknown/);
  assert.throws(()=>parsePreference('models',formatPreference('models',{...readPreference('models',original),ready:true})),/Unknown/);
  const edited=formatPreference('connection',{downloads:true,diagnosticLogs:false});assert.equal(parsePreference('connection',edited).downloads,true);assert.equal(parsePreference('connection',edited).diagnosticLogs,false);

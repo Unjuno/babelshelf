@@ -8,6 +8,7 @@ import {visionManifest} from '../src/vision-assets.ts';
 import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 import {makeTranscript} from '../src/speech-transcript.ts';
 import {buildInputReadings,readingRef,validateInputReadings,readingEvidence,readingStatus} from '../src/input-readings.ts';
+import {groundedAnswer} from '../src/grounded-answer.ts';
 
 const fixture=async()=>{
  const asset=await prepareOriginal(new File(['controlled video bytes'],'scene.mp4',{type:'video/mp4'}),'video-original'),plan=videoFramePlan({trackId:1,start:0,end:12,width:640,height:360});
@@ -38,5 +39,10 @@ test('audio transcript is an independently pinned optional source, not a visual 
  const note=visionTextNote('observations',asset,value),state={notes:[originalNote(asset),note],settings:[],runs:[{key:originalKey(asset.id),value:asset}]};await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
  const range=videoVisionCitationRange(value,value.text,1,value.audioStart,value.text.length);assert.match(range.label,/Video audio/);assert.equal(range.seekable,undefined);
  const refs=readingEvidence(state.notes,[{kind:'vision',noteId:note.id,revision:1}],'spoken');assert.ok(refs.some(r=>r.quote==='Controlled spoken words.'));for(const ref of refs)assert.equal(value.text.slice(ref.start,ref.end),ref.quote);
+ const audioRefs=readingEvidence(state.notes,[{kind:'video-audio',noteId:note.id,revision:1}],'spoken');assert.ok(audioRefs.length);for(const ref of audioRefs){assert.equal(value.text.slice(ref.start,ref.end),ref.quote);assert.ok(ref.start>=value.audioStart);assert.doesNotMatch(ref.quote,/card/i);assert.match(videoVisionCitationRange(value,value.text,1,ref.start,ref.end).label,/Video audio/);}
+ let prompt='';const engine={loaded:'local',manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async messages=>{prompt=JSON.stringify(messages);return {text:JSON.stringify({answer:'Controlled spoken words.',citations:[{id:'S1',quote:'Controlled spoken words.'}]})};}};
+ const answer=await groundedAnswer({store:{all:async()=>state.notes,search:async()=>[]},engine},{model:'local',question:'What is spoken in the attached video? Use only the audio.',mode:'answer',scope:{kind:'attachments',readings:[{kind:'video-audio',noteId:note.id,revision:1}]},context:{summary:'Earlier red card',recent:[{id:'old',user:'A green card',answer:'A blue card'}],refs:[]}});
+ assert.equal(answer.sources[0].quote,'Controlled spoken words.');assert.doesNotMatch(prompt,/red card|green card|blue card/i);
+ const noAudio=visionTextNote('no-audio',asset,makeVideoVisionText(asset,'Describe',plan,frames,{status:'not-selected'}));assert.throws(()=>readingEvidence([originalNote(asset),noAudio],[{kind:'video-audio',noteId:noAudio.id,revision:1}],'spoken'),/Audio-only transcript unavailable/);
  const tampered=structuredClone(note);tampered.visionText.audio.value.original.sha256='f'.repeat(64);assert.throws(()=>validateVisionLinks([tampered],state.runs));
 });

@@ -20,7 +20,14 @@ test('explicit calculator wording keeps parentheses offline without a model',asy
   await dialog.locator('summary').click();
   const receipt=(await dialog.locator('pre').allTextContents()).map(text=>JSON.parse(text));
   expect(receipt.some(value=>value.expression===expression&&value.package==='math.calculate')).toBe(true);
-  expect(receipt.some(value=>Array.isArray(value)&&value[0]?.expression===expression&&value[0]?.result===result)).toBe(true);
+  expect(receipt.some(value=>Array.isArray(value)&&value[0]?.expression===expression&&value[0]?.result===String(result)&&value[0]?.precision==='decimal'&&value[0]?.rounded===false)).toBe(true);
   await dialog.getByRole('button',{name:'Close',exact:true}).click();
  }
+ for(const [question,result] of [['0.1 + 0.2','0.3'],['1 / 3','≈ 0.333333333333333333']] as const){
+  await page.getByRole('textbox',{name:'Message',exact:true}).fill(question);await page.getByRole('button',{name:'Send',exact:true}).click();
+  await expect(page.locator('.sent-message').last().locator('.reply-text')).toContainText(result);
+ }
+ await page.getByRole('textbox',{name:'Message',exact:true}).fill('1 / 0');await page.getByRole('button',{name:'Send',exact:true}).click();
+ const failed=page.locator('.sent-message').last();await expect(failed).toContainText('Cannot divide by zero');await expect(failed.locator('.reply-text')).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('1 / 0');
 });

@@ -30,7 +30,9 @@ test('decision file guidance distinguishes a new custom package from files for t
 test('media statuses separate sampled video model preparation from audio and original preview',async()=>{
  const {mediaReadingStatus}=await import('../src/model-file-guidance.ts');
  const status=mediaReadingStatus({ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Speech model not prepared'});
- assert.deepEqual(status.pdf,['Text layer · ready','Scanned pages · OCR model not selected']);
+ assert.deepEqual(status.pdf,['Text layer · not checked','Scanned pages · OCR model not selected']);
+ assert.equal(mediaReadingStatus({pdfReady:true,ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Ready'}).pdf[0],'Text layer · files verified');
+ assert.equal(mediaReadingStatus({pdfReady:false,ocrSelected:false,ocrReady:false,visionSelected:false,visionReady:false,speechStatus:'Ready'}).pdf[0],'Text layer · check failed');
  assert.deepEqual(status.image,['Text · OCR model not selected','Description · model not selected']);
  assert.deepEqual(status.audio,['Transcription · not prepared']);
  assert.deepEqual(status.video,['Original preview · browser-dependent','Audio track transcription · not prepared','Sampled video frames · model not selected']);

@@ -56,6 +56,11 @@ test('saved note provenance distinguishes current, changed chains, removed origi
  assert.equal(noteProvenance([saved],saved.id,1).status,'unavailable');assert.equal(noteProvenance([saved],saved.id,1).items[0].historicalAvailable,false);
  const broken={...saved,sources:[{...ref,quote:'Different same range'}]};assert.equal(noteProvenance([source,broken],saved.id,1).status,'unavailable');assert.throws(()=>noteProvenance(records,saved.id,2),/changed|unavailable/i);assert.deepEqual(records,before);
 });
+test('an answer saved without citations reports no sources rather than a missing source',async()=>{
+ const {noteProvenance}=await import('../src/note-provenance.ts');
+ const note=createNote({path:'Inbox/calculation.md',body:'0.3',kind:'generated',sources:[]});
+ const report=noteProvenance([note],note.id,1);assert.equal(report.status,'none');assert.deepEqual(report.items,[]);
+});
 test('edits append one revision; stale concurrent edits cannot overwrite',()=>{
  const original=createNote({title:'Notes',path:'Notes/a.md',body:'v1'}),before=projectNote(original);
  const changed={...before,body:'v2',version:2,history:['v1']};

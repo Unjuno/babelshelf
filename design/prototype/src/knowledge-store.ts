@@ -1,4 +1,5 @@
 import {sourceReferenceForView,type SavedSourceRef} from './note-provenance.ts';
+import {GroundingConflictError} from './grounding-conflict.ts';
 import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorrection,PENDING_CORRECTION_KEY,type PendingCorrection} from './pending-correction.ts';
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
@@ -270,7 +271,7 @@ export class KnowledgeStore {
  });}
  async heartbeat(runId:string,owner:string){return this.editRecords(records=>({put:[heartbeatRun(records,runId,owner)],value:true}));}
  async skipRun(taskId:string,owner:string){return this.editRecords(records=>{const result=skipTaskRun(records,taskId,owner),notice=taskNotice(result.task,result.run);return {put:[result.task,result.run,...(notice?[notice]:[])],value:projectNote(result.run)};});}
- async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[]},now=new Date()){return this.editRecords(records=>{
+ async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:import('./task-records.ts').RunData['calculation'];model?:import('./task-records.ts').RunData['model']},now=new Date()){return this.editRecords(records=>{
   const completed=finishTaskRun(records,runId,owner,result,now),notice=taskNotice(completed.task,completed.run);
   return {put:[completed.task,completed.run,...(notice?[notice]:[])],value:projectNote(completed.run)};
  });}
@@ -333,6 +334,17 @@ export class KnowledgeStore {
   const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),s=tx.objectStore('settings'),q=s.get('ui-v1-'+key);let error:unknown;
    q.onsuccess=()=>{if(!equal(q.result,before)){error=Error(key==='dialogue'?'Conversation changed in another tab · reopen to continue':'Local data changed in another tab · reopen to continue');tx.abort();return;}s.put(next,'ui-v1-'+key);};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
+  });
+ }
+ /** Commit a newly grounded dialogue result only while its reviewed sources
+  * and expected conversation are still current. Historical turns are not
+  * revalidated here. */
+ async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[]){
+  validateDialogue(next);if(!Array.isArray(refs)||!refs.length)throw Error('Source required');
+  const sources=structuredClone(refs),db=await this.open();return new Promise<void>((resolve,reject)=>{
+   const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
+   const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(!validateGroundingRefs(notes.result,sources).ok)throw new GroundingConflictError();settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
+   dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
  }
  async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}

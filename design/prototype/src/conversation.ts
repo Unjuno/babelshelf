@@ -379,6 +379,13 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
   return {action:'tool',tool:value.query,arguments:args} as DialoguePlan;
  }
  if(!validHarnessAction(value.action))invalid('action');
+ // Some small models echo the edit catalog's allowed target list instead of
+ // selecting a target. It is not authority: discard only this exact metadata
+ // shape when an existing file is pinned. The normal binder validates the pin,
+ // and a separate proposal and user review still precede every write.
+ if(value.action==='edit'&&scope.file&&value.target===undefined&&Object.keys(value).sort().join(',')==='action,query,targets'&&Array.isArray(value.targets)&&value.targets.length===2&&value.targets[0]==='file'&&value.targets[1]==='path'){
+  value={action:value.action,query:value.query};
+ }
  if(value.action==='calculate'){if(attachments.length||Object.keys(value).sort().join(',')!=='action,query')invalid('calculation scope');try{calculate(value.query);}catch{invalid('calculation expression','Invalid calculation');}}
  if(value.action==='schedule'&&(value.historyIndex!=null||Object.keys(value).some(k=>!['action','query','body','historyIndex','historyPart'].includes(k))))invalid('schedule fields');
  const newTextCapture=value.action==='capture'&&value.target===undefined&&value.historyIndex==null&&value.historyPart===undefined&&!attachments.length;

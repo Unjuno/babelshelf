@@ -242,9 +242,10 @@ test('a literal sourced answer acquires through the local ownership manager only
  f.services.decision={loaded:true,busy:false,enabled:false,ready:false,unload:async()=>{steps.push('release-decision');f.services.decision.loaded=false;}};
  f.services.ensureProductRuntime=async(_role,network)=>{assert.equal(network,false);steps.push('runtime');};
  f.services.knowledge={all:async()=>[note],search:async()=>{steps.push('search');return [ref];}};
+ let guarded;const finish=f.services.finishTurn;f.services.finishTurn=async(id,result,refs)=>{if(result.answer)guarded=refs;await finish(id,result);};
  assert.equal(await c.run(run=>executeSubmission({text:'answer: office opening time',attachments:[]},f.services,f.view,run)),'completed');
  assert.ok(steps.indexOf('search')<steps.indexOf('release-decision'));assert.ok(steps.indexOf('runtime')<steps.indexOf('load'));assert.ok(steps.indexOf('load')<steps.indexOf('count'));assert.equal(steps.filter(s=>s==='load').length,1);
- assert.equal(f.current().turns[0].answer,'09:30');assert.equal(f.current().turns[0].refs[0].noteId,note.id);assert.equal(note.revisions.length,1);
+ assert.equal(f.current().turns[0].answer,'09:30');assert.equal(f.current().turns[0].refs[0].noteId,note.id);assert.equal(guarded[0].noteId,note.id);assert.equal(note.revisions.length,1);
 });
 
 test('explicit Memory search still lists results with no configured model or completion inference',async()=>{
@@ -262,6 +263,70 @@ test('application executes real local calculation and persists its result withou
  assert.equal(f.current().turns[0].answer,'84');assert.equal(f.current().turns[0].toolCalls,undefined);
  assert.equal(f.current().turns[0].activity[0].tool,'math.calculate');assert.equal(f.current().turns[0].activity[0].status,'succeeded');
  assert.deepEqual(f.events,['save','consume']);assert.equal(f.modelCalls(),0);
+});
+
+test('a model-proposed calculation cannot discard a cited prior answer',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/water.md',body:'水は七リットルです。'});
+ const ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'prior',user:'水は何リットル？',answer:'七リットル',refs:[ref]}]});
+ f.services.model='test';f.services.activeHarnessProfile={enabledTools:[],maxToolCalls:3,maxResultChars:8000};
+ f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify({action:'calculate',query:'7 / 3'})}),unload:async()=>{}};
+ f.services.knowledge={all:async()=>[note],search:async()=>[]};let restored='';f.view.restore=value=>{restored=value.text;};
+ const text='その水を3人で分けると1人何リットルですか？';
+ assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'failed');
+ const turn=f.current().turns.at(-1);assert.equal(turn.status,'Check source values · enter the calculation explicitly');assert.equal(turn.answer,undefined);assert.equal(restored,text);assert.equal(turn.activity.some(item=>item.tool==='math.calculate'),false);
+});
+
+test('a cited follow-up cannot invoke the calculator before source review',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/water.md',body:'水は七リットルです。'});
+ const ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'prior',user:'水は何リットル？',answer:'七リットル',refs:[ref]}]});
+ f.services.model='test';f.services.activeHarnessProfile={enabledTools:['math.calculate'],maxToolCalls:3,maxResultChars:8000};
+ f.services.builtinToolPackages=[{definition,entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate locally.'},{path:'Tools/math.calculate/tool.ts',body:'Bounded calculator'}],run:calculate}];
+ const plans=[{action:'tool',query:'math.calculate',body:JSON.stringify({expression:'7 / 3'})},{action:'answer',query:'water'}];
+ f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(plans.shift())}),unload:async()=>{}};
+ f.services.knowledge={all:async()=>[note],search:async()=>[]};let restored='';f.view.restore=value=>{restored=value.text;};
+ const text='その水を3人で分けると1人何リットルですか？';
+ assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'failed');
+ const turn=f.current().turns.at(-1);assert.match(turn.status,/Invalid model action/);assert.equal(turn.answer,undefined);assert.equal(restored,text);assert.equal(turn.activity.some(item=>item.tool==='math.calculate'),false);
+});
+test('a sourced calculation is reviewed before executing and keeps its source',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/water.md',body:'水は七リットルです。'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'prior',user:'水は？',answer:'七リットル',refs:[ref]}]});
+ f.services.activeHarnessProfile={enabledTools:[],maxToolCalls:3,maxResultChars:8000};
+ const plans=[{operation:'divide',operands:[{kind:'source',source:0,quote:'七リットル',unit:'リットル'},{kind:'request',quote:'3'}]}];
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(plans.shift())}),unload:async()=>{}};
+ f.services.knowledge={all:async()=>[note],search:async()=>[]};let reviewCalls=0,guarded;
+ f.view.reviewSourcedCalculation=async candidate=>{reviewCalls++;assert.equal(candidate.expression,'7 / 3');assert.equal(candidate.evidence[0].passage.quote,ref.quote);assert.equal((f.current().turns.at(-1).activity??[]).some(a=>a.tool==='math.calculate'),false);return true;};
+ const finish=f.services.finishTurn;f.services.finishTurn=async(id,result,refs)=>{if(result.answer)guarded=refs;await finish(id,result);};
+ assert.equal(await c.run(run=>executeSubmission({text:'その水を3人で分けると？',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.equal(reviewCalls,1);assert.match(f.current().turns.at(-1).answer,/7 \/ 3 ≈ 2\.333/);assert.equal(guarded[0].quote,'七リットル');
+});
+test('a sourced division question cannot fall through to an unverified prose answer',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/water.md',body:'水は七リットルです。'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'prior',user:'水は？',answer:'七リットル',refs:[ref]}]});
+ const candidate={operation:'divide',operands:[{kind:'source',source:0,quote:'七リットル',unit:'リットル'},{kind:'request',quote:'3'}]};let prompts=0;
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{prompts++;return {text:JSON.stringify(candidate)};},unload:async()=>{}};
+ f.services.knowledge={all:async()=>[note],search:async()=>[]};f.view.reviewSourcedCalculation=async()=>true;
+ assert.equal(await c.run(run=>executeSubmission({text:'その水を3人で分けると1人何リットルですか？',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.equal(prompts,1);assert.match(f.current().turns.at(-1).answer,/7 \/ 3 ≈ 2\.333/);assert.equal(f.current().turns.at(-1).refs[0].quote,'七リットル');
+});
+test('a different pinned file cannot silently replace a cited calculation source',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/water.md',body:'水は七リットルです。'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'prior',user:'水は？',answer:'七リットル',refs:[ref]}],currentFile:{noteId:'other',revision:1}});
+ f.view.reviewSourcedCalculation=async()=>{throw Error('Unexpected review');};f.services.knowledge={all:async()=>[note],search:async()=>[]};let restored='';f.view.restore=value=>{restored=value.text;};
+ const text='その水を3人で分けると？';assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/Source changed/);assert.equal(restored,text);assert.equal(f.current().turns.at(-1).answer,undefined);
+});
+test('cancelling or changing a reviewed calculation source prevents calculation',async()=>{
+ for(const scenario of ['cancel','changed']){
+  const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/water.md',body:'水は七リットルです。'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};let records=[note],restored='';
+  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'prior',user:'水は？',answer:'七リットル',refs:[ref]}]});f.services.activeHarnessProfile={enabledTools:[],maxToolCalls:3,maxResultChars:8000};
+  const plans=[{operation:'divide',operands:[{kind:'source',source:0,quote:'七リットル',unit:'リットル'},{kind:'request',quote:'3'}]}];
+  f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(plans.shift())}),unload:async()=>{}};
+  f.services.knowledge={all:async()=>records,search:async()=>[]};f.view.restore=value=>{restored=value.text;};f.view.reviewSourcedCalculation=async()=>{if(scenario==='changed')records=[reviseNote(note,{body:'水は八リットルです。'},1)];return scenario!=='cancel';};
+  const text='その水を3人で分けると？';assert.equal(await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run)),scenario==='cancel'?'cancelled':'failed');
+  const turn=f.current().turns.at(-1);assert.equal(turn.answer,undefined);assert.equal((turn.activity??[]).some(a=>a.tool==='math.calculate'),false);assert.equal(restored,text);
+ }
 });
 test('decimal calculations keep exact output and mark rounded division without a model',async()=>{
  for(const [text,answer] of [['０．１＋０．２','0.3'],['9007199254740993+1','9007199254740994'],['1/3','≈ 0.333333333333333333']]){

@@ -7,6 +7,7 @@ import {visionManifest,visionReady,visionRuntimeResponse} from './vision-assets'
 import {customVisionModelDescriptor,customVisionReady,customVisionRuntimeResponse,readCustomVisionFile,validateCustomVisionModel} from './custom-vision-assets.ts';
 import type {CustomVisionModel} from './preference-records.ts';
 import type {VisionModelIdentity} from './vision-model-identity.ts';
+import {validateVisionOutput} from './vision-output.ts';
 
 env.allowRemoteModels=false;env.allowLocalModels=true;env.localModelPath='/vision-model/';
 env.useBrowserCache=false;env.useFSCache=false;env.useCustomCache=true;
@@ -42,8 +43,7 @@ async function describe(imageBlob:Blob,prompt:string,progress:(text:string)=>voi
  try{
   inputs=await processor(image,chat,{add_special_tokens:false,max_image_tokens:256});progress('Analyzing image locally');
   outputs=await model.generate({...inputs,max_new_tokens:256,temperature:0.1,min_p:0.15,repetition_penalty:1.05});
-  sliced=outputs.slice(null,[inputs.input_ids.dims.at(-1),null]);const result=processor.batch_decode(sliced,{skip_special_tokens:true})[0]?.trim();
-  if(!result)throw Error('Vision model returned no description');
+  sliced=outputs.slice(null,[inputs.input_ids.dims.at(-1),null]);const result=validateVisionOutput(processor.batch_decode(sliced,{skip_special_tokens:true})[0]??'');
   return {text:result,...activeIdentity,width:image.width,height:image.height,scope:'single-image'};
  }finally{for(const tensor of new Set<any>([sliced,outputs,...Object.values(inputs??{})]))if(typeof tensor?.dispose==='function')await tensor.dispose();}
 }

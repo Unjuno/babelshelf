@@ -9,7 +9,7 @@ import type {Dialogue,SourceRef} from './conversation.ts';
 import {buildIndex,searchNotes,chunks,latest} from '../../../dist/core.js';
 export type ReviewedText={kind:'ocr';id:string;value:OcrText}|{kind:'pdf';id:string;value:PdfText}|{kind:'speech';id:string;value:Transcript}|{kind:'vision';id:string;value:VisionText};
 export type InputReadingRef={kind:'ocr'|'pdf'|'speech'|'vision';noteId:string;revision:1};
-export type CurrentInputRef=InputReadingRef|{kind:'text';noteId:string;revision:1};
+export type CurrentInputRef=InputReadingRef|{kind:'text'|'video-audio';noteId:string;revision:1};
 export function inputReadingKind(note:any):InputReadingRef['kind']|undefined{
  const kinds=([['ocr','ocrText'],['pdf','pdfText'],['speech','transcription'],['vision','visionText']] as const).filter(([,field])=>note?.[field]);
  return !note?.originalAsset&&kinds.length===1?kinds[0][0]:undefined;
@@ -38,6 +38,13 @@ export function readingEvidence(records:any[],refs:CurrentInputRef[],question:st
  if(!refs.length)return [];const eligible=new Set(buildIndex(records).docs.map((d:any)=>d.n.id));
  const primary:(SourceRef&{coverage:string})[]=[],extra:(SourceRef&{coverage:string})[]=[];
  for(const ref of refs){const n=records.find(n=>n.id===ref.noteId);
+  if(ref.kind==='video-audio'){
+   const value=n?.visionText,body=n&&latest(n).body,start=value?.audioStart,transcript=value?.audio?.value?.text;
+   if(!n||!eligible.has(n.id)||latest(n).version!==ref.revision||value?.scope!=='sampled-video'||value.audio?.status!=='processed'||!Number.isSafeInteger(start)||start<0||typeof transcript!=='string'||!transcript.trim()||value.text!==body||body.slice(start)!==transcript)throw Error('Audio-only transcript unavailable');
+   const pieces=chunks(transcript);if(!pieces.length)throw Error('Audio-only transcript unavailable');
+   const hits=pieces.map((piece:any)=>({noteId:n.id,revision:ref.revision,title:latest(n).title,start:start+piece.start,end:start+piece.end,quote:piece.quote,coverage:'Video audio-only transcript; estimated timing; visual observations excluded'}));
+   primary.push(hits[0]);extra.push(...hits.slice(1));continue;
+  }
   if(!n||!eligible.has(n.id)||latest(n).version!==ref.revision||!(ref.kind==='text'?n.originalAsset&&n.attachmentText:ref.kind==='ocr'?n.ocrText:ref.kind==='pdf'?n.pdfText:ref.kind==='vision'?n.visionText:n.transcription))throw Error('Input source changed · retry');
   const scoped=[n,...records.filter(r=>r.id===n.mediaSource?.id).map(r=>({...r,revisions:r.revisions.map((v:any)=>({...v,body:''}))}))],found=searchNotes(scoped,question,4).filter((hit:any)=>hit.noteId===n.id),fallback=chunks(latest(n).body).slice(0,1).map((c:any)=>({noteId:n.id,revision:ref.revision,title:latest(n).title,...c}));
   const coverage=ref.kind==='ocr'?'Recognized image text only; scene not processed':ref.kind==='pdf'?(n.pdfText.schema===2?'PDF text and recognized page text; OCR may contain errors; ':'PDF text layer; ')+n.pdfText.pages.length+'/'+n.pdfText.totalPages+' pages'+(n.pdfText.pages.some((p:any)=>!p.text.trim())?'; some pages have no extracted text':''):ref.kind==='speech'?(n.transcription.sourceTrack==='video-audio'?'Video audio-only transcript; frames not processed; '+videoTimingCoverage(n.transcription,latest(n).body,ref.revision):'Audio transcript; estimated segment timing'):'Original text';

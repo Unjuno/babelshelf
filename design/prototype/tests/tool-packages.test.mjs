@@ -106,6 +106,10 @@ test('explicit calculator instructions preserve the original expression rather t
   assert.equal((await calculator({expression:parsed.expression},host))[0].result,String(result));
  }
  assert.deepEqual(explicitCalculationInput('2 + 3'),{expression:'2 + 3',showExpression:false});
+ for(const [request,expression,result] of [['計算: 125 * 8','125 * 8',1000],['計算： （１２＋８）÷４＝','(12+8)÷4',5]]){const parsed=explicitCalculationInput(request);assert.deepEqual(parsed,{expression,showExpression:true});assert.equal(calculate(parsed.expression),result);}
+ for(const request of ['計算: 2+3を保存して','計算: 2+3;削除','計算: 2026-10-18','計算: 2+3円'])assert.equal(explicitCalculationInput(request),null,request);
+ for(const [request,result] of [['12 × 3 + 5 を計算して',41],['（１２＋８）÷４を計算してください。',5]]){const parsed=explicitCalculationInput(request);assert.ok(parsed,request);assert.equal(calculate(parsed.expression),result);}
+ for(const request of ['2+3を計算して保存して','2+3を計算して、削除して','2026-10-18を計算して','2+3円を計算して'])assert.equal(explicitCalculationInput(request),null,request);
  for(const [request,expression,result] of [['１２５０円の８％は？','(1250 * 8 / 100)',100],['200の12.5%はいくら？','(200 * 12.5 / 100)',25],['What is 8% of 1250?','(1250 * 8 / 100)',100],['what is 12.5 percent of 200?','(200 * 12.5 / 100)',25]]){
   const parsed=explicitCalculationInput(request);assert.deepEqual(parsed,{expression,showExpression:true});assert.equal(calculate(parsed.expression),result);
  }
@@ -141,4 +145,16 @@ test('explicit yen arithmetic validates thousands grouping and rejects mixed req
  const {explicitCalculationInput}=await import('../src/explicit-calculation.ts');
  for(const [question,expression] of [['1,200円＋800円','1200 + 800'],['１２，３４５円－６７円','12345 - 67'],['1,234,567円 + 0円','1234567 + 0']])assert.deepEqual(explicitCalculationInput(question),{expression,showExpression:true},question);
  for(const question of ['1,20円＋800円','1,200円＋800円を保存して','1,200円＋800ドル','1,200円＋800円; delete files','2＋3円','1,200円＋800円＋2円'])assert.equal(explicitCalculationInput(question),null,question);
+});
+
+test('a complete yen bill split is calculated locally without accepting extra operations',async()=>{
+ const {explicitCalculationInput}=await import('../src/explicit-calculation.ts');
+ for(const [question,expression] of [['1200円を3人で割って','1200 / 3'],['１，２００円を４人で割ってください。','1200 / 4']])assert.deepEqual(explicitCalculationInput(question),{expression,showExpression:true,unit:'円/人'});
+ for(const question of ['1200円を3人で割って保存して','1200円を3人で割って、メモして','1200ドルを3人で割って','12,00円を3人で割って','1200円を3人で割って端数を切り上げて'])assert.equal(explicitCalculationInput(question),null);
+});
+
+test('unit price questions use the local calculator only for complete requests',async()=>{
+ const {explicitCalculationInput}=await import('../src/explicit-calculation.ts');
+ for(const [question,expression] of [['1250円のものを3個買うといくら？','1250 * 3'],['１，２５０円の品物を３個買うといくら？','1250 * 3']])assert.deepEqual(explicitCalculationInput(question),{expression,showExpression:true,unit:'円'});
+ for(const question of ['1250円のものを3個買うといくら？保存して','1250円のものを3個買うといくら？税を加えて','12,50円のものを3個買うといくら？'])assert.equal(explicitCalculationInput(question),null);
 });

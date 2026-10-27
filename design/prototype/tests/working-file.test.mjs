@@ -141,6 +141,14 @@ test('approved status and rendered-file focus share one writer without self-conf
  await writer.update(current=>completeTurn(current,'turn',{status:'Retained'}));assert.equal(state.turns[0].status,'Retained');
 });
 
+test('dialogue writer freezes source guards until the serialized write',async()=>{
+ const {createDialogueWriter}=await import('../src/dialogue-writer.ts');let state=emptyDialogue(),release,seen;
+ const gate=new Promise(r=>release=r),refs=[{noteId:'n',revision:1,start:0,end:1,quote:'x'}];
+ const writer=createDialogueWriter(()=>state,async(next,guard)=>{await gate;seen=guard;state=next;});
+ const pending=writer.update(current=>({...current,revision:1}),refs);refs[0].quote='y';release();await pending;
+ assert.equal(seen[0].quote,'x');assert.equal(state.revision,1);
+});
+
 test('dialogue writer refuses a stale bulk snapshot and propagates a genuine foreign CAS without retry',async()=>{
  const {createDialogueWriter}=await import('../src/dialogue-writer.ts'),{completeTurn}=await import('../src/conversation.ts');
  let state={...emptyDialogue(),turns:[{id:'turn',user:'Keep me'}]},release;const gate=new Promise(r=>release=r);
@@ -166,4 +174,19 @@ test('explicit dialogue recovery waits for all writers, validates latest state a
  await assert.rejects(readDialogueRecovery([],async()=>({...latestState,schema:9})),/invalid/);
  await assert.rejects(readDialogueRecovery([],async()=>{throw Error('Read failed');}),/Read failed/);
  assert.deepEqual(await readDialogueRecovery([],async()=>undefined),{stored:undefined,value:emptyDialogue()});
+});
+
+test('echoed edit target choices do not grant a target but permit a pinned-file proposal',async()=>{
+ const pin={noteId:'chosen',revision:2},context={summary:'',recent:[],refs:[],turnCount:0,currentFile:pin};
+ const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:1}),generate:async()=>({text:JSON.stringify({action:'edit',query:'',targets:['file','path']})})};
+ const result=await planDialogue(engine,'このファイルを書き直して',context);
+ assert.deepEqual(result,{action:'edit',query:''});assert.equal(bindWorkingFileRequest(result,pin).request.target,'file');
+});
+
+test('other echoed target shapes cannot choose a file or bypass pinned scope validation',async()=>{
+ const pin={noteId:'chosen',revision:2},context={summary:'',recent:[],refs:[],turnCount:0,currentFile:pin};
+ for(const targets of [['path','file'],['file'],['file','path','knowledge']]){
+  const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:1}),generate:async()=>({text:JSON.stringify({action:'edit',query:'',targets})})};
+  const output=await planDialogue(engine,'このファイルを書き直して',context);assert.throws(()=>bindWorkingFileRequest(output,pin),/Invalid default file target/);
+ }
 });

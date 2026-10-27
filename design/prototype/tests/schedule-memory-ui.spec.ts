@@ -5,17 +5,38 @@ async function navigate(page:any,destination:string){
  await page.getByRole('menuitem',{name:destination,exact:true}).click();
 }
 
+test('a paused calculation runs locally and exposes its calculation in history',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 12 + 10');
+ const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await page.getByRole('button',{name:'Run now'}).click();
+ await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await page.getByRole('button',{name:'History',exact:true}).click();await page.getByRole('button',{name:/succeeded/}).click();
+ await expect(page.getByRole('dialog',{name:'Execution'})).toContainText('Calculator · 12 + 10');await expect(page.getByRole('dialog',{name:'Execution'})).toContainText('12 + 10 = 22');
+ await page.getByRole('button',{name:'Save note'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Calculation result');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+ await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'Open Calculation result.md',exact:true}).click();
+ await expect(page.locator('main')).toContainText('12 + 10 = 22');await page.getByText('Sources',{exact:true}).click();await expect(page.locator('main')).toContainText('Schedule/Runs/');await page.getByRole('button',{name:'View saved source 1'}).click();const source=page.getByRole('dialog',{name:'Source'});await expect(source).toContainText('12 + 10 = 22');await expect(source).toContainText('Calculator');await expect(source).not.toContainText('leaseUntil');
+ await source.getByRole('button',{name:'Close'}).click();await navigate(page,'Notifications');await page.getByRole('button',{name:'Delete notification Succeeded · Calculate 12 + 10'}).click();await expect(page.getByText('Deleted · Succeeded · Calculate 12 + 10')).toBeVisible();await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:/Succeeded · Calculate 12 \+ 10/}).first()).toBeVisible();
+});
+
 test('a schedule edited in Memory updates the Schedule view and notification delivery is clearly in-app',async({page})=>{
  await page.goto('/');
  await navigate(page,'Schedule');
  await expect(page.getByText('Runs while visible',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'New schedule'}).click();
+ await expect(page.getByRole('status')).toContainText('Saved paused · Enable after saving');
+ await expect(page.locator('#schedule-next')).toContainText('Next if enabled ·');
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Check the emergency kit');
  const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);
  await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.locator('button.schedule-detail',{hasText:'Check the emergency kit'})).toBeVisible();
+ await expect(page.getByRole('switch',{name:'Enable Check the emergency kit'})).not.toBeChecked();
+ await page.locator('button.schedule-detail',{hasText:'Check the emergency kit'}).click();
+ await expect(page.locator('#schedule-next')).toContainText('Next if enabled ·');
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
 
  await navigate(page,'Memory');
  await page.getByRole('navigation',{name:'Memory path'}).getByRole('button',{name:'Memory',exact:true}).click();
@@ -93,4 +114,15 @@ test('correcting a schedule field clears its stale save error while retaining th
  await page.getByRole('textbox',{name:'Day of month'}).fill('31');
  await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toHaveValue('Check supplies');
  await expect(page.locator('.next-occurrence')).not.toContainText('Day must be 1–31');
+});
+
+test('invalid date and time identify the affected input and clear when corrected',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ const date=page.getByRole('textbox',{name:'Schedule date'}),time=page.getByRole('textbox',{name:'Schedule time'});
+ const validDate=await date.inputValue();
+ await date.fill('2026-02-30');await expect(date).toHaveAttribute('aria-invalid','true');
+ await expect(page.locator('#schedule-next')).toContainText('Invalid date');await expect(page.locator('#schedule-next')).not.toContainText('Next · Invalid');
+ await date.fill(validDate);await expect(date).toHaveAttribute('aria-invalid','false');
+ await time.fill('25:00');await expect(time).toHaveAttribute('aria-invalid','true');
+ await time.fill('09:00');await expect(time).toHaveAttribute('aria-invalid','false');
 });

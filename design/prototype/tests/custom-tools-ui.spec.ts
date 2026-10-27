@@ -68,15 +68,16 @@ test('source approval is atomic when the paired instructions change through Memo
 
 
 test('custom package save code loads only when the user saves a package',async({page})=>{
+ const packageRequests:string[]=[];
+ page.on('request',request=>{if(request.url().includes('custom-tool-package'))packageRequests.push(request.url());});
  await page.goto('/');
- const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(entry=>entry.name));
- expect(initial.some(url=>url.includes('/custom-tool-package.ts'))).toBe(false);
+ expect(packageRequests).toHaveLength(0);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');
  await page.getByRole('button',{name:'Create tool package'}).click();
  await page.getByRole('button',{name:'Save files'}).click();
- await expect.poll(()=>page.evaluate(()=>performance.getEntriesByType('resource').map(entry=>entry.name).some(url=>url.includes('/custom-tool-package.ts')))).toBe(true);
+ await expect.poll(()=>packageRequests.length).toBeGreaterThan(0);
 });
 
 test('Settings links to custom tool runtime and editable harness profile',async({page})=>{

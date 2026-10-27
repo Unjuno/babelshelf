@@ -1,8 +1,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,formatDeviceDiagnosticReport,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
+import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,formatDeviceDiagnosticReport,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
 
 function memoryStorage(){const values=new Map();return {values,getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};}
+
+test('a stalled cache write times out and cleans its own cache when the write settles',async()=>{
+ let release,deleted=false;const cache={keys:async()=>[],open:async()=>({put:()=>new Promise(resolve=>{release=resolve;}),match:async()=>{throw Error('must not read after timeout');}}),delete:async()=>{deleted=true;return true;}};
+ const result=await cacheRoundtripProbe(cache,10);assert.equal(result.status,'warning');assert.match(result.detail,/timed out/);assert.equal(deleted,false);
+ release();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(deleted,true);
+});
+
+test('a cache opened after the deadline is removed without starting a write',async()=>{
+ let release,deleted=false,writes=0;const cache={keys:async()=>[],open:()=>new Promise(resolve=>{release=resolve;}),delete:async()=>{deleted=true;return true;}};
+ const result=await cacheRoundtripProbe(cache,10);assert.equal(result.status,'warning');
+ release({put:async()=>{writes++;}});await new Promise(resolve=>setTimeout(resolve,0));assert.equal(writes,0);assert.equal(deleted,true);
+});
+
+test('cache diagnostic detects silent write loss and removes only its temporary cache',async()=>{
+ for(const losesWrites of [false,true]){
+  const names=new Set(['user-cache']);let payload;
+  const cacheStorage={keys:async()=>[...names],open:async name=>{names.add(name);return {put:async(_key,response)=>{if(!losesWrites)payload=await response.text();},match:async()=>payload===undefined?undefined:new Response(payload)};},delete:async name=>names.delete(name)};
+  const report=await runDeviceDiagnostics({cacheStorage,storage:memoryStorage(),indexedDB:null,gpu:null});
+  assert.equal(report.checks.find(c=>c.id==='cache-roundtrip').status,losesWrites?'fail':'pass');
+  assert.deepEqual([...names],['user-cache']);
+ }
+});
+
+test('cache diagnostic reports write and cleanup failures without deleting existing caches',async()=>{
+ for(const failCleanup of [false,true]){
+  const names=new Set(['user-cache']);
+  const cacheStorage={keys:async()=>[...names],open:async name=>{names.add(name);return {put:async()=>{throw Error('private browser error');}};},delete:async name=>failCleanup?false:names.delete(name)};
+  const report=await runDeviceDiagnostics({cacheStorage,storage:memoryStorage(),indexedDB:null,gpu:null});
+  const check=report.checks.find(c=>c.id==='cache-roundtrip');assert.equal(check.status,'fail');assert.doesNotMatch(check.detail,/private browser error/);
+  assert.equal(names.has('user-cache'),true);assert.equal(names.size,failCleanup?2:1);
+  if(failCleanup)assert.match(check.detail,/cleanup not confirmed/);
+ }
+});
 
 test('Home Screen PWA detection accepts both standard display-mode and iOS standalone signals',()=>{
  assert.equal(isStandalonePwa(true,false),true);
