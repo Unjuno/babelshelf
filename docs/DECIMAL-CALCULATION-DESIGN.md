@@ -1,7 +1,7 @@
 # Decimal calculation transition
 
-Status: a standalone bounded decimal evaluator and its Node tests exist; it is
-not connected to the product, tool registry or receipt verification. Existing calculations use finite
+Status: a standalone bounded decimal evaluator, candidate receipt validator and
+Node tests exist; they are not connected to the product or tool registry. Existing calculations use finite
 IEEE-754 binary64, including their tool result and independent receipt checks.
 The existing calculator must remain available to validate historical records.
 

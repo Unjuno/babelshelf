@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "test:decimal": "node --test design/prototype/tests/decimal-calculation.test.mjs",
+    "test:decimal": "node --test design/prototype/tests/decimal-calculation.test.mjs design/prototype/tests/decimal-receipt.test.mjs",
     "build:app": "node scripts/build-product.mjs",
     "dev:app": "node scripts/serve-product.mjs",
     "dev:app:https": "node scripts/serve-product-https.mjs",
