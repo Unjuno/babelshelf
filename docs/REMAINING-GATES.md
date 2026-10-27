@@ -1,3 +1,7 @@
+## Public v259 warm conversation trial (2026-10-27)
+
+On the existing PC sidebar browser, app Offline, with the previously used model resident and a long accumulated dialogue, 'こんにちは' produced a real model greeting within the first 10-second observation. The following '私が直前に言った挨拶は何ですか？' was still selecting an action at 35 seconds and compacting at 55 and approximately 95 seconds; it was stopped, so answer correctness is unknown. Stopping completed and the input was cleared. The existing selected QA file and stored history were retained. This single run does not establish a general latency benchmark or iPhone behavior. Investigate bounded, speaker-aware recent-dialogue selection before broad compaction, preserving access to earlier context and not treating a narrower scope as evidence when the request is ambiguous.
+
 ## Public v259 short-reply trial (2026-10-27)
 
 PC sidebar in-app browser, public site, active worker 44497367fe5a1c20 (index-DkAt51b_.js), application Offline; existing QA input file remained selected. After '保存したメモを探して' prompted 'What should I search for?', 'ありがとう' reached real local model generation and returned 'はい、お疲れ様です。' instead of a search result. At about 20 seconds the UI showed kernel warmup, at about 40 seconds generation, and by about 60 seconds the response appeared. These are coarse observations from one run including initialization, not a benchmark or comparison. No iPhone, airplane-mode, offline cold restart, or general performance claim follows. Prior conversation and knowledge data were retained.
