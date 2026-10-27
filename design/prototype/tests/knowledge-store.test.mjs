@@ -39,6 +39,23 @@ test('legacy projection and unchanged save preserve all bytes, IDs, sources and 
  const view=projectNote(original),result=applyKnowledgeChanges([original],[view],[view]);
  assert.deepEqual(result,[original]);assert.equal(view.id,original.id);assert.match(view.path,/^inbox\//);
 });
+
+test('note views retain detached source identities and kind without changing canonical records or edit history',()=>{
+ const original=createNote({path:'Notes/original.md',body:'Water and flashlight.'}),ref={noteId:original.id,revision:1,start:0,end:21,quote:'Water and flashlight.',citedQuote:'flashlight'},saved=createNote({path:'Notes/summary.md',body:'Water and flashlight.',kind:'generated',sources:[ref]}),before=structuredClone([original,saved]);
+ const view=projectNote(saved);assert.equal(view.kind,'generated');assert.deepEqual(view.sources,[ref]);assert.notEqual(view.sources,saved.sources);
+ view.sources[0].quote='Changed only in UI';assert.deepEqual([original,saved],before);
+ const clean=projectNote(saved),next={...clean,body:'Edited summary',version:2,history:[clean.body]};const records=applyKnowledgeChanges(before,[projectNote(original),clean],[projectNote(original),next]);assert.deepEqual(records[1].sources,saved.sources);assert.equal(records[1].revisions[0].body,'Water and flashlight.');
+});
+
+test('saved note provenance distinguishes current, changed chains, removed originals and invalid historical ranges',async()=>{
+ const {noteProvenance}=await import('../src/note-provenance.ts');
+ const source=createNote({path:'Notes/original.md',body:'Water and flashlight.'}),ref={noteId:source.id,revision:1,start:0,end:21,quote:'Water and flashlight.',citedQuote:'flashlight'},saved=createNote({path:'Notes/summary.md',body:'Packed water.',kind:'generated',sources:[ref]}),savedRef={noteId:saved.id,revision:1,start:0,end:13,quote:'Packed water.'},nested=createNote({path:'Notes/nested.md',body:'Packed.',kind:'generated',sources:[savedRef]});
+ const records=[source,saved,nested],before=structuredClone(records),current=noteProvenance(records,saved.id,1);assert.equal(current.status,'current');assert.equal(current.items[0].historicalAvailable,true);assert.deepEqual(current.items[0].ref,ref);
+ const changed=reviseNote(source,{body:'Tea and flashlight.'},1),old=noteProvenance([changed,saved,nested],saved.id,1);assert.equal(old.status,'changed');assert.equal(old.items[0].currentRevision,2);assert.equal(old.items[0].path,'Notes/original.md');assert.equal(old.items[0].historicalAvailable,true);assert.equal(noteProvenance([changed,saved,nested],nested.id,1).status,'changed');
+ const removed=noteProvenance([withdrawNote(source,1),saved],saved.id,1);assert.equal(removed.status,'removed');assert.equal(removed.items[0].historicalAvailable,true);
+ assert.equal(noteProvenance([saved],saved.id,1).status,'unavailable');assert.equal(noteProvenance([saved],saved.id,1).items[0].historicalAvailable,false);
+ const broken={...saved,sources:[{...ref,quote:'Different same range'}]};assert.equal(noteProvenance([source,broken],saved.id,1).status,'unavailable');assert.throws(()=>noteProvenance(records,saved.id,2),/changed|unavailable/i);assert.deepEqual(records,before);
+});
 test('edits append one revision; stale concurrent edits cannot overwrite',()=>{
  const original=createNote({title:'Notes',path:'Notes/a.md',body:'v1'}),before=projectNote(original);
  const changed={...before,body:'v2',version:2,history:['v1']};

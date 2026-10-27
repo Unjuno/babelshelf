@@ -1,5 +1,9 @@
 # Current application architecture
 
+## Saved-note provenance — 2026-10-27
+
+NoteView now retains canonical kind and detached whitelisted source references. The optional NoteSources disclosure reads the canonical graph through note-provenance.ts, keeping historical availability separate from current grounding admission. Existing citation preview and current-file navigation retain their separate revision semantics. Source statuses are derived local presentation, never persisted authority or automatic regeneration. PreviewSelection owns superseded reads. See [saved-note provenance](NOTE-PROVENANCE.md).
+
 ## Literal versus semantic correction — 2026-10-27
 
 correction-request.ts shares named-subject admission and exact quoted operand parsing. Ordinary literal replacements use the existing validated text.replace proposal before acquisition; semantic work acquires the selected engine only when needed. Quoted content remains data at routing boundaries, not a saved-file/history/question command. Both paths share canonical target discovery and review/Save/CAS/history. Managed settings, schedules and custom tool sources retain their typed adapters. See [correction contract](CORRECTION-CONTRACT.md).

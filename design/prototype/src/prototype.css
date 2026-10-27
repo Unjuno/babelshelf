@@ -566,3 +566,5 @@ button.model-picker svg{flex-shrink:0}
 .licenses-page details { border-bottom: 1px solid var(--line, #c7d4d0); }
 .license-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .875em; line-height: 1.6; max-height: 60vh; overflow-y: auto; padding: 12px; margin: 0; }
 .device-screen:has(.appearance-dark) .model-choice-sheet .settings-action { color: var(--theme-accent, #b8edcf) !important; border-bottom-color: #58736780; }
+
+.note-sources{margin:16px 0;overflow-wrap:anywhere}.note-sources>summary{min-height:44px;padding:10px 0;cursor:pointer}.note-source-state{margin-left:8px;font-size:.875rem;font-weight:600}.note-sources .note-source-link{width:100%;min-height:48px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;color:inherit!important;font:inherit}.note-source-link small{font-size:.875rem}.note-source-link:disabled{opacity:.75}

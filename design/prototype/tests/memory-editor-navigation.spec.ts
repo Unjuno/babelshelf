@@ -1,4 +1,27 @@
 import {expect,test,type Page} from '@playwright/test';
+import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
+
+async function sourceFixture(page:Page,records:any[]){
+ await page.goto('/');await memory(page);
+ await page.evaluate(async records=>{await new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('notes','readwrite');for(const record of records)tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},records);
+ await page.reload();await memory(page);await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
+}
+
+test('saved generated notes expose changed provenance and open the pinned original before the latest source',async({page})=>{
+ // Controlled canonical records verify presentation, not model generation.
+ const original=createNote({path:'Inbox/QA-source.md',body:'Meet at the north gate.'}),sourceRef={noteId:original.id,revision:1,start:0,end:23,quote:'Meet at the north gate.'},changed=reviseNote(original,{body:'Meet at the south gate.'},1),saved=createNote({path:'Inbox/QA-sourced-summary.md',body:'North gate meeting.',kind:'generated',sources:[sourceRef]});
+ await sourceFixture(page,[changed,saved]);await page.getByRole('button',{name:'Open QA-sourced-summary.md',exact:true}).click();
+ await expect(page.locator('.note-sources > summary')).toHaveAccessibleName('Sources · 1 · Source changed');await page.locator('.note-sources > summary').click();const source=page.getByRole('button',{name:'View saved source 1',exact:true});await expect(source).toContainText('Inbox/QA-source.md · v1');await expect(source).toContainText('Now v2');
+ for(const target of [page.locator('.note-sources > summary'),source])expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ await page.evaluate(()=>{document.documentElement.style.fontSize='24px';});await expect(source).toBeVisible();expect((await source.boundingBox())!.height).toBeGreaterThanOrEqual(44);await source.click();
+ await expect(page.getByRole('dialog')).toContainText('Meet at the north gate.');await expect(page.getByRole('dialog')).not.toContainText('Meet at the south gate.');await page.getByRole('button',{name:'Open file',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('Meet at the south gate.');
+ const retained=await page.evaluate(async ids=>new Promise<any[]>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('notes','readonly'),records:any[]=[];for(const id of ids){const read=tx.objectStore('notes').get(id);read.onsuccess=()=>records.push(read.result);}tx.oncomplete=()=>{db.close();resolve(records);};};}),[changed.id,saved.id]);expect(retained).toEqual([changed,saved]);
+});
+
+test('a removed source remains inspectable at its original version without an unavailable current-file action',async({page})=>{
+ const original=createNote({path:'Inbox/QA-removed-source.md',body:'Original source text.'}),saved=createNote({path:'Inbox/QA-removed-summary.md',body:'Saved summary.',kind:'generated',sources:[{noteId:original.id,revision:1,start:0,end:21,quote:'Original source text.'}]}),removed=withdrawNote(original,1);
+ await sourceFixture(page,[removed,saved]);await page.getByRole('button',{name:'Open QA-removed-summary.md',exact:true}).click();await expect(page.locator('.note-sources')).toContainText('Source removed');await page.locator('.note-sources > summary').click();await page.getByRole('button',{name:'View saved source 1',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Original source text.');await expect(page.getByRole('button',{name:'Open file',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('Saved summary.');
+});
 
 async function memory(page:Page){
  await page.getByRole('button',{name:'Input',exact:true}).click();
