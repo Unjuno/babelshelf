@@ -13,6 +13,8 @@ export function explicitCalculationInput(text:string):{expression:string;showExp
  // not equivalent and must remain on the normal planning path.
  const percent=input.trim().match(/^(\d+(?:\.\d+)?)(?:円)?\s*の\s*(\d+(?:\.\d+)?)\s*%\s*は(?:いくら)?[？?。.!！]?$/);
  if(percent)return {expression:`(${percent[1]} * ${percent[2]} / 100)`,showExpression:true};
+ const englishPercent=input.trim().match(/^what\s+is\s+(\d+(?:\.\d+)?)\s*(?:%|percent)\s+of\s+(\d+(?:\.\d+)?)[?.!]?$/i);
+ if(englishPercent)return {expression:`(${englishPercent[2]} * ${englishPercent[1]} / 100)`,showExpression:true};
  // Match the complete request, never search prose, files or previous turns for
  // executable text. Keep grouping/signs verbatim; only consume known UI prose.
  const wrapped=input.trim().match(/^(?:please\s+)?(?:use\s+(?:the\s+)?calculator\s+to\s+)?(?:calculate|compute|evaluate|work\s+out)\s+([\d\s.+\-*/()×÷−eE]+?)(?:,\s*(?:and\s+)?(?:give|return|show)\s+(?:just|only)\s+(?:the\s+)?(?:result|answer))?[.!?]?$/i);
