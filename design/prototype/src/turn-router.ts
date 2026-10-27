@@ -43,6 +43,9 @@ export function cancelClarifiedSavedSearch(question:string,prior:Dialogue,curren
 export function clarifiedSavedSearch(question:string,prior:Dialogue,currentInputs=false){
  const text=question.trim();
  if(!hasPendingSavedSearch(prior,currentInputs)||cancelClarifiedSavedSearch(question,prior,currentInputs)||text.length<2||text.length>80)return null;
+ // Conventional social replies are not evidence that a search was intended.
+ // An explicit search command remains available for a note with such a title.
+ if(/^(?:ありがとう(?:ございます|ございました)?|どうもありがとう|こんにちは|こんばんは|おはよう(?:ございます)?|thank(?:s| you)(?: very much)?|hello|hi|hey)[.!！。]*$/iu.test(text))return null;
  if(!/^[\p{L}\p{N}\p{M} _.-]+$/u.test(text)||/(?:探して|検索|開いて|読んで|教えて|保存|削除|変更|修正|要約|見せて|ください|\b(?:find|search|open|read|tell|save|delete|change|summarize|please)\b)/iu.test(text))return null;
  return {action:'search' as const,query:text,target:'knowledge' as const};
 }

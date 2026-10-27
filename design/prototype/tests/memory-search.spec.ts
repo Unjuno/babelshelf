@@ -52,6 +52,17 @@ test('cancel ends the clarification and leaves later calculation independent',as
  await expect(page.locator('.sent-message').last()).toContainText('20');
 });
 
+test('thanks after clarification is not treated as a search topic',async({page})=>{
+ await page.goto('/');
+ const message=page.getByRole('textbox',{name:'Message'}),send=page.getByRole('button',{name:'Send',exact:true});
+ await message.fill('保存したメモを探して'); await send.click();
+ await expect(page.locator('.sent-message').last()).toContainText('What should I search for?');
+ await message.fill('ありがとう'); await send.click();
+ const reply=page.locator('.sent-message').last();
+ await expect(reply).toContainText('Model not prepared');
+ await expect(reply).not.toContainText('No matching notes');
+});
+
 test('deleted search result reports unavailability without leaving input',async({page})=>{
  await page.goto('/'); await navigate(page,'Memory');
  await page.getByRole('button',{name:'Open Inbox'}).click();

@@ -11,7 +11,7 @@ test('unspecified saved search excludes topics, context, compound actions and at
 test('clarification accepts only a short topic after the immediately preceding search question',()=>{
  const prior={schema:1,revision:1,turns:[{id:'q',user:'保存したメモを探して',status:'What should I search for?'}],compaction:null};
  assert.deepEqual(router.clarifiedSavedSearch('集合場所',prior),{action:'search',query:'集合場所',target:'knowledge'});
- for(const text of ['保存して','メモを削除して','hello?','2 + 2'])assert.equal(router.clarifiedSavedSearch(text,prior),null,text);
+ for(const text of ['保存して','メモを削除して','hello?','2 + 2','ありがとう','こんにちは','thank you','hello'])assert.equal(router.clarifiedSavedSearch(text,prior),null,text);
  assert.equal(router.clarifiedSavedSearch('集合場所',prior,true),null);
  assert.equal(router.clarifiedSavedSearch('集合場所',{...prior,turns:[...prior.turns,{id:'next',user:'hi'}]}),null);
 });
