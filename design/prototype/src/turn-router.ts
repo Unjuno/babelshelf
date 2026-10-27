@@ -38,6 +38,15 @@ export function unspecifiedSavedSearch(question:string,currentInputs=false){
 
 function hasPendingSavedSearch(prior:Dialogue,currentInputs:boolean){const previous=prior.turns.at(-1);return !currentInputs&&previous?.status==='What should I search for?'&&unspecifiedSavedSearch(previous.user);}
 function socialReply(text:string){return /^(?:ありがとう(?:ございます|ございました)?|どうもありがとう|こんにちは|こんばんは|おはよう(?:ございます)?|thank(?:s| you)(?: very much)?|hello|hi|hey)[.!！。]*$/iu.test(text);}
+/** A question explicitly about the immediately preceding user utterance needs
+ * that original exchange, not a lossy summary of all earlier conversation. */
+function previousUserUtterance(question:string,prior:Dialogue,hasInputs:boolean):DialogueContext|null{
+ const last=prior.turns.at(-1),text=question.trim();
+ if(hasInputs||!last?.user?.trim()||last.user.length>1000||(last.answer?.length??0)>1000)return null;
+ const japanese=/^私が直前に(?:言った|送った|書いた)(?:挨拶|言葉|内容|メッセージ|こと)は何(?:ですか|でしたか)[？?。]?$/u;
+ const english=/^what (?:did i (?:just|last) (?:say|send|write)|was my (?:last|previous) message)[?!.]?$/iu;
+ return japanese.test(text)||english.test(text)?{summary:'',recent:[last],refs:[],turnCount:1}:null;
+}
 export function cancelClarifiedSavedSearch(question:string,prior:Dialogue,currentInputs=false){
  return hasPendingSavedSearch(prior,currentInputs)&&/^(?:キャンセル|取り消し|中止|やめる|やめて|cancel|never mind|nevermind)[。.!！]*$/iu.test(question.trim());
 }
@@ -209,6 +218,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
 }){
  const {question,literalRequest,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
  const socialAfterClarification=!literalRequest&&hasPendingSavedSearch(prior,hasAttachments||hasCurrentInputReadings)&&socialReply(question.trim());
+ const previousUtterance=!literalRequest?previousUserUtterance(question,prior,hasAttachments||hasCurrentInputReadings):null;
  const operationContext=literalRequest?null:earlierOperationContext(prior,question,hasAttachments||hasCurrentInputReadings);
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
@@ -223,8 +233,8 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const contextIndependent=!operationContext&&!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=(socialAfterClarification?{action:'chat',query:''}:null)??noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
- const context=socialAfterClarification?priorContext:operationContext??contextIndependent?.context??priorContext;
+ const request=(socialAfterClarification?{action:'chat',query:''}:null)??(previousUtterance?{action:'chat',query:question}:null)??noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const context=socialAfterClarification?priorContext:previousUtterance??operationContext??contextIndependent?.context??priorContext;
  return {literalRequest,explicitSavedRequest,explicitFileQuestion,namedCorrection,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};

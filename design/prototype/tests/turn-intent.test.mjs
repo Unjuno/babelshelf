@@ -310,3 +310,13 @@ test('a single explicit current-file summary selects only its pinned source',()=
  assert.equal(route({question:'このファイルを短く要約してください。',hasAttachments:true}).explicitFileQuestion,null);
  assert.equal(route({question:'このファイルを短く要約してください。',prior:{...prior,currentFile:undefined}}).explicitFileQuestion,null);
 });
+
+test('explicit previous user message uses a bounded original exchange without changing history',()=>{
+ const earlier={id:'older',user:'older secret',answer:'older answer'},last={id:'last',user:'こんにちは',answer:'こんにちは！'};
+ const state={...prior,turns:[earlier,last],compaction:{through:1,summary:'stale summary'}},before=structuredClone(state);
+ const result=route({question:'私が直前に言った挨拶は何ですか？',prior:state});
+ assert.deepEqual(result.request,{action:'chat',query:'私が直前に言った挨拶は何ですか？'});
+ assert.equal(result.context.summary,'');assert.deepEqual(result.context.recent,[last]);assert.deepEqual(result.context.refs,[]);assert.deepEqual(state,before);
+ for(const question of ['私が以前言った挨拶は何ですか？','私が直前に言った挨拶は何ですか？そして保存して','私が直前に言った挨拶と以前の会話を比較して'])assert.notDeepEqual(route({question,prior:state}).request,{action:'chat',query:question},question);
+ assert.notDeepEqual(route({question:'私が直前に言った挨拶は何ですか？',prior:state,hasAttachments:true}).request,{action:'chat',query:'私が直前に言った挨拶は何ですか？'});
+});

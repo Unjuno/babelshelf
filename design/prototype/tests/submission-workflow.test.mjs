@@ -332,3 +332,13 @@ test('a missing, changed or withdrawn current-answer source refuses before model
   assert.equal(await c.run(run=>executeSubmission({text:'What is in that note?',attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/Source changed/);assert.equal(f.current().currentFile,undefined);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);assert.deepEqual(records,before);
  }
 });
+
+test('explicit previous utterance reaches generation without compaction or decision routing',async()=>{
+ const f=fixture(),c=createSubmissionController(),old={id:'old',user:'UNRELATED PRIVATE HISTORY',answer:'Older answer'},recent={id:'last',user:'こんにちは',answer:'こんにちは！'};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[old,recent]});let generations=0;
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async messages=>{const s=JSON.stringify(messages);assert.doesNotMatch(s,/UNRELATED PRIVATE HISTORY/);assert.match(s,/こんにちは/);return {prompt_tokens:100};},generate:async messages=>{generations++;assert.match(JSON.stringify(messages),/こんにちは/);return {text:'こんにちは',finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
+ f.services.decision={enabled:true,ready:true,loaded:false,busy:false,load:async()=>{throw Error('Unexpected decision');}};
+ f.services.knowledge={all:async()=>{throw Error('Unexpected Memory read');},search:async()=>{throw Error('Unexpected search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'私が直前に言った挨拶は何ですか？',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.equal(generations,1);assert.deepEqual(f.current().turns.slice(0,2),[old,recent]);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.compact'||a.tool==='dialogue.plan'),false);
+});
