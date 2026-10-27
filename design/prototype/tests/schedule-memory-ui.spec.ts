@@ -83,3 +83,14 @@ test('a run owned by another tab does not block another local due schedule',asyn
  const result=await page.evaluate(async()=>new Promise<any[]>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').getAll();q.onsuccess=()=>resolve(q.result.filter((n:any)=>n.ui?.recordType==='execution'));tx.oncomplete=()=>db.close();};}));
  expect(result).toHaveLength(2);expect(result.find(n=>n.id===run.id)).toEqual(run);expect(result.find(n=>n.id!==run.id).revisions.at(-1).body).toContain(b.id);
 });
+
+test('correcting a schedule field clears its stale save error while retaining the draft',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Check supplies');
+ await page.getByRole('button',{name:'Repeat',exact:true}).click();await page.getByRole('button',{name:'Every month',exact:true}).click();
+ await page.getByRole('textbox',{name:'Day of month'}).fill('32');await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.getByRole('alert')).toHaveText('Day must be 1–31');
+ await page.getByRole('textbox',{name:'Day of month'}).fill('31');
+ await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toHaveValue('Check supplies');
+ await expect(page.locator('.next-occurrence')).not.toContainText('Day must be 1–31');
+});
