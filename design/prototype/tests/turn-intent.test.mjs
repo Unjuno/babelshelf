@@ -16,6 +16,18 @@ test('clarification accepts only a short topic after the immediately preceding s
  assert.equal(router.clarifiedSavedSearch('集合場所',{...prior,turns:[...prior.turns,{id:'next',user:'hi'}]}),null);
 });
 
+test('thanks after a search clarification keeps that turn without old history or planning',()=>{
+ const previous={id:'q',user:'保存したメモを探して',status:'What should I search for?'},state={...prior,turns:[...prior.turns,previous]};
+ const result=router.resolveSubmittedTurnIntent({question:'ありがとう',literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:state,attachments:[]});
+ assert.deepEqual(result.request,{action:'chat',query:''});
+ assert.deepEqual(result.context.recent,[previous]); assert.deepEqual(result.context.refs,[]); assert.equal(result.context.summary,'');
+ assert.equal(state.turns.length,2);
+ const contextual=router.resolveSubmittedTurnIntent({question:'ありがとう、さっきの予定は？',literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:state,attachments:[]});
+ assert.notDeepEqual(contextual.context.recent,[previous]);
+ const attached=router.resolveSubmittedTurnIntent({question:'ありがとう',literalRequest:null,hasAttachments:true,hasCurrentInputReadings:true,prior:state,attachments:[{name:'image.png',kind:'image',status:'ready'}]});
+ assert.equal(attached.request?.action==='chat',false);
+});
+
 const prior={schema:1,revision:1,turns:[{id:'turn-1',user:'What did we decide about the workshop?',answer:'Move it to Monday at 10.',refs:[{noteId:'meeting',revision:2,start:0,end:31,quote:'Workshop moved to Monday at 10.'}]}],compaction:null,currentFile:{noteId:'opened-file',revision:3}};
 
 test('saved-file planning keeps the agent loop but excludes unrelated dialogue and implicit current-file edits',()=>{

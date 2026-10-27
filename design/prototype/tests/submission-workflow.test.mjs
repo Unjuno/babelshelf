@@ -48,6 +48,17 @@ test('a social reply after search clarification does not launch a Memory search'
  assert.equal(searches,0);
 });
 
+test('thanks after clarification generates from the recent turn without planning or compaction',async()=>{
+ const f=fixture(),c=createSubmissionController(),old={id:'old',user:'UNRELATED PRIVATE HISTORY',answer:'Older answer'},recent={id:'q',user:'保存したメモを探して',status:'What should I search for?'};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[old,recent]}); let generations=0;
+ f.services.model='test'; f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async messages=>{const input=JSON.stringify(messages);assert.doesNotMatch(input,/UNRELATED PRIVATE HISTORY/);assert.match(input,/What should I search for/);return {prompt_tokens:100};},generate:async messages=>{generations++;assert.doesNotMatch(JSON.stringify(messages),/UNRELATED PRIVATE HISTORY/);return {text:'どういたしまして。',finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
+ f.services.decision={enabled:true,ready:true,loaded:false,busy:false,load:async()=>{throw Error('Unexpected decision');}};
+ f.services.knowledge={all:async()=>{throw Error('Unexpected Memory read');},search:async()=>{throw Error('Unexpected search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'ありがとう',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.equal(generations,1);assert.equal(f.current().turns.at(-1).answer,'どういたしまして。');assert.deepEqual(f.current().turns.slice(0,2),[old,recent]);
+ assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.compact'||a.tool==='dialogue.plan'),false);
+});
+
 test('saved-file correction searches canonical Memory before proposing changes, without using unrelated dialogue or pinned files',async()=>{
  const f=fixture(),c=createSubmissionController(),target=createNote({path:'Notes/meeting.md',body:'Bring water.'}),other=createNote({path:'Notes/other.md',body:'Unrelated file'}),records=[target,other],before=structuredClone(records),proposals=[],prompts=[];
  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'old',user:'UNRELATED-OLD-REQUEST',answer:'UNRELATED-OLD-ANSWER'}],compaction:{through:1,summary:'UNRELATED-SUMMARY'},currentFile:{noteId:other.id,revision:1},currentResult:{turnId:'old'}});const prior=structuredClone(f.current());

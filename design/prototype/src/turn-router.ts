@@ -37,6 +37,7 @@ export function unspecifiedSavedSearch(question:string,currentInputs=false){
 }
 
 function hasPendingSavedSearch(prior:Dialogue,currentInputs:boolean){const previous=prior.turns.at(-1);return !currentInputs&&previous?.status==='What should I search for?'&&unspecifiedSavedSearch(previous.user);}
+function socialReply(text:string){return /^(?:ありがとう(?:ございます|ございました)?|どうもありがとう|こんにちは|こんばんは|おはよう(?:ございます)?|thank(?:s| you)(?: very much)?|hello|hi|hey)[.!！。]*$/iu.test(text);}
 export function cancelClarifiedSavedSearch(question:string,prior:Dialogue,currentInputs=false){
  return hasPendingSavedSearch(prior,currentInputs)&&/^(?:キャンセル|取り消し|中止|やめる|やめて|cancel|never mind|nevermind)[。.!！]*$/iu.test(question.trim());
 }
@@ -45,7 +46,7 @@ export function clarifiedSavedSearch(question:string,prior:Dialogue,currentInput
  if(!hasPendingSavedSearch(prior,currentInputs)||cancelClarifiedSavedSearch(question,prior,currentInputs)||text.length<2||text.length>80)return null;
  // Conventional social replies are not evidence that a search was intended.
  // An explicit search command remains available for a note with such a title.
- if(/^(?:ありがとう(?:ございます|ございました)?|どうもありがとう|こんにちは|こんばんは|おはよう(?:ございます)?|thank(?:s| you)(?: very much)?|hello|hi|hey)[.!！。]*$/iu.test(text))return null;
+ if(socialReply(text))return null;
  if(!/^[\p{L}\p{N}\p{M} _.-]+$/u.test(text)||/(?:探して|検索|開いて|読んで|教えて|保存|削除|変更|修正|要約|見せて|ください|\b(?:find|search|open|read|tell|save|delete|change|summarize|please)\b)/iu.test(text))return null;
  return {action:'search' as const,query:text,target:'knowledge' as const};
 }
@@ -207,6 +208,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  attachments:{name:string;kind:string;status:string}[];
 }){
  const {question,literalRequest,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
+ const socialAfterClarification=!literalRequest&&hasPendingSavedSearch(prior,hasAttachments||hasCurrentInputReadings)&&socialReply(question.trim());
  const operationContext=literalRequest?null:earlierOperationContext(prior,question,hasAttachments||hasCurrentInputReadings);
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
@@ -217,12 +219,12 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const namedCorrection=literalRequest?null:explicitSavedKnowledgeCorrection(question,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
  const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
- const priorContext:DialogueContext=noteCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:independentSavedKnowledgeContext(question,hasAttachments||hasCurrentInputReadings)??dialogueContext(prior,question);
+ const priorContext:DialogueContext=socialAfterClarification?{summary:'',recent:[prior.turns.at(-1)!],refs:[],turnCount:1}:noteCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:independentSavedKnowledgeContext(question,hasAttachments||hasCurrentInputReadings)??dialogueContext(prior,question);
  const contextIndependent=!operationContext&&!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
- const context=operationContext??contextIndependent?.context??priorContext;
+ const request=(socialAfterClarification?{action:'chat',query:''}:null)??noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const context=socialAfterClarification?priorContext:operationContext??contextIndependent?.context??priorContext;
  return {literalRequest,explicitSavedRequest,explicitFileQuestion,namedCorrection,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};
