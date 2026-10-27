@@ -988,3 +988,12 @@ test('file-scoped planning omits excluded dialogue payload without changing cano
  for(const request of ['What did I say earlier about this file?','前回の会話でこのファイルについて何を話した？','What time does the workshop start?'])assert.match(JSON.stringify(planDialogueMessages(request,context)),new RegExp(marker));
  const attached=[{name:'new.txt',kind:'text',status:'Read'}];assert.match(JSON.stringify(planDialogueMessages(question,context,attached)),new RegExp(marker));assert.deepEqual(context,before);
 });
+
+
+test('grounded answer separates requested answer format from original citation text',async()=>{
+ const note=createNote({body:'集合場所は北口。\nBring the blue notebook.'});let system='';
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{system=messages[0].content;return {text:JSON.stringify({answer:'青いノート',citations:[{id:'S1',quote:'Bring the blue notebook.'}]})};}};
+ const result=await groundedAnswer({store:{all:async()=>[note]},engine:runtime},{model:'test',question:'このファイルの持ち物だけ日本語で答えて。',scope:{kind:'file',file:{noteId:note.id,revision:1}}});
+ assert.match(system,/requested answer format/i);assert.match(system,/citation quotes.*original/i);
+ assert.equal(result.answer,'青いノート');assert.equal(result.sources[0].citedQuote,'Bring the blue notebook.');
+});
