@@ -1,5 +1,10 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {nextLocalOccurrence} from '../src/schedule-time.ts';
+import {nextLocalOccurrence,nextDefaultScheduleDate} from '../src/schedule-time.ts';
+test('new one-time schedule defaults to the next local 09:00',()=>{
+ assert.equal(nextDefaultScheduleDate(new Date(2026,9,27,8,59)),'2026-10-27');
+ assert.equal(nextDefaultScheduleDate(new Date(2026,9,27,9,0)),'2026-10-28');
+ assert.equal(nextDefaultScheduleDate(new Date(2026,11,31,23,59)),'2027-01-01');
+});
 test('weekly selection uses the chosen weekday and rolls to next week after its time',()=>{
  const now=new Date(2026,9,19,10,0),next=nextLocalOccurrence('weekly','09:00',1,now);
  assert.equal(next.getDate(),26);assert.equal(next.getDay(),1);assert.equal(next.getHours(),9);

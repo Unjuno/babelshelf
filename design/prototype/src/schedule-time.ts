@@ -1,6 +1,9 @@
 export type ScheduleRule={repeat:string;time:string;days:number[];date:string;monthDay:number;interval:number;unit:string};
 export const repeatOptions=[{value:'once',label:'Once'},{value:'daily',label:'Every day'},{value:'weekly',label:'Every week'},{value:'monthly',label:'Every month'},{value:'custom',label:'Custom'}];
 export function localDate(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+export function nextDefaultScheduleDate(now=new Date()){
+ const next=new Date(now);next.setHours(9,0,0,0);if(next<=now)next.setDate(next.getDate()+1);return localDate(next);
+}
 function parseDate(value:string){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw Error('Use YYYY-MM-DD');
  const [y,m,d]=value.split('-').map(Number),date=new Date(y,m-1,d);

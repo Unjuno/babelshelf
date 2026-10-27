@@ -94,7 +94,7 @@ import {knowledge,useKnowledge} from './useKnowledge';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {localRequest} from '../../../dist/requests.js';
 import { ReferenceCard } from './ReferenceCard';
-import { nextScheduleOccurrence, repeatOptions, localDate, type ScheduleRule } from './schedule-time';
+import { nextScheduleOccurrence, nextDefaultScheduleDate, repeatOptions, localDate, type ScheduleRule } from './schedule-time';
 import { initialPreferenceNotes, readPreferenceWithFallback, updatePreference, preferenceGroup, parsePreference, recoverPreferenceRecord, type PreferenceGroup } from './preference-records';
 import { builtinToolNotes } from './tool-definitions';
 import { builtinPackageNotes,builtinToolPackages,builtinToolRegistry } from './tool-package-records';
@@ -617,7 +617,7 @@ export default function Prototype() {
   requestAnimationFrame(()=>{const section=document.querySelector<HTMLElement>(`[data-model-role="${role}"]`);section?.scrollIntoView({block:'center',behavior:'smooth'});section?.focus({preventScroll:true});});
  });}
  function openNote(id:string,path?:string){requestEditorExit(()=>{keyboard.hide();setPage('memory');setOpened(id);setEditing(false);setMemoryScope('folder');setActiveFolder((path??notes.find(n=>n.id===id)?.path)?.split('/').slice(0,-1).join('/')??'');});}
- function editSchedule(s?:Schedule,proposal?:Task,turn?:string){const fields=s??proposal;keyboard.hide();setScheduleTurn(turn??null);setScheduleCreationId(s?undefined:crypto.randomUUID());setScheduleId(s?.id??null);setScheduleExpected(s?.version);setSchedulePrompt(fields?.prompt??'');setScheduleRepeat(fields?.repeat??'once');setScheduleTime(fields?.time??'09:00');setScheduleNotify(fields?.notify??true);setScheduleDays(fields?.days??[new Date().getDay()]);setScheduleDate(fields?.date??localDate());setScheduleMonthDay(String(fields?.monthDay??new Date().getDate()));setScheduleInterval(String(fields?.interval??1));setScheduleUnit(fields?.unit??'days');setSheet('schedule');}
+ function editSchedule(s?:Schedule,proposal?:Task,turn?:string){const fields=s??proposal;keyboard.hide();setScheduleTurn(turn??null);setScheduleCreationId(s?undefined:crypto.randomUUID());setScheduleId(s?.id??null);setScheduleExpected(s?.version);setSchedulePrompt(fields?.prompt??'');setScheduleRepeat(fields?.repeat??'once');setScheduleTime(fields?.time??'09:00');setScheduleNotify(fields?.notify??true);setScheduleDays(fields?.days??[new Date().getDay()]);setScheduleDate(fields?.date??(fields?localDate():nextDefaultScheduleDate()));setScheduleMonthDay(String(fields?.monthDay??new Date().getDate()));setScheduleInterval(String(fields?.interval??1));setScheduleUnit(fields?.unit??'days');setSheet('schedule');}
  async function cancelSchedule(confirmed=false){if(scheduleSaveLock.current)return;if(!confirmed&&scheduleIsDirty()){reviewDiscard('Schedule',()=>void cancelSchedule(true));return;}const turn=scheduleTurn;setScheduleTurn(null);setScheduleCreationId(undefined);keyboard.hide();setSheet(null,true);if(turn)try{await finishTurn(turn,{status:'Schedule cancelled · nothing saved'});}catch(e){toast((e as Error).message);}}
  async function saveSchedule(){
   if(scheduleSaveLock.current)return;scheduleSaveLock.current=true;setSheetError('');
