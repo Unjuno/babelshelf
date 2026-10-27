@@ -173,7 +173,18 @@ export async function proposeCorrection(engine:ChatEngine,request:string,note:Ca
  const selectionCount=await engine.count(messages);check();
  const selectionBudget=proposalOutputTokens(selectionCount.prompt_tokens,engine.manifest.contextTokens,256);
  const result=await engine.generate(messages,selectionBudget);check();if(result.stopped)throw Error('Stopped');const choice=parseJSON(result.text);
- if(choice?.action!=='rewrite')return prepareCorrection(note,request,result.text);
+ if(choice?.action!=='rewrite'){
+  try{return prepareCorrection(note,request,result.text);}catch(error){
+   if(choice?.action!=='replace'||!(error instanceof Error)||error.message!=='Text not found · original retained')throw error;
+   // Retry only the rejected exact-span selection, against the same original.
+   // It remains a proposal and must pass all normal validation and user review.
+   const retry=messages.map((message,index)=>index===0?{...message,content:message.content+' The previous find text was not present in TEXT. Select a nonempty exact substring from TEXT as find, or return {"action":"reply"} if the target is unclear. Return only a replace or reply operation.'}:message);
+   const count=await engine.count(retry);check();const budget=proposalOutputTokens(count.prompt_tokens,engine.manifest.contextTokens,256);
+   const next=await engine.generate(retry,budget);check();if(next.stopped)throw Error('Stopped');const selected=parseJSON(next.text);
+   if(!['replace','reply'].includes(selected?.action))throw Error('Invalid correction selection');
+   return prepareCorrection(note,request,next.text);
+  }
+ }
  if(Object.keys(choice).some(k=>k!=='action'))throw Error('Invalid correction selection');
  const rewrite=[{role:'system',content:rewriteSystem},{role:'user',content:JSON.stringify({instruction:request,text:latest(note).body})}];
  const rewriteCount=await engine.count(rewrite);check();

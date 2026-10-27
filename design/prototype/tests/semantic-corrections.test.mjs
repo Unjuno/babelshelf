@@ -76,6 +76,15 @@ test('schedule proposal inference is source-only, bounded and cannot accept stop
 });
 const note=()=>createNote({path:'Notes/rewrite.md',body:'Water: three liters.\nMeeting Monday at ten. Keep the venue.'}),raw=body=>JSON.stringify({action:'rewrite',body});
 
+test('a nonmatching model replacement may retry once against the same original without writing it',async()=>{
+ const n=createNote({path:'Notes/meeting.md',body:'集合場所は北口。\nBring the blue notebook.'}),before=structuredClone(n);let calls=0;
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async messages=>{calls++;if(calls===2)assert.match(messages[0].content,/exact substring/);return {text:JSON.stringify(calls===1?{action:'replace',find:'集合場所は東口',with:'南口'}:{action:'replace',find:'北口',with:'南口'})};}};
+ const proposal=await proposeCorrection(engine,'集合場所を南口に直して。',n);assert.equal(calls,2);assert.equal(proposal.after,'集合場所は南口。\nBring the blue notebook.');assert.deepEqual(n,before);
+ calls=0;engine.generate=async()=>{calls++;return {text:JSON.stringify({action:'replace',find:'存在しない',with:'南口'})};};await assert.rejects(proposeCorrection(engine,'集合場所を南口に直して。',n),/Text not found/);assert.equal(calls,2);assert.deepEqual(n,before);
+ calls=0;engine.generate=async()=>({text:JSON.stringify(++calls===1?{action:'replace',find:'存在しない',with:'南口'}:{action:'rewrite',body:'unapproved'})});await assert.rejects(proposeCorrection(engine,'集合場所を南口に直して。',n),/Invalid correction selection/);assert.deepEqual(n,before);
+ calls=0;engine.generate=async()=>++calls===1?{text:JSON.stringify({action:'replace',find:'存在しない',with:'南口'})}:{text:'',stopped:true};await assert.rejects(proposeCorrection(engine,'集合場所を南口に直して。',n),/Stopped/);assert.deepEqual(n,before);
+});
+
 test('line-format corrections keep reviewed history, Undo and backup operation validation',async()=>{
  const n=note(),before=structuredClone(n),proposal=prepareCorrection(n,'Format existing lines as a checklist',JSON.stringify({action:'format_lines',format:'checklist'}));
  assert.equal(proposal.operation.name,'text.format_lines');assert.deepEqual(n,before);
