@@ -33,7 +33,10 @@ export function workingFileCoverage(note:any){
 }
 export function workingFileEvidence(records:any[],pin:WorkingFile,question:string):(SourceRef&{coverage:string})[]{
  const note=workingFileNote(records,pin),version=latest(note);
- if(!buildIndex(records).docs.some((d:any)=>d.n.id===note.id))throw Error('Working file is not eligible evidence');
+ if(!buildIndex(records).docs.some((d:any)=>d.n.id===note.id)){
+  if(note.kind==='original'&&!note.originalAsset&&!note.mediaSource&&!note.sources?.length&&!version.body.trim())throw Error('File is empty');
+  throw Error('Working file is not eligible evidence');
+ }
  // Eligibility is checked against the full canonical graph. A temporary text-only
  // projection ranks excerpts, never changes stored kind/sources or grants authority.
  const {mediaSource,...textProjection}=note;

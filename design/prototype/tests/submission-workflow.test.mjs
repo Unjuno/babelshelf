@@ -135,7 +135,7 @@ test('bound file admission reports unavailable or empty originals before any tex
   f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{loads++;throw Error('Unexpected model acquisition');}};
   f.services.knowledge={all:async()=>records,search:async()=>{throw Error('Unrelated search');}};
   assert.equal(await c.run(run=>executeSubmission({text:'What time does this file say we should meet?',attachments:[]},f.services,f.view,run)),'failed');
-  assert.match(c.state.error,scenario==='missing'?/Working file original unavailable/:scenario==='withdrawn'?/Working file changed/:/Working file is not eligible evidence/);
+  assert.match(c.state.error,scenario==='missing'?/Working file original unavailable/:scenario==='withdrawn'?/Working file changed/:/File is empty/);
   assert.equal(loads,0);assert.deepEqual(records,snapshot);
   assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);
  }

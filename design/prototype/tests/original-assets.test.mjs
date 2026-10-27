@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import {prepareOriginal,readOriginal,originalNote,originalKey,MAX_ORIGINAL_BYTES,checkAttachmentBatch,validateOriginalLinks} from '../src/original-assets.ts';
 import {latest,searchNotes,makeBackup,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup,stateHash} from '../src/backup-state.ts';
+import {workingFileEvidence} from '../src/working-file.ts';
+test('unread image is not described as an empty text file',async()=>{
+ const asset=await prepareOriginal(new File([new Uint8Array([1,2,3])],'photo.png',{type:'image/png'}),'unread-photo');
+ const note=originalNote(asset);
+ assert.throws(()=>workingFileEvidence([note],{noteId:note.id,revision:1},'What is in this file?'),/Working file is not eligible evidence/);
+});
 test('immutable original retains exact UTF8/BOM bytes separately from decoded note and versioned coverage',async()=>{
  const bytes=new Uint8Array([239,187,191,...new TextEncoder().encode('水 Water 🌳\n')]),file=new File([bytes],'資料.txt',{type:'text/plain'}),asset=await prepareOriginal(file,'asset1');
  assert.deepEqual(readOriginal(asset),bytes);assert.equal(asset.revision,1);assert.equal(originalKey(asset.id),'ui-v1-original-asset1');
