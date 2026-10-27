@@ -114,6 +114,14 @@ export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boole
  if(!asks&&!answerCommand)return null;
  return {action:'answer' as const,query:text,target:'file' as const};
 }
+/** A single summary of the opened file is read-only; the model still writes the
+ * answer, and the normal source/revision checks remain authoritative. */
+export function explicitWorkingFileSummary(question:string,hasWorkingFile:boolean,hasOtherInput=false){
+ const text=question.trim();if(!hasWorkingFile||hasOtherInput||!text||text.length>500||requestNamesEarlierDialogue(text))return null;
+ const japanese=/^(?:この|現在の|今開いている)(?:ファイル|メモ|ノート|文書|資料)(?:を|について)(?:短く|簡潔に|手短に)?(?:要約して|まとめて)(?:ください|下さい)?[。.!！]?$/u;
+ const english=/^(?:(?:please|can you|could you|would you)\s+)?(?:(?:briefly|concisely)\s+)?summari[sz]e\s+(?:this|the current|the open|the opened)\s+(?:file|note|document|memo)(?:\s+(?:briefly|concisely))?[.!?]?$/iu;
+ return japanese.test(text)||english.test(text)?{action:'summary' as const,query:text,target:'file' as const}:null;
+}
 /** A question about the sole cited source of the immediate answer has a
  * read-only target even when the user has not opened/pinned that file. */
 export function explicitCurrentSourceQuestion(question:string,prior:Dialogue,hasInputs=false){
@@ -180,7 +188,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
- const explicitFileQuestion=literalRequest?null:explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitPinnedPlaceFollowup(question,prior,hasAttachments||hasCurrentInputReadings)??source?.request??null;
+ const explicitFileQuestion=literalRequest?null:explicitWorkingFileSummary(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitPinnedPlaceFollowup(question,prior,hasAttachments||hasCurrentInputReadings)??source?.request??null;
  const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
  const namedCorrection=literalRequest?null:explicitSavedKnowledgeCorrection(question,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);

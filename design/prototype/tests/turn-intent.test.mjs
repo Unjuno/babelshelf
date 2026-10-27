@@ -267,3 +267,12 @@ test('read-only answer commands for the pinned file bypass planning without swal
  assert.equal(route({question:text,hasAttachments:true}).explicitFileQuestion,null);
  assert.equal(route({question:text,prior:{...prior,currentFile:undefined,turns:[]}}).explicitFileQuestion,null);
 });
+
+test('a single explicit current-file summary selects only its pinned source',()=>{
+ for(const question of ['このファイルを短く要約してください。','このメモをまとめて。','Please summarize this file briefly.','Summarize the current document.']){
+  const intent=route({question});assert.deepEqual(intent.request,{action:'summary',query:question,target:'file'},question);assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
+ }
+ for(const question of ['このファイルを要約して保存して。','このファイルを要約して、別のファイルを削除して。','Summarize this file and email it.','Summarize your last answer.','Summarize another file.'])assert.notEqual(route({question}).request?.action,'summary',question);
+ assert.equal(route({question:'このファイルを短く要約してください。',hasAttachments:true}).explicitFileQuestion,null);
+ assert.equal(route({question:'このファイルを短く要約してください。',prior:{...prior,currentFile:undefined}}).explicitFileQuestion,null);
+});
