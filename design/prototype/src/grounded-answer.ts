@@ -9,7 +9,7 @@ import {historyMessages,parseChatAnswer,type DialogueContext,type SourceRef} fro
 import {groundingQuery} from './current-input-scope.ts';
 import type {GenerationResult} from './text-inference.ts';
 import type {AgentCalculation} from './agent-evidence.ts';
-import {calculate} from './tools/math.calculate/tool.ts';
+import {checkedCalculation} from './agent-evidence.ts';
 import {dialogueOutputLimits,replyStyleInstruction,type ReplyStyle} from './reply-style.ts';
 import {exactMinutesBefore} from './time-answer.ts';
 import {harnessGuidanceMessage} from './harness-guidance.ts';
@@ -74,7 +74,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const styleInstruction=replyStyleInstruction(replyStyle);
  check();if(workingFile&&inputReadings.length)throw Error('Conflicting input scopes');
  const calculations=toolEvidence?.calculations??[];
- if(calculations.length>3||calculations.some(item=>typeof item.expression!=='string'||item.expression.length>200||!Number.isFinite(item.result)||item.precision!=='IEEE-754 binary64'||calculate(item.expression)!==item.result))throw Error('Invalid calculation result');
+ if(calculations.length>3)throw Error('Invalid calculation result');
+ for(const item of calculations)checkedCalculation(item);
  const calculationOnlyScope=!!(workingFile||inputReadings.length)&&!!toolEvidence?.used&&toolEvidence.refs.length===0&&calculations.length>0&&!toolEvidence.memoryUsed;
  if(toolEvidence&&(mode==='chat'||(workingFile||inputReadings.length)&&!calculationOnlyScope))throw Error('Conflicting tool evidence scope');
  query=groundingQuery(question,query,inputReadings.length>0);

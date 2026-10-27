@@ -3,8 +3,9 @@ import type {SourceRef} from './conversation.ts';
 import type {FileResult} from './file-discovery.ts';
 import type {ToolHost} from './tools/tool-host.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
+import {validateDecimalReceipt,type DecimalReceipt} from './decimal-receipt.ts';
 
-export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'};
+export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
 const maxObservedEvidenceRefs=12,maxObservedEvidenceChars=24_000;
 function deliverableHostResult(value:unknown):boolean{try{return new TextEncoder().encode(JSON.stringify(value)).byteLength<=24_000;}catch{return false;}}
 function validSourceRef(value:unknown):value is SourceRef{
@@ -40,9 +41,10 @@ export function observeCustomToolHost(host:ToolHost,observe:(refs:SourceRef[])=>
   async resolve(query,signal){const result=await host.resolve(query,signal);observe(agentReadEvidenceFromHost(result));return result;},
  };
 }
-function checkedCalculation(value:unknown):AgentCalculation{
+export function checkedCalculation(value:unknown):AgentCalculation{
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid calculation result');
  const row=value as Record<string,unknown>;
+ if(row.precision==='decimal')return validateDecimalReceipt(value);
  if(typeof row.expression!=='string'||row.expression.length>200||typeof row.result!=='number'||!Number.isFinite(row.result)||row.precision!=='IEEE-754 binary64'||calculate(row.expression)!==row.result)throw Error('Invalid calculation result');
  return {expression:row.expression,result:row.result,precision:'IEEE-754 binary64'};
 }

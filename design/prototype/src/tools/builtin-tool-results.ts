@@ -2,8 +2,10 @@ import type {MemorySearchResult,MemoryPassageResult} from '../memory-search-type
 import {validateFileResults} from '../file-discovery.ts';
 import type {ToolNote,ToolHost} from './tool-host.ts';
 import type {createToolRegistry} from './tool-registry.ts';
+import {validateDecimalReceipt,type DecimalReceipt} from '../decimal-receipt.ts';
+import {calculate} from './math.calculate/tool.ts';
 
-export type CalculationToolResult={expression:string;result:number;precision:'IEEE-754 binary64'};
+export type CalculationToolResult={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
 export type BuiltinToolResults={
  'memory.search':MemorySearchResult[];
  'memory.read':ToolNote[];
@@ -38,7 +40,8 @@ function memoryReadResults(value:unknown):ToolNote[]{
 }
 
 function calculationResults(value:unknown):CalculationToolResult[]{
- if(!Array.isArray(value)||value.length!==1||!record(value[0])||!exactKeys(value[0],['expression','result','precision'])||typeof value[0].expression!=='string'||value[0].expression.length>200||typeof value[0].result!=='number'||!Number.isFinite(value[0].result)||value[0].precision!=='IEEE-754 binary64')throw Error('Invalid calculation result');
+ if(Array.isArray(value)&&value.length===1&&record(value[0])&&value[0].precision==='decimal')return [validateDecimalReceipt(value[0])];
+ if(!Array.isArray(value)||value.length!==1||!record(value[0])||!exactKeys(value[0],['expression','result','precision'])||typeof value[0].expression!=='string'||value[0].expression.length>200||typeof value[0].result!=='number'||!Number.isFinite(value[0].result)||value[0].precision!=='IEEE-754 binary64'||calculate(value[0].expression)!==value[0].result)throw Error('Invalid calculation result');
  return value as CalculationToolResult[];
 }
 
@@ -47,5 +50,7 @@ export async function runBuiltinTool<T extends BuiltinToolId>(registry:ToolRunne
  const value=await registry.run(id,args,host);
  if(id==='memory.search')return memorySearchResults(value) as BuiltinToolResults[T];
  if(id==='memory.read')return memoryReadResults(value) as BuiltinToolResults[T];
- return calculationResults(value) as BuiltinToolResults[T];
+ const result=calculationResults(value);
+ if(!record(args)||typeof args.expression!=='string'||result[0].expression!==args.expression)throw Error('Invalid calculation expression');
+ return result as BuiltinToolResults[T];
 }

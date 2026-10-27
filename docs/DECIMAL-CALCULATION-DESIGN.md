@@ -1,7 +1,9 @@
 # Decimal calculation transition
 
-Status: a standalone bounded decimal evaluator, candidate receipt validator and
-Node tests exist; they are not connected to the product or tool registry. Existing calculations use finite
+Status: a bounded decimal evaluator and receipt validator exist. Built-in result,
+agent projection and grounded-answer boundaries can validate either the decimal
+candidate or the legacy result; the registered calculator still emits only
+binary64, so the user-facing decimal switch is not implemented. Existing calculations use finite
 IEEE-754 binary64, including their tool result and independent receipt checks.
 The existing calculator must remain available to validate historical records.
 

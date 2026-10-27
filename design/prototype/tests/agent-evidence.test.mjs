@@ -40,6 +40,15 @@ test('agent calculations retain only exact local arithmetic and never become sou
  assert.throws(()=>projectAgentToolResult(call.tool,[{...call.result[0],expression:'1+'.repeat(101)+'1'}]),/Invalid calculation result/);
 });
 
+test('decimal tool results are independently verified without reinterpreting legacy binary results',async()=>{
+ const {makeDecimalReceipt}=await import('../src/decimal-receipt.ts');
+ const expression='0.1+0.2',receipt=makeDecimalReceipt(expression),call={tool:'math.calculate',arguments:{expression},result:[receipt]};
+ assert.deepEqual(agentCalculationsFromCalls([call]),[receipt]);
+ assert.deepEqual(projectAgentToolResult(call.tool,call.result),[receipt]);
+ assert.throws(()=>agentCalculationsFromCalls([{...call,result:[{...receipt,result:'0.4'}]}]));
+ assert.deepEqual(agentCalculationsFromCalls([{...call,result:[{expression,result:0.1+0.2,precision:'IEEE-754 binary64'}]}])[0].result,0.1+0.2);
+});
+
 test('answer evidence is reconstructed only from exact bounded registered read/search results',()=>{
  const calls=[
   {tool:'memory.search',arguments:{query:'a'},result:[{noteId:'n1',revision:2,start:5,end:10,quote:'quote',title:'Notes/a.md'},{noteId:'fake',revision:0,start:1,end:0,quote:'bad'}]},
