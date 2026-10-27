@@ -58,3 +58,28 @@ test('skipping a schedule from another timezone leaves the occurrence and histor
  const result=await page.evaluate(async id=>new Promise<any[]>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').getAll();q.onsuccess=()=>resolve(q.result.filter((n:any)=>n.id===id||n.ui?.recordType==='execution'||n.ui?.recordType==='notification'));tx.oncomplete=()=>db.close();};}),note.id);
  expect(result).toEqual([note]);
 });
+
+test('a due schedule in another timezone does not block local due work',async({page})=>{
+ const local=Intl.DateTimeFormat().resolvedOptions().timeZone,other=local==='Asia/Tokyo'?'America/New_York':'Asia/Tokyo';
+ const base={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',enabled:true,notify:false};
+ const foreign={...base,timezone:other,prompt:'Foreign timezone fixture'},matching={...base,timezone:local,prompt:'Local overdue fixture'};
+ const due=new Date(Date.now()-600000).toISOString();
+ const make=(task:any,id:string,path:string)=>{const note=createNote({path,body:formatTask(task)});note.id=id;note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(task),nextAt:due};return note;};
+ const a=make(foreign,'00000000-0000-4000-8000-000000000001','Schedule/foreign-fixture.md'),b=make(matching,'ffffffff-ffff-4fff-8fff-ffffffffffff','Schedule/local-fixture.md');
+ await page.goto('/');await navigate(page,'Memory');await page.evaluate(async records=>{await new Promise<void>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readwrite');for(const record of records)tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},[a,b]);
+ await page.reload();await navigate(page,'Schedule');await expect(page.locator('button.schedule-detail',{hasText:'Foreign timezone fixture'})).toContainText('Timezone changed');await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await expect(page.locator('button.schedule-detail',{hasText:'Local overdue fixture'})).toContainText('Missed',{timeout:10000});
+ const result=await page.evaluate(async()=>new Promise<any[]>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').getAll();q.onsuccess=()=>resolve(q.result.filter((n:any)=>n.ui?.recordType==='execution'));tx.oncomplete=()=>db.close();};}));
+ expect(result).toHaveLength(1);expect(result[0].revisions.at(-1).body).toContain(b.id);expect(result[0].revisions.at(-1).body).toContain('"status": "missed"');
+});
+
+import {claimTaskRun} from '../src/task-records';
+test('a run owned by another tab does not block another local due schedule',async({page})=>{
+ const local=Intl.DateTimeFormat().resolvedOptions().timeZone,base={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',enabled:true,notify:false,timezone:local};
+ const first={...base,prompt:'Other tab running fixture'},second={...base,prompt:'Second local overdue fixture'},due=new Date(Date.now()-600000).toISOString(),now=new Date();
+ const make=(task:any,id:string,path:string)=>{const note=createNote({path,body:formatTask(task)});note.id=id;note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(task),nextAt:due};return note;};
+ const a=make(first,'00000000-0000-4000-8000-000000000001','Schedule/other-tab.md'),b=make(second,'ffffffff-ffff-4fff-8fff-ffffffffffff','Schedule/second-local.md'),run=claimTaskRun([a],a.id,'other-tab',now,{manual:true}).run;
+ await page.goto('/');await navigate(page,'Memory');await page.evaluate(async records=>{await new Promise<void>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readwrite');for(const record of records)tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},[a,b,run]);
+ await page.reload();await navigate(page,'Schedule');await expect(page.locator('button.schedule-detail',{hasText:'Other tab running fixture'})).toContainText('Running');await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await expect(page.locator('button.schedule-detail',{hasText:'Second local overdue fixture'})).toContainText('Missed',{timeout:10000});
+ const result=await page.evaluate(async()=>new Promise<any[]>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').getAll();q.onsuccess=()=>resolve(q.result.filter((n:any)=>n.ui?.recordType==='execution'));tx.oncomplete=()=>db.close();};}));
+ expect(result).toHaveLength(2);expect(result.find(n=>n.id===run.id)).toEqual(run);expect(result.find(n=>n.id!==run.id).revisions.at(-1).body).toContain(b.id);
+});

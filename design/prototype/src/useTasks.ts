@@ -35,8 +35,15 @@ export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boo
  async function read(id:string){await knowledge.readNotification(id);await latest.current.refresh();}
  useEffect(()=>{if(!ready)return;let stopped=false;
   const poll=async()=>{if(stopped||document.visibilityState!=='visible'||locked.current||isBlocked())return;
-   try{const fresh=taskViews(await knowledge.views());const due=fresh.tasks.find(t=>t.enabled&&!t.requiresReview&&t.nextAt&&new Date(t.nextAt)<=new Date()&&!fresh.executions.some(r=>r.taskId===t.id&&r.definition===taskDefinition(t)&&r.dueAt===t.nextAt&&r.status!=='running'));
-    if(due)await run(due.id,false,false);else await latest.current.refresh();
+   try{const fresh=taskViews(await knowledge.views()),timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;const due=fresh.tasks.filter(t=>t.enabled&&!t.requiresReview&&t.timezone===timezone&&t.nextAt&&new Date(t.nextAt)<=new Date()&&!fresh.executions.some(r=>r.taskId===t.id&&r.definition===taskDefinition(t)&&r.dueAt===t.nextAt&&r.status!=='running'));
+    if(!due.length)await latest.current.refresh();
+    for(const task of due){if(stopped||document.visibilityState!=='visible'||locked.current||isBlocked())break;
+     try{await run(task.id,false,false);break;}catch(error){
+      // A different tab can own a still-live occurrence. The atomic claim
+      // checks its current heartbeat; try the next due task without changing it.
+      if((error as Error).message==='Occurrence already running')continue;throw error;
+     }
+    }
    }catch(e){if(!/already|not due|disabled|Timezone changed|Model busy/.test((e as Error).message))setError((e as Error).message);}
   };
   const timer=setInterval(poll,15000);const resume=()=>{if(document.visibilityState==='visible')void poll();};document.addEventListener('visibilitychange',resume);void poll();

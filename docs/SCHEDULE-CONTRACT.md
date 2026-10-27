@@ -1,5 +1,7 @@
 # Canonical tasks, runs and notifications
 
+Foreground polling excludes schedules from other timezones. A live occurrence owned by another tab cannot block other due tasks: the atomic claim checks the current lease, and a live-owner refusal moves polling to the next candidate. An expired lease still records an interrupted run and requires explicit retry. No background wakeup or timing guarantee is implied.
+
 If the local timezone no longer matches the schedule, Skip refuses before creating a run or advancing its cursor. If it changes while a recurring run is in flight, successful completion is retained, but its cursor stays at that occurrence and the schedule requires user review; review recalculates explicitly in the chosen local timezone. Completed one-off runs clear their occurrence without recalculation. Claiming a review-required schedule is refused at the storage boundary even for manual runs. Existing histories are not rewritten.
 
 Custom intervals recompute each occurrence using the requested local wall time rather than carrying a normalized clock time forward. During a daylight-saving gap JavaScript normalizes that specific nonexistent time; later dates return to the requested time. Existing stored occurrence cursors are not rewritten by this change, to preserve claims and histories; their next future calculation uses the corrected rule. This does not guarantee wakeup, delivery, or all timezone transitions.
