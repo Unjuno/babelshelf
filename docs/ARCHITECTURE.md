@@ -1,3 +1,7 @@
+## Mixed stored-file discovery — 2026-10-27
+
+Stored search alternates independently ranked metadata and text hits within the shared result budget, deduplicating by note ID and preferring a validated passage when both lists identify the same file. File-only hits remain navigation metadata, not citable content; the bound and source admission remain unchanged. This prevents many filename-only matches from excluding every text match, but is not exhaustive retrieval or proof of semantic relevance.
+
 ## Stored-file discovery ranking — 2026-10-27
 
 Stored-file discovery reserves the best ranked passage for each matching note before filling spare result slots with other passages. This prevents a long file from occupying the entire bounded result set before the UI groups by file. Grounded passage search and source offsets are unchanged; the existing 12-result cap and relevance ranking still limit discovery.

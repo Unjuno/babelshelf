@@ -284,3 +284,12 @@ test('search presents both matching files when one long file has many matching p
  await expect(page.getByText('Found · 2',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inbox/QA-long-water.md',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inbox/QA-other-water.md',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Inbox/QA-other-water.md',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('水を確認する。');
 });
+
+test('filename matches cannot hide a distinct matching note body',async({page})=>{
+ const filenames=Array.from({length:12},(_,i)=>createNote({path:`Inbox/water-${i}.md`,title:`water-${i}`,body:''}));
+ const body=createNote({path:'Inbox/meeting.md',title:'meeting',body:'Remember to bring water.'});
+ await sourceFixture(page,[...filenames,body]);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('textbox',{name:'Message'}).fill('search: water');await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.getByText('Remember to bring water.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inbox/meeting.md',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Inbox/water-0.md',exact:true})).toBeVisible();await page.getByRole('button',{name:'Inbox/meeting.md',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('Remember to bring water.');
+});

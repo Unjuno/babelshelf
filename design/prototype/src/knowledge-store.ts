@@ -3,7 +3,7 @@ import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorr
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
-import {findStoredFiles} from './file-discovery.ts';
+import {findStoredFiles,mergeStoredSearchResults} from './file-discovery.ts';
 import type {MemorySearchResult,MemoryPassageResult} from './memory-search-types.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
@@ -338,7 +338,7 @@ export class KnowledgeStore {
  async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
  search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
  search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
- async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[],ids=new Set(text.map(result=>result.noteId));return [...findStoredFiles(records,query).filter(file=>!ids.has(file.noteId)),...text].slice(0,12);}
+ async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
