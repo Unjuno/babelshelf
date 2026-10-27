@@ -99,6 +99,9 @@ test('explicit natural-language Memory searches skip model routing and keep the 
   ['青いランタンについて保存したメモを探して','青いランタン'],
   ['「青いランタン」について保存したメモを探して','青いランタン'],
   ['『青いランタン』について保存したメモを探して','青いランタン'],
+  ['保存した集合場所のメモを探して。','集合場所'],
+  ['保存済みの避難準備のノートを検索してください。','避難準備'],
+  ['私の「旅行」の文書を見つけて。','旅行'],
  ]){
   const before=structuredClone(prior),literalRequest=question.startsWith('Find')?{action:'search',query:'my notes about the blue lantern meeting'}:null,intent=route({question,literalRequest});
   assert.deepEqual(intent.request,{action:'search',query,target:'knowledge'});
@@ -108,6 +111,11 @@ test('explicit natural-language Memory searches skip model routing and keep the 
   const result=await router.resolveTurnRoute({current:intent.request,question,select:async()=>{routed++;return {request:null,reason:'ambiguous'};},plan:async()=>{routed++;return {action:'chat',query:''};},check:()=>{}});
   assert.equal(result.source,'explicit');assert.equal(routed,0);
  }
+});
+
+test('saved-topic search does not absorb compound instructions or ambiguous targets',()=>{
+ for(const question of ['保存したメモを探して。','保存した集合場所のメモを探して保存して。','保存した集合場所のメモを探して、削除して。','前の会話で保存した集合場所のメモを探して。','保存したこのメモを探して。'])assert.equal(router.explicitSavedKnowledgeSearch(question),null,question);
+ assert.equal(router.explicitSavedKnowledgeSearch('保存した集合場所のメモを探して。',true),null);
 });
 
 test('explicit saved-note open commands select a direct read route without changing context',async()=>{

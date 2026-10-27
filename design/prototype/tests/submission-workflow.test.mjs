@@ -213,7 +213,7 @@ test('a literal sourced answer acquires through the local ownership manager only
 });
 
 test('explicit Memory search still lists results with no configured model or completion inference',async()=>{
- for(const text of ['search: 集合場所','集合場所について保存したメモを探して']){
+ for(const text of ['search: 集合場所','集合場所について保存したメモを探して','保存した集合場所のメモを探して。']){
   const f=fixture(),c=createSubmissionController(),note=createNote({title:'Meeting',body:'集合場所は北口。',path:'Notes/meeting.md'});
   f.services.knowledge={search:async query=>searchNotes([note],query)};
   f.services.builtinToolRegistry=createToolRegistry([{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search.'},{path:'Tools/memory.search/tool.ts',body:'Trusted adapter.'}],run:searchRun}]);

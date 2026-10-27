@@ -44,7 +44,9 @@ export function explicitSavedKnowledgeSearch(question:string,currentInputs=false
  const englishReverse=/^(?:please\s+)?(?:find|search|look\s+(?:for|up))\s+(?:for\s+)?(.{2,140}?)\s+in\s+(?:(?:my|saved|stored)\s+)?(?:notes?|files?|documents?|records?)[?.!]*$/iu;
  const japanese=/(?:^|\s)(.{2,120}?)(?:について|に関する)\s*(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|検索|見つけて)[。！？?！]*$/u;
  const japaneseReverse=/^(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:から|で)\s*(.{2,120}?)(?:を)?(?:探して|検索して|見つけて)[。！？?！]*$/u;
- const found=english.exec(text)??englishReverse.exec(text)??japanese.exec(text)??japaneseReverse.exec(text);if(!found)return null;
+ const japanesePossessive=/^(?:保存した|保存済みの|自分の|私の)(.{2,120}?)の(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|見つけて)(?:ください|下さい)?[。！？?!]*$/u;
+ const named=japanesePossessive.exec(text);if(named&&(/[\r\n\0,、;；。！？?!]/u.test(named[1])||/(?:保存して|削除|変更|訂正|修正|実行|送信|メール|検索して|探して|開いて|要約して|それから)/u.test(named[1])||/^(?:これ|それ|あれ|この|その|あの)$/u.test(named[1])))return null;
+ const found=english.exec(text)??englishReverse.exec(text)??japanese.exec(text)??japaneseReverse.exec(text)??named;if(!found)return null;
  const query=savedSubjectQuery(found[1]);
  if(query.length<2||query.length>140||/[\r\n\0]/u.test(query)||/\s+(?:and|then)\s+(?:summari[sz]e|open|read|answer|explain|tell|show|compare|list|edit|delete|save|write)\b/iu.test(query))return null;
  return {action:'search' as const,query,target:'knowledge' as const};
