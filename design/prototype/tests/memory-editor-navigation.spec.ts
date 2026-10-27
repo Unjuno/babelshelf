@@ -276,3 +276,11 @@ test('approved capture Save remains Saved rather than cancellation when the crea
  await page.goto('/');await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Approved capture body');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue('Approved capture body');await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('Approved capture body');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/');await expect(page.getByText('Save cancelled',{exact:true})).toHaveCount(0);await page.reload();await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/');
 });
+
+test('search presents both matching files when one long file has many matching passages',async({page})=>{
+ const long=createNote({path:'Inbox/QA-long-water.md',title:'水の備蓄',body:Array.from({length:16},()=> '水 水 水 水 水').join('\n\n')}),other=createNote({path:'Inbox/QA-other-water.md',title:'避難',body:'水を確認する。'});
+ await sourceFixture(page,[long,other]);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('textbox',{name:'Message'}).fill('search: 水');await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.getByText('Found · 2',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inbox/QA-long-water.md',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inbox/QA-other-water.md',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Inbox/QA-other-water.md',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('水を確認する。');
+});

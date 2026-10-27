@@ -134,3 +134,12 @@ test('stored-note discovery finds reviewed unsourced and stale generated files w
  assert.equal(core.searchStoredNotes([core.withdrawNote(calculation,1)],'Calculation99').length,0);
  assert.equal(core.searchNotes(notes,'Calculation99').length,0); // A discovery index cannot pollute evidence caching.
 });
+
+test('stored file search includes other matching files when one long note has many higher-ranked passages',()=>{
+ const long=core.createNote({title:'水の備蓄',body:Array.from({length:16},()=> '水 水 水 水 水').join('\n\n')});
+ const other=core.createNote({title:'避難',body:'水を確認する。'});
+ const before=structuredClone([long,other]);const hits=core.searchStoredNotes([long,other],'水',12);
+ assert.ok(hits.some(hit=>hit.noteId===long.id));assert.ok(hits.some(hit=>hit.noteId===other.id),'another matching file must remain discoverable');
+ const grounded=core.searchNotes([long,other],'水',12);assert.equal(grounded.length,12);assert.ok(grounded.every(hit=>hit.noteId===long.id),'grounded passage ranking is unchanged');
+ assert.deepEqual([long,other],before);for(const hit of hits){const note=[long,other].find(n=>n.id===hit.noteId);assert.equal(note.revisions[0].body.slice(hit.start,hit.end),hit.quote);}
+});

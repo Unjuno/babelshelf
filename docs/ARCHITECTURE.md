@@ -1,3 +1,7 @@
+## Stored-file discovery ranking — 2026-10-27
+
+Stored-file discovery reserves the best ranked passage for each matching note before filling spare result slots with other passages. This prevents a long file from occupying the entire bounded result set before the UI groups by file. Grounded passage search and source offsets are unchanged; the existing 12-result cap and relevance ranking still limit discovery.
+
 # Current application architecture
 
 ## Saved-note provenance — 2026-10-27

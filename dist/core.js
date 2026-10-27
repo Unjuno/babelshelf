@@ -72,11 +72,16 @@ export function searchStoredNotes(notes,query,limit=8){const map=new Map(notes.m
 function searchIndexedNotes(notes,query,limit,stored){
  const q=norm(query);if(!q)return [];
  const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),{docs,postings,avg}=buildNoteIndex(notes,false,stored),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
- return [...candidates].map(i=>{const d=docs[i];if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return null;let score=0;for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
+ const ranked=[...candidates].map(i=>{const d=docs[i];if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return null;let score=0;for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
   if(!score)return null;
   if(d.text.includes(q))score+=20;if(d.head.includes(q))score+=30;
   return {noteId:d.n.id,revision:d.v.version,title:d.v.title,...d.c,score};
- }).filter(h=>h&&h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,Math.max(1,Math.min(20,limit)));
+ }).filter(h=>h&&h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start);
+ const cap=Math.max(1,Math.min(20,limit));if(!stored)return ranked.slice(0,cap);
+ // Discovery shows one row per file. Reserve a slot for each matching file
+ // before filling spare slots with additional passages from the same file.
+ const seen=new Set(),first=[],extra=[];for(const hit of ranked){if(seen.has(hit.noteId))extra.push(hit);else{seen.add(hit.noteId);first.push(hit);}}
+ return first.concat(extra).slice(0,cap);
 }
 export function resolveLinks(note,notes){
  const text=latest(note).body;const matches=[...text.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((note:[a-zA-Z0-9-]+)\)/g)];
