@@ -111,6 +111,8 @@ test('explicit saved-note open commands select a direct read route without chang
   ['Open my note about the blue lantern meeting.','blue lantern meeting'],
   ['Read the saved file about evacuation maps','evacuation maps'],
   ['青いランタンについて保存したメモを開いて','青いランタン'],
+  ['「青いランタン」について保存したメモを開いて','青いランタン'],
+  ['『青いランタン』について保存したメモを開いて','青いランタン'],
  ]){
   const before=structuredClone(prior),intent=route({question,literalRequest:{action:'read',query:'my note about the blue lantern meeting.'},prior:{...prior,currentFile:undefined}});
   assert.deepEqual(intent.explicitSavedRequest,{action:'read',query,target:'knowledge'});

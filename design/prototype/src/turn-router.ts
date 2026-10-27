@@ -51,7 +51,8 @@ export function explicitSavedKnowledgeOpen(question:string,currentInputs=false){
  const japanese=/(?:^|\s)(.{2,120}?)(?:について|に関する)\s*(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:開いて|読んで|表示して)[。！？?！]*$/u;
  const japaneseReverse=/^(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:から|で|について)?\s*(.{2,120}?)(?:を)?(?:開いて|読んで|表示して)[。！？?！]*$/u;
  const found=english.exec(text)??japanese.exec(text)??japaneseReverse.exec(text);if(!found)return null;
- const query=found[1].trim().replace(/^['"“”‘’`]+|['"“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
+ const subject=found[1].trim(),unquoted=/^(?:「([^「」]+)」|『([^『』]+)』)$/u.exec(subject);
+ const query=(unquoted?(unquoted[1]??unquoted[2]):subject).trim().replace(/^['"“”‘’`]+|['"“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
  if(query.length<2||query.length>140||/[\r\n\0?？]/u.test(query)||/\s+(?:and|then)\s+(?:summari[sz]e|open|read|answer|explain|tell|show|compare|list|edit|delete|save|write)\b/iu.test(query))return null;
  return {action:'read' as const,query,target:'knowledge' as const};
 }
