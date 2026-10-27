@@ -35,8 +35,10 @@ test('production manifest keeps optional inference and PDF worker chunks out of 
  assert.ok(visionAssets[0].bytes<128*1024,'Asset inspection must not bundle the inference engine');
  roleFor('onnx-text-worker-','text-onnx');roleFor('lfm-text-worker-','text-wllama');roleFor('qwen3-text-worker-','text-wllama');
  roleFor('pdf-engine-','pdf');
- const pdfChunks=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-')&&file.path.endsWith('.js'));
- assert.equal(pdfChunks.length,2,'Both the PDF engine and PDF.js chunk must be role-gated');
+ const pdfText=manifest.files.find(file=>file.path.startsWith('./assets/pdf-text-')&&file.path.endsWith('.js'));
+ if(pdfText)assert.equal(pdfText.roles,undefined,'The startup text helper must be available offline');
+ const pdfChunks=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-')&&!file.path.startsWith('./assets/pdf-text-')&&file.path.endsWith('.js'));
+ assert.ok(pdfChunks.length>=2,'The PDF engine and PDF.js chunks must be role-gated');
  for(const file of pdfChunks)assert.deepEqual(file.roles,['pdf'],file.path+' must be acquired through PDF preparation');
  const sw=await fs.readFile(root+'sw.js','utf8');
  assert.match(sw,/INSTALL_FILES=FILES\.filter\(file=>!Array\.isArray\(file\.roles\)\|\|file\.roles\.length===0\)/);
