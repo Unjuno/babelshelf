@@ -23,6 +23,17 @@ test('a search topic answers the preceding clarification without a model',async(
  await expect(result.getByRole('button',{name:'Inbox/meeting-topic.md'})).toBeVisible();
 });
 
+test('cancel ends the clarification and leaves later calculation independent',async({page})=>{
+ await page.goto('/');
+ const message=page.getByRole('textbox',{name:'Message'}),send=page.getByRole('button',{name:'Send',exact:true});
+ await message.fill('保存したメモを探して'); await send.click();
+ await expect(page.locator('.sent-message').last()).toContainText('What should I search for?');
+ await message.fill('キャンセル'); await send.click();
+ await expect(page.locator('.sent-message').last()).toContainText('Search cancelled');
+ await message.fill('１２＋８'); await send.click();
+ await expect(page.locator('.sent-message').last()).toContainText('20');
+});
+
 test('deleted search result reports unavailability without leaving input',async({page})=>{
  await page.goto('/'); await navigate(page,'Memory');
  await page.getByRole('button',{name:'Open Inbox'}).click();

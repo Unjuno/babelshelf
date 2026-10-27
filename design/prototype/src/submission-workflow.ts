@@ -10,7 +10,7 @@ import {explicitCalculationInput} from './explicit-calculation.ts';
 import {runCalculationAction} from './calculation-action.ts';
 import {planningContextForInputs,groundingQuery} from './current-input-scope.ts';
 import {workingFileNote,workingFileMetadata} from './working-file.ts';
-import {resolveSubmittedTurnIntent,resolveTurnRoute,scopeResolvedTurnRequest,unspecifiedSavedSearch,clarifiedSavedSearch} from './turn-router.ts';
+import {resolveSubmittedTurnIntent,resolveTurnRoute,scopeResolvedTurnRequest,unspecifiedSavedSearch,clarifiedSavedSearch,cancelClarifiedSavedSearch} from './turn-router.ts';
 import {routeWithDecision} from './decision-routing.ts';
 import {readInputOriginal} from './automatic-reading.ts';
 import {createAutomaticReadingAdapters} from './automatic-reading-adapters.ts';
@@ -123,6 +123,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const imported:Note[]=saved.map(projectNote);
    view.consume(text);if(items.length)await refreshStorage();setChatProgress('');checkSend();
    if(unspecifiedSavedSearch(text,items.length>0)){await finishTurn(id,{status:'What should I search for?',refs:[]});return {kind:'displayed'};}
+   if(cancelClarifiedSavedSearch(text,prior,items.length>0)){await finishTurn(id,{status:'Search cancelled',refs:[]});return {kind:'displayed'};}
    let inputReadings:CurrentInputRef[]=sent.flatMap<CurrentInputRef>(a=>a.reading?[a.reading]:a.status==='Text available'?[{kind:'text',noteId:a.id,revision:1}]:[]);const intent=resolveSubmittedTurnIntent({question:text,literalRequest:localRequest(text.trimStart()),hasAttachments:items.length>0,hasCurrentInputReadings:inputReadings.length>0,prior,attachments:sent.map(({name,kind,status})=>({name,kind,status}))});const {literalRequest,explicitSavedRequest,sourceFile,inputQuestion}=intent;let {request,context}=intent;
    if(!request)request=clarifiedSavedSearch(text,prior,items.length>0);
    if(context.outcomeOnly){await trace('dialogue.read',{scope:'recorded-outcomes',source:'submitted-dialogue-snapshot'},async()=>structuredClone(context.recalled??[]));checkSend();}
