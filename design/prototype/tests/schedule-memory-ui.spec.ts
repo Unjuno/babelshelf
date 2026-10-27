@@ -33,3 +33,15 @@ test('a schedule edited in Memory updates the Schedule view and notification del
  await navigate(page,'Notifications');
  await expect(page.getByText('In-app only',{exact:true})).toBeVisible();
 });
+
+test.describe('custom schedule across daylight-saving change',()=>{
+ test.use({timezoneId:'America/New_York'});
+ test('the next day returns to the chosen local time and remains paused',async({page})=>{
+  await page.clock.setFixedTime(new Date('2026-03-08T08:00:00Z'));await page.goto('/');await navigate(page,'Schedule');
+  await page.getByRole('button',{name:'New schedule'}).click();await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Check supplies');
+  await page.getByRole('button',{name:'Repeat',exact:true}).click();await page.getByRole('button',{name:'Custom',exact:true}).click();
+  await page.getByRole('textbox',{name:'Schedule date'}).fill('2026-03-08');await page.getByRole('textbox',{name:'Repeat interval'}).fill('1');await page.getByRole('textbox',{name:'Schedule time'}).fill('02:30');
+  await expect(page.locator('.next-occurrence')).toContainText('3/9/2026, 2:30:00 AM');await page.getByRole('button',{name:'Save',exact:true}).click();
+  await expect(page.locator('button.schedule-detail',{hasText:'Check supplies'})).toContainText('Paused');
+ });
+});
