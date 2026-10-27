@@ -73,9 +73,9 @@ function searchIndexedNotes(notes,query,limit,stored){
  const q=norm(query);if(!q)return [];
  const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),scriptTerms=terms.filter(t=>!lexical.has(t)&&Array.from(t).length>=2),{docs,postings,avg}=buildNoteIndex(notes,false,stored),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
  const ranked=[...candidates].map(i=>{const d=docs[i];if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return null;
-  // A mixed-script query should not match solely on a generic one- or
-  // two-letter Latin fragment. Preserve script partials and meaningful words.
-  if(scriptTerms.length&&lexical.size&&!scriptTerms.some(t=>d.text.includes(t)||d.head.includes(t))&&![...lexical].some(t=>(Array.from(t).length>2||/[\p{Nd}_-]/u.test(t))&&(d.textWords.includes(t)||d.headWords.includes(t))))return null;
+  // Short Latin or numeric fragments alone are weak evidence for a query
+  // that also contains non-Latin text. Keep standalone numeric searches.
+  if(scriptTerms.length&&lexical.size&&!scriptTerms.some(t=>d.text.includes(t)||d.head.includes(t))&&![...lexical].some(t=>(Array.from(t).length>2||/[_-]/u.test(t))&&(d.textWords.includes(t)||d.headWords.includes(t))))return null;
   let score=0;for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
   if(!score)return null;
   if(d.text.includes(q))score+=20;if(d.head.includes(q))score+=30;

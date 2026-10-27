@@ -92,6 +92,15 @@ test('mixed-script search ignores a short Latin fragment alone while retaining m
   assert.ok(search([longLatin],'Aurora避難案内').some(hit=>hit.noteId===longLatin.id));
  }
 });
+
+test('a mixed Japanese search does not match an unrelated one-digit number alone',()=>{
+ const wanted=core.createNote({title:'QA湯の水は2リットル',body:'QA湯の水は2リットル。'}),noise=core.createNote({title:'Vision',body:'Frame at 2.300 s CU'});
+ for(const search of [core.searchNotes,core.searchStoredNotes]){
+  assert.deepEqual(search([noise],'QA湯の水は2リットル'),[]);
+  assert.ok(search([noise,wanted],'QA湯の水は2リットル').some(hit=>hit.noteId===wanted.id));
+  assert.ok(search([noise],'2').some(hit=>hit.noteId===noise.id));
+ }
+});
 test('hybrid lexical search retains multilingual aliases and exact UTF-16 citation ranges',()=>{
  const n=core.createNote({body:'🪴備蓄。\n\n'.repeat(150)+'台帳 ABC_7294 を確認。',aliases:['Aurora Ledger']});
  const distractor=core.createNote({body:'台帳 ABC_72940 を確認。'});
