@@ -320,3 +320,11 @@ test('explicit previous user message uses a bounded original exchange without ch
  for(const question of ['私が以前言った挨拶は何ですか？','私が直前に言った挨拶は何ですか？そして保存して','私が直前に言った挨拶と以前の会話を比較して'])assert.notDeepEqual(route({question,prior:state}).request,{action:'chat',query:question},question);
  assert.notDeepEqual(route({question:'私が直前に言った挨拶は何ですか？',prior:state,hasAttachments:true}).request,{action:'chat',query:'私が直前に言った挨拶は何ですか？'});
 });
+
+test('explicit opened-file requests to explain named contents keep the pinned file scope',()=>{
+ const question='このファイルの集合場所と持ち物を日本語で教えてください。';
+ assert.deepEqual(router.explicitWorkingFileQuestion(question,true),{action:'answer',query:question,target:'file'});
+ for(const text of ['このファイルの集合場所を教えて保存してください。','このファイルの内容を削除して教えてください。','別のファイルの内容を教えてください。'])assert.equal(router.explicitWorkingFileQuestion(text,true),null,text);
+ assert.equal(router.explicitWorkingFileQuestion(question,false),null);
+ assert.equal(router.explicitWorkingFileQuestion(question,true,true),null);
+});
