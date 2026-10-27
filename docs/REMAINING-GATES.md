@@ -1,3 +1,7 @@
+## Public v264 opened-file question trial (2026-10-27)
+
+PC sidebar browser, app Offline, active worker ac8b3fad81c71f39 / index-Ds27Lj6w.js. With QA-draft-v179.md v1 selected, 'このファイルの集合場所と持ち物を日本語で教えてください。' previously ended in Input exceeds context limit after roughly 80 seconds. In v264, after model warmup, actual local generation answered '集合場所は北口。持ち物は青いノート。' and its source opened the correct v1 original containing both facts. Initial warmup exceeded 20 seconds; answer arrived by the 60-second observation. One example, not a general quality or performance benchmark. Original and history unchanged; no mobile or offline cold-restart evidence.
+
 ## Public v263 file-name correction trial (2026-10-27)
 
 PC sidebar browser, active worker 299e1fb528c3992f / index-tutj93Id.js. In New file, bad/name showed 'Enter a name without slashes'; after changing the name the error disappeared and the draft body remained. The synthetic draft was discarded, no file created, and app returned Offline. Isolated PC browser tests verified invalid-name recovery and retained Trash-conflict recovery when editing content; product build passed. One update check applied this build. This does not establish behavior on iPhone or offline cold restart.
