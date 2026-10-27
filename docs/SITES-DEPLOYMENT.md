@@ -1,3 +1,9 @@
+# Public v213 — historical citation version context (2026-10-27)
+
+App 9468a1e on codex/ui-design-handoff delivers build 048529bf547b6658 /135 verified assets, entry index-C9GGE7nj.js. Site source 043cb6793682a506160c82e0757f117783068046; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_ecfbb4d113e08191a3cac834e9b2e5c1, deployment appgdep_6adff5fa05288191976d75dac862a178 succeeded 2026-10-27T00:53:30.132608+00:00. Native tar sha256:8dc89791d087588cf684a2cbcab1267b738d870590a3426905586487a5b83e96, 57210880 bytes/160 files. Public audience retained and v212 assets retained. Gzip/identity, method and offline-shell checks pass.
+
+Actual Windows sidebar local Offline: old QA星見 answer opens exact v1 text and shows Current file · v6, without a data write or model inference. Input draft and Offline restored. Public normal Update adopted active worker 048529bf547b6658 and matching page; Offline and retained older diagnostic report. Controlled Chromium and Windows WebKit2/2 each cover revised and removed sources; product6/6, static and build pass. Status is the direct-file snapshot at viewer opening, not a guarantee against later changes or validation of source ancestry. Physical devices, arbitrary model behavior and cold offline remain separate.
+
 # Public v212 — clear device performance rates (2026-10-27)
 
 App 1f453ff on codex/ui-design-handoff delivers build 9896221827f17e08 /135 byte/hash-verified assets, entry index-ClZ9j-GD.js. Site source 94059a7726854d4030b6bbce7dbd800f2ee6838f; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b7a3501c00808191a42bb658745daa1e, deployment appgdep_6adff4f00b188191964d592092e567dd succeeded 2026-10-27T00:49:04.650008+00:00. Native tar sha256:265dcd3d1a92ba356fff485e34bd921f74ac0464f69907ecddba66e8ad3f379b, 57210880 bytes/160 files. Public audience retained; current and v211 assets retained. Delivery gzip/identity, method and offline-shell checks pass.
