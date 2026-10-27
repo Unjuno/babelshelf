@@ -1,3 +1,9 @@
+# Public v212 — clear device performance rates (2026-10-27)
+
+App 1f453ff on codex/ui-design-handoff delivers build 9896221827f17e08 /135 byte/hash-verified assets, entry index-ClZ9j-GD.js. Site source 94059a7726854d4030b6bbce7dbd800f2ee6838f; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b7a3501c00808191a42bb658745daa1e, deployment appgdep_6adff4f00b188191964d592092e567dd succeeded 2026-10-27T00:49:04.650008+00:00. Native tar sha256:265dcd3d1a92ba356fff485e34bd921f74ac0464f69907ecddba66e8ad3f379b, 57210880 bytes/160 files. Public audience retained; current and v211 assets retained. Delivery gzip/identity, method and offline-shell checks pass.
+
+Sidebar normal Update adopted matching active worker/page; app Offline restored, previous 0aa313 Not prepared report remains, diagnostic logs Off. Limits visibly explains overall includes input processing, and runtime decode appears only when supplied. No new model load or measurement. PC Chromium and Windows WebKit controlled performance UI cases3/3 each; product6/6, static and build pass. This is not a physical iOS, model speed, quality, sustained or thermal result.
+
 # Public v211 — saved provenance and fresh current-source navigation (2026-10-27)
 
 App 39ceadb on codex/ui-design-handoff delivers build 5ad28cdd368689cf /135 independently byte/hash-verified assets, entry index-2kMzhcWr.js. Site source 99a436c37bba270f8b226ceb04fffb873adec782 retains new and previous public d2f assets;20 older generated assets pruned. Delivery gzip/identity, methods and offline-shell checks pass. One current archive reused. Saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_e89f6e0784e48191b228d713de53c7cd (v211); deployment appgdep_6adff3715af48191be45f9de651e57af succeeded 2026-10-27T00:42:43.365581+00:00. Native uncompressed tar sha256:94b87b4a1d5e4175bcc8b7d4453b2f9434491bb5de3a5f3608c4efa8138e70f5, 57210880 bytes/160 files. Public audience preserved.
