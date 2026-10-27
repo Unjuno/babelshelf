@@ -18,8 +18,8 @@
     },
     {
       "path": "./core.js",
-      "bytes": 12447,
-      "sha256": "5173a542420449a0c7c4969327cc8565d2da05114bfbea831fd22cdd8cd25fac"
+      "bytes": 12976,
+      "sha256": "4b4a5a27bdf7d72efdbdebcc50a890d36f2bd6a2cf0d66c13cababa73f2bdb1f"
     },
     {
       "path": "./diagnostics.js",
@@ -28,8 +28,8 @@
     },
     {
       "path": "./engine.js",
-      "bytes": 2345,
-      "sha256": "0445a3d3a9d4774242f2f514159fbdfeeb9a851fd2c9b979148dd0e8b6a7d5ab"
+      "bytes": 3122,
+      "sha256": "bf3d72ca065bba39e5888962fde1112ad676a0eda7e7caa08c46e34c136d3592"
     },
     {
       "path": "./files.js",
@@ -184,7 +184,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "0b369852b5327f1144dc94ef1d6664a69e74f2fb0204f541bcc2f706a25454b2"
+      "sha256": "86211f8f64176c060bbcfa7a89f4a668c7521aaa550738ae74fca6b7b11d29e3"
     },
     {
       "path": "./ui.js",

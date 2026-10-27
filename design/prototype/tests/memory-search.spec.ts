@@ -19,6 +19,12 @@ test('a name held by a deleted file explains how to resolve it',async({page})=>{
  await page.getByRole('textbox',{name:'New file content'}).fill('New text'); await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save'}).click();
  await expect(page.getByRole('alert')).toContainText('Name used by a deleted file');
  await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('New text');
+ await page.getByRole('button',{name:'Restore deleted file'}).click();
+ await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('New text');
+ await expect(page.getByRole('alert')).toContainText('Restored');
+ await page.getByRole('textbox',{name:'File name'}).fill('new-name');
+ await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save'}).click();
+ await expect(page.getByText('Inbox/new-name.md',{exact:true})).toBeVisible();
 });
 
 test('a search topic answers the preceding clarification without a model',async({page})=>{
