@@ -18,3 +18,14 @@ test('unavailable status never claims a missing model or offers load and can be 
  assert.equal(controls.status,'Files unavailable');assert.equal(controls.load,false);assert.equal(controls.prepare,false);assert.equal(controls.retry,true);
  assert.equal(textModelControls({selected:true,custom:false,present:false,statusError:true,loaded:false,busy:true,downloads:true}).retry,false);
 });
+
+
+test('present model files do not imply that the required local runtime is ready',()=>{
+ const base={selected:true,custom:true,present:true,loaded:false,busy:false,downloads:false};
+ const missing=textModelControls({...base,runtime:'missing'});
+ assert.equal(missing.status,'Files present · Runtime not prepared');assert.equal(missing.load,false);assert.equal(missing.setup,true);
+ const checking=textModelControls({...base,runtime:'checking'});assert.equal(checking.status,'Files present · Checking runtime');assert.equal(checking.load,false);
+ const unavailable=textModelControls({...base,runtime:'unavailable'});assert.equal(unavailable.status,'Files present · Runtime check unavailable');assert.equal(unavailable.load,false);
+ const ready=textModelControls({...base,runtime:'ready'});assert.equal(ready.status,'Files present');assert.equal(ready.load,true);
+ assert.equal(textModelControls({...base,runtime:'missing',busy:true}).setup,false);
+});
