@@ -9,6 +9,18 @@ async function returnToInput(page:any){
  const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await expect(home).toHaveAttribute('aria-expanded','true');await home.click();
 }
 
+test('a name held by a deleted file explains how to resolve it',async({page})=>{
+ await page.goto('/'); await navigate(page,'Memory'); await page.getByRole('button',{name:'Open Inbox'}).click();
+ await page.getByRole('button',{name:'New file'}).click(); await page.getByRole('textbox',{name:'File name'}).fill('trash-conflict');
+ await page.getByRole('textbox',{name:'New file content'}).fill('Original retained'); await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'File actions'}).click(); await page.getByRole('button',{name:'Delete',exact:true}).click();
+ await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete'}).click();
+ await page.getByRole('button',{name:'New file'}).click(); await page.getByRole('textbox',{name:'File name'}).fill('trash-conflict');
+ await page.getByRole('textbox',{name:'New file content'}).fill('New text'); await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save'}).click();
+ await expect(page.getByRole('alert')).toContainText('Name used by a deleted file');
+ await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('New text');
+});
+
 test('a search topic answers the preceding clarification without a model',async({page})=>{
  await page.goto('/'); await navigate(page,'Memory'); await page.getByRole('button',{name:'Open Inbox'}).click();
  await page.getByRole('button',{name:'New file'}).click();

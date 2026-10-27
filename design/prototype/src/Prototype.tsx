@@ -920,15 +920,15 @@ export default function Prototype() {
   return dialogueCopyReview?<DialogueCopySource dialogue={dialogue.current} review={dialogueCopyReview} body={fileBody} busy={fileSaving} onSelect={chooseCopySource}/>:null;
  }
  async function createFile(){
-  if(fileSaver.current.busy)return;if(!storageReady)return toast('Saving');setCreationError('');setFileSaving(true);const turn=captureTurn;
+  if(fileSaver.current.busy)return;if(!storageReady)return toast('Saving');setCreationError('');setFileSaving(true);const turn=captureTurn;let attemptedPath='';
   try{const result=await fileSaver.current.save(async()=>{
-   const path=filePath(memoryCreationFolder(memoryScope,activeFolder,'file'),fileName,[...notes.map(n=>n.path),...allFolders]);
+   const path=filePath(memoryCreationFolder(memoryScope,activeFolder,'file'),fileName,[...notes.map(n=>n.path),...allFolders]);attemptedPath=path;
    const copy=dialogueCopyReview?reviewedDialogueCopy(dialogue.current,dialogueCopyReview,fileBody):undefined;
    const n:Note={id:crypto.randomUUID(),path,body:fileBody,version:1,history:[],kind:fileKind,sources:structuredClone(fileSources),...(copy??{})};
    setNotes(a=>[...a,n]);await flushStorage();return n;
   },async n=>{if(turn)await finishTurn(turn,{...(n.dialogueCopy?{readTurn:{turnId:n.dialogueCopy.turnId,index:n.dialogueCopy.turnIndex,speaker:n.dialogueCopy.speaker}}:{}),status:'Saved · '+n.path,refs:n.body.length?[{noteId:n.id,revision:1,start:0,end:Math.min(700,n.body.length),quote:n.body.slice(0,700),title:n.path}]:[]});});
   if(!result)return;const n=result.note;setFileSaveWarningId(result.acknowledgementError!==undefined?n.id:null);setCaptureTurn(null);setPage('memory');setOpened(n.id);setActiveFolder(n.path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setSheet(null,true,true);keyboard.hide();toast(result.acknowledgementError!==undefined?'Saved · conversation status unavailable':'Saved');
-  }catch(e){const message=(e as Error).message;try{await refreshStorage();}catch{}setCreationError(message);}finally{setFileSaving(false);}
+  }catch(e){let message=(e as Error).message;try{if(message==='Markdown path conflict'&&attemptedPath){const records=await knowledge.all();if(records.some(n=>n.state==='withdrawn'&&n.revisions.at(-1)?.path?.toLowerCase()===attemptedPath.toLowerCase()))message='Name used by a deleted file · choose another name or restore it from Trash';}await refreshStorage();}catch{}setCreationError(message);}finally{setFileSaving(false);}
  }
 
  async function createFolder(){if(fileSaver.current.busy)return;if(!metadataReady)return toast('Saving');setCreationError('');setFileSaving(true);try{const result=await fileSaver.current.save(async()=>{await flushStorage();await flushMetadata();const path=folderPath(memoryCreationFolder(memoryScope,activeFolder,'folder'),folderName,[...allFolders,...notes.map(n=>n.path)]);const created=await knowledge.createFolder(path,await folderWriter.current.committed());folderWriter.current.hydrate(created.folders,created.folders);return {path:created.path,next:created.folders};},async()=>{});if(!result)return;setExtraFolders(result.note.next);setActiveFolder(result.note.path);setMemoryScope('folder');setFolderName('');keyboard.hide();setSheet(null,true);}catch(e){setCreationError((e as Error).message);}finally{setFileSaving(false);}}
