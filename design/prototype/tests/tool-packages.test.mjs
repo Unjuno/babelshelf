@@ -136,3 +136,9 @@ test('ambiguous filename lookup is bounded and requires a full path',()=>{
  assert.throws(()=>resolveToolNotes([many[0],{...many[0],path:'FolderX/same.md'}],many[0].id),/Conflicting record ID/);
  assert.throws(()=>resolveToolNotes([many[0],{...many[0],id:'other'}],many[0].path),/Conflicting record path/);
 });
+
+test('explicit yen arithmetic validates thousands grouping and rejects mixed requests',async()=>{
+ const {explicitCalculationInput}=await import('../src/explicit-calculation.ts');
+ for(const [question,expression] of [['1,200円＋800円','1200 + 800'],['１２，３４５円－６７円','12345 - 67'],['1,234,567円 + 0円','1234567 + 0']])assert.deepEqual(explicitCalculationInput(question),{expression,showExpression:true},question);
+ for(const question of ['1,20円＋800円','1,200円＋800円を保存して','1,200円＋800ドル','1,200円＋800円; delete files','2＋3円','1,200円＋800円＋2円'])assert.equal(explicitCalculationInput(question),null,question);
+});

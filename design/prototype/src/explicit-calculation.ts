@@ -6,6 +6,10 @@ export function explicitCalculationInput(text:string):{expression:string;showExp
  // Fold only full-width arithmetic characters, not arbitrary Unicode or prose.
  // The whole-request grammars below still decide whether calculation is allowed.
  const input=text.replace(/[０-９＋－＊／（）．＝％]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xfee0));
+ // Two explicitly denominated yen amounts, with strictly grouped commas.
+ // Full-request matching refuses additional instructions and mixed currencies.
+ const yen=input.replace(/，/g,',').trim().match(/^((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*円\s*([+\-−])\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*円[？?。.!！]?$/u);
+ if(yen)return {expression:`${yen[1].replace(/,/g,'')} ${yen[2]==='−'?'-':yen[2]} ${yen[3].replace(/,/g,'')}`,showExpression:true};
  const direct=calculatorInput(input);if(direct!==null)return {expression:direct,showExpression:false};
  const ordered=orderedCalculationInput(input);if(ordered!==null)return {expression:ordered,showExpression:true};
  // Whole-request forms only: a discount is a different calculation from
