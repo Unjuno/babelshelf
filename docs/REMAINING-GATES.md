@@ -1,3 +1,7 @@
+## Public v260 previous-utterance trial (2026-10-27)
+
+PC sidebar browser, app Offline, active worker 023535e7555ce428 (index-zak1mUIn.js). After updating and loading the model, 'こんにちは' returned a greeting. The immediately following '私が直前に言った挨拶は何ですか？' returned 'あなたが直前に言った挨拶は「こんにちは」です。' within the first 12-second observation. Actual local model generation; one example and coarse timing, not general accuracy or a benchmark. Model warmup on the updated page took over 40 seconds before the greeting. Prior turns and selected QA file were retained. This route only covers explicitly bounded previous-user-message forms; other dialogue, device behavior and offline cold restart remain unverified by this trial.
+
 ## Public v259 warm conversation trial (2026-10-27)
 
 On the existing PC sidebar browser, app Offline, with the previously used model resident and a long accumulated dialogue, 'こんにちは' produced a real model greeting within the first 10-second observation. The following '私が直前に言った挨拶は何ですか？' was still selecting an action at 35 seconds and compacting at 55 and approximately 95 seconds; it was stopped, so answer correctness is unknown. Stopping completed and the input was cleared. The existing selected QA file and stored history were retained. This single run does not establish a general latency benchmark or iPhone behavior. Investigate bounded, speaker-aware recent-dialogue selection before broad compaction, preserving access to earlier context and not treating a narrower scope as evidence when the request is ambiguous.
