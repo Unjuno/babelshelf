@@ -1,3 +1,7 @@
+## Public v263 file-name correction trial (2026-10-27)
+
+PC sidebar browser, active worker 299e1fb528c3992f / index-tutj93Id.js. In New file, bad/name showed 'Enter a name without slashes'; after changing the name the error disappeared and the draft body remained. The synthetic draft was discarded, no file created, and app returned Offline. Isolated PC browser tests verified invalid-name recovery and retained Trash-conflict recovery when editing content; product build passed. One update check applied this build. This does not establish behavior on iPhone or offline cold restart.
+
 ## Public v262 schedule validation trial (2026-10-27)
 
 PC sidebar browser, app Offline, active worker e758f489250fee74 / index-DWld7RXI.js. In New schedule, monthly day 32 triggered 'Day must be 1–31'; after changing to 31 the stale alert disappeared and the correct next occurrence appeared while the prompt stayed. Discarded the synthetic draft without saving; selected QA file retained. One update check applied this build; that does not explain the earlier v261 delay. The 8 schedule UI tests and product build passed. This does not validate iPhone scheduling, notification delivery or background execution.
