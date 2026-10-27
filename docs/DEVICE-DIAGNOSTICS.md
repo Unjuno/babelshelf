@@ -1,5 +1,7 @@
 # Device diagnostics
 
+Performance display: **Overall speed** is output tokens divided by the entire generation call, including input processing. **Decode speed** appears only when the runtime reports it; it is not inferred from the overall rate. The existing report fields and old reports remain unchanged. Neither number establishes sustained or thermal performance.
+
 ## Optional load phases (2026-10-27)
 
 The WebML worker already measures verificationMs, importMs, runtimeLoadMs and totalLoadMs around actual asset verification, local runtime-module import and from_pretrained initialization (including its warmup). The Text hook now carries these values through the public inference port instead of discarding them. The port permits only finite nonnegative timings and an optional boolean runtimeModuleReused; adapter identities, prompt/output strings, arbitrary metadata and invalid counters are excluded. Device reports and copy handoffs share that projection. Older reports and runtimes without phase counters remain readable; unavailable counters are not filled with zero or inferred from the backend name.

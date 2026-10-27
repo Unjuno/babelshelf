@@ -43,6 +43,12 @@ test('saved timing results identify their model, time and build independently of
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
 });
 
+test('performance distinguishes total throughput from runtime decode speed',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34}}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await expect(page.getByText('Overall speed',{exact:true})).toBeVisible();await expect(page.getByText('7.42 tokens/s',{exact:true})).toBeVisible();await expect(page.getByText('Decode speed',{exact:true})).toBeVisible();await expect(page.getByText('12.34 tokens/s',{exact:true})).toBeVisible();
+});
+
 test('Settings keeps common choices visible and groups advanced actions under More',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
