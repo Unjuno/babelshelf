@@ -50,6 +50,28 @@ test('a file deleted in another tab cannot be opened from an old result',async({
  await expect(page.getByRole('textbox',{name:'Message'})).toBeVisible(); await other.close();
 });
 
+test('an old search result opens the same file after another tab renames it',async({page,context})=>{
+ await page.goto('/'); await navigate(page,'Memory'); await page.getByRole('button',{name:'Open Inbox'}).click();
+ await page.getByRole('button',{name:'New file'}).click();
+ await page.getByRole('textbox',{name:'File name'}).fill('before-rename');
+ await page.getByRole('textbox',{name:'New file content'}).fill('Original lantern text');
+ await page.getByRole('button',{name:'Save',exact:true}).click(); await returnToInput(page);
+ await page.getByRole('textbox',{name:'Message'}).fill('search: before-rename');
+ await page.getByRole('button',{name:'Send',exact:true}).click();
+ const result=page.getByRole('button',{name:'Inbox/before-rename.md',exact:true}); await expect(result).toBeVisible();
+ const other=await context.newPage(); await other.goto('/'); await navigate(other,'Memory');
+ await other.getByRole('button',{name:'Open Inbox'}).click(); await other.getByRole('button',{name:'Open before-rename.md'}).click();
+ await other.getByRole('button',{name:'Edit',exact:true}).click();
+ await other.getByRole('textbox',{name:'Markdown path'}).fill('Inbox/after-rename.md');
+ await other.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(other.getByText('Inbox/after-rename.md',{exact:true})).toBeVisible();
+ await result.click();
+ await expect(page.getByText('Inbox/after-rename.md',{exact:true})).toBeVisible();
+ await expect(page.locator('.file-body')).toContainText('Original lantern text');
+ await page.getByRole('button',{name:'History'}).click();
+ await expect(page.getByText('v1',{exact:true})).toBeVisible(); await other.close();
+});
+
 test('plain natural-language Memory search and open work offline without preparing a model',async({page,context})=>{
  await page.goto('/');await prepareOfflineShell(page);
  await navigate(page,'Memory');
