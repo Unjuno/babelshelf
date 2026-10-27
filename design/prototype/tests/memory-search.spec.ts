@@ -19,8 +19,10 @@ test('a name held by a deleted file explains how to resolve it',async({page})=>{
  await page.getByRole('textbox',{name:'New file content'}).fill('New text'); await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save'}).click();
  await expect(page.getByRole('alert')).toContainText('Name used by a deleted file');
  await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('New text');
+ await page.getByRole('textbox',{name:'New file content'}).fill('New text edited');
+ await expect(page.getByRole('button',{name:'Restore deleted file'})).toBeVisible();
  await page.getByRole('button',{name:'Restore deleted file'}).click();
- await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('New text');
+ await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('New text edited');
  await expect(page.getByRole('alert')).toContainText('Restored');
  await page.getByRole('textbox',{name:'File name'}).fill('new-name');
  await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save'}).click();
@@ -153,4 +155,12 @@ test('plain natural-language Memory search and open work offline without prepari
  await page.getByRole('button',{name:'Send',exact:true}).click();
  await expect(page.locator('.file-heading')).toContainText('Inbox/lantern-meeting.md');
  await expect(page.locator('.file-body')).toContainText('The blue lantern meeting is Tuesday at 14:30 at the north pier.');
+});
+
+test('correcting an invalid file name clears its stale error and preserves content',async({page})=>{
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'New file'}).click();
+ await page.getByRole('textbox',{name:'File name'}).fill('bad/name');await page.getByRole('textbox',{name:'New file content'}).fill('Draft remains');
+ await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.getByRole('alert')).toHaveText('Enter a name without slashes');
+ await page.getByRole('textbox',{name:'File name'}).fill('good-name');await expect(page.getByRole('alert')).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('Draft remains');
 });
