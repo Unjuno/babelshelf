@@ -51,6 +51,13 @@ test('1000 Japanese notes preserve specific evidence recall and aliases',()=>{
  assert.equal(core.searchNotes(notes,'試験742号')[0].noteId,notes[742].id);
  assert.equal(core.searchNotes(notes,'青葉プロジェクト')[0].noteId,notes[742].id);
 });
+test('current Markdown filename remains searchable after rename without altering originals or citation spans',()=>{
+ const original=core.createNote({title:'林檎会議',body:'集合場所は北口。',path:'Notes/林檎会議.md'}),renamed=core.reviseNote(original,{path:'Notes/避難案内.md'},1),before=structuredClone(renamed);
+ for(const search of [core.searchNotes,core.searchStoredNotes]){
+  const result=search([renamed],'避難案内');assert.equal(result[0]?.noteId,renamed.id);assert.equal(result[0].revision,2);assert.equal(renamed.revisions[1].body.slice(result[0].start,result[0].end),result[0].quote);
+ }
+ assert.equal(renamed.revisions[0].path,'Notes/林檎会議.md');assert.deepEqual(renamed,before);
+});
 test('Japanese English Chinese Korean and mixed input stay searchable',()=>{
  for(const [title,body,query] of [['ja','青葉会議の会場は京都です','青葉会議'],['en','The Aurora meeting room is Cedar Hall.','Aurora'],['zh','星河会议地点是上海。','星河会议'],['ko','새봄 회의 장소는 서울입니다.','새봄'],['mix','Aurora計画의 장소是京都。','Aurora計画']]){
   const n=core.createNote({title,body});assert.equal(core.searchNotes([n],query)[0]?.noteId,n.id);
