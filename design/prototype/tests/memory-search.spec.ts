@@ -65,6 +65,12 @@ test('an old search result opens the same file after another tab renames it',asy
  await other.getByRole('textbox',{name:'Markdown path'}).fill('Inbox/after-rename.md');
  await other.getByRole('button',{name:'Save',exact:true}).click();
  await expect(other.getByText('Inbox/after-rename.md',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'View source',exact:true}).last().click();
+ const source=page.getByRole('dialog',{name:'Source'});
+ await expect(source).toContainText('v1');
+ await expect(source).toContainText('Inbox/before-rename.md');
+ await expect(source).toContainText('Original lantern text');
+ await source.getByRole('button',{name:'Close'}).click();
  await result.click();
  await expect(page.getByText('Inbox/after-rename.md',{exact:true})).toBeVisible();
  await expect(page.locator('.file-body')).toContainText('Original lantern text');
