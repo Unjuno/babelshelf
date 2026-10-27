@@ -28,6 +28,14 @@ export function savedKnowledgeSearchQuery(question:string){
  return named?.[1].trim()||namedSavedSubject(question)?.trim()||question;
 }
 
+/** A standalone request without a subject cannot select a search query. */
+export function unspecifiedSavedSearch(question:string,currentInputs=false){
+ if(currentInputs)return false;
+ const text=question.trim();
+ return /^(?:保存した|保存済みの?|自分の|私の)(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|見つけて)(?:ください|下さい)?[。！!]*$/u.test(text)
+  || /^(?:please\s+)?(?:find|search|look for)\s+(?:my|saved|stored)\s+(?:notes?|files?|documents?)[.!]*$/iu.test(text);
+}
+
 // Remove one balanced Japanese quotation pair only when it surrounds the
 // entire subject. Interior and mismatched marks may be part of a filename.
 function savedSubjectQuery(value:string){

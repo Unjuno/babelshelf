@@ -24,6 +24,14 @@ function fixture(){
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
 }
 
+test('an unspecified saved-note search asks for a topic without acquiring a model or reading Memory',async()=>{
+ const f=fixture(),c=createSubmissionController();
+ f.services.knowledge={all:async()=>{throw Error('Unexpected read');},search:async()=>{throw Error('Unexpected search');}};
+ assert.equal(await c.run(run=>executeSubmission({text:'保存したメモを探して',attachments:[]},f.services,f.view,run)),'completed');
+ assert.equal(f.current().turns.at(-1).status,'What should I search for?');
+ assert.equal(f.modelCalls(),0);
+});
+
 test('saved-file correction searches canonical Memory before proposing changes, without using unrelated dialogue or pinned files',async()=>{
  const f=fixture(),c=createSubmissionController(),target=createNote({path:'Notes/meeting.md',body:'Bring water.'}),other=createNote({path:'Notes/other.md',body:'Unrelated file'}),records=[target,other],before=structuredClone(records),proposals=[],prompts=[];
  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'old',user:'UNRELATED-OLD-REQUEST',answer:'UNRELATED-OLD-ANSWER'}],compaction:{through:1,summary:'UNRELATED-SUMMARY'},currentFile:{noteId:other.id,revision:1},currentResult:{turnId:'old'}});const prior=structuredClone(f.current());

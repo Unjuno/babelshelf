@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as router from '../src/turn-router.ts';
 
+test('unspecified saved search excludes topics, context, compound actions and attachments',()=>{
+ for(const q of ['保存したメモを探して','保存済みのファイルを検索してください','Find my notes'])assert.equal(router.unspecifiedSavedSearch(q),true,q);
+ for(const q of ['保存した集合場所のメモを探して','保存したメモを探して要約して','さっきの保存したメモを探して','Find my notes about the meeting'])assert.equal(router.unspecifiedSavedSearch(q),false,q);
+ assert.equal(router.unspecifiedSavedSearch('保存したメモを探して',true),false);
+});
+
 const prior={schema:1,revision:1,turns:[{id:'turn-1',user:'What did we decide about the workshop?',answer:'Move it to Monday at 10.',refs:[{noteId:'meeting',revision:2,start:0,end:31,quote:'Workshop moved to Monday at 10.'}]}],compaction:null,currentFile:{noteId:'opened-file',revision:3}};
 
 test('saved-file planning keeps the agent loop but excludes unrelated dialogue and implicit current-file edits',()=>{
