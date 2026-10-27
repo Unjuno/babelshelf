@@ -28,6 +28,13 @@ export function savedKnowledgeSearchQuery(question:string){
  return named?.[1].trim()||namedSavedSubject(question)?.trim()||question;
 }
 
+// Remove one balanced Japanese quotation pair only when it surrounds the
+// entire subject. Interior and mismatched marks may be part of a filename.
+function savedSubjectQuery(value:string){
+ const subject=value.trim(),unquoted=/^(?:「([^「」]+)」|『([^『』]+)』)$/u.exec(subject);
+ return (unquoted?(unquoted[1]??unquoted[2]):subject).trim().replace(/^["'“”‘’`]+|["'“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
+}
+
 /** Only an imperative search that names saved Memory and a concrete topic is
  * deterministic. Questions, writes, attachments and vague searches keep their
  * existing routes so this optimization cannot guess the user's source. */
@@ -38,7 +45,7 @@ export function explicitSavedKnowledgeSearch(question:string,currentInputs=false
  const japanese=/(?:^|\s)(.{2,120}?)(?:について|に関する)\s*(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:探して|検索して|検索|見つけて)[。！？?！]*$/u;
  const japaneseReverse=/^(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:から|で)\s*(.{2,120}?)(?:を)?(?:探して|検索して|見つけて)[。！？?！]*$/u;
  const found=english.exec(text)??englishReverse.exec(text)??japanese.exec(text)??japaneseReverse.exec(text);if(!found)return null;
- const query=found[1].trim().replace(/^["'“”‘’`]+|["'“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
+ const query=savedSubjectQuery(found[1]);
  if(query.length<2||query.length>140||/[\r\n\0]/u.test(query)||/\s+(?:and|then)\s+(?:summari[sz]e|open|read|answer|explain|tell|show|compare|list|edit|delete|save|write)\b/iu.test(query))return null;
  return {action:'search' as const,query,target:'knowledge' as const};
 }
@@ -51,8 +58,7 @@ export function explicitSavedKnowledgeOpen(question:string,currentInputs=false){
  const japanese=/(?:^|\s)(.{2,120}?)(?:について|に関する)\s*(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:開いて|読んで|表示して)[。！？?！]*$/u;
  const japaneseReverse=/^(?:(?:保存した|保存済み|自分の|私の)\s*)?(?:メモ|ノート|ファイル|文書)(?:から|で|について)?\s*(.{2,120}?)(?:を)?(?:開いて|読んで|表示して)[。！？?！]*$/u;
  const found=english.exec(text)??japanese.exec(text)??japaneseReverse.exec(text);if(!found)return null;
- const subject=found[1].trim(),unquoted=/^(?:「([^「」]+)」|『([^『』]+)』)$/u.exec(subject);
- const query=(unquoted?(unquoted[1]??unquoted[2]):subject).trim().replace(/^['"“”‘’`]+|['"“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
+ const query=savedSubjectQuery(found[1]);
  if(query.length<2||query.length>140||/[\r\n\0?？]/u.test(query)||/\s+(?:and|then)\s+(?:summari[sz]e|open|read|answer|explain|tell|show|compare|list|edit|delete|save|write)\b/iu.test(query))return null;
  return {action:'read' as const,query,target:'knowledge' as const};
 }
@@ -66,7 +72,7 @@ export function explicitSavedKnowledgeSummary(question:string,currentInputs=fals
  const englishAbout=/^(?:(?:please|can you|could you|would you)\s+)?(?:(?:briefly|concisely)\s+)?summari[sz]e\s+(?:(?:my|the)\s+)?(?:saved|stored)\s+(?:notes?|files?|documents?|records?)\s+(?:about|on|for|named|titled)\s+(.{2,120}?)(?:\s+(?:briefly|concisely))?[.!?]*$/iu;
  const japanese=/^(?:保存した|保存済みの?|私の|自分の)(.{2,120}?)(?:についての|に関する|の)?(?:メモ|ノート|ファイル|文書)(?:を)?(?:短く|簡潔に|手短に)?(?:要約して|まとめて)(?:ください)?[。！？?!]*$/u;
  const found=englishNamed.exec(text)??englishAbout.exec(text)??japanese.exec(text);if(!found)return null;
- const query=found[1].trim().replace(/^["'“”‘’`]+|["'“”‘’`]+$/gu,'').replace(/^(?:the|a|an)\s+/iu,'').trim();
+ const query=savedSubjectQuery(found[1]);
  if(query.length<2||query.length>140||/[?？。.!！,、]/u.test(query)||/\b(?:and|then|also|send|email|upload|download|install|call)\b|(?:して|ください)/iu.test(query)||/^(?:これ|それ|あれ|この|その|あの|今の)$|^(?:this|that|these|those|it|them|current)\b/iu.test(query)||/\b(?:save|store|delete|remove|edit|update|rewrite|translate|execute|run|search|find|open|read|compare|schedule|notify|tools?|mcp)\b|(?:保存して|削除|上書|訂正|修正|実行|検索|比較|翻訳|ツール)/iu.test(query))return null;
  return {action:'summary' as const,query,target:'knowledge' as const};
 }

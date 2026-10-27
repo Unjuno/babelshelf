@@ -46,6 +46,8 @@ test('earlier application-outcome questions use original receipts instead of los
 test('a named saved-note summary has an explicit knowledge scope without unrelated dialogue',()=>{
  for(const [question,query] of [
   ['保存したQA星見のメモを短く要約して。','QA星見'],
+  ['保存した「QA星見」のメモを短く要約して。','QA星見'],
+  ['保存した『QA星見』のメモを短く要約して。','QA星見'],
   ['保存済みの避難準備のノートを簡潔にまとめてください。','避難準備'],
   ['Summarize my saved blue lantern meeting note briefly.','blue lantern meeting'],
   ['Please summarize the stored notes about the blue lantern meeting.','blue lantern meeting'],
@@ -95,6 +97,8 @@ test('explicit natural-language Memory searches skip model routing and keep the 
   ['Find my notes about the blue lantern meeting.','blue lantern meeting'],
   ['Search saved notes for evacuation maps','evacuation maps'],
   ['青いランタンについて保存したメモを探して','青いランタン'],
+  ['「青いランタン」について保存したメモを探して','青いランタン'],
+  ['『青いランタン』について保存したメモを探して','青いランタン'],
  ]){
   const before=structuredClone(prior),literalRequest=question.startsWith('Find')?{action:'search',query:'my notes about the blue lantern meeting'}:null,intent=route({question,literalRequest});
   assert.deepEqual(intent.request,{action:'search',query,target:'knowledge'});
