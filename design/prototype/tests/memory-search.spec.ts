@@ -29,6 +29,27 @@ test('deleted search result reports unavailability without leaving input',async(
  await expect(page.getByRole('textbox',{name:'Message'})).toBeVisible();
 });
 
+test('a file deleted in another tab cannot be opened from an old result',async({page,context})=>{
+ await page.goto('/'); await navigate(page,'Memory');
+ await page.getByRole('button',{name:'Open Inbox'}).click();
+ await page.getByRole('button',{name:'New file'}).click();
+ await page.getByRole('textbox',{name:'File name'}).fill('other-tab-delete');
+ await page.getByRole('textbox',{name:'New file content'}).fill('Cross-tab example');
+ await page.getByRole('button',{name:'Save',exact:true}).click(); await returnToInput(page);
+ await page.getByRole('textbox',{name:'Message'}).fill('search: other-tab-delete');
+ await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Inbox/other-tab-delete.md',exact:true})).toBeVisible();
+ const other=await context.newPage(); await other.goto('/'); await navigate(other,'Memory');
+ await other.getByRole('button',{name:'Open Inbox'}).click();
+ await other.getByRole('button',{name:'Open other-tab-delete.md'}).click();
+ await other.getByRole('button',{name:'File actions'}).click();
+ await other.getByRole('button',{name:'Delete',exact:true}).click();
+ await other.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete'}).click();
+ await page.getByRole('button',{name:'Inbox/other-tab-delete.md',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('File unavailable');
+ await expect(page.getByRole('textbox',{name:'Message'})).toBeVisible(); await other.close();
+});
+
 test('plain natural-language Memory search and open work offline without preparing a model',async({page,context})=>{
  await page.goto('/');await prepareOfflineShell(page);
  await navigate(page,'Memory');
