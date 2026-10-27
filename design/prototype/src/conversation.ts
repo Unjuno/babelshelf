@@ -23,8 +23,15 @@ export type DialogueOutcome={status:string}|{omitted:true};
 export const INTERRUPTED_TURN_STATUS='Request interrupted · send again if unfinished';
 // Old completed turns can retain the pre-generation recovery marker. Project
 // an honest outcome without migrating their originals, refs or stored history.
-export function dialogueTurnStatus(turn:Pick<DialogueTurn,'id'|'answer'|'status'>,activeTurnId?:string){
- return turn.status===INTERRUPTED_TURN_STATUS&&(!!turn.answer?.trim()||turn.id===activeTurnId)?undefined:turn.status;
+export function dialogueTurnStatus(turn:Pick<DialogueTurn,'id'|'answer'|'status'>&Partial<Pick<DialogueTurn,'activity'>>,activeTurnId?:string){
+ const status=turn.status===INTERRUPTED_TURN_STATUS&&(!!turn.answer?.trim()||turn.id===activeTurnId)?undefined:turn.status;
+ if(status)return status;
+ // Existing receipts are immutable. Label a verbatim recovery only when the
+ // completed receipt belongs to this exact displayed answer.
+ const receipt=turn.activity?.slice().reverse().find(item=>item.tool==='knowledge.answer'&&item.status==='succeeded');
+ const output=receipt?.output;
+ if(turn.answer&&output&&typeof output==='object'&&!Array.isArray(output)&&output.recovery==='verbatim-source'&&output.answer===turn.answer)return 'Source excerpt · original language';
+ return undefined;
 }
 export function dialogueOutcome(turn:Pick<DialogueTurn,'id'|'answer'|'status'>):DialogueOutcome|undefined{
  const status=dialogueTurnStatus(turn);if(!status?.trim())return undefined;

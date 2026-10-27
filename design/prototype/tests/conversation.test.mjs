@@ -988,3 +988,14 @@ test('file-scoped planning omits excluded dialogue payload without changing cano
  for(const request of ['What did I say earlier about this file?','前回の会話でこのファイルについて何を話した？','What time does the workshop start?'])assert.match(JSON.stringify(planDialogueMessages(request,context)),new RegExp(marker));
  const attached=[{name:'new.txt',kind:'text',status:'Read'}];assert.match(JSON.stringify(planDialogueMessages(question,context,attached)),new RegExp(marker));assert.deepEqual(context,before);
 });
+
+
+test('verbatim-source recovery is labelled from the matching completed answer receipt',()=>{
+ const activity={schema:1,id:'a',tool:'knowledge.answer',input:{},startedAt:'2026-01-01T00:00:00Z',status:'succeeded',finishedAt:'2026-01-01T00:00:01Z',output:{answer:'blue notebook',recovery:'verbatim-source'}};
+ const turn={id:'t',answer:'blue notebook',activity:[activity]};
+ assert.equal(conversation.dialogueTurnStatus(turn),'Source excerpt · original language');
+ assert.equal(conversation.dialogueTurnStatus({...turn,answer:'different'}),undefined);
+ assert.equal(conversation.dialogueTurnStatus({...turn,activity:[{...activity,status:'failed'}]}),undefined);
+ assert.equal(conversation.dialogueTurnStatus({...turn,activity:[{...activity,output:{answer:'blue notebook',recovery:'citation-retry'}}]}),undefined);
+ assert.equal(conversation.dialogueTurnStatus({...turn,status:'Saved'}),'Saved');
+});
