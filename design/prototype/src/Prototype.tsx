@@ -1,4 +1,6 @@
 import {NoteSources} from './NoteSources';
+import {StartupRecovery} from '../product/StartupRecovery';
+import {startupGate} from '../product/startup-recovery';
 import {cancelCaptureReview} from './capture-review';
 import {useComposerDraft} from './composer-draft';
 import {PendingCorrectionConflictError,validatePendingCorrection,pendingCorrectionProblem,PENDING_CORRECTION_STATE,type PendingCorrection} from './pending-correction';
@@ -1013,7 +1015,7 @@ export default function Prototype() {
  useEffect(()=>{const node=composerElement.current;if(!node)return;const update=()=>setComposerHeight(Math.ceil(node.getBoundingClientRect().height+Math.max(0,Number.parseFloat(getComputedStyle(node).marginBottom)||0)));update();const observer=new ResizeObserver(update);observer.observe(node);return()=>observer.disconnect();},[page,sheet,storageReady,metadataReady,dialogueReady]);
  useEffect(()=>{if(page!=='input'||!storageReady||!metadataReady||!dialogueReady)return;const scroller=conversationElement.current?.closest('.native-scroll');if(scroller)scroller.scrollTop=scroller.scrollHeight;},[messages,page,availableHeight,storageReady,metadataReady,dialogueReady]);
  appRefreshState.current={blocked:appRefreshBlocked(),online:downloads};
- if(!storageReady||!metadataReady||!dialogueReady)return <div className="storage-gate" role="status">{dialogueError||storageError||metadataError||'Opening local storage…'}</div>;
+ if(!storageReady||!metadataReady||!dialogueReady){const gate=startupGate(storageError,metadataError,dialogueError);return gate.recoverable?<StartupRecovery message={gate.message}/>:<div className="storage-gate" role="status">{gate.message}</div>;}
  return <>
 
   <div className={activePalette?'custom-appearance':''} style={{display:'contents',...appearancePaletteStyle(activePalette)}}>

@@ -1,21 +1,10 @@
-import {initializeOfflineShell,refreshAppVersion} from '../src/offline-shell';
-import {recoverStartup} from './startup-recovery';
-import {useRef,useState} from 'react';
+import {initializeOfflineShell} from '../src/offline-shell';
+import {StartupRecovery} from './StartupRecovery';
 import ReactDOM from 'react-dom/client';
 import {NativeViewport} from './native-mobile';
 import '../src/prototype.css';
 import './product.css';
 const root=ReactDOM.createRoot(document.getElementById('root')!);
-function StartupRecovery(){
- const [status,setStatus]=useState(''),busy=useRef(false);
- async function update(){
-  if(busy.current)return;busy.current=true;setStatus('Checking…');
-  try{if(!('serviceWorker' in navigator))throw Error('App update unavailable');const container=navigator.serviceWorker;
-   await recoverStartup({getRegistration:()=>container.getRegistration(),update:registration=>refreshAppVersion(registration,container),reload:()=>location.reload()});
-  }catch{setStatus('Update failed · check connection and try again');}finally{busy.current=false;}
- }
- return <main style={{padding:'24px',fontFamily:'system-ui',color:'#172521'}}><h1>App unavailable</h1><button type="button" onClick={()=>void update()} style={{fontSize:'18px',minHeight:'48px',padding:'0 20px'}}>Update</button><p role="status">{status}</p></main>;
-}
 const check=new URLSearchParams(location.search).get('check');
 if(import.meta.env.DEV&&check==='lfm')import('../src/LfmCheck').then(({default:LfmCheck})=>root.render(<LfmCheck/>));
 else if(import.meta.env.DEV&&check==='harness')import('../src/HarnessCheck').then(({default:HarnessCheck})=>root.render(<HarnessCheck/>));
