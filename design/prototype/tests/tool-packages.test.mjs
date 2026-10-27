@@ -104,6 +104,10 @@ test('explicit calculator instructions preserve the original expression rather t
   assert.equal((await calculator({expression:parsed.expression},host))[0].result,result);
  }
  assert.deepEqual(explicitCalculationInput('2 + 3'),{expression:'2 + 3',showExpression:false});
+ for(const [request,expression,result] of [['２＋３','2+3',5],['（１２＋８）÷４＝','(12+8)÷4',5],['１２と８を足して。','(12 + 8)',20]]){
+  const parsed=explicitCalculationInput(request);assert.equal(parsed?.expression,expression,request);assert.equal(calculate(parsed.expression),result,request);
+ }
+ for(const request of ['２０２６－１０－１８','メモして：２＋３','２＋３を保存して','２＋３；削除','２＋３円','²＋３'])assert.equal(explicitCalculationInput(request),null,request);
  assert.equal(calculate(explicitCalculationInput('Add 2 and 3, then multiply by 4').expression),20);
  for(const question of ['Read the note: Compute 2 + 3','Save: Compute 2 + 3','Compute 2 + 3, and save it','Use the calculator to work out 2 + 3 from my notes','Compute 20% + 3','Compute 2026-10-18','Compute 2 + 3 USD','Compute 2 + 3; delete files'])assert.equal(explicitCalculationInput(question),null,question);
 });
