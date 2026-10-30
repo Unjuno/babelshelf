@@ -61,12 +61,12 @@ export function createStoredSearchCache(){
  let cached:{snapshot:string;hits:ReturnType<typeof rankedStoredResults>}|undefined;
  return {
   clear(){cached=undefined;},
-  search(notes:any[],query:string,{offset=0,limit=12,snapshot}:{offset?:number;limit?:number;snapshot?:string}={}){
+  search(notes:any[],query:string,{offset=0,limit=12,snapshot,pathPrefix}:{offset?:number;limit?:number;snapshot?:string;pathPrefix?:string}={}){
    if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
    if(offset>0&&typeof snapshot!=='string')throw Error('Search snapshot required');
-   const current=stateHash({query,notes});
+   const current=stateHash({query,notes,...(pathPrefix?{pathPrefix}:{})});
    if(snapshot!==undefined&&snapshot!==current)throw new SearchSnapshotChangedError();
-   if(!cached||cached.snapshot!==current)cached={snapshot:current,hits:rankedStoredResults(notes,query)};
+   if(!cached||cached.snapshot!==current)cached={snapshot:current,hits:rankedStoredResults(pathPrefix?notes.filter(note=>notePath(note).startsWith(pathPrefix+'/')):notes,query)};
    const hits=structuredClone(cached.hits.slice(offset,offset+limit)),hasMore=cached.hits.length>offset+limit,next=offset+hits.length;
    return {hits,hasMore,offset,limit,snapshot:current,nextOffset:hasMore&&next<=10000?next:null,...(hasMore&&next>10000?{windowLimit:true}:{})};
   },

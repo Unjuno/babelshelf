@@ -31,6 +31,8 @@ test('actual Node worker executes the same paging protocol and reports changed d
   const second=await call({id:2,notes,query:'water',options:{offset:12,limit:12,snapshot:first.value.snapshot}});assert.equal(second.ok,true);assert.equal(second.value.hits.length,3);
   const changed=[...notes];changed[0]=reviseNote(notes[0],{body:'changed'},1);
   const stale=await call({id:3,notes:changed,query:'water',options:{offset:12,limit:12,snapshot:first.value.snapshot}});assert.deepEqual(stale,{id:3,ok:false,code:'snapshot_changed'});
+  const scoped=await call({id:4,notes,query:'water',options:{offset:0,limit:12,pathPrefix:'Inbox'}});assert.equal(scoped.ok,true);assert.equal(scoped.value.hits.length,12);
+  const wrongScope=await call({id:5,notes,query:'water',options:{offset:12,limit:12,pathPrefix:'Elsewhere',snapshot:scoped.value.snapshot}});assert.deepEqual(wrongScope,{id:5,ok:false,code:'snapshot_changed'});
  }finally{await raw.terminate();}
 });
 

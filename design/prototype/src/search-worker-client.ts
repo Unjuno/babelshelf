@@ -1,6 +1,6 @@
 import {SearchSnapshotChangedError} from './file-discovery.ts';
 
-type SearchOptions={offset:number;limit:number;snapshot?:string};
+type SearchOptions={offset:number;limit:number;snapshot?:string;pathPrefix?:string};
 type SearchWorker=Pick<Worker,'onmessage'|'onerror'|'onmessageerror'|'postMessage'|'terminate'>;
 type Pending={resolve:(value:any)=>void;reject:(error:Error)=>void;signal?:AbortSignal;abort?:()=>void};
 

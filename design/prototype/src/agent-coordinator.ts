@@ -106,7 +106,7 @@ export async function coordinateAgentTurn(input:{
  builtinPackages:readonly ToolPackage[];
  readToolSources:()=>Promise<ToolSourceRecord[]>;
  search:(query:string,signal?:AbortSignal)=>Promise<MemorySearchResult[]>;
- searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string},signal?:AbortSignal)=>Promise<unknown>;
+ searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal)=>Promise<unknown>;
  views:(signal?:AbortSignal)=>Promise<ToolNote[]>;
  listFolders?:()=>Promise<string[]>;
  ensureCustomRuntime:()=>Promise<unknown>;

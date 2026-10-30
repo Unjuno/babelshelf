@@ -4,6 +4,32 @@ import assert from 'node:assert/strict';
 import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {createNewNoteView} from '../src/note-creation.ts';
 import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
+import * as searchTool from '../src/tools/memory.search/tool.ts';
+import {knownPackageBodies} from '../src/builtin-package-previous.ts';
+import {readFile} from 'node:fs/promises';
+
+test('prior bundled search guidance upgrades without changing user notes',async()=>{
+ const name='search-skill-upgrade-'+crypto.randomUUID(),store=new KnowledgeStore(name),id='builtin-package-memory.search/SKILL.md',path='Tools/memory.search/SKILL.md';
+ const old=knownPackageBodies[id].at(-1),body=await readFile(new URL('../src/tools/memory.search/SKILL.md',import.meta.url),'utf8');
+ const seed={id,path,body,protected:true},user={id:'user',path:'Inbox/user.md',body:'keep me',version:1,history:[]};
+ try{await store.initialize([{...seed,body:old},user]);await store.initialize([seed,user]);const records=await store.all(),note=records.find(n=>n.id===id);assert.deepEqual(note.revisions.map(r=>r.body),[old,body]);assert.equal(records.find(n=>n.id==='user').revisions[0].body,'keep me');}
+ finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
+});
+
+test('folder-scoped search includes descendants only and binds continuation to the scope',async()=>{
+ const name='search-scope-'+crypto.randomUUID(),store=new KnowledgeStore(name);
+ const seeds=[...Array.from({length:14},(_,i)=>({id:`a-${i}`,path:`Inbox/travel/${i}.md`,body:`water ${i}`,version:1,history:[]})),{id:'nested',path:'Inbox/travel/sub/nested.md',body:'water nested',version:1,history:[]},{id:'sibling',path:'Inbox/travelling/other.md',body:'water outside',version:1,history:[]}];
+ try{
+  await store.initialize(seeds);
+  const host={search:()=>{throw Error('Unexpected unscoped search');},searchPage:(q,o)=>store.searchPage(q,o),resolve:async()=>[],check(){}};
+  const first=await searchTool.run({query:'water',offset:0,limit:12,pathPrefix:'Inbox/travel'},host);
+  const next=await searchTool.run({query:'water',offset:12,limit:12,snapshot:first.snapshot,pathPrefix:'Inbox/travel'},host);
+  const ids=[...first.hits,...next.hits].map(hit=>hit.noteId);
+  assert.equal(ids.length,15);assert.ok(ids.includes('nested'));assert.ok(!ids.includes('sibling'));
+  await assert.rejects(searchTool.run({query:'water',offset:12,limit:12,snapshot:first.snapshot,pathPrefix:'Inbox/travelling'},host),/changed/i);
+  await assert.rejects(searchTool.run({query:'water',offset:0,pathPrefix:'Inbox/../travel'},host),/invalid/i);
+ }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
+});
 
 test('stored search pages reflect IndexedDB and reject continuation after another record is added',async()=>{
  const name='search-page-'+crypto.randomUUID(),store=new KnowledgeStore(name);
