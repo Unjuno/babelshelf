@@ -10,6 +10,8 @@ Run `npm run build:app`, then `npm run dev:app -- 4180` when that port is free. 
 
 `node scripts/qa/installed-pwa.mjs NEW_ABSOLUTE_PROFILE NEW_ABSOLUTE_OUTPUT` serves the built app on its own temporary loopback origin, registers it through native Chrome CDP PWA.install, sets the test installation's native display preference to standalone, then launches it through PWA.launch. This preference is needed by this CDP setup: installation alone originally opened browser display and the strict assertion failed. The test never changes matchMedia or emulates a successful standalone result.
 
+For a one-off check, omit both arguments: the runner creates a unique temporary profile and removes that profile on exit; the results directory remains for evidence. Supplying a profile path makes it caller-owned and retained for follow-up checks. Reuse one retained profile across related checks instead of creating a new profile for each step.
+
 The same existing record/import/search/edit/history/index/backup/conflict/no-op-restore flow runs in three distinct persistent browser processes. After first preparation the fixture server stops; later browser processes are offline before PWA.launch. Every phase must report actual standalone=true, browser=false, expected build and a different browser PID. The app registration and public fixture data remain in the dedicated QA profile for inspection. Existing personal/maintained profiles are not migrated or cleared.
 
 `node scripts/qa/verify-installed-pwa.mjs OUTPUT` independently production-parses all four backup archives, cold-launches that installed test app offline, checks its expected Service Worker build and decodes all three PNGs to verify dimensions and every opaque-white pixel.
