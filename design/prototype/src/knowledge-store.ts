@@ -82,7 +82,7 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
    if(managedGroup&&managed)parsePreference(managedGroup,next.body);
    const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path,kind:next.kind??'original',sources:next.sources??[]});
    const record={...created,id,...(managed?{ui:{managed:true}}:{}),...(next.importedFrom?{importedFrom:next.importedFrom}:{}),...(next.dialogueCopy?{dialogueCopy:structuredClone(next.dialogueCopy)}:{}),...(next.dialogueCopyCoverage?{dialogueCopyCoverage:next.dialogueCopyCoverage}:{})};
-   validateDialogueCopyRecord(record);if(record.dialogueCopy)assertDialogueCopySource(dialogue,record.dialogueCopy,record.dialogueCopyCoverage??'complete');result.push(record);
+   validateDialogueCopyRecord(record);if(record.dialogueCopy){assertDialogueCopySource(dialogue,record.dialogueCopy,record.dialogueCopyCoverage??'complete');if(record.dialogueCopy.speaker==='assistant'){const guards=dialogue?.turns[record.dialogueCopy.turnIndex]?.sourceMetadataGuards??[];try{for(const guard of guards)if(stateHash(noteSourceMetadata(records,guard.noteId,guard.revision))!==guard.snapshot)throw Error('changed');}catch{throw Error('Source changed · review before saving');}}}result.push(record);
   }
  }
  checkNotes(result);for(const note of result)if(!records.some(old=>old.id===note.id)&&note.kind==='generated'&&!validateGroundingRefs(result,note.sources).ok)throw Error('Source changed · review before saving');return result;

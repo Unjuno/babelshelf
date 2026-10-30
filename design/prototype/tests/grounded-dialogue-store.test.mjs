@@ -7,6 +7,25 @@ import {emptyDialogue,appendTurn,completeTurn} from '../src/conversation.ts';
 import {createDialogueWriter} from '../src/dialogue-writer.ts';
 import {noteSourceMetadata} from '../src/note-provenance.ts';
 import {stateHash} from '../src/backup-hash.ts';
+import {makeAnswerCopyReview,reviewedDialogueCopy} from '../src/dialogue-copy.ts';
+import {createNewNoteView} from '../src/note-creation.ts';
+
+test('saving an answer rechecks its retained source metadata after review',async()=>{
+ const store=new KnowledgeStore('metadata-copy-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'source',path:'Inbox/source.md',body:'Water 17',version:1,history:[]}]);
+  let views=await store.views();const ref={noteId:'source',revision:1,start:0,end:8,quote:'Water 17'},summary={id:'summary',path:'Inbox/summary.md',body:'Summary',version:1,history:[],kind:'generated',sources:[ref]};
+  await store.commit(views,[...views,summary]);views=await store.views();
+  const guard={noteId:'summary',revision:1,snapshot:stateHash(noteSourceMetadata(await store.all(),'summary',1))};
+  const before=appendTurn(emptyDialogue(),{id:'turn',user:'Source?'}),answer=completeTurn(before,'turn',{answer:'The source is current.',sourceMetadataGuards:[guard]});
+  await store.compareState('dialogue',undefined,before);await store.compareGroundedDialogue(before,answer,[],[guard]);
+  const copy=reviewedDialogueCopy(answer,makeAnswerCopyReview(answer,'turn','The source is current.'),'The source is current.');
+  const note=createNewNoteView({id:'copy',path:'Inbox/copy.md',...copy});
+  const source=views.find(item=>item.id==='source');await store.commit(views,views.map(item=>item.id==='source'?{...source,body:'Water 9',version:2,history:[...source.history,source.body]}:item));
+  views=await store.views();await assert.rejects(store.commit(views,[...views,note]),/Source changed/);
+  assert.equal((await store.views()).some(item=>item.id==='copy'),false);
+ }finally{store.close();}
+});
 
 test('source metadata is rechecked in the same transaction as the final answer',async()=>{
  const store=new KnowledgeStore('metadata-guard-'+crypto.randomUUID());
