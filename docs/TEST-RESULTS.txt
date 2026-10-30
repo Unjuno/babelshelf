@@ -6741,3 +6741,10 @@ covered using a controlled error in the submission tests. Not deployed here.
 After the run, used Update app in the sidebar and confirmed Settings > Developer
 reported active worker e9d019a90768bb46 and page bundle index-BHHGOlM0.js.
 Returned the app connection preference to Offline; this is not Airplane Mode.
+
+2026-10-30 — public update and model-catalog investigation (PC Playwright browser)
+- Public Site version 266 returned build 10c5467423e9d727. In a separate existing browser profile, https://babelshelf.com/ initially displayed the old Memory interface and Bonsai 2 4B. Its Add model list did not contain LFM3.
+- A newer service worker was installed and waiting while the old worker controlled the page. The old worker returned HTTP 503 for /build.json in the recorded offline state. Server-side build identity alone therefore did not prove the active page was current.
+- Sent activate-update to the waiting worker and reloaded without clearing caches, IndexedDB, notes or model files. The page title became BabelShelf. Settings > Models > Model set showed LFM3 1.7B QAD Q4_0 and Q8_0. Applied the Q4 model set in this separate browser profile; it showed Not prepared. No model download or generation was performed.
+- This is one PC browser observation, not an iPhone test, a general update fix, or proof that the user's sidebar or device is updated. Existing saved model settings can preserve an older selection. The old-interface path to apply a waiting update remains a UX/reliability issue.
+- Working-tree checks: prototype Node tests 1494/1494 passed. Root Node tests 225/226 passed when run concurrently with prototype tests; the shell-repair test failed then passed alone. The failure cause is unconfirmed.

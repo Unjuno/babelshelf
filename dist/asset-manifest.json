@@ -18,8 +18,8 @@
     },
     {
       "path": "./core.js",
-      "bytes": 13030,
-      "sha256": "303fb5bdfcf46d46202ef3af2ffe4b8db19378a0fb2233ec29892991145f5be1"
+      "bytes": 18185,
+      "sha256": "5a29ce3f0b35dad605530bf81957218ca62551d76451cb4a17ba01ec958fbf03"
     },
     {
       "path": "./diagnostics.js",
@@ -38,8 +38,8 @@
     },
     {
       "path": "./gguf-inspect.js",
-      "bytes": 6221,
-      "sha256": "5a0f7a25fa67f20cf4417c460e8a4f1f686b3deeb6c1e03522bc170ff03f96fe"
+      "bytes": 6306,
+      "sha256": "63cd4bec831374ac3c74023a085c575ad165b0e7e51525e18d2f3797cf03d936"
     },
     {
       "path": "./gpu-info.js",
@@ -83,8 +83,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 8579,
-      "sha256": "aad61c0e71ffd75e0ec3ebc7a484885e7aa321dba94cd39a076a7f62502de223"
+      "bytes": 16254,
+      "sha256": "4fbbc8b973424c347fa22ab85d0a49d4824e0e11302250fc2840555a39cf301d"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -98,8 +98,8 @@
     },
     {
       "path": "./local-engines.js",
-      "bytes": 2140,
-      "sha256": "26601d2122aa017b3d7067b92c03b86542006209c0c716142d2dba6b438f3173"
+      "bytes": 2634,
+      "sha256": "289e3ac4f90e279f2b7ad49cd24e0fd5e2d21c1ddf13e0464a0319df1a9392d5"
     },
     {
       "path": "./local-model-manifest.js",
@@ -108,8 +108,8 @@
     },
     {
       "path": "./local-models.js",
-      "bytes": 8330,
-      "sha256": "97ab147284c88546361fdbc564424f10748c2937ad03bbcdcd97008315db4b3d"
+      "bytes": 8807,
+      "sha256": "b17305a95ca8ac4b3204c93071b6d91cca869e6888cb8f0ff4f28a05cc23cb91"
     },
     {
       "path": "./manifest.webmanifest",
@@ -127,9 +127,14 @@
       "sha256": "c13c7b58e96214bb6c1da0a18dba78cd662c4e00bf130407bfeafba5b115de1c"
     },
     {
+      "path": "./native-answer-preview.js",
+      "bytes": 2008,
+      "sha256": "8db636e5164f8fddafe069e36441758d815605b624384428f67cadd6568c8061"
+    },
+    {
       "path": "./native-response.js",
-      "bytes": 4808,
-      "sha256": "d60c418f6b510fd1e2675729fec5cd70c3d68eabbb9c25cbecc9d5c3a3f461f4"
+      "bytes": 7597,
+      "sha256": "9a30915fcecc4a56917b5ed0de56a6ecc2fb34517c5f512596f84dea8615068f"
     },
     {
       "path": "./pinned-file-snapshots.js",
@@ -153,13 +158,13 @@
     },
     {
       "path": "./requests.js",
-      "bytes": 862,
-      "sha256": "78c8821276b29deb4f67cfd28c03cfad5c5788ef7cf19a1ede8bd1e6e4ee1ccc"
+      "bytes": 1116,
+      "sha256": "6ece650e96086cedc78dea6826091ac010cb4d12e70bdc88bc9c7f5bc52d5ad1"
     },
     {
       "path": "./runtime-module.js",
-      "bytes": 1566,
-      "sha256": "abaebf226c2a7e654c85f6bd00ed9871c7c33e88079cd6f701db3cd222c99bd0"
+      "bytes": 1585,
+      "sha256": "9136e800609eae24790702f69bdde45d3e9635df38e010a2cba93f909a8da34f"
     },
     {
       "path": "./sha256.js",
@@ -184,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "cc92f25c2f75bfc0a86654a6490c92ef29089dc450148d9195cd392049f8adf3"
+      "sha256": "b130e3e351204ad237b9d650e008b2adad23b4ab981e57fa86bb1226798388c5"
     },
     {
       "path": "./ui.js",
