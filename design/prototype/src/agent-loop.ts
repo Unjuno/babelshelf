@@ -170,7 +170,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
     // Repeating an unchanged call and outcome is a common small-model loop.
     // Allow two observations, then give the planner one explicit recovery signal.
     // A changed result or arguments can represent useful progress.
-    const repeatedOutcomes=history.slice(-16).filter(item=>sameSuccessfulOutcome(call,boundedResult,item)).length;
+    const repeatedOutcomes=usableHistory(history).slice(-16).filter(item=>sameSuccessfulOutcome(call,boundedResult,item)).length;
     if(repeatedOutcomes>=2){
      history.push({tool:recordedTool,arguments:recordedArguments,result:null,error:{code:'no_progress_loop'},...(call.assistantContent?{assistantContent:call.assistantContent}:{}),...(batchId?{batchId}:{})});
      abortedBatchAt=callIndex;

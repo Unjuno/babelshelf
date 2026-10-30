@@ -21,6 +21,12 @@ test('a failed revision check also removes earlier search evidence for that exac
  assert.equal(history[0].result,null);assert.equal(result.calls.length,0);
 });
 
+test('rereading after failed continuations is not mistaken for an unchanged-result loop',async()=>{
+ const read={kind:'tool',tool:'memory.read',arguments:{query:'one',start:0,length:3}},next={kind:'tool',tool:'memory.read',arguments:{query:'one',start:3,expectedRevision:1}},plans=[read,next,read,next,read,{kind:'final',value:'done'}];let count=0;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async()=>plans.shift(),execute:async()=>{if(++count===2||count===4)throw new AgentToolExecutionError('memory.read');return [{noteId:'one',revision:1,excerpt:'old'}];},check(){}});
+ assert.equal(result.calls.length,1);assert.equal(result.attempts.at(-1).error,undefined);assert.equal(result.attempts.length,5);
+});
+
 test('failed source continuation cannot leave older source metadata in the final answer',async()=>{
  const tools=[{id:'memory.sources',effect:'read',network:'none'}],plans=[{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1}},{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1,offset:12,snapshot:'old'}},{kind:'final',value:'done'}];let count=0,lastHistory;
  const result=await runReadOnlyAgentLoop({allowedTools:tools,plan:async history=>{lastHistory=history;return plans.shift();},execute:async()=>{if(++count===2)throw new AgentToolExecutionError();return {noteId:'summary',revision:1,snapshot:'old',items:[]};},check:()=>{}});
