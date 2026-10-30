@@ -165,6 +165,17 @@ test('correction discovery accepts only one exact successful built-in reference,
  assert.throws(()=>agentCorrectionTarget(request,[search,{...search,result:[{kind:'file',noteId:'a',revision:3,path:'Notes/a.md'}]}]),/Ambiguous/);
 });
 
+test('paged search can nominate an exact discovered path for reviewed correction',()=>{
+ const request={action:'edit',target:'path',query:'Notes/a.md'};
+ const row={noteId:'a',revision:2,title:'A title',path:'Notes/a.md',start:0,end:4,quote:'text'};
+ const page={tool:'memory.search',arguments:{query:'topic',offset:0},result:{hits:[row],offset:0,limit:12,snapshot:'a'.repeat(64),nextOffset:null,hasMore:false}};
+ assert.deepEqual(agentCorrectionTarget(request,[page]),{noteId:'a',revision:2});
+ assert.throws(()=>agentCorrectionTarget(request,[{...page,tool:'user.search'}]));
+ assert.throws(()=>agentCorrectionTarget(request,[{...page,error:{code:'search_snapshot_changed'}}]));
+ assert.throws(()=>agentCorrectionTarget({...request,query:'Notes/missing.md'},[page]));
+ assert.throws(()=>agentCorrectionTarget({...request,query:'a.md'},[page,{...page,result:{...page.result,hits:[{...row,noteId:'b',path:'Other/a.md'}]}}]),/Ambiguous/);
+});
+
 test('bounded evidence does not split a Unicode surrogate pair at the cutoff',()=>{
  const quote='あ'.repeat(499)+'😀'+'終';
  const [search]=projectAgentToolResult('memory.search',[{noteId:'n',revision:1,start:10,end:10+quote.length,quote}]);
