@@ -90,8 +90,17 @@ test('host Memory failures expose a fixed message to package code, not exception
 });
 
 test('a custom tool can read more than eight local results',async({page})=>{
- const result=await page.evaluate(async()=>await (window as any).customToolFixture.run({code:'({capabilities}) => { let count=0; for(let i=0;i<9;i++) count+=capabilities.memorySearch("note").length; return count; }',input:{},capabilities:['memory.search'],host:{search:async()=>[{id:'n1'}]}}));
- expect(result).toBe(9);
+ const result=await page.evaluate(async()=>{
+  const {beginCustomEvidence}=await import('/src/agent-evidence.ts');
+  const host={check(){},search:async()=>[],resolve:async(query:string)=>[{id:query,path:`Notes/${query}.md`,version:2,body:`Original ${query}`}]};
+  const evidence=beginCustomEvidence(host,[]);
+  const count=await (window as any).customToolFixture.run({code:'({capabilities}) => { let count=0; for(let i=0;i<9;i++) count+=capabilities.memoryRead("note"+i).length; return count; }',input:{},capabilities:['memory.read'],host:{read:evidence.host.resolve}});
+  return {count,refs:evidence.commit()};
+ });
+ expect(result.count).toBe(9);
+ expect(result.refs.map((ref:{noteId:string;revision:number;quote:string})=>({id:ref.noteId,revision:ref.revision,quote:ref.quote}))).toEqual(
+  Array.from({length:9},(_,i)=>({id:`note${i}`,revision:2,quote:`Original note${i}`}))
+ );
 });
 
 test('stops a custom tool after its bounded local-memory call budget',async({page})=>{
