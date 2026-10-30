@@ -53,4 +53,16 @@ Object.assign(window,{mcpComparisonFixture:async()=>{
   return {calls:result.calls.map(call=>call.tool),sources,answer,savedBody:saved.revisions[0].body,savedSources:saved.sources,completed:activities.filter(event=>event.status==='succeeded'&&['memory.search','memory.read'].includes(event.tool)).map(event=>event.tool)};
  }finally{store.close();await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Temporary test database is blocked'));});}
 }});
+Object.assign(window,{mcpCustomFixture:async()=>{
+ const name='mcp-custom-qa-'+crypto.randomUUID(),store=new KnowledgeStore(name),activities:any[]=[];
+ try{
+  await store.initialize([{id:'custom-source',path:'Inbox/water.md',body:'Water reserve: 17 liters.',version:1,history:[]}]);
+  const skill='---\n{"id":"user.lookup","version":1,"title":"Lookup","inputSchema":{"type":"object","required":["query"],"additionalProperties":false,"properties":{"query":{"type":"string","minLength":1,"maxLength":80}}},"capabilities":["memory.search"]}\n---\nSearch local notes.\n';
+  const files=[{path:'Tools/user.lookup/SKILL.md',body:skill},{path:'Tools/user.lookup/tool.js',body:'({input,capabilities})=>capabilities.memorySearch(input.query)'}];
+  const plans=[JSON.stringify({action:'tool',query:'user.lookup',body:JSON.stringify({query:'water'})}),JSON.stringify({action:'answer',query:'water',target:'knowledge'})];
+  const snapshot=captureTurnExecutionSnapshot({turnId:'mcp-custom',textModel:'test',textManifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test',label:'Test',enabledTools:['user.lookup'],maxToolCalls:4,maxResultChars:8000},replyStyle:'balanced',userGuidance:'',attachments:[]});
+  const result=await coordinateAgentTurn({snapshot,model:'test',question:'Use user.lookup to find water.',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],builtinPackages:[],readToolSources:async()=>files,search:(query,signal)=>store.search(query,true,signal),views:signal=>store.views(signal),ensureCustomRuntime:async()=>{},check:()=>{},signal:new AbortController().signal,engine:{manifest:{contextTokens:4096},count:async()=>({prompt_tokens:50}),generate:async()=>({text:plans.shift()??'{}'})},trace:(tool,input,work,project)=>recordOperation(tool,input,work,async event=>{activities.push(event);},project)});
+  return {calls:result.calls.map(call=>call.tool),source:result.customEvidence.find(ref=>ref.noteId==='custom-source'),completed:activities.filter(event=>event.status==='succeeded'&&['tools.read-skill','user.lookup'].includes(event.tool)).map(event=>event.tool)};
+ }finally{store.close();await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Temporary test database is blocked'));});}
+}});
 document.querySelector('#root')!.textContent='ready';

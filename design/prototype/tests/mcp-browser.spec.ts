@@ -30,3 +30,11 @@ test('an offline multi-source MCP workflow saves the reviewed text and exact ori
   expect(value.savedBody).toBe(value.answer);expect(value.savedSources).toEqual(pins);
  }finally{await context.setOffline(false);}
 });
+test('MCP agent executes a selected custom tool with actual isolated runtime and source tracking',async({page,context})=>{
+ await context.route('**/*',route=>{const url=new URL(route.request().url());return ['127.0.0.1','localhost'].includes(url.hostname)?route.continue():route.abort();});
+ await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');
+ const value=await page.evaluate(()=>(window as any).mcpCustomFixture());
+ expect(value.calls).toEqual(['tools.read-skill','user.lookup']);expect(value.source.noteId).toBe('custom-source');expect(value.source.revision).toBe(1);
+ expect('Water reserve: 17 liters.'.slice(value.source.start,value.source.end)).toBe(value.source.quote);
+ expect(value.completed).toEqual(['tools.read-skill','user.lookup']);
+});

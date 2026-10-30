@@ -259,8 +259,9 @@ test('custom tool creation persists its schema and immediately makes it availabl
  await page.getByRole('textbox',{name:'Tool input schema',exact:true}).fill(JSON.stringify(schema,null,2));
  await page.getByRole('textbox',{name:'Tool code',exact:true}).fill('({input,capabilities})=>({result:capabilities.calculate(input.expression),decimals:input.decimals})');
  await page.getByRole('button',{name:'Save files',exact:true}).click();
+ await expect.poll(()=>page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();try{return (await store.all()).find((note:any)=>note.revisions.at(-1).path==='Tools/user.precise-calc/SKILL.md')?.revisions.at(-1).body??null;}finally{store.close();}})).toContain('"expression"');
  const saved=await page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();try{return (await store.all()).find((note:any)=>note.revisions.at(-1).path==='Tools/user.precise-calc/SKILL.md')?.revisions.at(-1).body??null;}finally{store.close();}});
- expect(saved).toContain('"expression"');expect(saved).toContain('"decimals"');
+ expect(saved).toContain('"decimals"');
 });
 
 test('a custom tool is stored and added to the active profile in one save without an activation dialog',async({page})=>{
@@ -273,8 +274,7 @@ test('a custom tool is stored and added to the active profile in one save withou
  await expect(page.getByText(/Saving makes this tool available in the current profile/)).toBeVisible();
  await page.getByRole('button',{name:'Save files'}).click();
  await expect(page.getByRole('heading',{name:'Review changes',exact:true})).toHaveCount(0);
- const enabled=await page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const {parsePreference}=await import('/src/preference-records.ts');const store=new KnowledgeStore();try{return parsePreference('harness',(await store.all()).find((note:any)=>note.id==='settings-harness').revisions.at(-1).body).profiles.find((profile:any)=>profile.id==='standard').enabledTools;}finally{store.close();}});
- expect(enabled).toContain('user.ui-check');
+ await expect.poll(()=>page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const {parsePreference}=await import('/src/preference-records.ts');const store=new KnowledgeStore();try{const note=(await store.all()).find((item:any)=>item.id==='settings-harness');return note?parsePreference('harness',note.revisions.at(-1).body).profiles.find((profile:any)=>profile.id==='standard')?.enabledTools??[]:[];}finally{store.close();}})).toContain('user.ui-check');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Open tool files'}).click();
  await page.getByRole('button',{name:'Open user.ui-check'}).click();
