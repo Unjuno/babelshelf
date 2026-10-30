@@ -499,6 +499,15 @@ test('explicit opened-file requests to explain named contents keep the pinned fi
  assert.equal(router.explicitWorkingFileQuestion(question,true,true),null);
 });
 
+test('natural input-file wording binds to the selected file and excludes unrelated dialogue history',()=>{
+ const question='この入力ファイルに書かれている集合場所と持ち物を日本語で答えてください。';
+ const unrelated=Array.from({length:91},(_,index)=>({id:`unrelated-${index}`,user:`Unrelated prior question ${index}`,answer:`Unrelated prior answer ${index}`}));
+ const prior={schema:1,revision:1,turns:unrelated,compaction:null,currentFile:{noteId:'selected-input',revision:1}};
+ const intent=route({question,prior});
+ assert.deepEqual(intent.request,{action:'answer',query:question,target:'file'});
+ assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
+});
+
 test('ambiguous short search with a selected file gives a recovery hint only when a model is missing',()=>{
  const hint='Model not prepared · remove input file to search Memory';
  assert.equal(router.searchScopeFailure('Model not prepared · Settings','QA雨の日を探して',true,false),hint);

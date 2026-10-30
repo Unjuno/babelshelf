@@ -15,8 +15,8 @@ import {historyPayload,historyMessages,type DialogueContext,type ChatEngine,type
 import {parseJSON,searchNotes} from '../../../dist/core.js';
 
 export function requestNamesWorkingFile(question:string){
- return /\b(?:(?:in|from|about|within|inside|on)\s+)?(?:(?:this|that|the|current|currently\s+open(?:ed)?(?:\s+[\w-]+){0,2}|open(?:ed)?)\s+)?(?:file|note|document|memo)\b/i.test(question)
-  ||/(?:この|その|当該|今(?:開いている)?|現在の|開いた)?(?:ファイル|メモ|ノート|文書|資料)(?:の|に|で|から|について|を|内|中)/.test(question)
+ return /\b(?:(?:in|from|about|within|inside|on)\s+)?(?:(?:this|that|the|current|currently\s+open(?:ed)?(?:\s+[\w-]+){0,2}|open(?:ed)?)\s+)?(?:(?:input|attached)\s+)?(?:file|note|document|memo)\b/i.test(question)
+  ||/(?:この|その|当該|今(?:開いている)?|現在の|開いた)?(?:(?:入力|添付)(?:した|された)?)?(?:ファイル|メモ|ノート|文書|資料)(?:の|に|で|から|について|を|内|中)/.test(question)
   ||/(?:这(?:个|份|篇)?(?:文件|文档|笔记)|(?:文件|文档|笔记)(?:中|里|内))/.test(question)
   ||/\b(?:en|dentro de|sobre|desde)\s+(?:(?:este|esta|ese|esa|el|la|actual)\s+)?(?:archivo|documento|nota)\b/i.test(question)
   ||/\b(?:dans|sur|depuis)\s+(?:(?:ce|cette|le|la)\s+)?(?:fichier|document|note)\b/i.test(question)

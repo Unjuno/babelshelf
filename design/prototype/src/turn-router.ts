@@ -167,8 +167,8 @@ export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boole
  const asks=/\b(?:what|when|where|who|which|why|how|is|are|does|do|did|can|could|would)\b/iu.test(text)||/[?？]/u.test(text)||/(?:何|いつ|どこ|誰|どれ|なぜ|どう|いくつ|何時|何日|ですか|ますか)/u.test(text);
  // Only a complete, read-only command about this file. Mixed operations
  // remain with the planner and never acquire a new write capability here.
- const answerCommand=(/^(?:この|現在の)ファイルに書かれた[\p{L}\p{N}]{1,60}を(?:日本語で)?(?:答えて|教えて)(?:ください)?[。.!！]?$/u.test(text)
-  ||/^(?:この|現在の)ファイルの[\p{L}\p{N}]{1,60}を(?:日本語で)?教えて(?:ください)?[。.!！]?$/u.test(text))
+ const answerCommand=(/^(?:この|現在の)(?:入力)?ファイルに(?:書かれた|書かれている)[\p{L}\p{N}と・ー]{1,80}を(?:日本語で)?(?:答えて|教えて)(?:ください)?[。.!！]?$/u.test(text)
+  ||/^(?:この|現在の)(?:入力)?ファイルの[\p{L}\p{N}と・ー]{1,60}を(?:日本語で)?教えて(?:ください)?[。.!！]?$/u.test(text))
   &&!/(?:保存|削除|変更|修正|訂正|送信|送って|メール|実行|検索|比較|翻訳|編集|追加|作成|書き換|それから|してから)/u.test(text);
  if(!asks&&!answerCommand)return null;
  return {action:'answer' as const,query:text,target:'file' as const};
