@@ -84,6 +84,13 @@ test('agent cannot use an earlier range after its revision-checked continuation 
  const result=await coordinateAgentTurn(value);assert.equal(reads,2);assert.equal(result.final.action,'answer');assert.equal(result.calls.length,0);assert.deepEqual(agentEvidenceFromCalls(result.calls),[]);
 });
 
+test('agent can restart a read after a revision change and ground its answer in the new version',async()=>{
+ const original=createNote({path:'Inbox/water.md',body:'Water reserve 17 litres.'}),updated=reviseNote(original,{body:'Water reserve 9 litres.'},1);let reads=0;
+ const pkg={...readPackage,definition:readDefinition},plans=[{action:'tool',query:'memory.read',body:JSON.stringify({query:original.id,start:0,length:5})},{action:'tool',query:'memory.read',body:JSON.stringify({query:original.id,start:5,length:5,expectedRevision:1})},{action:'tool',query:'memory.read',body:JSON.stringify({query:original.id,start:0,length:6})},{action:'answer',query:'water',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:`Inspect ${original.id}`,enabledTools:['memory.read'],builtinPackages:[pkg],maxToolCalls:4,views:async()=>[projectNote(++reads===1?original:updated)]});
+ const result=await coordinateAgentTurn(value),refs=agentEvidenceFromCalls(result.calls);assert.equal(reads,3);assert.equal(result.final.action,'answer');assert.equal(refs.length,1);assert.equal(refs[0].revision,2);assert.equal(refs[0].quote,'Water ');
+});
+
 test('agent executes paged search and retains original evidence from later pages',async()=>{
  const notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water reserve ${i}`,path:`Inbox/water-${i}.md`}));
  const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12});
