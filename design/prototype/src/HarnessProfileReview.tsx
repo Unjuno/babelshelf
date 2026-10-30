@@ -1,7 +1,8 @@
 import {parsePreference,type HarnessProfile} from './preference-records';
 import type {CorrectionProposal} from './note-corrections';
+import {builtinTools} from './tools/builtin-tools';
 
-const labels:Record<string,string>={'memory.search':'Search files','memory.list':'List files','memory.read':'Read files','math.calculate':'Calculator','time.now':'Clock'};
+const labels:Record<string,string>=Object.fromEntries(builtinTools.map(({tool,settingsLabel})=>[tool.definition.id,settingsLabel]));
 export const profileToolsLabel=(profile:HarnessProfile)=>profile.enabledTools.map(id=>labels[id]??id).join(' · ')||'No tools';
 
 export function HarnessProfileReview({proposal}:{proposal:CorrectionProposal}){
