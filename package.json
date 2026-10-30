@@ -28,7 +28,7 @@
     "test:quality:offline-calculation": "npm --prefix design/prototype run test:runtime -- --config=playwright.product-calculation.config.ts --workers=1",
     "test:quality:offline": "node scripts/qa/offline-process.mjs",
     "test:quality:installed-pwa": "node scripts/qa/installed-pwa.mjs",
-    "test:quality": "npm test && npm run test:prototype && npm run check && npm run build:app && npm run test:app && npm run test:editor:built && npm run test:quality:review-store && npm run test:quality:offline-calculation && npm run test:help:built && npm run test:tools:built && npm run test:markdown && npm run test:quality:hash && npm run test:quality:custom-tools && npm run test:quality:mcp && npm run test:quality:device-memory && npm run test:quality:inference-lock && npm run test:quality:schedule-ui && npm run test:quality:settings-ui && npm run test:quality:editorial && npm run test:ios-handoff:built && npm run test:ios-handoff:webkit:built && npm run test:quality:app-update && npm run test:quality:offline && npm run test:quality:installed-pwa",
+    "test:quality": "npm test && npm run test:prototype && npm run check && npm run build:app && npm run test:app && npm run test:editor:built && npm run test:quality:review-store && npm run test:quality:offline-calculation && npm run test:help:built && npm run test:tools:built && npm run test:markdown && npm run test:quality:hash && npm run test:quality:custom-tools && npm run test:quality:mcp && npm run test:quality:mcp:webkit && npm run test:quality:device-memory && npm run test:quality:inference-lock && npm run test:quality:schedule-ui && npm run test:quality:settings-ui && npm run test:quality:editorial && npm run test:ios-handoff:built && npm run test:ios-handoff:webkit:built && npm run test:quality:app-update && npm run test:quality:offline && npm run test:quality:installed-pwa",
     "test:agent-coordinator": "node --test design/prototype/tests/agent-coordinator.test.mjs",
     "check": "node scripts/check.mjs",
     "dev": "node scripts/serve.mjs",
@@ -39,7 +39,8 @@
     "test:offline-process": "npm run build:app && npm run test:quality:offline",
     "test:help:built": "npm --prefix design/prototype run test:help:built",
     "test:tools:built": "npm --prefix design/prototype run test:tools:built",
-    "test:submission": "node --test design/prototype/tests/scheduled-answer.test.mjs design/prototype/tests/model-execution.test.mjs design/prototype/tests/submission-controller.test.mjs design/prototype/tests/submission-workflow.test.mjs"
+    "test:submission": "node --test design/prototype/tests/scheduled-answer.test.mjs design/prototype/tests/model-execution.test.mjs design/prototype/tests/submission-controller.test.mjs design/prototype/tests/submission-workflow.test.mjs",
+    "test:quality:mcp:webkit": "npm --prefix design/prototype run test:runtime -- tests/mcp-browser.spec.ts --workers=1 --browser=webkit"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.4"

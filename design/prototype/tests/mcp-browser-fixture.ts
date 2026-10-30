@@ -5,6 +5,8 @@ import {coordinateAgentTurn} from '../src/agent-coordinator.ts';
 import {captureTurnExecutionSnapshot} from '../src/turn-execution-snapshot.ts';
 import {recordOperation} from '../src/harness-activity.ts';
 import * as calculate from '../src/tools/math.calculate/tool.ts';
+import * as search from '../src/tools/memory.search/tool.ts';
+import {KnowledgeStore} from '../src/knowledge-store.ts';
 
 Object.assign(window,{mcpBrowserFixture:async()=>{
  const server=createLocalMcpServer({tools:[{id:'math.calculate',effect:'read',network:'none',inputSchema:{type:'object',required:['value'],additionalProperties:false,properties:{value:{type:'number'}}}}],invoke:async(_id,args)=>({result:Number(args.value)*2})});
@@ -18,5 +20,16 @@ Object.assign(window,{mcpAgentFixture:async()=>{
  const snapshot=captureTurnExecutionSnapshot({turnId:'mcp-browser',textModel:'test',textManifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test',label:'Test',enabledTools:['math.calculate'],maxToolCalls:3,maxResultChars:8000},replyStyle:'balanced',userGuidance:'',attachments:[]});
  const result=await coordinateAgentTurn({snapshot,model:'test',question:'Calculate 6*7',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],builtinPackages:[pkg],readToolSources:async()=>[],search:async()=>[],views:async()=>[],ensureCustomRuntime:async()=>{},check:()=>{},signal:new AbortController().signal,engine:{manifest:{contextTokens:4096},count:async()=>({prompt_tokens:50}),generate:async()=>({text:plans.shift()??'{}'})},trace:(tool,input,work,project)=>recordOperation(tool,input,work,async event=>{activities.push(event);},project)});
  return {calls:result.calls,activities:activities.filter(event=>event.tool==='math.calculate').map(event=>event.status)};
+}});
+Object.assign(window,{mcpMemoryFixture:async()=>{
+ const name='mcp-memory-qa-'+crypto.randomUUID(),store=new KnowledgeStore(name),activities:any[]=[];
+ try{
+  await store.initialize([{id:'mcp-source',path:'Inbox/water.md',body:'Water reserve: 17 liters.',version:1,history:[]}]);
+  const plans=[JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'water'})}),JSON.stringify({action:'answer',query:'water',target:'knowledge'})];
+  const pkg={...search,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search.'},{path:'Tools/memory.search/tool.ts',body:'Bundled search.'}]};
+  const snapshot=captureTurnExecutionSnapshot({turnId:'mcp-memory',textModel:'test',textManifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test',label:'Test',enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000},replyStyle:'balanced',userGuidance:'',attachments:[]});
+  const result=await coordinateAgentTurn({snapshot,model:'test',question:'Find water',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],builtinPackages:[pkg],readToolSources:async()=>[],search:(query,signal)=>store.search(query,true,signal),views:signal=>store.views(signal),ensureCustomRuntime:async()=>{},check:()=>{},signal:new AbortController().signal,engine:{manifest:{contextTokens:4096},count:async()=>({prompt_tokens:50}),generate:async()=>({text:plans.shift()??'{}'})},trace:(tool,input,work,project)=>recordOperation(tool,input,work,async event=>{activities.push(event);},project)});
+  return {calls:result.calls,activities:activities.filter(event=>event.tool==='memory.search').map(event=>event.status)};
+ }finally{store.close();await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Temporary test database is blocked'));});}
 }});
 document.querySelector('#root')!.textContent='ready';
