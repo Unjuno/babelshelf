@@ -18,7 +18,7 @@
     "test:quality:custom-tools": "npm --prefix design/prototype run test:runtime -- tests/custom-tool-runtime.spec.ts tests/custom-tools-ui.spec.ts --workers=1",
     "test:quality:mcp": "npm --prefix design/prototype run test:runtime -- tests/mcp-browser.spec.ts --workers=1",
     "test:quality:hash": "npm --prefix design/prototype run test:runtime -- tests/fast-hash.spec.ts",
-    "test:quality:review-store": "npm --prefix design/prototype run test:runtime -- tests/pending-correction-store.spec.ts tests/note-restore-store.spec.ts tests/turn-activity-browser.spec.ts --workers=1",
+    "test:quality:review-store": "npm --prefix design/prototype run test:runtime -- tests/pending-correction-store.spec.ts tests/note-restore-store.spec.ts tests/turn-activity-browser.spec.ts tests/partial-copy-review.spec.ts --workers=1",
     "test:quality:device-memory": "npm --prefix design/prototype run test:runtime -- tests/device-memory-smoke.spec.ts",
     "test:quality:schedule-ui": "npm --prefix design/prototype run test:runtime -- tests/schedule-screen.spec.ts tests/schedule-memory-ui.spec.ts",
     "test:quality:editorial": "npm --prefix design/prototype run test:runtime -- -c playwright.editorial.config.ts",
