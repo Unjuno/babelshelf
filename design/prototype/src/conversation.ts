@@ -52,7 +52,7 @@ export function dialogueTurnStatus(turn:Pick<DialogueTurn,'id'|'answer'|'status'
  // completed receipt belongs to this exact displayed answer.
  const receipt=turn.activity?.slice().reverse().find(item=>item.tool==='knowledge.answer'&&item.status==='succeeded');
  const output=receipt?.output;
- if(turn.answer&&output&&typeof output==='object'&&!Array.isArray(output)&&output.recovery==='verbatim-source'&&output.answer===turn.answer)return 'Source excerpt · original language';
+ if(turn.answer&&output&&typeof output==='object'&&!Array.isArray(output)&&output.recovery==='verbatim-source'&&output.answer===turn.answer)return 'Source excerpt · partial answer';
  return undefined;
 }
 export function dialogueOutcome(turn:Pick<DialogueTurn,'id'|'answer'|'status'>):DialogueOutcome|undefined{

@@ -6774,3 +6774,6 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 — CI fixture dependencies and aligned tests
 - After lockfile repair, Linux run 41035509415 passed npm ci and root tests but exposed older prototype tests not updated with the already-committed implementation, a missing root fake-indexeddb installation, and Sites packaging fixture files not built before the Node suite. CI now installs both lockfiles and builds the prototype fixture before the existing quality gates. No quality gate was removed.
 - The affected existing tests were updated to assert the current revisioned storage, catalog and runtime contracts, with additional cases retained; the hook test now passes the real device-policy helpers into its controlled module harness. On the PC working tree, npm run test:prototype passed 1499/1499 and npm run build:prototype passed. A fresh Linux CI run remains necessary.
+
+2026-10-30 — distinguish recovered extracts from complete answers
+- The visible status for a verified verbatim-source recovery is now Source excerpt · partial answer, and only appears when the matching completed answer receipt has the same answer. Stored answers, source IDs and revisions are unchanged. Controlled conversation and recovery tests 189/189 passed; this does not assess whether any excerpt answers a user's full question.
