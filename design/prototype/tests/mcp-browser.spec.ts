@@ -38,3 +38,10 @@ test('MCP agent executes a selected custom tool with actual isolated runtime and
  expect('Water reserve: 17 liters.'.slice(value.source.start,value.source.end)).toBe(value.source.quote);
  expect(value.completed).toEqual(['tools.read-skill','user.lookup']);
 });
+test('custom source overflow keeps only previously committed evidence and reports partial work',async({page,context})=>{
+ await context.route('**/*',route=>{const url=new URL(route.request().url());return ['127.0.0.1','localhost'].includes(url.hostname)?route.continue():route.abort();});
+ await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');
+ const value=await page.evaluate(()=>(window as any).mcpCustomOverflowFixture());
+ expect(value.reason).toBe('source-capacity');expect(value.partial).toBe(true);expect(value.calls).toEqual(['tools.read-skill','memory.search']);
+ expect(value.customEvidence).toEqual([]);expect(value.customStatus).toEqual(['running','failed']);
+});

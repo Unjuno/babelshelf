@@ -104,6 +104,18 @@ test('Stop or partial-result failure after source capacity is never hidden or re
  }
 });
 
+test('source capacity during tool execution returns only earlier completed work',async()=>{
+ let executions=0;
+ const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],plan:async history=>({kind:'tool',tool:'memory.search',arguments:{query:`part-${history.length}`}}),execute:async()=>{if(++executions===2)throw new AgentSourceCapacityError();return [{quote:'first'}];},onBudgetExhausted:history=>({partial:true,count:history.length}),check:()=>{}});
+ assert.equal(result.budgetCause,'source-capacity');assert.deepEqual(result.final,{partial:true,count:1});assert.equal(executions,2);assert.equal(result.calls.length,1);assert.deepEqual(result.calls[0].result,[{quote:'first'}]);
+});
+
+test('source capacity on the first tool cannot manufacture a partial result',async()=>{
+ let partial=0;const capacity=new AgentSourceCapacityError();
+ await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],plan:async()=>({kind:'tool',tool:'memory.search',arguments:{query:'x'}}),execute:async()=>{throw capacity;},onBudgetExhausted:()=>{partial++;return {partial:true};},check:()=>{}}),error=>error===capacity);
+ assert.equal(partial,0);
+});
+
 test('budget exhaustion returns completed tool evidence without executing the refused next action',async()=>{
  let executions=0;const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],maxToolCalls:2,plan:async history=>history.length<2?{kind:'tool',tool:'memory.search',arguments:{query:`part-${history.length}`}}:{kind:'tool',tool:'memory.search',arguments:{query:'unrun-part'}},execute:async call=>{executions++;return [{noteId:`n${executions}`,revision:1,quote:'evidence'}];},onBudgetExhausted:history=>({action:'answer',evidenceCount:history.filter(item=>!item.error).length}),check:()=>{}});
  assert.equal(result.budgetExhausted,true);assert.deepEqual(result.final,{action:'answer',evidenceCount:2});assert.equal(result.calls.length,2);assert.equal(executions,2);assert.equal(result.attempts.length,2);

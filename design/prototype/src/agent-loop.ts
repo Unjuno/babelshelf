@@ -160,6 +160,12 @@ export async function runReadOnlyAgentLoop<Final>(input:{
     history.push({tool:recordedTool,arguments:recordedArguments,result:boundedResult,...(call.assistantContent?{assistantContent:call.assistantContent}:{}),...(batchId?{batchId}:{})});
    }catch(error){
     input.check();
+    // The overflowing operation did not commit a usable result. Keep only
+    // earlier completed observations; the host has recorded this failure.
+    if(error instanceof AgentSourceCapacityError&&history.length&&input.onBudgetExhausted){
+     const final=await input.onBudgetExhausted(structuredClone(history));input.check();
+     return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'source-capacity'};
+    }
     const code=error instanceof AgentToolInputError?'invalid_tool_input':error instanceof AgentToolExecutionError?'tool_execution':error instanceof AgentToolResultTooLargeError?'result_too_large':null;
     if(!code)throw error;
     history.push({tool:recordedTool,arguments:recordedArguments,result:null,error:{code},...(call.assistantContent?{assistantContent:call.assistantContent}:{}),...(batchId?{batchId}:{})});
