@@ -80,11 +80,15 @@ function usableHistory(history:readonly AgentToolAttempt[]):AgentToolAttempt[]{
  // A failed continuation cannot prove that earlier source metadata remains
  // current. Keep attempts for audit, but do not offer them as answer data.
  const staleSources=new Set(history.filter(item=>item.tool==='memory.sources'&&item.error?.code==='tool_execution'&&typeof item.arguments.id==='string'&&typeof item.arguments.snapshot==='string').map(item=>JSON.stringify([item.arguments.id,item.arguments.revision,item.arguments.snapshot])));
- return history.filter(item=>{if(item.error||!validRecord(item.result)||typeof item.result.snapshot!=='string')return true;if(item.tool==='memory.search')return !stale.has(JSON.stringify([item.arguments.query,item.result.snapshot]));if(item.tool==='memory.sources')return !staleSources.has(JSON.stringify([item.arguments.id,item.arguments.revision,item.result.snapshot]));return true;});
+ // A failed revision-checked continuation makes earlier ranges for that
+ // record unsafe. Later fresh reads remain usable, including the same version
+ // after a transient failure. The audited attempts themselves remain intact.
+ const failedReads=history.flatMap((item,index)=>item.tool==='memory.read'&&item.error?.code==='tool_execution'&&typeof item.arguments.query==='string'&&Number.isSafeInteger(item.arguments.expectedRevision)?[{index,query:item.arguments.query,revision:item.arguments.expectedRevision}]:[]);
+ return history.filter((item,index)=>{if(!item.error&&item.tool==='memory.read'&&Array.isArray(item.result)&&item.result.some(row=>validRecord(row)&&failedReads.some(failure=>index<failure.index&&(row.noteId===failure.query||row.path===failure.query)&&row.revision===failure.revision)))return false;if(item.error||!validRecord(item.result)||typeof item.result.snapshot!=='string')return true;if(item.tool==='memory.search')return !stale.has(JSON.stringify([item.arguments.query,item.result.snapshot]));if(item.tool==='memory.sources')return !staleSources.has(JSON.stringify([item.arguments.id,item.arguments.revision,item.result.snapshot]));return true;});
 }
 function plannerHistory(history:readonly AgentToolAttempt[]):AgentToolAttempt[]{
  const usable=new Set(usableHistory(history));
- return history.map(item=>usable.has(item)?item:{...item,result:null,error:{code:item.tool==='memory.sources'?'tool_execution':'search_snapshot_changed'}});
+ return history.map(item=>usable.has(item)?item:{...item,result:null,error:{code:item.tool==='memory.search'?'search_snapshot_changed':'tool_execution'}});
 }
 
 /** Run a bounded sequence of registered tools, then return the model's final plan.

@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import {runReadOnlyAgentLoop,AgentContextCapacityError,AgentSourceCapacityError,AgentToolExecutionError,AgentSearchSnapshotChangedError,AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 const memoryTools=[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}];
 
+test('failed revision-checked read removes earlier ranges but preserves a later restarted read',async()=>{
+ const plans=[{kind:'tool',tool:'memory.read',arguments:{query:'one',start:0,length:3}},{kind:'tool',tool:'memory.read',arguments:{query:'one',start:3,length:3,expectedRevision:1}},{kind:'tool',tool:'memory.read',arguments:{query:'one',start:0,length:3}},{kind:'final',value:'done'}];let count=0,history;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async h=>{history=h;return plans.shift();},execute:async()=>{if(++count===2)throw new AgentToolExecutionError('memory.read');return [{noteId:'one',revision:count===1?1:2,excerpt:count===1?'old':'new'}];},check(){}});
+ assert.equal(result.attempts.length,3);assert.equal(history[0].result,null);assert.equal(history[0].error.code,'tool_execution');assert.deepEqual(result.calls.map(call=>call.result[0].excerpt),['new']);
+});
+
 test('failed source continuation cannot leave older source metadata in the final answer',async()=>{
  const tools=[{id:'memory.sources',effect:'read',network:'none'}],plans=[{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1}},{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1,offset:12,snapshot:'old'}},{kind:'final',value:'done'}];let count=0,lastHistory;
  const result=await runReadOnlyAgentLoop({allowedTools:tools,plan:async history=>{lastHistory=history;return plans.shift();},execute:async()=>{if(++count===2)throw new AgentToolExecutionError();return {noteId:'summary',revision:1,snapshot:'old',items:[]};},check:()=>{}});
