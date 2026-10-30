@@ -1,7 +1,7 @@
 import {validateActivity,type Activity} from './harness-activity.ts';
 
 // New records coexist with inline legacy turn.activity; no migration deletes or
-// rewrites the old receipts. The application has not switched its tracer yet.
+// rewrites old receipts. The production tracer pages new overflow events here.
 export const TURN_ACTIVITY_PAGE_SIZE=16;
 const prefix='ui-v1-turn-activity-';
 function part(value:string){if(typeof value!=='string'||!value||value.length>100)throw Error('Invalid activity identity');try{return encodeURIComponent(value);}catch{throw Error('Invalid activity identity');}}
