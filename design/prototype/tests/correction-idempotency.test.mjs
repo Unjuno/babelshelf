@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {prepareCorrection} from '../src/note-corrections.ts';
-import {parseStateBackup} from '../src/backup-state.ts';
+import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 
 test('retrying an identical approved correction returns its receipt without another revision',async()=>{
  const store=new KnowledgeStore('correction-idempotency-'+crypto.randomUUID());
@@ -19,6 +19,8 @@ test('retrying an identical approved correction returns its receipt without anot
   assert.equal((await store.all())[0].revisions.length,2);
   const restored=await parseStateBackup(JSON.stringify(await store.backup()));
   assert.ok(restored.runs.some(item=>item.value.id===first.id));
+  const malformed=await store.snapshot();malformed.runs.find(item=>item.value.id===first.id).value.proposalHash=[first.proposalHash];
+  await assert.rejects(makeStateBackup(malformed),/Invalid correction receipt/);
   await store.revertCorrection(first.id);
   const undone=await store.approveCorrection(proposal,pending);
   assert.equal(undone.status,'undone');

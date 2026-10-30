@@ -70,7 +70,7 @@ function validateState(state:StateSnapshot){
  for(const {key,value} of state.runs)if(key.startsWith('ui-v1-settings-restore-')||value?.type==='settings-restore')validateSettingsRestoreReceipt(key,value,state.notes);
  for(const {key,value:r} of state.runs)if(key.startsWith('ui-v1-correction-')||r?.type==='note-correction'){
   const n=state.notes.find(n=>n.id===r?.noteId),before=n?.revisions.find((v:any)=>v.version===r?.beforeVersion),after=n?.revisions.find((v:any)=>v.version===r?.afterVersion);
-  if(r?.schema!==1||r.type!=='note-correction'||key!=='ui-v1-correction-'+r.id||!before||!after||r.afterVersion!==r.beforeVersion+1||!['applied','undone'].includes(r.status)||typeof r.appliedAt!=='string'||! /^[a-f0-9]{64}$/.test(r.afterHash)||r.proposalHash!==undefined&&!/^[a-f0-9]{64}$/.test(r.proposalHash)||typeof r.path!=='string')throw Error('Invalid correction receipt');
+  if(r?.schema!==1||r.type!=='note-correction'||key!=='ui-v1-correction-'+r.id||!before||!after||r.afterVersion!==r.beforeVersion+1||!['applied','undone'].includes(r.status)||typeof r.appliedAt!=='string'||! /^[a-f0-9]{64}$/.test(r.afterHash)||r.proposalHash!==undefined&&(typeof r.proposalHash!=='string'||!/^[a-f0-9]{64}$/.test(r.proposalHash))||typeof r.path!=='string')throw Error('Invalid correction receipt');
   const raw=correctionOperationRaw(r.operation,after.body);
   const old={...n,state:'active',revisions:n.revisions.slice(0,r.beforeVersion)},prepared=verifyHistoricalCorrection(old,r.request,raw);
   if(prepared.after!==after.body||!equal(prepared.operation,r.operation)||r.path!==notePath(n,r.beforeVersion))throw Error('Invalid correction operation');
