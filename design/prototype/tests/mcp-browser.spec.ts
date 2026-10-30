@@ -6,12 +6,14 @@ test('paged Memory search runs in a browser worker and keeps exact source ranges
   const name='search-worker-browser-'+crypto.randomUUID(),store=new KnowledgeStore(name),originalWorker=window.Worker;let created=0;
   window.Worker=class extends originalWorker{constructor(url:string|URL,options?:WorkerOptions){super(url,options);created++;}};
   try{
-   const seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));
+   const seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/${i<14?'travel':'travelling'}/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));
    await store.initialize(seeds);const first=await store.searchPage('water',{offset:0,limit:12}),second=await store.searchPage('water',{offset:first.nextOffset!,limit:12,snapshot:first.snapshot});
-   const rows=await store.all();return {created,first:first.hits.length,second:second.hits.length,exact:second.hits.every((hit:any)=>typeof hit.quote==='string'&&rows.find((note:any)=>note.id===hit.noteId).revisions[hit.revision-1].body.slice(hit.start,hit.end)===hit.quote)};
+   const scoped=await store.searchPage('water',{offset:0,limit:12,pathPrefix:'Inbox/travel'}),scopedNext=await store.searchPage('water',{offset:12,limit:12,pathPrefix:'Inbox/travel',snapshot:scoped.snapshot});let rejected=false;
+   try{await store.searchPage('water',{offset:12,limit:12,pathPrefix:'Inbox/travelling',snapshot:scoped.snapshot});}catch{rejected=true;}
+   const rows=await store.all();return {created,first:first.hits.length,second:second.hits.length,exact:second.hits.every((hit:any)=>typeof hit.quote==='string'&&rows.find((note:any)=>note.id===hit.noteId).revisions[hit.revision-1].body.slice(hit.start,hit.end)===hit.quote),scoped:scoped.hits.length+scopedNext.hits.length,inside:[...scoped.hits,...scopedNext.hits].every((hit:any)=>hit.noteId!=='water-14'),rejected};
   }finally{store.close();window.Worker=originalWorker;await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});}
  });
- expect(result).toEqual({created:1,first:12,second:3,exact:true});
+ expect(result).toEqual({created:1,first:12,second:3,exact:true,scoped:14,inside:true,rejected:true});
 });
 test('official MCP client and local read-only adapter interoperate offline in the browser',async({page,context})=>{
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');
