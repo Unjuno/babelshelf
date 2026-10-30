@@ -10,6 +10,10 @@ test('reports a missing worker module as startup failure',async({page,context})=
 });
 
 test('reports failed interpreter startup promptly without blaming package code',async({page,context})=>{
+ // Let the development server finish discovering the worker dependencies
+ // before intercepting its WASM fetch. Otherwise Vite's dependency reload can
+ // navigate this fixture during the operation being measured.
+ await expect.poll(async()=>{try{return await page.evaluate(async()=>(window as any).customToolFixture.run({code:'() => 42',input:{},capabilities:[]}));}catch(error){if(!String(error).includes('Execution context was destroyed'))throw error;return null;}},{timeout:10000}).toBe(42);
  await context.route(/\.wasm(?:\?|$)/,route=>route.abort('failed'));
  const result=await page.evaluate(async()=>{
   const start=performance.now();
@@ -55,9 +59,27 @@ test('brokers declared local-memory reads through the host and returns bounded d
  expect(result).toEqual({notes:[{id:'note-1',path:'Notes/rain.md',version:2,body:'Bring a coat'}]});
 });
 
+test('a slow local Memory capability does not consume the custom code CPU budget',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const skill='---\n{"id":"user.lookup","version":1,"title":"Lookup","inputSchema":{"type":"object","required":["query"],"additionalProperties":false,"properties":{"query":{"type":"string","minLength":1,"maxLength":80}}},"capabilities":["memory.search"]}\n---\nSearch local notes.';
+  return (window as any).customToolFixture.agentRegistered([{path:'Tools/user.lookup/SKILL.md',body:skill},{path:'Tools/user.lookup/tool.js',body:'({input,capabilities}) => ({notes:capabilities.memorySearch(input.query)})'}],1300);
+ });
+ expect(result.final).toEqual({evidence:{notes:[{id:'meeting-1',path:'Notes/meeting.md',version:2,body:'Monday at 10'}]}});
+ expect(result.calls).toEqual([{tool:'user.lookup',arguments:{query:'meeting'},result:{notes:[{id:'meeting-1',path:'Notes/meeting.md',version:2,body:'Monday at 10'}]}}]);
+ expect(result.planSteps).toBe(2);
+});
+
 test('brokers declared arithmetic through the registered local calculator only',async({page})=>{
  const result=await page.evaluate(async()=>await (window as any).customToolFixture.run({code:'({input,capabilities}) => ({result:capabilities.calculate(input.expression)})',input:{expression:'6 * 7'},capabilities:['math.calculate'],host:{calculate:(expression:string)=>42}}));
  expect(result).toEqual({result:42});
+});
+
+test('custom packages can browse bounded Memory folder metadata without reading file bodies',async({page})=>{
+ const result=await page.evaluate(async()=>await (window as any).customToolFixture.run({
+  code:'({input,capabilities}) => capabilities.memoryList(input.path,0,10)',input:{path:'Notes'},capabilities:['memory.list'],
+  host:{list:async(path:string,offset:number,limit:number)=>({path,offset,limit,entries:[{kind:'file',name:'meeting.md',path:'Notes/meeting.md',id:'note-1',version:2}],total:1,hasMore:false,nextOffset:null})}
+ }));
+ expect(result).toEqual({path:'Notes',offset:0,limit:10,entries:[{kind:'file',name:'meeting.md',path:'Notes/meeting.md',id:'note-1',version:2}],total:1,hasMore:false,nextOffset:null});
 });
 
 test('host Memory failures expose a fixed message to package code, not exception content',async({page})=>{
@@ -111,6 +133,19 @@ test('a selected custom package runs through the bounded agent loop and returns 
  expect(result.final).toEqual({evidence:[{id:'meeting-1',path:'Notes/meeting.md',version:2,body:'Monday at 10'}]});
  expect(result.calls).toEqual([{tool:'user.lookup',arguments:{query:'meeting'},result:[{id:'meeting-1',path:'Notes/meeting.md',version:2,body:'Monday at 10'}]}]);
  expect(result.planSteps).toBe(2);
+});
+
+test('an oversized real custom-tool result records a failure then recovers with a narrower execution',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const skill='---\n{"id":"user.lookup","version":1,"title":"Lookup","inputSchema":{"type":"object","required":["length"],"additionalProperties":false,"properties":{"length":{"type":"integer","minimum":1,"maximum":10000}}},"capabilities":[]}\n---\nReturn a bounded sample.';
+  return (window as any).customToolFixture.agentRecoversOverflow([{path:'Tools/user.lookup/SKILL.md',body:skill},{path:'Tools/user.lookup/tool.js',body:'({input})=>({body:"x".repeat(input.length)})'}]);
+ });
+ expect(result.final).toEqual({bodyLength:1000});expect(result.planSteps).toBe(3);expect(result.executions).toBe(2);
+ expect(result.attempts).toEqual([
+  {tool:'user.lookup',arguments:{length:9000},result:null,error:{code:'result_too_large'}},
+  {tool:'user.lookup',arguments:{length:1000},result:{body:'x'.repeat(1000)}},
+ ]);
+ expect(result.activityStatuses).toEqual([{status:'failed',code:'result_too_large'},{status:'succeeded'}]);
 });
 
 test('a runaway loop is hard-stopped in its disposable worker while the app remains responsive',async({page})=>{
