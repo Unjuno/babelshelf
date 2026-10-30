@@ -1,4 +1,18 @@
 import {expect,test} from '@playwright/test';
+test('paged Memory search runs in a browser worker and keeps exact source ranges',async({page})=>{
+ await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');
+ const result=await page.evaluate(async()=>{
+  const {KnowledgeStore}=await import('/src/knowledge-store.ts');
+  const name='search-worker-browser-'+crypto.randomUUID(),store=new KnowledgeStore(name),originalWorker=window.Worker;let created=0;
+  window.Worker=class extends originalWorker{constructor(url:string|URL,options?:WorkerOptions){super(url,options);created++;}};
+  try{
+   const seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));
+   await store.initialize(seeds);const first=await store.searchPage('water',{offset:0,limit:12}),second=await store.searchPage('water',{offset:first.nextOffset!,limit:12,snapshot:first.snapshot});
+   const rows=await store.all();return {created,first:first.hits.length,second:second.hits.length,exact:second.hits.every((hit:any)=>typeof hit.quote==='string'&&rows.find((note:any)=>note.id===hit.noteId).revisions[hit.revision-1].body.slice(hit.start,hit.end)===hit.quote)};
+  }finally{store.close();window.Worker=originalWorker;await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});}
+ });
+ expect(result).toEqual({created:1,first:12,second:3,exact:true});
+});
 test('official MCP client and local read-only adapter interoperate offline in the browser',async({page,context})=>{
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');
  await context.setOffline(true);

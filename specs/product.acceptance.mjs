@@ -7,6 +7,12 @@ test('the pinned LFM3 model license is included separately in the offline app',a
  const inventory=JSON.parse(await fs.readFile('design/prototype/src/generated/package-notices.json','utf8'));
  assert.ok(inventory.bundledNotices.includes(file));
 });
+test('paged search worker is part of the verified offline shell',async()=>{
+ const manifest=JSON.parse(await fs.readFile(root+'build.json','utf8'));
+ const workers=manifest.files.filter(file=>/^\.\/assets\/search-worker-.*\.js$/.test(file.path));
+ assert.equal(workers.length,1);assert.equal(workers[0].roles,undefined);
+ const bytes=await fs.readFile(root+workers[0].path.slice(2));assert.equal(bytes.length,workers[0].bytes);assert.equal(createHash('sha256').update(bytes).digest('hex'),workers[0].sha256);
+});
 test('production shell contains every asset with exact size/hash and install metadata',async()=>{
  const manifest=JSON.parse(await fs.readFile(root+'build.json','utf8'));
  const workerSource=await fs.readFile('scripts/product-worker.mjs','utf8'),sw=await fs.readFile(root+'sw.js','utf8'),declaration=sw.match(/\bREMOTE=(\[[^;]*\]);/);
