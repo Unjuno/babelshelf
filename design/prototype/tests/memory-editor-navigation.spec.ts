@@ -268,7 +268,7 @@ test('explicit capture is saved directly without a second confirmation and dupli
  const count=()=>page.evaluate(()=>new Promise<number>((resolve,reject)=>{const q=indexedDB.open('mlb-memory-v1');q.onsuccess=()=>{const db=q.result,r=db.transaction('notes').objectStore('notes').count();r.onsuccess=()=>{db.close();resolve(r.result);};r.onerror=()=>{db.close();reject(r.error);};};q.onerror=()=>reject(q.error);}));
  await expect(page.getByRole('button',{name:'Send',exact:true})).toBeEnabled();const before=await count();
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Original capture body');await page.getByRole('button',{name:'Send',exact:true}).click();
- await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveCount(0);expect(await count()).toBe(before+1);
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveCount(0);await expect.poll(count).toBe(before+1);
  await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/Original capture body.md');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Original capture body');await page.getByRole('button',{name:'Send',exact:true}).click();
  await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/Original capture body (2).md');expect(await count()).toBe(before+2);
