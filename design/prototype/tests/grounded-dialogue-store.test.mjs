@@ -19,6 +19,9 @@ test('source metadata is rechecked in the same transaction as the final answer',
   const views=await store.views(),source=views.find(item=>item.id==='source');await store.commit(views,views.map(item=>item.id==='source'?{...source,body:'Water 9',version:2,history:[...source.history,source.body]}:item));
   let current=before;const writer=createDialogueWriter(()=>current,async(value,refs,metadata)=>{await store.compareGroundedDialogue(current,value,refs??[],metadata);current=value;});
   await assert.rejects(writer.update(()=>next,undefined,[guard]),/source changed/i);assert.deepEqual(await store.getState('dialogue'),before);assert.deepEqual(current,before);
+  const changedSnapshot=stateHash(noteSourceMetadata(await store.all(),'summary',1)),mutableGuard={...guard};
+  const staleSave=store.compareGroundedDialogue(before,next,[],[mutableGuard]);mutableGuard.snapshot=changedSnapshot;
+  await assert.rejects(staleSave,/source changed/i);assert.deepEqual(await store.getState('dialogue'),before);
  }finally{store.close();}
 });
 
