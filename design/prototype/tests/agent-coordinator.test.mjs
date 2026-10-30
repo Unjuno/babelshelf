@@ -4,7 +4,7 @@ import {coordinateAgentTurn} from '../src/agent-coordinator.ts';
 import {run as calculate} from '../src/tools/math.calculate/tool.ts';
 import {recordOperation} from '../src/harness-activity.ts';
 import {run as searchNotes} from '../src/tools/memory.search/tool.ts';
-import {run as readNotes} from '../src/tools/memory.read/tool.ts';
+import {definition as readDefinition,run as readNotes} from '../src/tools/memory.read/tool.ts';
 import {run as listNotes} from '../src/tools/memory.list/tool.ts';
 import {listMemoryEntries} from '../src/tools/tool-host.ts';
 import {agentEvidenceFromCalls} from '../src/agent-evidence.ts';
@@ -76,6 +76,13 @@ function input(plans,overrides={}){
  value.snapshot=overrides.snapshot??captureTurnExecutionSnapshot({turnId:'turn-test',textModel:value.model,textManifest:{models:[{id:value.model,revision:'model-r1'}],runtime:{revision:'runtime-r1'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test-profile',label:'Test',enabledTools:value.enabledTools,maxToolCalls:value.maxToolCalls,maxResultChars:value.maxResultChars},replyStyle:'balanced',userGuidance:'',attachments:[]});
  return {value,operations,calls};
 }
+
+test('agent cannot use an earlier range after its revision-checked continuation fails',async()=>{
+ const original=createNote({path:'Inbox/water.md',body:'Water reserve 17 litres.'}),updated=reviseNote(original,{body:'Water reserve 9 litres.'},1);let reads=0;
+ const pkg={...readPackage,definition:readDefinition},plans=[{action:'tool',query:'memory.read',body:JSON.stringify({query:original.id,start:0,length:5})},{action:'tool',query:'memory.read',body:JSON.stringify({query:original.id,start:5,length:5,expectedRevision:1})},{action:'answer',query:'water',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:`Inspect ${original.id}`,enabledTools:['memory.read'],builtinPackages:[pkg],views:async()=>[projectNote(++reads===1?original:updated)]});
+ const result=await coordinateAgentTurn(value);assert.equal(reads,2);assert.equal(result.final.action,'answer');assert.equal(result.calls.length,0);assert.deepEqual(agentEvidenceFromCalls(result.calls),[]);
+});
 
 test('agent executes paged search and retains original evidence from later pages',async()=>{
  const notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water reserve ${i}`,path:`Inbox/water-${i}.md`}));
