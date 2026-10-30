@@ -20,3 +20,14 @@ test('cancellation stops the MCP request and rejects a late host result',async()
  try{const pending=bridge.call({kind:'tool',tool:'memory.search',arguments:{query:'water'}},async()=>{started();await gate;return 'late';});await entered;controller.abort();release();await assert.rejects(pending);}
  finally{await bridge.close();}
 });
+test('cancelling the agent bridge propagates to the active host operation',async()=>{
+ const controller=new AbortController(),bridge=await createAgentMcpBridge(tools,controller.signal);let start,stop;
+ const entered=new Promise(resolve=>{start=resolve;}),stopped=new Promise(resolve=>{stop=resolve;});
+ try{
+  const pending=bridge.call({kind:'tool',tool:'memory.search',arguments:{query:'water'}},async signal=>{
+   start();await new Promise(resolve=>signal.addEventListener('abort',()=>{stop();resolve();},{once:true}));return 'late';
+  });
+  await entered;controller.abort();await assert.rejects(pending);
+  let timeout;try{await Promise.race([stopped,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Host operation did not receive cancellation')),1000);})]);}finally{clearTimeout(timeout);}
+ }finally{await bridge.close();}
+});
