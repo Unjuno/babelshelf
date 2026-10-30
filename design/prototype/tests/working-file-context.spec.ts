@@ -3,7 +3,7 @@ import {prepareOfflineShell} from './pwa-offline-setup.ts';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:destination,exact:true}).click();
+ await page.getByRole('menuitem',{name:destination==='Memory'?'BabelShelf':destination,exact:true}).click();
 }
 async function openScheduleFile(page:any){
  await navigate(page,'Memory');
