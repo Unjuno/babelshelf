@@ -287,7 +287,14 @@ function plannerInput(question:string,context:DialogueContext,attachments:{name:
  const {scope,toolBudgetExhausted}=agentPlannerScope(question,context,attachments,agent,nativeToolProtocol);
  const format={type:'dialogue-plan' as const,scope};
  const successful=(agent?.history??[]).filter(item=>!item.error&&!item.resultOmitted&&item.result!==undefined&&agent?.allowedTools.some(tool=>tool.id===item.tool)).map(item=>({...item,result:item.result}));
- const operationalEvidence=nativeToolProtocol&&(agentCustomResultsFromCalls(successful).length>0||agentCalculationsFromCalls(successful).length>0||agentClockReadingsFromCalls(successful).length>0||agentToolInfoFromCalls(successful).length>0);
+ // This is an existence check, not the final answer's evidence collection.
+ // Checking each observed result separately avoids imposing that collection's
+ // 64-item limit on whether the planner may continue working.
+ let operationalEvidence=false;
+ if(nativeToolProtocol)for(const call of successful){
+  const present=agentCustomResultsFromCalls([call]).length+agentCalculationsFromCalls([call]).length+agentClockReadingsFromCalls([call]).length+agentToolInfoFromCalls([call]).length;
+  if(present)operationalEvidence=true;
+ }
  if(!nativeToolProtocol)return {operationalEvidence,messages:planDialogueMessages(question,context,attachments,agent),format,scope,replySources:[] as LabelledSource[]};
  const replySources=plannerReplySources(agent,scope.inputs,true,sourceCatalog);
  const nativeToolIds=toolBudgetExhausted?[]:scope.toolIds;
