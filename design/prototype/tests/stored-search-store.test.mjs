@@ -31,6 +31,15 @@ test('folder-scoped search includes descendants only and binds continuation to t
  }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
 });
 
+test('explicit system folder search finds its records without broadening ordinary search',async()=>{
+ const name='search-system-scope-'+crypto.randomUUID(),store=new KnowledgeStore(name);
+ try{
+  await store.initialize([{id:'public',path:'Inbox/one.md',body:'water ordinary',version:1,history:[]},{id:'system',path:'Tools/example.md',body:'water tool',version:1,history:[],protected:true}]);
+  const ordinary=await store.searchPage('water',{offset:0,limit:12});assert.ok(!ordinary.hits.some(hit=>hit.noteId==='system'));
+  const scoped=await store.searchPage('water',{offset:0,limit:12,pathPrefix:'Tools'});assert.ok(scoped.hits.some(hit=>hit.noteId==='system'));assert.ok(!scoped.hits.some(hit=>hit.noteId==='public'));
+ }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
+});
+
 test('stored search pages reflect IndexedDB and reject continuation after another record is added',async()=>{
  const name='search-page-'+crypto.randomUUID(),store=new KnowledgeStore(name);
  const seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));
