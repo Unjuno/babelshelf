@@ -17,7 +17,8 @@ export function createPagedSearchClient(factory:()=>SearchWorker=()=>new Worker(
   if(worker)return worker;const current=factory();worker=current;
   current.onmessage=event=>{
    if(worker!==current)return;const message=event.data;
-   if(!message||!Number.isSafeInteger(message.id))return;const item=pending.get(message.id);if(!item)return;
+   if(!message||typeof message!=='object'||!Number.isSafeInteger(message.id)||!pending.has(message.id)||message.ok!==true&&message.ok!==false||message.ok===true&&!Object.hasOwn(message,'value')||message.ok===false&&!['snapshot_changed','search_failed'].includes(message.code)){retire();return;}
+   const item=pending.get(message.id)!;
    pending.delete(message.id);detach(item);
    if(message.ok===true)item.resolve(message.value);else if(message.code==='snapshot_changed')item.reject(new SearchSnapshotChangedError());else item.reject(Error('Local search failed'));
   };

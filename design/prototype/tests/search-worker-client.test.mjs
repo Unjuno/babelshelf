@@ -55,3 +55,10 @@ test('a request that cannot be posted does not interrupt other searches',async()
  await assert.rejects(bad,/search failed/i);assert.equal(worker.terminated,false);
  worker.reply({id:worker.sent[0].id,ok:true,value:'water result'});assert.equal(await running,'water result');client.close();
 });
+
+test('a malformed worker reply fails pending requests rather than hanging',async()=>{
+ for(const response of [{unexpected:true},{id:999,ok:true,value:[]},{id:1,ok:'invalid'}]){
+  const worker=new ControlledWorker(),client=createPagedSearchClient(()=>worker),pending=client.search([],'water',{offset:0,limit:12});
+  worker.reply(response);await assert.rejects(pending,/interrupted/i);assert.equal(worker.terminated,true);client.close();
+ }
+});
