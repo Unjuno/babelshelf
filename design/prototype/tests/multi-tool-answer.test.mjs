@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {agentToolInfoFromCalls,agentCustomResultsFromCalls} from '../src/agent-evidence.ts';
+import {agentToolInfoFromCalls,agentCustomResultsFromCalls,agentClockReadingsFromCalls} from '../src/agent-evidence.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 
 test('many operation results remain validated and a native answer is not regenerated',async()=>{
@@ -22,4 +22,15 @@ test('legacy generation fails explicitly when operation data cannot fit its cont
  const engine={loaded:'test',manifest:{contextTokens:1024,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1000}),generate:async()=>{throw Error('Unexpected generation');}};
  const store={all:async()=>[],search:async()=>{throw Error('Unexpected search');}};
  await assert.rejects(groundedAnswer({store,engine},{model:'test',question:'Summarize tool discovery.',query:'tool discovery',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],toolInfo,memoryUsed:false}}),/Input exceeds context limit/);
+});
+
+test('many clock readings remain independently validated for a native terminal answer',async()=>{
+ const clock={instant:'2026-10-30T00:00:00.000Z',localTime:'2026-10-30T09:00:00',offsetMinutes:540,timeZone:'Asia/Tokyo',source:'device-clock'};
+ const calls=Array.from({length:65},()=>({tool:'time.now',arguments:{},result:clock}));
+ const clockReadings=agentClockReadingsFromCalls(calls);assert.equal(clockReadings.length,65);
+ assert.throws(()=>agentClockReadingsFromCalls([...calls,{...calls[0],result:{...clock,localTime:'wrong'}}]),/Invalid device clock reading/);
+ const engine={manifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{throw Error('Unexpected load');},count:async()=>{throw Error('Unexpected count');},generate:async()=>{throw Error('Unexpected generation');}};
+ const store={all:async()=>[],search:async()=>{throw Error('Unexpected search');}};
+ const request={model:'test',question:'What time is it?',query:'time',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],clockReadings,memoryUsed:false},reply:{answer:'The device clock says 09:00.',sources:[]}};
+ const result=await groundedAnswer({store,engine},request);assert.equal(result.answer,request.reply.answer);assert.deepEqual(result.sources,[]);
 });

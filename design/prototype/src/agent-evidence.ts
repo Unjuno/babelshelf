@@ -37,7 +37,7 @@ export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSour
 }
 export function agentClockReadingsFromCalls(calls:readonly AgentToolResult[]):ClockReading[]{
  const readings=calls.filter(call=>call.tool==='time.now').map(call=>validateClockReading(call.result));
- if(readings.length>MAX_CONTEXT_SOURCE_REFS)throw Error('Too many device clock readings');return readings;
+ return readings;
 }
 // Evidence retained for a response is bounded independently of paged activity
 // storage. Final prompt fit is also checked by the model tokenizer.
