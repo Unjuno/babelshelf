@@ -36,6 +36,13 @@ test('the offline MCP agent searches local IndexedDB with versioned source range
   expect(source).toBeTruthy();expect(source.revision).toBe(1);expect('Water reserve: 17 liters.'.slice(source.start,source.end)).toBe(source.quote);expect(value.activities).toEqual(['running','succeeded']);
  }finally{await context.setOffline(false);}
 });
+test('offline agent follows saved provenance to the cited original',async({page,context})=>{
+ await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');await context.setOffline(true);
+ try{const value=await page.evaluate(()=>(window as any).mcpSourcesFixture());
+  expect(value.calls.map((call:any)=>call.tool)).toEqual(['memory.sources','memory.read']);expect(value.completed).toEqual(['memory.sources','memory.read']);
+  expect(value.refs).toHaveLength(1);expect(value.refs[0].noteId).toBe('source');expect(value.refs[0].revision).toBe(1);expect(value.refs[0].quote).toBe('Water reserve: 17 liters.');
+ }finally{await context.setOffline(false);}
+});
 test('an offline multi-source MCP workflow saves the reviewed text and exact original references',async({page,context})=>{
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');await context.setOffline(true);
  try{const value=await page.evaluate(()=>(window as any).mcpComparisonFixture());

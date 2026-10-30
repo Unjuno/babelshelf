@@ -7,6 +7,7 @@ import {recordOperation} from '../src/harness-activity.ts';
 import * as calculate from '../src/tools/math.calculate/tool.ts';
 import * as search from '../src/tools/memory.search/tool.ts';
 import * as read from '../src/tools/memory.read/tool.ts';
+import * as sourceTool from '../src/tools/memory.sources/tool.ts';
 import {KnowledgeStore,projectNote} from '../src/knowledge-store.ts';
 import {agentEvidenceFromCalls} from '../src/agent-evidence.ts';
 // @ts-expect-error Shared canonical store is JavaScript.
@@ -34,6 +35,19 @@ Object.assign(window,{mcpMemoryFixture:async()=>{
   const snapshot=captureTurnExecutionSnapshot({turnId:'mcp-memory',textModel:'test',textManifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test',label:'Test',enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000},replyStyle:'balanced',userGuidance:'',attachments:[]});
   const result=await coordinateAgentTurn({snapshot,model:'test',question:'Find water',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],builtinPackages:[pkg],readToolSources:async()=>[],search:(query,signal)=>store.search(query,true,signal),views:signal=>store.views(signal),ensureCustomRuntime:async()=>{},check:()=>{},signal:new AbortController().signal,engine:{manifest:{contextTokens:4096},count:async()=>({prompt_tokens:50}),generate:async()=>({text:plans.shift()??'{}'})},trace:(tool,input,work,project)=>recordOperation(tool,input,work,async event=>{activities.push(event);},project)});
   return {calls:result.calls,activities:activities.filter(event=>event.tool==='memory.search').map(event=>event.status)};
+ }finally{store.close();await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Temporary test database is blocked'));});}
+}});
+Object.assign(window,{mcpSourcesFixture:async()=>{
+ const name='mcp-sources-qa-'+crypto.randomUUID(),store=new KnowledgeStore(name),activities:any[]=[];
+ try{
+  const body='Water reserve: 17 liters.';await store.initialize([{id:'source',path:'Inbox/source.md',body,version:1,history:[]}]);
+  const before=await store.views(),ref={noteId:'source',revision:1,start:0,end:body.length,quote:body},summary=projectNote(createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:[ref]}));
+  await store.commit(before,[...before,summary]);
+  const action=(tool:string,args:unknown)=>JSON.stringify({action:'tool',query:tool,body:JSON.stringify(args)}),plans=[action('memory.sources',{id:summary.id,revision:1}),action('memory.read',{query:'source'}),JSON.stringify({action:'answer',query:'original',target:'knowledge'})];
+  const pkg=(tool:any)=>({...tool,entry:`Tools/${tool.definition.id}/tool.ts`,sources:[{path:`Tools/${tool.definition.id}/SKILL.md`,body:'Local tool.'},{path:`Tools/${tool.definition.id}/tool.ts`,body:'Bundled implementation.'}]});
+  const snapshot=captureTurnExecutionSnapshot({turnId:'mcp-sources',textModel:'test',textManifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test',label:'Test',enabledTools:['memory.sources','memory.read'],maxToolCalls:3,maxResultChars:8000},replyStyle:'balanced',userGuidance:'',attachments:[]});
+  const result=await coordinateAgentTurn({snapshot,model:'test',question:'Find the original source.',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],builtinPackages:[pkg(sourceTool),pkg(read)],readToolSources:async()=>[],search:(query,signal)=>store.search(query,true,signal),views:signal=>store.views(signal),records:signal=>store.all(signal),ensureCustomRuntime:async()=>{},check:()=>{},signal:new AbortController().signal,engine:{manifest:{contextTokens:4096},count:async()=>({prompt_tokens:50}),generate:async()=>({text:plans.shift()??'{}'})},trace:(tool,input,work,project)=>recordOperation(tool,input,work,async event=>{activities.push(event);},project)});
+  return {calls:result.calls,refs:agentEvidenceFromCalls(result.calls),completed:activities.filter(event=>event.status==='succeeded').map(event=>event.tool)};
  }finally{store.close();await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Temporary test database is blocked'));});}
 }});
 Object.assign(window,{mcpComparisonFixture:async()=>{
