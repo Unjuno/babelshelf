@@ -5,6 +5,31 @@ import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {prepareCorrection} from '../src/note-corrections.ts';
 import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 
+test('approval freezes the proposal at invocation before opening the database',async()=>{
+ const store=new KnowledgeStore('correction-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'one',path:'Notes/a.md',body:'red box',version:1,history:[]}]);
+  const original=(await store.all())[0],proposal=prepareCorrection(original,'Make it blue',JSON.stringify({action:'replace',find:'red',with:'blue'}));
+  const changed=prepareCorrection(original,'Make it green',JSON.stringify({action:'replace',find:'red',with:'green'}));
+  const expectedId=proposal.id,promise=store.approveCorrection(proposal);
+  Object.assign(proposal,changed);
+  const receipt=await promise;
+  assert.equal(receipt.id,expectedId);assert.equal((await store.all())[0].revisions.at(-1).body,'blue box');
+ }finally{store.close();}
+});
+
+test('stage and approval use the reviewed snapshot when callers mutate their objects',async()=>{
+ const store=new KnowledgeStore('correction-review-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'one',path:'Notes/a.md',body:'red box',version:1,history:[]}]);
+  const original=(await store.all())[0],proposal=prepareCorrection(original,'Make it blue',JSON.stringify({action:'replace',find:'red',with:'blue'})),changed=prepareCorrection(original,'Make it green',JSON.stringify({action:'replace',find:'red',with:'green'}));
+  const id=proposal.id,staging=store.stageCorrection(proposal,'turn-one');Object.assign(proposal,changed);const pending=await staging;
+  assert.equal(pending.proposal.id,id);assert.equal(pending.proposal.after,'blue box');
+  const approved=structuredClone(pending.proposal),saving=store.approveCorrection(approved,pending);Object.assign(approved,changed);Object.assign(pending.proposal,changed);
+  const receipt=await saving;assert.equal(receipt.id,id);assert.equal((await store.all())[0].revisions.at(-1).body,'blue box');
+ }finally{store.close();}
+});
+
 test('retrying an identical approved correction returns its receipt without another revision',async()=>{
  const store=new KnowledgeStore('correction-idempotency-'+crypto.randomUUID());
  try{
