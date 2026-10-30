@@ -13,6 +13,7 @@ import {validateOcrLinks} from './ocr-text.ts';
 import {validateVisionLinks} from './vision-text.ts';
 import {validateSettingsRestoreReceipt} from './settings-restore.ts';
 import {validateProcessing} from './processing-history.ts';
+import {validateTurnActivityBackup} from './turn-activity-pages.ts';
 import {validatePdfLinks} from './pdf-text.ts';
 import {validateInputReadings} from './input-readings.ts';
 import {validateVoiceInputs} from './voice-input.ts';
@@ -53,6 +54,7 @@ function entries(list:Entry[]){
 }
 function validateState(state:StateSnapshot){
  jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);
+ validateTurnActivityBackup(state.settings,state.runs);
  for(const n of state.notes){validateDialogueCopyRecord(n);const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
   if(n.ui?.recordType==='schedule')parseTask(latest(n).body);
@@ -114,6 +116,7 @@ export function planStateRestore(current:StateSnapshot,incoming:StatePayload,mod
  writes.notes=writes.notes.map(guardRestoredNote);
  if(mode==='new-only'){
   const changedNotes=new Set(conflicts.filter(c=>c.store==='notes').map(c=>c.key));
+  if(conflicts.some(c=>c.store==='settings'&&c.key==='ui-v1-dialogue')&&writes.runs.some(entry=>['turn-activity-meta','turn-activity-page','turn-activity-index'].includes(entry.value?.type)))throw Error('New activity depends on a conflicting conversation');
   for(const entry of writes.settings)if(entry.key==='ui-v1-trash'&&entry.value.some((batch:any)=>batch.notes.some((note:any)=>changedNotes.has(note.id))))throw Error('New recovery data depends on conflicting records');
   for(const entry of writes.runs)if(entry.value?.type==='note-correction'&&changedNotes.has(entry.value.noteId))throw Error('New correction depends on conflicting records');
   for(const note of writes.notes.filter(n=>n.ui?.recordType==='execution'))for(const revision of note.revisions){

@@ -14,6 +14,8 @@ import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {visionTextNote,type VisionText} from './vision-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
+import {updateActivity,validateActivity} from './harness-activity.ts';
+import {TURN_ACTIVITY_PAGE_SIZE,turnActivityMetaKey,turnActivityPageKey,turnActivityIndexKey,turnActivityPagePrefix,validateTurnActivityMeta,validateTurnActivityPage,validateTurnActivityIndex,type TurnActivityMeta,type TurnActivityPage,type TurnActivityIndex} from './turn-activity-pages.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
 import {deletionContents,canRestore} from './memory-trash.ts';
 import {builtinToolUpdates} from './builtin-updates.ts';
@@ -362,6 +364,51 @@ export class KnowledgeStore {
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readwrite'),store=tx.objectStore('runs'),key=processingKey(next.id),q=store.get(key);let error:unknown;
    q.onsuccess=()=>{try{store.put(processingUpdate(q.result as ProcessingRecord|undefined,next),key);}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Processing record unavailable'));
+  });
+ }
+ /** Store one new or completed receipt without rewriting the conversation. */
+ async recordTurnActivity(turnId:string,next:Activity,expected:Dialogue):Promise<void>{
+  const receipt=structuredClone(next);validateActivity([receipt]);validateDialogue(expected);const expectedHash=stateHash(expected),metaKey=turnActivityMetaKey(turnId),indexKey=turnActivityIndexKey(turnId,receipt.id),db=await this.open();
+  return new Promise((resolve,reject)=>{const tx=db.transaction(['settings','runs'],'readwrite'),runs=tx.objectStore('runs'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue'),meta=runs.get(metaKey),index=runs.get(indexKey);let pending=3,error:unknown;
+   const read=()=>{if(--pending)return;try{
+    if(!dialogue.result)throw Error('Turn unavailable');const state=validateDialogue(dialogue.result),turn=state.turns.find(turn=>turn.id===turnId);if(!turn)throw Error('Turn unavailable');if(stateHash(state)!==expectedHash)throw Error('Conversation changed in another tab · reopen to continue');
+    if(turn.activity?.some(item=>item.id===receipt.id))throw Error('Duplicate activity identity');
+    const oldMeta=meta.result as TurnActivityMeta|undefined,oldIndex=index.result as TurnActivityIndex|undefined;
+    if(oldMeta)validateTurnActivityMeta(metaKey,oldMeta);if(oldIndex)validateTurnActivityIndex(indexKey,oldIndex);
+    if(receipt.status==='running'&&oldIndex)throw Error('Activity already exists');
+    if(receipt.status!=='running'&&(!oldMeta||!oldIndex))throw Error('Activity start unavailable');
+    const pageNumber=receipt.status==='running'?Math.floor((oldMeta?.count??0)/TURN_ACTIVITY_PAGE_SIZE):oldIndex!.page;
+    const key=turnActivityPageKey(turnId,pageNumber),request=runs.get(key);
+    request.onsuccess=()=>{try{
+     const oldPage=request.result as TurnActivityPage|undefined;if(oldPage)validateTurnActivityPage(key,oldPage);
+     if(receipt.status==='running'){
+      const count=oldMeta?.count??0,offset=count%TURN_ACTIVITY_PAGE_SIZE;
+      if(offset===0&&oldPage||offset>0&&(!oldPage||oldPage.items.length!==offset))throw Error('Activity page conflict');
+      const page:TurnActivityPage={schema:1,type:'turn-activity-page',turnId,page:pageNumber,items:updateActivity(oldPage?.items??[],receipt)};
+      const entry:TurnActivityIndex={schema:1,type:'turn-activity-index',turnId,id:receipt.id,page:pageNumber};
+      const updated:TurnActivityMeta={schema:1,type:'turn-activity-meta',turnId,count:count+1};
+      validateTurnActivityPage(key,page);validateTurnActivityIndex(indexKey,entry);validateTurnActivityMeta(metaKey,updated);
+      runs.put(page,key);runs.add(entry,indexKey);runs.put(updated,metaKey);
+     }else{
+      const expectedLength=Math.min(TURN_ACTIVITY_PAGE_SIZE,oldMeta!.count-pageNumber*TURN_ACTIVITY_PAGE_SIZE);
+      if(!oldPage||expectedLength<1||oldPage.items.length!==expectedLength||!oldPage.items.some(item=>item.id===receipt.id))throw Error('Activity start unavailable');
+      const page={...oldPage,items:updateActivity(oldPage.items,receipt)};validateTurnActivityPage(key,page);runs.put(page,key);
+     }
+    }catch(e){error=e;tx.abort();}};
+   }catch(e){error=e;tx.abort();}};
+   dialogue.onsuccess=read;meta.onsuccess=read;index.onsuccess=read;
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity record unavailable'));
+  });
+ }
+ async turnActivities(turnId:string):Promise<Activity[]>{
+  const prefix=turnActivityPagePrefix(turnId),metaKey=turnActivityMetaKey(turnId),db=await this.open();
+  return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),request=runs.getAll(IDBKeyRange.bound(prefix,prefix+'\uffff'));let result:Activity[]=[],pending=2,error:unknown;
+   const read=()=>{if(--pending)return;try{
+    const value=meta.result as TurnActivityMeta|undefined,pages=request.result as TurnActivityPage[];if(!value){if(pages.length)throw Error('Activity metadata unavailable');return;}
+    validateTurnActivityMeta(metaKey,value);const ids=new Set<string>();
+    for(let i=0;i<pages.length;i++){const page=pages[i];validateTurnActivityPage(turnActivityPageKey(turnId,i),page);if(page.turnId!==turnId||page.page!==i||i<pages.length-1&&page.items.length!==TURN_ACTIVITY_PAGE_SIZE)throw Error('Incomplete activity pages');for(const item of page.items){if(ids.has(item.id))throw Error('Duplicate activity identity');ids.add(item.id);result.push(structuredClone(item));}}
+    if(result.length!==value.count)throw Error('Activity count mismatch');
+   }catch(e){error=e;tx.abort();}};meta.onsuccess=read;request.onsuccess=read;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity records unavailable'));
   });
  }
  async snapshot():Promise<StateSnapshot>{return this.transaction(['notes','settings','runs'],'readonly',(tx,done)=>readSnapshot(tx,done));}
