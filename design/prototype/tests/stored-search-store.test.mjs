@@ -55,6 +55,21 @@ test('stored search pages reflect IndexedDB and reject continuation after anothe
  }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
 });
 
+test('reviewed answer cannot save when a scoped source changes after search',async()=>{
+ const name='scoped-save-conflict-'+crypto.randomUUID(),store=new KnowledgeStore(name);
+ try{
+  await store.initialize([{id:'source',path:'Inbox/travel/water.md',body:'water 17 liters',version:1,history:[]}]);
+  const found=await store.searchPage('water',{offset:0,limit:12,pathPrefix:'Inbox/travel'}),hit=found.hits.find(row=>row.noteId==='source'&&typeof row.quote==='string');
+  assert.ok(hit);const ref={noteId:hit.noteId,revision:hit.revision,start:hit.start,end:hit.end,quote:hit.quote};
+  const generated=createNewNoteView({id:'answer',path:'Inbox/answer.md',body:'17 liters',kind:'generated',sources:[ref]});
+  const before=await store.views(),source=before.find(row=>row.id==='source');
+  await store.commit(before,before.map(row=>row.id==='source'?{...source,body:'water 9 liters',version:2,history:[...source.history,source.body]}:row));
+  const changed=await store.views(),snapshot=await store.all();
+  await assert.rejects(store.commit(changed,[...changed,generated]),/source changed/i);
+  assert.deepEqual(await store.all(),snapshot);assert.ok(!(await store.all()).some(row=>row.id==='answer'));
+ }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
+});
+
 test('approved new note keeps its second-page original through local backup',async()=>{
  const name='search-save-'+crypto.randomUUID(),restoreName='search-restore-'+crypto.randomUUID(),store=new KnowledgeStore(name),destination=new KnowledgeStore(restoreName),seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));
  try{
