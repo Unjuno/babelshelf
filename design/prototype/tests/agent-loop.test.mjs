@@ -1,7 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {runReadOnlyAgentLoop,AgentContextCapacityError,AgentSourceCapacityError,AgentToolExecutionError,AgentToolResultTooLargeError} from '../src/agent-loop.ts';
+import {runReadOnlyAgentLoop,AgentContextCapacityError,AgentSourceCapacityError,AgentToolExecutionError,AgentSearchSnapshotChangedError,AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 const memoryTools=[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}];
+
+test('changed search invalidates older pages in answer evidence while retaining the execution history',async()=>{
+ const plans=[{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:0}},{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:12,snapshot:'old'}},{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:0}},{kind:'final',value:'done'}];let count=0,lastHistory;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async history=>{lastHistory=history;return plans.shift();},execute:async()=>{count++;if(count===2)throw new AgentSearchSnapshotChangedError();return {snapshot:count===1?'old':'new',hits:[{noteId:'n',revision:count===1?1:2,quote:'water'}]};},check:()=>{}});
+ assert.equal(result.attempts.length,3);assert.equal(result.attempts[0].result.snapshot,'old');assert.equal(result.attempts[1].error.code,'search_snapshot_changed');
+ assert.deepEqual(result.calls.map(call=>call.result.snapshot),['new']);
+ assert.equal(lastHistory[0].result,null);assert.equal(lastHistory[0].error.code,'search_snapshot_changed');assert.equal(lastHistory[2].result.snapshot,'new');
+});
+
+test('budget fallback does not treat invalidated search pages as usable evidence',async()=>{
+ const plans=[{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:0}},{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:12,snapshot:'old'}},{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:0}}];let count=0,seen;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,maxToolCalls:2,plan:async()=>plans.shift(),execute:async()=>{if(++count===2)throw new AgentSearchSnapshotChangedError();return {snapshot:'old',hits:[{noteId:'n',revision:1,quote:'water'}]};},onBudgetExhausted:history=>{seen=history;return 'partial';},check:()=>{}});
+ assert.equal(result.calls.length,0);assert.equal(result.attempts.length,2);assert.equal(seen.length,1);assert.equal(seen[0].error.code,'search_snapshot_changed');
+});
 
 test('agent loop carries each typed tool result into the next planner step and returns the final request',async()=>{
  const plans=[

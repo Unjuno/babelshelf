@@ -72,6 +72,17 @@ function snapshotBoundedResult(result:unknown,maxChars=MAX_AGENT_RESULT_CHARS):u
  if(serialized.length>maxChars)throw new AgentToolResultTooLargeError();
  return JSON.parse(serialized);
 }
+// A later failed continuation proves the earlier pages of that same search
+// snapshot are stale. Keep all attempts for audit, but never use them as
+// answer evidence or to justify a partial-budget answer.
+function usableHistory(history:readonly AgentToolAttempt[]):AgentToolAttempt[]{
+ const stale=new Set(history.filter(item=>item.tool==='memory.search'&&item.error?.code==='search_snapshot_changed'&&typeof item.arguments.query==='string'&&typeof item.arguments.snapshot==='string').map(item=>JSON.stringify([item.arguments.query,item.arguments.snapshot])));
+ return history.filter(item=>{if(item.error||item.tool!=='memory.search'||!validRecord(item.result)||typeof item.result.snapshot!=='string')return true;return !stale.has(JSON.stringify([item.arguments.query,item.result.snapshot]));});
+}
+function plannerHistory(history:readonly AgentToolAttempt[]):AgentToolAttempt[]{
+ const usable=new Set(usableHistory(history));
+ return history.map(item=>usable.has(item)?item:{...item,result:null,error:{code:'search_snapshot_changed'}});
+}
 
 /** Run a bounded sequence of registered tools, then return the model's final plan.
  * Tool output is handed back as data; it must be labelled untrusted by the caller.
@@ -96,18 +107,18 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   input.check();
   // A planner must not be able to change evidence from an earlier step.
   let plan:AgentPlan<Final>;
-  try{plan=await input.plan(structuredClone(history));}
+  try{plan=await input.plan(structuredClone(plannerHistory(history)));}
   catch(error){
    input.check();
    if(!(error instanceof AgentContextCapacityError)||!history.length||!input.onBudgetExhausted)throw error;
-   const final=await input.onBudgetExhausted(structuredClone(history));input.check();
-   return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:error instanceof AgentSourceCapacityError?'source-capacity':'context'};
+   const final=await input.onBudgetExhausted(structuredClone(usableHistory(history)));input.check();
+   return {final,calls:usableHistory(history).filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:error instanceof AgentSourceCapacityError?'source-capacity':'context'};
   }
   input.check();
   if(!validRecord(plan)||typeof plan.kind!=='string')throw new AgentProtocolError('Invalid agent plan');
   if(plan.kind==='final'){
    if(!exactKeys(plan,['kind','value']))throw new AgentProtocolError('Invalid agent final plan');
-   return {final:plan.value as Final,calls:history.filter(item=>!item.error),attempts:history};
+   return {final:plan.value as Final,calls:usableHistory(history).filter(item=>!item.error),attempts:history};
   }
   let calls:AgentToolCall[];
   const contentIsValid=(value:unknown)=>value===undefined||typeof value==='string'&&value.length<=32768;
@@ -118,8 +129,8 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   if(calls.some(call=>call.kind!=='tool'||typeof call.tool!=='string'||!allowed.has(call.tool)||!validRecord(call.arguments)||!contentIsValid(call.assistantContent)))throw new AgentProtocolError('Tool is not registered or call is invalid');
   if(maxToolCalls!==null&&history.length+calls.length>maxToolCalls){
    if(input.onBudgetExhausted){
-    const final=await input.onBudgetExhausted(structuredClone(history));input.check();
-    return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'tool-limit'};
+    const final=await input.onBudgetExhausted(structuredClone(usableHistory(history)));input.check();
+    return {final,calls:usableHistory(history).filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'tool-limit'};
    }
    throw new AgentProtocolError('Agent tool call limit reached');
   }
@@ -164,8 +175,8 @@ export async function runReadOnlyAgentLoop<Final>(input:{
     // The overflowing operation did not commit a usable result. Keep only
     // earlier completed observations; the host has recorded this failure.
     if(error instanceof AgentSourceCapacityError&&history.length&&input.onBudgetExhausted){
-     const final=await input.onBudgetExhausted(structuredClone(history));input.check();
-     return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'source-capacity'};
+     const final=await input.onBudgetExhausted(structuredClone(usableHistory(history)));input.check();
+     return {final,calls:usableHistory(history).filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'source-capacity'};
     }
     const code=error instanceof AgentToolInputError?'invalid_tool_input':error instanceof AgentSearchSnapshotChangedError?'search_snapshot_changed':error instanceof AgentToolExecutionError?'tool_execution':error instanceof AgentToolResultTooLargeError?'result_too_large':null;
     if(!code)throw error;

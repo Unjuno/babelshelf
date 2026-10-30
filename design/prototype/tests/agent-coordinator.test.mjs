@@ -94,7 +94,7 @@ test('a changed search snapshot gives the agent a specific restart signal',async
  const {value}=input(plans,{question:'Find saved water information.',builtinPackages:[pkg],searchPage:async(query,options)=>searchStoredPageChecked(options.offset?[...notes,createNote({title:'water new',body:'water new'})]:notes,query,options)});
  const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...rest)=>{prompts.push(messages);return generate(messages,...rest);};
  const result=await coordinateAgentTurn(value);
- assert.equal(result.calls.length,1);
+ assert.equal(result.calls.length,0);
  assert.match(JSON.stringify(prompts.at(-1)),/search_snapshot_changed/);
  assert.match(JSON.stringify(prompts.at(-1)),/restart/i);
 });
