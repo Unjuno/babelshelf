@@ -10,6 +10,7 @@ import {createNote,reviseNote,searchNotes} from '../../../dist/core.js';
 import {definition as searchDefinition,run as searchRun} from '../src/tools/memory.search/tool.ts';
 import {definition as readDefinition,run as readRun} from '../src/tools/memory.read/tool.ts';
 import {KnowledgeStore,projectNote} from '../src/knowledge-store.ts';
+import {createLfmTextRuntime} from '../src/lfm-text-runtime.ts';
 import * as clock from '../src/tools/time.now/tool.ts';
 function fixture(){
  let dialogue=emptyDialogue();const events=[],reviews=[];let modelCalls=0;
@@ -80,6 +81,20 @@ test('saved-file correction searches canonical Memory before proposing changes, 
  f.services.knowledge={getState:async()=>undefined,all:async()=>records,search:async query=>{assert.equal(query,'meeting');return [{noteId:target.id,revision:1,start:0,end:11,quote:'Bring water',title:'Notes/meeting.md'}];}};
  f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory'},{path:'Tools/memory.search/tool.ts',body:'Trusted search adapter'}],run:searchRun}];f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000};f.view.reviewCorrection=proposal=>proposals.push(proposal);
  assert.equal(await c.run(run=>executeSubmission({text:'Could you replace water with tea in my saved meeting note?',attachments:[]},f.services,f.view,run)),'awaitingApproval',JSON.stringify({state:c.state,events:f.events,prompts:prompts.length}));assert.equal(prompts.length,3);assert.equal(proposals.length,1);assert.equal(proposals[0].path,'Notes/meeting.md');assert.equal(proposals[0].before,'Bring water.');assert.equal(proposals[0].after,'Bring tea.');assert.deepEqual(records,before);assert.deepEqual(f.current().currentFile,prior.currentFile);assert.deepEqual(f.current().compaction,prior.compaction);assert.deepEqual(f.current().turns[0],prior.turns[0]);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='dialogue.compact'),false);
+});
+
+test('native tool protocol discovers a note and stages its correction without writing',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/meeting.md',body:'Bring water.'}),before=structuredClone(note),proposals=[];
+ const adapter={loaded:'test',nativeToolCalls:true,supportsExactCount:true,maxReplyTokens:3072,abort(){},async count(){return 100;},async generate(_messages,options){
+  if(options.tools){const offered=options.tools.map(tool=>tool.function.name);if(!this.searched){this.searched=true;assert.ok(offered.includes('memory.search'));return {text:'Searching.',assistantContent:'Searching.',toolCalls:[{id:'search-1',name:'memory.search',arguments:{query:'meeting'}}],finishReason:'stop'};}assert.ok(offered.includes('finish_edit'));return {text:'',toolCalls:[{id:'edit-1',name:'finish_edit',arguments:{query:'Notes/meeting.md',target:'path'}}],finishReason:'stop'};}
+  return {text:JSON.stringify({action:'replace',find:'water',with:'tea'}),finishReason:'stop'};
+ }};
+ const manifest={contextTokens:4096,runtime:{revision:'test'},models:[{id:'test',revision:'test',contextTokens:4096,file:{name:'test.gguf',bytes:1}}]};
+ f.services.model='test';f.services.bonsai=createLfmTextRuntime({adapter,manifest,readFile:async()=>new Blob(['x']),readAssets:()=>({test:{filesPresent:true}})});
+ f.services.knowledge={getState:async()=>undefined,all:async()=>[note],views:async()=>[],search:async()=>[{noteId:note.id,revision:1,start:0,end:11,quote:'Bring water',title:'Notes/meeting.md'}]};
+ f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory'},{path:'Tools/memory.search/tool.ts',body:'Trusted search adapter'}],run:searchRun}];f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000};f.view.reviewCorrection=proposal=>proposals.push(proposal);
+ assert.equal(await c.run(run=>executeSubmission({text:'Could you replace water with tea in my saved meeting note?',attachments:[]},f.services,f.view,run)),'awaitingApproval',JSON.stringify(c.state));
+ assert.equal(proposals.length,1);assert.equal(proposals[0].after,'Bring tea.');assert.deepEqual(note,before);
 });
 
 test('discovered corrections revalidate canonical identity and revision before proposal generation',async()=>{
