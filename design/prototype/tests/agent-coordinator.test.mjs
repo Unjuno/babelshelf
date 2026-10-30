@@ -86,6 +86,17 @@ test('agent executes paged search and retains original evidence from later pages
  for(const ref of refs){const note=notes.find(note=>note.id===ref.noteId);assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
 });
 
+test('native planner sees source labels inside a paged search result',async()=>{
+ const notes=[createNote({title:'water',body:'water reserve: 10',path:'Inbox/water.md'})];
+ const pkg={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search with pages.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:pagedSearch.run};
+ const plans=[{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:0})},{action:'answer',query:'water',target:'knowledge',reply:{status:'answered',answer:'10',sources:['S1']}}].map(JSON.stringify);
+ const {value}=input(plans,{question:'Find water information.',builtinPackages:[pkg],searchPage:async(query,options)=>searchStoredPageChecked(notes,query,options)});
+ value.engine.plannerProtocol='native-tool-calls';const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...rest)=>{prompts.push(messages);return generate(messages,...rest);};
+ const result=await coordinateAgentTurn(value);assert.equal(result.final.action,'answer');
+ const tool=prompts[1].find(message=>message.role==='tool'),page=JSON.parse(tool.content);
+ assert.equal(page.hits[0].source,'S1');assert.equal(page.hits[0].quote,'water reserve: 10');
+});
+
 test('a changed search snapshot gives the agent a specific restart signal',async()=>{
  const notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water ${i}`,path:`Inbox/water-${i}.md`}));
  const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12});

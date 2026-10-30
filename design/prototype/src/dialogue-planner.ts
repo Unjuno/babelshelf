@@ -110,6 +110,10 @@ function plannerReplySources(agent:AgentPlannerContext|undefined,inputs:boolean,
 }
 function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledSource[],observed:readonly SourceRef[]=[]):unknown{
  const matchSource=(ref:SourceRef|undefined)=>ref&&sources.find(item=>item.noteId===ref.noteId&&item.revision===ref.revision&&item.start===ref.start&&item.end===ref.end&&item.quote===ref.quote);
+ if(tool==='memory.search'&&result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as {hits?:unknown[]}).hits)){
+  const page=result as Record<string,unknown> & {hits:unknown[]};
+  return {...page,hits:labelToolEvidence(tool,page.hits,sources)};
+ }
  if(tool.startsWith('user.')&&observed.length){
   const originals=observed.flatMap(ref=>{const match=matchSource(ref);return match?[{...ref,source:match.label}]:[];});
   // This envelope is application-owned. A package's own source-like fields
