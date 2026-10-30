@@ -16,7 +16,7 @@ import {agentClockReadingsFromCalls} from '../src/agent-evidence.ts';
 import {PlannerOutputError} from '../src/planner-error.ts';
 import * as pagedSearch from '../src/tools/memory.search/tool.ts';
 import {searchStoredPageChecked} from '../src/file-discovery.ts';
-import {createNote} from '../../../dist/core.js';
+import {createNote,reviseNote} from '../../../dist/core.js';
 import * as sourceTool from '../src/tools/memory.sources/tool.ts';
 import {projectNote} from '../src/knowledge-store.ts';
 import {agentToolInfoFromCalls} from '../src/agent-evidence.ts';
@@ -107,6 +107,17 @@ test('agent inspects saved sources then reads the current original for a citatio
  const {value}=input(plans,{question:'What is the original source?',enabledTools:['memory.sources','memory.read'],builtinPackages:[pkg,readPackage],records:async()=>[original,summary],views:async()=>[projectNote(original),projectNote(summary)]});
  const result=await coordinateAgentTurn(value);assert.deepEqual(result.calls.map(call=>call.tool),['memory.sources','memory.read']);
  assert.equal(agentToolInfoFromCalls(result.calls).length,1);const refs=agentEvidenceFromCalls(result.calls);assert.equal(refs.length,1);assert.equal(refs[0].noteId,original.id);assert.equal(refs[0].quote,'Water reserve is 17 liters.');
+});
+
+test('agent receives restart guidance when source metadata changes between pages',async()=>{
+ const {noteSourceMetadata}=await import('../src/note-provenance.ts');
+ const original=createNote({path:'Inbox/original.md',body:'Water reserve is 17 liters.'}),ref={noteId:original.id,revision:1,start:0,end:27,quote:'Water reserve is 17 liters.'},summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:Array.from({length:13},()=>ref)});
+ const first=await sourceTool.run({id:summary.id,revision:1},{check(){},sources:async()=>noteSourceMetadata([original,summary],summary.id,1)});
+ const pkg={definition:sourceTool.definition,entry:'Tools/memory.sources/tool.ts',sources:[{path:'Tools/memory.sources/SKILL.md',body:'Inspect sources.'},{path:'Tools/memory.sources/tool.ts',body:'Trusted source metadata.'}],run:sourceTool.run};
+ const plans=[{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1})},{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1,offset:12,snapshot:first.snapshot})},{action:'answer',query:'sources',target:'knowledge'}].map(JSON.stringify);let reads=0;
+ const {value}=input(plans,{question:'Find the original sources.',enabledTools:['memory.sources'],builtinPackages:[pkg],records:async()=>[++reads===1?original:reviseNote(original,{body:'Updated.'},1),summary]});
+ const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...rest)=>{prompts.push(messages);return generate(messages,...rest);};
+ const result=await coordinateAgentTurn(value);assert.equal(result.calls.length,0);assert.match(JSON.stringify(prompts.at(-1)),/restart memory\.sources/i);
 });
 
 test('native planner sees source labels inside a paged search result',async()=>{
