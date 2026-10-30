@@ -333,8 +333,9 @@ export class KnowledgeStore {
   });
  }
  async getState<T>(key:string):Promise<T|undefined>{return this.transaction(['settings'],'readonly',(tx,done)=>{const q=tx.objectStore('settings').get('ui-v1-'+key);q.onsuccess=()=>done(q.result);});}
- async setState(key:string,value:unknown){return this.transaction<void>(['settings'],'readwrite',(tx,done)=>{tx.objectStore('settings').put(value,'ui-v1-'+key);done();});}
+ async setState(key:string,value:unknown){value=structuredClone(value);return this.transaction<void>(['settings'],'readwrite',(tx,done)=>{tx.objectStore('settings').put(value,'ui-v1-'+key);done();});}
  async compareState(key:string,before:unknown,next:unknown){
+  ({before,next}=structuredClone({before,next}));
   if(key==='dialogue')validateDialogue(next);
   const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),s=tx.objectStore('settings'),q=s.get('ui-v1-'+key);let error:unknown;
    q.onsuccess=()=>{if(!equal(q.result,before)){error=Error(key==='dialogue'?'Conversation changed in another tab · reopen to continue':'Local data changed in another tab · reopen to continue');tx.abort();return;}s.put(next,'ui-v1-'+key);};
@@ -345,8 +346,9 @@ export class KnowledgeStore {
   * and expected conversation are still current. Historical turns are not
   * revalidated here. */
  async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[]){
+  ({before,next,refs}=structuredClone({before,next,refs}));
   validateDialogue(next);if(!Array.isArray(refs)||!refs.length)throw Error('Source required');
-  const sources=structuredClone(refs),db=await this.open();return new Promise<void>((resolve,reject)=>{
+  const sources=refs,db=await this.open();return new Promise<void>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
    const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(!validateGroundingRefs(notes.result,sources).ok)throw new GroundingConflictError();settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
    dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));

@@ -56,3 +56,25 @@ test('reviewed transcript and original remain the same while saving',async()=>{
   await saving;const notes=await store.all();assert.equal(notes.find(note=>note.id==='reading-one').revisions[0].body,'Reviewed words');assert.equal((await store.original(originalRef(original))).name,'source.wav');
  }finally{store.close();}
 });
+
+test('grounded dialogue freezes both the answer and its checked source before storage',async()=>{
+ const store=new KnowledgeStore('grounded-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'source',path:'Notes/source.md',body:'Source text',version:1,history:[]}]);
+  const ref={noteId:'source',revision:1,start:0,end:6,quote:'Source'};
+  const next=appendTurn(emptyDialogue(),{id:'turn-one',user:'Question',answer:'Supported answer',refs:[ref]});
+  const saving=store.compareGroundedDialogue(undefined,next,[ref]);next.turns[0].answer='Changed answer';next.turns[0].refs[0].quote='Forged';
+  await saving;const stored=await store.getState('dialogue');assert.equal(stored.turns[0].answer,'Supported answer');assert.equal(stored.turns[0].refs[0].quote,'Source');
+ }finally{store.close();}
+});
+
+test('dialogue CAS and settings writes freeze their inputs before storage opens',async()=>{
+ const store=new KnowledgeStore('state-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize([]);const next=appendTurn(emptyDialogue(),{id:'turn-one',user:'Original'});
+  const saving=store.compareState('dialogue',undefined,next);next.turns[0].user='Changed';await saving;
+  assert.equal((await store.getState('dialogue')).turns[0].user,'Original');
+  const value={enabled:false},set=store.setState('test-setting',value);value.enabled=true;await set;
+  assert.equal((await store.getState('test-setting')).enabled,false);
+ }finally{store.close();}
+});
