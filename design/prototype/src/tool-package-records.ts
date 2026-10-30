@@ -5,6 +5,8 @@ import decimalCode from './tools/math.calculate/decimal-calculation.ts?raw';
 import receiptCode from './tools/math.calculate/decimal-receipt.ts?raw';
 import clockSkill from './tools/time.now/SKILL.md?raw';
 import clockCode from './tools/time.now/tool.ts?raw';
+import sourcesSkill from './tools/memory.sources/SKILL.md?raw';
+import sourcesCode from './tools/memory.sources/tool.ts?raw';
 import {createToolRegistry} from './tools/tool-registry.ts';
 import searchSkill from './tools/memory.search/SKILL.md?raw';
 import searchCode from './tools/memory.search/tool.ts?raw';
@@ -19,6 +21,7 @@ export const builtinPackageNotes = [
  ['memory.read/SKILL.md',readSkill],['memory.read/tool.ts',readCode],
  ['memory.list/SKILL.md',listSkill],['memory.list/tool.ts',listCode],
  ['time.now/SKILL.md',clockSkill],['time.now/tool.ts',clockCode],
+ ['memory.sources/SKILL.md',sourcesSkill],['memory.sources/tool.ts',sourcesCode],
  ['math.calculate/SKILL.md',calculateSkill],['math.calculate/tool.ts',calculateCode],
  ['math.calculate/decimal-calculation.ts',decimalCode],['math.calculate/decimal-receipt.ts',receiptCode],
  ['tool-host.ts',hostCode],

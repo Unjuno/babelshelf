@@ -9,6 +9,7 @@ import {DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_ID} from './deferred-to
 import {validateMemoryListResult} from './tools/builtin-tool-results.ts';
 import {boundedPrefix} from './utf8-text.ts';
 import {validateClockReading,type ClockReading} from './tools/time.now/tool.ts';
+import {validateSourcePage} from './tools/memory.sources/tool.ts';
 import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 
 export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
@@ -124,10 +125,11 @@ export function agentCustomResultsFromCalls(calls:readonly {tool:string;argument
 /** Descriptions/listings can answer questions about available tools or files.
  * They neither prove package execution nor supply original-content citations. */
 export function agentToolInfoFromCalls(calls:readonly {tool:string;arguments:Record<string,unknown>;result?:unknown;error?:unknown;resultOmitted?:string}[]):AgentToolResult[]{
- const selected=calls.filter(call=>[DEFERRED_TOOL_SEARCH_ID,DEFERRED_TOOL_READ_SKILL_ID,'memory.list'].includes(call.tool)&&!call.error&&!call.resultOmitted&&call.result!==undefined);
+ const selected=calls.filter(call=>[DEFERRED_TOOL_SEARCH_ID,DEFERRED_TOOL_READ_SKILL_ID,'memory.list','memory.sources'].includes(call.tool)&&!call.error&&!call.resultOmitted&&call.result!==undefined);
  return selected.map(call=>{
   const result=projectAgentToolResult(call.tool,call.result);
   if(call.tool===DEFERRED_TOOL_READ_SKILL_ID&&(result as {id:string}).id!==call.arguments.id)throw Error('Tool guide identity changed');
+  if(call.tool==='memory.sources'&&((result as {noteId:string}).noteId!==call.arguments.id||(result as {revision:number}).revision!==call.arguments.revision))throw Error('Source identity changed');
   return {tool:call.tool,arguments:JSON.parse(serializeCustomToolResult(call.arguments)),result};
  });
 }
@@ -135,6 +137,7 @@ export function agentToolInfoFromCalls(calls:readonly {tool:string;arguments:Rec
 // Model-facing tool payloads are deliberately smaller than the canonical tool
 // result and preserve source offsets only for exact original substrings.
 export function projectAgentToolResult(tool:string,result:unknown,maxChars?:number):unknown{
+ if(tool==='memory.sources')return validateSourcePage(result);
  if(tool==='time.now')return validateClockReading(result);
  if(tool==='memory.list'){
   return validateMemoryListResult(result);

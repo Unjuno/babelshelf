@@ -29,7 +29,7 @@ const defaults={
  appearance:{schemaVersion:PREFERENCE_SCHEMA_VERSION,theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[],paletteRegistry:[] as NamedAppearancePalette[],activePaletteId:''},
  connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false},
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
-  {id:'standard',label:'Standard',enabledTools:[...SAFE_AGENT_TOOL_IDS],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS},
+  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS},
   {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read'],maxToolCalls:null,maxResultChars:6000},
   {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS},
  ] as HarnessProfile[]},
@@ -80,12 +80,12 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   for(const profile of value.profiles){
    const oldStandard=['math.calculate','memory.read','memory.search'].sort().join('|');
    if(profile?.id==='standard'&&profile.label==='Standard'&&profile.maxResultChars===MAX_AGENT_RESULT_CHARS&&Array.isArray(profile.enabledTools)&&profile.enabledTools.slice().sort().join('|')===oldStandard&&(profile.maxToolCalls===null||profile.maxToolCalls===8)){
-    profile.enabledTools=[...SAFE_AGENT_TOOL_IDS];profile.maxToolCalls=null;
+    profile.enabledTools=['memory.search','memory.list','memory.read','math.calculate','time.now'];profile.maxToolCalls=null;
    }
    if(profile?.id==='source-first'&&profile.label==='Source first'&&profile.maxResultChars===6000&&Array.isArray(profile.enabledTools)&&['memory.read|memory.search','memory.list|memory.read|memory.search'].includes(profile.enabledTools.slice().sort().join('|'))&&(profile.maxToolCalls===null||profile.maxToolCalls===2)){
     profile.enabledTools=['memory.search','memory.list','memory.read'];profile.maxToolCalls=null;
    }
-   if(profile?.id==='standard'&&profile.maxToolCalls===8&&profile.maxResultChars===MAX_AGENT_RESULT_CHARS&&Array.isArray(profile.enabledTools)&&profile.enabledTools.slice().sort().join('|')===[...SAFE_AGENT_TOOL_IDS].sort().join('|'))profile.maxToolCalls=null;
+   if(profile?.id==='standard'&&profile.maxToolCalls===8&&profile.maxResultChars===MAX_AGENT_RESULT_CHARS&&Array.isArray(profile.enabledTools)&&[...SAFE_AGENT_TOOL_IDS].filter(id=>id!=='memory.sources').sort().join('|')===profile.enabledTools.slice().sort().join('|'))profile.maxToolCalls=null;
    if(profile?.id==='source-first'&&profile.maxToolCalls===2&&profile.maxResultChars===6000&&Array.isArray(profile.enabledTools)&&profile.enabledTools.slice().sort().join('|')==='memory.read|memory.search')profile.maxToolCalls=null;
   }
  }

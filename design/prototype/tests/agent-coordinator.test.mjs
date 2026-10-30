@@ -17,6 +17,9 @@ import {PlannerOutputError} from '../src/planner-error.ts';
 import * as pagedSearch from '../src/tools/memory.search/tool.ts';
 import {searchStoredPageChecked} from '../src/file-discovery.ts';
 import {createNote} from '../../../dist/core.js';
+import * as sourceTool from '../src/tools/memory.sources/tool.ts';
+import {projectNote} from '../src/knowledge-store.ts';
+import {agentToolInfoFromCalls} from '../src/agent-evidence.ts';
 
 test('native planner protocol failure is recorded and retried once without executing malformed output',async()=>{
  const {value,calls}=input([],{question:'Summarize the previous answer.',context:{...context(),recent:[{id:'prior',user:'Hello',answer:'Previous answer'}],turnCount:1}});let generations=0;const prompts=[],receipts=[];
@@ -95,6 +98,15 @@ test('agent keeps scoped search evidence inside the chosen folder across pages',
  const result=await coordinateAgentTurn(value),refs=agentEvidenceFromCalls(result.calls);
  assert.equal(result.calls.length,2);assert.equal(refs.length,14);
  for(const ref of refs){const note=notes.find(n=>n.id===ref.noteId);assert.ok(note.revisions.at(-1).path.startsWith('Inbox/travel/'));assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
+});
+
+test('agent inspects saved sources then reads the current original for a citation',async()=>{
+ const original=createNote({path:'Inbox/original.md',body:'Water reserve is 17 liters.'}),ref={noteId:original.id,revision:1,start:0,end:27,quote:'Water reserve is 17 liters.'},summary=createNote({path:'Inbox/summary.md',body:'Stored summary',kind:'generated',sources:[ref]});
+ const pkg={definition:sourceTool.definition,entry:'Tools/memory.sources/tool.ts',sources:[{path:'Tools/memory.sources/SKILL.md',body:'Inspect sources.'},{path:'Tools/memory.sources/tool.ts',body:'Trusted source metadata.'}],run:sourceTool.run};
+ const plans=[{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1})},{action:'tool',query:'memory.read',body:JSON.stringify({query:original.id})},{action:'answer',query:'water',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:'What is the original source?',enabledTools:['memory.sources','memory.read'],builtinPackages:[pkg,readPackage],records:async()=>[original,summary],views:async()=>[projectNote(original),projectNote(summary)]});
+ const result=await coordinateAgentTurn(value);assert.deepEqual(result.calls.map(call=>call.tool),['memory.sources','memory.read']);
+ assert.equal(agentToolInfoFromCalls(result.calls).length,1);const refs=agentEvidenceFromCalls(result.calls);assert.equal(refs.length,1);assert.equal(refs[0].noteId,original.id);assert.equal(refs[0].quote,'Water reserve is 17 liters.');
 });
 
 test('native planner sees source labels inside a paged search result',async()=>{

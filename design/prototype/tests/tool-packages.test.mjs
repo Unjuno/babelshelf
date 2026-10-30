@@ -14,8 +14,8 @@ test('every shipped tool can execute through the registry and persist a readable
   return {definition:tool.definition,run:tool.run,entry:`Tools/${id}/tool.ts`,sources:await Promise.all(['SKILL.md','tool.ts'].map(async name=>({path:`Tools/${id}/${name}`,body:await readFile(new URL(`../src/tools/${id}/${name}`,import.meta.url),'utf8')})))};
  }));
  const registry=createToolRegistry(packages),record={id:'saved',path:'Notes/example.md',version:2,body:'Water: 17 litres.'};
- const local={check(){},search:async()=>[{noteId:'saved',revision:2,quote:record.body,start:0,end:record.body.length}],resolve:async query=>resolveToolNotes([record],query),list:async(path,offset,limit)=>listMemoryEntries(path,[record],['Notes'],offset,limit)};
- const inputs={'memory.search':{query:'Water'},'memory.list':{path:'Notes'},'memory.read':{query:'saved'},'math.calculate':{expression:'19*23'},'time.now':{}};
+ const local={check(){},search:async()=>[{noteId:'saved',revision:2,quote:record.body,start:0,end:record.body.length}],resolve:async query=>resolveToolNotes([record],query),list:async(path,offset,limit)=>listMemoryEntries(path,[record],['Notes'],offset,limit),sources:async(id,revision)=>({noteId:id,revision,status:'none',items:[]})};
+ const inputs={'memory.search':{query:'Water'},'memory.list':{path:'Notes'},'memory.read':{query:'saved'},'memory.sources':{id:'saved',revision:2},'math.calculate':{expression:'19*23'},'time.now':{}};
  const results=new Map(),receipts=[];
  for(const capability of registry.capabilities()){
   assert.ok(Object.hasOwn(inputs,capability.id),`Provide an actual execution case for ${capability.id}`);
@@ -33,6 +33,7 @@ test('every shipped tool can execute through the registry and persist a readable
  assert.deepEqual(results.get('memory.read')[0],{id:'saved',path:'Notes/example.md',version:2,body:'Water: 17 litres.',start:0,totalChars:17});
  assert.equal(results.get('math.calculate')[0].result,'437');
  assert.equal(results.get('time.now').source,'device-clock');
+ assert.equal(results.get('memory.sources').status,'none');
  await assert.rejects(registry.run('shell.exec',{},local),/not registered/);
 });
 const notes=[{id:'one',path:'Inbox/給水.md',version:2,body:'16 liters'}];

@@ -24,3 +24,9 @@ export function noteProvenance(records:any[],noteId:string,revision:number):Note
  const status:NoteProvenance['status']=!items.length?'none':items.some((item:NoteProvenance['items'][number])=>item.status==='unavailable')?'unavailable':items.some((item:NoteProvenance['items'][number])=>item.status==='removed')?'removed':items.some((item:NoteProvenance['items'][number])=>item.status==='changed')?'changed':'current';
  return {noteId,revision,status,items};
 }
+
+/** Metadata for navigating original sources; never an excerpt or evidence grant. */
+export function noteSourceMetadata(records:any[],noteId:string,revision:number){
+ const report=noteProvenance(records,noteId,revision);
+ return {noteId:report.noteId,revision:report.revision,status:report.status,items:report.items.map(({ref,path,currentRevision,status,historicalAvailable})=>({noteId:ref.noteId,revision:ref.revision,start:ref.start,end:ref.end,path,...(currentRevision===undefined?{}:{currentRevision}),status,historicalAvailable}))};
+}

@@ -13,6 +13,7 @@ import type {ActivityTool} from './harness-activity.ts';
 import {activityBoundedToolBudget} from './harness-activity.ts';
 import type {ToolHost,ToolNote} from './tools/tool-host.ts';
 import type {MemorySearchResult} from './memory-search-types.ts';
+import {noteSourceMetadata} from './note-provenance.ts';
 import {turnExecutionReceipt,type TurnExecutionSnapshot} from './turn-execution-snapshot.ts';
 import {explicitlyNamedSearchResultIds,requestsCompoundSearchTask,requestsImplicitSearchReadAnswer,requestsLocalSearchReadAnswer,requestsMoreToolWorkAfterRead,requestsSynthesisWithoutMoreTools} from './saved-knowledge-reference.ts';
 import {DEFERRED_TOOL_READ_SKILL_CAPABILITY,DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOOL_SEARCH_ID,explicitDeferredToolIds,readDeferredToolSkill,searchDeferredTools} from './deferred-tool-search.ts';
@@ -108,6 +109,7 @@ export async function coordinateAgentTurn(input:{
  search:(query:string,signal?:AbortSignal)=>Promise<MemorySearchResult[]>;
  searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal)=>Promise<unknown>;
  views:(signal?:AbortSignal)=>Promise<ToolNote[]>;
+ records?:(signal?:AbortSignal)=>Promise<any[]>;
  listFolders?:()=>Promise<string[]>;
  ensureCustomRuntime:()=>Promise<unknown>;
  check:()=>void;
@@ -262,6 +264,10 @@ export async function coordinateAgentTurn(input:{
      explicitSearchResults.push(...rows);
     }
    }
+   if(call.tool==='memory.sources'){
+    const page=projected as {items:{noteId:string;path:string;status:string}[]};
+    rememberExactReadTargets(exactReadTargets,page.items.filter(item=>item.status==='current'));
+   }
    return projected;
    };
    // Malformed model arguments are rejected and recorded by the existing
@@ -297,6 +303,7 @@ export async function coordinateAgentTurn(input:{
      searchPage:input.searchPage?async(query,options,signal)=>{try{return await input.searchPage!(query,options,signal);}catch(error){if(call.tool==='memory.search'&&error instanceof SearchSnapshotChangedError)throw new AgentSearchSnapshotChangedError();throw error;}}:undefined,
      resolve:async(query,signal)=>{const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
      list:async(path,offset,limit,signal)=>{const [notes,folders]=await Promise.all([input.views(signal),input.listFolders?.()??Promise.resolve([])]);signal?.throwIfAborted();return listMemoryEntries(path,notes,[...SYSTEM_FOLDERS,...folders],offset,limit);},
+     sources:input.records?async(id,revision,signal)=>{const records=await input.records!(signal);signal?.throwIfAborted();return noteSourceMetadata(records,id,revision);}:undefined,
      check:input.check,signal:input.signal,
     };
     const transaction=isCustom?beginCustomEvidence(host,customEvidence):null;

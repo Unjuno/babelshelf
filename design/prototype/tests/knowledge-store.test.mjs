@@ -61,6 +61,13 @@ test('an answer saved without citations reports no sources rather than a missing
  const note=createNote({path:'Inbox/calculation.md',body:'0.3',kind:'generated',sources:[]});
  const report=noteProvenance([note],note.id,1);assert.equal(report.status,'none');assert.deepEqual(report.items,[]);
 });
+test('source metadata distinguishes outdated originals without returning their text',async()=>{
+ const {noteSourceMetadata}=await import('../src/note-provenance.ts');
+ const source=createNote({path:'Notes/source.md',body:'A private original.'}),ref={noteId:source.id,revision:1,start:0,end:19,quote:'A private original.'},saved=createNote({path:'Notes/summary.md',body:'summary',kind:'generated',sources:[ref]});
+ const result=noteSourceMetadata([reviseNote(source,{body:'Changed original.'},1),saved],saved.id,1);
+ assert.equal(result.items[0].status,'changed');assert.equal(result.items[0].revision,1);assert.equal(result.items[0].currentRevision,2);assert.equal(result.items[0].historicalAvailable,true);assert.ok(!JSON.stringify(result).includes('A private original.'));
+ assert.throws(()=>noteSourceMetadata([source,saved],saved.id,2),/changed|unavailable/i);
+});
 test('edits append one revision; stale concurrent edits cannot overwrite',()=>{
  const original=createNote({title:'Notes',path:'Notes/a.md',body:'v1'}),before=projectNote(original);
  const changed={...before,body:'v2',version:2,history:['v1']};

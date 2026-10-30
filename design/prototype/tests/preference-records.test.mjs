@@ -138,9 +138,9 @@ test('harness profile accepts only namespaced custom tool IDs for later registry
 
 test('existing standard profile keeps its tool selection after a new tool is added',()=>{
  const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness');
- const old=parsePreference('harness',record.body);old.profiles[0].enabledTools=old.profiles[0].enabledTools.filter(id=>id!=='time.now');
+ const old=parsePreference('harness',record.body);old.profiles[0].enabledTools=old.profiles[0].enabledTools.filter(id=>id!=='time.now'&&id!=='memory.sources');
  record.body=formatPreference('harness',old);const before=record.body;
- assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('time.now'),false);assert.equal(record.body,before);
+ assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('time.now'),false);assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('memory.sources'),false);assert.equal(record.body,before);
 });
 
 test('harness config rejects unknown tools, invalid budgets and non-read-only capabilities',()=>{
@@ -155,7 +155,7 @@ test('harness config rejects unknown tools, invalid budgets and non-read-only ca
 
 test('legacy untouched built-in tools and caps migrate additively without changing custom limits',()=>{
  const current=structuredClone(initialPreferenceNotes),record=current.find(note=>note.id==='settings-harness');
- const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
+ const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
  record.body=formatPreference('harness',legacy).replace('"schemaVersion": 2','"schemaVersion": 1');const parsed=parsePreference('harness',record.body);
  assert.equal(parsed.schemaVersion,1);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
  legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 2','"schemaVersion": 1');

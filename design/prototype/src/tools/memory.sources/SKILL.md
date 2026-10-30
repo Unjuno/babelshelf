@@ -1,0 +1,3 @@
+# memory.sources
+
+Find the direct sources of an exact saved note. Input: `{id: string, revision: integer, offset?: integer, snapshot?: string}`. Use the note ID and current revision from search or read. Continue with `nextOffset` and `snapshot` if present; restart if sources changed. `windowLimit` means more sources exist outside the available window. Items identify the original path, revision and range and whether that original is current, changed, removed or unavailable. This metadata is not source text or a citation. Use `memory.read` to inspect a current original; never present an old or removed revision as current. No writes or network.
