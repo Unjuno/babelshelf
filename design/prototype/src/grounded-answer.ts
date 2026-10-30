@@ -104,7 +104,6 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const completedToolIds=toolEvidence?.completedToolIds??[];
  if(!Array.isArray(completedToolIds)||completedToolIds.length>MAX_PLANNER_AGENT_TOOLS||completedToolIds.some(id=>typeof id!=='string'||![...builtinToolIds,...AGENT_DISCOVERY_TOOL_IDS].some(known=>known===id)&&!/^user\.[a-z][a-z0-9-]{0,47}$/.test(id)))throw Error('Invalid completed tool receipts');
  const operationalEvidence=calculations.length>0||clockReadings.length>0||customResults.length>0||toolInfo.length>0;
- if(calculations.length>3)throw Error('Invalid calculation result');
  if(clockReadings.length>MAX_CONTEXT_SOURCE_REFS)throw Error('Too many device clock readings');for(const reading of clockReadings)validateClockReading(reading);
  for(const item of calculations)checkedCalculation(item);
  const calculationOnlyScope=!!(workingFile||inputReadings.length)&&!!toolEvidence?.used&&toolEvidence.refs.length===0&&operationalEvidence&&!toolEvidence.memoryUsed;
