@@ -663,3 +663,25 @@ test('native search/read replies reach display or note review once, with exact s
   assert.deepEqual(records,before,'no original is changed by answering or proposing a new note');
  }
 });
+
+test('a second search page can ground the exact answer and a reviewed new note',async()=>{
+ for(const action of ['answer','capture']){
+  const f=fixture(),c=createSubmissionController(),notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water reserve ${i} litres`,path:`Inbox/water-${i}.md`})),before=structuredClone(notes);
+  const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12});let terminal=0;
+  f.services.model='test';f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:16000,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),load:async()=>{throw Error('Already loaded');},generate:async(messages,_budget,format)=>{
+   assert.equal(format.type,'native-tool-plan');const results=messages.filter(message=>message.role==='tool'&&message.name==='memory.search');let value;
+   if(!results.length)value={action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:0})};
+   else if(results.length===1)value={action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:12,snapshot:first.snapshot})};
+   else{const page=JSON.parse(results[1].content);assert.equal(page.hits.length,3);const hit=page.hits[0];assert.ok(hit.source);terminal++;value={action,...(action==='answer'?{query:'water',target:'knowledge'}:{}),reply:{status:'answered',answer:hit.quote,sources:[hit.source]}};}
+   return {text:JSON.stringify(value),finishReason:'stop'};
+  }};
+  f.services.knowledge={all:async()=>notes,getState:async()=>undefined,search:async()=>[],searchPage:async(query,options)=>searchStoredPageChecked(notes,query,options),views:async()=>notes.map(projectNote)};
+  f.services.refreshSnapshot=async()=>notes.map(projectNote);
+  f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search saved notes.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:searchRun}];f.services.builtinToolRegistry=createToolRegistry(f.services.builtinToolPackages);f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search'],maxToolCalls:null,maxResultChars:8000};
+  const outcome=await c.run(run=>executeSubmission({text:'Search my saved water notes and explain the reserve'+(action==='capture'?', then save a new note.':'.'),attachments:[]},f.services,f.view,run));
+  assert.equal(outcome,action==='capture'?'awaitingApproval':'completed',JSON.stringify(c.state));assert.equal(terminal,1);
+  const turn=f.current().turns.at(-1),ref=turn.refs[0],note=notes.find(item=>item.id===ref.noteId);assert.equal(note.revisions[0].body.slice(ref.start,ref.end),ref.quote);assert.equal(turn.answer,ref.quote);
+  if(action==='capture'){assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,turn.answer);assert.deepEqual(f.reviews[0].sources,turn.refs);}else assert.equal(f.reviews.length,0);
+  assert.deepEqual(notes,before);
+ }
+});
