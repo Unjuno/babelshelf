@@ -1004,6 +1004,20 @@ test('named saved-note question retrieves the real index excerpt before checked 
  assert.equal(result.sources[0].quote,note.revisions[0].body);
 });
 
+test('an exact saved note ID scopes retrieval and citation to that record',async()=>{
+ const target=createNote({path:'Inbox/LFM3-OFFLINE-1.md',body:'Emergency water reserve is 8 litres.'});
+ const decoy=createNote({path:'Inbox/emergency-water.md',body:'Emergency water reserve is 80 litres.'});
+ const notes=[target,decoy],question='In my saved note LFM3-OFFLINE-1, exactly how many litres is the emergency water reserve?';
+ const route=explicitSavedKnowledgeQuestion(question);
+ assert.deepEqual(route,{action:'answer',query:'LFM3-OFFLINE-1',target:'knowledge'});
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:'{"answer":"8 litres","sources":["S1"]}'})};
+ const result=await groundedAnswer({store:{all:async()=>notes,search:async query=>searchNotes(notes,query)},engine:runtime},{model:'4B',question,query:route.query,scope:{kind:'knowledge'}});
+ assert.equal(result.answer,'8 litres');
+ assert.equal(result.sources.length,1);
+ assert.equal(result.sources[0].noteId,target.id);
+ assert.equal(result.sources[0].quote,target.revisions[0].body);
+});
+
 
 test('one request cannot plan on one revision and answer on its replacement',async()=>{
  const {createTextInference}=await import('../src/text-inference.ts');

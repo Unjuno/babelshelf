@@ -115,6 +115,12 @@ export function namedJapaneseSavedSubject(text:string){
 }
 
 export function namedEnglishSavedSubject(text:string){
+ // A note named after an ID or filename is commonly phrased as “my saved note
+ // <name>”. Keep that explicit selector instead of letting the question body
+ // become a broad full-text search. Ordinary prose such as “my saved note about
+ // the meeting” is intentionally not treated as a filename.
+ const exactSavedName=/\b(?:my|the)\s+(?:saved|stored)\s+(?:notes?|files?|documents?|records?)\s+["'“]?([\p{L}\p{N}_.\/\\-]{2,120})/iu.exec(text)?.[1];
+ if(exactSavedName&&/[\p{N}_.\/\\-]/u.test(exactSavedName))return exactSavedName;
  const subject=/\b(?:(?:my\s+)?(?:saved|stored)|my)\s+((?:(?:[\p{L}\p{N}-]+)\s+){1,8})(?:notes?|files?|documents?|records?)\b/iu.exec(text)?.[1].trim();
  // The shorter `my <subject>` alternative can otherwise backtrack over
  // “my saved note” and mistake “saved” for the subject. Keep generic saved
