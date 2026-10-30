@@ -20,3 +20,13 @@ test('the offline MCP agent searches local IndexedDB with versioned source range
   expect(source).toBeTruthy();expect(source.revision).toBe(1);expect('Water reserve: 17 liters.'.slice(source.start,source.end)).toBe(source.quote);expect(value.activities).toEqual(['running','succeeded']);
  }finally{await context.setOffline(false);}
 });
+test('an offline multi-source MCP workflow saves the reviewed text and exact original references',async({page,context})=>{
+ await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');await context.setOffline(true);
+ try{const value=await page.evaluate(()=>(window as any).mcpComparisonFixture());
+  expect(value.calls).toEqual(['memory.search','memory.read','memory.read','memory.read']);expect(value.completed).toEqual(value.calls);
+  expect(value.sources.map((source:any)=>source.noteId).sort()).toEqual(['source-0','source-1','source-2']);
+  for(const source of value.sources){const text=['Water reserve: 17 liters.','Water reserve: 9 liters.','Water reserve: 24 liters.'][Number(source.noteId.at(-1))];expect(source.revision).toBe(1);expect(text.slice(source.start,source.end)).toBe(source.quote);}
+  const pins=value.sources.map(({noteId,revision,start,end,quote}:any)=>({noteId,revision,start,end,quote}));
+  expect(value.savedBody).toBe(value.answer);expect(value.savedSources).toEqual(pins);
+ }finally{await context.setOffline(false);}
+});
