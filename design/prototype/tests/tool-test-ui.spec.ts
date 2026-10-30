@@ -5,6 +5,12 @@ async function settings(page:Page,item:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  const target=page.getByRole('button',{name:item,exact:true});if(!await target.isVisible())await page.getByText('More',{exact:true}).click();await target.click();
 }
+test('source details can be enabled and retained across reload',async({page})=>{
+ await page.goto('/');await settings(page,'Assistant');
+ const source=page.getByRole('switch',{name:'Source details',exact:true});await expect(source).not.toBeChecked();await source.check();await expect(source).toBeChecked();
+ await expect.poll(()=>page.evaluate(()=>new Promise<boolean>((resolve,reject)=>{const open=indexedDB.open('mlb-memory-v1');open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('notes','readonly').objectStore('notes').getAll();read.onerror=()=>{db.close();reject(read.error);};read.onsuccess=()=>{const note=read.result.find((item:any)=>item.id==='settings-harness'),body=note?.revisions?.at(-1)?.body??'';db.close();resolve(body.includes('"memory.sources"'));};};}))).toBe(true);
+ await page.reload();await settings(page,'Assistant');await expect(page.getByRole('switch',{name:'Source details',exact:true})).toBeChecked();
+});
 test('saved tool runs offline after joining the active profile, preserves source and reports real failures',async({page,context})=>{
  await page.goto('/');await prepareOfflineShell(page);
  await settings(page,'Connection');await page.getByRole('button',{name:'Online',exact:true}).click();
