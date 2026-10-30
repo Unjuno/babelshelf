@@ -5,8 +5,9 @@ import {visionTextNote,validateVisionText,type VisionText} from './vision-text.t
 import {videoVisionCoverage} from './video-observations.ts';
 import {originalKey,type OriginalAsset} from './original-assets.ts';
 import type {Dialogue,SourceRef} from './conversation.ts';
+import {requestsCrossSource} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
-import {buildIndex,searchNotes,chunks,latest} from '../../../dist/core.js';
+import {searchableNoteIds,searchNotes,chunks,latest} from '../../../dist/core.js';
 export type ReviewedText={kind:'ocr';id:string;value:OcrText}|{kind:'pdf';id:string;value:PdfText}|{kind:'speech';id:string;value:Transcript}|{kind:'vision';id:string;value:VisionText};
 export type InputReadingRef={kind:'ocr'|'pdf'|'speech'|'vision';noteId:string;revision:1};
 export type CurrentInputRef=InputReadingRef|{kind:'text'|'video-audio';noteId:string;revision:1};
@@ -14,7 +15,7 @@ export function inputReadingKind(note:any):InputReadingRef['kind']|undefined{
  const kinds=([['ocr','ocrText'],['pdf','pdfText'],['speech','transcription'],['vision','visionText']] as const).filter(([,field])=>note?.[field]);
  return !note?.originalAsset&&kinds.length===1?kinds[0][0]:undefined;
 }
-export function routeInputRequest<T extends {action:string}>(request:T,inputs:CurrentInputRef[],literal:boolean):T{return inputs.length&&!literal&&['read','search','chat'].includes(request.action)?{...request,action:'answer'}:request;}
+export function routeInputRequest<T extends {action:string}>(request:T,inputs:CurrentInputRef[],literal:boolean,question=''):T{return inputs.length&&!literal&&!requestsCrossSource(question)&&['read','search','chat'].includes(request.action)?{...request,action:'answer'}:request;}
 export const readingRef=(r:ReviewedText):InputReadingRef=>({kind:r.kind,noteId:r.id,revision:1});
 export const readingStatus=(r:ReviewedText,reviewed=true)=>{const state=reviewed?'reviewed':'extracted';return r.kind==='vision'?(r.value.scope==='sampled-video'?'Video observations generated · sampled frames':'Image observations generated')+(reviewed?' · reviewed':''):r.kind==='ocr'?'Image text '+state:r.kind==='pdf'?'PDF text '+state+' · '+r.value.pages.length+' / '+r.value.totalPages+' pages':(r.value.sourceTrack==='video-audio'?'Audio transcript '+state+' · frames not processed':'Transcript '+state);};
 export function buildInputReadings(readings:ReviewedText[],runs:{key:string;value:any}[]){
@@ -35,7 +36,7 @@ export function validateInputReadings(dialogue:Dialogue|undefined,notes:any[],ru
 // Scope retrieval to the reviewed attachments, before unrelated history/search.
 // One leading excerpt per file precedes additional matches from any one file.
 export function readingEvidence(records:any[],refs:CurrentInputRef[],question:string):(SourceRef&{coverage:string})[]{
- if(!refs.length)return [];const eligible=new Set(buildIndex(records).docs.map((d:any)=>d.n.id));
+ if(!refs.length)return [];const eligible=searchableNoteIds(records);
  const primary:(SourceRef&{coverage:string})[]=[],extra:(SourceRef&{coverage:string})[]=[];
  for(const ref of refs){const n=records.find(n=>n.id===ref.noteId);
   if(ref.kind==='video-audio'){
@@ -46,7 +47,13 @@ export function readingEvidence(records:any[],refs:CurrentInputRef[],question:st
    primary.push(hits[0]);extra.push(...hits.slice(1));continue;
   }
   if(!n||!eligible.has(n.id)||latest(n).version!==ref.revision||!(ref.kind==='text'?n.originalAsset&&n.attachmentText:ref.kind==='ocr'?n.ocrText:ref.kind==='pdf'?n.pdfText:ref.kind==='vision'?n.visionText:n.transcription))throw Error('Input source changed · retry');
-  const scoped=[n,...records.filter(r=>r.id===n.mediaSource?.id).map(r=>({...r,revisions:r.revisions.map((v:any)=>({...v,body:''}))}))],found=searchNotes(scoped,question,4).filter((hit:any)=>hit.noteId===n.id),fallback=chunks(latest(n).body).slice(0,1).map((c:any)=>({noteId:n.id,revision:ref.revision,title:latest(n).title,...c}));
+  const scoped=[n,...records.filter(r=>r.id===n.mediaSource?.id).map(r=>({...r,revisions:r.revisions.map((v:any)=>({...v,body:''}))}))];
+  // A hyphenated English compound in a question may be written as two words
+  // in the source ("water-cache" / "water cache"). Keep the literal query,
+  // and add a spelling variant only within this already-pinned attachment.
+  const variants=[...new Set([question,question.replace(/([A-Za-z])[-‐‑–]([A-Za-z])/gu,'$1 $2')])],foundByRange=new Map<string,any>();
+  for(const variant of variants)for(const hit of searchNotes(scoped,variant,4))if(hit.noteId===n.id){const key=`${hit.noteId}:${hit.start}:${hit.end}`,previous=foundByRange.get(key);if(!previous||(hit.score??0)>(previous.score??0))foundByRange.set(key,hit);}
+  const found=[...foundByRange.values()].sort((a,b)=>(b.score??0)-(a.score??0)||a.start-b.start),fallback=chunks(latest(n).body).slice(0,1).map((c:any)=>({noteId:n.id,revision:ref.revision,title:latest(n).title,...c}));
   const coverage=ref.kind==='ocr'?'Recognized image text only; scene not processed':ref.kind==='pdf'?(n.pdfText.schema===2?'PDF text and recognized page text; OCR may contain errors; ':'PDF text layer; ')+n.pdfText.pages.length+'/'+n.pdfText.totalPages+' pages'+(n.pdfText.pages.some((p:any)=>!p.text.trim())?'; some pages have no extracted text':''):ref.kind==='speech'?(n.transcription.sourceTrack==='video-audio'?'Video audio-only transcript; frames not processed; '+videoTimingCoverage(n.transcription,latest(n).body,ref.revision):'Audio transcript; estimated segment timing'):'Original text';
   const sourceCoverage=ref.kind==='vision'?(n.visionText.scope==='sampled-video'?videoVisionCoverage(n.visionText):'Generated image observations; may be incorrect or speculative; single image only; not verified facts'):coverage;
   let hits=(found.length?found:fallback).map((hit:any)=>({...hit,coverage:sourceCoverage}));

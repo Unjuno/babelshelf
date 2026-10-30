@@ -1,4 +1,6 @@
 import {validatePendingCorrection,PENDING_CORRECTION_KEY} from './pending-correction.ts';
+import {encodeBackupValue,stateHash} from './backup-hash.ts';
+export {stateHash} from './backup-hash.ts';
 import {validateHistoricalSourceRefs as sourceRefs} from './historical-source-refs.ts';
 import {validateDialogueCopyRecord} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
@@ -18,8 +20,6 @@ import {validateTranscriptLinks} from './speech-transcript.ts';
 // Portable local data, never runtime readiness, executable tools or write authority.
 // @ts-expect-error Shared baseline core is JavaScript.
 import {checkNotes,latest,reviseNote,parseBackup} from '../../../dist/core.js';
-// @ts-expect-error Shared hash is JavaScript.
-import {SHA256} from '../../../dist/sha256.js';
 // @ts-expect-error Shared paths are JavaScript.
 import {notePath} from '../../../dist/files.js';
 import {validateDialogue} from './conversation.ts';
@@ -33,11 +33,6 @@ export type Entry={key:string;value:any};
 export type StateSnapshot={notes:any[];settings:Entry[];runs:Entry[]};
 export type StatePayload={schema:1|2;createdAt:string;notes:any[];settings?:Entry[];runs?:Entry[];excluded?:string[]};
 export type RestoreConflict={store:'notes'|'settings'|'runs';key:string;label:string};
-export function restoreConflictLabel(conflict:RestoreConflict){
- if(conflict.store==='notes')return conflict.label;
- if(conflict.store==='runs')return 'History';
- return ({'ui-v1-dialogue':'Messages','ui-v1-folders':'Folders','ui-v1-trash':'Trash',[PENDING_CORRECTION_KEY]:'Pending changes'} as Record<string,string>)[conflict.key]??'Settings';
-}
 export type StateRestorePlan={conflicts:RestoreConflict[];added:{notes:number;settings:number;runs:number};writes:StateSnapshot|null};
 const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments'];
 export const MAX_BACKUP_BYTES=200000000;
@@ -46,11 +41,6 @@ export function serializeStateBackup(pack:unknown,limit=MAX_BACKUP_BYTES){return
 function backupBytes(pack:unknown,visit:(bytes:Uint8Array)=>void,limit=MAX_BACKUP_BYTES){let count=0;visitJsonChunks(pack,text=>visitUtf8Chunks(text,bytes=>{count+=bytes.length;if(count>limit)throw Error('Backup too large · 200 MB limit');visit(bytes);}));}
 export function stateBackupBlob(pack:unknown,limit=MAX_BACKUP_BYTES){const parts:BlobPart[]=[];backupBytes(pack,bytes=>parts.push(bytes.slice().buffer),limit);return new Blob(parts,{type:'application/json'});}
 const equal=(a:unknown,b:unknown)=>stateHash(a)===stateHash(b);
-function encode(value:any){const undefinedPaths:string[][]=[];
- const walk=(v:any,path:string[]):any=>{if(v===undefined){undefinedPaths.push(path);return null;}if(Array.isArray(v))return v.map((x,i)=>walk(x,[...path,String(i)]));if(v&&typeof v==='object'){const out=Object.create(null);for(const [key,item] of Object.entries(v))out[key]=walk(item,[...path,key]);return out;}return v;};
- return {data:walk(value,[]),undefinedPaths};
-}
-export const stateHash=(value:unknown):string=>{const hash=new SHA256();visitJsonChunks(encode(value),text=>visitUtf8Chunks(text,bytes=>hash.update(bytes)));return hash.hex();};
 function jsonOnly(value:any){
  if(value===undefined||value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return;
  if(Array.isArray(value)){for(const item of value)jsonOnly(item);return;}
@@ -87,10 +77,10 @@ function validateState(state:StateSnapshot){
   if(r.status==='undone'&&(!Number.isInteger(r.undoVersion)||r.undoVersion<=r.afterVersion||n.revisions[r.undoVersion-1]?.body!==before.body||typeof r.undoneAt!=='string'))throw Error('Invalid correction Undo');
  }
 }
-export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encode(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]},pack={format:'mobile-local-brainpack',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
+export async function makeStateBackup(state:StateSnapshot){validateState(state);const encoded=encodeBackupValue(state),payload={schema:2 as const,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]},pack={format:'mobile-local-brainpack',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
 // Emergency inspection copy: preserve data without accepting it for restore.
 // In particular, invalid paths must not prevent reading the original records.
-export function makeRecoverySnapshot(state:StateSnapshot){jsonOnly(state);entries(state.settings);entries(state.runs);if(!Array.isArray(state.notes))throw Error('Invalid recovery data');const encoded=encode(state),payload={schema:1,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]};const pack={format:'babelshelf-unverified-recovery',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
+export function makeRecoverySnapshot(state:StateSnapshot){jsonOnly(state);entries(state.settings);entries(state.runs);if(!Array.isArray(state.notes))throw Error('Invalid recovery data');const encoded=encodeBackupValue(state),payload={schema:1,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]};const pack={format:'babelshelf-unverified-recovery',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
 export async function parseStateBackup(text:string):Promise<StatePayload>{
  checkBackupText(text);const pack=JSON.parse(text);
  if(pack.payload?.schema===1){const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;}
@@ -114,8 +104,12 @@ export function planStateRestore(current:StateSnapshot,incoming:StatePayload,mod
  if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
  if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');
  const writes:StateSnapshot={notes:[],settings:[],runs:[]},conflicts:RestoreConflict[]=[];
- for(const n of incoming.notes){const old=current.notes.find(x=>x.id===n.id);if(old){if(!equal(old,n))conflicts.push({store:'notes',key:n.id,label:notePath(n)});}else writes.notes.push(structuredClone(n));}
- for(const store of ['settings','runs'] as const)for(const item of incoming[store]??[]){const old=current[store].find(x=>x.key===item.key);if(old){if(!equal(old.value,item.value))conflicts.push({store,key:item.key,label:item.key});}else writes[store].push(structuredClone(item));}
+ // Preserve first-match behavior while avoiding a full scan for every record.
+ const notesById=new Map<string,any>();for(const note of current.notes)if(!notesById.has(note.id))notesById.set(note.id,note);
+ const entriesByKey={settings:new Map<string,Entry>(),runs:new Map<string,Entry>()};
+ for(const store of ['settings','runs'] as const)for(const item of current[store])if(!entriesByKey[store].has(item.key))entriesByKey[store].set(item.key,item);
+ for(const n of incoming.notes){const old=notesById.get(n.id);if(old){if(!equal(old,n))conflicts.push({store:'notes',key:n.id,label:notePath(n)});}else writes.notes.push(structuredClone(n));}
+ for(const store of ['settings','runs'] as const)for(const item of incoming[store]??[]){const old=entriesByKey[store].get(item.key);if(old){if(!equal(old.value,item.value))conflicts.push({store,key:item.key,label:item.key});}else writes[store].push(structuredClone(item));}
  const added={notes:writes.notes.length,settings:writes.settings.length,runs:writes.runs.length};if(conflicts.length&&mode==='strict')return {conflicts,added,writes:null};
  writes.notes=writes.notes.map(guardRestoredNote);
  if(mode==='new-only'){
@@ -123,7 +117,7 @@ export function planStateRestore(current:StateSnapshot,incoming:StatePayload,mod
   for(const entry of writes.settings)if(entry.key==='ui-v1-trash'&&entry.value.some((batch:any)=>batch.notes.some((note:any)=>changedNotes.has(note.id))))throw Error('New recovery data depends on conflicting records');
   for(const entry of writes.runs)if(entry.value?.type==='note-correction'&&changedNotes.has(entry.value.noteId))throw Error('New correction depends on conflicting records');
   for(const note of writes.notes.filter(n=>n.ui?.recordType==='execution'))for(const revision of note.revisions){
-   const run=taskRunView({...note,revisions:[revision]}),retained=current.notes.find(n=>n.id===run.taskId);
+   const run=taskRunView({...note,revisions:[revision]}),retained=notesById.get(run.taskId);
    if(changedNotes.has(run.taskId)||retained?.taskCursor?.definition===run.definition&&retained.taskCursor.nextAt===run.dueAt)throw Error('New execution conflicts with retained schedule');
   }
  }

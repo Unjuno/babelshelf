@@ -20,7 +20,7 @@ import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
-import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGroundingRefs,checkNotes,buildIndex,searchNotes,searchStoredNotes,mergeNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGroundingRefs,checkNotes,searchNotes,searchStoredNotes,mergeNotes} from '../../../dist/core.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
@@ -29,7 +29,8 @@ import {parsePreference,readPreference,restoreDefaultPreferences,formatPreferenc
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
 import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
-import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot,type RestoreMode} from './backup-state.ts';
+import {stateHash} from './backup-hash.ts';
+import type {StateSnapshot,RestoreMode} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
@@ -347,10 +348,10 @@ export class KnowledgeStore {
    dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
  }
- async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
+
  search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
  search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
- async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12);}
+ async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12,query);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
@@ -364,9 +365,9 @@ export class KnowledgeStore {
   });
  }
  async snapshot():Promise<StateSnapshot>{return this.transaction(['notes','settings','runs'],'readonly',(tx,done)=>readSnapshot(tx,done));}
- async backup(){return makeStateBackup(await this.snapshot());}
- async checkBackup(text:string){return parseStateBackup(text);}
- async reviewBackup(text:string){const payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);let newOnly=false,newOnlyError='';
+ async backup(){const {makeStateBackup}=await import('./backup-state.ts');return makeStateBackup(await this.snapshot());}
+ async checkBackup(text:string){const {parseStateBackup}=await import('./backup-state.ts');return parseStateBackup(text);}
+ async reviewBackup(text:string){const {planStateRestore}=await import('./backup-state.ts'),payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);let newOnly=false,newOnlyError='';
   if(payload.schema===2&&plan.conflicts.length&&Object.values(plan.added).some(n=>n>0)){try{newOnly=!!planStateRestore(current,payload,'new-only').writes;}catch{newOnlyError='New records conflict with current data';}}
   let settingsRecovery:{group:string;noteId:string;before:string;after:string;beforeVersion:number;sourceVersion:number}[]=[];
   try{settingsRecovery=planSettingsRestore(current,payload).changes.map(({source,...change})=>({...change,sourceVersion:latest(source).version}));}catch{/* Unsupported settings never enable the separate recovery action. */}
@@ -378,7 +379,7 @@ export class KnowledgeStore {
   });
  }
  async restoreNote(text:string,expected:string,noteId:string){
-  if(!expected)throw Error('Review note before restoring');const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  if(!expected)throw Error('Review note before restoring');const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
   return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown;
    readSnapshot(tx,current=>{try{if(stateHash(current)!==expected)throw Error('Local data changed · review backup again');const {change,write}=planNoteRestore(current,incoming,noteId),id=crypto.randomUUID(),receipt={schema:1,type:'note-restore',id,appliedAt:new Date().toISOString(),backupHash,noteId,beforeVersion:change.beforeVersion,afterVersion:change.beforeVersion+1,source:change.source};validateNoteRestoreReceipt('ui-v1-note-restore-'+id,receipt,current.notes.map(n=>n.id===noteId?write:n));tx.objectStore('notes').put(write);tx.objectStore('runs').add(receipt,'ui-v1-note-restore-'+id);}catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Note restore failed'));
@@ -386,7 +387,7 @@ export class KnowledgeStore {
  }
  async restoreSettings(text:string,expected:string){
   if(!expected)throw Error('Review settings before restoring');
-  const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
   return new Promise<number>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings','runs'],'readwrite');let count=0,error:unknown;
    readSnapshot(tx,current=>{try{
@@ -403,7 +404,7 @@ export class KnowledgeStore {
  async restore(text:string,expected?:string,mode:RestoreMode='strict'){
   if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
   if(mode==='new-only'&&!expected)throw Error('Review backup before restoring new records');
-  const incoming=await parseStateBackup(text);
+  const {parseStateBackup,planStateRestore,guardRestoredNote}=await import('./backup-state.ts'),incoming=await parseStateBackup(text);
   if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');
   if(incoming.schema===1){for(const n of incoming.notes){if(n.ui?.recordType==='schedule')parseTask(latest(n).body);else if(n.ui?.recordType==='execution')taskRunView(n);else if(n.ui?.recordType==='notification')noticeView(n);}}
   const db=await this.open();return new Promise<{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean}>((resolve,reject)=>{

@@ -1,5 +1,6 @@
 import {customQwen3Models,getQwen3TextManifest} from './qwen3-text-manifest.ts';
 import {combinedTextManifest} from './text-model-manifest.ts';
+import {customLfm3TextModels,getLfm3TextManifest,lfm3TextModels} from './lfm3-text-manifest.ts';
 import source from './lfm-manifest.json' with {type:'json'};
 import runtime from '../runtime/wllama-count/manifest.json' with {type:'json'};
 // Fixed app-owned candidates; no changes to defaults or arbitrary GGUF admission.
@@ -11,4 +12,4 @@ export const getLfmTextManifest=(id:string,custom:readonly any[]=[])=>([...lfmTe
 export const isLfmText=(id:string,custom:readonly any[]=[])=>(!!getLfmTextManifest(id,custom));
 export const describeLfmText=(custom:readonly any[]=[],activeId='')=>{const models=[...lfmTextModels,...customLfmTextModels(custom)],selected=models.find(m=>m.id===activeId);return {contextTokens:selected?.contextTokens??2048,runtime,models};};
 
-export function combinedLocalTextManifest(base:any,active='',custom:readonly any[]=[]){const models=[...customLfmTextModels(custom),...customQwen3Models(custom)],combined=combinedTextManifest(base,active),selected=getLfmTextManifest(active,custom)??getQwen3TextManifest(active,custom);return {...combined,...(selected?{contextTokens:selected.contextTokens,runtime}:{}),models:[...combined.models,...lfmTextModels,...models]};}
+export function combinedLocalTextManifest(base:any,active='',custom:readonly any[]=[]){const models=[...customLfmTextModels(custom),...customLfm3TextModels(custom),...customQwen3Models(custom)],combined=combinedTextManifest(base,active),selected=getLfmTextManifest(active,custom)??getLfm3TextManifest(active,custom)??getQwen3TextManifest(active,custom);return {...combined,...(selected?{contextTokens:selected.contextTokens,runtime:selected.runtime}:{}),models:[...combined.models,...lfmTextModels,...lfm3TextModels,...models]};}

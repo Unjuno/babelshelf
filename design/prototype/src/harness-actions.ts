@@ -1,26 +1,35 @@
 // Model-independent action IDs and scopes. Descriptions never grant execution permission.
+import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONFIGURED_AGENT_TOOLS,MAX_PLANNER_AGENT_TOOLS} from './agent-limits.ts';
 export const HARNESS_ACTIONS=[
  {id:'calculate',purpose:'Calculate an explicit arithmetic expression; query is the expression, no units or code',targets:[]},
  {id:'chat',purpose:'Conversation or semantic rewriting of dialogue',targets:[]},
  {id:'recall',purpose:'Read an exact dialogue original',targets:['current','history']},
  {id:'transform',purpose:'Literal split or replacement of dialogue text',targets:['current','history']},
- {id:'capture',purpose:'Propose a NEW note for review',targets:['current','history','inputs']},
+ {id:'capture',purpose:'Save as a NEW note; never overwrite',targets:['current','history','inputs']},
  {id:'search',purpose:'Find saved notes',targets:['knowledge']},
  {id:'read',purpose:'Open a saved file',targets:['file','path']},
- {id:'answer',purpose:'Answer a question from saved knowledge',targets:['file','knowledge','inputs']},
+ {id:'answer',purpose:'Answer from knowledge or tool results',targets:['file','knowledge','inputs']},
  {id:'summary',purpose:'Summarize saved knowledge',targets:['file','knowledge','inputs']},
  {id:'edit',purpose:'Propose a correction of an existing saved file for review',targets:['file','path']},
  {id:'schedule',purpose:'Propose a NEW paused scheduled prompt for review',targets:[]},
  {id:'tool-create',purpose:'Open a reviewable draft form for a NEW local tool package; never save, enable, or execute it',targets:[]},
  {id:'tool',purpose:'Call one registered read-only tool as an agent-loop step',targets:[]}
 ] as const;
+// Once tool execution has started, its evidence must finish through a consumer
+// that preserves it. UI navigation and dialogue transforms are initial intents,
+// not valid terminal steps of a tool chain. Share this with schema and validator.
+export const AGENT_RESULT_ACTIONS=['answer','summary','capture','edit'] as const;
+export function validAgentResultAction(action:unknown){return (AGENT_RESULT_ACTIONS as readonly unknown[]).includes(action);}
 export function validHarnessAction(value:unknown){return HARNESS_ACTIONS.some(a=>a.id===value);}
 export function validHarnessTarget(action:unknown,target:unknown){return HARNESS_ACTIONS.some(a=>a.id===action&&(a.targets as readonly unknown[]).includes(target));}
-export type PlannerScope={inputs:boolean;file:boolean;current:boolean;historyCount:number;assistantIndices?:number[];toolIds?:string[]};
+export type PlannerScope={inputs:boolean;file:boolean;current:boolean;historyCount:number;assistantIndices?:number[];toolIds?:string[];requiredToolIds?:string[];requiredActionIds?:string[]};
 export function validatePlannerScope(value:PlannerScope){
- if(!value||Object.keys(value).some(k=>!['inputs','file','current','historyCount','assistantIndices','toolIds'].includes(k))||['inputs','file','current'].some(k=>typeof value[k as keyof PlannerScope]!=='boolean')||!Number.isSafeInteger(value.historyCount)||value.historyCount<0)throw Error('Invalid planner scope');
+ if(!value||Object.keys(value).some(k=>!['inputs','file','current','historyCount','assistantIndices','toolIds','requiredToolIds','requiredActionIds'].includes(k))||['inputs','file','current'].some(k=>typeof value[k as keyof PlannerScope]!=='boolean')||!Number.isSafeInteger(value.historyCount)||value.historyCount<0)throw Error('Invalid planner scope');
  if(value.assistantIndices!==undefined&&(!Array.isArray(value.assistantIndices)||value.assistantIndices.some((index,i,all)=>!Number.isSafeInteger(index)||index<0||index>=value.historyCount||i>0&&index<=all[i-1])))throw Error('Invalid planner assistant indices');
- if(value.toolIds!==undefined&&(!Array.isArray(value.toolIds)||value.toolIds.length>32||new Set(value.toolIds).size!==value.toolIds.length||value.toolIds.some(id=>typeof id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(id))))throw Error('Invalid planner tool IDs');
+ if(value.toolIds!==undefined&&(!Array.isArray(value.toolIds)||value.toolIds.length>MAX_PLANNER_AGENT_TOOLS||new Set(value.toolIds).size!==value.toolIds.length||value.toolIds.some(id=>typeof id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(id))))throw Error('Invalid planner tool IDs');
+ if((value.toolIds??[]).filter(id=>!(AGENT_DISCOVERY_TOOL_IDS as readonly string[]).includes(id)).length>MAX_CONFIGURED_AGENT_TOOLS)throw Error('Invalid planner tool IDs');
+ if(value.requiredToolIds!==undefined&&(!Array.isArray(value.requiredToolIds)||!value.requiredToolIds.length||new Set(value.requiredToolIds).size!==value.requiredToolIds.length||value.requiredToolIds.some(id=>typeof id!=='string'||!value.toolIds?.includes(id))))throw Error('Invalid required planner tool IDs');
+ if(value.requiredActionIds!==undefined&&(!Array.isArray(value.requiredActionIds)||!value.requiredActionIds.length||new Set(value.requiredActionIds).size!==value.requiredActionIds.length||value.requiredActionIds.some(id=>typeof id!=='string'||id==='tool'||!validHarnessAction(id))))throw Error('Invalid required planner action IDs');
  return value;
 }
 export function scopedHarnessActions(scope:PlannerScope){
@@ -28,7 +37,7 @@ export function scopedHarnessActions(scope:PlannerScope){
  return HARNESS_ACTIONS.map(action=>({...action,targets:(action.targets as readonly string[]).filter(target=>
   (!scope.inputs||!['answer','summary'].includes(action.id)||target==='inputs')&&
   (target!=='inputs'||scope.inputs)&&(target!=='file'||scope.file)&&(target!=='current'||scope.current)&&(target!=='history'||scope.historyCount>0)
- )})).filter(action=>(action.id!=='calculate'||!scope.inputs)&&(!['recall','transform'].includes(action.id)||action.targets.length>0)&&(action.id!=='tool-create'||!scope.inputs&&!scope.file)&&(action.id!=='tool'||!!scope.toolIds?.length)).map(action=>action.id==='tool'?{...action,toolIds:scope.toolIds}:action);
+ )})).filter(action=>(action.id!=='calculate'||!scope.inputs)&&(!['recall','transform'].includes(action.id)||action.targets.length>0)&&(action.id!=='tool-create'||!scope.inputs&&!scope.file)&&(action.id!=='tool'||!!scope.toolIds?.length)&&(!scope.requiredToolIds||action.id==='tool')&&(!scope.requiredActionIds||scope.requiredActionIds.includes(action.id))).map(action=>action.id==='tool'?{...action,toolIds:scope.requiredToolIds??scope.toolIds}:action);
 }
 export const harnessActionCatalog=(currentInputs=false,scope?:PlannerScope)=>JSON.stringify(scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool').map(action=>currentInputs&&['answer','summary'].includes(action.id)?{...action,targets:['inputs']}:action));
 // The native transport already supplies scoped target enums through function

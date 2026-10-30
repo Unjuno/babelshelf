@@ -6,6 +6,10 @@ import {PreTrainedTokenizer,env} from '@huggingface/transformers';
 import {decisionManifest,decisionModelDescriptor,decisionStatus,prepareDecision,readDecisionFile,readCustomDecisionFile} from './decision-assets';
 import type {CustomDecisionModel} from './preference-records';
 import {DecisionContextError,encodeDecision,decisionAnswer,validateDecisionQuestion,type DecisionQuestion} from './decision';
+import {createDecisionSession} from './decision-execution';
+// Apply before session creation; ONNX Runtime passes this preference to
+// requestAdapter. It does not prove which adapter or execution path is used.
+ort.env.webgpu.powerPreference='high-performance';
 const networkFetch=globalThis.fetch.bind(globalThis);
 const localRuntime=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;return localRuntime.has(new URL(url,location.href).href)?networkFetch(input,options):Promise.reject(Error('Network disabled for decisions'));};
@@ -21,9 +25,9 @@ async function load(model:string|CustomDecisionModel,progress:(s:string)=>void){
  const parsed=JSON.parse(await files.get('config.json')!.text());if(parsed.model_type!=='d1_omni'||parsed.max_length!==descriptor.contextTokens)throw Error('Decision model config incompatible');
  const tokenizer=new PreTrainedTokenizer(JSON.parse(await files.get('tokenizer.json')!.text()),JSON.parse(await files.get('tokenizer_config.json')!.text()));check();
  encodeDecision(tokenizer,'Compatibility check',{type:'noul',instructions:'Is this text?'},descriptor.inputLimit);
- device='wasm';if(navigator.gpu){try{const adapter=await navigator.gpu.requestAdapter();if(adapter)device='webgpu';}catch{}}check();progress('Loading · '+(device==='webgpu'?'WebGPU':'WASM'));
+ device='wasm';const gpu=(globalThis.navigator as Navigator&{gpu?:{requestAdapter:(options?:{powerPreference?:'high-performance'|'low-power'})=>Promise<unknown>}}|undefined)?.gpu;if(gpu){try{const adapter=await gpu.requestAdapter({powerPreference:'high-performance'});if(adapter)device='webgpu';}catch{}}check();progress('Loading · '+(device==='webgpu'?'WebGPU':'WASM'));
  const graph=new Uint8Array(await files.get('onnx/model_quantized.onnx')!.arrayBuffer()),data=new Uint8Array(await files.get('onnx/model_quantized.onnx_data')!.arrayBuffer());check();
- const loaded=await ort.InferenceSession.create(graph,{executionProviders:[device],graphOptimizationLevel:'all',externalData:[{path:'model_quantized.onnx_data',data}]});
+ const execution=await createDecisionSession({preferred:device,create:backend=>ort.InferenceSession.create(graph,{executionProviders:[backend],graphOptimizationLevel:'all',externalData:[{path:'model_quantized.onnx_data',data}]}),check,onFallback:()=>progress('WebGPU unavailable · switching to WASM')});device=execution.device;const loaded=execution.session;
  try{check();const inputs=['input_ids','attention_mask','prefix_len','marker_pos','marker_mask','qtype'];if(loaded.inputNames.length!==inputs.length||inputs.some(name=>!loaded.inputNames.includes(name))||!loaded.outputNames.includes('logits'))throw Error('Decision graph incompatible');session=loaded;tok=tokenizer;config=parsed;activeModel=descriptor;return {prepared:true,loaded:true,device,model:descriptor.id,revision:descriptor.revision};}catch(e){await loaded.release();throw e;}
 }
 async function classify(state:string,question:DecisionQuestion){

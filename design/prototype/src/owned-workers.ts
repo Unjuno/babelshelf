@@ -7,5 +7,9 @@ export function ownChildWorkers(scope:{Worker:typeof Worker}){
   terminate(){children.delete(this);super.terminate();}
  }
  scope.Worker=OwnedWorker;
- return {get size(){return children.size;},dispose(){disposed=true;for(const worker of [...children])worker.terminate();}};
+ return {get size(){return children.size;},dispose(){
+  disposed=true;let failed=false,firstError:unknown;
+  for(const worker of [...children])try{worker.terminate();}catch(error){if(!failed){failed=true;firstError=error;}}
+  if(failed)throw firstError;
+ }};
 }

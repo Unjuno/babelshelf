@@ -33,7 +33,7 @@ export function formatCalculation(item:CalculationToolResult,expression?:string,
 
 /** A continuation may only use one validated, exact calculator receipt. */
 function exactPreviousReceipt(previous:DialogueTurn|undefined){
- if(previous?.status!=='Calculated'||previous.attachments?.length)return null;
+ if(previous?.status!=='Calculated'||previous.attachments?.length||previous.refs?.length)return null;
  const receipts=previous.activity?.filter(item=>item.tool==='math.calculate'&&item.status==='succeeded')??[];
  if(receipts.length!==1||!Array.isArray(receipts[0].output)||receipts[0].output.length!==1)return null;
  try{const receipt=validateDecimalReceipt(receipts[0].output[0]);return receipt.rounded?null:receipt;}catch{return null;}
@@ -49,6 +49,10 @@ export function continuedCalculationInput(text:string,previous:DialogueTurn|unde
   [new RegExp('^その結果に\\s*'+number+'\\s*を足して'+ending,'u'),'+'],
   [new RegExp('^その結果から\\s*'+number+'\\s*を引いて'+ending,'u'),'-'],
   [new RegExp('^その結果に\\s*'+number+'\\s*を(?:掛けて|かけて)'+ending,'u'),'*'],
+  [new RegExp('^(?:(?:now|then|and then)\\s+)?(?:please\\s+)?(?:divide|split)\\s+(?:that|this|it|the result)\\s+by\\s*'+number+ending,'i'),'/'],
+  [new RegExp('^(?:(?:now|then|and then)\\s+)?(?:please\\s+)?add\\s*'+number+'\\s+to\\s+(?:that|this|it|the result)'+ending,'i'),'+'],
+  [new RegExp('^(?:(?:now|then|and then)\\s+)?(?:please\\s+)?subtract\\s*'+number+'\\s+from\\s+(?:that|this|it|the result)'+ending,'i'),'-'],
+  [new RegExp('^(?:(?:now|then|and then)\\s+)?(?:please\\s+)?multiply\\s+(?:that|this|it|the result)\\s+by\\s*'+number+ending,'i'),'*'],
  ];
  const selected=forms.map(([pattern,operator])=>({match:request.match(pattern),operator})).find(item=>item.match);
  const match=selected?.match;

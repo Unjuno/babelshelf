@@ -6,8 +6,11 @@ import {validateDecimalReceipt,type DecimalReceipt} from './math.calculate/decim
 import {calculate} from './math.calculate/tool.ts';
 
 export type CalculationToolResult={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
+export type MemoryListEntry={kind:'folder';name:string;path:string}|{kind:'file';name:string;path:string;id:string;version:number};
+export type MemoryListResult={path:string;entries:MemoryListEntry[];offset:number;limit:number;total:number;hasMore:boolean;nextOffset:number|null};
 export type BuiltinToolResults={
  'memory.search':MemorySearchResult[];
+ 'memory.list':MemoryListResult;
  'memory.read':ToolNote[];
  'math.calculate':CalculationToolResult[];
 };
@@ -28,6 +31,7 @@ function memorySearchResults(value:unknown):MemorySearchResult[]{
   const keys=['noteId','revision','title','start','end','quote','score'];
   if(item.kind==='passage')keys.push('kind');
   if(item.groundingEligible!==undefined)keys.push('groundingEligible');
+  if(item.path!==undefined){if(typeof item.path!=='string'||!item.path||item.path.length>1024)throw Error('Invalid Memory passage path');keys.push('path');}
   if(!exactKeys(item,keys)||typeof item.noteId!=='string'||!item.noteId||item.noteId.length>160||!Number.isSafeInteger(item.revision)||Number(item.revision)<1||typeof item.title!=='string'||item.title.length>2048||!Number.isSafeInteger(item.start)||Number(item.start)<0||!Number.isSafeInteger(item.end)||Number(item.end)<=Number(item.start)||typeof item.quote!=='string'||!item.quote.length||item.quote.length>8000||Number(item.end)-Number(item.start)!==item.quote.length||typeof item.score!=='number'||!Number.isFinite(item.score)||item.score<=0||item.kind!==undefined&&item.kind!=='passage'||item.groundingEligible!==undefined&&typeof item.groundingEligible!=='boolean')throw Error('Invalid Memory passage result');
   result.push(item as unknown as MemoryPassageResult);
  }
@@ -35,8 +39,22 @@ function memorySearchResults(value:unknown):MemorySearchResult[]{
 }
 
 function memoryReadResults(value:unknown):ToolNote[]{
- if(!Array.isArray(value)||value.length>20||value.some(item=>!record(item)||!exactKeys(item,['id','path','version','body'])||typeof item.id!=='string'||!item.id||item.id.length>160||typeof item.path!=='string'||!item.path||item.path.length>1024||!Number.isSafeInteger(item.version)||Number(item.version)<1||typeof item.body!=='string'||item.body.length>10_000_000))throw Error('Invalid Memory read result');
+ if(!Array.isArray(value)||value.length>20||value.some(item=>!record(item)||!(exactKeys(item,['id','path','version','body'])||exactKeys(item,['id','path','version','body','start','totalChars']))||typeof item.id!=='string'||!item.id||item.id.length>160||typeof item.path!=='string'||!item.path||item.path.length>1024||!Number.isSafeInteger(item.version)||Number(item.version)<1||typeof item.body!=='string'||item.body.length>10_000_000||item.start!==undefined&&(!Number.isSafeInteger(item.start)||Number(item.start)<0)||item.totalChars!==undefined&&(!Number.isSafeInteger(item.totalChars)||Number(item.totalChars)<item.body.length||Number(item.start??0)+item.body.length>Number(item.totalChars))))throw Error('Invalid Memory read result');
  return value as ToolNote[];
+}
+
+export function validateMemoryListResult(value:unknown):MemoryListResult{
+ if(!record(value)||!exactKeys(value,['path','entries','offset','limit','total','hasMore','nextOffset'])||typeof value.path!=='string'||!Array.isArray(value.entries)||value.entries.length>25||!Number.isSafeInteger(value.offset)||Number(value.offset)<0||!Number.isSafeInteger(value.limit)||Number(value.limit)<1||Number(value.limit)>25||!Number.isSafeInteger(value.total)||Number(value.total)<value.entries.length||typeof value.hasMore!=='boolean'||value.nextOffset!==null&&!Number.isSafeInteger(value.nextOffset))throw Error('Invalid Memory folder listing');
+ for(const item of value.entries){
+  if(!record(item)||typeof item.kind!=='string'||!['folder','file'].includes(item.kind)||typeof item.name!=='string'||!item.name||item.name.length>255||typeof item.path!=='string'||!item.path||item.path.length>1024)throw Error('Invalid Memory folder entry');
+  const parent=value.path?`${value.path}/`:'';
+  if(!item.path.startsWith(parent)||item.path.slice(parent.length).includes('/')||item.path.slice(parent.length)!==item.name)throw Error('Invalid Memory folder entry');
+  if(item.kind==='file'&&(!exactKeys(item,['kind','name','path','id','version'])||typeof item.id!=='string'||!item.id||item.id.length>160||!Number.isSafeInteger(item.version)||Number(item.version)<1))throw Error('Invalid Memory file entry');
+  if(item.kind==='folder'&&!exactKeys(item,['kind','name','path']))throw Error('Invalid Memory folder entry');
+ }
+ const more=Number(value.offset)+value.entries.length<Number(value.total);
+ if(value.hasMore!==more||value.nextOffset!==(more?Number(value.offset)+value.entries.length:null))throw Error('Invalid Memory folder page');
+ return value as MemoryListResult;
 }
 
 function calculationResults(value:unknown):CalculationToolResult[]{
@@ -49,6 +67,7 @@ function calculationResults(value:unknown):CalculationToolResult[]{
 export async function runBuiltinTool<T extends BuiltinToolId>(registry:ToolRunner,id:T,args:unknown,host:ToolHost):Promise<BuiltinToolResults[T]>{
  const value=await registry.run(id,args,host);
  if(id==='memory.search')return memorySearchResults(value) as BuiltinToolResults[T];
+ if(id==='memory.list')return validateMemoryListResult(value) as BuiltinToolResults[T];
  if(id==='memory.read')return memoryReadResults(value) as BuiltinToolResults[T];
  const result=calculationResults(value);
  if(!record(args)||typeof args.expression!=='string'||result[0].expression!==args.expression)throw Error('Invalid calculation expression');

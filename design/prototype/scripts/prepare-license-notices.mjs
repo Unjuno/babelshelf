@@ -20,7 +20,8 @@ for(const [location,pin] of Object.entries(lock.packages)){
  const license=typeof metadata.license==='string'?metadata.license:metadata.license?.type??pin.license??'Not stated';
  packages.set(key,{name:metadata.name,version:metadata.version,license,notices});
 }
-const output={schema:1,scope:'Installed non-optional production dependencies, including transitive packages. Not every package runs in the browser.',packages:[...packages.values()].sort((a,b)=>a.name.localeCompare(b.name)||a.version.localeCompare(b.version))};
+const bundledNotices=(await readdir(path.join(root,'licenses'))).filter(name=>name.endsWith('.txt')).sort();
+const output={schema:2,scope:'Installed non-optional production dependencies, including transitive packages. Not every package runs in the browser.',packages:[...packages.values()].sort((a,b)=>a.name.localeCompare(b.name)||a.version.localeCompare(b.version)),bundledNotices};
 const directory=path.join(root,'src/generated');await mkdir(directory,{recursive:true});
 const target=path.join(directory,'package-notices.json'),content=JSON.stringify(output,null,2)+'\n';
 // Keep Vite and source watchers quiet when the locked inventory is unchanged.

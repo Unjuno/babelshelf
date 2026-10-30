@@ -21,5 +21,14 @@ export function isSystemFolder(path:string){return SYSTEM_FOLDERS.some(name=>nam
 function memoryParent(path:string){const clean=folder(path);if(!SYSTEM_FOLDERS.includes(clean.split('/')[0]))throw Error('Choose a system folder');return clean;}
 export function memoryFolderPath(parent:string,name:string,occupied:string[]=[]){return folderPath(memoryParent(parent),name,[...SYSTEM_FOLDERS,...occupied]);}
 export function memoryFilePath(parent:string,name:string,occupied:string[]=[]){return filePath(memoryParent(parent),name,[...SYSTEM_FOLDERS,...occupied]);}
+export function uniqueMemoryFilePath(parent:string,name:string,occupied:string[]=[]){
+ const base=name.replace(/\.md$/i,'');
+ for(let index=1;index<=1000;index++){
+  const candidate=index===1?base:`${base} (${index})`;
+  try{return memoryFilePath(parent,candidate,occupied);}
+  catch(error){if((error as Error).message!=='Name already exists')throw error;}
+ }
+ throw Error('Could not choose a unique file name');
+}
 export function validateMemoryFilePath(path:string){const clean=validateFilePath(path);memoryParent(clean.split('/').slice(0,-1).join('/'));return clean;}
 export function assertMutableFolder(path:string){if(!path||isSystemFolder(path))throw Error('System folder is protected');memoryParent(path);}

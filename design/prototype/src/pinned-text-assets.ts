@@ -6,9 +6,10 @@ type Pin={path:string;url:string;bytes:number;sha256:string};
 type Manifest={id:string;revision:string;runtime:{revision:string};files:Pin[]};
 type IO={directory:()=>Promise<FileSystemDirectoryHandle>;fetch:typeof fetch};
 type Progress=(bytes:number,total:number)=>void;
+class PinnedAssetVerificationError extends Error {constructor(){super('Asset verification failed');}}
 export function createPinnedAssetStore(manifest:Manifest,io:IO){
  const pins=structuredClone(manifest);
- if(!/^[a-z0-9-]{1,80}$/.test(pins.id)||!/^[a-f0-9]{40}$/.test(pins.revision)||!pins.runtime.revision||!pins.files.length||pins.files.length>64)throw Error('Invalid pinned manifest');
+ if(!/^[a-z0-9](?:[a-z0-9._-]{0,78}[a-z0-9])?$/.test(pins.id)||!/^[a-f0-9]{40}$/.test(pins.revision)||!pins.runtime.revision||!pins.files.length||pins.files.length>64)throw Error('Invalid pinned manifest');
  const paths=new Set<string>();
  for(const pin of pins.files){
   const url=new URL(pin.url);
@@ -18,7 +19,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
  const stopped=(signal:AbortSignal)=>signal.throwIfAborted();
  const verify=async(pin:Pin,file:File,signal:AbortSignal,progress:Progress)=>{
   stopped(signal);
-  if(file.size!==pin.bytes||await hashLocalModel(file,{signal,progress})!==pin.sha256)throw Error('Asset verification failed');
+  if(file.size!==pin.bytes||await hashLocalModel(file,{signal,progress})!==pin.sha256)throw new PinnedAssetVerificationError();
   stopped(signal);return file;
  };
  const readPin=async(pin:Pin,signal:AbortSignal,progress:Progress)=>{
@@ -36,15 +37,18 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
    stopped(signal);const directory=await io.directory();stopped(signal);
    for(const pin of pins.files){
     try{const file=await(await directory.getFileHandle(pin.sha256)).getFile();stopped(signal);if(file.size!==pin.bytes)return {filesPresent:false};}
-    catch(error){stopped(signal);return {filesPresent:false};}
+    catch(error){stopped(signal);if(error instanceof Error&&error.name==='NotFoundError')return {filesPresent:false};throw error;}
    }
    return {filesPresent:true};
   },
   async prepare(allowNetwork:boolean,signal:AbortSignal,progress:Progress=()=>{},localFiles:File[]=[]){
    for(const pin of pins.files){
-    try{await readPin(pin,signal,progress);continue;}catch{stopped(signal);}
+    try{await readPin(pin,signal,progress);continue;}catch(error){stopped(signal);if(!(error instanceof PinnedAssetVerificationError)&&!(error instanceof Error&&error.name==='NotFoundError'))throw error;}
     const matches=localFiles.filter(f=>f.name===pin.path||f.name===pin.path.split('/').at(-1));
     if(matches.length>1)throw Error('Ambiguous local asset');
+    // A single-file GGUF remains identifiable by its pinned size and digest
+    // even if the user renamed it. Multi-file packages still require names.
+    if(!matches.length&&pins.files.length===1&&localFiles.length===1&&pin.path.toLowerCase().endsWith('.gguf')&&localFiles[0].name.toLowerCase().endsWith('.gguf'))matches.push(localFiles[0]);
     let source:ReadableStream<Uint8Array>|undefined;
     let writer:FileSystemWritableFileStream|undefined;
     let reader:ReadableStreamDefaultReader<Uint8Array>|undefined;

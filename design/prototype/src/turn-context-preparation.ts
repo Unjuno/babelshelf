@@ -19,13 +19,15 @@ export async function prepareTurnContext(input:{
 }):Promise<DialogueContext>{
  input.check();
  const saved=independentSavedKnowledgeContext(input.question,input.currentInputs);if(saved)return saved;
+ const originalTurns=input.prior.turns.map(turn=>JSON.stringify(turn)),originalCompaction=JSON.stringify(input.prior.compaction);
  const prepared=await input.trace('dialogue.compact',{model:input.model,question:input.question,priorTurns:input.prior.turns.length,through:input.prior.compaction?.through??0},async()=>{
   const compact=await compactDialogue(input.prior,input.engine,input.question,()=>{input.check();input.setProgress('Compacting…');},input.fitsPlanner);
   return {compact,context:await boundedDialogueContext(compact,input.engine,input.question)};
  },value=>({compaction:value.compact.compaction}));
  input.check();
+ const current=input.currentDialogue();
+ if(JSON.stringify(current.compaction)!==originalCompaction||current.turns.length<originalTurns.length||originalTurns.some((turn,index)=>JSON.stringify(current.turns[index])!==turn))throw Error('Conversation changed · retry');
  if(prepared.compact.compaction!==input.prior.compaction){
-  const current=input.currentDialogue();
   await input.saveDialogue({...current,revision:current.revision+1,compaction:prepared.compact.compaction});
  }
  input.check();input.setProgress('');

@@ -19,3 +19,4 @@ export function visitUtf8Chunks(text:string,visit:(bytes:Uint8Array)=>void){
   visit(encoder.encode(text.slice(start,end)));start=end;
  }
 }
+export function boundedPrefix(text:string,limit:number){let end=Math.min(text.length,limit);if(end<text.length&&end>0&&text.charCodeAt(end-1)>=0xd800&&text.charCodeAt(end-1)<=0xdbff&&text.charCodeAt(end)>=0xdc00&&text.charCodeAt(end)<=0xdfff)end--;return text.slice(0,end);}

@@ -1,10 +1,10 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
 import {contextIndependentConversation,currentDialogueResult,dialogueContext,independentSavedKnowledgeContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
-import {explicitInputQuestion} from './current-input-scope.ts';
+import {explicitInputQuestion,explicitQuoteRequest} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
-import {namedEnglishSavedSubject,namedJapaneseSavedSubject,namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
+import {namedEnglishSavedSubject,namedJapaneseSavedSubject,namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge,requestsCompoundSearchTask,requestsCrossSource,requestsLocalSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest,type WorkingFile} from './working-file.ts';
 import {earlierOperationContext} from './dialogue-outcomes.ts';
 import {explicitLiteralReplacement,namedCorrectionClause,unquotedCorrectionText} from './correction-request.ts';
@@ -17,7 +17,7 @@ export function explicitCurrentAnswerRewrite(question:string){
  const text=question.trim();if(!text||text.length>500||/[\r\n;；"“”「」『』`]/u.test(text))return null;
  if(/\b(?:save|store|record|remember|delete|remove|overwrite|edit|update|schedule|notify|search|find|open|read|compare|tools?|mcp|execute|run|call|files?|notes?|documents?|images?|attachments?|recordings?|videos?)\b|(?:保存|記録|削除|上書|訂正|更新|予定|通知|検索|探して|比較|ツール|実行|呼び出|ファイル|メモ|ノート|文書|画像|添付|録音|動画)/iu.test(text))return null;
  const english=/^(?:(?:please|can you|could you|would you)\s+)?(?:summari[sz]e|translate|rephrase|rewrite|shorten|format|reformat|convert|put|turn|make)\b.*\b(?:your\s+(?:(?:last|previous|latest|current)\s+)?(?:answer|reply|response)|the\s+(?:last|previous|latest|current)\s+(?:answer|reply|response))\b/iu.test(text);
- const japanese=/^(?:今の|直前の)(?:あなたの)?(?:回答|返答|応答)(?:を|について).*(?:まとめ|要約|翻訳|訳して|言い換え|書き直|短く|に(?:して|変えて|変換して)|整形して)/u.test(text);
+ const japanese=/^(?:今の|直前の|前の)(?:あなたの)?(?:回答|返答|応答)(?:を|について).*(?:まとめ|要約|翻訳|訳して|言い換え|書き直|短く|に(?:して|変えて|変換して)|整形して)/u.test(text);
  return english||japanese?{action:'recall' as const,query:question,target:'current' as const}:null;
 }
 
@@ -37,6 +37,7 @@ export function unspecifiedSavedSearch(question:string,currentInputs=false){
 
 /** Give a recovery hint only when this exact short search was ambiguous because a file was selected. */
 export function searchScopeFailure(status:string,question:string,hasFile:boolean,hasAttachments:boolean){
+ if(status==='Insufficient evidence')return 'Could not answer from the selected excerpts';
  if(hasFile&&!hasAttachments&&/^(?:Model not prepared|Model not configured)(?: · Settings)?$/.test(status)&&shortLocalSearch(question))return status.replace(/ · Settings$/, '')+' · remove input file to search Memory';
  return status;
 }
@@ -160,12 +161,13 @@ export function explicitSavedKnowledgeQuestion(question:string,currentInputs=fal
  * history cannot redirect a small model to a recall action. */
 export function explicitWorkingFileQuestion(question:string,hasWorkingFile:boolean,hasOtherInput=false){
  const text=question.trim();
- if(!hasWorkingFile||hasOtherInput||!text||text.length>500||requestNamesEarlierDialogue(text)||!requestNamesWorkingFile(text))return null;
+ if(!hasWorkingFile||hasOtherInput||!text||text.length>500||requestNamesEarlierDialogue(text)||requestsCrossSource(text)||!requestNamesWorkingFile(text))return null;
  if(namesExplicitSavedKnowledge(text)||namedSavedSubject(text))return null;
+ if(explicitQuoteRequest(text))return {action:'answer' as const,query:text,target:'file' as const};
  const asks=/\b(?:what|when|where|who|which|why|how|is|are|does|do|did|can|could|would)\b/iu.test(text)||/[?？]/u.test(text)||/(?:何|いつ|どこ|誰|どれ|なぜ|どう|いくつ|何時|何日|ですか|ますか)/u.test(text);
  // Only a complete, read-only command about this file. Mixed operations
  // remain with the planner and never acquire a new write capability here.
- const answerCommand=(/^(?:この|現在の)ファイルに書かれた[\p{L}\p{N}]{1,60}を(?:日本語で)?答えて(?:ください)?[。.!！]?$/u.test(text)
+ const answerCommand=(/^(?:この|現在の)ファイルに書かれた[\p{L}\p{N}]{1,60}を(?:日本語で)?(?:答えて|教えて)(?:ください)?[。.!！]?$/u.test(text)
   ||/^(?:この|現在の)ファイルの[\p{L}\p{N}]{1,60}を(?:日本語で)?教えて(?:ください)?[。.!！]?$/u.test(text))
   &&!/(?:保存|削除|変更|修正|訂正|送信|送って|メール|実行|検索|比較|翻訳|編集|追加|作成|書き換|それから|してから)/u.test(text);
  if(!asks&&!answerCommand)return null;
@@ -233,20 +235,33 @@ export function explicitNewTextCapture(question:string,scoped=false){
  return {action:'capture' as const,query:'',body};
 }
 
+/** An unambiguous request to copy the displayed answer needs no model call. */
+export function explicitCurrentAnswerCapture(question:string,scoped=false){
+ if(scoped)return null;
+ const text=question.trim();
+ const japanese=/^(?:今の|この|直前の)(?:回答|返答|答え)を(?:メモに|ノートに)?保存して(?:ください|下さい)?[。！!]?$/u;
+ const english=/^save (?:this|the current|the last) (?:answer|response)(?: as a note| to (?:a |my )?notes?)?[.!]?$/iu;
+ return japanese.test(text)||english.test(text)?{action:'capture' as const,query:'',target:'current' as const}:null;
+}
+
 /** Select one submitted turn's scope before model planning. */
 export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  question:string;
- literalRequest:LiteralRequest;
+ literalRequest:LiteralRequest|null;
  hasAttachments:boolean;
  hasCurrentInputReadings:boolean;
  prior:Dialogue;
  attachments:{name:string;kind:string;status:string}[];
 }){
- const {question,literalRequest,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
+ const {question,hasAttachments,hasCurrentInputReadings,prior,attachments}=input;
+ // A generic literal parser can mistake the first verb in a multi-step agent
+ // request for its entire intent. Keep the full request for the tool planner.
+ const literalRequest=requestsLocalSearchReadAnswer(question)||(input.literalRequest as {action?:string}|null)?.action==='search'&&requestsCompoundSearchTask(question)?null:input.literalRequest;
  const socialAfterClarification=!literalRequest&&hasPendingSavedSearch(prior,hasAttachments||hasCurrentInputReadings)&&socialReply(question.trim());
  const previousUtterance=!literalRequest?previousUserUtterance(question,prior,hasAttachments||hasCurrentInputReadings):null;
  const operationContext=literalRequest?null:earlierOperationContext(prior,question,hasAttachments||hasCurrentInputReadings);
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
+ const currentCapture=literalRequest?null:explicitCurrentAnswerCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings)??shortLocalSearch(question,hasAttachments||hasCurrentInputReadings||!!prior.currentFile),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
  const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
@@ -255,11 +270,11 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const namedCorrection=literalRequest?null:explicitSavedKnowledgeCorrection(question,hasAttachments||hasCurrentInputReadings);
  const inputQuestion=literalRequest?null:explicitInputQuestion(question,hasCurrentInputReadings);
  const answerRewrite=!literalRequest||(literalRequest as {action?:string}).action==='summary'?explicitCurrentAnswerRewrite(question):null;
- const priorContext:DialogueContext=socialAfterClarification?{summary:'',recent:[prior.turns.at(-1)!],refs:[],turnCount:1}:noteCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:independentSavedKnowledgeContext(question,hasAttachments||hasCurrentInputReadings)??dialogueContext(prior,question);
- const contextIndependent=!operationContext&&!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture?contextIndependentConversation(question,attachments,priorContext):null;
+ const priorContext:DialogueContext=socialAfterClarification?{summary:'',recent:[prior.turns.at(-1)!],refs:[],turnCount:1}:noteCapture||currentCapture||explicitSavedRequest||explicitFileQuestion||fileCorrection||inputQuestion||answerRewrite?{summary:'',recent:[],refs:[],turnCount:0}:independentSavedKnowledgeContext(question,hasAttachments||hasCurrentInputReadings)??dialogueContext(prior,question);
+ const contextIndependent=!operationContext&&!literalRequest&&!inputQuestion&&!explicitSavedRequest&&!explicitFileQuestion&&!fileCorrection&&!answerRewrite&&!noteCapture&&!currentCapture?contextIndependentConversation(question,attachments,priorContext):null;
  // All unmatched inputs share the route coordinator's explicit null sentinel.
  // Optional chaining otherwise produces undefined, which is not a selected route.
- const request=(socialAfterClarification?{action:'chat',query:''}:null)??(previousUtterance?{action:'chat',query:question}:null)??noteCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
+ const request=(socialAfterClarification?{action:'chat',query:''}:null)??(previousUtterance?{action:'chat',query:question}:null)??noteCapture??currentCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=socialAfterClarification?priorContext:previousUtterance??operationContext??contextIndependent?.context??priorContext;
  return {literalRequest,explicitSavedRequest,explicitFileQuestion,namedCorrection,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
 }
@@ -307,9 +322,10 @@ export function scopeResolvedTurnRequest<Request extends {action:string;query:st
  if(saved&&request?.target==='file')throw Error('Saved content scope · choose an exact saved file');
  const currentFile=saved?undefined:input.currentFile;
  if(request&&!input.literal&&!inputs.length)request=bindExplicitCurrentFileQuestion(request,input.question,currentFile);
- if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputs.length)throw Error('Choose the opened file or current attachments');
- if(request&&inputs.length)request=routeInputRequest(request,inputs,input.literal);
- if(request)request=bindCurrentInputRequest(request,inputs.length>0);
+ const crossSource=inputs.length>0&&requestsCrossSource(input.question);
+ if(request?.target&&['file','path','knowledge'].includes(request.target)&&inputs.length&&!crossSource)throw Error('Choose the opened file or current attachments');
+ if(request&&inputs.length)request=routeInputRequest(request,inputs,input.literal,input.question);
+ if(request)request=bindCurrentInputRequest(request,inputs.length>0,input.question);
  let fileBinding:{request:Request;binding:'explicit'|'default-working-file'|undefined}|undefined;
  if(request){fileBinding=bindWorkingFileRequest(request,currentFile,inputs.length>0);request=fileBinding.request;}
  return {request,inputs,fileBinding};

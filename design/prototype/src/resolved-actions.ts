@@ -53,7 +53,7 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
   async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[]}={}){
-   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}));
+   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}));
    check();return {kind:'answer' as const,...parsed};
   },
   async schedule(context:DialogueContext){
@@ -83,7 +83,7 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
     if(opening.kind==='opened')return {kind:'open' as const,noteId:opening.note.id,path:opening.resolution.path,status:opening.resolution.status,refs:opening.resolution.refs};
     return searchResult(opening.results);
    }
-   const found=await trace('memory.read',{query,...await builtinToolRegistry.identity('memory.read')},()=>runBuiltinTool(builtinToolRegistry,'memory.read',{query},host),value=>value.map(n=>({id:n.id,path:n.path,version:n.version,excerpt:n.body.slice(0,700)})));
+   const found=await trace('memory.read',{query,...await builtinToolRegistry.identity('memory.read')},()=>runBuiltinTool(builtinToolRegistry,'memory.read',{query,length:10_000_000},host),value=>value.map(n=>({id:n.id,path:n.path,version:n.version,excerpt:n.body.slice(0,700)})));
    if(found.length===1){
     const note=found[0],completion=options.literalRead?'open':await trace('dialogue.plan',{stage:'read-completion',model,question,noteId:note.id,revision:note.version},()=>resolveReadCompletion(engine,question,check));check();
     const resolution=resolveReadIntent(question,completion,{noteId:note.id,path:note.path,revision:note.version,body:note.body});

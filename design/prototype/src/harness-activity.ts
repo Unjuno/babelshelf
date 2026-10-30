@@ -1,10 +1,34 @@
 // Audit data only. A receipt never authorizes execution, replay, writes or network.
 import {PlannerOutputError} from './planner-error.ts';
-export const activityTools=['math.calculate','decision.prepare','decision.load','decision.unload','decision.classify','image.read','image.describe','ocr.prepare','vision.prepare','runtime.prepare','model.prepare','model.unload','model.test','speech.prepare','pdf.read','speech.transcribe','model.load','memory.search','memory.read','dialogue.plan','dialogue.subject','dialogue.compact','dialogue.read','text.transform','text.inspect','memory.propose_correction','schedule.propose','knowledge.answer'] as const;
+import {builtinTools,builtinToolIds} from './tools/builtin-tools.ts';
+
+// Non-tool lifecycle operations remain explicit. Executable built-ins derive
+// their IDs and labels from the same catalog used by the actual registry.
+const lifecycleActivityLabels={
+ 'tools.search':'Find tool','tools.read-skill':'Read tool guide',
+ 'decision.prepare':'Prepare decision model','decision.load':'Load decision model','decision.unload':'Unload decision model','decision.classify':'Decide',
+ 'image.read':'Read image','image.describe':'Describe image','ocr.prepare':'Prepare image reader','vision.prepare':'Prepare vision model',
+ 'runtime.prepare':'Prepare local runtime','model.prepare':'Prepare text model','model.unload':'Unload model','model.test':'Test model generation',
+ 'speech.prepare':'Prepare speech model','pdf.read':'Read PDF','speech.transcribe':'Transcribe','model.load':'Load model',
+ 'dialogue.plan':'Select action','dialogue.subject':'Resolve speaker','dialogue.compact':'Context','dialogue.read':'Read earlier message',
+ 'text.transform':'Text operation','text.inspect':'Process original','memory.propose_correction':'Review changes','schedule.propose':'Review schedule','knowledge.answer':'Answer',
+} as const;
+export const activityTools=Object.freeze([...builtinToolIds,...Object.keys(lifecycleActivityLabels) as (keyof typeof lifecycleActivityLabels)[]]);
 export type ActivityTool=typeof activityTools[number]|`user.${string}`;
+export const MAX_ACTIVITY_EVENTS_PER_TURN=128;
+export const RESERVED_AGENT_COMPLETION_EVENTS=4;
+/** Bound tool work by the actual per-turn receipt capacity, not a separate hidden loop ceiling. */
+export function activityBoundedToolBudget(recordedEvents:number,configured:number|null){
+ if(!Number.isSafeInteger(recordedEvents)||recordedEvents<0||recordedEvents>MAX_ACTIVITY_EVENTS_PER_TURN||configured!==null&&(!Number.isSafeInteger(configured)||configured<0))throw Error('Invalid activity budget');
+ const remaining=MAX_ACTIVITY_EVENTS_PER_TURN-recordedEvents;
+ // Each tool can require one planning receipt and one tool receipt. Preserve
+ // room for a final plan/answer and both bounded planner-repair attempts.
+ const storageBudget=Math.max(0,Math.floor((remaining-RESERVED_AGENT_COMPLETION_EVENTS)/2));
+ return configured===null?storageBudget:Math.min(configured,storageBudget);
+}
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Activity={schema:1;id:string;tool:ActivityTool;input:Json;startedAt:string;status:'running'|'succeeded'|'failed'|'stopped';finishedAt?:string;output?:Json;error?:{code:string;message:string}};
-const codes=['stopped','source_changed','context_limit','not_prepared','invalid_model_output','not_found','operation_failed','planner_protocol','agent_protocol','invalid_tool_input','tool_execution','model_runtime','persistence_failure'];
+const codes=['stopped','source_changed','context_limit','result_too_large','not_prepared','invalid_model_output','not_found','operation_failed','planner_protocol','agent_protocol','invalid_tool_input','tool_execution','model_runtime','persistence_failure'];
 const validTool=(tool:unknown):tool is ActivityTool=>typeof tool==='string'&&(activityTools.includes(tool as typeof activityTools[number])||/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool));
 function payload(value:unknown):Json{
  const walk=(v:any,depth:number,seen:Set<any>):void=>{if(depth>20)throw Error('Activity payload depth limit');if(v===null||typeof v==='string'||typeof v==='boolean')return;if(typeof v==='number'&&Number.isFinite(v))return;if(!v||typeof v!=='object'||!Array.isArray(v)&&Object.getPrototypeOf(v)!==Object.prototype&&Object.getPrototypeOf(v)!==null||seen.has(v))throw Error('Activity payload must be portable JSON');const next=new Set([...seen,v]);for(const item of Object.values(v))walk(item,depth+1,next);};
@@ -12,7 +36,7 @@ function payload(value:unknown):Json{
 }
 const validTime=(at:unknown)=>typeof at==='string'&&Number.isFinite(Date.parse(at));
 export function validateActivity(value:unknown):asserts value is Activity[]{
- if(!Array.isArray(value)||value.length>128)throw Error('Activity list limit');const ids=new Set();
+ if(!Array.isArray(value)||value.length>MAX_ACTIVITY_EVENTS_PER_TURN)throw Error('Activity list limit');const ids=new Set();
  for(const a of value){if(!a||a.schema!==1||typeof a.id!=='string'||!a.id||a.id.length>100||ids.has(a.id))throw Error('Invalid or duplicate activity');ids.add(a.id);if(!validTool(a.tool))throw Error('Unknown activity operation');if(!validTime(a.startedAt)||a.finishedAt!==undefined&&!validTime(a.finishedAt))throw Error('Invalid activity time');payload(a.input);
  if(a.status==='running'){if(a.finishedAt!==undefined||a.output!==undefined||a.error!==undefined)throw Error('Invalid running activity result');}
  else if(a.status==='succeeded'){if(!a.finishedAt||a.error!==undefined||a.output===undefined)throw Error('Missing activity output');payload(a.output);}
@@ -30,8 +54,10 @@ export function finishActivity(a:Activity,result:{output?:unknown;error?:unknown
 export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined):Promise<T>{
  const started=startActivity(tool,input);await persistActivity(persist,started);let result:T;
  try{result=await work();}catch(error){try{await persistActivity(persist,finishActivity(started,{error,...(['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?{output:error.diagnostic}:{})}));}catch{throw new ActivityPersistenceError();}throw error;}
- // A final record failure must not run the tool again or invent a tool failure.
- try{const reported=failureOf(result);await persistActivity(persist,finishActivity(started,{output:project(result),...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
+ let output:unknown,reported:unknown;
+ try{output=project(result);reported=failureOf(result);}catch(error){try{await persistActivity(persist,finishActivity(started,{error}));}catch{throw new ActivityPersistenceError();}throw error;}
+ // A final persistence failure must not run the tool again or invent a tool failure.
+ try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
 }
 export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;onFailureRecorded:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
  return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined){
@@ -43,7 +69,7 @@ export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()
   },project,failureOf);
  };
 }
-export function activityLabel(tool:ActivityTool){return ({'math.calculate':'Calculate','decision.prepare':'Prepare decision model','decision.load':'Load decision model','decision.unload':'Unload decision model','decision.classify':'Decide','image.read':'Read image','image.describe':'Describe image','ocr.prepare':'Prepare image reader','vision.prepare':'Prepare vision model','runtime.prepare':'Prepare local runtime','model.prepare':'Prepare text model','model.unload':'Unload model','model.test':'Test model generation','speech.prepare':'Prepare speech model','pdf.read':'Read PDF','speech.transcribe':'Transcribe','model.load':'Load model','memory.search':'Search','memory.read':'Read file','dialogue.plan':'Select action','dialogue.subject':'Resolve speaker','dialogue.compact':'Context','dialogue.read':'Read earlier message','text.transform':'Text operation','text.inspect':'Process original','memory.propose_correction':'Review changes','schedule.propose':'Review schedule','knowledge.answer':'Answer'} as Record<string,string>)[tool]??tool;}
+export function activityLabel(tool:ActivityTool){return builtinTools.find(entry=>entry.tool.definition.id===tool)?.activityLabel??(lifecycleActivityLabels as Record<string,string>)[tool]??tool;}
 export function updateActivity(list:Activity[],next:Activity):Activity[]{
  validateActivity(list);validateActivity([next]);const old=list.find(a=>a.id===next.id);
  if(!old){if(next.status!=='running')throw Error('Activity start unavailable');const added=[...list,structuredClone(next)];validateActivity(added);return added;}

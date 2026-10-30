@@ -14,7 +14,7 @@ export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonl
  if(role==='vision'&&id!=='lfm25-vl-450m-q4f16')return customVisionModels.some(model=>model.id===id&&model.engine==='transformers-lfm2-vl-onnx')?'Not prepared':'Runtime not connected';
  if(role==='text'){
   const custom=customModels.find(model=>model.id===id);
-  if(custom)return custom.engine==='webml-qwen35'||['wllama-lfm2','wllama-qwen3'].includes(custom.engine)?'Not prepared':'Runtime not connected';
+  if(custom)return custom.engine==='webml-qwen35'||['wllama-lfm2','wllama-lfm3','wllama-qwen3'].includes(custom.engine)?'Not prepared':'Runtime not connected';
  }
  if(role==='decision'){
   const custom=customDecisionModels.find(model=>model.id===id);
@@ -52,5 +52,9 @@ export function textModelChoiceHint(id:string,customModels:readonly CustomLocalM
   const route=textExecutionRoute(id,customModels),execution=route?.backend==='webgpu'?'WebGPU path':route?.backend==='cpu-wasm'?'CPU WASM path':'runtime unavailable';
   return size+' · '+execution+' · execution not tested';
  }
- return id==='9B'?size+' · PC prose unstable':size+' · model files';
+ if(id==='lfm3-1.7b-qad-q4-0')return size+' · WebGPU · device execution not tested';
+ if(id==='lfm3-1.7b-q8-0')return size+' · WebGPU · device execution not tested';
+ if(id==='9B')return size+' · experimental · PC prose unstable';
+ if(id==='lfm25-230m-qad-q4-0'||id==='lfm25-350m-qad-q4-0')return size+' · experimental · diagnostic generation only';
+ return size+' · model files';
 }

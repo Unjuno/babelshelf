@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "status": "product-connected-candidate; redistribution-review-partial",
+  "model": "LFM3-1.7B-QAD-Q4_0",
+  "wllama": {
+    "version": "3.12.0",
+    "revision": "3bb2a46f0dab0b924e8cd992b85e8881c3d3a859",
+    "patchSha256": "02d4ebdf48ec4f54805765939fe7a08c7c72d71a50a0e46fb663973678c83139",
+    "license": "MIT",
+    "licenseFile": "../../../../research/runtime/wllama-lfm3/licenses/wllama-MIT.txt",
+    "licenseSha256": "2186b1f191c2fa62fd8a966a45f1af647e5e97c28415d65668163a6350ca054d"
+  },
+  "llamaCpp": {
+    "revision": "19cce6919992fdffd92e0ac152caaf1e2b8f254e",
+    "patchSha256": "d0b1b3d081c0f49560fd61a15a06c7117c5a1620dc6cab1ea240ddc15f2e7a2c",
+    "license": "MIT",
+    "licenseFile": "../../../../research/runtime/wllama-lfm3/licenses/llama-cpp-MIT.txt",
+    "licenseSha256": "bcd8ec749126d45cb06737d0690295d73df4b6e7e194205bcf91190368f27285"
+  },
+  "emscripten": "4.0.20",
+  "assets": [
+    {
+      "path": "index.js",
+      "bytes": 391688,
+      "sha256": "2f7dbad9e5dbf981a19e1e40ae0d55c35448e1df24a3147bfa964fc5f6c76b7d"
+    },
+    {
+      "path": "lfm3-wllama.wasm",
+      "bytes": 9464630,
+      "sha256": "42f48e0490ba9f8590dfafcd2a9762267829ac8f602a7b5872735346066962cf"
+    },
+    {
+      "path": "compat.js",
+      "bytes": 172247,
+      "sha256": "97696211da7eaa60318a0ed5ce87a8b3981b8fc15ea8089eb92607374f3df877"
+    },
+    {
+      "path": "lfm3-compat.wasm",
+      "bytes": 17534066,
+      "sha256": "449cb1a3e9148ad432c6e8bf7304dd68157fff6476c0e7511d464fbe527efdb9"
+    }
+  ],
+  "webgpuPort": {
+    "version": "2026-03-17.182325",
+    "archiveSha256": "8dcae86c630d76b6794b271c6572becba36f4237d132bee121a56638c3d76575",
+    "licenseNotices": [
+      {
+        "component": "Emscripten WebGPU bindings",
+        "license": "MIT and University of Illinois/NCSA",
+        "licenseFile": "../../../../research/runtime/wllama-lfm3/licenses/emdawnwebgpu-Emscripten-MIT-UIUC-NCSA.txt",
+        "licenseSha256": "2f79bf3699b0870251255b381670237f73f21a04a38c094f791eba39c5fd1df7"
+      },
+      {
+        "component": "Dawn webgpu_cpp bindings",
+        "license": "BSD-3-Clause",
+        "licenseFile": "../../../../research/runtime/wllama-lfm3/licenses/dawn-BSD-3-Clause.txt",
+        "licenseSha256": "7e1efc85a78732a13d7ddfc8b52912da7c8f8d3c6d334624b20e3f3a96297de0"
+      }
+    ],
+    "sourceArchiveReviewed": true,
+    "overallRuntimeRedistributionReview": "partial; transitive toolchain and compiled dependency inventory still required"
+  },
+  "compiledNotices": [
+    {
+      "file": "emscripten-libunwind-LICENSE.txt",
+      "sha256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d"
+    },
+    {
+      "file": "emscripten-dlmalloc-notice.txt",
+      "sha256": "191239c2214b06d84c56ded7c89695a55872420ab23436ab93dccd9aefee2d01"
+    },
+    {
+      "file": "llamafile-sgemm-MIT.txt",
+      "sha256": "903db391399dc8ad508cb5ee0ebc0bbd4bb6f1fb8bf9a06e1bcd1d7e3eccd2e4"
+    },
+    {
+      "file": "llamacpp-rotate-bits-MIT.txt",
+      "sha256": "6d1a68e8ae5085d15a5c4f8dc1363b7bf256756b3a49cbaf29fe7f7a49eae4e3"
+    },
+    {
+      "file": "llamacpp-sha256-public-domain.txt",
+      "sha256": "24836bd0f33996623060eabeb765fb0b091bcbca47e6e6e9493385df8ce9e30a"
+    },
+    {
+      "file": "emscripten-musl-COPYRIGHT.txt",
+      "sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af"
+    },
+    {
+      "file": "emscripten-libcxx-LICENSE.txt",
+      "sha256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+    },
+    {
+      "file": "emscripten-libcxxabi-LICENSE.txt",
+      "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+    },
+    {
+      "file": "emscripten-compiler-rt-LICENSE.txt",
+      "sha256": "1a8f1058753f1ba890de984e48f0242a3a5c29a6a8f2ed9fd813f36985387e8d"
+    },
+    {
+      "file": "emscripten-LICENSE.txt",
+      "sha256": "620a78084fc7ca97c0b5dea9abf891f3ffcadfdbf305276f099c9c4e12fc1d86"
+    },
+    {
+      "file": "nlohmann-json-3.12.0-MIT.txt",
+      "sha256": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603"
+    },
+    {
+      "file": "stb-image-notice.txt",
+      "sha256": "21ee6b9af513d5c94dc7189992618cc5c82f668620c1b41fd0bb08d4562ece5b"
+    },
+    {
+      "file": "miniaudio-notice.txt",
+      "sha256": "ddd747aaae3031ff03507063e076e1901a91379799ea42d338e17abc5f89d2cc"
+    }
+  ]
+}

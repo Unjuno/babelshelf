@@ -1,5 +1,5 @@
 // Hydration is a read, not a user edit. Explicit changes use serialized CAS.
-import {stateHash} from './backup-state.ts';
+import {stateHash} from './backup-hash.ts';
 export class MetadataWriter<T>{
  private expected:T|undefined;
  private shown='';

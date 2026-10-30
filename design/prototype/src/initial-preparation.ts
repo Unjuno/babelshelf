@@ -1,4 +1,5 @@
 import {getQwen3TextManifest} from './qwen3-text-manifest.ts';
+import {getLfm3TextManifest,lfm3RuntimeBytes} from './lfm3-text-manifest.ts';
 import {decisionManifest} from './decision-assets.ts';
 import {capabilityState} from './local-capabilities.ts';
 import {isOnnxText} from './text-model-manifest.ts';
@@ -21,12 +22,11 @@ export function textPreparationStatus(assets:Record<string,{filesPresent?:boolea
  // metadata yet. An absent key means its status was never checked.
  if(!Object.hasOwn(assets,model)||assets[model]===undefined)throw Error('Text file status unavailable · retry check in Models');
  const status=assets[model];
- return {text:status?.filesPresent===true,textStatusError:status?.statusError===true};
+ return {text:status?.filesPresent===true&&status?.statusError!==true,textStatusError:status?.statusError===true};
 }
 export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
  const models=structuredClone(value),roles=preparationRoles(value,onlyRole),text=roles.includes('text')?combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel):undefined;
  if(roles.includes('text')&&!text)throw Error('Text runtime not connected');
- if(text&&ready.textStatusError)throw Error('Text file status unavailable · retry check in Models');
  const selectedSpeech=value.customSpeechModels.find(model=>model.id===value.transcriptionModel);
  const builtinSpeech=getSpeechManifest(value.transcriptionModel);
  if(roles.includes('speech')&&value.transcriptionModel&&!builtinSpeech&&!selectedSpeech)throw Error('Speech runtime not connected');
@@ -40,14 +40,14 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  // never add readers or spend storage on roles that were left unselected.
  // Custom packages are imported locally and contribute no network bytes.
  const steps:{role:Role;label:string;readyLabel:string;ready:boolean;bytes:number}[]=[];
- if(text)steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+((isOnnxText(text.id)||isLfmText(text.id,value.customModels)||getQwen3TextManifest(text.id,value.customModels))?0:textManifest.runtime.file.bytes)});
+ if(text)steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+(getLfm3TextManifest(text.id,value.customModels)?lfm3RuntimeBytes:(isOnnxText(text.id)||isLfmText(text.id,value.customModels)||getQwen3TextManifest(text.id,value.customModels))?0:textManifest.runtime.file.bytes)});
  if(roles.includes('speech'))steps.push({role:'speech',label:selectedSpeech?.label??speechModelLabel(models.transcriptionModel),readyLabel:'Files verified',ready:ready.speech,bytes:selectedSpeech?0:builtinSpeech?.files.reduce((n,f)=>n+f.bytes,0)??0});
  if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Files verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
  if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Files verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
  if(roles.includes('vision'))steps.push({role:'vision',label:selectedVision?.label??'LFM2.5-VL 450M · image understanding',readyLabel:'Files verified',ready:ready.vision===true,bytes:selectedVision?0:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
  const selected=steps;
  if(!selected.length)throw Error(onlyRole?'Choose a '+onlyRole+' model':'Choose a model');
- return {expected:JSON.stringify(value),models,steps:selected,bytes:selected.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0)};
+ return {expected:JSON.stringify(value),models,steps:selected,bytes:selected.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0),textStatusError:roles.includes('text')&&ready.textStatusError===true};
 }
 export type InitialPreparation=ReturnType<typeof initialPreparationPlan>;
 type PreparationStep=InitialPreparation['steps'][number];

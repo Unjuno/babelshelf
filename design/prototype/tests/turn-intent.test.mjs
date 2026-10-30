@@ -1,6 +1,86 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as router from '../src/turn-router.ts';
+import {decisionMayRouteRequest,explicitlyNamedSearchResultIds,requestsCompoundSearchTask,requestsImplicitSearchReadAnswer,requestsLocalSearchReadAnswer,requestsMoreToolWorkAfterRead} from '../src/saved-knowledge-reference.ts';
+
+test('current answer copy shortcut excludes compound requests and attachments',()=>{
+ assert.deepEqual(router.explicitCurrentAnswerCapture('今の回答をメモに保存してください。'),{action:'capture',query:'',target:'current'});
+ assert.deepEqual(router.explicitCurrentAnswerCapture('Save this answer as a note.'),{action:'capture',query:'',target:'current'});
+ assert.equal(router.explicitCurrentAnswerCapture('今の回答をメモに保存してから翻訳して'),null);
+ assert.equal(router.explicitCurrentAnswerCapture('今の回答をメモに保存して',true),null);
+});
+
+test('a completed read can skip only a redundant final tool-planning step',()=>{
+ assert.equal(requestsMoreToolWorkAfterRead('Search Memory, read the matching note, then compare it with last week and calculate the change.'),true);
+ assert.equal(requestsMoreToolWorkAfterRead('Search Memory, read the matching note, then search for the earlier version.'),true);
+ assert.equal(requestsMoreToolWorkAfterRead('Search Memory for my saved note, read the complete file, then tell me its exact amount.'),false);
+ assert.equal(requestsMoreToolWorkAfterRead('保存したメモを探して、ファイルを読んでから量を教えて。'),false);
+});
+
+test('compound-search read optimization binds only distinct, explicitly named result files',()=>{
+ const question='Find the saved notes QA Alpine water plan and QA Birch water plan. Compare their amounts and cite both files.';
+ const results=[{noteId:'alpine',title:'Notes/QA Alpine water plan.md'},{noteId:'birch',title:'Notes/QA Birch water plan.md'}];
+ assert.deepEqual(explicitlyNamedSearchResultIds(question,results),['alpine','birch']);
+ assert.deepEqual(explicitlyNamedSearchResultIds('Find water and battery notes and compare them.',[{noteId:'water',title:'Notes/water.md'},{noteId:'battery',title:'Notes/battery.md'}]),[],'generic one-word topics do not count as explicit filenames');
+ assert.deepEqual(explicitlyNamedSearchResultIds('Find Notes/alpha.md and Notes/beta.md and compare.',[{noteId:'alpha-1',title:'Notes/alpha.md'},{noteId:'alpha-2',title:'Archive/alpha.md'},{noteId:'beta',title:'Notes/beta.md'}]),[],'duplicate basenames remain ambiguous');
+ assert.deepEqual(explicitlyNamedSearchResultIds(question,[...results,{...results[0],start:400}]),['alpine','birch'],'multiple excerpts of the same record remain one exact ID');
+});
+
+test('local search-read-answer work bypasses single-action routing regardless of requested order',()=>{
+ const requests=[
+  'I have a saved note somewhere about an emergency water reserve. Use the available local tools to find the note, read it, then tell me the exact reserve amount and identifier.',
+  'Search local Memory for my saved emergency water reserve note, read the exact file, then tell me its exact amount and identifier.',
+  'Find a saved note about my emergency water reserve, read the complete matching file, and only after reading tell me the exact amount and identifier it records.',
+  'Find my saved file Local QA fixture and tell me the unique test value.',
+  'Check the saved emergency water reserve note in Memory again and confirm its exact amount and identifier.',
+  '保存した備蓄メモを探して、ファイルを読んでから量を教えて。',
+  'Read Notes/water.md first, then search Memory for my saved reserve note and tell me whether the values match.',
+ ];
+ for(const question of requests){assert.equal(requestsLocalSearchReadAnswer(question),true,question);assert.equal(decisionMayRouteRequest(true,true,question),false,question);}
+ for(const question of ['What is my saved meeting note?','Find saved meeting notes.','Read Notes/meeting.md','Search local notes and explain how the search works.','Search Memory and explain how the read tool works.','Search my saved note about how to read files and tell me the main point.','Check whether Memory works.','Can you confirm our meeting time?','検索機能と読み取り機能を説明して。']){
+  assert.equal(requestsLocalSearchReadAnswer(question),false,question);assert.equal(decisionMayRouteRequest(true,true,question),true,question);
+ }
+ assert.equal(requestsImplicitSearchReadAnswer('Search Memory for test marker MAPLE-6204 and tell me where the meeting place is.'),true);
+ assert.equal(requestsLocalSearchReadAnswer('Find my saved file Local QA fixture and tell me the unique test value.'),true);
+ assert.equal(requestsImplicitSearchReadAnswer('Find my saved file Local QA fixture and tell me the unique test value.'),true);
+ assert.equal(requestsImplicitSearchReadAnswer('Search local notes and explain how the search works.'),false,'explaining the search feature is not a request to read search results');
+ assert.equal(requestsImplicitSearchReadAnswer('Search Memory, read the matching note, then tell me its exact amount.'),false,'an explicitly requested read stays with the model planner');
+ assert.equal(decisionMayRouteRequest(false,true,requests[0]),false);assert.equal(decisionMayRouteRequest(true,false,requests[0]),false);
+ assert.equal(decisionMayRouteRequest(true,true,'What should I do with this note?','native-tool-calls'),false,'native-tool planner owns tool and action selection');
+});
+
+test('implicit Memory search answers are recognized across the LFM3 language set without capturing search-only requests',()=>{
+ const examples=[
+  'ابحث في الذاكرة عن موعد الاجتماع وأخبرني به.',
+  '在记忆中搜索会议地点并告诉我。',
+  'Cherche dans la mémoire le lieu de réunion et dis-moi où il est.',
+  'Suche im Memory nach dem Treffpunkt und sag mir, wo er ist.',
+  'Cerca nella memoria il luogo della riunione e dimmi dov’è.',
+  'Search Memory for the meeting place and tell me where it is.',
+  'Busca en la memoria el lugar de la reunión y dime dónde está.',
+  'Pesquise na memória o local da reunião e me diga onde fica.',
+  '메모리에서 회의 장소를 검색하고 어디인지 알려줘.',
+  'Tìm trong bộ nhớ địa điểm họp và cho tôi biết ở đâu.',
+  'Cari di Memori lokasi rapat dan beri tahu saya di mana.',
+  'स्मृति में बैठक की जगह खोजें और मुझे बताएं कि वह कहाँ है।',
+  'Найди в памяти место встречи и скажи, где оно.',
+  'Wyszukaj w pamięci miejsce spotkania i powiedz mi, gdzie jest.',
+  'ค้นหาสถานที่ประชุมในความจำแล้วบอกฉันว่าอยู่ที่ไหน',
+ ];
+ for(const question of examples)assert.equal(requestsImplicitSearchReadAnswer(question),true,question);
+ for(const question of ['Busca notas guardadas sobre la reunión.','Cherche dans la mémoire le lieu de réunion.','在记忆中搜索会议地点。','ค้นหาสถานที่ประชุมในความจำ'])assert.equal(requestsImplicitSearchReadAnswer(question),false,question);
+ for(const question of ['Busca en la memoria dos planes, compáralos y dime la diferencia.','Cherche dans la mémoire les deux plans, compare-les et dis-moi la différence.','在记忆中搜索两个方案，比较它们并告诉我差异。']){
+  assert.equal(requestsLocalSearchReadAnswer(question),true,question);assert.equal(requestsImplicitSearchReadAnswer(question),false,question);
+ }
+ assert.equal(requestsImplicitSearchReadAnswer('Cherche dans la mémoire le lieu de réunion, lis la note correspondante et dis-moi où il est.'),false,'an explicit localized read remains model-directed');
+});
+
+test('decision routing does not evict a resident Text model or load before Text files are ready',()=>{
+ const request='What should I do with this note?';
+ assert.equal(decisionMayRouteRequest(true,true,request,'json',{textResident:true,textFilesPresent:true}),false);
+ assert.equal(decisionMayRouteRequest(true,true,request,'json',{textResident:false,textFilesPresent:false}),false);
+ assert.equal(decisionMayRouteRequest(true,true,request,'json',{textResident:false,textFilesPresent:true}),true);
+});
 
 test('unspecified saved search excludes topics, context, compound actions and attachments',()=>{
  for(const q of ['保存したメモを探して','保存済みのファイルを検索してください','Find my notes'])assert.equal(router.unspecifiedSavedSearch(q),true,q);
@@ -39,6 +119,26 @@ test('mixed attachment requests do not become direct read-only answers at the tu
  const question='Using only the attached text, what is the phrase? Reply with the phrase.';
  const result=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:true,hasCurrentInputReadings:true,prior,attachments});
  assert.deepEqual(result.request,{action:'answer',query:question,target:'inputs'});
+});
+test('cross-source input requests stay with the agent and may finish grounded in both scopes',()=>{
+ for(const question of ['Compare the code in this attachment with my saved model notes.','What does this PDF say about my saved meeting notes?','この画像を保存したメモと比較して。']){
+  const attachments=[{name:'source.pdf',kind:'pdf',status:'ready'}];
+  const intent=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:true,hasCurrentInputReadings:true,prior,attachments});
+  assert.equal(intent.inputQuestion,null,question);assert.equal(intent.request,null,question);
+  const scoped=router.scopeResolvedTurnRequest({request:{action:'answer',query:question,target:'knowledge'},question,literal:false,inputs:[{kind:'pdf',noteId:'current-reading',revision:1}],currentFile:prior.currentFile});
+  assert.equal(scoped.request.target,'knowledge',question);
+  assert.equal(scoped.inputs.length,1);
+ }
+});
+
+test('period-terminated direct file quotes bypass earlier dialogue context',()=>{
+ const question='From this file, quote the complete sentence that states the water-cache amount.';
+ const result=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]});
+ assert.deepEqual(result.request,{action:'answer',query:question,target:'file'});
+ assert.deepEqual(result.context,{summary:'',recent:[],refs:[],turnCount:0});
+ const attached=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:true,hasCurrentInputReadings:true,prior,attachments:[{name:'field-notes.md',kind:'text',status:'Text available'}]});
+ assert.deepEqual(attached.request,{action:'answer',query:question,target:'inputs'});
+ assert.deepEqual(attached.context,{summary:'',recent:[],refs:[],turnCount:0});
 });
 
 test('saved-file planning keeps the agent loop but excludes unrelated dialogue and implicit current-file edits',()=>{
@@ -112,7 +212,7 @@ test('a single correction command with an opened file binds a review, never an e
 });
 
 test('an explicit rewrite of the current answer binds its immutable dialogue target before planning',()=>{
- for(const question of ['今の回答を日本語で短くまとめて。','今の回答をチェックリストにして。','直前の回答を表にして。','Format your last answer as a table.','Put your previous response into a checklist.','直前の回答を英語に翻訳して。','Summarize your last answer in Japanese.','Please translate your previous response into French.']){
+ for(const question of ['前の回答を一文でまとめて。','今の回答を日本語で短くまとめて。','今の回答をチェックリストにして。','直前の回答を表にして。','Format your last answer as a table.','Put your previous response into a checklist.','直前の回答を英語に翻訳して。','Summarize your last answer in Japanese.','Please translate your previous response into French.']){
   const before=structuredClone(prior),intent=route({question});
   assert.deepEqual(intent.request,{action:'recall',query:question,target:'current'});
   assert.deepEqual(prior,before);
@@ -168,9 +268,34 @@ test('saved-note questions with additional write or external actions do not bypa
  assert.equal(router.explicitSavedKnowledgeQuestion('What time is my saved zephyr meeting note?')?.action,'answer');
 });
 
+test('compound search-read-answer requests stay on the model planner route',()=>{
+ const question='I have a saved note somewhere about an emergency water reserve. Use the available local tools to find the note, read it, then tell me the exact reserve amount and identifier.';
+ assert.equal(router.explicitSavedKnowledgeQuestion(question),null);
+ const intent=route({question,prior:{schema:1,revision:0,turns:[],compaction:null}});
+ assert.equal(intent.explicitSavedRequest,null);
+ assert.equal(intent.request,null);
+ const parsed=router.resolveSubmittedTurnIntent({question:'Search local Memory for my saved emergency water reserve note, read the exact file, then tell me its exact amount and identifier.',literalRequest:{action:'search',query:'emergency water reserve'},hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]});
+ assert.equal(parsed.literalRequest,null);assert.equal(parsed.explicitSavedRequest,null);assert.equal(parsed.request,null);
+});
+
+test('literal Find shortcuts yield to explicit follow-up operations',()=>{
+ const question='Find the saved notes QA Alpine water plan and QA Birch water plan. Compare their exact emergency water amounts, calculate the combined total and the difference, and cite both files.';
+ assert.equal(requestsCompoundSearchTask(question),true);
+ const parsed=router.resolveSubmittedTurnIntent({question,literalRequest:{action:'search',query:'saved notes QA Alpine water plan and QA Birch water plan. Compare their exact emergency water amounts, calculate the combined total and the difference, and cite both files.'},hasAttachments:false,hasCurrentInputReadings:false,prior:{schema:1,revision:0,turns:[],compaction:null},attachments:[]});
+ assert.equal(parsed.literalRequest,null);assert.equal(parsed.explicitSavedRequest,null);assert.equal(parsed.request,null);
+ const directAnswer='Search Memory for test marker MAPLE-6204 and tell me where the meeting place is.';
+ assert.equal(requestsCompoundSearchTask(directAnswer),true,'a search followed by a natural-language answer request must continue through the agent');
+ assert.equal(requestsCompoundSearchTask('保存した Test-reserve.md と Test-reserve-second.md を探して読み、集合場所と飲料水の量を比較してください。'),true,'Japanese filename-first requests stay on the agent path');
+ const directParsed=router.resolveSubmittedTurnIntent({question:directAnswer,literalRequest:{action:'search',query:'test marker MAPLE-6204'},hasAttachments:false,hasCurrentInputReadings:false,prior:{schema:1,revision:0,turns:[],compaction:null},attachments:[]});
+ assert.equal(directParsed.literalRequest,null);assert.equal(directParsed.request,null,'do not finish at a search result when the user asked for an answer');
+ for(const question of ['Find my notes about the blue lantern meeting.','Search saved notes for evacuation maps','Find saved notes about how to compare water systems.'])assert.equal(requestsCompoundSearchTask(question),false,question);
+});
+
 test('a named my-note question selects Memory even with a different file open',()=>{
  const input={question:'How much water is in my solar dock note?',literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]};
  assert.deepEqual(router.resolveSubmittedTurnIntent(input).request,{action:'answer',query:'solar dock',target:'knowledge'});
+ const explicitMemory=router.resolveSubmittedTurnIntent({...input,question:'Search Memory for test marker MAPLE-6204 and tell me where the meeting place is.'});
+ assert.equal(explicitMemory.request,null,'search-and-answer stays on the agent route');assert.equal(explicitMemory.context.currentFile,undefined,'explicit Memory scope does not inherit an unrelated opened file');
  assert.equal(router.explicitSavedKnowledgeQuestion('What is in my current note?',false,true),null);
  const current='In my current note, is the example tool enabled?';
  assert.deepEqual(router.explicitWorkingFileQuestion(current,true),{action:'answer',query:current,target:'file'});
@@ -366,6 +491,7 @@ test('explicit previous user message uses a bounded original exchange without ch
 });
 
 test('explicit opened-file requests to explain named contents keep the pinned file scope',()=>{
+ assert.deepEqual(router.explicitWorkingFileQuestion('このファイルに書かれた集合場所と飲料水の量を教えて。',true),{action:'answer',query:'このファイルに書かれた集合場所と飲料水の量を教えて。',target:'file'});
  const question='このファイルの集合場所と持ち物を日本語で教えてください。';
  assert.deepEqual(router.explicitWorkingFileQuestion(question,true),{action:'answer',query:question,target:'file'});
  for(const text of ['このファイルの集合場所を教えて保存してください。','このファイルの内容を削除して教えてください。','別のファイルの内容を教えてください。'])assert.equal(router.explicitWorkingFileQuestion(text,true),null,text);
@@ -378,4 +504,9 @@ test('ambiguous short search with a selected file gives a recovery hint only whe
  assert.equal(router.searchScopeFailure('Model not prepared · Settings','QA雨の日を探して',true,false),hint);
  assert.equal(router.searchScopeFailure('Model not configured','QA雨の日を探して',true,false),'Model not configured · remove input file to search Memory');
  for(const [status,question,file,attachments] of [['Stopped','QA雨の日を探して',true,false],['Model not prepared','QA雨の日を探して',false,false],['Model not prepared','QA雨の日を探して',true,true],['Model not prepared','削除して',true,false]])assert.equal(router.searchScopeFailure(status,question,file,attachments),status);
+});
+test('insufficient evidence display is scoped to inspected excerpts',()=>{
+ assert.equal(router.searchScopeFailure('Insufficient evidence','What time?',true,false),'Could not answer from the selected excerpts');
+ assert.equal(router.searchScopeFailure('Stopped','What time?',true,false),'Stopped');
+ assert.equal(router.searchScopeFailure('Source changed · retry','What time?',true,false),'Source changed · retry');
 });

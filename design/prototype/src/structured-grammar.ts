@@ -1,11 +1,24 @@
 import {HARNESS_ACTIONS,scopedHarnessActions,validatePlannerScope,type PlannerScope} from './harness-actions.ts';
-export type StructuredFormat='dialogue-plan'|'dialogue-answer'|{type:'dialogue-plan';scope:PlannerScope};
+export type StructuredFormat='dialogue-plan'|'dialogue-answer'|{type:'dialogue-answer';allowInsufficientEvidence:true}|{type:'grounded-answer';sourceCount:number}|{type:'dialogue-plan';scope:PlannerScope}|{type:'sourced-calculation';sourceCount:number};
+function sourceLabels(format:StructuredFormat){
+ const count=(format as {sourceCount:number}).sourceCount;
+ if(!Number.isSafeInteger(count)||count<0||count>64)throw Error('Invalid grounded answer schema');
+ return Array.from({length:count},(_,index)=>'S'+(index+1));
+}
 type JsonSchema=Record<string,unknown>;
 export function createStructuredSchema(format:StructuredFormat):JsonSchema{
  const kind=typeof format==='string'?format:format?.type;
- if(kind==='dialogue-answer')return {type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false};
+ if(kind==='grounded-answer'){
+  const labels=sourceLabels(format);
+  return {type:'object',properties:{status:{type:'string',enum:['answered','insufficient_evidence']},answer:{type:'string'},sources:{type:'array',items:{type:'string',...(labels.length?{enum:labels}:{})},minItems:0,maxItems:labels.length,uniqueItems:true}},required:['status','answer','sources'],additionalProperties:false};
+ }
+ if(kind==='dialogue-answer')return {type:'object',properties:{answer:{type:'string'},...(typeof format==='object'&&format.type==='dialogue-answer'&&format.allowInsufficientEvidence?{status:{type:'string',enum:['insufficient_evidence']}}:{})},required:['answer'],additionalProperties:false};
+ if(kind==='sourced-calculation'){
+  const count=(format as {sourceCount:number}).sourceCount;if(!Number.isSafeInteger(count)||count<1||count>8)throw Error('Invalid sourced calculation schema');
+  return {type:'object',properties:{operation:{type:'string',enum:['add','subtract','multiply','divide']},sourceOperandIndex:{type:'integer',enum:[0,1]},sourceIndex:{type:'integer',minimum:0,maximum:count-1},sourceQuote:{type:'string'},sourceUnit:{type:'string'},requestQuote:{type:'string'}},required:['operation','sourceOperandIndex','sourceIndex','sourceQuote','sourceUnit','requestQuote'],additionalProperties:false};
+ }
  if(kind!=='dialogue-plan')throw Error('Unsupported output format');
- const scope=typeof format==='object'?validatePlannerScope(format.scope):undefined;
+ const scope=typeof format==='object'&&format.type==='dialogue-plan'?validatePlannerScope(format.scope):undefined;
  const actions=scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool');
  const branches:JsonSchema[]=[];
  const add=(action:string,target?:string,historyPart?:'user'|'assistant')=>{
@@ -23,7 +36,8 @@ export function createStructuredSchema(format:StructuredFormat):JsonSchema{
  };
  for(const action of actions){
   if(action.id==='tool'){
-   if(scope?.toolIds?.length)branches.push({type:'object',properties:{action:{type:'string',enum:['tool']},query:{type:'string',enum:scope.toolIds},body:{type:'string'}},required:['action','query','body'],additionalProperties:false});
+   const toolIds=scope?.requiredToolIds??scope?.toolIds;
+   if(toolIds?.length)branches.push({type:'object',properties:{action:{type:'string',enum:['tool']},query:{type:'string',enum:toolIds},body:{type:'string'}},required:['action','query','body'],additionalProperties:false});
    continue;
   }
   if(action.id==='capture'&&!scope?.inputs){
@@ -45,8 +59,8 @@ type Node={epsilon:number[];edges:{accept:(byte:number)=>boolean;to:number}[]};
 type Fragment={start:number;end:number};
 export function createStructuredGrammar(format:StructuredFormat){
  const kind=typeof format==='string'?format:format?.type;
- if(!['dialogue-plan','dialogue-answer'].includes(kind))throw Error('Unsupported output format');
- const scope=typeof format==='object'?validatePlannerScope(format.scope):undefined;
+ if(!['dialogue-plan','dialogue-answer','grounded-answer','sourced-calculation'].includes(kind))throw Error('Unsupported output format');
+ const scope=typeof format==='object'&&format.type==='dialogue-plan'?validatePlannerScope(format.scope):undefined;
  const nodes:Node[]=[];
  const node=()=>{nodes.push({epsilon:[],edges:[]});return nodes.length-1;};
  const edge=(from:number,to:number,accept:(byte:number)=>boolean)=>nodes[from].edges.push({to,accept});
@@ -77,12 +91,31 @@ export function createStructuredGrammar(format:StructuredFormat){
  };
  const field=(name:string,value:Fragment)=>seq(literal(','+JSON.stringify(name)+':'),value);
  let root:Fragment;
- if(kind==='dialogue-answer')root=seq(literal('{"answer":'),string(),literal('}'));
+ if(kind==='dialogue-answer'){
+  const answer=seq(literal('{"answer":'),string(),literal('}'));
+  root=typeof format==='object'&&format.type==='dialogue-answer'&&format.allowInsufficientEvidence
+   ?alt([answer,seq(literal('{"status":"insufficient_evidence","answer":'),string(),literal('}')),seq(literal('{"answer":'),string(),literal(',"status":"insufficient_evidence"}'))]):answer;
+ }
+ else if(kind==='grounded-answer'){
+  const labels=sourceLabels(format),open=literal('['),close=literal(']');let end=open.end;
+  nodes[end].epsilon.push(close.start);
+  for(let index=0;index<labels.length;index++){
+   const item=alt(labels.map(label=>literal(JSON.stringify(label)))),part=index?seq(literal(','),item):item;
+   nodes[end].epsilon.push(part.start);end=part.end;nodes[end].epsilon.push(close.start);
+  }
+  const sources={start:open.start,end:close.end};
+  root=seq(literal('{"status":'),alt(['answered','insufficient_evidence'].map(value=>literal(JSON.stringify(value)))),field('answer',string()),field('sources',sources),literal('}'));
+ }
+ else if(kind==='sourced-calculation'){
+  const sourceCount=(format as {sourceCount:number}).sourceCount;if(!Number.isSafeInteger(sourceCount)||sourceCount<1||sourceCount>8)throw Error('Invalid sourced calculation schema');
+  root=seq(literal('{"operation":'),alt(['add','subtract','multiply','divide'].map(value=>literal(JSON.stringify(value)))),field('sourceOperandIndex',alt([literal('0'),literal('1')])),field('sourceIndex',boundedInteger(sourceCount-1)),field('sourceQuote',string()),field('sourceUnit',string()),field('requestQuote',string()),literal('}'));
+ }
  else{
   const alternatives:Fragment[]=[];
   for(const action of scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool')){
    if(action.id==='tool'){
-    if(scope?.toolIds?.length)alternatives.push(seq(literal('{"action":"tool","query":'),alt(scope.toolIds.map(id=>literal(JSON.stringify(id)))),field('body',string()),literal('}')));
+    const toolIds=scope?.requiredToolIds??scope?.toolIds;
+    if(toolIds?.length)alternatives.push(seq(literal('{"action":"tool","query":'),alt(toolIds.map(id=>literal(JSON.stringify(id)))),field('body',string()),literal('}')));
     continue;
    }
    if(action.id==='capture'&&!scope?.inputs)alternatives.push(seq(literal('{"action":"capture","body":'),string(),literal('}')));

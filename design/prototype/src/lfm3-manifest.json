@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "status": "experimental-product-candidate",
+  "id": "lfm3-1.7b-qad-q4-0",
+  "name": "LFM3 · 1.7B · QAD Q4_0",
+  "repository": "LiquidAI/LFM3-1.7B-GGUF",
+  "revision": "b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf",
+  "license": "LFM Open License v1.0",
+  "engine": "wllama-lfm3",
+  "contextTokens": 8192,
+  "maxReplyTokens": 3072,
+  "runtime": {
+    "name": "Wllama LFM3 app runtime",
+    "revision": "wllama-3.12.0-llama-19cce6919992fdffd92e0ac152caaf1e2b8f254e-emdawn-2026-03-17-checkpoints-2"
+  },
+  "file": {
+    "name": "LFM3-1.7B-QAD-Q4_0.gguf",
+    "bytes": 1049615680,
+    "sha256": "43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452",
+    "url": "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf/LFM3-1.7B-QAD-Q4_0.gguf"
+  }
+}

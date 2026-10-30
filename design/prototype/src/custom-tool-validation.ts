@@ -31,7 +31,7 @@ function metadataFrom(skillFile:CustomToolSourceRecord){
  let metadata:unknown;try{metadata=JSON.parse(match[1]);}catch{throw Error('Invalid tool package metadata');}
  if(!metadata||typeof metadata!=='object'||Array.isArray(metadata))throw Error('Invalid tool package metadata');
  const record=metadata as Record<string,unknown>;
- if(!exactKeys(record,['id','version','title','inputSchema','capabilities'])||typeof record.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(record.id)||!Number.isSafeInteger(record.version)||Number(record.version)<1||!safeText(record.title,120)||!Array.isArray(record.capabilities)||record.capabilities.length>3||record.capabilities.some(capability=>!['memory.search','memory.read','math.calculate'].includes(String(capability)))||new Set(record.capabilities).size!==record.capabilities.length)throw Error('Invalid tool package metadata');
+ if(!exactKeys(record,['id','version','title','inputSchema','capabilities'])||typeof record.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(record.id)||!Number.isSafeInteger(record.version)||Number(record.version)<1||!safeText(record.title,120)||!Array.isArray(record.capabilities)||record.capabilities.length>4||record.capabilities.some(capability=>!['memory.search','memory.list','memory.read','math.calculate'].includes(String(capability)))||new Set(record.capabilities).size!==record.capabilities.length)throw Error('Invalid tool package metadata');
  return {id:record.id,version:Number(record.version),title:record.title as string,inputSchema:validateCustomToolInputSchema(record.inputSchema),capabilities:[...record.capabilities].sort() as CustomToolCapability[] ,instructions:match[2]};
 }
 

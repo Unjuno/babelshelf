@@ -3,6 +3,7 @@ import {speechModels} from './speech-models.ts';
 export type LocalCapability='text.generate'|'decision.classify'|'image.ocr'|'audio.transcribe'|'video.audio'|'video.frames'|'pdf.text'|'image.describe'|'text.embed'|'text.rerank'|'audio.synthesize';
 export type LocalAdapter={id:string;engine:string;models:readonly string[];capabilities:readonly LocalCapability[]};
 const adapters:readonly LocalAdapter[]=[
+ {id:'lfm3-text',engine:'wllama-lfm3-webgpu',models:['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0'],capabilities:['text.generate']},
  {id:'lfm-text',engine:'wllama-cpu-count',models:['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'],capabilities:['text.generate']},
  {id:'webml-text',engine:'webml',models:['4B','2B','9B'],capabilities:['text.generate']},
  {id:'onnx-text',engine:'transformers-onnx',models:['smollm2-360m-instruct','smollm2-360m-instruct-webgpu-q4f16','qwen25-05b-instruct'],capabilities:['text.generate']},

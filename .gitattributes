@@ -2,8 +2,14 @@
 design/prototype/** text eol=lf
 design/prototype/**/*.png binary
 design/prototype/licenses/*.tar.gz binary
+design/prototype/licenses/emscripten-libunwind-LICENSE.txt -text
 # This upstream license is byte-pinned with CRLF; Git must preserve its bytes.
 design/prototype/licenses/LFM2.5-350M-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/LFM3-1.7B-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/nlohmann-json-3.12.0-MIT.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/stb-image-notice.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/miniaudio-notice.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-LICENSE.txt whitespace=-blank-at-eol,-blank-at-eof
 docs/design/*.png binary
 # Baseline shell hashes must also be stable after checkout.
 dist/** text eol=lf
@@ -24,3 +30,21 @@ patches/wllama-large-file.patch -text whitespace=-blank-at-eol,-blank-at-eof
 # Preserve pinned generated runtime JS byte identity.
 design/prototype/runtime/wllama-count/*.js -text
 design/prototype/runtime/wllama-count/*.wasm binary
+design/prototype/runtime/wllama-lfm3/*.js -text
+design/prototype/runtime/wllama-lfm3/*.wasm binary
+research/runtime/wllama-lfm3/** -text
+research/runtime/wllama-lfm3/licenses/*.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+research/runtime/wllama-lfm3/*.patch -text whitespace=-blank-at-eol,-blank-at-eof
+design/prototype/licenses/emscripten-libunwind-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-dlmalloc-notice.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/llamafile-sgemm-MIT.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/llamacpp-rotate-bits-MIT.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/llamacpp-sha256-public-domain.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-musl-COPYRIGHT.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-libcxx-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-libcxxabi-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-compiler-rt-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/emscripten-LICENSE.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/nlohmann-json-3.12.0-MIT.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/stb-image-notice.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+design/prototype/licenses/miniaudio-notice.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

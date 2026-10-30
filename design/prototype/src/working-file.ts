@@ -3,7 +3,7 @@ import {validHarnessTarget} from './harness-actions.ts';
 import {requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type SourceRef} from './conversation.ts';
 import {namedSavedSubject,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
-import {latest,buildIndex,searchNotes,chunks} from '../../../dist/core.js';
+import {latest,searchableNoteIds,searchNotes,chunks} from '../../../dist/core.js';
 // @ts-expect-error Shared canonical path contract is JavaScript.
 import {notePath} from '../../../dist/files.js';
 export type WorkingFile={noteId:string;revision:number};
@@ -33,14 +33,18 @@ export function workingFileCoverage(note:any){
 }
 export function workingFileEvidence(records:any[],pin:WorkingFile,question:string):(SourceRef&{coverage:string})[]{
  const note=workingFileNote(records,pin),version=latest(note);
- if(!buildIndex(records).docs.some((d:any)=>d.n.id===note.id)){
+ if(!searchableNoteIds(records).has(note.id)){
   if(note.kind==='original'&&!note.originalAsset&&!note.mediaSource&&!note.sources?.length&&!version.body.trim())throw Error('File is empty');
   throw Error('Working file is not eligible evidence');
  }
  // Eligibility is checked against the full canonical graph. A temporary text-only
  // projection ranks excerpts, never changes stored kind/sources or grants authority.
  const {mediaSource,...textProjection}=note;
- const ranked=searchNotes([{...textProjection,kind:'original',sources:[]}],question,4).filter((hit:any)=>hit.noteId===pin.noteId);
+ // Search spelling variants only inside the immutable selected file. A hyphen
+ // in the user's request must still match a spaced phrase in the source.
+ const scoped=[{...textProjection,kind:'original',sources:[]}],variants=[...new Set([question,question.replace(/([A-Za-z])[-‐‑–]([A-Za-z])/gu,'$1 $2')])],rankedByRange=new Map<string,any>();
+ for(const variant of variants)for(const hit of searchNotes(scoped,variant,4))if(hit.noteId===pin.noteId){const key=`${hit.start}:${hit.end}`,previous=rankedByRange.get(key);if(!previous||(hit.score??0)>(previous.score??0))rankedByRange.set(key,hit);}
+ const ranked=[...rankedByRange.values()].sort((a:any,b:any)=>(b.score??0)-(a.score??0)||a.start-b.start).slice(0,4);
  const leading=chunks(version.body).slice(0,1).map((c:any)=>({noteId:note.id,revision:pin.revision,title:version.title,...c}));
  const refs=[...ranked,...leading].filter((r,i,a)=>a.findIndex(v=>v.start===r.start&&v.end===r.end)===i).map(r=>({...r,coverage:workingFileCoverage(note)}));
  if(!refs.length)throw Error('Working file text unavailable');return refs;

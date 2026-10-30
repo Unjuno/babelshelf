@@ -1,5 +1,6 @@
 import type {ToolHost} from './tool-host.ts';
-export type PackageDefinition={id:string;version:number;readOnly:true;network:'none';inputSchema?:Readonly<Record<string,unknown>>};
+import type {AgentToolEffect} from '../agent-loop.ts';
+export type PackageDefinition={id:string;version:number;effect:AgentToolEffect;network:'none'|'explicit-online';inputSchema?:Readonly<Record<string,unknown>>};
 export type ToolCapability=PackageDefinition&{usage:string};
 export type PackageSource={path:string;body:string};
 export type ToolPackage={definition:PackageDefinition;entry:string;sources:PackageSource[];run:(args:unknown,host:ToolHost)=>Promise<unknown>};
@@ -18,7 +19,7 @@ export function createToolRegistry(packages:ToolPackage[]){
  const registry=new Map<string,ToolPackage>();
  for(const candidate of packages){
   const d=candidate.definition;
-  if(!d||typeof d.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(d.id)||!Number.isSafeInteger(d.version)||d.version<1||d.readOnly!==true||d.network!=='none'||typeof candidate.run!=='function'||registry.has(d.id))throw Error('Invalid bundled tool registration');
+  if(!d||typeof d.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(d.id)||!Number.isSafeInteger(d.version)||d.version<1||!['read','review','external'].includes(d.effect)||d.network!=='none'&&d.network!=='explicit-online'||d.effect!=='external'&&d.network!=='none'||d.effect==='external'&&d.network!=='explicit-online'||typeof candidate.run!=='function'||registry.has(d.id))throw Error('Invalid bundled tool registration');
   if(!Array.isArray(candidate.sources)||candidate.sources.length<2||candidate.sources.length>32)throw Error('Invalid tool sources');
   const paths=new Set<string>();
   for(const s of candidate.sources){if(!s||typeof s.path!=='string'||s.path.length>200||!/^Tools\/(?:[a-z][a-z0-9.-]*\/)?(?:SKILL\.md|[a-z][a-z0-9-]*\.(?:ts|js))$/.test(s.path)||s.path.split('/').some(p=>p==='.'||p==='..')||typeof s.body!=='string'||s.body.length>100000||paths.has(s.path))throw Error('Invalid tool sources');paths.add(s.path);}

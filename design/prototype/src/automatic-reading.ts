@@ -5,7 +5,7 @@ import {isPdf,type PdfText} from './pdf-text.ts';
 import type {Transcript} from './speech-transcript.ts';
 import type {VisionText} from './vision-text.ts';
 import {originalKey,originalRef,type OriginalAsset} from './original-assets.ts';
-import {stateHash} from './backup-state.ts';
+import {stateHash} from './backup-hash.ts';
 import type {ProcessingTool} from './processing-history.ts';
 export type ReadingPolicy={ocrModel:string;ocrReady:boolean;ocrLanguage:string;speechModel:string;speechReady:boolean;speechLanguage:string;visionModel?:string;visionReady?:boolean;videoAudioOnly?:boolean;customSpeechModels?:readonly {id:string;role:string;engine:string}[];customVisionModels?:readonly {id:string;role:string;engine:string}[]};
 type Adapter<T>=(asset:OriginalAsset,signal:AbortSignal,progress:(s:string)=>void)=>Promise<T>;

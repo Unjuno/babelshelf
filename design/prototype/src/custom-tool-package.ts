@@ -9,9 +9,9 @@ const safeText=(value:unknown,max:number)=>typeof value==='string'&&value.trim()
 export const CUSTOM_TOOL_STARTER_CODE='({ input }) => ({ value: input.query })';
 export const CUSTOM_TOOL_STARTER_INPUT_SCHEMA={type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string',minLength:1,maxLength:2000}}};
 
-/** Creates an inert, disabled-by-default package pair for the Memory file store. */
+/** Creates an inert package pair; the caller owns persistence and profile activation. */
 export function createCustomToolPackageFiles(input:{id:string;title:string;instructions:string;code:string;capabilities:readonly CustomToolCapability[];inputSchema?:unknown}):CustomToolSourceRecord[]{
- if(!input||typeof input.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(input.id)||!safeText(input.title,120)||!safeText(input.instructions,8000)||typeof input.code!=='string'||!input.code.trim()||byteLength(input.code)>32_000||!Array.isArray(input.capabilities)||input.capabilities.length>3||input.capabilities.some(value=>value!=='memory.search'&&value!=='memory.read'&&value!=='math.calculate')||new Set(input.capabilities).size!==input.capabilities.length)throw Error('Invalid tool package draft');
+ if(!input||typeof input.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(input.id)||!safeText(input.title,120)||!safeText(input.instructions,8000)||typeof input.code!=='string'||!input.code.trim()||byteLength(input.code)>32_000||!Array.isArray(input.capabilities)||input.capabilities.length>4||input.capabilities.some(value=>value!=='memory.search'&&value!=='memory.list'&&value!=='memory.read'&&value!=='math.calculate')||new Set(input.capabilities).size!==input.capabilities.length)throw Error('Invalid tool package draft');
  const metadata={id:input.id,version:1,title:input.title.trim(),inputSchema:input.inputSchema??CUSTOM_TOOL_STARTER_INPUT_SCHEMA,capabilities:[...input.capabilities].sort()};
  const records=[{path:`Tools/${input.id}/SKILL.md`,body:`---\n${JSON.stringify(metadata)}\n---\n\n${input.instructions.trim()}\n`},{path:`Tools/${input.id}/tool.js`,body:input.code.trim()}];
  validateCustomToolPackageSources(records);

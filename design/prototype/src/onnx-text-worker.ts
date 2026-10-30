@@ -8,6 +8,7 @@ import {configureLocalTransformerRuntime} from './transformers-runtime';
 import {transformerLoadOptions} from './onnx-execution-options';
 import {onnxTextModels,getOnnxTextManifest} from './text-model-manifest';
 import {createPinnedAssetStore} from './pinned-text-assets';
+import {collectPreparedTextStatuses} from './prepared-text-backend';
 const networkFetch=globalThis.fetch.bind(globalThis);
 const runtimeURLs=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{
@@ -42,7 +43,7 @@ self.onmessage=async({data})=>{
  busy=true;controller=new AbortController();const progress=(value:string)=>self.postMessage({id:data.id,type:'progress',value});
  let diagnostic:{raw:string;reason:string;truncated:boolean}|undefined;
  try{let value:any;const args=data.args??{};
-  if(['init','status'].includes(data.cmd)){value={};for(const [id,store]of stores){check();value[id]={...await store.status(controller.signal),presenceOnly:true};}}
+  if(['init','status'].includes(data.cmd)){value=await collectPreparedTextStatuses(stores,controller.signal);}
   else if(data.cmd==='verify'){
    const manifest=getOnnxTextManifest(args.model),store=stores.get(args.model);if(!manifest||!store)throw Error('Unknown model');
    for(const pin of manifest.files){check();await store.read(pin.path,controller.signal);}

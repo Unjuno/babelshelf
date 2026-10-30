@@ -16,6 +16,12 @@ export function memoryFolderEntries(scope:MemoryScope,path:string,folders:string
  if(scope==='root')return [{label:'Home',path:'',scope:'home' as MemoryScope},...folders.filter(p=>!p.includes('/')&&!USER_ROOTS.some(r=>r.path===p)).map(p=>({label:p,path:p,scope:'folder' as MemoryScope}))];
  return folders.filter(p=>p.split('/').slice(0,-1).join('/')===path).map(p=>({label:p.split('/').at(-1)!,path:p,scope:'folder' as MemoryScope}));
 }
+export function memoryNoteMatchesScope(scope:MemoryScope,folderPath:string,notePath:string,query:string){
+ if(!query)return scope==='folder'&&notePath.split('/').slice(0,-1).join('/')===folderPath;
+ if(scope==='root')return true;
+ if(scope==='home')return USER_ROOTS.some(root=>notePath.startsWith(root.path+'/'));
+ return notePath.startsWith(folderPath+'/');
+}
 export function memoryCreationFolder(scope:MemoryScope,path:string,kind:'file'|'folder'){
  return scope==='folder'?path:kind==='file'?settings.storage.captureFolder:'Notes';
 }

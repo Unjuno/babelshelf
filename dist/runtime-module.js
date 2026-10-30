@@ -3,7 +3,7 @@ import {hashLocalModel} from './local-models.js';
 // Code reuse only. Callers still create/dispose their own GPU models/sessions.
 // ESM evaluations cannot be evicted without ending the Worker: pin this cache
 // to one successful runtime identity rather than retaining an unbounded Map.
-export function createRuntimeModuleCache({importModule=url=>import(url),createURL=source=>URL.createObjectURL(new Blob([source],{type:'text/javascript'})),revokeURL=url=>URL.revokeObjectURL(url)}={}){
+export function createRuntimeModuleCache({importModule=url=>import(/* @vite-ignore */ url),createURL=source=>URL.createObjectURL(new Blob([source],{type:'text/javascript'})),revokeURL=url=>URL.revokeObjectURL(url)}={}){
  let entry=null;
  return async(source,pin,signal)=>{
   signal?.throwIfAborted();

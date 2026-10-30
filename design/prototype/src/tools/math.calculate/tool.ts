@@ -1,6 +1,6 @@
 import type {ToolHost} from '../tool-host.ts';
 import {makeDecimalReceipt} from './decimal-receipt.ts';
-export const definition=Object.freeze({id:'math.calculate',version:3,readOnly:true,network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:200}}}});
+export const definition=Object.freeze({id:'math.calculate',version:3,effect:'read',network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:200}}}});
 // Only whole, explicit arithmetic inputs bypass planning. No document or history scan.
 export function calculatorInput(text:string):string|null {
  if(/^\d{4}-\d{2}-\d{2}$/.test(text.trim()))return null;

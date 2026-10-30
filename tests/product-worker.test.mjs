@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {webcrypto,createHash} from 'node:crypto';
 import {productWorker} from '../scripts/product-worker.mjs';
+import {HUGGINGFACE_MODEL_RANGE_BYTES} from '../design/prototype/src/huggingface-models.ts';
 const origin='http://localhost:4180',current='2222222222222222',previous='1111111111111111';
 
 test('cached dedicated and shared workers keep isolation across current, shared and historical assets without fetching',async()=>{
@@ -32,6 +33,85 @@ test('historical fallback cannot use arbitrary cache namespaces or old documents
 test('installation verifies every saved asset before completion and refuses corrupt bytes',async()=>{const h=await harness();let work;h.handlers.install({waitUntil:p=>work=p});await work;assert.equal(await (await h.request('/assets/main-NEWabc12.js')).text(),'NEW');assert.equal(h.network.length,1);const bad=await harness('BAD');let failed;bad.handlers.install({waitUntil:p=>failed=p});await assert.rejects(failed,/verification/);assert.equal((await bad.request('/assets/main-NEWabc12.js')).status,503);});
 
 async function install(h){let work;h.handlers.install({waitUntil:p=>work=p});await work;}
+test('offline asset delivery uses a valid shared copy over a corrupt direct copy',async()=>{
+ const file=pinned('./assets/shell-ABCDEFGH.js','SCRIPT'),caches=storage();
+ const old=await harness('SCRIPT',{files:[file],caches,build:previous});await install(old);
+ const currentWorker=await harness('SCRIPT',{files:[file],caches,build:current});await install(currentWorker);currentWorker.network.length=0;
+ await currentWorker.put('babelshelf-product-'+current,'/assets/shell-ABCDEFGH.js','BROKEN');
+ assert.equal(await(await currentWorker.request('/assets/shell-ABCDEFGH.js')).text(),'SCRIPT');
+ let work,reply;currentWorker.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'check-app-shell'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
+ assert.equal(reply.status,'ready','a verified alternate is usable without a repair download');
+ assert.deepEqual(currentWorker.network,[]);
+});
+test('offline asset delivery rejects corrupt historical shared bytes',async()=>{
+ const file=pinned('./assets/shell-ABCDEFGH.js','SCRIPT'),caches=storage();
+ const old=await harness('SCRIPT',{files:[file],caches,build:previous});await install(old);
+ const currentWorker=await harness('SCRIPT',{files:[file],caches,build:current});await install(currentWorker);currentWorker.network.length=0;
+ caches.entries.get('babelshelf-product-assets-v1').set(origin+'/.babelshelf-app-assets/'+file.sha256,new Response('BROKEN'));
+ assert.equal((await currentWorker.request('/assets/shell-ABCDEFGH.js')).status,503);
+ assert.deepEqual(currentWorker.network,[]);
+});
+test('offline navigation can recover the identical verified shell from a previous build',async()=>{
+ const file=pinned('./index.html','INDEX'),caches=storage();
+ const old=await harness('INDEX',{files:[file],caches,build:previous});await install(old);
+ const now=await harness('INDEX',{files:[file],caches,build:current});await install(now);now.network.length=0;
+ await now.put('babelshelf-product-'+current,'/index.html','BROKEN');
+ const response=await now.request('/','navigate');assert.equal(response.status,200);assert.equal(await response.text(),'INDEX');
+ let work,reply;now.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'check-app-shell'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;assert.equal(reply.status,'ready');
+ await now.put('babelshelf-product-'+previous,'/index.html','OTHER');assert.equal((await now.request('/','navigate')).status,503);
+ now.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'check-app-shell'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;assert.equal(reply.status,'missing');assert.deepEqual(now.network,[]);
+});
+test('offline shell check verifies cached bytes and detects missing or corrupt assets without network',async()=>{
+ const files=[pinned('./index.html','INDEX'),pinned('./assets/shell-ABCDEFGH.js','SCRIPT')];
+ const h=await harness(url=>String(url).endsWith('index.html')?'INDEX':'SCRIPT',{files});await install(h);h.network.length=0;
+ const check=async()=>{let work,reply;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'check-app-shell'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;return reply;};
+ assert.equal((await check()).status,'ready');
+ const shared=h.caches.entries.get('babelshelf-product-assets-v1');const key=origin+'/.babelshelf-app-assets/'+files[1].sha256;
+ shared.delete(key);assert.equal((await check()).status,'missing');
+ shared.set(key,new Response('BROKEN'));assert.equal((await check()).status,'missing');
+ assert.deepEqual(h.network,[]);
+});
+test('explicit shell repair fetches only missing or corrupt pinned assets and preserves good files',async()=>{
+ const files=[pinned('./index.html','INDEX'),pinned('./assets/shell-ABCDEFGH.js','SCRIPT'),pinned('./assets/other-ABCDEFGH.js','OTHER')];
+ const connection=connectionDatabase(),h=await harness(url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('/shell-')?'SCRIPT':'OTHER',{files,connection});await install(h);
+ const shared=h.caches.entries.get('babelshelf-product-assets-v1');shared.delete(origin+'/.babelshelf-app-assets/'+files[1].sha256);h.network.length=0;
+ let work,reply;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'repair-app-shell',operationId:'repair-test-1'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
+ assert.equal(reply.status,'ready');assert.deepEqual(h.network,[origin+'/assets/shell-ABCDEFGH.js']);
+ assert.equal(await(await h.request('/assets/shell-ABCDEFGH.js')).text(),'SCRIPT');assert.equal(await(await h.request('/assets/other-ABCDEFGH.js')).text(),'OTHER');
+ await h.put('babelshelf-product-'+current,'/assets/shell-ABCDEFGH.js','BROKEN');connection.set(false);h.network.length=0;
+ h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'repair-app-shell',operationId:'repair-test-5',localOnly:true},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
+ assert.equal(reply.status,'ready');assert.deepEqual(h.network,[]);assert.equal(await(await h.request('/assets/shell-ABCDEFGH.js')).text(),'SCRIPT');
+});
+test('shell repair does not fetch when the stored connection setting is Offline',async()=>{
+ const connection=connectionDatabase(),file=pinned('./index.html','INDEX'),h=await harness('INDEX',{files:[file],connection});await install(h);
+ h.caches.entries.get('babelshelf-product-'+current).delete(origin+'/index.html');connection.set(false);h.network.length=0;
+ let work,reply;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'repair-app-shell',operationId:'repair-offline-1'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
+ assert.equal(reply.status,'offline');assert.deepEqual(h.network,[]);
+});
+test('local-only shell repair never fetches missing files even if app networking is Online',async()=>{
+ const connection=connectionDatabase(true),file=pinned('./index.html','INDEX'),h=await harness('INDEX',{files:[file],connection});await install(h);
+ h.caches.entries.get('babelshelf-product-'+current).delete(origin+'/index.html');h.network.length=0;
+ let work,reply;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'repair-app-shell',operationId:'repair-local-1',localOnly:true},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
+ assert.equal(reply.status,'disconnected');assert.deepEqual(h.network,[]);
+});
+test('shell repair rejects foreign clients and refuses incorrect downloaded bytes',async()=>{
+ let corrupt=false;const files=[pinned('./index.html','INDEX'),pinned('./assets/shell-ABCDEFGH.js','SCRIPT')];
+ const h=await harness(url=>String(url).endsWith('index.html')?'INDEX':corrupt?'BROKEN':'SCRIPT',{files});await install(h);
+ h.caches.entries.get('babelshelf-product-assets-v1').delete(origin+'/.babelshelf-app-assets/'+files[1].sha256);h.network.length=0;
+ let reply;h.handlers.message({source:{type:'window',id:'foreign',url:'https://foreign.example/'},data:{type:'repair-app-shell',operationId:'repair-test-2'},ports:[{postMessage:value=>{reply=value;}}]});
+ assert.equal(reply.status,'failed');assert.deepEqual(h.network,[]);
+ corrupt=true;let work;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'repair-app-shell',operationId:'repair-test-3'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
+ assert.equal(reply.status,'failed');assert.equal((await h.request('/assets/shell-ABCDEFGH.js')).status,503);assert.equal(await(await h.request('/','navigate')).text(),'INDEX');
+});
+test('a timed-out shell repair can be cancelled without storing an unfinished download',async()=>{
+ const files=[pinned('./index.html','INDEX'),pinned('./assets/shell-ABCDEFGH.js','SCRIPT')];let stalled=false,started;
+ const begin=new Promise(resolve=>{started=resolve;});
+ const h=await harness('unused',{files,fetcher:(url,init)=>{if(stalled&&String(url).includes('/shell-')){started();return new Promise((_,reject)=>init.signal.addEventListener('abort',()=>reject(Error('cancelled')),{once:true}));}return Promise.resolve(new Response(String(url).endsWith('index.html')?'INDEX':'SCRIPT'));}});
+ await install(h);h.caches.entries.get('babelshelf-product-assets-v1').delete(origin+'/.babelshelf-app-assets/'+files[1].sha256);stalled=true;
+ const source={type:'window',id:'tab',url:origin+'/'};let work,reply;h.handlers.message({source,data:{type:'repair-app-shell',operationId:'repair-test-4'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});
+ await begin;h.handlers.message({source,data:{type:'cancel-app-shell-repair',operationId:'repair-test-4'}});await work;
+ assert.equal(reply.status,'failed');assert.equal((await h.request('/assets/shell-ABCDEFGH.js')).status,503);assert.equal(await(await h.request('/','navigate')).text(),'INDEX');
+});
 const pinned=(path,body)=>({path,bytes:Buffer.byteLength(body),sha256:createHash('sha256').update(body).digest('hex')});
 test('installation treats an exact concurrent cache write as success but rejects conflicting bytes',async()=>{
  const files=[pinned('./index.html','INDEX'),pinned('./assets/main-NEWabc12.js','NEW')],body=url=>String(url).endsWith('index.html')?'INDEX':'NEW';
@@ -51,6 +131,24 @@ async function prepareRole(h,role,clientId='tab-a',acquire=true){
  if(work)await work;
  return result;
 }
+test('runtime preparation reports actual incoming bytes before the file completes',async()=>{
+ let resume;const gate=new Promise(resolve=>{resume=resolve;}),files=[{...pinned('./assets/speech-ABCDEFGH.wasm','RUNTIME'),roles:['speech']}];
+ const h=await harness('unused',{files,fetcher:()=>Promise.resolve(new Response(new ReadableStream({async start(controller){controller.enqueue(new TextEncoder().encode('RUN'));await gate;controller.enqueue(new TextEncoder().encode('TIME'));controller.close();}})))});
+ const source={type:'window',id:'tab-a',url:origin+'/'},replies=[];let work,first;
+ const gotProgress=new Promise(resolve=>{first=resolve;});
+ h.handlers.message({source,data:{type:'prepare-product-assets',role:'speech',operationId:'stream-op-0001',acquire:true},ports:[{postMessage:value=>{replies.push(value);if(value.status==='progress'&&value.completed===0)first();}}],waitUntil:value=>work=value});
+ let timer;try{await Promise.race([gotProgress,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No partial progress')),2000);})]);assert.equal(replies[0].bytes,3);}finally{clearTimeout(timer);resume();}
+ await work;assert.equal(replies.at(-1).status,'prepared');assert.equal(replies.at(-1).bytes,7);
+});
+test('stopping a streaming runtime download does not commit its completed bytes',async()=>{
+ let resume;const gate=new Promise(resolve=>{resume=resolve;}),file={...pinned('./assets/speech-ABCDEFGH.wasm','RUNTIME'),roles:['speech']};
+ const h=await harness('unused',{files:[file],fetcher:()=>Promise.resolve(new Response(new ReadableStream({async start(controller){controller.enqueue(new TextEncoder().encode('RUN'));await gate;controller.enqueue(new TextEncoder().encode('TIME'));controller.close();}})))});
+ const source={type:'window',id:'tab-a',url:origin+'/'},replies=[];let work,first;const gotProgress=new Promise(resolve=>{first=resolve;});
+ h.handlers.message({source,data:{type:'prepare-product-assets',role:'speech',operationId:'stream-op-0002',acquire:true},ports:[{postMessage:value=>{replies.push(value);if(value.status==='progress'&&value.completed===0)first();}}],waitUntil:value=>work=value});
+ let timer;try{await Promise.race([gotProgress,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No partial progress')),2000);})]);h.handlers.message({source,data:{type:'cancel-product-assets',operationId:'stream-op-0002'}});}finally{clearTimeout(timer);resume();}
+ await work;assert.equal(replies.at(-1).status,'failed');assert.match(replies.at(-1).error,/Stopped/);
+ assert.equal(h.caches.entries.get('babelshelf-product-assets-v1').has(origin+'/.babelshelf-app-assets/'+file.sha256),false);
+});
 
 test('custom tool QuickJS assets are excluded from first-install shell and acquired only on explicit preparation',async()=>{
  const files=[pinned('./index.html','INDEX'),{...pinned('./assets/custom-tool-worker-ABCDEFGH.js','TOOL-WORKER'),roles:['custom-tools']},{...pinned('./assets/emscripten-module-ABCDEFGH.wasm','QUICKJS-WASM'),roles:['custom-tools']}],body=url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('custom-tool-worker-')?'TOOL-WORKER':'QUICKJS-WASM',h=await harness(body,{files});
@@ -62,7 +160,7 @@ test('inference and PDF worker bundles are fetched only when their exact feature
  const features=[
   ['decision-worker-ABCDEFGH.js','decision'],['speech-worker-ABCDEFGH.js','speech'],['vision-worker-ABCDEFGH.js','vision'],
   ['onnx-text-worker-ABCDEFGH.js','text-onnx'],['lfm-text-worker-ABCDEFGH.js','text-wllama'],
-  ['qwen3-text-worker-ABCDEFGH.js','text-wllama'],['pdf.worker.min-ABCDEFGH.mjs','pdf']
+  ['qwen3-text-worker-ABCDEFGH.js','text-wllama'],['lfm3-compat-ABCDEFGH.wasm','text-lfm3'],['pdf.worker.min-ABCDEFGH.mjs','pdf']
  ];
  const files=[pinned('./index.html','INDEX'),...features.map(([name,role])=>({...pinned('./assets/'+name,name),roles:[role]}))];
  const h=await harness(url=>url.endsWith('/index.html')?'INDEX':features.find(([name])=>url.endsWith('/'+name))?.[0]??'UNKNOWN',{files});
@@ -74,6 +172,30 @@ test('inference and PDF worker bundles are fetched only when their exact feature
   for(const name of names)assert.equal(await(await h.request('/assets/'+name)).text(),name);
  }
  assert.deepEqual(h.network,[origin+'/index.html',...features.map(([name])=>origin+'/assets/'+name)]);
+});
+
+test('an app update installs the new LFM3 worker and retains unchanged prepared runtime offline',async()=>{
+ const caches=storage(),connection=connectionDatabase();
+ const wasm={...pinned('./assets/lfm3-compat-ABCDEFGH.wasm','WASM'),roles:['text-lfm3']};
+ const oldWorker={...pinned('./assets/lfm3-text-worker-OLDabc12.js','OLD'),roles:['text-lfm3']};
+ const newWorker={...pinned('./assets/lfm3-text-worker-NEWabc12.js','NEW'),roles:['text-lfm3'],shell:true};
+ const old=await harness(url=>String(url).includes('compat')?'WASM':'OLD',{caches,connection,build:previous,files:[oldWorker,wasm]});
+ await install(old);assert.equal((await prepareRole(old,'text-lfm3')).status,'prepared');
+ const updated=await harness('NEW',{caches,connection,build:current,files:[newWorker,wasm]});
+ await install(updated);assert.deepEqual(updated.network,[origin+'/assets/lfm3-text-worker-NEWabc12.js']);
+ connection.set(false);updated.network.length=0;
+ assert.equal((await prepareRole(updated,'text-lfm3','tab-a',false)).status,'prepared');
+ assert.equal(await(await updated.request('/assets/lfm3-text-worker-NEWabc12.js')).text(),'NEW');
+ assert.equal(await(await updated.request('/assets/lfm3-compat-ABCDEFGH.wasm')).text(),'WASM');
+ assert.deepEqual(updated.network,[]);
+ caches.entries.get('babelshelf-product-assets-v1').delete(origin+'/.babelshelf-app-assets/'+newWorker.sha256);
+ assert.equal((await prepareRole(updated,'text-lfm3','tab-a',false)).status,'failed','missing worker must not report a prepared runtime');
+ caches.entries.get('babelshelf-product-assets-v1').set(origin+'/.babelshelf-app-assets/'+newWorker.sha256,new Response('CORRUPT'));
+ assert.equal((await prepareRole(updated,'text-lfm3','tab-a',false)).status,'failed','corrupt worker must not report a prepared runtime');
+ caches.entries.get('babelshelf-product-assets-v1').set(origin+'/.babelshelf-app-assets/'+newWorker.sha256,new Response('NEW'));
+ caches.entries.get('babelshelf-product-assets-v1').set(origin+'/.babelshelf-app-assets/'+wasm.sha256,new Response('CORRUPT'));
+ assert.equal((await prepareRole(updated,'text-lfm3','tab-a',false)).status,'failed','corrupt runtime must not report prepared');
+ assert.deepEqual(updated.network,[]);
 });
 
 test('binary shell transport retains exact verified HTML and refuses modified transport bytes',async()=>{
@@ -180,28 +302,47 @@ test('confirmed Offline cancels a response body already downloading in another t
  connection.set(true);assert.equal((await h.request(url,'cors','GET','tab-a')).status,503);
 });
 
-test('Offline prevents replacement app asset acquisition while first preparation and retained caches remain distinct',async()=>{
+test('late external response cannot be delivered after Offline even if fetch ignores abort',async()=>{
+ const connection=connectionDatabase(true);let finish,started;
+ const pendingFetch=new Promise(resolve=>{started=resolve;});
+ const h=await harness('unused',{connection,fetcher:()=>{started();return new Promise(resolve=>{finish=resolve;});}});
+ const response=h.request('https://assets.example/model','cors','GET','tab-a');await pendingFetch;
+ connection.set(false);let work,reply;
+ h.handlers.message({source:{id:'tab-a',type:'window',url:origin+'/'},data:{type:'network-offline'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:value=>work=value});
+ await work;assert.equal(reply.offline,true);finish(new Response('late data'));
+ assert.equal((await response).status,503);
+});
+
+test('a pending external body read cannot release a late chunk after Offline',async()=>{
+ const connection=connectionDatabase(true);let release,started;
+ const reading=new Promise(resolve=>{started=resolve;}),gate=new Promise(resolve=>{release=resolve;});
+ const h=await harness('unused',{connection,fetcher:async()=>new Response(new ReadableStream({async pull(controller){started();await gate;controller.enqueue(new TextEncoder().encode('late'));controller.close();}}))});
+ const reader=(await h.request('https://assets.example/model','cors','GET','tab-a')).body.getReader(),pending=reader.read();
+ await reading;connection.set(false);let work;
+ h.handlers.message({source:{id:'tab-a',type:'window',url:origin+'/'},data:{type:'network-offline'},ports:[{postMessage(){}}],waitUntil:value=>work=value});await work;
+ const rejected=assert.rejects(pending,/offline/i);release();await rejected;
+});
+
+test('explicit shell update fetches only pinned same-origin assets while app network access is Offline',async()=>{
  const connection=connectionDatabase(false),h=await harness('NEW',{connection});
  h.self.registration.active={};
  await h.put('babelshelf-product-'+previous,'/index.html','OLD');
- await assert.rejects(install(h),/App is offline/);assert.deepEqual(h.network,[]);
+ await install(h);assert.equal(h.network.length,1);assert.deepEqual(h.network,[origin+'/assets/main-NEWabc12.js']);
  assert.equal(await(await (await h.caches.open('babelshelf-product-'+previous)).match(origin+'/index.html')).text(),'OLD');
- connection.set(true);await install(h);assert.equal(h.network.length,1);
+ assert.equal(await(await (await h.caches.open('babelshelf-product-'+current)).match(origin+'/.babelshelf-app-manifest-v1')).json().then(value=>value.build),current);
 });
-test('selecting Offline during first installation prevents the next asset request',async()=>{
+test('switching Offline during an explicit shell install does not abort the remaining pinned assets',async()=>{
  const connection=connectionDatabase(true),files=[pinned('./index.html','NEW'),pinned('./assets/main-NEWabc12.js','NEW')];
  const h=await harness('NEW',{connection,files,fetcher:async()=>{connection.set(false);return new Response('NEW');}});
- await assert.rejects(install(h),/App is offline/);assert.equal(h.network.length,1);
+ await install(h);assert.equal(h.network.length,2);assert.equal((await h.request('https://assets.example/model')).status,503);
 });
-test('first installation cannot fetch an uncached shell while Offline is already selected',async()=>{
+test('explicit first shell preparation can install while Offline is already selected',async()=>{
  const connection=connectionDatabase(false),h=await harness('NEW',{connection});
- await assert.rejects(install(h),/App is offline/);assert.deepEqual(h.network,[]);
+ await install(h);assert.deepEqual(h.network,[origin+'/assets/main-NEWabc12.js']);
 });
-test('Offline aborts an in-flight first-install asset request',async()=>{
- const connection=connectionDatabase(true);let started,notify;started=new Promise(resolve=>{notify=resolve;});
- const h=await harness('NEW',{connection,fetcher:async(_url,options)=>new Promise((_resolve,reject)=>{notify();options.signal?.addEventListener('abort',()=>reject(Error('aborted')),{once:true});})});
- const task=install(h).then(()=>false,()=>true);await started;connection.set(false);
- const stopped=await Promise.race([task,new Promise(resolve=>setTimeout(()=>resolve(false),1200))]);assert.equal(stopped,true);assert.equal(h.network.length,1);
+test('shell installation refuses a manifest asset source outside its same-origin scope',async()=>{
+ const h=await harness('NEW',{files:[{...pinned('./index.html','NEW'),downloadPath:'https://evil.example/shell.bin'}]});
+ await assert.rejects(install(h),/outside scope/);assert.deepEqual(h.network,[]);
 });
 test('explicit HF access is one-use, exact URL/range and scoped to its initiating tab',async()=>{
  const h=await harness(),url='https://huggingface.co/api/models/owner/model?blobs=true';
@@ -209,12 +350,22 @@ test('explicit HF access is one-use, exact URL/range and scoped to its initiatin
  assert.equal((await h.request(url,'cors','GET','tab-b')).status,503);assert.equal((await h.request(url,'cors','GET','tab-a')).status,200);assert.equal((await h.request(url,'cors','GET','tab-a')).status,503);
  const weights='https://huggingface.co/owner/model/resolve/'+'a'.repeat(40)+'/model.gguf?download=true';
  assert.equal(allowHF(h,weights,{range:'bytes=0-16777215'}),true);assert.equal((await h.request(weights,'cors','GET','tab-a')).status,503);assert.equal((await h.request(weights,'cors','GET','tab-a','bytes=0-16777215')).status,200);assert.equal((await h.request(weights,'cors','GET','tab-a','bytes=0-16777215')).status,503);
- assert.deepEqual(h.network,[url,weights]);
+ const secondRange='bytes=16777216-33554431';assert.equal(allowHF(h,weights,{range:secondRange}),true);assert.equal((await h.request(weights,'cors','GET','tab-a',secondRange)).status,200);assert.equal((await h.request(weights,'cors','GET','tab-a',secondRange)).status,503);
+ assert.deepEqual(h.network,[url,weights,weights]);
 });
-test('HF grants expire and cannot authorize mutable revisions, other endpoints, origins or oversized ranges',async()=>{
+test('HF grants expire and cannot authorize mutable revisions, other endpoints, origins or invalid/oversized ranges',async()=>{
  let now=100;const h=await harness('NEW',{now:()=>now}),url='https://huggingface.co/api/models/owner/model?blobs=true';
  assert.equal(allowHF(h,url),true);now+=30001;assert.equal((await h.request(url,'cors','GET','tab-a')).status,503);
  for(const bad of ['https://huggingface.co/api/whoami','https://example.com/api/models/owner/model?blobs=true','https://huggingface.co/owner/model/resolve/main/model.gguf?download=true',url+'&private=data'])assert.equal(allowHF(h,bad),false);
  assert.equal(allowHF(h,url,{sourceOrigin:'https://other.example'}),false);
- const weights='https://huggingface.co/owner/model/resolve/'+'a'.repeat(40)+'/model.gguf?download=true';assert.equal(allowHF(h,weights,{range:'bytes=0-16777216'}),false);assert.deepEqual(h.network,[]);
+ const weights='https://huggingface.co/owner/model/resolve/'+'a'.repeat(40)+'/model.gguf?download=true';
+ for(const range of ['bytes=0-16777216','bytes=33554432-16777216','bytes=-1-10','bytes=0-1x','bytes=9007199254740992-9007199254741000'])assert.equal(allowHF(h,weights,{range}),false,range);
+ assert.deepEqual(h.network,[]);
+});
+test('the GGUF downloader range size matches the service-worker exact-request grant ceiling',async()=>{
+ const h=await harness(),weights='https://huggingface.co/owner/model/resolve/'+'a'.repeat(40)+'/model.gguf?download=true';
+ assert.equal(HUGGINGFACE_MODEL_RANGE_BYTES,16*1024*1024);
+ assert.equal(allowHF(h,weights,{range:`bytes=0-${HUGGINGFACE_MODEL_RANGE_BYTES-1}`}),true);
+ assert.equal(allowHF(h,weights,{range:`bytes=${HUGGINGFACE_MODEL_RANGE_BYTES}-${2*HUGGINGFACE_MODEL_RANGE_BYTES-1}`}),true);
+ assert.equal(allowHF(h,weights,{range:`bytes=0-${HUGGINGFACE_MODEL_RANGE_BYTES}`}),false);
 });

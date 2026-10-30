@@ -21,7 +21,7 @@ export function harnessToolChoices(records:readonly any[]=[]){
   const sources=groups.get(match[1])??[];
   sources.push({path,body:latest(record).body});groups.set(match[1],sources);
  }
- const customTools:Array<{id:string;title:string;capabilities:readonly ('memory.search'|'memory.read'|'math.calculate')[]}>=[],unavailableCustomTools:string[]=[];
+ const customTools:Array<{id:string;title:string;capabilities:readonly ('memory.search'|'memory.list'|'memory.read'|'math.calculate')[]}>=[],unavailableCustomTools:string[]=[];
  for(const [id,sources] of [...groups].sort(([a],[b])=>a<b?-1:a>b?1:0)){
   try{
    const pkg=validateCustomToolPackageSources(sources);

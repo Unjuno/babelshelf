@@ -18,7 +18,22 @@ export function findStoredFiles(notes:any[],query:string,limit=12):FileResult[]{
 /** File and passage discovery share a bounded result budget. Alternate the
  * two ranked lists so neither kind can hide the other; keep the passage when
  * both describe the same file. These results do not grant read/write authority. */
-export function mergeStoredSearchResults<T extends {noteId:string}>(files:FileResult[],passages:T[],limit=12):(FileResult|T)[]{
+export function mergeStoredSearchResults<T extends {noteId:string;revision?:number;quote?:string}>(files:FileResult[],passages:T[],limit=12,query=''):(FileResult|T)[]{
+ const q=normalize(query),exact=q.includes('/')?files.filter(file=>normalize(file.path)===q):[];
+ // A bare filename with an existing exact match is a file lookup. Otherwise
+ // a previously generated answer mentioning that name can outrank the very
+ // source the user requested. Keep every duplicate basename for disambiguation;
+ // metadata alone still requires memory.read and never becomes source content.
+ const named=!q.includes('/')&&/\.[a-z0-9]{1,12}$/i.test(q)?files.filter(file=>normalize(file.path.split('/').at(-1)??'')===q):[];
+ if(named.length){const ids=new Set(named.map(file=>file.noteId));files=named;passages=passages.filter(item=>ids.has(item.noteId));}
+ // A complete path identifies a file. Retain literal references to that path,
+ // but do not present loose matches on words such as "Tools" or "README" as
+ // though they were matches for the entire path. Other searches stay broad.
+ if(exact.length){const ids=new Set(exact.map(file=>file.noteId));files=exact;passages=passages.filter(item=>ids.has(item.noteId)||typeof item.quote==='string'&&normalize(item.quote).includes(q));}
+ // A title is not a filename. Keep the canonical path when a passage replaces
+ // its metadata row, so the agent can navigate without rediscovering it.
+ const metadataById=new Map(files.map(file=>[file.noteId,file]));
+ passages=passages.map(passage=>{const file=metadataById.get(passage.noteId);return file&&file.revision===passage.revision?{...passage,path:file.path}:passage;});
  const cap=Math.max(1,Math.min(20,limit)),passageById=new Map<string,T>();
  for(const passage of passages)if(!passageById.has(passage.noteId))passageById.set(passage.noteId,passage);
  const seen=new Set<string>(),merged:(FileResult|T)[]=[];

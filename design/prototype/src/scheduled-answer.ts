@@ -21,5 +21,7 @@ export async function executeScheduledAnswer(dependencies:Dependencies,input:Req
  const calculation=explicitCalculationInput(prompt);
  if(calculation&&dependencies.calculate){const receipt=validateDecimalReceipt(await dependencies.calculate(calculation.expression,check));check();const answer=formatCalculation(receipt,calculation.showExpression?calculation.expression:undefined,calculation.unit);return {answer,sources:[],calculation:validateScheduledCalculation(prompt,answer,receipt)};}
  const engine=await dependencies.models.text(model,check);check();
- return groundedAnswer({store:dependencies.store,engine},{model,question:prompt,query:request?.query??prompt,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
+ const result=await groundedAnswer({store:dependencies.store,engine},{model,question:prompt,query:request?.query??prompt,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
+ if(result.status==='insufficient_evidence')throw Error('Not enough evidence · '+result.answer);
+ return result;
 }

@@ -3,6 +3,14 @@
   "models": {
     "text": [
       {
+        "value": "lfm3-1.7b-qad-q4-0",
+        "label": "LFM3 · 1.7B · QAD Q4_0"
+      },
+      {
+        "value": "lfm3-1.7b-q8-0",
+        "label": "LFM3 · 1.7B · Q8_0"
+      },
+      {
         "value": "4B",
         "label": "Bonsai 2 \u00b7 4B"
       },
@@ -38,7 +46,7 @@
       },
       {
         "value": "d1-omni-600M",
-        "label": "Open d1 \u00b7 Omni 600M"
+        "label": "Open d1 \u00b7 600M \u00b7 Text decision"
       },
       {
         "value": "d1-3B",
@@ -73,7 +81,7 @@
     ]
   },
   "defaults": {
-    "textModel": "4B",
+    "textModel": "lfm3-1.7b-qad-q4-0",
     "decisionModel": "",
     "downloads": false,
     "theme": "light",

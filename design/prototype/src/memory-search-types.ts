@@ -6,6 +6,7 @@ export type MemoryPassageResult={
  noteId:string;
  revision:number;
  title:string;
+ path?:string;
  start:number;
  end:number;
  quote:string;

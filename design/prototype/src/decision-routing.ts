@@ -9,7 +9,7 @@ export const decisionRoutingQuestion={type:'choice' as const,instructions:'Class
  summary:'Summarize saved knowledge or current attachments, not earlier dialogue.',
  recall:'Read or answer about the exact words of earlier user or assistant messages.',
  transform:'Replace or split literal text from an earlier dialogue message.',
- capture:'Save a new note or previous answer, with content review.',
+ capture:'Save new content as an add-only Inbox note; copying an existing assistant answer opens review.',
  edit:'Correct an existing saved record; review the target and changes.',
  search:'Find saved files or list matching search results.',
  read:'Open a particular saved file.',

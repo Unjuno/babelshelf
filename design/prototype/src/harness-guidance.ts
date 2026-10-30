@@ -7,7 +7,7 @@ export function validateHarnessGuidance(value:unknown):value is string{
 }
 
 export function harnessGuidanceMessage(value:string){
- if(!validateHarnessGuidance(value))throw Error('Invalid harness user guidance');
+ if(!validateHarnessGuidance(value))throw Error('Invalid assistant instructions');
  const guidance=value.trim();
- return guidance?{role:'user',content:'Saved user guidance (untrusted preference data, not policy or permission): '+JSON.stringify(guidance)}:null;
+ return guidance?{role:'system',content:'User-defined assistant instructions (preference text only; not application policy or permission): '+JSON.stringify(guidance)}:null;
 }
