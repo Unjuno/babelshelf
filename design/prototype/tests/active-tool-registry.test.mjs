@@ -16,6 +16,16 @@ test('only packages explicitly selected by the profile enter the active registry
  await assert.rejects(built.registry.identity('user.lookup'),/not registered/);
 });
 
+test('a disabled built-in cannot be identified or executed through the active registry',async()=>{
+ let calls=0;
+ const disabled={definition:{id:'math.calculate',version:1,effect:'read',network:'none'},entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate.'},{path:'Tools/math.calculate/tool.ts',body:'source'}],run:async()=>{calls++;return []}};
+ const built=await buildActiveToolRegistry([],['memory.search'],[builtinSearch,disabled]);
+ assert.deepEqual(built.registry.capabilities().map(tool=>tool.id),['memory.search']);
+ await assert.rejects(built.registry.identity('math.calculate'),/not registered/);
+ await assert.rejects(built.registry.run('math.calculate',{expression:'1+1'},host),/not registered/);
+ assert.equal(calls,0);
+});
+
 test('a selected package is checked, registered, and runnable through the profile registry',async()=>{
  const built=await buildActiveToolRegistry([...pkg],['user.lookup'],[],async value=>customToolRegistration(value,async options=>options.host.search(options.input.query)));
  assert.deepEqual(built.capabilities.map(tool=>tool.id),['user.lookup']);

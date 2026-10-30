@@ -6777,3 +6777,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 
 2026-10-30 — distinguish recovered extracts from complete answers
 - The visible status for a verified verbatim-source recovery is now Source excerpt · partial answer, and only appears when the matching completed answer receipt has the same answer. Stored answers, source IDs and revisions are unchanged. Controlled conversation and recovery tests 189/189 passed; this does not assess whether any excerpt answers a user's full question.
+
+2026-10-30 — active tool boundary
+- The active registry now contains only profile-enabled built-ins and selected custom packages. A disabled built-in cannot be looked up or executed by calling that registry directly. Direct app-owned operations retain their existing separate registry and contracts.
+- Controlled Node tests for active registry, coordinator and agent loop passed 91/91, including disabled-tool refusal. This change is not an MCP transport or an external-connection implementation.

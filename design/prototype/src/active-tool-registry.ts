@@ -17,7 +17,9 @@ export async function buildActiveToolRegistry(records:readonly ToolSourceRecord[
   if(typeof record.body!=='string')throw Error('Invalid custom tool source');
   const group=grouped.get(match[1])??new Map<string,string>();if(group.has(match[2]))throw Error('Duplicate custom tool source');group.set(match[2],record.body);grouped.set(match[1],group);
  }
- const packages:ToolPackage[]=[...builtinPackages];
+ // The executable registry and the advertised catalog share the same profile
+ // boundary; callers cannot run a disabled built-in by bypassing discovery.
+ const packages:ToolPackage[]=builtinPackages.filter(pkg=>enabledIds.includes(pkg.definition.id));
  const customPackageModule=chosen.length?await import('./custom-tool-package.ts'):undefined;
  const customRegistrationModule=chosen.length&&!register?await import('./custom-tool-adapter.ts'):undefined;
  for(const id of chosen){
