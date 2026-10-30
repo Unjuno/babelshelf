@@ -7,7 +7,7 @@ async function settings(page:Page,item:string){
 }
 test('source details can be enabled and retained across reload',async({page})=>{
  await page.goto('/');await settings(page,'Assistant');
- const source=page.getByRole('switch',{name:'Source details',exact:true});await expect(source).not.toBeChecked();await source.check();await expect(source).toBeChecked();
+ const source=page.getByRole('switch',{name:'Source details',exact:true});await expect(source).not.toBeChecked();await source.click();await expect(source).toBeChecked();
  await expect.poll(()=>page.evaluate(()=>new Promise<boolean>((resolve,reject)=>{const open=indexedDB.open('mlb-memory-v1');open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,read=db.transaction('notes','readonly').objectStore('notes').getAll();read.onerror=()=>{db.close();reject(read.error);};read.onsuccess=()=>{const note=read.result.find((item:any)=>item.id==='settings-harness'),body=note?.revisions?.at(-1)?.body??'';db.close();resolve(body.includes('"memory.sources"'));};};}))).toBe(true);
  await page.reload();await settings(page,'Assistant');await expect(page.getByRole('switch',{name:'Source details',exact:true})).toBeChecked();
 });
