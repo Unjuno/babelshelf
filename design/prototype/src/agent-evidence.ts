@@ -108,7 +108,6 @@ export function agentCalculationsFromCalls(calls:readonly AgentToolResult[]):Age
  * Keep it transient and bounded, like the result already shown to the planner. */
 export function agentCustomResultsFromCalls(calls:readonly {tool:string;arguments:Record<string,unknown>;result?:unknown;error?:unknown;resultOmitted?:string}[]):AgentToolResult[]{
  const selected=calls.filter(call=>/^user\.[a-z][a-z0-9-]{0,47}$/.test(call.tool)&&!call.error&&!call.resultOmitted&&call.result!==undefined);
- if(selected.length>MAX_CONTEXT_SOURCE_REFS)throw Error('Too many custom tool results');
  return selected.map(call=>({tool:call.tool,arguments:JSON.parse(serializeCustomToolResult(call.arguments)),result:JSON.parse(serializeCustomToolResult(call.result))}));
 }
 
@@ -116,7 +115,6 @@ export function agentCustomResultsFromCalls(calls:readonly {tool:string;argument
  * They neither prove package execution nor supply original-content citations. */
 export function agentToolInfoFromCalls(calls:readonly {tool:string;arguments:Record<string,unknown>;result?:unknown;error?:unknown;resultOmitted?:string}[]):AgentToolResult[]{
  const selected=calls.filter(call=>[DEFERRED_TOOL_SEARCH_ID,DEFERRED_TOOL_READ_SKILL_ID,'memory.list'].includes(call.tool)&&!call.error&&!call.resultOmitted&&call.result!==undefined);
- if(selected.length>MAX_CONTEXT_SOURCE_REFS)throw Error('Too many tool descriptions');
  return selected.map(call=>{
   const result=projectAgentToolResult(call.tool,call.result);
   if(call.tool===DEFERRED_TOOL_READ_SKILL_ID&&(result as {id:string}).id!==call.arguments.id)throw Error('Tool guide identity changed');

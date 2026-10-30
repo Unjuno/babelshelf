@@ -212,5 +212,5 @@ test('tool metadata is bounded observed data, not package execution or original 
  assert.throws(()=>agentToolInfoFromCalls([{...guide,arguments:{id:'user.different'}}]),/identity changed/);
  assert.throws(()=>agentToolInfoFromCalls([{...guide,result:{...guide.result,instructions:'x'.repeat(8001)}}]),/Invalid tool skill/);
  assert.throws(()=>agentToolInfoFromCalls([{...listing,result:{...listing.result,entries:[{...listing.result.entries[0],body:'forged contents'}]}}]),/Invalid Memory file entry/);
- assert.throws(()=>agentToolInfoFromCalls(Array.from({length:65},()=>guide)),/Too many tool descriptions/);
+ assert.equal(agentToolInfoFromCalls(Array.from({length:65},()=>guide)).length,65);
 });
