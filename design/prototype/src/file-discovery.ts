@@ -44,25 +44,35 @@ export function mergeStoredSearchResults<T extends {noteId:string;revision?:numb
  }
  return merged;
 }
+function rankedStoredResults(notes:any[],query:string){
+ const window=10021;
+ return mergeStoredSearchResults(findStoredFiles(notes,query,window,window),searchStoredNotesUniqueWindow(notes,query,window),window,query,window);
+}
 /** The caller must use an unchanged canonical snapshot between pages. */
 export function searchStoredPage(notes:any[],query:string,{offset=0,limit=12}:{offset?:number;limit?:number}={}){
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
- const window=10021;
- const hits=mergeStoredSearchResults(findStoredFiles(notes,query,window,window),searchStoredNotesUniqueWindow(notes,query,window),window,query,window);
+ const hits=rankedStoredResults(notes,query);
  return {hits:hits.slice(offset,offset+limit),hasMore:hits.length>offset+limit};
 }
 /** Reject continuation against a different corpus or query instead of silently
  * skipping or repeating ranked records. The digest is transient and local. */
 export class SearchSnapshotChangedError extends Error {constructor(){super('Search changed · restart');this.name='SearchSnapshotChangedError';}}
-export function searchStoredPageChecked(notes:any[],query:string,{offset=0,limit=12,snapshot}:{offset?:number;limit?:number;snapshot?:string}={}){
- if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
- if(offset>0&&typeof snapshot!=='string')throw Error('Search snapshot required');
- const current=stateHash({query,notes});
- if(snapshot!==undefined&&snapshot!==current)throw new SearchSnapshotChangedError();
- const page=searchStoredPage(notes,query,{offset,limit});
- const next=offset+page.hits.length;
- return {...page,offset,limit,snapshot:current,nextOffset:page.hasMore&&next<=10000?next:null,...(page.hasMore&&next>10000?{windowLimit:true}:{})};
+export function createStoredSearchCache(){
+ let cached:{snapshot:string;hits:ReturnType<typeof rankedStoredResults>}|undefined;
+ return {
+  clear(){cached=undefined;},
+  search(notes:any[],query:string,{offset=0,limit=12,snapshot}:{offset?:number;limit?:number;snapshot?:string}={}){
+   if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
+   if(offset>0&&typeof snapshot!=='string')throw Error('Search snapshot required');
+   const current=stateHash({query,notes});
+   if(snapshot!==undefined&&snapshot!==current)throw new SearchSnapshotChangedError();
+   if(!cached||cached.snapshot!==current)cached={snapshot:current,hits:rankedStoredResults(notes,query)};
+   const hits=structuredClone(cached.hits.slice(offset,offset+limit)),hasMore=cached.hits.length>offset+limit,next=offset+hits.length;
+   return {hits,hasMore,offset,limit,snapshot:current,nextOffset:hasMore&&next<=10000?next:null,...(hasMore&&next>10000?{windowLimit:true}:{})};
+  },
+ };
 }
+export function searchStoredPageChecked(notes:any[],query:string,options:{offset?:number;limit?:number;snapshot?:string}={}){return createStoredSearchCache().search(notes,query,options);}
 export function validateFileResults(value:unknown):asserts value is FileResult[]{
  if(!Array.isArray(value)||value.length>20||value.some(r=>!r||Object.keys(r).sort().join(',')!=='kind,noteId,path,revision'||r.kind!=='file'||typeof r.noteId!=='string'||!r.noteId||!Number.isInteger(r.revision)||r.revision<1||typeof r.path!=='string'||!r.path||r.path.length>1024))throw Error('Invalid file result');
 }

@@ -44,3 +44,14 @@ test('continuation rejects a changed corpus or query while preserving the origin
  assert.throws(()=>discovery.searchStoredPageChecked(notes,'water',{offset:12}),/snapshot/i);
  assert.equal(notes[0].revisions.length,1);
 });
+
+test('cached paging preserves isolated results and refuses changed snapshots',()=>{
+ const notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water ${i}`,path:`Inbox/water-${i}.md`})),cache=discovery.createStoredSearchCache();
+ const first=cache.search(notes,'water',{offset:0,limit:12}),original=structuredClone(first.hits[0]);first.hits[0].path='tampered';
+ const repeated=cache.search(notes,'water',{offset:0,limit:12});assert.deepEqual(repeated.hits[0],original);
+ const second=cache.search(notes,'water',{offset:12,limit:12,snapshot:first.snapshot});assert.equal(second.hits.length,3);assert.equal(second.hasMore,false);
+ const changed=[...notes];changed[0]=reviseNote(notes[0],{body:'water changed'},1);
+ assert.throws(()=>cache.search(changed,'water',{offset:12,limit:12,snapshot:first.snapshot}),/changed/i);
+ const fresh=cache.search(changed,'water',{offset:0,limit:12});assert.notEqual(fresh.snapshot,first.snapshot);
+ cache.clear();assert.deepEqual(cache.search(notes,'water',{offset:0,limit:12}),repeated);
+});

@@ -4,7 +4,7 @@ import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorr
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
-import {findStoredFiles,mergeStoredSearchResults,searchStoredPageChecked} from './file-discovery.ts';
+import {findStoredFiles,mergeStoredSearchResults,createStoredSearchCache} from './file-discovery.ts';
 import type {MemorySearchResult,MemoryPassageResult} from './memory-search-types.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
@@ -131,6 +131,7 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
 function searchableRecords(all:Canonical[],query:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query);return explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
+ private searchCache=createStoredSearchCache();
  private name:string;
  constructor(name='mlb-memory-v1'){this.name=name;}
  async open(){if(!this.database)this.database=await openDB(this.name);return this.database!;}
@@ -364,7 +365,7 @@ export class KnowledgeStore {
  search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
  search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
  async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query);if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12,query);}
- async searchPage(query:string,options:{offset:number;limit:number;snapshot?:string},signal?:AbortSignal){const all=await this.all(signal);signal?.throwIfAborted();return searchStoredPageChecked(searchableRecords(all,query),query,options);}
+ async searchPage(query:string,options:{offset:number;limit:number;snapshot?:string},signal?:AbortSignal){const all=await this.all(signal);signal?.throwIfAborted();return this.searchCache.search(searchableRecords(all,query),query,options);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
@@ -497,5 +498,5 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Restore failed'));
   });
  }
- close(){this.database?.close();this.database=null;}
+ close(){this.searchCache.clear();this.database?.close();this.database=null;}
 }
