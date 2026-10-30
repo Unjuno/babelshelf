@@ -6,6 +6,11 @@ import {latest,validateGroundingRefs} from '../../../dist/core.js';
 import {notePath} from '../../../dist/files.js';
 export type SavedSourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string};
 export type SourceMetadataGuard={noteId:string;revision:number;snapshot:string};
+export function isSourceMetadataGuard(value:unknown):value is SourceMetadataGuard{
+ if(!value||typeof value!=='object')return false;
+ const guard=value as SourceMetadataGuard;
+ return typeof guard.noteId==='string'&&!!guard.noteId&&Number.isSafeInteger(guard.revision)&&guard.revision>=1&&typeof guard.snapshot==='string'&&/^[a-f0-9]{64}$/.test(guard.snapshot);
+}
 /** Pages of one source report share a snapshot; retain each distinct observation once. */
 export function distinctSourceMetadataGuards(guards:readonly SourceMetadataGuard[]):SourceMetadataGuard[]{
  const unique=new Map<string,SourceMetadataGuard>();

@@ -1,4 +1,4 @@
-import {sourceReferenceForView,noteSourceMetadata,type SavedSourceRef} from './note-provenance.ts';
+import {sourceReferenceForView,noteSourceMetadata,isSourceMetadataGuard,type SavedSourceRef} from './note-provenance.ts';
 import {GroundingConflictError} from './grounding-conflict.ts';
 import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorrection,PENDING_CORRECTION_KEY,type PendingCorrection} from './pending-correction.ts';
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
@@ -357,7 +357,7 @@ export class KnowledgeStore {
   * revalidated here. */
  async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[],metadataGuards:{noteId:string;revision:number;snapshot:string}[]=[]){
   ({before,next,refs,metadataGuards}=structuredClone({before,next,refs,metadataGuards}));
-  validateDialogue(next);if(!Array.isArray(refs)||!Array.isArray(metadataGuards)||!refs.length&&!metadataGuards.length||metadataGuards.some(guard=>!guard||typeof guard.noteId!=='string'||!guard.noteId||!Number.isSafeInteger(guard.revision)||guard.revision<1||typeof guard.snapshot!=='string'||!/^[a-f0-9]{64}$/.test(guard.snapshot)))throw Error('Source required');
+  validateDialogue(next);if(!Array.isArray(refs)||!Array.isArray(metadataGuards)||!refs.length&&!metadataGuards.length||!metadataGuards.every(isSourceMetadataGuard))throw Error('Source required');
   const previous=new Map((before?.turns??[]).map(turn=>[turn.id,turn]));
   const addedRefs=next.turns.flatMap(turn=>equal(turn.refs,previous.get(turn.id)?.refs)?[]:turn.refs??[]);
   const sources=refs,db=await this.open();return new Promise<void>((resolve,reject)=>{
