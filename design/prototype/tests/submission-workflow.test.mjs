@@ -12,6 +12,7 @@ import {definition as readDefinition,run as readRun} from '../src/tools/memory.r
 import {KnowledgeStore,projectNote} from '../src/knowledge-store.ts';
 import {createLfmTextRuntime} from '../src/lfm-text-runtime.ts';
 import * as clock from '../src/tools/time.now/tool.ts';
+import {searchStoredPageChecked} from '../src/file-discovery.ts';
 function fixture(){
  let dialogue=emptyDialogue();const events=[],reviews=[];let modelCalls=0;
  const services={
@@ -95,6 +96,22 @@ test('native tool protocol discovers a note and stages its correction without wr
  f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory'},{path:'Tools/memory.search/tool.ts',body:'Trusted search adapter'}],run:searchRun}];f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search'],maxToolCalls:3,maxResultChars:8000};f.view.reviewCorrection=proposal=>proposals.push(proposal);
  assert.equal(await c.run(run=>executeSubmission({text:'Could you replace water with tea in my saved meeting note?',attachments:[]},f.services,f.view,run)),'awaitingApproval',JSON.stringify(c.state));
  assert.equal(proposals.length,1);assert.equal(proposals[0].after,'Bring tea.');assert.deepEqual(note,before);
+});
+
+test('a paged discovery can stage an exact second-page correction without changing originals',async()=>{
+ const f=fixture(),c=createSubmissionController(),proposals=[];
+ const notes=Array.from({length:15},(_,i)=>createNote({title:`meeting ${i}`,path:`Notes/meeting-${i}.md`,body:'Bring water.'})),before=structuredClone(notes);
+ const first=searchStoredPageChecked(notes,'meeting',{offset:0,limit:12}),second=searchStoredPageChecked(notes,'meeting',{offset:12,limit:12,snapshot:first.snapshot}),target=second.hits[0].path;
+ const adapter={loaded:'test',nativeToolCalls:true,supportsExactCount:true,maxReplyTokens:3072,abort(){},async count(){return 100;},async generate(_messages,options){
+  if(options.tools){this.step=(this.step??0)+1;if(this.step===1)return {text:'',toolCalls:[{id:'first',name:'memory.search',arguments:{query:'meeting',offset:0}}],finishReason:'stop'};if(this.step===2)return {text:'',toolCalls:[{id:'second',name:'memory.search',arguments:{query:'meeting',offset:12,snapshot:first.snapshot}}],finishReason:'stop'};return {text:'',toolCalls:[{id:'edit',name:'finish_edit',arguments:{query:target,target:'path'}}],finishReason:'stop'};}
+  return {text:JSON.stringify({action:'replace',find:'water',with:'tea'}),finishReason:'stop'};
+ }};
+ const manifest={contextTokens:8192,runtime:{revision:'test'},models:[{id:'test',revision:'test',contextTokens:8192,file:{name:'test.gguf',bytes:1}}]};
+ f.services.model='test';f.services.bonsai=createLfmTextRuntime({adapter,manifest,readFile:async()=>new Blob(['x']),readAssets:()=>({test:{filesPresent:true}})});
+ f.services.knowledge={getState:async()=>undefined,all:async()=>notes,views:async()=>notes.map(projectNote),search:async()=>[],searchPage:async(query,options)=>searchStoredPageChecked(notes,query,options)};
+ f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory'},{path:'Tools/memory.search/tool.ts',body:'Trusted search adapter'}],run:searchRun}];f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search'],maxToolCalls:4,maxResultChars:8000};f.view.reviewCorrection=proposal=>proposals.push(proposal);
+ assert.equal(await c.run(run=>executeSubmission({text:'Please find my meeting note and replace water with tea.',attachments:[]},f.services,f.view,run)),'awaitingApproval',JSON.stringify(c.state));
+ assert.equal(proposals.length,1);assert.equal(proposals[0].path,target);assert.equal(proposals[0].after,'Bring tea.');assert.deepEqual(notes,before);
 });
 
 test('discovered corrections revalidate canonical identity and revision before proposal generation',async()=>{
