@@ -120,6 +120,15 @@ test('agent receives restart guidance when source metadata changes between pages
  const result=await coordinateAgentTurn(value);assert.equal(result.calls.length,0);assert.match(JSON.stringify(prompts.at(-1)),/restart memory\.sources/i);
 });
 
+test('agent can narrow an oversized source page to fit its result budget',async()=>{
+ const originals=Array.from({length:3},(_,i)=>createNote({path:`Inbox/${'x'.repeat(150)}${i}.md`,body:`Water ${i}`})),refs=originals.map((note,i)=>({noteId:note.id,revision:1,start:0,end:7,quote:`Water ${i}`})),summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:refs});
+ const pkg={definition:sourceTool.definition,entry:'Tools/memory.sources/tool.ts',sources:[{path:'Tools/memory.sources/SKILL.md',body:'Inspect sources.'},{path:'Tools/memory.sources/tool.ts',body:'Trusted source metadata.'}],run:sourceTool.run};
+ const plans=[{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1})},{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1,limit:1})},{action:'answer',query:'sources',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:'Find the original sources.',enabledTools:['memory.sources'],builtinPackages:[pkg],records:async()=>[...originals,summary],maxResultChars:750});
+ const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...rest)=>{prompts.push(messages);return generate(messages,...rest);};
+ const result=await coordinateAgentTurn(value);assert.equal(result.calls.length,1);assert.equal(result.calls[0].result.items.length,1);assert.match(JSON.stringify(prompts[1]),/memory\.sources.*smaller limit/i);
+});
+
 test('native planner sees source labels inside a paged search result',async()=>{
  const notes=[createNote({title:'water',body:'water reserve: 10',path:'Inbox/water.md'})];
  const pkg={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search with pages.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:pagedSearch.run};
