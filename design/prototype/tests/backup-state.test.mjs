@@ -8,6 +8,7 @@ import {formatPreference,initialPreferenceNotes,readPreference} from '../src/pre
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeStateBackup} from '../src/backup-state.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from '../src/settings-restore.ts';
 import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
+import {noteSourceMetadata} from '../src/note-provenance.ts';
 
 test('calculation execution survives backup and rejects a forged result',async()=>{
  const now=new Date('2026-10-17T00:00:00Z'),task={repeat:'once',time:'09:00',days:[],date:'2026-10-18',monthDay:1,interval:1,unit:'days',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,enabled:false,notify:false,prompt:'Calculate 12 + 10'};
@@ -45,6 +46,16 @@ test('settings-only recovery cannot select arbitrary IDs, protected paths or leg
 
 const snapshot=()=>({notes:[createNote({path:'Inbox/原文.md',body:'水 Water 3L 🌳'})],settings:[{key:'ui-v1-dialogue',value:appendTurn(emptyDialogue(),{id:'t1',user:'Remember the exact original',answer:'Retained'})},{key:'ui-v1-folders',value:['Notes/日本語']},{key:'ui-v1-trash',value:[]}],runs:[]});
 const empty=()=>({notes:[],settings:[],runs:[]});
+
+test('backup retains answer source-state guards without upgrading legacy dialogue',async()=>{
+ const state=snapshot(),note=state.notes[0],turn=state.settings[0].value.turns[0];
+ const guard={noteId:note.id,revision:1,snapshot:stateHash(noteSourceMetadata(state.notes,note.id,1))};
+ turn.sourceMetadataGuards=[guard];
+ const parsed=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ assert.deepEqual(parsed.settings[0].value.turns[0].sourceMetadataGuards,[guard]);
+ const legacy=snapshot();assert.equal((await parseStateBackup(JSON.stringify(await makeStateBackup(legacy)))).settings[0].value.turns[0].sourceMetadataGuards,undefined);
+ state.settings[0].value.turns[0].sourceMetadataGuards[0].snapshot='invalid';await assert.rejects(()=>makeStateBackup(state),/source metadata/i);
+});
 
 test('working-result identity roundtrips with exact dialogue and rejects dangling backup pointers',async()=>{
  const state=snapshot();state.settings[0].value=completeTurn(state.settings[0].value,'t1',{answer:'Exact\nresult 🌳'});
