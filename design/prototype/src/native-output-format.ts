@@ -58,7 +58,7 @@ export function nativeFinalPlanTools(scope:PlannerScope,sourceLabels:readonly st
    const {body:_body,...properties}=original.properties;
    parameters={...original,properties:{...properties,reply},required:[...original.required.filter((key:string)=>key!=='body'&&key!=='query'),'reply']};
    description=name==='capturetext'?'Only when the CURRENT request asks to save or create a NEW note: propose its exact content for review. Otherwise use finish_answer. Nothing is saved yet.':name==='summary'?'Return the requested summary. This does not create a file.':'Return the final answer to the current request, including results of successful tools. This does not create a file.';
-   description+=' Put the complete content in reply; query is optional. Cite only offered source labels; no labels means sources=[]. Report absent details as unknown. If the request cannot be answered from available evidence, use insufficient_evidence with sources=[].';
+   description+=' Put the complete content in reply; query is optional. Cite only offered source labels; no labels means sources=[]. Source labels belong only in sources, not answer prose, unless the user explicitly asks for them or they are literal source content. Report absent details as unknown. If the request cannot be answered from available evidence, use insufficient_evidence with sources=[].';
   }
   const suffix=navigation?.suffix??name;
   return [{type:'function',function:{name:'finish_'+suffix,description,parameters}}];
