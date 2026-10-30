@@ -94,11 +94,11 @@ test('bounds custom tool memory calls by total and concurrent host work',async()
 
  const total=runCustomToolSource({code:'tool',input:{},capabilities:['memory.search'],host:{search:async()=>({ok:true})}});
  const totalWorker=workers.at(-1);
- for(let requestId=0;requestId<8;requestId++){
+ for(let requestId=0;requestId<64;requestId++){
   totalWorker.reply({type:'capability',requestId,capability:'memory.search',query:'bounded'});
   await new Promise(resolve=>setImmediate(resolve));
  }
- totalWorker.reply({type:'capability',requestId:8,capability:'memory.search',query:'over budget'});
+ totalWorker.reply({type:'capability',requestId:64,capability:'memory.search',query:'over budget'});
  await assert.rejects(total,/call limit/);
  assert.equal(totalWorker.terminated,true);
 });

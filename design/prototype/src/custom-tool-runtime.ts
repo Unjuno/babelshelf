@@ -2,12 +2,15 @@ import type {CustomToolCapability} from './custom-tool-types.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import {validateMemoryListArgs} from './tools/tool-host.ts';
 import type {DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
+import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 export type {CustomToolCapability} from './custom-tool-types.ts';
 export type CustomToolHost={search?:(query:string,signal:AbortSignal)=>Promise<unknown>;list?:(path:string,offset:number,limit:number,signal:AbortSignal)=>Promise<unknown>;read?:(query:string,signal:AbortSignal)=>Promise<unknown>;calculate?:(expression:string)=>number|Promise<number>;calculateDecimal?:(expression:string)=>DecimalReceipt|Promise<DecimalReceipt>};
 export type CustomToolRunInput={code:string;input:unknown;capabilities:readonly CustomToolCapability[];host?:CustomToolHost;signal?:AbortSignal;timeoutMs?:number;memoryLimitBytes?:number;maxResultBytes?:number};
 type WorkerReply={type:'result';value:unknown}|{type:'error';message:string}|{type:'running'}|{type:'capability';requestId:number;capability:CustomToolCapability|'math.calculate.decimal';query:string};
 const maxSourceBytes=32_000,maxInputBytes=8_000,maxCapabilityResultBytes=24_000,maxResultBytes=8_000;
-const maxCapabilityCalls=8,maxConcurrentCapabilityCalls=2;
+// Bound broker bookkeeping to the existing evidence capacity while allowing
+// a single package to inspect more than eight records when the request needs it.
+const maxCapabilityCalls=MAX_CONTEXT_SOURCE_REFS,maxConcurrentCapabilityCalls=2;
 // Local IndexedDB operations can legitimately take longer than the small
 // QuickJS CPU budget. Keep them cancellable, but give the whole run a separate
 // bounded wall-clock allowance instead of charging database latency as code CPU.

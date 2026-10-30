@@ -89,14 +89,19 @@ test('host Memory failures expose a fixed message to package code, not exception
  expect(String(result)).not.toContain('PRIVATE_PATH_AND_QUERY');
 });
 
+test('a custom tool can read more than eight local results',async({page})=>{
+ const result=await page.evaluate(async()=>await (window as any).customToolFixture.run({code:'({capabilities}) => { let count=0; for(let i=0;i<9;i++) count+=capabilities.memorySearch("note").length; return count; }',input:{},capabilities:['memory.search'],host:{search:async()=>[{id:'n1'}]}}));
+ expect(result).toBe(9);
+});
+
 test('stops a custom tool after its bounded local-memory call budget',async({page})=>{
  const result=await page.evaluate(async()=>{
   let calls=0,error='';
-  try{await (window as any).customToolFixture.run({code:'({capabilities}) => { for(let i=0;i<9;i++) capabilities.memorySearch("note"); return "done"; }',input:{},capabilities:['memory.search'],host:{search:async()=>{calls++;return [{id:'n1'}];}}});}
+  try{await (window as any).customToolFixture.run({code:'({capabilities}) => { for(let i=0;i<65;i++) capabilities.memorySearch("note"); return "done"; }',input:{},capabilities:['memory.search'],host:{search:async()=>{calls++;return [{id:'n1'}];}}});}
   catch(caught){error=String((caught as Error).message);}
   return {calls,error};
  });
- expect(result.calls).toBe(8);
+ expect(result.calls).toBe(64);
  expect(result.error).toMatch(/capability call limit/i);
 });
 
