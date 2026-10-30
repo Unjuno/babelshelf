@@ -1155,6 +1155,19 @@ test('an empty exact memory read directs topic lookup to memory.search without t
  assert.match(tooLargeRead[0].content,/smaller length and start offset/i);
 });
 
+test('planner distinguishes further search matches from complete or omitted results',()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0},allowedTools=[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.'}];
+ const item={tool:'memory.search',arguments:{query:'water',offset:0},result:{hits:[{kind:'file',noteId:'a',revision:1,path:'Notes/a.md'}],offset:0,limit:1,snapshot:'a'.repeat(64),nextOffset:1,hasMore:true}};
+ const prompt=entry=>planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[entry]})[0].content;
+ assert.match(prompt(item),/more.*matches.*not.*complete/i);
+ const afterRead=planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[item,{tool:'memory.read',arguments:{query:'Notes/a.md'},result:[]}]})[0].content;assert.match(afterRead,/more.*matches.*not.*complete/i);
+ const finished=planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[item,{...item,arguments:{query:'water',offset:1},result:{...item.result,offset:1,hasMore:false,nextOffset:null}}]})[0].content;assert.doesNotMatch(finished,/more.*matches.*not.*complete/i);
+ const another=planDialogueMessages('Find both',context,[],{allowedTools,history:[item,{...item,arguments:{query:'food',offset:0},result:{...item.result,hasMore:false,nextOffset:null}}]})[0].content;assert.match(another,/more.*matches.*not.*complete/i);
+ assert.doesNotMatch(prompt({...item,result:{...item.result,hasMore:false,nextOffset:null}}),/more.*matches.*not.*complete/i);
+ assert.doesNotMatch(prompt({...item,resultOmitted:'not visible'}),/more.*matches.*not.*complete/i);
+ const capped=prompt({...item,result:{...item.result,offset:10000,nextOffset:null,windowLimit:true}});assert.match(capped,/search window.*limit/i);
+});
+
 test('planner instructions describe only available dialogue/file/input scopes',()=>{
  const fresh={summary:'',recent:[],refs:[],turnCount:0};const first=planDialogueMessages('hello',fresh)[0].content;
  assert.doesNotMatch(first,/ZERO_BASED_INDEX|CURRENT RESULT|For a request about the opened file|Saving a current/);
