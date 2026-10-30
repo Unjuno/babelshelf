@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:destination,exact:true}).click();
+ await page.getByRole('menuitem',{name:destination==='Memory'?'BabelShelf':destination,exact:true}).click();
 }
 
 test('a paused calculation runs locally and exposes its calculation in history',async({page})=>{

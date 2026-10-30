@@ -37,7 +37,6 @@ test('source approval is atomic when the paired instructions change through Memo
  await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Tools');
  await page.getByRole('button',{name:'Create tool package'}).click();
  await page.getByRole('button',{name:'Save files'}).click();
- await expect(page.getByText(/Saved.*not enabled/)).toBeVisible();
  // Construct an inert proposal through the production API; this test does not
  // stand in for model generation. The UI below changes the real paired record.
  const proposal=await page.evaluate(async()=>{
@@ -87,7 +86,7 @@ test('Settings links to custom tool runtime and editable harness profile',async(
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await expect(page.getByRole('heading',{name:'Settings'})).toBeVisible();
  await openSettingsItem(page,'Assistant');
- await expect(page.getByRole('heading',{name:'Assistant'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Assistant',exact:true})).toBeVisible();
  await expect(page.getByRole('group',{name:'Default response style'})).toBeVisible();
  await page.getByRole('button',{name:'Edit harness file'}).click();
  await expect(page.getByText('Settings/harness.md',{exact:true})).toBeVisible();
@@ -147,7 +146,6 @@ test('custom profile approval refuses tool source changes in another tab and can
  await page.goto('/');await settings(page,'Tools');
  await page.getByRole('button',{name:'Create tool package'}).click();
  await page.getByRole('button',{name:'Save files'}).click();
- await expect(page.getByText(/Saved.*not enabled/)).toBeVisible();
  await settings(page,'Assistant');
  await page.getByRole('button',{name:'Edit harness file'}).click();
  await page.getByRole('button',{name:'Edit',exact:true}).click();
@@ -183,48 +181,55 @@ test('custom profile approval refuses tool source changes in another tab and can
  }finally{await other.close();}
 });
 
-test('user guidance is saved in Memory and stays separate from tool permissions',async({page})=>{
+test('assistant instructions are saved in Memory and stay separate from tool permissions',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Assistant');
  const guidance='Prefer concise Japanese answers. Mention the source path when useful.';
- const editor=page.getByRole('textbox',{name:'Additional guidance'});await editor.fill(guidance);
- await page.getByRole('button',{name:'Save guidance'}).click();
- await expect(page.getByRole('button',{name:'Save guidance'})).toBeDisabled();
+ const editor=page.getByRole('textbox',{name:'Assistant instructions'});await editor.fill(guidance);
+ await page.getByRole('button',{name:'Save instructions'}).click();
+ await expect(page.getByRole('button',{name:'Save instructions'})).toBeDisabled();
  await page.reload();await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Assistant');
- await expect(page.getByRole('textbox',{name:'Additional guidance'})).toHaveValue(guidance);
+ await expect(page.getByRole('textbox',{name:'Assistant instructions'})).toHaveValue(guidance);
  await page.getByRole('button',{name:'Edit harness file'}).click();
  await expect(page.getByText('Settings/harness.md',{exact:true})).toBeVisible();
 });
 
-test('unsaved Assistant guidance survives navigation and blocks app refresh until discarded',async({page})=>{
+test('assistant instruction byte overflow is explained and can be corrected',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Assistant');
+ const editor=page.getByRole('textbox',{name:'Assistant instructions'}),save=page.getByRole('button',{name:'Save instructions'});
+ await editor.fill('あ'.repeat(700));await expect(page.getByText('Over 2,048 bytes',{exact:true})).toBeVisible();await expect(save).toBeDisabled();
+ await editor.fill('あ'.repeat(650));await expect(page.getByText('Over 2,048 bytes',{exact:true})).toHaveCount(0);await expect(save).toBeEnabled();
+});
+
+test('unsaved assistant instructions survive navigation and block app refresh until discarded',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Assistant');
- await page.getByRole('textbox',{name:'Additional guidance'}).fill('Keep my unsaved guidance');
+ await page.getByRole('textbox',{name:'Assistant instructions'}).fill('Keep my unsaved guidance');
  await page.getByRole('button',{name:'Back to Settings'}).click();await openSettingsItem(page,'Assistant');
- await expect(page.getByRole('textbox',{name:'Additional guidance'})).toHaveValue('Keep my unsaved guidance');
+ await expect(page.getByRole('textbox',{name:'Assistant instructions'})).toHaveValue('Keep my unsaved guidance');
  await page.getByRole('button',{name:'Back to Settings'}).click();await page.getByRole('button',{name:'Connection',exact:true}).click();
  await expect(page.getByRole('button',{name:'Refresh app and check for updates'})).toBeDisabled();
  await page.getByRole('button',{name:'Back to Settings'}).click();await openSettingsItem(page,'Assistant');
- await page.getByRole('button',{name:'Discard guidance changes'}).click();
- await expect(page.getByRole('textbox',{name:'Additional guidance'})).toHaveValue('');
+ await page.getByRole('button',{name:'Discard instruction changes'}).click();
+ await expect(page.getByRole('textbox',{name:'Assistant instructions'})).toHaveValue('');
  await page.getByRole('button',{name:'Back to Settings'}).click();await page.getByRole('button',{name:'Connection',exact:true}).click();
  await expect(page.getByRole('button',{name:'Refresh app and check for updates'})).toBeEnabled();
 });
 
-test('a guidance save conflict keeps the draft and requires an explicit choice of the saved version',async({page})=>{
+test('an instruction save conflict keeps the draft and requires an explicit choice of the saved version',async({page})=>{
  const assistant=async(target:Page)=>{await target.getByRole('button',{name:'Input',exact:true}).click();await target.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(target,'Assistant');};
- await page.goto('/');await assistant(page);await page.getByRole('textbox',{name:'Additional guidance'}).fill('Draft in the first tab');
+ await page.goto('/');await assistant(page);await page.getByRole('textbox',{name:'Assistant instructions'}).fill('Draft in the first tab');
  const other=await page.context().newPage();
  try{
-  await other.goto('/');await assistant(other);await other.getByRole('textbox',{name:'Additional guidance'}).fill('Saved in the second tab');
-  await other.getByRole('button',{name:'Save guidance'}).click();await expect(other.getByRole('button',{name:'Save guidance'})).toBeDisabled();
-  await page.getByRole('button',{name:'Save guidance'}).click();
-  await expect(page.getByRole('textbox',{name:'Additional guidance'})).toHaveValue('Draft in the first tab');
+  await other.goto('/');await assistant(other);await other.getByRole('textbox',{name:'Assistant instructions'}).fill('Saved in the second tab');
+  await other.getByRole('button',{name:'Save instructions'}).click();await expect(other.getByRole('button',{name:'Save instructions'})).toBeDisabled();
+  await page.getByRole('button',{name:'Save instructions'}).click();
+  await expect(page.getByRole('textbox',{name:'Assistant instructions'})).toHaveValue('Draft in the first tab');
   await expect(page.getByText('Changed elsewhere · draft kept',{exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Save guidance'})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Save instructions'})).toBeDisabled();
   await page.getByText('Saved version',{exact:true}).click();await expect(page.getByText('Saved in the second tab',{exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Discard guidance changes'}).click();
-  await expect(page.getByRole('textbox',{name:'Additional guidance'})).toHaveValue('Saved in the second tab');
+  await page.getByRole('button',{name:'Discard instruction changes'}).click();
+  await expect(page.getByRole('textbox',{name:'Assistant instructions'})).toHaveValue('Saved in the second tab');
  }finally{await other.close();}
 });
 
@@ -236,38 +241,40 @@ test('model-assisted tool drafting requires an already loaded selected model and
  await expect(page.getByText(/Load selected Text model in Models first/)).toBeVisible();
  await expect(page.getByRole('button',{name:'Draft with selected model'})).toBeDisabled();
  await expect(page.getByRole('button',{name:'Save files'})).toBeEnabled();
- await expect(page.getByText(/Saving does not enable or execute it/)).toBeVisible();
+ await expect(page.getByText(/Saving makes this tool available in the current profile/)).toBeVisible();
 });
 
 test('tool creation explains that saved code runs when selected and should be trusted',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Create tool package'}).click();
- await expect(page.getByText('Code runs locally when a profile uses it. Review it before saving; only add code you trust.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Code runs locally when the active profile calls this tool. Save the package to make it available.',{exact:true})).toBeVisible();
 });
 
-test('custom tool creation persists an edited multi-field input schema in Memory',async({page})=>{
+test('custom tool creation persists its schema and immediately makes it available to the active profile',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Create tool package'}).click();
  await page.getByRole('textbox',{name:'Tool ID',exact:true}).fill('user.precise-calc');
  const schema={type:'object',required:['expression','decimals'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:160},decimals:{type:'integer',minimum:0,maximum:6}}};
  await page.getByRole('textbox',{name:'Tool input schema',exact:true}).fill(JSON.stringify(schema,null,2));
  await page.getByRole('textbox',{name:'Tool code',exact:true}).fill('({input,capabilities})=>({result:capabilities.calculate(input.expression),decimals:input.decimals})');
- await page.getByRole('button',{name:'Save files',exact:true}).click();await expect(page.getByText(/Saved.*not enabled/)).toBeVisible();
+ await page.getByRole('button',{name:'Save files',exact:true}).click();
  const saved=await page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();try{return (await store.all()).find((note:any)=>note.revisions.at(-1).path==='Tools/user.precise-calc/SKILL.md')?.revisions.at(-1).body??null;}finally{store.close();}});
  expect(saved).toContain('"expression"');expect(saved).toContain('"decimals"');
 });
 
-test('a custom tool is reviewed as data, stored as an atomic pair, and stays disabled until profile selection',async({page})=>{
+test('a custom tool is stored and added to the active profile in one save without an activation dialog',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Create tool package'}).click();
  await page.getByRole('textbox',{name:'Tool ID',exact:true}).fill('user.ui-check');
  await page.getByRole('textbox',{name:'Tool title'}).fill('UI check');
  await page.getByRole('textbox',{name:'Tool instructions'}).fill('Return the query unchanged.');
- await expect(page.getByText(/Saving does not enable or execute it/)).toBeVisible();
+ await expect(page.getByText(/Saving makes this tool available in the current profile/)).toBeVisible();
  await page.getByRole('button',{name:'Save files'}).click();
- await expect(page.getByText(/not enabled/)).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Review changes',exact:true})).toHaveCount(0);
+ const enabled=await page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const {parsePreference}=await import('/src/preference-records.ts');const store=new KnowledgeStore();try{return parsePreference('harness',(await store.all()).find((note:any)=>note.id==='settings-harness').revisions.at(-1).body).profiles.find((profile:any)=>profile.id==='standard').enabledTools;}finally{store.close();}});
+ expect(enabled).toContain('user.ui-check');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Open tool files'}).click();
  await page.getByRole('button',{name:'Open user.ui-check'}).click();
@@ -279,12 +286,14 @@ test('a custom tool is reviewed as data, stored as an atomic pair, and stays dis
  await expect(page.getByRole('alert')).toContainText('Tool folder already exists');
 });
 
-test('imports a validated local tool pair into Memory without enabling or executing it',async({page})=>{
+test('importing a validated local tool pair makes it available without executing it immediately',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Import SKILL.md + tool.js'}).click();
  const skill='---\n{"id":"user.imported","version":1,"title":"Imported lookup","inputSchema":{"type":"object","required":["query"],"additionalProperties":false,"properties":{"query":{"type":"string","minLength":1,"maxLength":80}}},"capabilities":["memory.search"]}\n---\n\nSearch local notes.\n';
  await page.getByLabel('Custom tool source files').setInputFiles([{name:'SKILL.md',mimeType:'text/markdown',buffer:Buffer.from(skill)},{name:'tool.js',mimeType:'text/javascript',buffer:Buffer.from('({input,capabilities})=>capabilities.memorySearch(input.query)')}]);
- await expect(page.getByText(/Imported · not enabled/)).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Review changes',exact:true})).toHaveCount(0);
+ const enabled=await page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const {parsePreference}=await import('/src/preference-records.ts');const store=new KnowledgeStore();try{return parsePreference('harness',(await store.all()).find((note:any)=>note.id==='settings-harness').revisions.at(-1).body).profiles.find((profile:any)=>profile.id==='standard').enabledTools;}finally{store.close();}});
+ expect(enabled).toContain('user.imported');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Open tool files'}).click();
  await page.getByRole('button',{name:'Open user.imported'}).click();await expect(page.getByRole('button',{name:'Open SKILL.md'})).toBeVisible();await expect(page.getByRole('button',{name:'Open tool.js'})).toBeVisible();
 });

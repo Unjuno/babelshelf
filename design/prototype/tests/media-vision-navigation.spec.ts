@@ -15,5 +15,6 @@ test('video frame setup opens the matching Vision model controls',async({page})=
  await page.getByRole('button',{name:'Configure video frame model'}).click();
  await expect(page.getByRole('heading',{name:'Image understanding',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Browse vision models',exact:true})).toBeVisible();
+ await page.getByText('More image options',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Add local LFM2-VL ONNX model',exact:true})).toBeVisible();
 });

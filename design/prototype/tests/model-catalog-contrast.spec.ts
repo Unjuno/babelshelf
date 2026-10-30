@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:destination,exact:true}).click();
+ await page.getByRole('menuitem',{name:destination==='Memory'?'BabelShelf':destination,exact:true}).click();
 }
 
 test('model catalog actions keep readable contrast in dark appearance',async({page})=>{
@@ -12,6 +12,7 @@ test('model catalog actions keep readable contrast in dark appearance',async({pa
  await page.getByRole('group',{name:'Theme'}).getByRole('button',{name:'Dark',exact:true}).click();
  await page.getByRole('button',{name:'Back to Settings'}).click();
  await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.getByText('More text options',{exact:true}).click();
  await page.getByRole('button',{name:'Browse text models',exact:true}).click();
 
  for(const label of ['Find on Hugging Face','Add a new GGUF text model']){
