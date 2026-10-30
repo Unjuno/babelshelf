@@ -12,6 +12,7 @@ import {definition as readDefinition,run as readRun} from '../src/tools/memory.r
 import {KnowledgeStore,projectNote} from '../src/knowledge-store.ts';
 import {createLfmTextRuntime} from '../src/lfm-text-runtime.ts';
 import * as clock from '../src/tools/time.now/tool.ts';
+import * as sourceTool from '../src/tools/memory.sources/tool.ts';
 import {searchStoredPageChecked} from '../src/file-discovery.ts';
 function fixture(){
  let dialogue=emptyDialogue();const events=[],reviews=[];let modelCalls=0;
@@ -28,6 +29,20 @@ function fixture(){
  const view={adopt:()=>{},consume:()=>events.push('consume'),composer:()=>({text:'',attachments:[]}),restore:()=>{},toast:message=>events.push(message),failure:message=>events.push(message),openNote:()=>{},saveCapture:async value=>{reviews.push(value);await services.finishTurn(value.turnId,{status:'Review new note'});},reviewCorrection:()=>{},reviewSchedule:()=>{},startToolPackageFromChat:()=>{}};
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
 }
+
+test('source metadata is passed to the final answer commit after agent inspection',async()=>{
+ for(const stale of [false,true]){
+ const f=fixture(),c=createSubmissionController(),original=createNote({path:'Inbox/original.md',body:'Water 17'}),ref={noteId:original.id,revision:1,start:0,end:8,quote:'Water 17'},summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:[ref]}),records=[original,summary],guards=[];
+ const pkg={definition:sourceTool.definition,entry:'Tools/memory.sources/tool.ts',sources:[{path:'Tools/memory.sources/SKILL.md',body:'Inspect sources.'},{path:'Tools/memory.sources/tool.ts',body:'Trusted source metadata.'}],run:sourceTool.run};
+ f.services.builtinToolPackages=[pkg];f.services.builtinToolRegistry=createToolRegistry([pkg]);f.services.activeHarnessProfile={...f.services.activeHarnessProfile,enabledTools:['memory.sources'],maxToolCalls:null,maxResultChars:8000};
+ f.services.knowledge={all:async()=>records,getState:async()=>undefined,views:async()=>records.map(projectNote),search:async()=>[]};f.services.refreshSnapshot=async()=>records.map(projectNote);
+ const finish=f.services.finishTurn;f.services.finishTurn=async(id,result,refs,metadata)=>{if(metadata?.length){guards.push(structuredClone(metadata));if(stale)throw Error('Source changed · retry');}return finish(id,result,refs,metadata);};
+ f.services.model='test';let calls=0;f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(++calls===1?{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1})}:{action:'answer',query:'sources',target:'knowledge',reply:{status:'answered',answer:'The summary has one source.',sources:[]}}),finishReason:'stop'})};
+ await c.run(run=>executeSubmission({text:'Inspect the source details for '+summary.id,attachments:[]},f.services,f.view,run));
+ assert.equal(guards.length,1,JSON.stringify({state:c.state,turn:f.current().turns.at(-1)}));assert.equal(guards[0][0].noteId,summary.id);assert.equal(guards[0][0].revision,1);assert.match(guards[0][0].snapshot,/^[a-f0-9]{64}$/);
+ if(stale){assert.equal(c.state.phase,'failed');assert.equal(f.current().turns.at(-1).answer,undefined);assert.equal(f.reviews.length,0);}else assert.equal(c.state.phase,'completed');
+ }
+});
 
 test('a selected device clock reaches the final answer through the submission flow',async()=>{
  const f=fixture(),c=createSubmissionController(),seen=[];
