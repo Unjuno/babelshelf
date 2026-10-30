@@ -17,9 +17,9 @@ test('an existing three-call setting is preserved until the user reviews and app
  await expect(page.getByText('Tool call limit',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Review call limit',exact:true}).click();
  const before=page.getByRole('region',{name:'Profile before'}),after=page.getByRole('region',{name:'Profile after'});
- await expect(before).toContainText('3');await expect(after).toContainText('No fixed limit');
+ await expect(before).toContainText('3');await expect(after).toContainText('No profile limit');
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Review changes'})).toBeHidden();
  await expect(page.getByRole('button',{name:'Review call limit',exact:true})).toHaveCount(0);
- await expect(page.getByRole('region',{name:'Assistant profile',exact:true}).getByText('No fixed limit',{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Assistant profile',exact:true}).getByText('No profile limit',{exact:true})).toBeVisible();
 });

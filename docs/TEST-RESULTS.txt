@@ -6781,3 +6781,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 — active tool boundary
 - The active registry now contains only profile-enabled built-ins and selected custom packages. A disabled built-in cannot be looked up or executed by calling that registry directly. Direct app-owned operations retain their existing separate registry and contracts.
 - Controlled Node tests for active registry, coordinator and agent loop passed 91/91, including disabled-tool refusal. This change is not an MCP transport or an external-connection implementation.
+
+2026-10-30 — distinguish profile and audit capacity
+- Replaced the ambiguous No fixed limit label with No profile limit and displayed Activity storage limit applies. This is disclosure only: per-turn receipt capacity still bounds work, and paging/independent work budgets remain unimplemented.
+- The PC browser test reviewed and saved a three-call profile change successfully with the revised wording.
