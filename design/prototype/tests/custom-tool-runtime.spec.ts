@@ -75,6 +75,19 @@ test('brokers declared arithmetic through the registered local calculator only',
  expect(result).toEqual({result:42});
 });
 
+test('a declared clock reads the device locally and remains absent without declaration',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const {createCustomToolPackageFiles}=await import('/src/custom-tool-package.ts');
+  const host={check(){},search:async()=>[],resolve:async()=>[]};
+  const packageFor=(capabilities:string[])=>createCustomToolPackageFiles({id:'user.lookup',title:'Clock',instructions:'Read the device clock.',code:'({capabilities})=>typeof capabilities.timeNow === "function" ? capabilities.timeNow() : null',capabilities});
+  const fixture=(window as any).customToolFixture;
+  return {enabled:await fixture.registered(packageFor(['time.now']),{query:'now'},host),disabled:await fixture.registered(packageFor([]),{query:'now'},host)};
+ });
+ expect(result.enabled.result.source).toBe('device-clock');
+ expect(Number.isFinite(Date.parse(result.enabled.result.instant))).toBe(true);
+ expect(result.disabled.result).toBeNull();
+});
+
 test('custom packages can browse bounded Memory folder metadata without reading file bodies',async({page})=>{
  const result=await page.evaluate(async()=>await (window as any).customToolFixture.run({
   code:'({input,capabilities}) => capabilities.memoryList(input.path,0,10)',input:{path:'Notes'},capabilities:['memory.list'],

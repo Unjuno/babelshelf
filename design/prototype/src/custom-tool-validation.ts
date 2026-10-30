@@ -1,4 +1,5 @@
 import type {CustomInputField,CustomInputSchema,CustomToolCapability,CustomToolPackage,CustomToolSourceRecord} from './custom-tool-types.ts';
+import {CUSTOM_TOOL_CAPABILITIES,isCustomToolCapability} from './custom-tool-types.ts';
 
 const utf8=new TextEncoder();
 const byteLength=(value:string)=>utf8.encode(value).byteLength;
@@ -31,7 +32,7 @@ function metadataFrom(skillFile:CustomToolSourceRecord){
  let metadata:unknown;try{metadata=JSON.parse(match[1]);}catch{throw Error('Invalid tool package metadata');}
  if(!metadata||typeof metadata!=='object'||Array.isArray(metadata))throw Error('Invalid tool package metadata');
  const record=metadata as Record<string,unknown>;
- if(!exactKeys(record,['id','version','title','inputSchema','capabilities'])||typeof record.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(record.id)||!Number.isSafeInteger(record.version)||Number(record.version)<1||!safeText(record.title,120)||!Array.isArray(record.capabilities)||record.capabilities.length>4||record.capabilities.some(capability=>typeof capability!=='string'||!['memory.search','memory.list','memory.read','math.calculate'].includes(capability))||new Set(record.capabilities).size!==record.capabilities.length)throw Error('Invalid tool package metadata');
+ if(!exactKeys(record,['id','version','title','inputSchema','capabilities'])||typeof record.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(record.id)||!Number.isSafeInteger(record.version)||Number(record.version)<1||!safeText(record.title,120)||!Array.isArray(record.capabilities)||record.capabilities.length>CUSTOM_TOOL_CAPABILITIES.length||!record.capabilities.every(isCustomToolCapability)||new Set(record.capabilities).size!==record.capabilities.length)throw Error('Invalid tool package metadata');
  return {id:record.id,version:Number(record.version),title:record.title as string,inputSchema:validateCustomToolInputSchema(record.inputSchema),capabilities:[...record.capabilities].sort() as CustomToolCapability[] ,instructions:match[2]};
 }
 

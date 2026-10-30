@@ -3,8 +3,10 @@ import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import {validateMemoryListArgs} from './tools/tool-host.ts';
 import type {DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
+import {isCustomToolCapability} from './custom-tool-types.ts';
+import type {ClockReading} from './tools/time.now/tool.ts';
 export type {CustomToolCapability} from './custom-tool-types.ts';
-export type CustomToolHost={search?:(query:string,signal:AbortSignal)=>Promise<unknown>;list?:(path:string,offset:number,limit:number,signal:AbortSignal)=>Promise<unknown>;read?:(query:string,signal:AbortSignal)=>Promise<unknown>;calculate?:(expression:string)=>number|Promise<number>;calculateDecimal?:(expression:string)=>DecimalReceipt|Promise<DecimalReceipt>};
+export type CustomToolHost={search?:(query:string,signal:AbortSignal)=>Promise<unknown>;list?:(path:string,offset:number,limit:number,signal:AbortSignal)=>Promise<unknown>;read?:(query:string,signal:AbortSignal)=>Promise<unknown>;calculate?:(expression:string)=>number|Promise<number>;calculateDecimal?:(expression:string)=>DecimalReceipt|Promise<DecimalReceipt>;now?:()=>ClockReading|Promise<ClockReading>};
 export type CustomToolRunInput={code:string;input:unknown;capabilities:readonly CustomToolCapability[];host?:CustomToolHost;signal?:AbortSignal;timeoutMs?:number;memoryLimitBytes?:number;maxResultBytes?:number};
 type WorkerReply={type:'result';value:unknown}|{type:'error';message:string}|{type:'running'}|{type:'capability';requestId:number;capability:CustomToolCapability|'math.calculate.decimal';query:string};
 const maxSourceBytes=32_000,maxInputBytes=8_000,maxCapabilityResultBytes=24_000,maxResultBytes=8_000;
@@ -41,7 +43,7 @@ export function runCustomToolSource(options:CustomToolRunInput):Promise<unknown>
  if(typeof code!=='string'||!code.trim()||textEncoder.encode(code).byteLength>maxSourceBytes)throw Error('Custom tool source too large or empty');
  const timeoutMs=options.timeoutMs??750,memoryLimitBytes=options.memoryLimitBytes??8*1024*1024,resultBytes=options.maxResultBytes??maxResultBytes;
  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<10||timeoutMs>1000||!Number.isSafeInteger(memoryLimitBytes)||memoryLimitBytes<1024*1024||memoryLimitBytes>32*1024*1024||!Number.isSafeInteger(resultBytes)||resultBytes<64||resultBytes>maxResultBytes)throw Error('Invalid custom tool runtime limits');
- if(!Array.isArray(options.capabilities)||new Set(options.capabilities).size!==options.capabilities.length||options.capabilities.some(value=>value!=='memory.search'&&value!=='memory.list'&&value!=='memory.read'&&value!=='math.calculate'))throw Error('Invalid custom tool capabilities');
+ if(!Array.isArray(options.capabilities)||new Set(options.capabilities).size!==options.capabilities.length||!options.capabilities.every(isCustomToolCapability))throw Error('Invalid custom tool capabilities');
  if(options.signal?.aborted)return Promise.reject(Error('Stopped'));
  const inputJson=encodeJson(options.input,maxInputBytes,'Custom tool input');
  return new Promise((resolve,reject)=>{
@@ -67,7 +69,7 @@ export function runCustomToolSource(options:CustomToolRunInput):Promise<unknown>
     return;
    }
    if(message.type==='capability'){
-    const callback=message.capability==='memory.search'&&options.capabilities.includes(message.capability)?options.host?.search:message.capability==='memory.list'&&options.capabilities.includes(message.capability)?options.host?.list:message.capability==='memory.read'&&options.capabilities.includes(message.capability)?options.host?.read:message.capability==='math.calculate'&&options.capabilities.includes(message.capability)?options.host?.calculate:message.capability==='math.calculate.decimal'&&options.capabilities.includes('math.calculate')?options.host?.calculateDecimal:undefined;
+    const callback=message.capability==='memory.search'&&options.capabilities.includes(message.capability)?options.host?.search:message.capability==='memory.list'&&options.capabilities.includes(message.capability)?options.host?.list:message.capability==='memory.read'&&options.capabilities.includes(message.capability)?options.host?.read:message.capability==='math.calculate'&&options.capabilities.includes(message.capability)?options.host?.calculate:message.capability==='math.calculate.decimal'&&options.capabilities.includes('math.calculate')?options.host?.calculateDecimal:message.capability==='time.now'&&options.capabilities.includes('time.now')?options.host?.now:undefined;
     const maxQueryLength=message.capability==='math.calculate'||message.capability==='math.calculate.decimal'?200:2000;
     if(!callback||!Number.isSafeInteger(message.requestId)||message.requestId<0||typeof message.query!=='string'||message.query.length>maxQueryLength)return finish(Error('Custom tool capability is not available'));
     if(requests.has(message.requestId))return finish(Error('Duplicate custom tool capability request'));
@@ -75,6 +77,7 @@ export function runCustomToolSource(options:CustomToolRunInput):Promise<unknown>
     if(inFlightCapabilities>=maxConcurrentCapabilityCalls)return finish(Error('Custom tool concurrent capability limit exceeded'));
     if(inFlightCapabilities++===0){capabilityWaitStarted=Date.now();clearTimeout(timer);timer=setTimeout(()=>finish(Error('Custom tool time limit exceeded')),Math.max(0,maxCapabilityWaitMs-capabilityWaitConsumed)+200);}
     const operation=Promise.resolve().then(()=>{
+     if(message.capability==='time.now')return (callback as ()=>unknown)();
      if(message.capability==='math.calculate'||message.capability==='math.calculate.decimal')return (callback as (expression:string)=>unknown)(message.query);
      if(message.capability==='memory.list'){
       let requested:unknown;try{requested=JSON.parse(message.query);}catch{throw Error('Invalid folder listing arguments');}
@@ -85,7 +88,7 @@ export function runCustomToolSource(options:CustomToolRunInput):Promise<unknown>
     }).then(value=>{
      if(settled)return;
      const json=encodeJson(value,maxCapabilityResultBytes,'Memory capability result');worker.postMessage({type:'capability-result',requestId:message.requestId,value:JSON.parse(json)});
-    }).catch(()=>{if(!settled)worker.postMessage({type:'capability-error',requestId:message.requestId,message:message.capability==='math.calculate'||message.capability==='math.calculate.decimal'?'Calculation capability failed':'Memory capability failed'});}).finally(()=>{inFlightCapabilities--;if(inFlightCapabilities===0){capabilityWaitConsumed+=Date.now()-capabilityWaitStarted;clearTimeout(timer);if(!settled)timer=setTimeout(()=>finish(Error('Custom tool time limit exceeded')),timeoutMs+200);}});
+    }).catch(()=>{if(!settled)worker.postMessage({type:'capability-error',requestId:message.requestId,message:message.capability==='math.calculate'||message.capability==='math.calculate.decimal'?'Calculation capability failed':message.capability==='time.now'?'Clock capability failed':'Memory capability failed'});}).finally(()=>{inFlightCapabilities--;if(inFlightCapabilities===0){capabilityWaitConsumed+=Date.now()-capabilityWaitStarted;clearTimeout(timer);if(!settled)timer=setTimeout(()=>finish(Error('Custom tool time limit exceeded')),timeoutMs+200);}});
     requests.set(message.requestId,operation);
    }
   };
