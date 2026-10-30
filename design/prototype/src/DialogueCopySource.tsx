@@ -1,13 +1,12 @@
 import {useId,useMemo,useState} from 'react';
 import {KeyboardInput} from './mobile';
-import {dialogueTurnStatus,type Dialogue} from './conversation';
-import {dialogueCopyPage,type DialogueCopyReview} from './dialogue-copy';
+import type {Dialogue} from './conversation';
+import {dialogueCopyIsPartial,dialogueCopyPage,type DialogueCopyReview} from './dialogue-copy';
 
 export function DialogueCopySource({dialogue,review,body,busy,onSelect}:{dialogue:Dialogue;review:DialogueCopyReview;body:string;busy:boolean;onSelect:(index:number,speaker:'user'|'assistant')=>boolean}){
  const [expanded,setExpanded]=useState(false),[query,setQuery]=useState(''),[page,setPage]=useState(0),id=useId();
  const result=useMemo(()=>expanded?dialogueCopyPage(dialogue,review,query,page):{items:[],hasMore:false},[expanded,dialogue,review,query,page]);
- const turn=dialogue.turns[review.source.turnIndex],status=review.source.speaker==='assistant'&&turn?.id===review.source.turnId?dialogueTurnStatus(turn):undefined;
- const partial=status==='Partial · incomplete inspection'||status==='Source excerpt · partial answer';
+ const partial=dialogueCopyIsPartial(dialogue,review.source);
  return <fieldset className="dialogue-copy-source"><legend>Source</legend>
   <div className="copy-source-summary"><span>{review.source.speaker==='assistant'?'Answer':'Your message'}<small className="source-revision" role="status">{body===review.source.quote?'Original copy':'Edited copy'}</small></span><button type="button" className="quiet-button" aria-label="Change source" aria-expanded={expanded} aria-controls={id} disabled={busy} onClick={()=>setExpanded(value=>!value)}>Change</button></div>
   {partial&&<div className="source-revision" role="status">Partial answer</div>}

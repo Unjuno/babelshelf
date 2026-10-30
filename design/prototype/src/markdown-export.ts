@@ -9,6 +9,7 @@ export function exportMarkdownRevision(note:any,revision:number){
  validateDialogueCopyRecord(note);
  const path=notePath(note,revision),metadata:Record<string,unknown>={id:note.id,version:revision,path,state:note.state,kind:note.kind,sources:note.sources};
  if(note.dialogueCopy)metadata.dialogueCopy=structuredClone(note.dialogueCopy);
+ if(note.dialogueCopyCoverage)metadata.dialogueCopyCoverage=note.dialogueCopyCoverage;
  for(const field of ['originalAsset','mediaSource'])if(note[field])metadata[field]={id:note[field].id,revision:note[field].revision,sha256:note[field].sha256};
  for(const field of ['transcription','pdfText','ocrText'])if(note[field])metadata[field]=structuredClone(note[field]);
  const source=isToolSourcePath(path);

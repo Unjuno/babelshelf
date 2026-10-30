@@ -14,7 +14,7 @@ export function discardPendingNoteReview(dialogue:Dialogue,turnId:string):Dialog
  return completeTurn(dialogue,turnId,{status:'Draft discarded'});
 }
 
-export type NewNoteContent={body:string;kind:'original'|'generated';sources:SavedSourceRef[];dialogueCopy?:DialogueCopy};
+export type NewNoteContent={body:string;kind:'original'|'generated';sources:SavedSourceRef[];dialogueCopy?:DialogueCopy;dialogueCopyCoverage?:'partial'};
 
 /** Construct the shared revision-one view used by every app-owned note creator. */
 export function createNewNoteView(input:NewNoteContent & {id?:string;path:string}):NoteView{
@@ -25,5 +25,6 @@ export function createNewNoteView(input:NewNoteContent & {id?:string;path:string
   id,path:input.path,body:input.body,version:1,history:[],kind:input.kind,
   sources:structuredClone(input.sources),
   ...(input.dialogueCopy?{dialogueCopy:structuredClone(input.dialogueCopy)}:{}),
+  ...(input.dialogueCopyCoverage?{dialogueCopyCoverage:input.dialogueCopyCoverage}:{}),
  };
 }

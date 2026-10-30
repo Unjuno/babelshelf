@@ -1,4 +1,4 @@
-import {resolveDialogueTarget,readDialogueTurn,type Dialogue,type DialogueTarget,type SourceRef} from './conversation.ts';
+import {resolveDialogueTarget,readDialogueTurn,dialogueTurnStatus,type Dialogue,type DialogueTarget,type SourceRef} from './conversation.ts';
 
 export type DialogueCopy={schema:1;noteRevision:1;turnId:string;turnIndex:number;speaker:'user'|'assistant';quote:string;refs:SourceRef[];edited:boolean};
 type Candidate={turnId:string;turnIndex:number;user:boolean;assistant:boolean};
@@ -35,24 +35,28 @@ export function selectDialogueCopy(state:Dialogue,review:DialogueCopyReview,inde
  if(state.turns[index]?.id!==candidate.turnId)throw changed();
  return {candidates:structuredClone(review.candidates),source:structuredClone(readDialogueTurn(state,index,speaker))};
 }
-export function assertDialogueCopySource(state:Dialogue|undefined,source:{turnId:string;turnIndex:number;speaker:string;quote:string;refs:SourceRef[]}){
+export function dialogueCopyIsPartial(state:Dialogue,source:{turnId:string;turnIndex:number;speaker:string}){
+ const turn=state.turns[source.turnIndex];if(source.speaker!=='assistant'||turn?.id!==source.turnId)return false;
+ const status=dialogueTurnStatus(turn);return status==='Partial · incomplete inspection'||status==='Source excerpt · partial answer';
+}
+export function assertDialogueCopySource(state:Dialogue|undefined,source:{turnId:string;turnIndex:number;speaker:string;quote:string;refs:SourceRef[]},expectedCoverage?:'partial'|'complete'){
  if(!state||state.turns[source.turnIndex]?.id!==source.turnId)throw changed();
  let original;try{original=readDialogueTurn(state,source.turnIndex,source.speaker);}catch{throw changed();}
- if(original.quote!==source.quote||!equal(original.refs,source.refs))throw changed();
+ if(original.quote!==source.quote||!equal(original.refs,source.refs)||expectedCoverage!==undefined&&dialogueCopyIsPartial(state,source)!==(expectedCoverage==='partial'))throw changed();
 }
 export function reviewedDialogueCopy(state:Dialogue,review:DialogueCopyReview,body:string){
  assertDialogueCopySource(state,review.source);
  if(typeof body!=='string'||body.length>10000000)throw Error('Invalid copy content');
  const source=review.source,speaker=source.speaker as 'user'|'assistant';
  const dialogueCopy:DialogueCopy={schema:1,noteRevision:1,turnId:source.turnId,turnIndex:source.turnIndex,speaker,quote:source.quote,refs:structuredClone(source.refs),edited:body!==source.quote};
- return {body,kind:speaker==='assistant'?'generated' as const:'original' as const,sources:structuredClone(source.refs),dialogueCopy};
+ return {body,kind:speaker==='assistant'?'generated' as const:'original' as const,sources:structuredClone(source.refs),dialogueCopy,...(dialogueCopyIsPartial(state,source)?{dialogueCopyCoverage:'partial' as const}:{})};
 }
 // A retained creation snapshot, never a new request or authority to alter dialogue.
 // Later note revisions preserve this metadata anchored to note revision 1.
 export function validateDialogueCopyRecord(note:any){
- const copy=note?.dialogueCopy;if(copy===undefined)return;
+ const copy=note?.dialogueCopy,coverage=note?.dialogueCopyCoverage;if(copy===undefined&&coverage===undefined)return;
  if(!copy||Object.keys(copy).length!==8||Object.keys(copy).some(key=>!['schema','noteRevision','turnId','turnIndex','speaker','quote','refs','edited'].includes(key)))throw Error('Invalid dialogue copy origin');
- if(copy.schema!==1||copy.noteRevision!==1||typeof copy.turnId!=='string'||!copy.turnId||!Number.isSafeInteger(copy.turnIndex)||copy.turnIndex<0||!['user','assistant'].includes(copy.speaker)||typeof copy.quote!=='string'||!copy.quote||copy.quote.length>10000000||!Array.isArray(copy.refs)||typeof copy.edited!=='boolean')throw Error('Invalid dialogue copy origin');
+ if(copy.schema!==1||copy.noteRevision!==1||typeof copy.turnId!=='string'||!copy.turnId||!Number.isSafeInteger(copy.turnIndex)||copy.turnIndex<0||!['user','assistant'].includes(copy.speaker)||typeof copy.quote!=='string'||!copy.quote||copy.quote.length>10000000||!Array.isArray(copy.refs)||typeof copy.edited!=='boolean'||coverage!==undefined&&(coverage!=='partial'||copy.speaker!=='assistant'))throw Error('Invalid dialogue copy origin');
  const first=note.revisions?.[0];
  if(!first||copy.edited!==(first.body!==copy.quote)||note.kind!==(copy.speaker==='assistant'?'generated':'original')||!equal(note.sources,copy.refs))throw Error('Invalid dialogue copy origin');
 }
