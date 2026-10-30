@@ -406,7 +406,12 @@ export class KnowledgeStore {
   return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),page=runs.get(pageKey);let pending=2,error:unknown,result:{items:Activity[];nextPage:number|null}={items:[],nextPage:null};
    const read=()=>{if(--pending)return;try{
     const value=meta.result as TurnActivityMeta|undefined,record=page.result as TurnActivityPage|undefined;
-    if(!value){if(record||pageNumber!==0)throw Error('Activity page unavailable');return;}
+    if(!value){
+     if(record||pageNumber!==0)throw Error('Activity page unavailable');
+     const prefix=turnActivityPagePrefix(turnId),orphan=runs.openKeyCursor(IDBKeyRange.bound(prefix,prefix+'\uffff'));
+     orphan.onsuccess=()=>{if(orphan.result){error=Error('Activity page unavailable');tx.abort();}};
+     return;
+    }
     validateTurnActivityMeta(metaKey,value);const length=Math.min(TURN_ACTIVITY_PAGE_SIZE,value.count-pageNumber*TURN_ACTIVITY_PAGE_SIZE);
     if(length<1||!record)throw Error('Activity page unavailable');validateTurnActivityPage(pageKey,record);
     if(record.turnId!==turnId||record.page!==pageNumber||record.items.length!==length)throw Error('Activity page unavailable');

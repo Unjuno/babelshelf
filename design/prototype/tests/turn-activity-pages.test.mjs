@@ -5,6 +5,7 @@ import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {emptyDialogue,appendTurn} from '../src/conversation.ts';
 import {startActivity,finishActivity,persistTurnActivity,createTurnActivityTracer} from '../src/harness-activity.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
+import {turnActivityPageKey} from '../src/turn-activity-pages.ts';
 
 test('paged activity storage preserves legacy receipts and survives backup and restore',async()=>{
  const store=new KnowledgeStore('paged-'+crypto.randomUUID()),restored=new KnowledgeStore('paged-restore-'+crypto.randomUUID());
@@ -21,6 +22,17 @@ test('paged activity storage preserves legacy receipts and survives backup and r
   const pack=JSON.stringify(await store.backup());const review=await restored.reviewBackup(pack);await restored.restore(pack,review.expected);
   assert.deepEqual(await restored.turnActivities('turn-1'),items);assert.deepEqual((await restored.getState('dialogue')).turns[0].activity,[old]);
  }finally{store.close();restored.close();}
+});
+
+test('page reader rejects orphaned later pages when the metadata and first page are missing',async()=>{
+ const store=new KnowledgeStore('paged-orphan-'+crypto.randomUUID());
+ try{
+  assert.deepEqual(await store.turnActivityPage('turn-1',0),{items:[],nextPage:null});
+  const db=await store.open();
+  await new Promise((resolve,reject)=>{const tx=db.transaction('runs','readwrite');tx.objectStore('runs').put({schema:1,type:'turn-activity-page',turnId:'turn-1',page:1,items:[finishActivity(startActivity('memory.search',{query:'orphan'}),{output:[]})]},turnActivityPageKey('turn-1',1));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+  await assert.rejects(store.turnActivityPage('turn-1',0),/unavailable/i);
+  assert.deepEqual(await store.turnActivityPage('turn-2',0),{items:[],nextPage:null});
+ }finally{store.close();}
 });
 
 test('concurrent starts and finishes cannot overwrite each other or duplicate a receipt',async()=>{
