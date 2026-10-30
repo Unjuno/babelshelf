@@ -53,6 +53,8 @@ test('backup retains answer source-state guards without upgrading legacy dialogu
  turn.sourceMetadataGuards=[guard];
  const parsed=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
  assert.deepEqual(parsed.settings[0].value.turns[0].sourceMetadataGuards,[guard]);
+ const many=Array.from({length:65},(_,i)=>({...guard,noteId:`observed-${i}`}));turn.sourceMetadataGuards=many;
+ assert.deepEqual((await parseStateBackup(JSON.stringify(await makeStateBackup(state)))).settings[0].value.turns[0].sourceMetadataGuards,many);
  const legacy=snapshot();assert.equal((await parseStateBackup(JSON.stringify(await makeStateBackup(legacy)))).settings[0].value.turns[0].sourceMetadataGuards,undefined);
  state.settings[0].value.turns[0].sourceMetadataGuards[0].snapshot='invalid';await assert.rejects(()=>makeStateBackup(state),/source metadata/i);
 });
