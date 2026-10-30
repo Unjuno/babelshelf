@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {emptyDialogue,appendTurn} from '../src/conversation.ts';
-import {startActivity,finishActivity} from '../src/harness-activity.ts';
+import {startActivity,finishActivity,persistTurnActivity,createTurnActivityTracer} from '../src/harness-activity.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
 
 test('paged activity storage preserves legacy receipts and survives backup and restore',async()=>{
@@ -63,5 +63,21 @@ test('activity operations reject missing turns, duplicate starts and conflicting
   await assert.rejects(store.recordTurnActivity('turn-1',initial,dialogue),/already|duplicate/i);
   const finished=finishActivity(initial,{output:[]});await store.recordTurnActivity('turn-1',finished,dialogue);
   await assert.rejects(store.recordTurnActivity('turn-1',finished,dialogue),/already/i);assert.deepEqual(await store.turnActivities('turn-1'),[finished]);
+ }finally{store.close();}
+});
+
+test('turn tracer writes overflow to pages and refuses work when conversation changes',async()=>{
+ const store=new KnowledgeStore('paged-tracer-'+crypto.randomUUID());
+ try{const inline=Array.from({length:128},(_,i)=>finishActivity(startActivity('memory.search',{query:`old-${i}`}),{output:[]}));
+  let dialogue=appendTurn(emptyDialogue(),{id:'turn-1',user:'question',activity:inline}),stored=dialogue;await store.compareState('dialogue',undefined,dialogue);
+  const readActivities=()=>dialogue.turns[0].activity;
+  let failFinish=false;const persistActivity=a=>persistTurnActivity({turnId:'turn-1',readActivities,readStored:()=>stored,persistInline:async items=>{const next={...dialogue,revision:dialogue.revision+1,turns:[{...dialogue.turns[0],activity:items}]};await store.compareState('dialogue',stored,next);stored=dialogue=next;},persistPaged:(id,item,expected)=>{if(failFinish&&item.status!=='running')throw Error('quota');return store.recordTurnActivity(id,item,expected);}},a);
+  let stopped=false;const trace=createTurnActivityTracer({check(){if(stopped)throw Error('Stopped');},readActivities,persistActivities:async()=>{throw Error('Unexpected inline fallback');},persistActivity,onFailureRecorded(){},diagnosticsEnabled:false,writeDiagnostic(){}});
+  let executed=0;assert.deepEqual(await trace('memory.search',{query:'new'},async()=>{executed++;return ['result'];}),['result']);
+  assert.equal(executed,1);assert.equal(dialogue.turns[0].activity.length,128);assert.equal((await store.turnActivities('turn-1'))[0].status,'succeeded');
+  await assert.rejects(trace('memory.search',{query:'stop'},async()=>{stopped=true;return ['late'];}),/Stopped/);stopped=false;assert.equal((await store.turnActivities('turn-1'))[1].status,'stopped');
+  failFinish=true;await assert.rejects(trace('memory.search',{query:'quota'},async()=>{executed++;return ['not committed'];}),error=>error.code==='persistence_failure');failFinish=false;assert.equal(executed,2);assert.equal((await store.turnActivities('turn-1'))[2].status,'running');
+  const other={...dialogue,revision:dialogue.revision+1};await store.compareState('dialogue',dialogue,other);
+  await assert.rejects(trace('memory.search',{query:'stale'},async()=>{executed++;return []; }),error=>error.code==='persistence_failure');assert.equal(executed,2);
  }finally{store.close();}
 });

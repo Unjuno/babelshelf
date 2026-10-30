@@ -1435,6 +1435,14 @@ test('a work-limit fallback carries a partial-coverage instruction into the cite
  assert.equal(answer.sources.length,1);assert.match(messages[0].content,/could not complete all planned inspection/i);assert.doesNotMatch(messages[0].content,/because a configured tool-call preference or the selected model context capacity was reached/i);assert.match(messages[0].content,/clearly partial answer/i);assert.match(messages[0].content,/do not imply that all requested sources or steps were completed/i);
 });
 
+test('answer accepts the full configured tool catalog plus both discovery tools',async()=>{
+ const note=createNote({path:'Notes/one.md',body:'The review is on Monday.'}),quote='The review is on Monday.',ref={noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path};let messages;
+ const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async()=>({prompt_tokens:100}),generate:async value=>{messages=value;return {text:JSON.stringify({answer:'Monday.',citations:[{id:'S1',quote}]})};}};
+ const completedToolIds=[...Array.from({length:64},(_,i)=>`user.tool-${i}`),'tools.search','tools.read-skill'];
+ const answer=await groundedAnswer({store:{all:async()=>[note],search:async()=>[]},engine:runtime},{model:'test',question:'When is the review?',query:'review',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],completedToolIds}});
+ assert.equal(answer.sources.length,1);assert.match(JSON.stringify(messages),/user\.tool-63/);assert.match(JSON.stringify(messages),/tools\.read-skill/);
+});
+
 test('a local arithmetic result reaches the sourced answer without becoming a citation',async()=>{
  const note=createNote({path:'Notes/budget.md',body:'The budget has 1200 and 800 credits.'}),quote='The budget has 1200 and 800 credits.',ref={noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path};let messages,searches=0;
  const store={all:async()=>[note],search:async()=>{searches++;return [];}};

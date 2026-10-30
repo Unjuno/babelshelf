@@ -1,5 +1,16 @@
 import {expect,test,type Page} from '@playwright/test';
 import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
+import {startActivity,finishActivity} from '../src/harness-activity.ts';
+import {turnActivityMetaKey,turnActivityPageKey,turnActivityIndexKey} from '../src/turn-activity-pages.ts';
+
+test('activity sheet shows paged receipts after reload alongside existing inline history',async({page})=>{
+ const inline=Array.from({length:128},(_,i)=>finishActivity(startActivity('memory.search',{query:`old-${i}`}),{output:[]})),paged=finishActivity(startActivity('memory.search',{query:'paged-marker'}),{output:['page-result']});
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();
+ await page.evaluate(({inline,paged,metaKey,pageKey,indexKey})=>new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['settings','runs'],'readwrite');tx.objectStore('settings').put({schema:1,revision:1,turns:[{id:'test-turn',user:'Find',answer:'Found',activity:inline}],compaction:null},'ui-v1-dialogue');const runs=tx.objectStore('runs');runs.put({schema:1,type:'turn-activity-meta',turnId:'test-turn',count:1},metaKey);runs.put({schema:1,type:'turn-activity-page',turnId:'test-turn',page:0,items:[paged]},pageKey);runs.put({schema:1,type:'turn-activity-index',turnId:'test-turn',id:paged.id,page:0},indexKey);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}),{inline,paged,metaKey:turnActivityMetaKey('test-turn'),pageKey:turnActivityPageKey('test-turn',0),indexKey:turnActivityIndexKey('test-turn',paged.id)});
+ await page.reload();await page.getByRole('button',{name:'View activity',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Activity'});await expect(dialog.locator('.activity-entry')).toHaveCount(129);await expect(dialog.locator('.activity-entry').last()).toContainText('Search · Done');await dialog.locator('.activity-entry').last().locator('summary').click();await expect(dialog).toContainText('paged-marker');await expect(dialog).toContainText('page-result');
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();await page.evaluate(key=>new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('runs','readwrite');tx.objectStore('runs').delete(key);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}),turnActivityMetaKey('test-turn'));
+ await page.getByRole('button',{name:'View activity',exact:true}).click();await expect(page.getByRole('dialog',{name:'Activity'}).getByRole('alert')).toHaveText('Activity unavailable');await expect(page.locator('.activity-entry')).toHaveCount(128);
+});
 
 test('a saved partial-answer status stays visible after reload',async({page})=>{
  await page.goto('/');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();

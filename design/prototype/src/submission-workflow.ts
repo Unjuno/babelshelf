@@ -21,7 +21,7 @@ import {appendDiagnosticLog} from './diagnostic-logs.ts';
 import {recordUnclassifiedTurnFailure} from './turn-failure-log.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
 import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
-import {createTurnActivityTracer,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
+import {createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
 import {inspectDialogueText} from './text-transform.ts';
 import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
 import {prepareTurnContext} from './turn-context-preparation.ts';
@@ -70,6 +70,7 @@ export type SubmissionView={
  chooseCorrectionTarget?:(options:CorrectionTargetOption[])=>Promise<{noteId:string;revision:number}|null>;
  reviewSchedule:(task:Task,turnId:string)=>void;
  startToolPackageFromChat:(idea:string)=>void;
+ activityChanged?:(turnId:string)=>void;
 };
 export type SubmissionServices={
  knowledge:KnowledgeStore;
@@ -104,7 +105,9 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
  let deferredContext:(()=>Promise<DialogueContext>)|undefined;
   const submission=createInputSubmission(id,text,items,checkSend);
   const recoverDraft=()=>{const recovered=submission.recover(view.composer());if(recovered)view.restore(recovered);};
-  const trace=createTurnActivityTracer({check:checkSend,readActivities:()=>{const turn=currentDialogue().turns.find(t=>t.id===id);return turn?turn.activity??[]:undefined;},persistActivities:activity=>finishTurn(id,{activity}),onFailureRecorded:()=>{activityFailureRecorded=true;},diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
+  const readActivities=()=>{const turn=currentDialogue().turns.find(t=>t.id===id);return turn?turn.activity??[]:undefined;};
+  const pagingAvailable=typeof knowledge.recordTurnActivity==='function';
+  const trace=createTurnActivityTracer({check:checkSend,readActivities,persistActivities:activity=>finishTurn(id,{activity}),...(pagingAvailable?{persistActivity:async activity=>{const paged=await persistTurnActivity({turnId:id,readActivities,readStored:storedDialogue,persistInline:items=>finishTurn(id,{activity:items}),persistPaged:(turnId,item,expected)=>knowledge.recordTurnActivity(turnId,item,expected)},activity);if(paged)try{view.activityChanged?.(id);}catch{/* Presentation must not change the committed receipt. */}}}:{}),onFailureRecorded:()=>{activityFailureRecorded=true;},diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
    const ensureText=async()=>{
     if(bonsai.loaded!==model)run.progress('Loading model…','planning');
     inference=await models.text(model,checkSend,work=>trace('model.load',{model},work));
@@ -146,8 +149,12 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const unread=sent.find(a=>a.status!=='Text available'&&!a.voice&&!a.reading);if(unread&&text&&(!request||['answer','summary'].includes(request.action)||request.action==='capture'&&inputReadings.length>0)){await finishTurn(id,{refs:importedRefs,status:'Original saved · '+unread.status});recoverDraft();return {kind:'partial',reason:'unread-input'};}
    inputReadings=constrainAudioOnlyInputs(text,inputReadings,sent);
    if(inputQuestion?.action==='answer'&&harnessPreferences.replyStyle==='balanced'&&!harnessPreferences.userGuidance.trim()){const readyAnswer=await answerCurrentVisionInput({store:knowledge,check:checkSend,trace},text,inputReadings);checkSend();if(readyAnswer){await finishTurn(id,{answer:readyAnswer.answer,refs:readyAnswer.sources});return {kind:'answered'};}}
-   const continued=items.length?null:continuedCalculationInput(text,prior.turns.at(-1));
-   const yenContinuation=items.length?null:continuedYenCalculation(text,prior.turns.at(-1));
+   let previousCalculationTurn=prior.turns.at(-1);
+   if(!items.length&&previousCalculationTurn?.activity?.length===MAX_ACTIVITY_EVENTS_PER_TURN&&typeof knowledge.turnActivities==='function'&&/(?:その結果|\b(?:divide|split|add|subtract|multiply)\b)/iu.test(text)){
+    const paged=await knowledge.turnActivities(previousCalculationTurn.id);checkSend();if(paged.length)previousCalculationTurn={...previousCalculationTurn,activity:[...previousCalculationTurn.activity,...paged]};
+   }
+   const continued=items.length?null:continuedCalculationInput(text,previousCalculationTurn);
+   const yenContinuation=items.length?null:continuedYenCalculation(text,previousCalculationTurn);
    const calculation=items.length?null:explicitCalculationInput(text)??(continued?{expression:continued,showExpression:true,unit:undefined}:yenContinuation?{...yenContinuation,showExpression:true}:null);
    if(calculation){const {expression,showExpression}=calculation;const result=await runCalculationAction(expression,builtinToolRegistry,{search:q=>knowledge.search(q),resolve:q=>refreshSnapshot().then(notes=>resolveToolNotes(notes,q)),check:checkSend},trace);checkSend();await finishTurn(id,{answer:formatCalculation(result[0],showExpression?expression:undefined,calculation.unit),status:'Calculated',refs:[]});return {kind:'answered'};}
    if(!items.length&&view.reviewSourcedCalculation&&isSourcedArithmeticQuestion(text,prior.turns.at(-1))){
@@ -158,7 +165,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const decisionFirst=!request&&decisionCanRoute;
    const activityEventCount=currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??0;
    const preplannerReserve=decisionFirst?4:2; // model/Decision loads and one context-fit/compaction receipt
-   if(text&&!request&&activityEventCount+preplannerReserve+RESERVED_AGENT_COMPLETION_EVENTS>MAX_ACTIVITY_EVENTS_PER_TURN){await finishTurn(id,{status:'Work limit reached · split request'});recoverDraft();return {kind:'needsInput',reason:'activity-capacity'};}
+   if(!pagingAvailable&&text&&!request&&activityEventCount+preplannerReserve+RESERVED_AGENT_COMPLETION_EVENTS>MAX_ACTIVITY_EVENTS_PER_TURN){await finishTurn(id,{status:'Work limit reached · split request'});recoverDraft();return {kind:'needsInput',reason:'activity-capacity'};}
    const deferredKnowledge=!!(literalRequest||explicitSavedRequest)&&request?.target==='knowledge'&&['answer','summary'].includes(request.action)&&!inputReadings.length;
    const deferredFile=request?.target==='file'&&['answer','summary'].includes(request.action)&&!inputReadings.length;
    if(text&&!decisionFirst&&(!request||['answer','summary','recall','transform'].includes(request.action))){
@@ -194,7 +201,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       // separately validated when evidence is selected for the final answer.
       search:(query,signal)=>knowledge.search(query,true,signal),views:signal=>knowledge.views(signal),listFolders:async()=>await knowledge.getState<string[]>('folders')??[],
       ensureCustomRuntime:()=>ensureProductRuntime('custom-tools',false),check:checkSend,signal:run.signal,trace,
-      activityEventCount:currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??activityEventCount,
+      activityEventCount:pagingAvailable?undefined:currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??activityEventCount,
        });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentBudgetExhausted=coordinated.budgetExhausted;agentBudgetReason=coordinated.budgetReason;return coordinated.final;
     }
    });
@@ -269,7 +276,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    // A native reply may cite an exact search range even after a longer read.
    // Preserve the observed ranges; only legacy generation reselects evidence.
-   const toolEvidence=agentToolCalls.length?{used:true as const,refs:(request?.reply?agentEvidenceFromCalls:agentAnswerEvidenceFromCalls)(agentToolCalls,customAccessEvidence),calculations:agentCalculationsFromCalls(agentToolCalls),clockReadings:agentClockReadingsFromCalls(agentToolCalls),customResults:agentCustomResultsFromCalls(agentToolCalls),toolInfo:agentToolInfoFromCalls(agentToolCalls),completedToolIds:agentToolCalls.map(call=>call.tool),memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0,...(agentBudgetExhausted?{budgetExhausted:true}:{})}:undefined;
+   const toolEvidence=agentToolCalls.length?{used:true as const,refs:(request?.reply?agentEvidenceFromCalls:agentAnswerEvidenceFromCalls)(agentToolCalls,customAccessEvidence),calculations:agentCalculationsFromCalls(agentToolCalls),clockReadings:agentClockReadingsFromCalls(agentToolCalls),customResults:agentCustomResultsFromCalls(agentToolCalls),toolInfo:agentToolInfoFromCalls(agentToolCalls),completedToolIds:[...new Set(agentToolCalls.map(call=>call.tool))],memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0,...(agentBudgetExhausted?{budgetExhausted:true}:{})}:undefined;
    if(request?.action==='capture'){
     const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;
     let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';
@@ -315,7 +322,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources);
      return {kind:'needsInput',reason:'insufficient-evidence'};
     }
-    const guard=!selectedDialogueSources&&parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:selectedDialogueSources??parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':request.action==='summary'?'Summary · selected excerpts':undefined},guard);return {kind:'answered'};}
+    const guard=!selectedDialogueSources&&parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:selectedDialogueSources??parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':request.action==='summary'?'Summary · selected excerpts':undefined},guard);return {kind:'answered'};}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
    return items.length?(sent.every(a=>a.reading||a.voice||a.status==='Text available')?{kind:'imported'}:{kind:'partial',reason:'unread-input'}):{kind:'needsPreparation',reason:'model-unavailable'};
   }catch(e){try{recordUnclassifiedTurnFailure(diagnostics,connectionPreferences.diagnosticLogs,activityFailureRecorded,e);}catch{/* Diagnostics must never change the operation result. */}recoverDraft();try{if(currentDialogue().turns.some(t=>t.id===id))await finishTurn(id,{status:searchScopeFailure((e as Error).message,text,!!prior.currentFile,items.length>0)});else view.toast((e as Error).message);}catch(failure){view.failure((failure as Error).message);view.toast((failure as Error).message);}throw e;}

@@ -59,15 +59,22 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
  // A final persistence failure must not run the tool again or invent a tool failure.
  try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
 }
-export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;onFailureRecorded:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
+export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
  return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined){
   return recordOperation(tool,input,async()=>{ports.check();const result=await work();ports.check();return result;},async activity=>{
-   const previous=ports.readActivities();if(!previous)throw Error('Input unavailable');await ports.persistActivities(updateActivity(previous,activity));
+   if(ports.persistActivity)await ports.persistActivity(activity);
+   else{const previous=ports.readActivities();if(!previous)throw Error('Input unavailable');await ports.persistActivities(updateActivity(previous,activity));}
    if(activity.status==='failed'||activity.status==='stopped'){
     ports.onFailureRecorded();if(ports.diagnosticsEnabled)try{ports.writeDiagnostic({tool:activity.tool,status:activity.status,code:activity.error?.code??activity.status,message:activity.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}
    }
   },project,failureOf);
  };
+}
+/** Preserve old inline receipts and append overflow in separately persisted pages. */
+export async function persistTurnActivity(ports:{turnId:string;readActivities:()=>Activity[]|undefined;readStored:()=>import('./conversation.ts').Dialogue|undefined;persistInline:(activities:Activity[])=>Promise<void>;persistPaged:(turnId:string,activity:Activity,expected:import('./conversation.ts').Dialogue)=>Promise<void>},activity:Activity){
+ const inline=ports.readActivities();if(!inline)throw Error('Input unavailable');
+ if(inline.some(item=>item.id===activity.id)||inline.length<MAX_ACTIVITY_EVENTS_PER_TURN){await ports.persistInline(updateActivity(inline,activity));return false;}
+ const expected=ports.readStored();if(!expected)throw Error('Input unavailable');await ports.persistPaged(ports.turnId,activity,expected);return true;
 }
 export function activityLabel(tool:ActivityTool){return builtinTools.find(entry=>entry.tool.definition.id===tool)?.activityLabel??(lifecycleActivityLabels as Record<string,string>)[tool]??tool;}
 export function updateActivity(list:Activity[],next:Activity):Activity[]{
