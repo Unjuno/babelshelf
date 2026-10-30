@@ -15,6 +15,12 @@ test('a failed continuation by filename invalidates the earlier range resolved b
  assert.equal(history[0].result,null);assert.equal(result.calls.length,0);
 });
 
+test('a failed revision check also removes earlier search evidence for that exact record',async()=>{
+ const plans=[{kind:'tool',tool:'memory.search',arguments:{query:'water'}},{kind:'tool',tool:'memory.read',arguments:{query:'one',expectedRevision:1}},{kind:'final',value:'done'}];let count=0,history;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async h=>{history=h;return plans.shift();},execute:async()=>{if(++count===2)throw new AgentToolExecutionError('memory.read');return [{noteId:'one',revision:1,quote:'old'}];},check(){}});
+ assert.equal(history[0].result,null);assert.equal(result.calls.length,0);
+});
+
 test('failed source continuation cannot leave older source metadata in the final answer',async()=>{
  const tools=[{id:'memory.sources',effect:'read',network:'none'}],plans=[{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1}},{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1,offset:12,snapshot:'old'}},{kind:'final',value:'done'}];let count=0,lastHistory;
  const result=await runReadOnlyAgentLoop({allowedTools:tools,plan:async history=>{lastHistory=history;return plans.shift();},execute:async()=>{if(++count===2)throw new AgentToolExecutionError();return {noteId:'summary',revision:1,snapshot:'old',items:[]};},check:()=>{}});
