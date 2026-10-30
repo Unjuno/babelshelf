@@ -237,7 +237,11 @@ function collectAgentEvidence(calls:readonly AgentToolResult[],hostObservedRefs:
  return [...refs.filter(validSourceRef),...hostObservedRefs.filter(validSourceRef)];
 }
 export function agentEvidenceFromCalls(calls:readonly AgentToolResult[],hostObservedRefs:readonly SourceRef[]=[]):SourceRef[]{
- return uniqueBoundedRefs(collectAgentEvidence(calls,hostObservedRefs));
+ const observed=collectAgentEvidence(calls,hostObservedRefs),selected=uniqueBoundedRefs(observed);
+ // Preserve the ordinary observation order, but do not let many ranges from
+ // one source silently displace every range from another source.
+ if(observed.some(ref=>!selected.some(item=>item.noteId===ref.noteId&&item.revision===ref.revision)))return sourceCoverage(observed);
+ return selected;
 }
 
 /** Prefer reads while retaining search ranges that the reads did not cover. */
