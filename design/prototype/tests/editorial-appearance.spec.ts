@@ -90,6 +90,26 @@ test('saving an answer keeps actions visible while the source list scrolls',asyn
  await expect(dialog.getByRole('textbox',{name:'New file content'})).toHaveValue('20');
 });
 
+test('saving a reviewed answer rejects a changed source state without losing the draft',async({page,context})=>{
+ await page.goto('/');await createInboxFile(page,'QA-source-state','original');
+ await page.evaluate(async()=>{
+  const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+  const read=db.transaction('notes','readonly').objectStore('notes').getAll();
+  const notes=await new Promise<any[]>((resolve,reject)=>{read.onsuccess=()=>resolve(read.result);read.onerror=()=>reject(read.error);});
+  const source=notes.find(note=>note.revisions.at(-1).path==='Inbox/QA-source-state.md');
+  const metadata={noteId:source.id,revision:1,status:'none',items:[]};
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({data:metadata,undefinedPaths:[]})));
+  const snapshot=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+  const dialogue={schema:1,revision:1,turns:[{id:'qa-source-answer',user:'Check source',answer:'Source has no references.',sourceMetadataGuards:[{noteId:source.id,revision:1,snapshot}]}],compaction:null,currentResult:{turnId:'qa-source-answer'}};
+  const tx=db.transaction('settings','readwrite');tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});db.close();
+ });
+ await page.reload();await expect(page.locator('.reply-text')).toContainText('Source has no references.');await page.getByRole('button',{name:'Save note'}).click();
+ const dialog=page.getByRole('dialog',{name:'New file'}),draft=dialog.getByRole('textbox',{name:'New file content'});await expect(draft).toHaveValue('Source has no references.');
+ const other=await context.newPage();await other.goto('/');await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'BabelShelf'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-source-state.md'}).click();
+ await other.getByRole('button',{name:'Edit',exact:true}).click();await other.getByRole('textbox',{name:'Markdown content'}).fill('changed');await other.getByRole('button',{name:'Save',exact:true}).click();await expect(other.locator('main')).toContainText('v2');
+ await dialog.getByRole('button',{name:'Save',exact:true}).click();await expect(dialog).toContainText('Source changed');await expect(draft).toHaveValue('Source has no references.');await other.close();
+});
+
 test('explicit user note capture saves the exact text as a new file without opening generated-answer review',async({page})=>{
  await page.goto('/');
  await page.getByRole('textbox',{name:'Message'}).fill('Remember: amber lantern');
