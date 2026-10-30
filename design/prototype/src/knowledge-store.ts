@@ -201,6 +201,7 @@ export class KnowledgeStore {
   return this.saveReading(id,value.original.id,newOriginal,'Vision note already saved',asset=>visionTextNote(id,asset,value));
  }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
+  ({expected,next,originals,readings}=structuredClone({expected,next,originals,readings}));
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');
   const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||!Array.isArray(turn.attachments)||new Set(turn.attachments.map(a=>a.id)).size!==turn.attachments.length||[...ids].some(id=>!turn.attachments!.some(a=>a.id===id))||turn.attachments.some(a=>!a.asset||a.asset.id!==a.id))throw Error('Attachment input mismatch');
@@ -293,7 +294,7 @@ export class KnowledgeStore {
   };});
  }
  async commit(before:NoteView[],after:NoteView[]){
-  const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,error:unknown,views:NoteView[];
+  before=structuredClone(before);after=structuredClone(after);const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,error:unknown,views:NoteView[];
    const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after,dialogue.result);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
    tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
   });
