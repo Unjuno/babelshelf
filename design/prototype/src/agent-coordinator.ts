@@ -150,6 +150,9 @@ export async function coordinateAgentTurn(input:{
  let namedFileResultsCompleteForSynthesis=false;
  const readSkillIds=new Set<string>();
  const namedGuides=explicitDeferredToolIds(input.question,registeredTools).slice(0,maxToolCalls??registeredTools.length);
+ let bridge:Promise<Awaited<ReturnType<typeof import('./mcp-agent-bridge.ts').createAgentMcpBridge>>>|undefined;
+ const toolBridge=()=>bridge??=import('./mcp-agent-bridge.ts').then(module=>module.createAgentMcpBridge(allowedTools,input.signal));
+ try{
  const loop=await planDialogueAgent({
   onPreview:input.onPreview,engine:input.engine,question:input.question,context,attachments:input.attachments,
   allowedTools,maxToolCalls,maxResultChars:input.snapshot.harness.maxResultChars,userGuidance:input.snapshot.response.userGuidance,replyStyle:input.snapshot.response.style,check:input.check,
@@ -224,6 +227,7 @@ export async function coordinateAgentTurn(input:{
    return args;
   },
   traceTool:async(call:AgentToolCall,work,attemptIndex)=>{
+   const audited=async()=>{
    const synthetic=call.tool===DEFERRED_TOOL_SEARCH_ID||call.tool===DEFERRED_TOOL_READ_SKILL_ID;
    const identity=synthetic?{builtin:call.tool,version:1}:await registry.identity(call.tool);
    const activityInput=projectAgentActivityInput(call.tool,call.arguments,identity);
@@ -256,6 +260,13 @@ export async function coordinateAgentTurn(input:{
     }
    }
    return projected;
+   };
+   // Malformed model arguments are rejected and recorded by the existing
+   // audited host preflight. They must not be sent as an invalid MCP request,
+   // which would bypass that receipt and its recoverable error category.
+   const schema=allowedTools.find(tool=>tool.id===call.tool)?.inputSchema;
+   if(schema)try{validateToolArguments(schema as ToolInputSchema,call.arguments);}catch{return audited();}
+   return (await toolBridge()).call(call,audited);
   },
   execute:async(call:AgentToolCall)=>{
    input.check();
@@ -293,4 +304,5 @@ export async function coordinateAgentTurn(input:{
  });
  const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
  return {final:loop.final,calls:loop.calls,customEvidence,context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
+ }finally{if(bridge)await bridge.then(connection=>connection.close()).catch(()=>{});}
 }

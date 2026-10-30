@@ -16,6 +16,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  const productBuild=JSON.parse(await readFile(resolve('design/prototype/dist/app/build.json'),'utf8'));
  const hashAsset=productBuild.files.find(file=>/^\.\/assets\/sha256\.umd\.min-[A-Za-z0-9_-]+\.js$/.test(file.path));
  assert.ok(hashAsset,'Production offline shell must include the pinned SHA-256 module');
+ const mcpAsset=productBuild.files.find(file=>/^\.\/assets\/mcp-agent-bridge-[A-Za-z0-9_-]+\.js$/.test(file.path));assert.ok(mcpAsset,'MCP agent module must be a cached product asset');assert.deepEqual(mcpAsset.roles??[],[]);
  assert.deepEqual(hashAsset.roles??[],[],'SHA-256 module must be installed as a core app asset');
  for(const path of [profileDir,outputDir]){let exists=false;try{await stat(path);exists=true;}catch(e){if(e.code!=='ENOENT')throw e;}assert.equal(exists,false,'QA path must not already exist: '+path);}
  await mkdir(outputDir,{recursive:true});
@@ -48,7 +49,8 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
     try{const response=await probePage.goto(probeUrl,{timeout:5000});networkProbe={reachable:!!response?.ok(),status:response?.status()??0};}catch(error){networkProbe={reachable:false,error:error instanceof Error?error.message:'NetworkError'};}finally{await probePage.close();}
     const sha256Result=await p.evaluate(async path=>{const module=await import(new URL(path,location.href).href),create=module.default?.createSHA256??module.createSHA256;if(typeof create!=='function')throw Error('SHA-256 module export unavailable');const hash=await create();hash.update(new TextEncoder().encode('abc'));return hash.digest('hex');},hashAsset.path);
     assert.equal(sha256Result,'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
-    const entry={...(pid?{pid}:{}),engine,offline,onlineSignal,networkProbe,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build,sha256Module:{path:hashAsset.path,bytes:hashAsset.bytes,verifiedDigest:sha256Result}};
+    const mcpResult=await p.evaluate(async path=>{const {createAgentMcpBridge}=await import(new URL(path,location.href).href),controller=new AbortController(),tool={id:'math.calculate',effect:'read',network:'none',inputSchema:{type:'object',required:['value'],additionalProperties:false,properties:{value:{type:'number'}}}},bridge=await createAgentMcpBridge([tool],controller.signal);try{return await bridge.call({kind:'tool',tool:'math.calculate',arguments:{value:21}},async()=>({result:42}));}finally{await bridge.close();}},mcpAsset.path);assert.deepEqual(mcpResult,{result:42},'MCP module must execute after a fresh process restart');
+    const entry={...(pid?{pid}:{}),engine,offline,onlineSignal,networkProbe,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build,sha256Module:{path:hashAsset.path,bytes:hashAsset.bytes,verifiedDigest:sha256Result},mcpModule:{path:mcpAsset.path,result:mcpResult}};
     assert.equal(networkProbe.reachable,!offline,`Network probe mismatch: requested offline=${offline}, probe=${JSON.stringify(networkProbe)}`);if(evidence.phases.length)assert.deepEqual(build,evidence.phases[0].build);
    evidence.phases.push(entry);await work(p,entry);
   }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();}
