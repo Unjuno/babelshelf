@@ -39,6 +39,48 @@ test('brokers the declared local calculator and rejects undeclared calculator ac
  await assert.rejects(denied,/capability is not available/);assert.equal(deniedWorker.terminated,true);
 });
 
+test('decimal calculator is available only with the existing calculator capability',async()=>{
+ const receipt={schema:1,expression:'0.1 + 0.2',result:'0.3',precision:'decimal',rounding:'half-even',places:18,rounded:false};
+ const pending=runCustomToolSource({code:'tool',input:{},capabilities:['math.calculate'],host:{calculateDecimal:()=>receipt}}),worker=workers.at(-1);
+ worker.reply({type:'capability',requestId:1,capability:'math.calculate.decimal',query:receipt.expression});
+ for(let i=0;i<4&&worker.sent.length<2;i++)await Promise.resolve();
+ assert.deepEqual(worker.sent[1],{type:'capability-result',requestId:1,value:receipt});
+ worker.reply({type:'result',value:'done'});assert.equal(await pending,'done');
+ const denied=runCustomToolSource({code:'tool',input:{},capabilities:[],host:{calculateDecimal:()=>receipt}}),deniedWorker=workers.at(-1);
+ deniedWorker.reply({type:'capability',requestId:2,capability:'math.calculate.decimal',query:receipt.expression});
+ await assert.rejects(denied,/capability is not available/);
+ const oversized=runCustomToolSource({code:'tool',input:{},capabilities:['math.calculate'],host:{calculateDecimal:()=>{throw Error('must not run');}}}),oversizedWorker=workers.at(-1);
+ oversizedWorker.reply({type:'capability',requestId:3,capability:'math.calculate.decimal',query:'1'.repeat(201)});
+ await assert.rejects(oversized,/capability is not available/);
+});
+
+test('real QuickJS worker exposes both calculation helpers only when declared',async()=>{
+ const {spawnSync}=await import('node:child_process');
+ const workerUrl=new URL('../src/custom-tool-worker.ts',import.meta.url).href;
+ const script=`let done;globalThis.postMessage=m=>{if(m.type==='capability')setTimeout(()=>globalThis.onmessage({data:{type:'capability-result',requestId:m.requestId,value:m.capability==='math.calculate'?0.30000000000000004:{result:'0.3',rounded:false}}}),0);if(m.type==='result'||m.type==='error')done(m)};
+ await import(${JSON.stringify(workerUrl)});
+ async function run(code,capabilities){const wait=new Promise(resolve=>done=resolve);globalThis.onmessage({data:{type:'run',code,input:{},capabilities,timeoutMs:750,memoryLimitBytes:8388608}});return await wait;}
+ const result=await run('({capabilities})=>({legacy:capabilities.calculate("0.1+0.2"),decimal:capabilities.calculateDecimal("0.1+0.2")})',['math.calculate']);
+ if(result.type!=='result'||result.value.legacy!==0.30000000000000004||result.value.decimal.result!=='0.3')throw Error('calculator bridge failed');
+ const denied=await run('({capabilities})=>({decimal:typeof capabilities.calculateDecimal})',[]);
+ if(denied.type!=='result'||denied.value.decimal!=='undefined')throw Error('undeclared calculator exposed');`;
+ const child=spawnSync(process.execPath,['--input-type=module','-e',script],{encoding:'utf8',timeout:10000});
+ assert.equal(child.status,0,child.stderr||child.stdout);
+});
+
+test('brokers a declared, validated Memory folder listing and rejects undeclared access',async()=>{
+ let request;
+ const pending=runCustomToolSource({code:'tool',input:{},capabilities:['memory.list'],host:{list:async(path,offset,limit)=>{request={path,offset,limit};return {path,entries:[{kind:'file',name:'note.md',path:'Notes/note.md',id:'n1',version:2}],offset,limit,total:1,hasMore:false,nextOffset:null};}}});
+ const worker=workers.at(-1);worker.reply({type:'capability',requestId:5,capability:'memory.list',query:'{"path":"Notes","offset":0,"limit":10}'});
+ for(let i=0;i<4&&worker.sent.length<2;i++)await Promise.resolve();
+ assert.deepEqual(request,{path:'Notes',offset:0,limit:10});
+ assert.equal(worker.sent[1].value.entries[0].id,'n1');
+ worker.reply({type:'result',value:'done'});assert.equal(await pending,'done');
+ const denied=runCustomToolSource({code:'tool',input:{},capabilities:[]}),deniedWorker=workers.at(-1);
+ deniedWorker.reply({type:'capability',requestId:6,capability:'memory.list',query:'{"path":"","offset":0,"limit":10}'});
+ await assert.rejects(denied,/capability is not available/);assert.equal(deniedWorker.terminated,true);
+});
+
 test('does not pass private host exception text into custom tool code',async()=>{
  const pending=runCustomToolSource({code:'tool',input:{},capabilities:['memory.search'],host:{search:async()=>{throw Error('PRIVATE_PATH_AND_QUERY');}}});
  const worker=workers.at(-1);worker.reply({type:'capability',requestId:4,capability:'memory.search',query:'private query'});
@@ -110,4 +152,21 @@ test('caller cancellation terminates the worker and aborts pending host work',as
  await new Promise(resolve=>setImmediate(resolve));assert.equal(hostSignal.aborted,false);
  controller.abort();await assert.rejects(pending,/Stopped/);
  assert.equal(hostSignal.aborted,true);assert.equal(worker.terminated,true);
+});
+
+test('real QuickJS async Memory capability releases runtime without an unhandled rejection',async()=>{
+ const {spawnSync}=await import('node:child_process');
+ const workerUrl=new URL('../src/custom-tool-worker.ts',import.meta.url).href;
+ const script=`process.on('unhandledRejection',error=>{console.error('unhandled:',error.message);process.exitCode=2;});
+ let done;globalThis.postMessage=m=>{if(m.type==='capability')setTimeout(()=>globalThis.onmessage({data:{type:'capability-result',requestId:m.requestId,value:[{body:'hello'}]}}),0);if(m.type==='result'||m.type==='error')done(m)};
+ await import(${JSON.stringify(workerUrl)});
+ async function run(code){const wait=new Promise(resolve=>done=resolve);globalThis.onmessage({data:{type:'run',code,input:{},capabilities:['memory.read'],timeoutMs:750,memoryLimitBytes:8388608}});const result=await wait;await new Promise(resolve=>setTimeout(resolve,50));return result;}
+ const failed=await run('({capabilities})=>{capabilities.memoryRead("one");throw Error("expected failure")}');
+ if(failed.type!=='error')throw Error('expected failure missing');
+ const timedOut=await run('({capabilities})=>{capabilities.memoryRead("one");while(true){}}');
+ if(timedOut.type!=='error'||timedOut.message!=='Custom tool time limit exceeded')throw Error('timeout missing');
+ const result=await run('({capabilities})=>({value:capabilities.memoryRead("one")[0].body})');
+ if(result.type!=='result'||result.value.value!=='hello')throw Error('retry failed');`;
+ const child=spawnSync(process.execPath,['--input-type=module','-e',script],{encoding:'utf8',timeout:10000});
+ assert.equal(child.status,0,child.stderr||child.stdout);
 });

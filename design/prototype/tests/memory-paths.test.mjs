@@ -17,6 +17,12 @@ test('Memory has immutable system folders and creates only inside them',()=>{
  assert.doesNotThrow(()=>paths.assertMutableFolder('Notes/Projects'));
 });
 
+test('automatic Memory capture chooses a deterministic free sibling path',()=>{
+ assert.equal(paths.uniqueMemoryFilePath('Inbox','Meeting',['Inbox/Meeting.md']),'Inbox/Meeting (2).md');
+ assert.equal(paths.uniqueMemoryFilePath('Inbox','Meeting.md',['Inbox/Meeting.md','Inbox/Meeting (2).md']),'Inbox/Meeting (3).md');
+ assert.throws(()=>paths.uniqueMemoryFilePath('','Meeting'),/system folder/i);
+});
+
 test('user tool packages may store one exact executable entry while all other code extensions remain Markdown',()=>{
  assert.equal(paths.memoryFolderPath('Tools','user.lookup'),'Tools/user.lookup');
  assert.equal(paths.memoryFilePath('Tools/user.lookup','SKILL.md'),'Tools/user.lookup/SKILL.md');

@@ -4,6 +4,32 @@ import {createStructuredGrammar,createStructuredSchema} from '../src/structured-
 const enc=new TextEncoder();
 function accepts(format,text){const grammar=createStructuredGrammar(format),state=grammar.advance(grammar.initial,enc.encode(text));return !!state&&grammar.complete(state);}
 
+test('grounded output decides evidence status and can cite only offered labels',async()=>{
+ const format={type:'grounded-answer',sourceCount:2},schema=createStructuredSchema(format);
+ assert.deepEqual(schema.required,['status','answer','sources']);
+ assert.deepEqual(schema.properties.sources.items.enum,['S1','S2']);
+ assert.equal(schema.properties.sources.uniqueItems,true);
+ for(const reply of [{status:'answered',answer:'The locations differ.',sources:['S1','S2']},{status:'insufficient_evidence',answer:'No time is stated.',sources:[]}])assert.equal(accepts(format,JSON.stringify(reply)),true);
+ for(const reply of [{answer:'missing status',sources:['S1']},{status:'saved',answer:'not an output status',sources:[]},{status:'answered',answer:'unknown label',sources:['S3']},{status:'answered',answer:'too many',sources:['S1','S2','S1']}])assert.equal(accepts(format,JSON.stringify(reply)),false);
+ assert.equal(accepts({type:'grounded-answer',sourceCount:0},JSON.stringify({status:'answered',answer:'Checked calculation',sources:[]})),true);
+ for(const sourceCount of [-1,65,1.5]){assert.throws(()=>createStructuredSchema({type:'grounded-answer',sourceCount}),/schema/);assert.throws(()=>createStructuredGrammar({type:'grounded-answer',sourceCount}),/schema/);}
+ const {nativeOutputRequest}=await import('../src/native-output-format.ts');
+ const native=nativeOutputRequest([{role:'system',content:'Use the source labels.'}],format);
+ assert.equal(native.responseTool.name,'babelshelf_grounded');assert.deepEqual(native.responseTool.parameters,schema);
+});
+
+test('source-excerpt recovery can report missing evidence without enabling it for tool-code generation',async()=>{
+ const format={type:'dialogue-answer',allowInsufficientEvidence:true};
+ const schema=createStructuredSchema(format);
+ assert.deepEqual(schema.properties.status,{type:'string',enum:['insufficient_evidence']});assert.deepEqual(schema.required,['answer']);assert.equal(schema.additionalProperties,false);
+ for(const reply of [{answer:'Original excerpt'},{status:'insufficient_evidence',answer:'No time in these excerpts.'},{answer:'No time in these excerpts.',status:'insufficient_evidence'}])assert.equal(accepts(format,JSON.stringify(reply)),true);
+ for(const reply of [{answer:'Done',status:'saved'},{answer:'No time',sources:[]},{answer:'No time',status:'insufficient_evidence',path:'Notes/new.md'}])assert.equal(accepts(format,JSON.stringify(reply)),false);
+ assert.equal(accepts('dialogue-answer','{"status":"insufficient_evidence","answer":"missing"}'),false);
+ const {nativeOutputRequest}=await import('../src/native-output-format.ts');
+ const native=nativeOutputRequest([{role:'system',content:'Return a source excerpt or insufficient evidence.'}],format);
+ assert.equal(native.responseTool.name,'babelshelf_answer');assert.deepEqual(native.responseTool.parameters.properties.status,schema.properties.status);
+});
+
 test('LFM JSON schema mirrors the scoped planner grammar and rejects undeclared actions/targets',()=>{
  const format={type:'dialogue-plan',scope:{inputs:false,file:true,current:true,historyCount:3,assistantIndices:[0,2]}};
  const schema=createStructuredSchema(format);
@@ -16,6 +42,13 @@ test('LFM JSON schema mirrors the scoped planner grammar and rejects undeclared 
  assert.deepEqual(history.properties.historyIndex,{type:'integer',minimum:0,maximum:2});
  assert.equal(history.additionalProperties,false);
  const answer=createStructuredSchema('dialogue-answer');assert.deepEqual(answer,{type:'object',properties:{answer:{type:'string'}},required:['answer'],additionalProperties:false});
+});
+
+test('sourced calculation uses an exact bounded schema for source and request operands',()=>{
+ const format={type:'sourced-calculation',sourceCount:2},schema=createStructuredSchema(format),valid={operation:'divide',sourceOperandIndex:0,sourceIndex:1,sourceQuote:'七リットル',sourceUnit:'リットル',requestQuote:'3'};
+ assert.equal(schema.additionalProperties,false);assert.deepEqual(schema.properties.operation.enum,['add','subtract','multiply','divide']);assert.deepEqual(schema.properties.sourceIndex,{type:'integer',minimum:0,maximum:1});
+ assert.equal(accepts(format,JSON.stringify(valid)),true);assert.equal(accepts(format,JSON.stringify({...valid,sourceIndex:2})),false);assert.equal(accepts(format,JSON.stringify({...valid,sourceOperandIndex:2})),false);assert.equal(accepts(format,JSON.stringify({...valid,extra:'field'})),false);
+ assert.throws(()=>createStructuredSchema({type:'sourced-calculation',sourceCount:0}),/schema/);assert.throws(()=>createStructuredGrammar({type:'sourced-calculation',sourceCount:9}),/schema/);
 });
 
 test('body-only capture is a complete new-text plan, never an attachment or historical selector',()=>{
@@ -108,4 +141,29 @@ test('tool-call envelope exposes only the request-local registered IDs and stays
  const schema=createStructuredSchema(selected),tool=schema.anyOf.find(branch=>branch.properties?.action?.enum?.[0]==='tool');
  assert.deepEqual(tool.properties.query.enum,['memory.search','memory.read']);assert.equal(tool.properties.body.type,'string');
  assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...base,toolIds:['memory.search','memory.search']}}),/planner tool IDs/i);
+});
+test('planner schema accepts the full configured tool catalog and rejects entries above the shared cap',()=>{
+ const toolIds=['memory.search','memory.read','math.calculate',...Array.from({length:61},(_,index)=>`user.local-tool-${index}`)];
+ const scope={inputs:false,file:false,current:false,historyCount:0,toolIds},format={type:'dialogue-plan',scope};
+ const schema=createStructuredSchema(format),tool=schema.anyOf.find(branch=>branch.properties?.action?.enum?.[0]==='tool');
+ assert.equal(tool.properties.query.enum.length,64);
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:toolIds.at(-1),body:'{}'})),true);
+ assert.throws(()=>createStructuredSchema({...format,scope:{...scope,toolIds:[...toolIds,'user.extra']}}),/planner tool IDs/i);
+});
+test('a multi-step local lookup can require the next registered tool without exposing one-shot actions',()=>{
+ const base={inputs:false,file:false,current:false,historyCount:0,toolIds:['memory.search','memory.read'],requiredToolIds:['memory.search']},format={type:'dialogue-plan',scope:base};
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:'memory.search',body:'{"query":"water"}'})),true);
+ for(const value of [{action:'search',query:'water',target:'knowledge'},{action:'read',query:'Notes/water.md',target:'path'},{action:'answer',query:'water',target:'knowledge'},{action:'tool',query:'memory.read',body:'{"query":"Notes/water.md"}'}])assert.equal(accepts(format,JSON.stringify(value)),false,JSON.stringify(value));
+ const afterSearch={...base,requiredToolIds:['memory.read']};
+ assert.equal(accepts({type:'dialogue-plan',scope:afterSearch},JSON.stringify({action:'tool',query:'memory.read',body:'{"query":"Notes/water.md"}'})),true);
+ assert.equal(accepts({type:'dialogue-plan',scope:afterSearch},JSON.stringify({action:'tool',query:'memory.search',body:'{"query":"water"}'})),false);
+ assert.equal(accepts({type:'dialogue-plan',scope:{...base,requiredToolIds:undefined}},JSON.stringify({action:'answer',query:'water',target:'knowledge'})),true);
+ assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...base,requiredToolIds:['filesystem.delete']}}),/required planner tool IDs/i);
+});
+test('after a required local search and read, the structured planner exposes only the final answer action',()=>{
+ const scope={inputs:false,file:false,current:false,historyCount:0,toolIds:['memory.search','memory.read'],requiredActionIds:['answer']},format={type:'dialogue-plan',scope};
+ assert.equal(accepts(format,JSON.stringify({action:'answer',query:'reserve',target:'knowledge'})),true);
+ for(const value of [{action:'tool',query:'memory.search',body:'{"query":"reserve"}'},{action:'search',query:'reserve',target:'knowledge'},{action:'read',query:'Notes/water.md',target:'path'},{action:'capture',query:'reserve',body:'a guess'}])assert.equal(accepts(format,JSON.stringify(value)),false,JSON.stringify(value));
+ const schema=createStructuredSchema(format);assert.deepEqual([...new Set(schema.anyOf.map(branch=>branch.properties.action.enum[0]))],['answer']);
+ assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...scope,requiredActionIds:['tool']}}),/required planner action IDs/i);
 });

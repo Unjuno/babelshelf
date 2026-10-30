@@ -253,6 +253,13 @@ test('bounded CPU runtime thread and prompt counters survive saved performance r
  writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics.runtimeThreads,4);
 });
 
+test('model test failures preserve a bounded failure stage without storing exception text',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[]};
+ const value={...base,modelGeneration:{status:'fail',model:'local',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',loadState:'not-loaded',failureStage:'load',failureType:'Error'}};
+ writeSavedDeviceTestReport(storage,JSON.stringify(value));const saved=JSON.parse(readSavedDeviceTestReport(storage));assert.equal(saved.modelGeneration.loadState,'not-loaded');assert.equal(saved.modelGeneration.failureStage,'load');
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...value.modelGeneration,failureStage:'PRIVATE_PROMPT'}})),/Invalid/);
+});
+
 test('unrelated and historical cache buckets cannot pass the current-build cache check',async()=>{
  const env={appBuild:'0123456789abcdef',storage:memoryStorage(),indexedDB:null,gpu:null};
  const check=async(build,keys)=>(await runDeviceDiagnostics({...env,appBuild:build,cacheStorage:{keys:async()=>keys}})).checks.find(item=>item.id==='offline-cache');

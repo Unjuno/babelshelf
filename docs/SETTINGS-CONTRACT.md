@@ -16,7 +16,9 @@ The current preference records are:
 | `Settings/models.md` | Registered model choices, role selections, language choices, supported custom model declarations and named model sets |
 | `Settings/appearance.md` | Theme, background, glass style, imported local fonts and validated named palettes |
 | `Settings/connection.md` | Online/Offline asset access and sanitized local diagnostic logging |
-| `Settings/harness.md` | Reply style, user guidance and named agent profiles |
+| `Settings/harness.md` | Reply style, bounded user-defined system-prompt extension and named agent profiles |
+
+Assistant instructions are included as a bounded system-message extension before the app-owned system protocol. This lets users set answer/workflow behavior while the later app rules retain priority for tool authority, source grounding, reviews, permissions and safety. The field is not an unrestricted replacement for the application prompt.
 
 `Settings/README.md` explains these records. The bundled README is protected; the four managed records are user-owned and versioned. Settings and Memory controls cannot silently maintain separate effective values.
 
@@ -34,7 +36,7 @@ An existing setting can be edited within its validated schema. Supported definit
 
 Adding a new kind of setting requires an app-owned schema, validation and migration, a consumer that applies it, and a suitable UI or constrained editor. A Markdown file alone cannot create a runtime feature. Runtime readiness comes from local verification of the selected implementation and assets; it is never inferred from a setting value.
 
-User tools are paired Memory records under `Tools/user.<id>/SKILL.md` and `tool.js`. Users can create or import a pair, inspect and test it, then explicitly enable it in a harness profile. Chat can propose a source-file change for review; the pair is checked before approval and again at commit, with history, compare-and-swap and Undo. A proposal is inert data until approved. Execution uses the bounded local QuickJS worker and only app-owned, explicitly declared local capabilities. This is constrained PWA extension support, not a general package manager, a hostile-code-proof sandbox or an MCP transport.
+User tools are paired Memory records under `Tools/user.<id>/SKILL.md` and `tool.js`. Creating or importing a validated pair stores both files and adds the new ID to the currently active harness profile in the same local save. Saving does not run the package; the local agent may call it in a later matching request. Editing either source later remains a reviewed, versioned Memory correction with compare-and-swap and Undo. Execution uses the bounded local QuickJS worker and only app-owned, explicitly declared local capabilities. This is constrained PWA extension support, not a general package manager, a hostile-code-proof sandbox or an MCP transport.
 
 Adding a runtime capability, inference engine or model architecture still requires compatible application code and a verified adapter. User definitions cannot add arbitrary JavaScript permissions, network access, storage writes/deletes, credentials or executable UI. The chat protocol, evidence validation, tool adapters, hard resource limits, cancellation and approval boundaries remain app-owned.
 

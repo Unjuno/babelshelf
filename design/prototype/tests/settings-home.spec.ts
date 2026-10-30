@@ -32,6 +32,46 @@ test('Settings keeps core categories visible and secondary tools grouped under M
  }
 });
 
+test('Connection separates cached app readiness from Home Screen launch mode',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Connection',exact:true}).click();
+ await expect(page.getByText('App shell',{exact:true})).toBeVisible();
+ const shell=page.getByRole('status',{name:'App shell status',exact:true});
+ await expect(shell).not.toHaveText('Installed');
+ await expect(page.getByRole('status',{name:'Launch mode',exact:true})).toHaveText('Browser tab');
+ await expect(page.getByText('Text model files',{exact:true})).toBeVisible();
+ await expect(page.getByRole('status',{name:'Text model file status',exact:true})).not.toHaveText('Files present');
+ await expect(page.getByRole('status',{name:'Text runtime status',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Open model setup',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Models',exact:true})).toBeVisible();
+});
+
+test('pinned LFM3 context window is selectable and persists without loading model weights',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Set up text model'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Browse text models'})).toBeVisible();
+ await page.getByText('More text options',{exact:true}).click();
+ const section=page.getByRole('region',{name:'LFM3 context window',exact:true}),group=section.getByRole('group',{name:'LFM3 context window',exact:true});
+ await expect(group).toBeVisible();
+ await expect(group.getByRole('button',{name:'8K',exact:true})).toHaveAttribute('aria-pressed','true');
+ await group.getByRole('button',{name:'256K',exact:true}).click();
+ await expect(group.getByRole('button',{name:'256K',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(group.getByRole('button',{name:'16K',exact:true})).toBeVisible();
+ await expect(section).toContainText('Larger windows need more memory and may fail on this device');
+ await page.reload();
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.getByText('More text options',{exact:true}).click();
+ await expect(page.getByRole('group',{name:'LFM3 context window',exact:true}).getByRole('button',{name:'256K',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByText('Loaded',{exact:true})).toHaveCount(0);
+});
+
 test('one malformed settings file can be recovered without restoring the other settings',async({page})=>{
  await page.goto('/');
  await expect(page.getByRole('button',{name:'Input',exact:true})).toBeVisible();
@@ -73,6 +113,24 @@ test('offline initial setup offers a local import path for a missing selected te
  await chooser.setFiles([]);
 });
 
+test('verified LFM3 Q8 candidate can be selected without changing the default or downloading implicitly',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.getByText('More text options',{exact:true}).click();
+ await page.getByRole('button',{name:'Browse text models',exact:true}).click();
+ await page.getByRole('button',{name:'Add LFM3 · 1.7B · Q8_0',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Text model',exact:true})).toContainText('LFM3 · 1.7B · Q8_0');
+ await expect(page.getByRole('button',{name:'Initial setup',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Initial setup',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Initial preparation'});
+ await expect(dialog).toContainText('LFM3 · 1.7B · Q8_0');
+ await expect(dialog).toContainText('1873.8 MB');
+ await expect(dialog.getByRole('switch',{name:'Allow model downloads'})).not.toBeChecked();
+ await expect(dialog.getByRole('button',{name:'Prepare',exact:true})).toBeDisabled();
+});
+
 test('current model choices can be saved as a Memory-backed model set and remain available after reload',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
@@ -80,6 +138,9 @@ test('current model choices can be saved as a Memory-backed model set and remain
  await page.getByRole('button',{name:'Models',exact:true}).click();
  await page.getByRole('button',{name:/Model set ·/}).click();
  await expect(page.getByRole('heading',{name:'Model set'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Text models',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Input sets',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Combined sets',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Save current as set'}).click();
  await page.getByRole('textbox',{name:'Model set name'}).fill('My reading setup');
  await page.getByRole('textbox',{name:'Model set detail'}).fill('Text only');
@@ -91,6 +152,24 @@ test('current model choices can be saved as a Memory-backed model set and remain
  await page.getByRole('button',{name:'Models',exact:true}).click();
  await page.getByRole('button',{name:/Model set ·/}).click();
  await expect(page.getByRole('button',{name:/My reading setup/})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Saved by you',exact:true})).toBeVisible();
+});
+
+test('a model set reviews role changes before applying and never prepares files implicitly',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.getByRole('button',{name:/Model set ·/}).click();
+ await page.getByRole('button',{name:/Bonsai 2 · 2B/}).click();
+ await expect(page.getByRole('heading',{name:'Review model set'})).toBeVisible();
+ await expect(page.getByText('Text',{exact:true})).toBeVisible();
+ await expect(page.getByText(/Applying a set does not prepare files/)).toBeVisible();
+ await page.getByRole('button',{name:'Apply set'}).click();
+ await expect(page.getByText('Set selected · files are prepared separately')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Prepare models'})).toBeVisible();
+ await page.getByRole('button',{name:'Done'}).click();
+ await expect(page.getByRole('button',{name:'Text model',exact:true})).toContainText('Bonsai 2 · 2B');
 });
 
 test('a named palette edited in Memory appears as an explicit Appearance choice',async({page})=>{

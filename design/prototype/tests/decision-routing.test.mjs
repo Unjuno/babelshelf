@@ -65,6 +65,8 @@ test('an explicit saved-note question takes only the cited read path across text
  assert.deepEqual(explicitSavedKnowledgeQuestion(separated),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
  assert.deepEqual(explicitSavedKnowledgeQuestion(separated,false,true),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
  assert.equal(savedKnowledgeSearchQuery('What is written in the saved note?'),'What is written in the saved note?');
+ const genericNamedNote='In my saved note LFM3-OFFLINE-1, exactly how many litres is the emergency water reserve?';
+ assert.deepEqual(explicitSavedKnowledgeQuestion(genericNamedNote),{action:'answer',query:genericNamedNote,target:'knowledge'});
  assert.equal(savedKnowledgeSearchQuery('保存したQA空想会議のメモでは、会議はいつどこで行いますか？'),'QA空想会議');
  for(const q of ['What did I say about my saved note?','What is in this file?','Write a new note about my notes.','Delete my saved note','What date is the saved blue lantern meeting?','What time is it?'])assert.equal(explicitSavedKnowledgeQuestion(q),null,q);
  assert.equal(explicitSavedKnowledgeQuestion(question,true),null);

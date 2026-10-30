@@ -1,6 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild,enforceOfflineNetwork,initializeOfflineShell,offlineShellStatus} from '../src/offline-shell.ts';
+import {observeOfflineRegistration,activateWaitingUpdate,activeAppBuild,enforceOfflineNetwork,initializeOfflineShell,offlineShellStatus,prepareOfflineAppShell} from '../src/offline-shell.ts';
+test('offline shell check distinguishes verified assets, missing files and unsupported workers',async()=>{
+ const {checkOfflineAppShell}=await import('../src/offline-shell.ts');
+ const worker=status=>({postMessage(message,[port]){assert.equal(message.type,'check-app-shell');port.postMessage({status});}});
+ assert.equal(await checkOfflineAppShell(worker('ready'),100),'ready');
+ assert.equal(await checkOfflineAppShell(worker('missing'),100),'missing');
+ assert.equal(await checkOfflineAppShell({postMessage(){}},5),'unknown');
+ assert.equal(await checkOfflineAppShell(null,5),'unknown');
+});
+test('retrying an app-shell check ignores an older late result and can be cancelled',async()=>{
+ const module=await import('../src/offline-shell.ts');assert.equal(typeof module.createOfflineShellHealthProbe,'function');
+ const pending=[],states=[],probe=module.createOfflineShellHealthProbe(()=>new Promise(resolve=>pending.push(resolve)),value=>states.push(value));
+ const first=probe.check(),second=probe.check();pending[1]('ready');await second;pending[0]('missing');await first;
+ assert.deepEqual(states,['checking','checking','ready']);
+ const third=probe.check();probe.cancel();pending[2]('missing');await third;assert.deepEqual(states,['checking','checking','ready','checking']);
+});
+test('explicit app repair requires connectivity, reports failures and cancels on timeout',async()=>{
+ const {repairOfflineAppShell}=await import('../src/offline-shell.ts');const messages=[];
+ const ready={postMessage(message,ports){messages.push(message);ports?.[0]?.postMessage({status:'ready'});}};
+ await repairOfflineAppShell(ready,false,100);assert.equal(messages[0].localOnly,true);messages.length=0;
+ const disconnected={postMessage(_message,ports){ports[0].postMessage({status:'disconnected'});}};
+ await assert.rejects(repairOfflineAppShell(disconnected,false,100),/Connect/);
+ const offline={postMessage(_message,ports){ports[0].postMessage({status:'offline'});}};
+ await assert.rejects(repairOfflineAppShell(offline,true,100),/Select Online/);assert.equal(messages.length,0);
+ await repairOfflineAppShell(ready,true,100);assert.equal(messages[0].type,'repair-app-shell');
+ const stalled={postMessage(message){messages.push(message);}};await assert.rejects(repairOfflineAppShell(stalled,true,5),/timed out/);
+ assert.equal(messages.at(-1).type,'cancel-app-shell-repair');assert.equal(messages.at(-1).operationId,messages.at(-2).operationId);
+});
 import {refreshAppVersion,appUpdateOutcome} from '../src/offline-shell.ts';
 class Worker extends EventTarget {constructor(state){super();this.state=state;}set(state){this.state=state;this.dispatchEvent(new Event('statechange'));}}
 
@@ -17,6 +44,19 @@ test('offline shell is registered only by an explicit Online choice and reuses a
  await initializeOfflineShell(container,false);assert.equal(offlineShellStatus(),'Not prepared');assert.equal(registered,0);
  await initializeOfflineShell(container,true);assert.equal(offlineShellStatus(),'Installed');assert.equal(registered,1);
  await initializeOfflineShell(container,false);assert.equal(offlineShellStatus(),'Installed');assert.equal(registered,1);
+});
+
+test('offline app-shell preparation requires a live connection and does not change model/download preferences',async()=>{
+ let registrations=0;const registration=new EventTarget();registration.active=new Worker('activated');
+ const container={getRegistration:async()=>registration,register:async()=>{registrations++;return registration;},ready:Promise.resolve(registration),controller:new Worker('activated')};
+ await assert.rejects(prepareOfflineAppShell(container,false),/Connect/);assert.equal(registrations,0);
+ await prepareOfflineAppShell(container,true);assert.equal(registrations,0);assert.equal(offlineShellStatus(),'Installed');
+});
+
+test('offline shell registration failure returns promptly instead of waiting for serviceWorker.ready',async()=>{
+ const container={getRegistration:async()=>undefined,register:async()=>{throw Error('registration refused');},ready:new Promise(()=>{})};
+ await assert.rejects(prepareOfflineAppShell(container,true,1000),/App preparation failed/);
+ assert.equal(offlineShellStatus(),'Preparation failed');
 });
 
 test('Refresh returns a retryable error when the browser update check never settles',async()=>{

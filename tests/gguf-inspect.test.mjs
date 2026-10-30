@@ -7,8 +7,8 @@ import {inspectLocalModel} from '../dist/local-models.js';
 const u32=n=>{const b=Buffer.alloc(4);b.writeUInt32LE(n);return b;};
 const u64=n=>{const b=Buffer.alloc(8);b.writeBigUInt64LE(BigInt(n));return b;};
 const str=s=>Buffer.concat([u64(Buffer.byteLength(s)),Buffer.from(s)]);
-function gguf({arch='qwen35',tensorType=143,elements=128,duplicate=false}={}){
- const entries=[['general.architecture',8,str(arch)],['general.name',8,str('User 日本語')],[arch+'.context_length',4,u32(4096)],['tokenizer.ggml.model',8,str('gpt2')],['tokenizer.chat_template',8,str('{{ messages }}')],['tokenizer.ggml.tokens',9,Buffer.concat([u32(8),u64(2),str('a'),str('b')])]];
+function gguf({arch='qwen35',tensorType=143,elements=128,contextLength=4096,duplicate=false}={}){
+ const entries=[['general.architecture',8,str(arch)],['general.name',8,str('User 日本語')],[arch+'.context_length',4,u32(contextLength)],['tokenizer.ggml.model',8,str('gpt2')],['tokenizer.chat_template',8,str('{{ messages }}')],['tokenizer.ggml.tokens',9,Buffer.concat([u32(8),u64(2),str('a'),str('b')])]];
  if(duplicate)entries.push(entries[0]);
  const h=Buffer.concat([Buffer.from('GGUF'),u32(3),u64(1),u64(entries.length),...entries.map(([k,t,v])=>Buffer.concat([str(k),u32(t),v])),str('weight'),u32(1),u64(elements),u32(tensorType),u64(0)]);
  const padding=(32-h.length%32)%32;return Buffer.concat([h,Buffer.alloc(padding),Buffer.alloc(512)]);
@@ -47,6 +47,13 @@ test('private Qwen3 PQ2 remains refused before hashing while official Q2 resolve
 test('an LFM2 GGUF with the pinned CPU engines tokenizer and checked supported block types resolves to its app-owned adapter',async()=>{
  const info=await inspectGGUF(new Blob([gguf({arch:'lfm2',tensorType:2,elements:128})]));
  assert.equal(info.tensorExtentsChecked,true);assert.equal(eligibleTextEngine(info).id,'wllama-lfm2');
+});
+test('LFM3 Q8_0 uses verified extents and selects an LFM3-sized context for its app-owned adapter',async()=>{
+ const bytes=gguf({arch:'lfm3',tensorType:8,elements:128,contextLength:262144}),info=await inspectGGUF(new Blob([bytes]));
+ assert.equal(info.tensorExtentsChecked,true);assert.deepEqual(info.tensorTypes,[8]);assert.equal(eligibleTextEngine(info)?.id,'wllama-lfm3');
+ const model=await inspectLocalModel(new Blob([bytes]));assert.equal(model.engine,'wllama-lfm3');assert.equal(model.contextTokens,8192);assert.deepEqual(model.inspection.tensorTypes,[8]);
+ await assert.rejects(inspectGGUF(new Blob([gguf({arch:'lfm3',tensorType:8,elements:127})])),/Q8_0 block shape/);
+ await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);
 });
 test('known tensor byte extents reject truncated payload, not just out-of-file starting offsets',async()=>{
  for(const [tensorType,elements] of [[0,128],[143,128],[142,128],[42,128],[2,128],[14,256]]){const bytes=gguf({tensorType,elements}),info=await inspectGGUF(new Blob([bytes]));await assert.equal(info.tensorExtentsChecked,true);await assert.rejects(inspectGGUF(new Blob([bytes.subarray(0,info.dataOffset+1)])),/GGUF/);}

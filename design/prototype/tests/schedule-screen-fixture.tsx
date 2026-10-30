@@ -1,6 +1,7 @@
 import {createRoot} from 'react-dom/client';
+import {useState} from 'react';
 import {ScheduleScreen} from '../src/ScheduleScreen';
-import type {TaskView} from '../src/useTasks';
+import {useTasks,type TaskView} from '../src/useTasks';
 
 const phase=new URLSearchParams(location.search).get('phase')??'running';
 const schedule={
@@ -10,7 +11,13 @@ const schedule={
  unit:'days',timezone:'Asia/Tokyo',enabled:false,notify:true,prompt:'Check the emergency kit',
 } as TaskView;
 
-createRoot(document.getElementById('root')!).render(<ScheduleScreen
+function PollFixture(){
+ const [calls,setCalls]=useState(0),[pending,setPending]=useState<null|{finish:()=>void;fail:()=>void}>(null);
+ const tasks=useTasks([],true,false,()=>new Promise((resolve,reject)=>{setCalls(value=>value+1);setPending({finish:()=>{setPending(null);resolve([]);},fail:()=>{setPending(null);reject(Error('Fixture read failed'));}});}),async()=>({answer:'unused',sources:[]}));
+ return <main><p>Reads started: {calls}</p><p>{tasks.error}</p><button onClick={()=>document.dispatchEvent(new Event('visibilitychange'))}>Trigger poll</button><button disabled={!pending} onClick={()=>pending?.finish()}>Finish read</button><button disabled={!pending} onClick={()=>pending?.fail()}>Fail read</button></main>;
+}
+
+createRoot(document.getElementById('root')!).render(phase==='poll'?<PollFixture/>:<ScheduleScreen
  schedules={[schedule]}
  active={schedule.id}
  stopping={phase==='stopping'}

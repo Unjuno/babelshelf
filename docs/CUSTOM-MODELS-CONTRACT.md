@@ -34,7 +34,7 @@ Decision's **Add decision model** opens its library, where a compatible five-fil
 
 The Text, Decision, and Speech selectors include user-added declarations in their corresponding libraries. A compatible package may be registered and locally verified without claiming successful model loading or useful output. Import review labels execution as untested; Decision and Speech load through fixed app-owned adapters. Model bytes and revisions are content-pinned. Model weights stay in origin-local OPFS and are excluded from knowledge backups. Speech transcripts record the exact custom model ID and content revision that produced them.
 
-The model settings present standard and custom entries through the same role selector. An Add model sheet offers file import only for roles with an app-owned compatible adapter. Unsupported model candidates remain disabled with the actual runtime limitation. Users may replace their selection explicitly; importing never silently changes another role. The default text model remains Bonsai2 4B.
+The model settings present standard and custom entries through the same role selector. An Add model sheet offers file import only for roles with an app-owned compatible adapter. Unsupported model candidates remain disabled with the actual runtime limitation. Users may replace their selection explicitly; importing never silently changes another role. The fresh-install text default is LFM3 1.7B QAD Q4_0; saved selections are not rewritten during upgrades.
 
 ### Public Hugging Face source
 

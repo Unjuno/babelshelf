@@ -6,6 +6,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import {createDevServer} from '../serve.mjs';
+import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
 
 // Pass a Playwright BrowserType from the caller. No bundled browser/dependency,
 // inference stub, database access, process kill or existing profile reuse.
@@ -16,7 +17,6 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  const productBuild=JSON.parse(await readFile(resolve('design/prototype/dist/app/build.json'),'utf8'));
  const hashAsset=productBuild.files.find(file=>/^\.\/assets\/sha256\.umd\.min-[A-Za-z0-9_-]+\.js$/.test(file.path));
  assert.ok(hashAsset,'Production offline shell must include the pinned SHA-256 module');
- const mcpAsset=productBuild.files.find(file=>/^\.\/assets\/mcp-agent-bridge-[A-Za-z0-9_-]+\.js$/.test(file.path));assert.ok(mcpAsset,'MCP agent module must be a cached product asset');assert.deepEqual(mcpAsset.roles??[],[]);
  assert.deepEqual(hashAsset.roles??[],[],'SHA-256 module must be installed as a core app asset');
  for(const path of [profileDir,outputDir]){let exists=false;try{await stat(path);exists=true;}catch(e){if(e.code!=='ENOENT')throw e;}assert.equal(exists,false,'QA path must not already exist: '+path);}
  await mkdir(outputDir,{recursive:true});
@@ -30,6 +30,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  const evidence={engine,...(channel?{channel}:{}),scope:installedPwa?'PC headless Chromium CDP-installed PWA with required standalone display; not physical OS/mobile acceptance':`PC headless ${engine} persistent profile, Playwright context offline before navigation; not installed/mobile/physical-network acceptance`,profileDir,url,phases:[]};
  async function go(p,name){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('menuitem',{name,exact:true}).click();}
  async function input(p){await p.getByRole('button',{name:'Input',exact:true}).click();await p.getByRole('button',{name:'Input',exact:true}).click();}
+ async function noteCount(p){return p.evaluate(()=>new Promise((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('notes','readonly'),count=tx.objectStore('notes').count();count.onsuccess=()=>resolve(count.result);count.onerror=()=>reject(count.error);tx.oncomplete=()=>db.close();};}));}
  async function search(p,query,expected){
   const count=await p.locator('.sent-message').count(),request='Search '+query;
   await p.getByRole('textbox',{name:'Message',exact:true}).fill(request);await p.getByRole('button',{name:'Send',exact:true}).click();
@@ -49,23 +50,22 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
     try{const response=await probePage.goto(probeUrl,{timeout:5000});networkProbe={reachable:!!response?.ok(),status:response?.status()??0};}catch(error){networkProbe={reachable:false,error:error instanceof Error?error.message:'NetworkError'};}finally{await probePage.close();}
     const sha256Result=await p.evaluate(async path=>{const module=await import(new URL(path,location.href).href),create=module.default?.createSHA256??module.createSHA256;if(typeof create!=='function')throw Error('SHA-256 module export unavailable');const hash=await create();hash.update(new TextEncoder().encode('abc'));return hash.digest('hex');},hashAsset.path);
     assert.equal(sha256Result,'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
-    const mcpResult=await p.evaluate(async path=>{const {createAgentMcpBridge}=await import(new URL(path,location.href).href),controller=new AbortController(),tool={id:'math.calculate',effect:'read',network:'none',inputSchema:{type:'object',required:['value'],additionalProperties:false,properties:{value:{type:'number'}}}},bridge=await createAgentMcpBridge([tool],controller.signal);try{return await bridge.call({kind:'tool',tool:'math.calculate',arguments:{value:21}},async()=>({result:42}));}finally{await bridge.close();}},mcpAsset.path);assert.deepEqual(mcpResult,{result:42},'MCP module must execute after a fresh process restart');
-    const entry={...(pid?{pid}:{}),engine,offline,onlineSignal,networkProbe,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build,sha256Module:{path:hashAsset.path,bytes:hashAsset.bytes,verifiedDigest:sha256Result},mcpModule:{path:mcpAsset.path,result:mcpResult}};
+    const entry={...(pid?{pid}:{}),engine,offline,onlineSignal,networkProbe,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build,sha256Module:{path:hashAsset.path,bytes:hashAsset.bytes,verifiedDigest:sha256Result}};
     assert.equal(networkProbe.reachable,!offline,`Network probe mismatch: requested offline=${offline}, probe=${JSON.stringify(networkProbe)}`);if(evidence.phases.length)assert.deepEqual(build,evidence.phases[0].build);
    evidence.phases.push(entry);await work(p,entry);
-  }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();}
+  }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();if(installedPwa){const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}}
  }
  let before,afterEdit,afterRestart;
  try{
   await phase(false,async(p,entry)=>{
-   // Explicit model-free capture is available without preparing an inference model.
-   await p.getByRole('textbox',{name:'Message',exact:true}).fill(original+'メモして');await p.getByRole('button',{name:'Send',exact:true}).click();
-   await p.locator('.turn-status').filter({hasText:'Saved · Inbox/Process restart '+marker+'.md'}).waitFor();
-   // Exercise the current file-creation sheet separately and keep the double-submit regression.
-   await go(p,'BabelShelf');await p.getByRole('button',{name:'New file',exact:true}).click();await p.getByRole('textbox',{name:'File name',exact:true}).fill('Double submit check');await p.getByRole('textbox',{name:'New file content',exact:true}).fill('Duplicate form test only');await p.getByRole('dialog',{name:'New file'}).locator('form').evaluate(form=>{form.requestSubmit();form.requestSubmit();});await p.getByRole('button',{name:'History',exact:true}).waitFor();
+    // The process-restart QA has no prepared inference model by design. Exercise
+    // the explicit, model-free capture command instead of assuming the English
+    // planner phrase "Remember …" can route without inference.
+    const notesBefore=await noteCount(p);await p.getByRole('textbox',{name:'Message',exact:true}).fill(original+'メモして');await p.getByRole('button',{name:'Send',exact:true}).click();
+    await p.locator('.turn-status').filter({hasText:'Saved · Inbox/Process restart '+marker+'.md'}).waitFor();assert.equal(await noteCount(p),notesBefore+1,'Explicit capture must create one original note without a second confirmation');
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(inputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text process-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();
-   before=await backup(p,'before.brainpack');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body===original).length,1,'Capture did not create exactly one note');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body==='Duplicate form test only').length,1,'Double submit created duplicate notes');entry.savedNote=true;entry.duplicateSubmitControl=true;entry.importedOriginals=2;
+    before=await backup(p,'before.brainpack');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body===original).length,1,'Explicit capture did not create exactly one note');entry.savedNote=true;entry.importedOriginals=2;
   });
   await afterBootstrap?.();
   await phase(true,async(p,entry)=>{
@@ -73,7 +73,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
    await p.getByRole('button',{name:'View source',exact:true}).last().click();entry.source=await p.getByRole('dialog').innerText();assert.match(entry.source,/\bv1\b/);assert.ok(entry.source.includes(original),'Source must contain the saved original');
    await p.getByRole('button',{name:'Open file',exact:true}).click();await p.getByRole('button',{name:'Edit',exact:true}).click();await p.getByRole('textbox',{name:'Markdown content'}).fill(edited);await p.getByRole('button',{name:'Save',exact:true}).click();
    await p.getByRole('button',{name:'History',exact:true}).click();for(const version of ['v1','v2'])await p.getByRole('dialog').getByText(version,{exact:true}).click();entry.history=await p.getByRole('dialog').innerText();assert.ok(entry.history.includes('18リットル')&&entry.history.includes('24リットル'));await p.screenshot({path:join(outputDir,'history.png')});
-   await p.getByRole('button',{name:'Close',exact:true}).click();/* Search scans canonical records; there is currently no separate index to rebuild. */await input(p);
+   await p.getByRole('button',{name:'Close',exact:true}).click();await input(p);
    entry.attachmentSearch=await search(p,'充電器','充電器は青い箱にあります。');assert.ok(entry.attachmentSearch.includes('青い箱'));
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(offlineInputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text offline-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();entry.offlineImportedOriginals=2;

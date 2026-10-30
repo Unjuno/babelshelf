@@ -9,6 +9,12 @@ test('bundled tool documentation names reviewed system operations without granti
  assert.match(body,/schedule.patch/);assert.match(body,/settings.patch/);assert.match(body,/enabled.*timezone/);assert.match(body,/Tools.*unavailable/);
 });
 
+test('explicit capture documentation promises add-only Inbox writes while answer copies remain reviewed',()=>{
+ const capture=builtinToolNotes.find(n=>n.id==='builtin-tools-memory.capture').body,readme=builtinToolNotes.find(n=>n.id==='builtin-tools-README').body;
+ assert.match(capture,/operation: create/);assert.match(capture,/Never overwrite an existing record/);assert.match(capture,/separate user-reviewed action/);
+ assert.match(readme,/Explicit capture creates a new Inbox file/);assert.match(readme,/Saving an existing assistant answer is a separate reviewed copy/);
+});
+
 test('current reviewed Memory settings and user tool packages are described with their actual limits',()=>{
  const readme=builtinToolNotes.find(n=>n.id==='builtin-tools-README').body,body=builtinToolNotes.find(n=>n.id==='builtin-tools-memory.patch').body;
  assert.match(body,/customSets/);assert.match(body,/registered model/i);assert.match(body,/Tool packages/);
@@ -18,7 +24,7 @@ test('current reviewed Memory settings and user tool packages are described with
 });
 
 test('exact previous current tool documentation upgrades by appending one revision',()=>{
- for(const id of ['builtin-tools-README','builtin-tools-memory.patch']){
+ for(const id of ['builtin-tools-README','builtin-tools-memory.capture','builtin-tools-memory.patch']){
   const seed=builtinToolNotes.find(n=>n.id===id),oldBody=knownToolBodies[id].at(-1),n=createNote({path:seed.path,body:oldBody});
   const record={...n,id,ui:{protected:true,managed:false}},[updated]=builtinToolUpdates([record],builtinToolNotes);
   assert.ok(updated,`${id} should be recognized`);assert.equal(updated.revisions.at(-1).body,seed.body);assert.equal(updated.revisions.length,2);

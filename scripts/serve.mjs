@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const types={'.mjs':'text/javascript; charset=utf-8','.wasm':'application/wasm','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.txt':'text/plain; charset=utf-8','.md':'text/plain; charset=utf-8'};
+const privateArtifactExtensions=new Set(['.gguf','.brainpack']);
 export function createStaticHandler(root){
  root=path.resolve(root);
  return async(req,res)=>{
@@ -11,6 +12,7 @@ export function createStaticHandler(root){
    let requestPath=decodeURIComponent(req.url.split('?')[0]);
    if(requestPath.includes('\\')||requestPath.includes('\0')||requestPath.split('/').includes('..')){res.writeHead(403);res.end();return;}
    if(requestPath==='/')requestPath='/index.html';
+   if(privateArtifactExtensions.has(path.extname(requestPath).toLowerCase())){res.writeHead(404);res.end();return;}
    const filename=path.resolve(root,'.'+requestPath);if(!filename.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}
    const info=await fs.stat(filename);if(!info.isFile()){res.writeHead(404);res.end();return;}
    const bytes=await fs.readFile(filename);res.writeHead(200,{'Content-Type':types[path.extname(filename)]??'application/octet-stream','Content-Length':bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(req.method==='HEAD'?undefined:bytes);

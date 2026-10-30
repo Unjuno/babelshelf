@@ -1,6 +1,6 @@
 # Durable correction review
 
-Scope: ordinary note, managed settings, typed schedule and custom-tool-source correction proposals. New-note capture and new schedule creation are separate forms and are not made durable by this contract.
+Scope: ordinary note, managed settings, typed schedule and custom-tool-source correction proposals. New-note capture and new schedule creation are separate forms and are not made durable by this contract. Agent-proposed capture opens the existing New file editor as an in-memory draft; only its explicit Save commits the note. A reload before Save can discard that draft, so this is not crash-resumable review state.
 
 ## Storage and authority
 

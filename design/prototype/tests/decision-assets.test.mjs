@@ -42,7 +42,7 @@ test('storage writer failure cancels the acquired download instead of leaving a 
 });
 
 test('isolated decision WebGPU entry uses its matching native asyncify bridge, with exact installed hashes',()=>{
- const worker=fs.readFileSync(new URL('../src/decision-worker.ts',import.meta.url),'utf8');assert.ok(worker.includes('ort-wasm-simd-threaded.asyncify.wasm?url'));assert.ok(worker.includes('ort-wasm-simd-threaded.asyncify.mjs?url'));assert.ok(!worker.includes('ort-wasm-simd-threaded.jsep'));
+ const worker=fs.readFileSync(new URL('../src/decision-worker.ts',import.meta.url),'utf8');assert.ok(worker.includes('ort-wasm-simd-threaded.asyncify.wasm?url'));assert.ok(worker.includes('ort-wasm-simd-threaded.asyncify.mjs?url'));assert.ok(!worker.includes('ort-wasm-simd-threaded.jsep'));assert.ok(worker.includes("ort.env.webgpu.powerPreference='high-performance'"));assert.ok(worker.includes("gpu.requestAdapter({powerPreference:'high-performance'})"));
  for(const pin of decisionManifest.runtime.files){const data=fs.readFileSync(new URL('../node_modules/onnxruntime-web-d1/'+pin.path,import.meta.url));assert.equal(data.length,pin.bytes);assert.equal(createHash('sha256').update(data).digest('hex'),pin.sha256);}
  const bridge=fs.readFileSync(new URL('../node_modules/onnxruntime-web-d1/dist/ort-wasm-simd-threaded.asyncify.mjs',import.meta.url),'utf8');assert.ok(bridge.includes('webgpuInit'));
 });

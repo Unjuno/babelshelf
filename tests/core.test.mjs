@@ -26,6 +26,12 @@ test('withdrawn notes and derivatives with withdrawn sources cannot ground answe
  const w=core.withdrawNote(n,1);assert.equal(core.searchNotes([w,derived],'会場').length,0);
  assert.equal(core.validateRefs([w,derived],[ref]).ok,false);
 });
+test('searchable source IDs preserve grounding eligibility without building ranking indexes',()=>{
+ const original=core.createNote({title:'原文',body:'保存した説明がここにある。'}),ref=core.searchNotes([original],'説明')[0];
+ const derived=core.createNote({title:'要約',body:'保存した説明。',kind:'generated',sources:[ref]}),empty=core.createNote({title:'空',body:'  \n'}),unsupported=core.createNote({title:'出典なし',body:'出典のない生成文。',kind:'generated'}),withdrawn=core.withdrawNote(core.createNote({title:'撤回',body:'使えない記録。'}),1);
+ const records=[original,derived,empty,unsupported,withdrawn],expected=new Set(core.buildIndex(records).docs.map(doc=>doc.n.id));
+ assert.deepEqual(core.searchableNoteIds(records),expected);
+});
 test('forged, changed and out of bounds references are rejected',()=>{
  const n=core.createNote({title:'予定',body:'日時は10月20日。'});const ref=core.searchNotes([n],'日時')[0];
  assert.equal(core.validateRefs([n],[ref]).ok,true);

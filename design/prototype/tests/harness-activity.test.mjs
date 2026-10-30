@@ -1,8 +1,32 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {recordOperation,startActivity,finishActivity,validateActivity} from '../src/harness-activity.ts';
+import {recordOperation,startActivity,finishActivity,validateActivity,activityLabel} from '../src/harness-activity.ts';
+import {AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 import {emptyDialogue,appendTurn,dialogueContext,historyPayload,validateDialogue} from '../src/conversation.ts';
 import {planDialogue} from '../src/conversation.ts';
 const input={query:'日本語の記録'};
+test('folder listing executes and persists an activity receipt',async()=>{
+ const entries=[];const result=await recordOperation('memory.list',{path:'Inbox'},async()=>({entries:[]}),async item=>entries.push(item));
+ assert.deepEqual(result,{entries:[]});assert.deepEqual(entries.map(item=>item.status),['running','succeeded']);validateActivity([entries[1]]);
+});
+
+test('device-clock activity displays a plain action label instead of an internal tool ID',async()=>{
+ const {run}=await import('../src/tools/time.now/tool.ts'),entries=[];
+ const result=await recordOperation('time.now',{},()=>run({},{check(){}}),async item=>entries.push(item));
+ assert.equal(result.source,'device-clock');
+ assert.equal(entries.at(-1).status,'succeeded');
+ assert.equal(activityLabel(entries.at(-1).tool),'Read time');
+});
+
+test('agent tool budget follows remaining activity receipts and preserves completion slots',async()=>{
+ const {activityBoundedToolBudget,MAX_ACTIVITY_EVENTS_PER_TURN}=await import('../src/harness-activity.ts');
+ assert.equal(MAX_ACTIVITY_EVENTS_PER_TURN,128);
+ assert.equal(activityBoundedToolBudget(0,null),62);
+ assert.equal(activityBoundedToolBudget(122,null),1);
+ assert.equal(activityBoundedToolBudget(124,null),0);
+ assert.equal(activityBoundedToolBudget(122,0),0);
+ assert.equal(activityBoundedToolBudget(122,8),1);
+ assert.throws(()=>activityBoundedToolBudget(129,null),/budget/i);
+});
 
 test('unresolved speaker choice retains actual bounded model failure without becoming history or permission',async()=>{
  const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts'),entries=[],raw='{"source":"none"}';
@@ -116,6 +140,12 @@ test('custom tool receipt projection strips private content without changing the
  assert.equal(entries[1].status,'succeeded');
  assert.deepEqual(entries[1].output,{kind:'custom_tool_result',resultBytes:new TextEncoder().encode(JSON.stringify(result)).byteLength});
  assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_NOTE_SENTINEL|Notes\/private\.md/);
+});
+
+test('custom tool result overflow is recorded as a typed failed receipt and remains recoverable',async()=>{
+ const {projectAgentActivityResult}=await import('../src/agent-evidence.ts'),entries=[],overflow=new AgentToolResultTooLargeError();
+ await assert.rejects(recordOperation('user.lookup',{query:'private'},async()=>({body:'x'.repeat(9000)}),async entry=>entries.push(structuredClone(entry)),value=>projectAgentActivityResult('user.lookup',value)),error=>error instanceof AgentToolResultTooLargeError);
+ assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.deepEqual(entries[1].error,{code:'result_too_large',message:overflow.message});validateActivity(entries.slice(1));
 });
 
 test('unclassified turn failures add one privacy-safe local diagnostic',async()=>{

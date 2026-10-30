@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {visionAsset,visionManifest,verifyVisionBytes,verifyVisionStream,visionRuntimeResponse,visionReady,prepareVision} from '../src/vision-assets.ts';
+
+test('vision runtime requests a high-performance WebGPU adapter before its first ONNX session',()=>{
+ const worker=fs.readFileSync(new URL('../src/vision-worker.ts',import.meta.url),'utf8');
+ assert.match(worker,/env\.backends\.onnx\.webgpu\)env\.backends\.onnx\.webgpu\.powerPreference='high-performance'/);
+ assert.match(worker,/requestAdapter\(\{powerPreference:'high-performance'\}\)/);
+ assert.doesNotMatch(worker,/powerPreference:'low-power'/);
+});
 
 test('vision runtime resolves only its immutable revision-pinned manifest files',()=>{
  assert.equal(visionManifest.id,'lfm25-vl-450m-q4f16');

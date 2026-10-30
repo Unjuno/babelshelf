@@ -10,6 +10,8 @@ for(const action of ['type','offline'] as const)test(`working during app update:
  await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
  await page.getByRole('button',{name:'Update app'}).click();
  await page.waitForFunction(()=>typeof (window as any).__releaseUpdate==='function');
+ await expect(page.getByRole('button',{name:'Update app'})).toHaveText('Updating…');
+ await expect(page.getByRole('button',{name:'Update app'})).toHaveAttribute('aria-busy','true');
  const message=page.getByRole('textbox',{name:'Message'});
  if(action==='type')await message.fill('Keep the new draft written during update');
  else {
@@ -21,6 +23,7 @@ for(const action of ['type','offline'] as const)test(`working during app update:
  if(action==='type')await expect(message).toHaveValue('Keep the new draft written during update');
  else await expect(page.getByRole('button',{name:'Offline · Tap to switch Online'})).toBeVisible();
  const update=page.getByRole('button',{name:'Update app'});
+ await expect(update).toHaveText('Update');
  if(action==='type')await expect(update).toHaveAttribute('data-blocked','true');
  else await expect(update).toBeDisabled();
 });
@@ -45,10 +48,15 @@ test('saved timing results identify their model, time and build independently of
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
 });
 
-test('performance distinguishes total throughput from runtime decode speed',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34}}})));
+test('performance distinguishes configured GPU route from unreported runtime GPU offload',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34}}})));
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
- await expect(page.getByText('Overall speed',{exact:true})).toBeVisible();await expect(page.getByText('7.42 tokens/s',{exact:true})).toBeVisible();await expect(page.getByText('Decode speed',{exact:true})).toBeVisible();await expect(page.getByText('12.34 tokens/s',{exact:true})).toBeVisible();
+ await expect(page.getByText('Backend route',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU · configured',{exact:true})).toBeVisible();await expect(page.getByText('GPU layers · runtime log',{exact:true})).toBeVisible();await expect(page.getByText('Not reported',{exact:true})).toBeVisible();await expect(page.getByText('Overall speed',{exact:true})).toBeVisible();await expect(page.getByText('7.42 tokens/s',{exact:true})).toBeVisible();await expect(page.getByText('Decode speed',{exact:true})).toBeVisible();await expect(page.getByText('12.34 tokens/s',{exact:true})).toBeVisible();
+});
+
+test('performance displays runtime GPU layer counts when present',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:28}}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('WebGPU · configured',{exact:true})).toBeVisible();await expect(page.getByText('GPU layers · runtime log',{exact:true})).toBeVisible();await expect(page.getByText('24/28',{exact:true})).toBeVisible();await expect(page.getByText('Not reported',{exact:true})).toHaveCount(0);
 });
 
 test('Settings keeps common choices visible and groups advanced actions under More',async({page})=>{

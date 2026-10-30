@@ -23,6 +23,15 @@ test('plain-text attachment questions use the current inputs in Japanese and Eng
  }
  for(const question of ['この添付テキストの合言葉は何で、削除してください？','What is in this attached text and delete the file?'])assert.equal(explicitInputQuestion(question,true),null);
 });
+test('questions that mention current input and saved Memory remain with agent planning',()=>{
+ for(const question of ['Compare the code in this attachment with my saved notes.','What does this PDF say about my saved meeting notes?','この画像を保存したメモと比較して。','添付資料と保存済みのノートを照合して。']){
+  assert.equal(inputScope.explicitInputQuestion(question,true),null,question);
+  assert.equal(inputScope.explicitQuoteRequest(question),false,question);
+ }
+ const question='Compare the code in this attachment with my saved notes.';
+ const prompt=planDialogueMessages(question,planningContextForInputs(context,true),inputs,{allowedTools:[{id:'memory.search',effect:'read',network:'none',usage:'Search local saved notes.',inputSchema:{type:'object',properties:{query:{type:'string'}}}}],history:[]})[0].content;
+ assert.match(prompt,/MIXED SOURCE REQUEST/);assert.match(prompt,/memory\.search/);assert.match(prompt,/answer with target=inputs/);
+});
 test('an explicitly attachment-only text question remains read-only and excludes mixed commands',()=>{
  const question='Using only the attached text, what is the temporary bronze phrase? Reply with the phrase.';
  assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
@@ -59,4 +68,21 @@ test('attachment-only questions also recognize PDF and other original media with
   assert.equal(explicitInputQuestion(question,false),null);
  }
  for(const question of ['Using only the attached PDF, what is the code and delete the file?','Using only the attached PDF, what is the code? Save it.','Using only the attached PDF, what did I say earlier?'])assert.equal(explicitInputQuestion(question,true),null);
+});
+test('direct quote requests about a current file stay in attachment scope instead of dialogue recall',()=>{
+ for(const question of [
+  'From this file, quote the sentence that states the water-cache amount?',
+  'From this file, quote the complete sentence that states the water-cache amount.',
+  'From this file, quote the complete sentence that states the water-cache amount',
+  'Using this attached document, quote the sentence that gives the meeting point?',
+ ])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ for(const question of [
+  'From this file, quote the sentence and delete the file.',
+  'From this file, quote the sentence. What did I say earlier?',
+  'From this file, quote the sentence. Save it.',
+ ])assert.equal(explicitInputQuestion(question,true),null,question);
+ for(const question of [
+  'From this file, quote the sentence and delete the file?',
+  'From this file, quote the sentence. What did I say earlier?',
+ ])assert.equal(explicitInputQuestion(question,true),null);
 });

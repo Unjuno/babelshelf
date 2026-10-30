@@ -19,8 +19,8 @@ The user may later choose external tools/MCP/frontier models as an optional sepa
 - Main input/results surface supports natural-language record/search/read/summarize/answer/save. No sessions or New chat; no branding heading, Chat/Notes tab split, sidebar, hamburger, bottom navigation, explanatory paragraphs or marketing copy.
 - UI labels are English; stored content, inputs and generation are multilingual.
 - Glass control material inspired by iOS 26, upright recognizable icons, readable opaque text and short status/error labels. This is a web interpretation, not native Apple Liquid Glass.
-- Input button upper-left. Touch/pen tap returns to input; 50ms hold displays a curved four-item menu. Mouse/trackpad click opens a persistent menu; click a destination to navigate, or click Input again to return to input. Sliding to an item and releasing switches destination. Returning to center/outside cancels after movement. Stationary release closes and returns to Input. No decorative line in the button.
-- Menu: Memory, Schedule, Notifications, Settings. Keyboard activation/arrows/Escape and assistive access must remain. Actual 50ms touch discrimination still needs device testing.
+- Input button upper-left. Touch/pen tap returns to input; 80ms hold displays a curved four-item menu. Mouse/trackpad click opens a persistent menu; click a destination to navigate, or click Input again to return to input. Sliding to an item and releasing switches destination. Releasing without a destination leaves the menu open; a short tap returns to Input. No decorative line in the button.
+- Menu: Memory, Schedule, Notifications, Settings. Keyboard activation/arrows/Escape and assistive access must remain. Actual 80ms touch discrimination still needs device testing.
 - Attachment, voice and Send controls are compact, with at least 44px targets. Display each original and its actual extraction state; preview/playback alone never implies model understanding.
 - Answers show a small source mark near the relevant text; source details and the exact original remain available on demand. No automatic filename clutter in ordinary answers.
 
@@ -32,7 +32,7 @@ Canonical roots: Inbox, Notes, Schedule, Notifications, Attachments, Tools, Sett
 
 Home is a display grouping, not another stored folder or account. Home / Files maps to Attachments; Home / Notes maps to Notes; Home / Inbox maps to Inbox. The Memory tree projects canonical IndexedDB records; it is not an OS directory. Explicit Markdown exports and full-state backups are separate local files, documented in STORAGE-CONTRACT.md.
 
-Default capture goes to Inbox. Creation in an open directory uses that directory. Home file creation defaults to Inbox; Home child-folder creation defaults to Notes, with the destination shown before Save. The root is not a normal create destination. Do not delete old paths/data to make this arrangement fit.
+An explicit chat request to remember or capture content creates a new note in Inbox directly; do not interrupt it with a second save confirmation. Keep the exact captured bytes, source references and dialogue-copy origin when applicable. A generated attachment summary is stored as the generated note produced for that request. The separate Save note action may still open the editable new-file sheet. Creation in an open directory uses that directory. Home file creation defaults to Inbox; Home child-folder creation defaults to Notes, with the destination shown before Save. The root is not a normal create destination. Do not delete old paths/data to make this arrangement fit.
 
 ## Editing, tools and authorization
 
@@ -62,7 +62,7 @@ Scheduled tasks, execution records and notification events use the same canonica
 
 ## Models and extensibility
 
-Text candidate: PrismML Ternary Bonsai 2 4B first, 2B fallback after validation; 9B is an optional larger text candidate with device execution still unverified. Decision candidates: Liquid AI Open d1-omni-600M and d1-3B. Model roles are independent and replaceable; one future model may fill multiple roles only if capabilities are verified.
+Fresh-install text default: LFM3-1.7B QAD Q4_0. LFM3 Q8_0 and Bonsai 2B/4B/9B remain explicit alternatives; each device/runtime pair must be verified before claiming it runs or fits. Decision candidates: Liquid AI Open d1-omni-600M and d1-3B. Model roles are independent and replaceable; one future model may fill multiple roles only if capabilities are verified.
 
 Open d1 produces typed decisions/probabilities; it does not replace text generation. Omni is not a promise of arbitrary transcription, OCR, video analysis or simultaneous image/audio support. See MODEL-CANDIDATES.md for sources and limitations.
 
@@ -74,7 +74,7 @@ Before enabling a runtime/model: pin revision, asset size/hash and license; insp
 
 Preserve original content, IDs, append-only revisions, withdrawal state, explicit links, exact source revision/ranges and multilingual search. Local file backup/restore must reject or surface conflicts without silent replacement.
 
-Required offline acceptance after app shutdown/restart: new notes, TXT/MD import, index rebuilding, search, fresh generation and summary, confirmed generated-result save, backup and restore. Test real model load/stop/offline reload separately from Node helpers and desktop phone simulations.
+Required offline acceptance after app shutdown/restart: new notes, TXT/MD import, search, fresh generation and summary, confirmed generated-result save, backup and restore. Search reads canonical local notes directly using the bounded low-memory multilingual scan; no separate persistent index or rebuild action is currently part of the product contract. Do not add a corpus-sized resident index without measured user-device benefit and a complete invalidation/restore design. Verify search after cold restart and mutations (revision, withdrawal, restore, backup restore, and another-tab update) against canonical records. Test real model load/stop/offline reload separately from Node helpers and desktop phone simulations.
 
 ## Status
 
@@ -84,7 +84,7 @@ Favicon and install icons are completely blank white squares, with no glyph, tex
 
 ## File operations and recovery
 
-Fixed canonical directories and Home are protected. A 450ms item hold opens the same glass action sheet as the accessible Actions button; ordinary tap opens the item. Files offer Edit / Delete, user folders Rename / Delete. Input navigation retains its separate 50ms hold. The compact arc uses 75px radius and a 110-degree sweep while preserving 44px secondary targets.
+Fixed canonical directories and Home are protected. A 450ms item hold opens the same glass action sheet as the accessible Actions button; ordinary tap opens the item. Files offer Edit / Delete, user folders Rename / Delete. Input navigation retains its separate 80ms hold. The compact arc uses 75px radius and a 110-degree sweep while preserving 44px secondary targets.
 
 Delete requires target confirmation; folders show descendant file/folder counts. Retain exact records/revisions in recovery batches. Immediate Undo and Settings > Local files > Trash > Restore provide recovery. Restore refuses conflicting IDs/paths rather than overwriting. Memory's header has only creation +; do not put an ambiguous Trash icon beside it.
 
@@ -114,7 +114,7 @@ Input/results shows only a compact inline source marker beside the answer. Tappi
 
 Editor Save/Cancel are fixed above the keyboard; scheduled prompt fields scroll independently from the footer. Send and source controls have 44px boxes. Managed setting files show Fixed path rather than the same read-only lock used for bundled definitions; managed files remain directly editable. Folder protection remains enforced without implying all contents are read-only.
 
-The navigation retains the approved 50ms hold without Hold/Menu or Example helper labels; no real-touch usability pass is claimed. Unread notifications appear as a badge on the collapsed input/menu button and a dot on the notification destination. Unavailable adapters keep preparation actions disabled; connected adapters require explicit preparation. Dark-mode readiness labels use opaque readable foregrounds.
+The navigation retains the approved 80ms hold without Hold/Menu or Example helper labels; no real-touch usability pass is claimed. Unread notifications appear as a badge on the collapsed input/menu button and a dot on the notification destination. Unavailable adapters keep preparation actions disabled; connected adapters require explicit preparation. Dark-mode readiness labels use opaque readable foregrounds.
 
 Weekly schedules have explicit weekday. Time basis is the device timezone at save, with local next-occurrence preview; this is not a promise of closed-PWA wakeup. The preview helper advances local wall-clock dates (including platform DST normalization). Arbitrary timezone selection/conversion and DST ambiguity controls are not established. A changed device zone requires schedule review, not silent execution in a new zone.
 

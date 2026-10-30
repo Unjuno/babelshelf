@@ -22,6 +22,18 @@ Each canonical Settings file carries an integer `schemaVersion`. Current files u
 
 This makes configuration Pi-like in the useful sense: people can shape behavior with local definitions and add extensions without rebuilding the product. It does not mean arbitrary Markdown is executable. A newly added definition only has an effect through a registered application consumer or an explicitly imported extension runtime.
 
+## The user-facing boundary
+
+Treat three kinds of editing as different product actions:
+
+| User edits | What it changes | What it cannot change |
+| --- | --- | --- |
+| Knowledge folders and files | User-owned content and its organization | Application settings, permissions, tools or screen layout |
+| A supported `Settings/*.md` record | Values accepted by that record's schema and already-connected consumer | New behavior from unknown keys, arbitrary code/CSS, model runtime support or network/write authority |
+| An imported custom tool package | A reviewed tool definition that can be explicitly opted into a harness profile | Capabilities beyond its app-owned host adapter; writing a file does not activate it |
+
+The product owns navigation, screen hierarchy, typography, spacing, component geometry and interaction states. Appearance records may select validated colors/backgrounds and palettes; they do not define a new UI. An unfamiliar folder or Markdown key must remain ordinary data until a versioned schema and application consumer deliberately support it. When a new kind of definition is added, expose its supported fields and effects in its Settings editor instead of making users infer them from a generic file tree.
+
 ## Agent edits
 
 Chat may propose a change to a supported user-owned definition. The app shows the exact target, before/after values, validation result and affected behavior. Saving requires explicit user approval, an expected revision check and an append-only history entry. Undo appends the previous valid content as a new revision. A failed, stale or invalid proposal changes nothing. Connection proposals can toggle sanitized local diagnostic logging; they cannot change Online/Offline, asset downloads or start network work.
@@ -30,7 +42,7 @@ An agent cannot silently edit factory code, tool permissions, network policy, mo
 
 ## What can be extended today
 
-- `Settings/harness.md`: reply style, user guidance and bounded profiles selecting registered tools.
+- `Settings/harness.md`: reply style, a bounded user-defined system-prompt extension, and profiles selecting registered tools. The app-owned system protocol follows the user text and retains authority over tools, sources, review and permissions.
 - `Settings/connection.md`: asset download policy and diagnostic logging. Chat may propose `diagnosticLogs` changes because they retain only sanitized local failure metadata; Online/Offline and asset-download policy remain direct user controls.
 - `Settings/appearance.md`: theme choices, local font registry and up to 12 named high-contrast palettes. A palette can be added or edited in this Memory record and selected from Settings; older single-palette settings are read without changing their stored revision.
 - `Settings/models.md`: validated model declarations, role selections and up to 32 named user model sets. Sets can be added by saving current role choices, editing the `customSets` array, or asking chat for a reviewed proposal. They can reference only models already registered for their role and do not prepare/download files or claim device compatibility.

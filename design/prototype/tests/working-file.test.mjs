@@ -34,6 +34,11 @@ test('file scope retrieves only exact selected eligible text, never a similarly 
  const n=note(),other=createNote({path:'Inbox/focus.md',body:'The inventory code is WRONG-999.'}),pin={noteId:n.id,revision:1};
  const refs=workingFileEvidence([n,other],pin,'inventory code');assert.ok(refs.length);assert.ok(refs.every(r=>r.noteId===n.id&&n.revisions[0].body.slice(r.start,r.end)===r.quote));assert.doesNotMatch(JSON.stringify(refs),/WRONG/);
 });
+test('a direct quote request over the opened file retrieves the matching complete sentence',()=>{
+ const n=createNote({path:'Attachments/Codex-evaluation-fixture-2026-10-28.md',body:'# Temporary evaluation fixture\n\nThe emergency meeting point is Cedar Library, entrance on Pine Street.\n\nThe local water cache contains exactly 18 litres.'}),pin={noteId:n.id,revision:1};
+ const refs=workingFileEvidence([n],pin,'From this file, quote the complete sentence that states the water-cache amount.');
+ assert.ok(refs.some(ref=>ref.quote==='The local water cache contains exactly 18 litres.'),JSON.stringify(refs));
+});
 test('focus persistence is serialized and a caller waits before capturing its Send snapshot',async()=>{
  let state=emptyDialogue(),release;const gate=new Promise(r=>release=r),writes=[];
  const queue=createFileFocusQueue(()=>state,async next=>{if(!writes.length)await gate;writes.push(next);state=next;});
@@ -57,6 +62,16 @@ test('selected-file generation validates its scope again after generation and ne
  engine.generate=async()=>{calls++;records=[reviseNote(n,{body:'Changed'},1),other];return {text:JSON.stringify({answer:'COPPER-2816',citations:[{id:'S1',quote:'COPPER-2816'}]})};};
  await assert.rejects(()=>groundedAnswer({store:store,engine:engine},{model:'4B',question:'What is this code?',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})}),/changed/i);
  const count=calls;await assert.rejects(()=>groundedAnswer({store:store,engine:engine},{model:'4B',question:'retry',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})}),/changed/i);assert.equal(calls,count);
+});
+
+test('a bad planner hint retries the complete question within the same pinned file only',async()=>{
+ const {groundedAnswer}=await import('../src/grounded-answer.ts');
+ const water=createNote({path:'Inbox/QA Water.md',body:'# QA Water\n\nEmergency water reserve is exactly 24 litres. Identifier: LFM3-OFFLINE-1.'}),other=createNote({path:'Notes/unrelated.md',body:'Emergency water reserve is 999 litres.'}),pin={noteId:water.id,revision:1};let messages;
+ const engine={loaded:'4B',assets:{'4B':{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'4B',revision:'test'}],runtime:{revision:'test'}},count:async()=>({prompt_tokens:200}),generate:async input=>{messages=input;const payload=JSON.parse(input.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.ok(payload.evidence.some(ref=>ref.quote.includes('24 litres')),'missing matching passage: '+JSON.stringify(payload));const source=payload.evidence.find(ref=>ref.quote.includes('24 litres'));return {text:JSON.stringify({answer:'24 litres',citations:[{id:source.label,quote:'24 litres'}]})};}};
+ const store={all:async()=>[water,other],search:async()=>{throw Error('File scope must never search Memory globally');}};
+ const question='In my saved note LFM3-OFFLINE-1, exactly how many litres is the emergency water reserve?';
+ const answer=await groundedAnswer({store,engine},{model:'4B',question,query:'saved',mode:'answer',scope:{kind:'file',file:pin}});
+ assert.equal(answer.sources.length,1);assert.equal(answer.sources[0].noteId,water.id);assert.match(JSON.stringify(messages),/exactly 24 litres/);assert.doesNotMatch(JSON.stringify(messages),/999 litres/);
 });
 
 test('focus queue freezes selected identity and propagates CAS failures without overwriting later state',async()=>{

@@ -20,9 +20,9 @@ test('copies the report through the clipboard when available',async()=>{
 });
 
 test('creates a paste-ready Codex handoff that preserves evidence limits and excludes answer text',()=>{
- const report={schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[{id:'offline-cold-reopen',status:'pass'}],modelGeneration:{status:'pass',model:'small',modelRevision:'model-r1',runtimeRevision:'runtime-r1',outputTokens:4,runtimeMetrics:{visibleTextTtftMs:240,runtimeDecodeTokensPerSecond:8.5,memoryAfter:{gpuBytes:2048}}}};
+ const report={schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[{id:'offline-cold-reopen',status:'pass'}],modelGeneration:{status:'pass',model:'small',modelRevision:'model-r1',runtimeRevision:'runtime-r1',outputTokens:4,runtimeMetrics:{visibleTextTtftMs:240,runtimeDecodeTokensPerSecond:8.5,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:28,memoryAfter:{gpuBytes:2048}}}};
  const handoff=formatDiagnosticHandoff(JSON.stringify(report));
- assert.match(handoff,/implement any code fix that can be made from the report/);assert.match(handoff,/run the relevant PC regression checks/);assert.match(handoff,/Do not ask for another device run unless a specific fix requires iOS-only verification/);assert.match(handoff,/complete PC preflight, then request one targeted rerun/);assert.match(handoff,/Do not infer that Airplane Mode or force-close occurred/);assert.match(handoff,/```json/);assert.match(handoff,/"outputTokens": 4/);assert.match(handoff,/"runtimeDecodeTokensPerSecond": 8\.5/);assert.match(handoff,/"gpuBytes": 2048/);assert.doesNotMatch(handoff,/generated answer text[^\n]*SECRET/);
+ assert.match(handoff,/implement any code fix that can be made from the report/);assert.match(handoff,/run the relevant PC regression checks/);assert.match(handoff,/Do not ask for another device run unless a specific fix requires iOS-only verification/);assert.match(handoff,/complete PC preflight, then request one targeted rerun/);assert.match(handoff,/Do not infer that Airplane Mode or force-close occurred/);assert.match(handoff,/```json/);assert.match(handoff,/"outputTokens": 4/);assert.match(handoff,/"runtimeDecodeTokensPerSecond": 8\.5/);assert.match(handoff,/"runtimeObservedGpuLayers": 24/);assert.match(handoff,/"runtimeObservedGpuTotalLayers": 28/);assert.match(handoff,/"gpuBytes": 2048/);assert.doesNotMatch(handoff,/generated answer text[^\n]*SECRET/);
  assert.throws(()=>formatDiagnosticHandoff('not-json'),/Invalid device test report/);
  assert.throws(()=>formatDiagnosticHandoff('{"schema":2,"checks":[]}'),/Invalid device test report/);
 });
@@ -81,6 +81,6 @@ test('reports when neither clipboard copy path is available',async()=>{
 });
 
 test('performance metadata survives the private handoff but reply text and unknown memory fields do not',()=>{
- const value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',workload:'prose-128-v1',inputTokens:42,maxOutputTokens:128,loadState:'loaded-for-test',rawReply:'PRIVATE-ANSWER',runtimeMetrics:{memoryAfter:{liveBytes:123,peakBytes:456,privateNote:'PRIVATE-ANSWER'}}}};
- const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/prose-128-v1/);assert.match(text,/"inputTokens": 42/);assert.match(text,/"liveBytes": 123/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
+ const value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'fail',model:'m',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',workload:'prose-128-v1',inputTokens:42,maxOutputTokens:128,loadState:'not-loaded',failureStage:'load',failureType:'Error',rawReply:'PRIVATE-ANSWER',runtimeMetrics:{memoryAfter:{liveBytes:123,peakBytes:456,privateNote:'PRIVATE-ANSWER'}}}};
+ const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/prose-128-v1/);assert.match(text,/"inputTokens": 42/);assert.match(text,/"loadState": "not-loaded"/);assert.match(text,/"failureStage": "load"/);assert.match(text,/"liveBytes": 123/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
 });

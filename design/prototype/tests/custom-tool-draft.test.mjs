@@ -37,6 +37,15 @@ test('draft accepts only registered local calculator capability declarations',as
  assert.match(draft.files[0].body,/math\.calculate/);
 });
 
+test('draft can request bounded read-only Memory browsing when the workflow needs folder navigation',async()=>{
+ const content={...inner,code:'({input,capabilities}) => capabilities.memoryList(input.query,0,10)',capabilities:['memory.list']};
+ const local=engine(undefined,{generate:async()=>({text:JSON.stringify({answer:JSON.stringify(content)})})});
+ const draft=await draftCustomToolPackage(local,'Browse immediate files in the requested Memory folder');
+ assert.deepEqual(draft.capabilities,['memory.list']);
+ assert.match(draft.files[0].body,/memory\.list/);
+ assert.match(draft.files[1].body,/memoryList/);
+});
+
 test('draft supports validated structured arguments instead of a fixed query string',async()=>{
  const content={...inner,inputSchema:{type:'object',required:['expression','decimals'],additionalProperties:false,properties:{expression:{type:'string',minLength:1,maxLength:160},decimals:{type:'integer',minimum:0,maximum:6}}},code:'({input,capabilities})=>({result:capabilities.calculate(input.expression),decimals:input.decimals})',capabilities:['math.calculate']};
  const local=engine(undefined,{generate:async()=>({text:JSON.stringify({answer:JSON.stringify(content)})})});

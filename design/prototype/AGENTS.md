@@ -82,7 +82,7 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 - Assistant's Profile chooser derives from Settings/harness.md and shares correction review, CAS, history and Undo with chat proposals. Show tools and bounded limits before Save; custom package sources are pinned for transactional approval and inspectable on demand. Selection never prepares a runtime or executes code. Keep historical backup verification separate from live activation checks.
 - Model-set review shows all five role changes, including image understanding. Initial preparation follows the selected roles exactly: text-only never adds speech/OCR, while selected Vision has its own pinned, optional asset step. Selection and preparation do not claim phone compatibility or inference success.
 - Main input with compact photo, microphone and Send. The initial exchange is a static design example; do not fabricate inference.
-- Upper-left clear glass Input button. Touch/pen tap returns to Input. Mouse/trackpad click opens a persistent menu; destination click selects, second Input click returns to Input. Touch/pen hold 50ms to reveal curved Memory / Schedule / Notifications / Settings. Slide and release selects; stationary release closes and returns to Input. Returning to center/outside cancels after movement. Keep keyboard/screen-reader alternatives and no decorative line.
+- Upper-left clear glass Input button. Touch/pen tap returns to Input. Mouse/trackpad click opens a persistent menu; destination click selects, second Input click returns to Input. Touch/pen hold 80ms to reveal curved Memory / Schedule / Notifications / Settings. Slide and release selects; releasing without a destination leaves the menu open. A short tap returns to Input. Keep keyboard/screen-reader alternatives and no decorative line.
 - Memory defaults to Home (Inbox, Notes, Files); Files labels Attachments. Click folder rows and breadcrumb ancestors. Explicit Memory ancestor reveals internal Schedule/Notifications. Initial canonical roots are protected and stored depth is at most five; Home adds no stored level.
 - Direct editor/history, same Cancel/Save creation sheets. Existing preview records are never erased to change presentation.
 - Separate Text and Decision model roles. Bonsai 2 4B/2B; Open d1 Omni 600M/3B candidate selections. Glass choice sheets, not native model select popups. Selection never claims preparation or execution.
@@ -95,7 +95,7 @@ Read ../../docs/PRODUCT-SPEC.md for current product decisions. This prototype is
 
 - Fixed canonical folders and Home are protected. User files/folders expose 450ms long press and an accessible Actions button. Files: Edit / Delete; folders: Rename / Delete. Confirm target/counts and retain exact records/revisions. Undo/Restore refuse conflicts.
 - Trash belongs in Settings > Local files, with explicit Restore and item counts; Memory header contains only creation +. Recovery is transient in the prototype, with no permanent purge or storage reclamation claim.
-- Compact navigation uses 75px radius and a 110-degree sweep with 44px secondary targets; Input remains 72px with a separate 50ms hold.
+- Compact navigation uses 75px radius and a 110-degree sweep with 44px secondary targets; Input remains 72px with a separate 80ms hold.
 
 ## Attachments and settings
 
@@ -117,7 +117,7 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 
 - Settings is the seventh protected root (schema 4). Managed settings file IDs/paths are immutable but values are editable and validated. Derive control values only from preference-records.ts records; do not recreate parallel React preference state. Keep short Settings categories, folder/Open file links and append-only revisions. UI records are still session-only.
 
-- UI-review fixes: fixed editor actions above keyboard; task sheet has scrollable fields and pinned actions; source/Send 44px; dark readiness contrast; Fixed path vs read-only distinction; unread badges; unavailable Prepare buttons disabled. Keep approved 50ms hold and short hint, pending physical-touch evidence.
+- UI-review fixes: fixed editor actions above keyboard; task sheet has scrollable fields and pinned actions; source/Send 44px; dark readiness contrast; Fixed path vs read-only distinction; unread badges; unavailable Prepare buttons disabled. Keep approved 80ms hold and short hint, pending physical-touch evidence.
 - ReferenceCard shares text excerpt/image/video/audio previews across citation example and sent originals. Example citation pins v1. Attachments are not generated citations. Weekly schedule now includes weekday and device-zone/next-local-occurrence preview; no runtime execution guarantee.
 
 - Answer citations use compact inline marks only. Show source filenames, original text and media previews on demand after opening the mark; do not add permanent source cards below answers. Dark original text and sheet actions must retain strong contrast.
@@ -140,6 +140,8 @@ On a fine-pointer desktop, composer + opens multi-file selection directly. On pr
 
 - Speech uses the separate verified WASM worker. Keep explicit language, original playback, model-estimated timing and Save review. Preserve canonical settings defaults/history, atomic original/derived note writes, terminal cache failure responses, crash recovery and permission/save locks. Current transcription is reviewed note capture; voice-to-unsaved-prompt and OCR/video remain pending. See SPEECH-CONTRACT.md.
 
-## Editorial appearance (2026-10-27)
+## Editorial appearance and customization boundary (2026-10-28)
 
-- Use a paper and newspaper-inspired default appearance, with readable type, restrained rules, and compact controls. Do not add a hamburger menu or a large product name. Preserve custom appearance settings and stored data. Standard paper surfaces are opaque, so show the Glass control only for custom palettes where it can apply.
+- Preserve the accepted screen structure and task flows; improve styling through one app-owned token/component system. The default is paper/editorial: warm canvas, opaque paper surfaces, high-contrast ink, visible fine rules, and one restrained accent. Avoid pale card-on-card treatment and decorative glass as the default. Do not add a hamburger menu or a large product name.
+- Keep customization bounded to validated appearance values and named palettes. Never accept arbitrary CSS, HTML or script as a theme. The app owns layout, spacing, typography hierarchy, component shape and interaction states. Standard paper surfaces are opaque; show the Glass control only for a selected custom palette where it applies.
+- Memory folders and knowledge files are user content. Configuration definitions are editable only through a registered schema and consumer; a new folder or Markdown key alone cannot change application behavior. Preserve protected roots, version history and stored data when simplifying the editing experience.

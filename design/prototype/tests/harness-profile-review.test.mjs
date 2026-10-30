@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,latest,reviseNote} from '../../../dist/core.js';
 import {initialPreferenceNotes,parsePreference,formatPreference} from '../src/preference-records.ts';
-import {prepareHarnessProfileChange} from '../src/harness-profile-review.ts';
+import {addToolToActiveProfile,prepareHarnessProfileChange} from '../src/harness-profile-review.ts';
 import {applyCorrection,undoCorrection,proposeCorrection} from '../src/note-corrections.ts';
 import {createCustomToolPackageFiles} from '../src/custom-tool-package.ts';
 import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
@@ -39,6 +39,18 @@ test('custom profile activation checks inert source pairs and refuses changed or
  assert.throws(()=>applyCorrection([harness,files[0],changed],proposal),/Version conflict/);
  assert.throws(()=>applyCorrection([harness,files[0]],proposal),/Version conflict/);
  assert.equal(latest(harness).version,1);
+});
+
+test('saving a custom skill adds it to the active profile in the same revisioned settings update',()=>{
+ const harness=structuredClone(initialPreferenceNotes.find(note=>note.id==='settings-harness')),before=structuredClone(harness);
+ const after=addToolToActiveProfile([harness],'user.lookup'),updated=after.find(note=>note.id==='settings-harness');
+ assert.deepEqual(harness,before);
+ const value=parsePreference('harness',updated.body);
+ assert.deepEqual(value.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now','user.lookup']);
+ assert.equal(updated.version,2);assert.equal(updated.history.length,1);
+ assert.equal(value.activeProfileId,'standard');
+ assert.throws(()=>addToolToActiveProfile(after,'user.lookup'),/already exists/);
+ assert.throws(()=>addToolToActiveProfile(after,'memory.search'),/Custom tool ID unavailable/);
 });
 
 test('chat profile proposals use the same package snapshot and cannot drop its review dependencies',async()=>{
