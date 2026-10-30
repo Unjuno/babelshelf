@@ -5,7 +5,7 @@ import {runBuiltinTool} from '../src/tools/builtin-tool-results.ts';
 
 function registry(id,value){
  const entry=`Tools/${id}/tool.ts`;
- return createToolRegistry([{definition:{id,version:1,readOnly:true,network:'none'},entry,sources:[{path:`Tools/${id}/SKILL.md`,body:'Read-only tool.'},{path:entry,body:'bundled'}],run:async()=>value}]);
+ return createToolRegistry([{definition:{id,version:1,effect:'read',network:'none'},entry,sources:[{path:`Tools/${id}/SKILL.md`,body:'Read-only tool.'},{path:entry,body:'bundled'}],run:async()=>value}]);
 }
 const host={check(){},search:async()=>[],resolve:async()=>[]};
 
@@ -15,6 +15,9 @@ test('registered Memory search keeps passages and path-only file results as dist
  assert.deepEqual(await runBuiltinTool(registry('memory.search',[passage,file]),'memory.search',{query:'meeting'},host),[passage,file]);
  await assert.rejects(runBuiltinTool(registry('memory.search',[{kind:'file',noteId:'note-2',revision:1}]),'memory.search',{query:'meeting'},host),/file result/i);
  await assert.rejects(runBuiltinTool(registry('memory.search',[{...passage,end:13}]),'memory.search',{query:'meeting'},host),/passage/i);
+ const located={...passage,path:'Notes/meeting.md'};
+ assert.deepEqual(await runBuiltinTool(registry('memory.search',[located]),'memory.search',{query:'meeting'},host),[located]);
+ for(const path of ['',null,7,'x'.repeat(1025)])await assert.rejects(runBuiltinTool(registry('memory.search',[{...passage,path}]),'memory.search',{query:'meeting'},host),/passage path/i);
 });
 
 test('registered Memory read rejects malformed canonical records before callers project them',async()=>{

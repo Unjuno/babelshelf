@@ -2,13 +2,62 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {run as search} from '../src/tools/memory.search/tool.ts';
 import {run as read} from '../src/tools/memory.read/tool.ts';
-import {resolveToolNotes} from '../src/tools/tool-host.ts';
+import {run as list} from '../src/tools/memory.list/tool.ts';
+import {listMemoryEntries,resolveToolNotes} from '../src/tools/tool-host.ts';
+import {readFile} from 'node:fs/promises';
+import {builtinTools} from '../src/tools/builtin-tools.ts';
+import {recordOperation,activityLabel,validateActivity} from '../src/harness-activity.ts';
+
+test('every shipped tool can execute through the registry and persist a readable receipt',async()=>{
+ const packages=await Promise.all(builtinTools.map(async({tool})=>{
+  const id=tool.definition.id;
+  return {definition:tool.definition,run:tool.run,entry:`Tools/${id}/tool.ts`,sources:await Promise.all(['SKILL.md','tool.ts'].map(async name=>({path:`Tools/${id}/${name}`,body:await readFile(new URL(`../src/tools/${id}/${name}`,import.meta.url),'utf8')})))};
+ }));
+ const registry=createToolRegistry(packages),record={id:'saved',path:'Notes/example.md',version:2,body:'Water: 17 litres.'};
+ const local={check(){},search:async()=>[{noteId:'saved',revision:2,quote:record.body,start:0,end:record.body.length}],resolve:async query=>resolveToolNotes([record],query),list:async(path,offset,limit)=>listMemoryEntries(path,[record],['Notes'],offset,limit)};
+ const inputs={'memory.search':{query:'Water'},'memory.list':{path:'Notes'},'memory.read':{query:'saved'},'math.calculate':{expression:'19*23'},'time.now':{}};
+ const results=new Map(),receipts=[];
+ for(const capability of registry.capabilities()){
+  assert.ok(Object.hasOwn(inputs,capability.id),`Provide an actual execution case for ${capability.id}`);
+  const entries=[],args=inputs[capability.id],identity=await registry.identity(capability.id);
+  const result=await recordOperation(capability.id,{...args,...identity},()=>registry.run(capability.id,args,local),async activity=>entries.push(activity));
+  assert.deepEqual(entries.map(entry=>entry.status),['running','succeeded']);
+  assert.equal(entries.at(-1).input.package,capability.id);
+  assert.match(entries.at(-1).input.packageSha256,/^[a-f0-9]{64}$/);
+  assert.notEqual(activityLabel(capability.id),capability.id);
+  results.set(capability.id,result);receipts.push(entries.at(-1));
+ }
+ validateActivity(JSON.parse(JSON.stringify(receipts)));
+ assert.equal(results.get('memory.search')[0].noteId,'saved');
+ assert.equal(results.get('memory.list').entries[0].id,'saved');
+ assert.deepEqual(results.get('memory.read')[0],{id:'saved',path:'Notes/example.md',version:2,body:'Water: 17 litres.',start:0,totalChars:17});
+ assert.equal(results.get('math.calculate')[0].result,'437');
+ assert.equal(results.get('time.now').source,'device-clock');
+ await assert.rejects(registry.run('shell.exec',{},local),/not registered/);
+});
 const notes=[{id:'one',path:'Inbox/給水.md',version:2,body:'16 liters'}];
 const host={search:async q=>q==='給水'?notes:[],resolve:async q=>resolveToolNotes(notes,q),check(){}};
 test('packages return actual host search and exact current snapshot references',async()=>{
  assert.equal(await search({query:'給水'},host),notes);
- for(const query of ['one','Inbox/給水.md','給水.md'])assert.deepEqual((await read({query},host))[0],notes[0]);
+ for(const query of ['one','Inbox/給水.md','給水.md'])assert.deepEqual((await read({query},host))[0],{...notes[0],start:0,totalChars:notes[0].body.length});
  assert.deepEqual(await read({query:'給水'},host),[]);
+});
+test('memory.list reveals only immediate folders/files, preserves file identity and pages results',async()=>{
+ const snapshot=[...notes,{id:'two',path:'Inbox/sub/second.md',version:4,body:'secret body'},{id:'three',path:'Notes/a.md',version:1,body:'note'}];
+ const folders=['Inbox','Inbox/empty','Inbox/sub','Notes'];
+ const root=listMemoryEntries('',snapshot,folders),inbox=listMemoryEntries('Inbox',snapshot,folders),sub=listMemoryEntries('Inbox/sub',snapshot,folders);
+ assert.deepEqual(root.entries.map(x=>x.path),['Inbox','Notes']);
+ assert.deepEqual(inbox.entries.map(x=>[x.kind,x.path]),[['folder','Inbox/empty'],['folder','Inbox/sub'],['file','Inbox/給水.md']]);
+ assert.deepEqual(sub.entries,[{kind:'file',name:'second.md',path:'Inbox/sub/second.md',id:'two',version:4}]);
+ assert.equal(JSON.stringify(inbox).includes('16 liters'),false);
+ const paged=listMemoryEntries('Inbox',snapshot,folders,1,1);assert.equal(paged.hasMore,true);assert.equal(paged.nextOffset,2);
+ const actual=await list({path:'Inbox'}, {...host,list:async(path,offset,limit)=>listMemoryEntries(path,snapshot,folders,offset,limit)});
+ assert.equal(actual.total,3);
+});
+test('memory.list rejects traversal, malformed paths and out-of-range pages before host access',async()=>{
+ let touched=false;const h={...host,list:async()=>{touched=true;return {};}};
+ for(const args of [{path:'../Inbox'},{path:'Inbox/../Notes'},{path:'/Inbox'},{path:'Inbox//sub'},{limit:26},{offset:-1},{unknown:true}])await assert.rejects(list(args,h));
+ assert.equal(touched,false);
 });
 test('invalid arguments never reach the host',async()=>{
  for(const args of [null,[],{}, {query:''},{query:1},{query:'x',write:true},{query:'x'.repeat(2001)}])
@@ -24,8 +73,15 @@ test('memory.read receives only explicitly resolved notes and cannot enumerate t
  let resolved='';
  const decorated={...notes[0],history:['old body'],state:'withdrawn',secret:'do-not-expose'};
  const scoped={search:async()=>[],resolve:async query=>{resolved=query;return resolveToolNotes([decorated,{id:'private',path:'Hidden/private.md',version:1,body:'not requested'}],query);},check(){}};
- assert.deepEqual(await read({query:'one'},scoped),[notes[0]]);assert.equal(resolved,'one');assert.equal('views' in scoped,false);assert.equal('history' in (await scoped.resolve('one'))[0],false);assert.equal('secret' in (await scoped.resolve('one'))[0],false);
- assert.deepEqual(await read({query:'Inbox/給水.md'},scoped),[notes[0]]);
+ assert.deepEqual(await read({query:'one',length:10_000_000},scoped),[{...notes[0],start:0,totalChars:notes[0].body.length}]);assert.equal(resolved,'one');assert.equal('views' in scoped,false);assert.equal('history' in (await scoped.resolve('one'))[0],false);assert.equal('secret' in (await scoped.resolve('one'))[0],false);
+ assert.deepEqual(await read({query:'Inbox/給水.md',length:10_000_000},scoped),[{...notes[0],start:0,totalChars:notes[0].body.length}]);
+});
+
+test('memory.read can continue through exact source ranges without changing the record identity',async()=>{
+ const body='αβγδεζηθικλμνξοπρστυφχψω';const source={id:'long',path:'Inbox/long.md',version:4,body};const scoped={...host,resolve:async q=>resolveToolNotes([source],q)};
+ const first=(await read({query:source.path,start:0,length:10},scoped))[0],second=(await read({query:source.path,start:first.start+first.body.length,length:10},scoped))[0];
+ assert.deepEqual([first.start,first.body,first.totalChars],[0,body.slice(0,10),body.length]);assert.deepEqual([second.start,second.body,second.totalChars],[10,body.slice(10,20),body.length]);assert.equal(first.id,second.id);assert.equal(first.version,second.version);
+ await assert.rejects(read({query:source.path,start:-1},scoped),/Invalid Memory range/);await assert.rejects(read({query:source.path,length:0},scoped),/Invalid Memory range/);
 });
 
 import {normalizePath} from '../../../dist/files.js';
@@ -40,7 +96,7 @@ test('tool source paths and export preserve actual code without Markdown wrappin
 });
 
 import {createToolRegistry} from '../src/tools/tool-registry.ts';
-const declaration=()=>({definition:{id:'memory.search',version:1,readOnly:true,network:'none'},entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Read only'},{path:'Tools/memory.search/tool.ts',body:'source'}],run:search});
+const declaration=()=>({definition:{id:'memory.search',version:1,effect:'read',network:'none'},entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Read only'},{path:'Tools/memory.search/tool.ts',body:'source'}],run:search});
 test('registry dispatches only trusted registrations and fingerprints immutable code/skill identity',async()=>{
  const pkg=declaration(),registry=createToolRegistry([pkg]),identity=await registry.identity('memory.search');
  assert.match(identity.packageSha256,/^[a-f0-9]{64}$/);assert.equal(identity.entry,pkg.entry);assert.equal(await registry.run('memory.search',{query:'給水'},host),notes);
@@ -50,9 +106,18 @@ test('registry dispatches only trusted registrations and fingerprints immutable 
  const reordered=declaration();reordered.sources.reverse();assert.deepEqual(await createToolRegistry([reordered]).identity('memory.search'),identity);
 });
 test('registry refuses invalid authority, duplicate IDs, missing code/skill and unsafe source paths',()=>{
- const mutations=[p=>p.definition.network='https',p=>p.definition.readOnly=false,p=>p.definition.version=0,p=>p.definition.id='../../run',p=>p.run=null,p=>p.entry='Tools/other/tool.ts',p=>p.sources.pop(),p=>p.sources[0].path='Tools/../SKILL.md',p=>p.sources.push({...p.sources[0]})];
+ const mutations=[p=>p.definition.network='https',p=>p.definition.effect='unsafe',p=>p.definition.version=0,p=>p.definition.id='../../run',p=>p.run=null,p=>p.entry='Tools/other/tool.ts',p=>p.sources.pop(),p=>p.sources[0].path='Tools/../SKILL.md',p=>p.sources.push({...p.sources[0]})];
  for(const mutate of mutations){const pkg=declaration();mutate(pkg);assert.throws(()=>createToolRegistry([pkg]),/Invalid|unavailable/);}
  assert.throws(()=>createToolRegistry([declaration(),declaration()]),/registration/);
+});
+test('tool effects and network declarations must form a valid typed contract',()=>{
+ for(const mutate of [
+  p=>{p.definition.effect='review';p.definition.network='explicit-online';},
+  p=>{p.definition.effect='external';p.definition.network='none';},
+  p=>{p.definition.network='explicit-online';},
+ ]){const pkg=declaration();mutate(pkg);assert.throws(()=>createToolRegistry([pkg]),/Invalid bundled tool registration/);}
+ const review=declaration();review.definition.effect='review';assert.equal(createToolRegistry([review]).capabilities()[0].effect,'review');
+ const external=declaration();external.definition.effect='external';external.definition.network='explicit-online';assert.equal(createToolRegistry([external]).capabilities()[0].network,'explicit-online');
 });
 
 test('registered tool schemas remain stable when their source or exposed capability is changed',async()=>{
@@ -127,10 +192,10 @@ test('exact record identity is not diluted by a different filename match',async(
  const exact={id:'archive.md',path:'Inbox/original.md',version:3,body:'Exact original'};
  const sameName={id:'other',path:'Notes/archive.md',version:1,body:'Different record'};
  const snapshot=[sameName,exact],h={...host,resolve:async q=>resolveToolNotes(snapshot,q)};
- assert.deepEqual(await read({query:'archive.md'},h),[exact]);
- assert.deepEqual(await read({query:'Notes/archive.md'},h),[sameName]);
+ assert.deepEqual(await read({query:'archive.md',length:10_000_000},h),[{...exact,start:0,totalChars:exact.body.length}]);
+ assert.deepEqual(await read({query:'Notes/archive.md',length:10_000_000},h),[{...sameName,start:0,totalChars:sameName.body.length}]);
  const duplicate={id:'third',path:'Inbox/archive.md',version:1,body:'Another record'};
- assert.deepEqual(await read({query:'archive.md'},{...host,resolve:async q=>resolveToolNotes([sameName,duplicate],q)}),[sameName,duplicate]);
+ assert.deepEqual(await read({query:'archive.md',length:10_000_000},{...host,resolve:async q=>resolveToolNotes([sameName,duplicate],q)}),[{...sameName,start:0,totalChars:sameName.body.length},{...duplicate,start:0,totalChars:duplicate.body.length}]);
 });
 
 test('ambiguous filename lookup is bounded and requires a full path',()=>{
@@ -157,4 +222,18 @@ test('unit price questions use the local calculator only for complete requests',
  const {explicitCalculationInput}=await import('../src/explicit-calculation.ts');
  for(const [question,expression] of [['1250円のものを3個買うといくら？','1250 * 3'],['１，２５０円の品物を３個買うといくら？','1250 * 3']])assert.deepEqual(explicitCalculationInput(question),{expression,showExpression:true,unit:'円'});
  for(const question of ['1250円のものを3個買うといくら？保存して','1250円のものを3個買うといくら？税を加えて','12,50円のものを3個買うといくら？'])assert.equal(explicitCalculationInput(question),null);
+});
+
+test('memory.read preserves Unicode characters and exact offsets across range boundaries',async()=>{
+ const body='A😀B';const source={id:'emoji',path:'Inbox/emoji.md',version:2,body};const scoped={...host,resolve:async q=>resolveToolNotes([source],q)};
+ const first=(await read({query:source.id,start:0,length:2},scoped))[0];
+ const second=(await read({query:source.id,start:first.start+first.body.length,length:1},scoped))[0];
+ const third=(await read({query:source.id,start:second.start+second.body.length,length:1},scoped))[0];
+ assert.deepEqual([first.body,second.body,third.body],['A','😀','B']);
+ for(const item of [first,second,third])assert.equal(body.slice(item.start,item.start+item.body.length),item.body);
+ const {projectAgentToolResult,agentEvidenceFromCalls}=await import('../src/agent-evidence.ts');
+ const projected=projectAgentToolResult('memory.read',[second]);const refs=agentEvidenceFromCalls([{tool:'memory.read',arguments:{query:source.id},result:projected}]);
+ assert.deepEqual(refs.map(ref=>({start:ref.start,end:ref.end,quote:ref.quote})),[{start:1,end:3,quote:'😀'}]);
+ const middle=(await read({query:source.id,start:2,length:1},scoped))[0];assert.equal(middle.start,1);assert.equal(middle.body,'😀');
+ const after=(await read({query:source.id,start:99,length:1},scoped))[0];assert.equal(after.start,body.length);assert.equal(after.totalChars,body.length);assert.equal(after.body,'');
 });

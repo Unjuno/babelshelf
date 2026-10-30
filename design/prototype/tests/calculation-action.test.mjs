@@ -7,7 +7,7 @@ const host={check(){},search:async()=>[],resolve:async()=>[]};
 
 function registry(result){
  const entry='Tools/math.calculate/tool.ts';
- return createToolRegistry([{definition:{id:'math.calculate',version:2,readOnly:true,network:'none'},entry,sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate locally.'},{path:entry,body:'Bundled calculator.'}],run:async()=>result}]);
+ return createToolRegistry([{definition:{id:'math.calculate',version:2,effect:'read',network:'none'},entry,sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate locally.'},{path:entry,body:'Bundled calculator.'}],run:async()=>result}]);
 }
 
 test('local calculations share the registered tool identity, trace and typed result boundary',async()=>{
@@ -50,6 +50,11 @@ test('a follow-up binds only the immediately previous verified exact calculation
  const receipt=makeDecimalReceipt('12 × 3 + 5'),previous={id:'t',user:'12 × 3 + 5 を計算して',answer:'12 × 3 + 5 = 41',status:'Calculated',activity:[{tool:'math.calculate',status:'succeeded',output:[receipt]}]};
  assert.equal(continuedCalculationInput('その結果を２で割って',previous),'41 / 2');
  for(const [request,expression] of [['その結果に５を足して','41 + 5'],['その結果から2を引いてください','41 - 2'],['その結果に3をかけて','41 * 3']])assert.equal(continuedCalculationInput(request,previous),expression);
+ for(const [request,expression] of [['Now divide that by 3','41 / 3'],['Then split it by 2','41 / 2'],['Add 5 to that','41 + 5'],['Please subtract 2 from the result.','41 - 2'],['Now multiply this by 3','41 * 3']])assert.equal(continuedCalculationInput(request,previous),expression);
+ for(const request of ['Now divide that by 3 and save it','Add 5 to that, then delete the note','Explain why I divided that by 3'])assert.equal(continuedCalculationInput(request,previous),null);
+ const cited={...previous,refs:[{noteId:'n1',revision:1,start:0,end:12,quote:'Seven liters'}]};
+ assert.equal(continuedCalculationInput('Now divide that by 3',cited),null);
+ const {isSourcedArithmeticQuestion}=await import('../src/calculation-action.ts');assert.equal(isSourcedArithmeticQuestion('Now divide that by 3',cited),true);
  assert.equal(continuedCalculationInput('その結果に5を足して保存して',previous),null);
  assert.equal(continuedCalculationInput('その結果を2で割って保存して',previous),null);
  assert.equal(continuedCalculationInput('その結果を2で割って',{...previous,answer:'99'}),null);

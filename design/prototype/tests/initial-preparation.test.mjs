@@ -5,6 +5,15 @@ import {initialPreparationPlan,runInitialPreparation,textPreparationStatus} from
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
 
+test('pinned LFM3 Q8 preparation budgets only its verified weights and shared LFM3 runtime',async()=>{
+ const {lfm3RuntimeBytes}=await import('../src/lfm3-text-manifest.ts');
+ const prefs=initial();prefs.textModel='lfm3-1.7b-q8-0';prefs.textLibrary.push(prefs.textModel);
+ const plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false},'text');
+ assert.equal(plan.steps.length,1);assert.equal(plan.steps[0].role,'text');assert.match(plan.steps[0].label,/LFM3.*Q8_0/);
+ assert.equal(plan.steps[0].bytes,1846238496+lfm3RuntimeBytes);assert.equal(plan.bytes,1846238496+lfm3RuntimeBytes);
+ assert.equal(plan.models.textModel,'lfm3-1.7b-q8-0');
+});
+
 test('custom Vision setup verifies the selected local package and never budgets a builtin-model download',async()=>{
  const {visionManifest}=await import('../src/vision-assets.ts');const {validateCustomVisionModel}=await import('../src/custom-vision-assets.ts');
  const files=visionManifest.files.map(({path,bytes,sha256})=>({path,bytes,sha256}));
@@ -38,7 +47,7 @@ test('fresh selected Text status controls preparation without treating missing s
  assert.throws(()=>textPreparationStatus({'2B':{filesPresent:true}},'4B'),/status unavailable/);
  assert.deepEqual(textPreparationStatus({'9B':null},'9B'),{text:false,textStatusError:false});
  const failed=textPreparationStatus({'4B':{filesPresent:true,statusError:true}},'4B');
- assert.throws(()=>initialPreparationPlan(prefs,{...failed,speech:false,ocr:false}),/status unavailable/);
+ const uncertain=initialPreparationPlan(prefs,{...failed,speech:false,ocr:false});assert.equal(uncertain.textStatusError,true);assert.equal(uncertain.steps[0].ready,false);assert.ok(uncertain.bytes>0);
  prefs.decisionModel='d1-omni-600M';prefs.decisionLibrary=['d1-omni-600M'];
  assert.deepEqual(initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false,decision:false},'decision').steps.map(step=>step.role),['decision']);
 });
@@ -118,10 +127,9 @@ test('standard-set presence is not reported as text verification',()=>{
  assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.bytes,0);
 });
 
-test('an unavailable selected text status cannot be treated as missing downloadable files',()=>{
+test('an unavailable selected text status stays unverified but does not block the safe prepare/import flow',()=>{
  const prefs=initial();
- assert.throws(()=>initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false}),/Text file status unavailable/);
- assert.throws(()=>initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'text'),/retry check/);
+ for(const plan of [initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false}),initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'text')]){assert.equal(plan.textStatusError,true);assert.equal(plan.steps[0].ready,false);assert.ok(plan.bytes>0);}
  prefs.transcriptionModel='whisper-tiny';prefs.transcriptionLibrary=['whisper-tiny'];
  assert.deepEqual(initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'speech').steps.map(step=>step.role),['speech']);
 });
@@ -129,12 +137,12 @@ test('an unavailable selected text status cannot be treated as missing downloada
 
 test('LFM initial preparation budgets only selected weights; packaged runtime is independent',()=>{
  const prefs=initial();prefs.textModel='lfm25-350m-qad-q4-0';prefs.textLibrary.push(prefs.textModel);
- const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,219312832);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);assert.equal(initial().textModel,'4B');
+ const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,219312832);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);assert.equal(initial().textModel,'lfm3-1.7b-qad-q4-0');
 });
 test('custom LFM2 preparation uses the trusted runtime budget and keeps the default model unchanged',()=>{
  const prefs=initial(),sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes:149081056,name:'My LFM2',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};
  prefs.customModels=[custom];prefs.textLibrary.push(custom.id);prefs.textModel=custom.id;
- const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true});assert.equal(plan.steps[0].label,'My LFM2');assert.equal(plan.steps[0].bytes,custom.file.bytes);assert.equal(plan.models.textModel,custom.id);assert.equal(plan.bytes,0);assert.equal(initial().textModel,'4B');
+ const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true});assert.equal(plan.steps[0].label,'My LFM2');assert.equal(plan.steps[0].bytes,custom.file.bytes);assert.equal(plan.models.textModel,custom.id);assert.equal(plan.bytes,0);assert.equal(initial().textModel,'lfm3-1.7b-qad-q4-0');
 });
 test('a registered custom D1 decision model stays in the app-owned local runtime during initial preparation',()=>{
  const prefs=initial(),files=[{path:'config.json',bytes:1,sha256:'1'.repeat(64)},{path:'tokenizer.json',bytes:1,sha256:'2'.repeat(64)},{path:'tokenizer_config.json',bytes:1,sha256:'3'.repeat(64)},{path:'onnx/model_quantized.onnx',bytes:1,sha256:'4'.repeat(64)},{path:'onnx/model_quantized.onnx_data',bytes:1,sha256:'5'.repeat(64)}],sha=createHash('sha256').update(JSON.stringify(files)).digest('hex'),custom={id:'local-decision-'+sha,label:'My D1',role:'decision',engine:'onnx-d1-text',revision:'sha256:'+sha,files,inspection:{format:'D1-ONNX',architecture:'d1_omni',contextTokens:16384,inputLimit:2048,scope:'text-only'}};

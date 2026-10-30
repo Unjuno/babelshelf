@@ -6,8 +6,8 @@ import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts
 
 test('candidate generation is bounded and validates model output without executing a tool',async()=>{
  const note=createNote({body:'水は七リットル。'}),ref={noteId:note.id,revision:1,start:0,end:8,quote:'水は七リットル。'},question='その水を3人で分けると？';let calls=0;
- const modelOutput={operation:'divide',operands:[{kind:'source',source:0,quote:'七リットル',unit:'リットル'},{kind:'request',quote:'3'}]};
- const engine={manifest:{contextTokens:1000},count:async messages=>{assert.match(JSON.stringify(messages),/水は七リットル/);return {prompt_tokens:100};},generate:async()=>{calls++;return {text:JSON.stringify(modelOutput)};}};
+ const modelOutput={operation:'divide',sourceOperandIndex:0,sourceIndex:0,sourceQuote:'七リットル',sourceUnit:'リットル',requestQuote:'3'},engineFormat={type:'sourced-calculation',sourceCount:1};
+ const engine={manifest:{contextTokens:1000},count:async(messages,format)=>{assert.match(JSON.stringify(messages),/水は七リットル/);assert.deepEqual(format,engineFormat);return {prompt_tokens:100};},generate:async(_messages,_budget,format)=>{calls++;assert.deepEqual(format,engineFormat);return {text:JSON.stringify(modelOutput)};}};
  const proposal=await proposeSourcedCalculation({engine,records:[note],question,sources:[ref],check:()=>{}});assert.equal(validateSourcedCalculationProposal([note],question,proposal,[ref]).expression,'7 / 3');assert.equal(calls,1);
  await assert.rejects(proposeSourcedCalculation({engine:{...engine,generate:async()=>({text:'not JSON'})},records:[note],question,sources:[ref],check:()=>{}}),/candidate/);
  await assert.rejects(proposeSourcedCalculation({engine:{...engine,count:async()=>({prompt_tokens:900})},records:[note],question,sources:[ref],check:()=>{}}),/context/);

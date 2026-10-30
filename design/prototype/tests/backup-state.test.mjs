@@ -163,7 +163,7 @@ import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from '
 import {reviseNote} from '../../../dist/core.js';
 
 test('restore conflict labels use familiar controls while retaining their exact internal identities',async()=>{
- const {restoreConflictLabel}=await import('../src/backup-state.ts');
+ const {restoreConflictLabel}=await import('../src/backup-conflicts.ts');
  assert.equal(typeof restoreConflictLabel,'function');
  for(const [key,label] of [['ui-v1-dialogue','Messages'],['ui-v1-folders','Folders'],['ui-v1-trash','Trash'],['ui-v1-pending-correction','Pending changes'],['custom-private-key','Settings']]){
   const conflict={store:'settings',key,label:key},before=structuredClone(conflict);

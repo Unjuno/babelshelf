@@ -23,7 +23,11 @@ jobs:
           cache-dependency-path: design/prototype/package-lock.json
       - name: Install pinned dependencies
         run: npm ci --prefix design/prototype
+      - name: Install root test dependencies
+        run: npm ci
       - name: Install Chromium and WebKit for real browser checks
         run: npm --prefix design/prototype exec -- playwright install --with-deps chromium webkit
+      - name: Build prototype packaging fixtures
+        run: npm run build:prototype
       - name: Run product quality gates
         run: npm run test:quality

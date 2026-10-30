@@ -24,6 +24,16 @@ test('custom package adapts into the immutable registry and receives only declar
  assert.deepEqual(await registry.run(pkg.id,{query:'meeting'},{check(){},search:async q=>{assert.equal(q,'meeting');return notes;},resolve:async()=>{throw Error('must not receive undeclared read');}}),notes);
  assert.deepEqual(observed[0].capabilities,['memory.search']);
  assert.equal(observed[0].host.read,undefined);
+ assert.equal(observed[0].host.calculateDecimal,undefined);
+});
+
+test('custom calculator retains numeric compatibility and offers decimal receipts',async()=>{
+ const sources=files().map(file=>({...file,body:file.path.endsWith('SKILL.md')?file.body.replace('memory.search','math.calculate'):'({input,capabilities})=>capabilities.calculateDecimal(input.query)'}));
+ const pkg=await inspectCustomToolPackage(sources),registration=await customToolRegistration(pkg,async options=>({legacy:options.host.calculate(options.input.query),decimal:options.host.calculateDecimal(options.input.query),third:options.host.calculateDecimal('1 / 3')}));
+ const result=await registration.run({query:'0.1 + 0.2'},{check(){}});
+ assert.equal(result.legacy,0.30000000000000004);
+ assert.equal(result.decimal.result,'0.3');assert.equal(result.decimal.rounded,false);
+ assert.equal(result.third.result,'0.333333333333333333');assert.equal(result.third.rounded,true);
 });
 
 test('a custom package can call only its declared registered local calculator',async()=>{
@@ -36,10 +46,20 @@ test('a custom package can call only its declared registered local calculator',a
  assert.equal(await registration.run({query:'6 * 7'},{check(){},search:async()=>[],resolve:async()=>[]}),42);
 });
 
+test('a custom package can list bounded immediate Memory entries only when declared',async()=>{
+ const sources=files().map(file=>({...file,body:file.path.endsWith('SKILL.md')?file.body.replace('memory.search','memory.list').replace('Search local notes.','List an immediate Memory folder.'):'({input,capabilities})=>capabilities.memoryList(input.query,0,10)'}));
+ const pkg=await inspectCustomToolPackage(sources),registration=await customToolRegistration(pkg,async options=>{
+  assert.deepEqual(options.capabilities,['memory.list']);assert.equal(options.host.search,undefined);assert.equal(options.host.read,undefined);
+  return options.host.list(options.input.query,0,10);
+ });
+ const result=await registration.run({query:'Notes'},{check(){},search:async()=>[],resolve:async()=>[],list:async(path,offset,limit)=>({path,offset,limit,entries:[]})});
+ assert.deepEqual(result,{path:'Notes',offset:0,limit:10,entries:[]});
+});
+
 test('a user package cannot elevate package policy beyond local read-only capabilities',async()=>{
  const pkg=await inspectCustomToolPackage(files());
  const widened={...pkg,capabilities:['network.fetch']};
  await assert.rejects(customToolRegistration(widened),/Invalid custom tool package/);
  const registration=await customToolRegistration(pkg,async()=>({ok:true}));
- assert.equal(registration.definition.readOnly,true);assert.equal(registration.definition.network,'none');
+ assert.equal(registration.definition.effect,'read');assert.equal(registration.definition.network,'none');
 });

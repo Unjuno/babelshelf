@@ -42,8 +42,11 @@ test('media statuses separate sampled video model preparation from audio and ori
 test('text choices expose pinned download size without claiming device readiness',()=>{
  const small=textModelFileSize('2B'),standard=textModelFileSize('4B'),large=textModelFileSize('9B');
  assert.ok(small>0&&small<standard&&standard<large);
- assert.match(textModelChoiceHint('9B'),/2\.00 GB · PC prose unstable/);
+ assert.match(textModelChoiceHint('9B'),/2\.00 GB · experimental · PC prose unstable/);
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
+ assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0'),/1\.05 GB · WebGPU · device execution not tested/);
+ assert.equal(textModelFileSize('lfm3-1.7b-q8-0'),1846238496);
+ assert.match(textModelChoiceHint('lfm3-1.7b-q8-0'),/1\.85 GB · WebGPU · device execution not tested/);
  assert.equal(textModelFileSize('unknown'),null);
 });
 test('custom model choices disclose their app-owned adapter class and untested generation',()=>{
@@ -66,7 +69,7 @@ test('the standard add list contains at least three prepared-path text choices a
 
 test('every fresh-library text choice has an explicit pinned preparation route',()=>{
  const prefs=readPreference('models',structuredClone(initialPreferenceNotes));
- assert.ok(prefs.textLibrary.length>=3);
+ assert.deepEqual(prefs.textLibrary,['lfm3-1.7b-qad-q4-0','2B']);
  for(const id of prefs.textLibrary){
   assert.equal(canAddModel('text',id),true);
   const selection={...prefs,textModel:id};
@@ -90,6 +93,12 @@ test('only installed app-owned role adapters can be added from model libraries',
  assert.equal(modelCatalogStatus('ocr','tesseract-7'),'Not prepared');
  assert.equal(modelCatalogStatus('ocr','whisper-tiny'),'Runtime not connected');
  assert.equal(modelCatalogStatus('text','4B'),'Not prepared');
+});
+
+test('non-recommended text candidates disclose their current evidence limits in the model picker',()=>{
+ for(const id of ['9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0'])assert.match(textModelChoiceHint(id),/experimental/i);
+ assert.match(textModelChoiceHint('9B'),/prose unstable/i);
+ for(const id of ['lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0'])assert.match(textModelChoiceHint(id),/diagnostic generation only/i);
 });
 
 test('validated supported custom text engines share the text role but unknown models stay unavailable',()=>{

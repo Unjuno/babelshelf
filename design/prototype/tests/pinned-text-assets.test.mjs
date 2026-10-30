@@ -8,7 +8,7 @@ function fixture() {
  const files=new Map(); let fetches=0,writers=0;
  const directory={
   async getFileHandle(name,{create=false}={}) {
-   if(!files.has(name)){if(!create)throw Error('missing');files.set(name,new Blob([]));}
+   if(!files.has(name)){if(!create)throw new DOMException('missing','NotFoundError');files.set(name,new Blob([]));}
    return {
     getFile:async()=>files.get(name),
     async createWritable() {
@@ -51,12 +51,30 @@ test('manifest rejects mutable URLs and path traversal before storage access',()
  assert.throws(()=>createPinnedAssetStore({...manifest,files:[{...manifest.files[0],url:'https://huggingface.co/test/resolve/main/model.onnx'}]},io),/Invalid/);
 });
 
+test('pinned model IDs may contain decimal points used by versioned model names',()=>{
+ const io={directory:async()=>{throw Error('must not open storage');},fetch:()=>{throw Error('must not fetch');}};
+ assert.doesNotThrow(()=>createPinnedAssetStore({...manifest,id:'lfm3-1.7b-qad-q4-0'},io));
+});
+
 test('download body is cancelled when OPFS cannot open a writer or HTTP fails',async()=>{
  for(const httpFailure of [false,true]){
   let cancelled=0;
   const stream=new ReadableStream({cancel(){cancelled++;}});
-  const store=createPinnedAssetStore(manifest,{directory:async()=>({getFileHandle:async()=>{throw Error('OPFS unavailable');}}),fetch:async()=>new Response(stream,{status:httpFailure?503:200})});
+  const store=createPinnedAssetStore(manifest,{directory:async()=>({getFileHandle:async(_name,options)=>{if(!options?.create)throw new DOMException('missing','NotFoundError');throw Error('OPFS unavailable');}}),fetch:async()=>new Response(stream,{status:httpFailure?503:200})});
   await assert.rejects(store.prepare(true,new AbortController().signal),/OPFS|download/);
   assert.equal(cancelled,1);
  }
+});
+test('permission failure is not interpreted as missing or a reason to download',async()=>{
+ const error=new DOMException('Denied','NotAllowedError');let fetches=0,creates=0;
+ const store=createPinnedAssetStore(manifest,{directory:async()=>({getFileHandle:async(_name,options)=>{if(options?.create)creates++;throw error;}}),fetch:async()=>{fetches++;return new Response(bytes);}}),signal=new AbortController().signal;
+ await assert.rejects(store.status(signal),e=>e===error);await assert.rejects(store.prepare(true,signal),e=>e===error);
+ assert.equal(fetches,0);assert.equal(creates,0);
+});
+test('a renamed single GGUF is accepted only when its bytes match the pinned model',async()=>{
+ const gguf={...manifest,files:[{...manifest.files[0],path:'model.gguf'}]},f=fixture();let fetches=0;
+ const directory={getFileHandle:async(name,options)=>{if(!f.files.has(name)){if(!options?.create)throw new DOMException('missing','NotFoundError');f.files.set(name,new Blob([]));}return {getFile:async()=>f.files.get(name),createWritable:async()=>{const parts=[];return {write:async value=>parts.push(value),close:async()=>f.files.set(name,new Blob(parts)),abort:async()=>{}};}};}};
+ const store=createPinnedAssetStore(gguf,{directory:async()=>directory,fetch:async()=>{fetches++;throw Error('unexpected fetch');}}),signal=new AbortController().signal;
+ await assert.rejects(store.prepare(true,signal,()=>{},[new File([new Uint8Array([3,2,1])],'renamed.gguf')]),/verification/);assert.equal(fetches,0);
+ await store.prepare(false,signal,()=>{},[new File([bytes],'renamed.gguf')]);assert.equal((await store.status(signal)).filesPresent,true);assert.equal(fetches,0);
 });

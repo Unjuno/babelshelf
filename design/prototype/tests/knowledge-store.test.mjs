@@ -231,9 +231,9 @@ test('preparation settings use fresh readonly keyed records and refuse malformed
  const rows=new Map(initialPreferenceNotes.filter(n=>['settings-models','settings-connection'].includes(n.id)).map(seed=>[seed.id,{...createNote({title:seed.id,body:seed.body,path:seed.path}),id:seed.id,ui:{managed:true}}]));
  const store=new KnowledgeStore('unused'),calls=[];
  store.transaction=(names,mode,run)=>new Promise((done,fail)=>{assert.deepEqual(names,['notes']);assert.equal(mode,'readonly');run({objectStore(name){assert.equal(name,'notes');return {get(id){calls.push(id);const request={result:structuredClone(rows.get(id))};queueMicrotask(()=>request.onsuccess());return request;},getAll(){throw Error('Must not load every knowledge record');}};}},done,fail);});
- const first=await store.preparationSettings();assert.equal(first.models.textModel,'4B');assert.equal(first.connection.downloads,false);assert.deepEqual(calls,['settings-models','settings-connection']);
+ const first=await store.preparationSettings();assert.equal(first.models.textModel,'lfm3-1.7b-qad-q4-0');assert.equal(first.connection.downloads,false);assert.deepEqual(calls,['settings-models','settings-connection']);
  const original=rows.get('settings-models'),body=JSON.parse(original.revisions.at(-1).body.match(/```json\n([\s\S]+)\n```/)[1]);body.textModel='2B';
- rows.set(original.id,reviseNote(original,{body:'# Models\n\n```json\n'+JSON.stringify(body,null,2)+'\n```\n'},latest(original).version));assert.equal((await store.preparationSettings()).models.textModel,'2B');assert.equal(first.models.textModel,'4B');
+ rows.set(original.id,reviseNote(original,{body:'# Models\n\n```json\n'+JSON.stringify(body,null,2)+'\n```\n'},latest(original).version));assert.equal((await store.preparationSettings()).models.textModel,'2B');assert.equal(first.models.textModel,'lfm3-1.7b-qad-q4-0');
  rows.delete('settings-connection');await assert.rejects(store.preparationSettings(),/Settings unavailable/);
  rows.set('settings-connection',{...createNote({body:'broken',path:'Settings/connection.md'}),id:'settings-connection'});await assert.rejects(store.preparationSettings(),/JSON block/);
 });

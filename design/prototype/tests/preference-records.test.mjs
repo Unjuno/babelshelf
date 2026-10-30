@@ -5,9 +5,16 @@ import {initialPreferenceNotes,readPreference,readPreferenceWithFallback,recover
 import {createNote} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
 import {settingsPatchResult} from '../src/settings-corrections.ts';
+import {settings} from '../src/app-settings.ts';
 import {deletionContents} from '../src/memory-trash.ts';
 
 function legacyPreference(group,value){return formatPreference(group,value).replace('  "schemaVersion": 1,\n','');}
+
+test('a user-selected speech language persists as a new models settings revision',()=>{
+ const initial=structuredClone(initialPreferenceNotes),before=readPreference('models',initial),changed=updatePreference('models',initial,value=>({...value,transcriptionLanguage:'ja'}));
+ assert.equal(readPreference('models',changed).transcriptionLanguage,'ja');assert.equal(readPreference('models',initial).transcriptionLanguage,before.transcriptionLanguage);
+ const old=initial.find(note=>note.id==='settings-models'),next=changed.find(note=>note.id==='settings-models');assert.equal(next.version,old.version+1);assert.equal(next.history.at(-1),old.body);
+});
 
 test('Settings README is a memory-file index with an explicit extension boundary',()=>{
  const readme=initialPreferenceNotes.find(note=>note.id==='settings-readme');
@@ -17,7 +24,7 @@ test('Settings README is a memory-file index with an explicit extension boundary
  assert.match(readme.body,/revision history/i);
  assert.match(readme.body,/named model sets/i);
  assert.match(readme.body,/New setting types need an app schema, validator and consumer/i);
- assert.ok(readme.body.includes('Review and test code before enabling it in a profile.'));
+ assert.ok(readme.body.includes('Saving a package adds it to the active profile'));
 });
 
 test('view edits produce a canonical settings revision retaining original bytes and ID',()=>{
@@ -91,19 +98,29 @@ test('model selections reference the library and managed settings cannot be dele
  assert.throws(()=>deletionContents({kind:'file',value:'settings-models'},original,['Settings']),/protected/);
 });
 
-test('fresh settings expose three downloadable text choices while selecting only one',()=>{
+test('fresh settings select LFM3 and retain Bonsai alternatives in the library',()=>{
  const models=readPreference('models',initialPreferenceNotes);
- assert.deepEqual(models.textLibrary,['4B','2B','lfm25-230m-qad-q4-0']);
- assert.equal(models.textModel,'4B');
+ assert.deepEqual(models.textLibrary,['lfm3-1.7b-qad-q4-0','2B']);
+ assert.equal(models.textModel,'lfm3-1.7b-qad-q4-0');
  assert.equal(models.decisionModel,'');
  assert.equal(models.customModels.length,0);
+});
+
+test('changing the fresh default never rewrites an existing selected model record',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models');
+ const legacy=readPreference('models',notes);legacy.textModel='4B';legacy.textLibrary=['4B','2B'];
+ record.body=formatPreference('models',legacy);
+ const before=record.body,loaded=readPreference('models',notes);
+ assert.equal(settings.defaults.textModel,'lfm3-1.7b-qad-q4-0');
+ assert.equal(loaded.textModel,'4B');assert.deepEqual(loaded.textLibrary,['4B','2B']);
+ assert.equal(record.body,before);
 });
 
 test('harness profiles live in versioned Memory settings and only reduce registered tool authority',()=>{
  const records=structuredClone(initialPreferenceNotes),before=readPreference('harness',records);
  assert.equal(before.activeProfileId,'standard');
  assert.deepEqual(before.profiles.map(profile=>profile.id),['standard','source-first','conversation']);
- const standard=before.profiles[0];assert.deepEqual(standard.enabledTools,['memory.search','memory.read','math.calculate']);assert.equal(standard.maxToolCalls,3);assert.equal(standard.maxResultChars,8000);
+ const standard=before.profiles[0];assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.equal(standard.maxToolCalls,null);assert.equal(standard.maxResultChars,8000);
  const changed=updatePreference('harness',records,value=>({...value,activeProfileId:'source-first',profiles:value.profiles.map(profile=>profile.id==='source-first'?{...profile,enabledTools:['memory.search'],maxToolCalls:1,maxResultChars:1200}:profile)}));
  const saved=readPreference('harness',changed),record=changed.find(note=>note.id==='settings-harness');
  assert.equal(saved.activeProfileId,'source-first');assert.deepEqual(saved.profiles.find(profile=>profile.id==='source-first').enabledTools,['memory.search']);
@@ -119,14 +136,30 @@ test('harness profile accepts only namespaced custom tool IDs for later registry
  assert.equal(before.activeProfileId,'standard');
 });
 
-test('harness config rejects unknown tools, widened budgets and non-read-only capabilities',()=>{
+test('existing standard profile keeps its tool selection after a new tool is added',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness');
+ const old=parsePreference('harness',record.body);old.profiles[0].enabledTools=old.profiles[0].enabledTools.filter(id=>id!=='time.now');
+ record.body=formatPreference('harness',old);const before=record.body;
+ assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('time.now'),false);assert.equal(record.body,before);
+});
+
+test('harness config rejects unknown tools, invalid budgets and non-read-only capabilities',()=>{
  const initial=readPreference('harness',initialPreferenceNotes);
  for(const mutate of [
   value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,enabledTools:['memory.delete']}:profile)}),
-  value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxToolCalls:4}:profile)}),
+  value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxToolCalls:-1}:profile)}),
   value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxResultChars:8001}:profile)}),
   value=>({...value,writeTools:['memory.patch']}),
- ])assert.throws(()=>parsePreference('harness',formatPreference('harness',mutate(initial))),/Unknown|Unsupported|Invalid|exceed/);
+ ])assert.throws(()=>parsePreference('harness',formatPreference('harness',mutate(initial))),/Unknown|Unsupported|Invalid|invalid|exceed/);
+});
+
+test('legacy untouched built-in tools and caps migrate additively without changing custom limits',()=>{
+ const current=structuredClone(initialPreferenceNotes),record=current.find(note=>note.id==='settings-harness');
+ const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
+ record.body=formatPreference('harness',legacy).replace('"schemaVersion": 2','"schemaVersion": 1');const parsed=parsePreference('harness',record.body);
+ assert.equal(parsed.schemaVersion,1);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
+ legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 2','"schemaVersion": 1');
+ assert.equal(parsePreference('harness',record.body).profiles[0].maxToolCalls,4);
 });
 
 test('all roles require registration; old model records migrate without losing history',()=>{
@@ -138,14 +171,20 @@ test('all roles require registration; old model records migrate without losing h
  assert.deepEqual(registered.find(n=>n.id===before.id).history,[before.body]);
  const legacy={...readPreference('models',original)};delete legacy.textLibrary;delete legacy.decisionLibrary;
  const body=legacyPreference('models',legacy),parsed=parsePreference('models',body);
- assert.deepEqual(parsed.textLibrary,['4B']);assert.deepEqual(parsed.decisionLibrary,[]);
+ assert.deepEqual(parsed.textLibrary,['lfm3-1.7b-qad-q4-0']);assert.deepEqual(parsed.decisionLibrary,[]);
  const older=original.map(n=>n.id===before.id?{...n,body}:n);
- const changed=updatePreference('models',older,m=>({...m,textLibrary:['4B','2B'],textModel:'2B'}));
+ const changed=updatePreference('models',older,m=>({...m,textLibrary:['lfm3-1.7b-qad-q4-0','2B'],textModel:'2B'}));
  assert.deepEqual(changed.find(n=>n.id===before.id).history,[body]);
 });
 
 test('legacy model settings project OCR defaults without rewriting bytes; explicit registration appends history',()=>{
  const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);delete value.ocrModel;delete value.ocrLibrary;delete value.ocrLanguage;old.body=legacyPreference('models',value);const bytes=old.body,parsed=readPreference('models',notes);assert.equal(old.body,bytes);assert.equal(parsed.ocrModel,'');assert.deepEqual(parsed.ocrLibrary,[]);assert.equal(parsed.ocrLanguage,'eng+jpn');const next=updatePreference('models',notes,m=>({...m,ocrLibrary:['tesseract-7'],ocrModel:'tesseract-7'}));assert.equal(next.find(n=>n.id===old.id).history[0],bytes);assert.equal(readPreference('models',next).textModel,parsed.textModel);assert.throws(()=>parsePreference('models',formatPreference('models',{...parsed,ocrModel:'remote-ocr'})),/Unsupported/);
+});
+test('legacy model preferences gain the conservative LFM3 context default without rewriting saved bytes',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.lfm3ContextTokens;legacy.textModel='2B';record.body=legacyPreference('models',legacy);const original=record.body;
+ const migrated=readPreference('models',notes);assert.equal(migrated.lfm3ContextTokens,8192);assert.equal(migrated.textModel,'2B');assert.equal(record.body,original);assert.equal(record.version,1);
+ const saved=updatePreference('models',notes,value=>({...value,lfm3ContextTokens:262144}));assert.equal(readPreference('models',saved).lfm3ContextTokens,262144);assert.equal(saved.find(n=>n.id===record.id).history[0],original);
+ assert.throws(()=>updatePreference('models',notes,value=>({...value,lfm3ContextTokens:524288})),/context window/);
 });
 test('Vision selection is independently registered, defaults off, and legacy settings migrate without rewriting bytes',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);

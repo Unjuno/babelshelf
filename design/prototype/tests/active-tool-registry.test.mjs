@@ -8,7 +8,7 @@ const pkg=[
  {path:'Tools/user.lookup/tool.js',body:'({input,capabilities})=>capabilities.memorySearch(input.query)'}
 ];
 const host={check(){},search:async q=>[{id:'n1',path:'Notes/'+q+'.md',version:1,body:'original'}],resolve:async()=>[]};
-const builtinSearch={definition:{id:'memory.search',version:1,readOnly:true,network:'none'},entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local notes.'},{path:'Tools/memory.search/tool.ts',body:'source'}],run:async(args,h)=>h.search(args.query)};
+const builtinSearch={definition:{id:'memory.search',version:1,effect:'read',network:'none'},entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local notes.'},{path:'Tools/memory.search/tool.ts',body:'source'}],run:async(args,h)=>h.search(args.query)};
 
 test('only packages explicitly selected by the profile enter the active registry',async()=>{
  const built=await buildActiveToolRegistry([...pkg],['memory.search'],[builtinSearch]);

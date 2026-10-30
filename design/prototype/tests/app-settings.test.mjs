@@ -18,7 +18,7 @@ test('settings cannot declare installed media or grant remote/destructive execut
 test('configuration rejects unsupported models, budgets and missing fields',()=>{
  const candidate=structuredClone(settings);candidate.models.text[0].value='remote-model';
  assert.throws(()=>validateSettings(candidate),/Unsupported/);
- candidate.models.text[0].value='4B';candidate.media.maxTextBytes=2**30;
+ candidate.models.text[0].value='lfm3-1.7b-qad-q4-0';candidate.models.text[1].value='lfm3-1.7b-q8-0';candidate.models.text[2].value='4B';candidate.media.maxTextBytes=2**30;
  assert.throws(()=>validateSettings(candidate),/budget/);
  delete candidate.media;assert.throws(()=>validateSettings(candidate));
  const speech=structuredClone(settings);speech.models.transcription[0].value='whisper-tiny.en';
@@ -43,6 +43,12 @@ test('Vision catalog separates image understanding from OCR and remains unprepar
  assert.equal(capabilityState('image.describe','lfm25-vl-450m-q4f16',false).status,'Not prepared');
  const candidate=structuredClone(settings);candidate.models.vision[0].ready=true;
  assert.throws(()=>validateSettings(candidate),/Unknown/);
+});
+
+test('LFM3 Q8 is a registered local WebGPU candidate while QAD Q4 stays the fresh default',()=>{
+ assert.ok(settings.models.text.some(model=>model.value==='lfm3-1.7b-q8-0'));
+ assert.equal(settings.defaults.textModel,'lfm3-1.7b-qad-q4-0');
+ assert.equal(capabilityState('text.generate','lfm3-1.7b-q8-0',false).status,'Not prepared');
 });
 
 import {readDeviceStorage,requestStorageProtection,storageBytes} from '../src/device-storage.ts';
