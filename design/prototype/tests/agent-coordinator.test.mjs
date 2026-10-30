@@ -86,6 +86,17 @@ test('agent executes paged search and retains original evidence from later pages
  for(const ref of refs){const note=notes.find(note=>note.id===ref.noteId);assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
 });
 
+test('agent keeps scoped search evidence inside the chosen folder across pages',async()=>{
+ const notes=[...Array.from({length:14},(_,i)=>createNote({title:`water ${i}`,body:`water reserve ${i}`,path:`Inbox/travel/${i}.md`})),createNote({title:'water outside',body:'water secret outside',path:'Inbox/travelling/outside.md'})];
+ const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12,pathPrefix:'Inbox/travel'});
+ const pkg={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search with pages.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:pagedSearch.run};
+ const plans=[{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:0,pathPrefix:'Inbox/travel'})},{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:12,snapshot:first.snapshot,pathPrefix:'Inbox/travel'})},{action:'answer',query:'water',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:'Find the water information in Inbox/travel.',builtinPackages:[pkg],searchPage:async(query,options)=>searchStoredPageChecked(notes,query,options)});
+ const result=await coordinateAgentTurn(value),refs=agentEvidenceFromCalls(result.calls);
+ assert.equal(result.calls.length,2);assert.equal(refs.length,14);
+ for(const ref of refs){const note=notes.find(n=>n.id===ref.noteId);assert.ok(note.revisions.at(-1).path.startsWith('Inbox/travel/'));assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
+});
+
 test('native planner sees source labels inside a paged search result',async()=>{
  const notes=[createNote({title:'water',body:'water reserve: 10',path:'Inbox/water.md'})];
  const pkg={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search with pages.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:pagedSearch.run};
