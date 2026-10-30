@@ -28,6 +28,22 @@ test('native planner protocol failure is recorded and retried once without execu
  const result=await coordinateAgentTurn(value);assert.equal(result.final.action,'chat');assert.equal(generations,2);assert.deepEqual(calls,[]);assert.equal(receipts.find(r=>r.status==='failed').error.code,'planner_protocol');assert.equal(prompts[1][0].content,prompts[0][0].content);assert.match(prompts[1].at(-1).content,/previous.*rejected/i);assert.doesNotMatch(JSON.stringify(prompts[1]),/UNTRUSTED/);
 });
 
+test('a native final answer that exposes internal source labels gets one content-only replan',async()=>{
+ const action=(tool,args)=>JSON.stringify({action:'tool',query:tool,body:JSON.stringify(args)});
+ const {value,calls}=input([
+  action('memory.search',{query:'meeting'}),
+  JSON.stringify({action:'answer',reply:{status:'answered',answer:'S1 says the meeting is Monday at 10.',sources:['S1']}}),
+  JSON.stringify({action:'answer',reply:{status:'answered',answer:'The meeting is Monday at 10.',sources:['S1']}}),
+ ],{question:'Search the saved meeting note and tell me the time.',search:async()=>[{noteId:'meeting',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.',title:'Notes/meeting.md'}]});
+ value.engine.plannerProtocol='native-tool-calls';
+ const prompts=[],generate=value.engine.generate;
+ value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
+ const result=await coordinateAgentTurn(value);
+ assert.equal(prompts.length,3);assert.equal(result.final.reply.answer,'The meeting is Monday at 10.');assert.deepEqual(result.final.reply.sources,[{noteId:'meeting',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.',title:'Notes/meeting.md'}]);
+ assert.deepEqual(result.calls.map(call=>call.tool),['memory.search']);
+ assert.match(prompts[2].at(-1).content,/internal source label.*answer prose/i);
+});
+
 test('an invalid history selector gets one audited replan without guessing an original or executing a tool',async()=>{
  const {value,calls}=input([
   '{"action":"recall","target":"history","query":"その集合の持ち物は何？"}',

@@ -11,7 +11,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
  const loop=await runReadOnlyAgentLoop({allowedTools:input.allowedTools,maxToolCalls:input.maxToolCalls,maxResultChars:input.maxResultChars,check:input.check,
   plan:async history=>{
    let inference:PlannerInferenceMetrics|undefined;
-   const attempt=(historySelectorRejected=false,deferredToolRejected=false,nativeCallRejected:boolean|'mixed-final'=false)=>{
+   const attempt=(historySelectorRejected=false,deferredToolRejected=false,nativeCallRejected:boolean|'mixed-final'|'source-label-leak'=false)=>{
     inference=undefined;
     input.onPreview?.('');
     const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
@@ -30,7 +30,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
      if(!(error instanceof PlannerOutputError))throw error;
      if(!historyRepairUsed&&error.diagnostic.reason==='history target'){historyRepairUsed=true;raw=await attempt(true);}
      else if(!deferredToolRepairUsed&&error.diagnostic.reason==='tool call'&&input.allowedTools.some(tool=>tool.id.startsWith('user.'))&&input.allowedTools.some(tool=>tool.id===DEFERRED_TOOL_SEARCH_ID)){deferredToolRepairUsed=true;raw=await attempt(false,true);}
-     else if(!nativeCallRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action'].includes(error.diagnostic.reason)){nativeCallRepairUsed=true;raw=await attempt(false,false,error.diagnostic.reason==='native-final-mixed'?'mixed-final':true);}
+     else if(!nativeCallRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak'].includes(error.diagnostic.reason)){nativeCallRepairUsed=true;raw=await attempt(false,false,error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':true);}
      else throw error;
     }
    }

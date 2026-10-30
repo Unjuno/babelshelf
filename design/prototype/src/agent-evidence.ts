@@ -15,6 +15,13 @@ import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
 export type SourceLabelAnswer={answer:string;sources:SourceRef[];status?:'insufficient_evidence'};
 export type LabelledSource=SourceRef&{label:string};
+export class InternalSourceLabelLeakError extends Error {
+ constructor(){super('Answer contains an internal source label');this.name='InternalSourceLabelLeakError';}
+}
+function mentionsLabel(text:string,label:string){
+ const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+ return new RegExp(`(?:^|[^A-Za-z0-9_])${escaped}(?=$|[^A-Za-z0-9_])`,'i').test(text);
+}
 /** Shared grounding guidance, not a claim-level entailment validator. */
 export const sourceComparisonInstruction='For claims about saved knowledge, use only the observed original excerpts and checked tool results. Compare the attributes requested by the user; do not add unstated relationships or rankings. Different records are independent accounts: a difference does not establish chronology, cause, proximity, preference or suitability. State such a relation only when the evidence explicitly supports it. Missing information stays unknown; do not fill it with a plausible explanation.';
 /** Bind model-selected labels to host-owned immutable originals, never model IDs. */
@@ -24,11 +31,17 @@ export function bindEvidenceLabels(labels:unknown,evidence:readonly LabelledSour
  if(selected.some(ref=>!ref))throw Error('Invalid answer or sources');
  return selected.map(ref=>{const {noteId,revision,start,end,quote,title}=ref!;return {noteId,revision,start,end,quote,...(title?{title}:{})};});
 }
-export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[]):SourceLabelAnswer{
+export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],options:{userText?:string}={ }):SourceLabelAnswer{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid answer or sources');
  const value=raw as Record<string,unknown>;
  if(typeof value.answer!=='string'||!value.answer.trim()||Object.keys(value).some(key=>!['answer','sources','status'].includes(key))||value.status!==undefined&&!['answered','insufficient_evidence'].includes(value.status as string))throw Error('Invalid answer or sources');
  const sources=bindEvidenceLabels(value.sources,evidence);
+ for(const ref of evidence){
+  if(!mentionsLabel(value.answer,ref.label))continue;
+  const explicitlyNamed=typeof options.userText==='string'&&mentionsLabel(options.userText,ref.label);
+  const literalInCitedSource=sources.some(source=>source.noteId===ref.noteId&&source.revision===ref.revision&&source.start===ref.start&&source.end===ref.end&&mentionsLabel(source.quote,ref.label));
+  if(!explicitlyNamed&&!literalInCitedSource)throw new InternalSourceLabelLeakError();
+ }
  if(value.status==='insufficient_evidence'){
   if(sources.length)throw Error('Insufficient evidence cannot carry citations');
   return {answer:value.answer.trim(),sources:[],status:'insufficient_evidence'};

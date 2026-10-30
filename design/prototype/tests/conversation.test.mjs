@@ -1422,6 +1422,20 @@ test('citation repair binds multiple source labels to exact host-held revisions 
  assert.equal(generations,2);assert.deepEqual(result.sources.map(({noteId,revision,start,end,quote})=>({noteId,revision,start,end,quote})),refs.map(({noteId,revision,start,end,quote})=>({noteId,revision,start,end,quote})));assert.match(seen[1][0].content,/labels identify original excerpts/i);
  await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>[]},engine:{...runtime,generate:async(_value)=>({text:JSON.stringify({answer:'Unsupported answer.',sources:['S1','S3']})})}},{model:'test',question:'Compare the Monday and Tuesday reserves.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true}}),/Invalid answer or sources/);
 });
+
+test('grounded answer repairs one leaked source label without changing facts or source bindings',async()=>{
+ const note=createNote({path:'Notes/meeting.md',body:'The meeting is Monday at 10.'}),quote=note.revisions[0].body;
+ const ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};let generations=0,seen=[];
+ const engine={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
+  seen.push(messages);generations++;
+  return {text:JSON.stringify(generations===1?{answer:'S1 says the meeting is Monday at 10.',sources:['S1']}:{answer:'The meeting is Monday at 10.',sources:['S1']})};
+ }};
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine},{model:'test',question:'When is the meeting?',query:'meeting',mode:'answer',scope:{kind:'knowledge'}});
+ assert.equal(generations,2);assert.equal(result.answer,'The meeting is Monday at 10.');assert.deepEqual(result.sources,[ref]);assert.equal(result.recovery,'citation-retry');
+ assert.match(seen[1][0].content,/Do not print citation labels such as S1\/S2 in answer prose/i);
+ assert.match(seen[1][0].content,/previous answer exposed an internal source label/i);
+});
+
 test('multi-source capture repairs one malformed source shape without weakening exact reference validation',async()=>{
  const notes=[createNote({path:'Notes/a.md',body:'北口に17リットル。'}),createNote({path:'Notes/b.md',body:'西口に9リットル。'})];
  const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));

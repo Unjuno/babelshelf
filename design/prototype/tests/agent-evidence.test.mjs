@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectAgentToolResult,projectAgentActivityInput,projectAgentActivityResult,agentEvidenceFromCalls,agentAnswerEvidenceFromCalls,agentCalculationsFromCalls,agentSearchEvidenceFromHost,agentReadEvidenceFromHost,observeCustomToolHost} from '../src/agent-evidence.ts';
+import {projectAgentToolResult,projectAgentActivityInput,projectAgentActivityResult,agentEvidenceFromCalls,agentAnswerEvidenceFromCalls,agentCalculationsFromCalls,agentSearchEvidenceFromHost,agentReadEvidenceFromHost,observeCustomToolHost,bindSourceLabelAnswer} from '../src/agent-evidence.ts';
 import {AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 
 test('tool projections keep exact bounded excerpts and canonical source identity',()=>{
@@ -11,6 +11,16 @@ test('tool projections keep exact bounded excerpts and canonical source identity
  const read=projectAgentToolResult('memory.read',[{id:'note-2',path:'Notes/b.md',version:3,body:'y'.repeat(3000),start:1200,totalChars:6000}]);assert.deepEqual(read,[{noteId:'note-2',path:'Notes/b.md',revision:3,start:1200,excerpt:'y'.repeat(3000),partial:true,totalChars:6000}]);
  const custom={answer:'from local tool',untrusted:true};assert.deepEqual(projectAgentToolResult('user.lookup',custom),custom);assert.throws(()=>projectAgentToolResult('user.lookup',{value:'x'.repeat(9000)}),AgentToolResultTooLargeError);
  assert.throws(()=>projectAgentToolResult('mcp.fetch',[]),/not available/);
+});
+
+test('terminal answers reject internal citation labels in prose but preserve requested or literal source text',()=>{
+ const evidence=[{label:'S1',noteId:'note-1',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.'}];
+ assert.throws(()=>bindSourceLabelAnswer({status:'answered',answer:'S1 says the meeting is Monday at 10.',sources:['S1']},evidence),/internal source label/i);
+ assert.throws(()=>bindSourceLabelAnswer({status:'answered',answer:'The meeting is Monday at 10. See S1.',sources:['S1']},evidence),/internal source label/i);
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:'The meeting is Monday at 10.',sources:['S1']},evidence).answer,'The meeting is Monday at 10.');
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:'This passage literally says S1 is the meeting code.',sources:['S1']},[{...evidence[0],end:51,quote:'This passage literally says S1 is the meeting code.'}]).answer,'This passage literally says S1 is the meeting code.');
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:'S1 is a source identifier.',sources:['S1']},evidence,{userText:'Explain what S1 means'}).answer,'S1 is a source identifier.');
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:'S10 is a different code.',sources:['S1']},evidence).answer,'S10 is a different code.');
 });
 
 test('search projection tells the agent when a stored passage is not current grounding evidence',()=>{
