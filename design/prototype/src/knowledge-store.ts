@@ -170,7 +170,8 @@ export class KnowledgeStore {
   });
  }
  async original(ref:OriginalRef):Promise<OriginalAsset>{const asset=await this.transaction<OriginalAsset>(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').get(originalKey(ref.id));q.onsuccess=()=>done(q.result);});readOriginal(asset,ref);return asset;}
- private saveReading(id:string,originalId:string,newOriginal:OriginalAsset|undefined,duplicateError:string,build:(asset:OriginalAsset)=>Canonical){
+ private saveReading<T extends {original:OriginalRef}>(id:string,value:T,newOriginal:OriginalAsset|undefined,duplicateError:string,build:(asset:OriginalAsset,value:T)=>Canonical){
+  ({value,newOriginal}=structuredClone({value,newOriginal}));const originalId=value.original.id;
   return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
    const raw=tx.objectStore('runs').get(originalKey(originalId)),notes=tx.objectStore('notes').getAll();let finished=0;
    const commit=()=>{if(++finished!==2)return;try{
@@ -180,7 +181,7 @@ export class KnowledgeStore {
     if(notes.result.some(n=>n.id===id))throw Error(duplicateError);
     // Each reader builder still validates its own original pin, hash, model,
     // coordinates/pages/timing. The shared transaction owns only persistence.
-    const note=build(newOriginal??raw.result),created=newOriginal?[originalNote(newOriginal)]:[];
+    const note=build(newOriginal??raw.result,value),created=newOriginal?[originalNote(newOriginal)]:[];
     checkNotes([...notes.result,...created,note]);
     if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}
     tx.objectStore('notes').add(note);done(note);
@@ -189,16 +190,16 @@ export class KnowledgeStore {
   });
  }
  async saveTranscript(id:string,value:Transcript,newOriginal?:OriginalAsset){
-  return this.saveReading(id,value.original.id,newOriginal,'Transcript already saved',asset=>transcriptNote(id,asset,value));
+  return this.saveReading(id,value,newOriginal,'Transcript already saved',(asset,snapshot)=>transcriptNote(id,asset,snapshot));
  }
  async savePdfText(id:string,value:PdfText,newOriginal?:OriginalAsset){
-  return this.saveReading(id,value.original.id,newOriginal,'PDF text already saved',asset=>pdfTextNote(id,asset,value));
+  return this.saveReading(id,value,newOriginal,'PDF text already saved',(asset,snapshot)=>pdfTextNote(id,asset,snapshot));
  }
  async saveOcrText(id:string,value:OcrText,newOriginal?:OriginalAsset){
-  return this.saveReading(id,value.original.id,newOriginal,'OCR text already saved',asset=>ocrTextNote(id,asset,value));
+  return this.saveReading(id,value,newOriginal,'OCR text already saved',(asset,snapshot)=>ocrTextNote(id,asset,snapshot));
  }
  async saveVisionText(id:string,value:VisionText,newOriginal?:OriginalAsset){
-  return this.saveReading(id,value.original.id,newOriginal,'Vision note already saved',asset=>visionTextNote(id,asset,value));
+  return this.saveReading(id,value,newOriginal,'Vision note already saved',(asset,snapshot)=>visionTextNote(id,asset,snapshot));
  }
  async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
   ({expected,next,originals,readings}=structuredClone({expected,next,originals,readings}));
