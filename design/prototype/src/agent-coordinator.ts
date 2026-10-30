@@ -14,6 +14,7 @@ import {activityBoundedToolBudget} from './harness-activity.ts';
 import type {ToolHost,ToolNote} from './tools/tool-host.ts';
 import type {MemorySearchResult} from './memory-search-types.ts';
 import {noteSourceMetadata} from './note-provenance.ts';
+import {stateHash} from './backup-hash.ts';
 import {turnExecutionReceipt,type TurnExecutionSnapshot} from './turn-execution-snapshot.ts';
 import {explicitlyNamedSearchResultIds,requestsCompoundSearchTask,requestsImplicitSearchReadAnswer,requestsLocalSearchReadAnswer,requestsMoreToolWorkAfterRead,requestsSynthesisWithoutMoreTools} from './saved-knowledge-reference.ts';
 import {DEFERRED_TOOL_READ_SKILL_CAPABILITY,DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOOL_SEARCH_ID,explicitDeferredToolIds,readDeferredToolSkill,searchDeferredTools} from './deferred-tool-search.ts';
@@ -313,6 +314,15 @@ export async function coordinateAgentTurn(input:{
    }catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;if(input.signal.aborted){input.check();throw Error('Stopped');}if(error instanceof AgentToolResultTooLargeError||error instanceof AgentSearchSnapshotChangedError)throw error;throw new AgentToolExecutionError(call.tool,error);}
   },
  });
+ const sourceCalls=loop.calls.filter(call=>call.tool==='memory.sources');
+ if(sourceCalls.length){
+  if(!input.records)throw Error('Source verification unavailable');
+  const records=await input.records(input.signal);input.check();
+  for(const call of sourceCalls){
+   const result=call.result as {noteId:string;revision:number;snapshot:string};
+   try{if(stateHash(noteSourceMetadata(records,result.noteId,result.revision))!==result.snapshot)throw Error('changed');}catch{throw Error('Source changed · retry');}
+  }
+ }
  const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='source-capacity'?'source-capacity':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
  return {final:loop.final,calls:loop.calls,customEvidence,context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
  }finally{if(bridge)await bridge.then(connection=>connection.close()).catch(()=>{});}

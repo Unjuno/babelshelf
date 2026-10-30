@@ -109,6 +109,14 @@ test('agent inspects saved sources then reads the current original for a citatio
  assert.equal(agentToolInfoFromCalls(result.calls).length,1);const refs=agentEvidenceFromCalls(result.calls);assert.equal(refs.length,1);assert.equal(refs[0].noteId,original.id);assert.equal(refs[0].quote,'Water reserve is 17 liters.');
 });
 
+test('agent refuses stale source status when the original changes before finalization',async()=>{
+ const original=createNote({path:'Inbox/original.md',body:'Water reserve is 17 liters.'}),ref={noteId:original.id,revision:1,start:0,end:27,quote:'Water reserve is 17 liters.'},summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:[ref]});
+ const pkg={definition:sourceTool.definition,entry:'Tools/memory.sources/tool.ts',sources:[{path:'Tools/memory.sources/SKILL.md',body:'Inspect sources.'},{path:'Tools/memory.sources/tool.ts',body:'Trusted source metadata.'}],run:sourceTool.run};
+ const plans=[{action:'tool',query:'memory.sources',body:JSON.stringify({id:summary.id,revision:1})},{action:'answer',query:'sources',target:'knowledge'}].map(JSON.stringify);let reads=0;
+ const {value}=input(plans,{question:'Find the original sources.',enabledTools:['memory.sources'],builtinPackages:[pkg],records:async()=>[++reads===1?original:reviseNote(original,{body:'Updated.'},1),summary]});
+ await assert.rejects(coordinateAgentTurn(value),/source.*changed/i);
+});
+
 test('agent receives restart guidance when source metadata changes between pages',async()=>{
  const {noteSourceMetadata}=await import('../src/note-provenance.ts');
  const original=createNote({path:'Inbox/original.md',body:'Water reserve is 17 liters.'}),ref={noteId:original.id,revision:1,start:0,end:27,quote:'Water reserve is 17 liters.'},summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:Array.from({length:13},()=>ref)});
