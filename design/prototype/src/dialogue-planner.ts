@@ -88,7 +88,9 @@ export type DialoguePlan={action:'tool';tool:string;arguments:Record<string,unkn
 function visibleCustomSources(agent:AgentPlannerContext,index:number):SourceRef[]{
  const item=agent.history[index];
  if(!item||item.error||item.resultOmitted||item.result===undefined||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(item.tool)||!agent.allowedTools.some(tool=>tool.id===item.tool))return [];
- return agentEvidenceFromCalls([],agent.observedSources?.get(index)??[]).filter(ref=>ref.groundingEligible!==false);
+ // Keep ineligible observations until all attempts have been reconciled;
+ // filtering here could let an earlier eligible duplicate retain its label.
+ return agentEvidenceFromCalls([],agent.observedSources?.get(index)??[]);
 }
 function sameOriginal(left:SourceRef,right:SourceRef){
  return left.noteId===right.noteId&&left.revision===right.revision&&left.start===right.start&&left.end===right.end&&left.quote===right.quote;
