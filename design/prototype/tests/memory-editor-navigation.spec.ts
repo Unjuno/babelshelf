@@ -1,6 +1,12 @@
 import {expect,test,type Page} from '@playwright/test';
 import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
 
+test('a saved partial-answer status stays visible after reload',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();
+ await page.evaluate(()=>new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readwrite');tx.objectStore('settings').put({schema:1,revision:1,turns:[{id:'partial-fixture',user:'Compare the reviews',answer:'One review is on Monday.',status:'Partial · incomplete inspection'}],compaction:null},'ui-v1-dialogue');tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}));
+ await page.reload();await expect(page.locator('.sent-message')).toContainText('Partial · incomplete inspection');await expect(page.locator('.sent-message')).toContainText('One review is on Monday.');
+});
+
 async function writeSourceRecords(page:Page,records:any[]){
  await page.evaluate(async records=>{await new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('notes','readwrite');for(const record of records)tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},records);
 }

@@ -141,6 +141,18 @@ test('a Memory search that asks a question finishes with a grounded answer rathe
  assert.deepEqual(records,[note]);assert.equal(f.reviews.length,0);
 });
 
+test('an interrupted multi-source inspection remains visibly partial even if the model omits that qualifier',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Notes/review.md',body:'The first review is Monday at 10.'}),quote=note.revisions[0].body;
+ const responses=[JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'review'})}),JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:note.id})}),JSON.stringify({answer:'The first review is Monday at 10.',citations:[{id:'S1',quote}]})];
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:responses.shift(),finishReason:'stop'})};
+ f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search','memory.read'],maxToolCalls:1,maxResultChars:8000};
+ f.services.knowledge={all:async()=>[note],search:async()=>[{noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path}],views:async()=>[projectNote(note)]};
+ f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search.'},{path:'Tools/memory.search/tool.ts',body:'Search code.'}],run:searchRun},{definition:readDefinition,entry:'Tools/memory.read/tool.ts',sources:[{path:'Tools/memory.read/SKILL.md',body:'Read.'},{path:'Tools/memory.read/tool.ts',body:'Read code.'}],run:readRun}];
+ const outcome=await c.run(run=>executeSubmission({text:'Compare my saved reviews in detail.',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));const turn=f.current().turns.at(-1);
+ assert.equal(turn.answer,'The first review is Monday at 10.');assert.equal(turn.status,'Partial · incomplete inspection');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.activity.some(a=>a.tool==='memory.read'),false);
+});
+
 test('an agent can search saved Memory, ground a new note, and retain the exact source citation',async()=>{
  const f=fixture(),c=createSubmissionController(),note=createNote({title:'Workshop',path:'Notes/workshop.md',body:'The workshop is on Monday at 10:00 in Cedar Hall.'}),records=[note],full=note.revisions[0].body;
  const responses=[

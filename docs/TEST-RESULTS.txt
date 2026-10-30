@@ -6808,3 +6808,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 · partial-answer explanation and worker-test startup (Windows PC)
 - When an agent stops with incomplete inspection, the answer prompt now states partial coverage without asserting that a user preference or context window caused it; the actual limit may be activity storage. Conversation/agent coordinator/loop tests 273/273 passed and the product build passed.
 - Linux Actions run 41040789810 reproduced a fixture reload while Vite was resolving worker dependencies. The startup-failure test now waits for a working fixture before blocking WASM, then still requires the expected failure within five seconds. PC custom-tool runtime checks passed 19/19. The latest Linux run is needed to verify the CI-specific fix.
+
+2026-10-30 · partial inspection visibility (Windows PC)
+- A controlled submission hit the configured tool limit after retrieving one source; the answer model returned an unqualified sentence. The host now labels the completed answer as partial without changing its text or citations. The unexecuted read remained unexecuted.
+- Submission/conversation/coordinator Node checks passed 296/296. Product build and a Chromium UI fixture confirming that the stored partial status survives reload passed. The fixture does not establish real-model quality.
