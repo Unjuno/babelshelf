@@ -28,7 +28,7 @@ import {openDB} from '../../../dist/storage.js';
 import {parsePreference,readPreference,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
-import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
+import {applyCorrection,undoCorrection,correctionProposalHash,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {stateHash} from './backup-hash.ts';
 import type {StateSnapshot,RestoreMode} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
@@ -242,7 +242,7 @@ export class KnowledgeStore {
   const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
    const tx=db.transaction(['notes','runs',...(pending?['settings']:[])],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
    const saved=pending?tx.objectStore('settings').get(PENDING_CORRECTION_KEY):null;
-   prior.onsuccess=()=>{if(prior.result){error=Error('Correction already applied');tx.abort();return;}const q=notes.getAll();q.onsuccess=()=>{try{if(pending){validatePendingCorrection(pending);if(!equal(saved?.result,pending)||!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);if(pending)tx.objectStore('settings').delete(PENDING_CORRECTION_KEY);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
+   prior.onsuccess=()=>{if(prior.result){try{const existing=prior.result;if(existing.schema!==1||existing.type!=='note-correction'||existing.id!==proposal.id||existing.proposalHash!==correctionProposalHash(proposal))throw Error('Correction already applied · proposal conflict');if(pending){validatePendingCorrection(pending);if(!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}receipt=existing;}catch(e){error=e;tx.abort();}return;}const q=notes.getAll();q.onsuccess=()=>{try{if(pending){validatePendingCorrection(pending);if(!equal(saved?.result,pending)||!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);if(pending)tx.objectStore('settings').delete(PENDING_CORRECTION_KEY);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
    tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Correction save failed'));
   });
  }

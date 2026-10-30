@@ -910,8 +910,8 @@ export default function Prototype() {
  async function approveCorrection(){
   if(!correction||!pendingCorrection||pendingCorrection.proposal.id!==correction.id||correctionStale||correctionLock.current)return;correctionLock.current=true;setCorrectionSaving(true);setCorrectionError('');
   try{await flushStorage();const result=await runReviewedCorrection(()=>knowledge.approveCorrection(correction,pendingCorrection),refreshStorage),applied=result.receipt;adoptSavedReview(undefined);setCorrection(null);setSheet(null);if(!result.refreshError&&correctionTurn)openNote(applied.noteId);
-   let status=result.refreshError?'Saved · reopen file':'Saved';
-   if(correctionTurn)try{await finishTurn(correctionTurn,{status:'Updated · '+applied.path+' · v'+applied.afterVersion});}catch{status='Saved · conversation status unavailable';}
+   let status=applied.status==='undone'?'Already undone':result.refreshError?'Saved · reopen file':'Saved';
+   if(correctionTurn)try{await finishTurn(correctionTurn,{status:applied.status==='undone'?'Already undone · '+applied.path:'Updated · '+applied.path+' · v'+applied.afterVersion});}catch{status=applied.status==='undone'?'Already undone · conversation status unavailable':'Saved · conversation status unavailable';}
    setCorrectionTurn(null);toast(status);
   }catch(e){setCorrectionError((e as Error).message);if(e instanceof CorrectionConflictError||e instanceof PendingCorrectionConflictError)setCorrectionStale(true);}
   finally{correctionLock.current=false;setCorrectionSaving(false);}

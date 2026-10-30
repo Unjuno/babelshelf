@@ -21,7 +21,9 @@ export class CorrectionConflictError extends Error{constructor(){super('Version 
 type Canonical=any;
 type Operation=SettingsPatch|SchedulePatch|Pick<TextToolReceipt,'name'|'arguments'|'result'>|{name:'text.rewrite';arguments:{bodySha256:string};result:{changed:true;beforeCharacters:number;afterCharacters:number}};
 export type CorrectionProposal={schema:1;id:string;request:string;path:string;expected:Canonical;before:string;after:string;operation:Operation;dependencies?:Canonical[]};
-export type CorrectionReceipt={schema:1;type:'note-correction';id:string;request:string;noteId:string;path:string;beforeVersion:number;afterVersion:number;afterHash:string;operation:Operation;appliedAt:string;status:'applied'|'undone';undoneAt?:string;undoVersion?:number};
+export type CorrectionReceipt={schema:1;type:'note-correction';id:string;request:string;noteId:string;path:string;beforeVersion:number;afterVersion:number;afterHash:string;proposalHash?:string;operation:Operation;appliedAt:string;status:'applied'|'undone';undoneAt?:string;undoVersion?:number};
+/** Bind an idempotent retry to the complete approved proposal, not its ID alone. */
+export const correctionProposalHash=(proposal:CorrectionProposal)=>new SHA256().update(new TextEncoder().encode(JSON.stringify(proposal))).hex();
 const recordHash=(note:Canonical)=>new SHA256().update(new TextEncoder().encode(JSON.stringify(note))).hex();
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 function editable(note:Canonical){
@@ -132,7 +134,7 @@ export function applyCorrection(records:Canonical[],proposal:CorrectionProposal)
  if(!equal(dependencies,proposal.dependencies??[]))throw new CorrectionConflictError();
  if(old.ui?.recordType==='schedule')taskCorrectionTarget(old,true);
  const note=old.ui?.recordType==='schedule'?reviseTaskNote(old,parseTask(actual.after)):reviseNote(old,{body:actual.after},latest(old).version);checkNotes(records.map(n=>n.id===note.id?note:n));
- const receipt:CorrectionReceipt={schema:1,type:'note-correction',id:proposal.id,request:proposal.request,noteId:note.id,path:notePath(note),beforeVersion:latest(old).version,afterVersion:latest(note).version,afterHash:recordHash(note),operation:actual.operation,appliedAt:new Date().toISOString(),status:'applied'};
+ const receipt:CorrectionReceipt={schema:1,type:'note-correction',id:proposal.id,request:proposal.request,noteId:note.id,path:notePath(note),beforeVersion:latest(old).version,afterVersion:latest(note).version,afterHash:recordHash(note),proposalHash:correctionProposalHash(proposal),operation:actual.operation,appliedAt:new Date().toISOString(),status:'applied'};
  return {note,receipt};
 }
 export function undoCorrection(records:Canonical[],receipt:CorrectionReceipt){

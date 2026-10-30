@@ -6785,3 +6785,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 — distinguish profile and audit capacity
 - Replaced the ambiguous No fixed limit label with No profile limit and displayed Activity storage limit applies. This is disclosure only: per-turn receipt capacity still bounds work, and paging/independent work budgets remain unimplemented.
 - The PC browser test reviewed and saved a three-call profile change successfully with the revised wording.
+
+2026-10-30 — idempotent reviewed correction commit
+- New correction receipts include a SHA-256 binding of the complete reviewed proposal. A repeated identical approval returns that committed receipt without another revision; a different proposal using the same ID is rejected. A retry after Undo returns the existing undone receipt and never reapplies it. Old receipts without the binding remain readable and exportable but cannot prove an identical retry. Existing pending reviews are never deleted by a retry.
+- Controlled IndexedDB/backup/correction tests 31/31 passed, including concurrent approvals, changed requests, Undo, legacy receipts and backup. PC Chromium production IndexedDB review/restore tests 2/2 passed. Build cca884f60f70e595 passed before the additional UI wording for already-undone receipts; real-device and full offline recovery are unverified.

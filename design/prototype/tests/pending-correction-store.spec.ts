@@ -31,11 +31,12 @@ test('production IDB pending review survives reopen, refuses races, and resolves
    IDBObjectStore.prototype.delete=function(key){const request=nativeDelete.call(this,key);if(this.name==='settings'&&key==='ui-v1-'+PENDING_CORRECTION_STATE)this.transaction.abort();return request;};
    try{assert(await refused(()=>store.approveCorrection(p,pending)),'Forced abort succeeded');}finally{IDBObjectStore.prototype.delete=nativeDelete;}
    assert(same(await store.snapshot(),before),'Aborted approval changed data or lost review');
-   await store.approveCorrection(p,pending);
+   const receipt=await store.approveCorrection(p,pending);
    const applied=await store.snapshot();assert(applied.notes[0].revisions.length===2&&applied.notes[0].revisions[1].body==='blue box','Approval failed');
    assert(!applied.settings.some(item=>item.key==='ui-v1-'+PENDING_CORRECTION_STATE),'Committed approval kept pending');
    assert(applied.runs.filter(item=>item.value.type==='note-correction').length===1,'Receipt missing');
-   assert(await refused(()=>store.approveCorrection(p,pending)),'Duplicate approval accepted');
+   assert(same(await store.approveCorrection(p,pending),receipt),'Identical retry did not return the committed receipt');
+   assert(await refused(()=>store.approveCorrection({...p,request:'different'},pending)),'Different proposal reused receipt');
    assert(same(await store.snapshot(),applied),'Duplicate changed data');
    const p2=prepareCorrection(applied.notes[0],'Make it green',JSON.stringify({action:'replace',find:'blue',with:'green'})),next=await store.stageCorrection(p2);
    const competitor=prepareCorrection(applied.notes[0],'Make it yellow',JSON.stringify({action:'replace',find:'blue',with:'yellow'}));
