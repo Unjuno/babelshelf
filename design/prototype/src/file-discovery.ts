@@ -2,7 +2,7 @@
 // @ts-expect-error Shared canonical paths are JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared search folding is JavaScript.
-import {normalizeSearchText,searchStoredNotesWindow} from '../../../dist/core.js';
+import {normalizeSearchText,searchStoredNotesUniqueWindow} from '../../../dist/core.js';
 import {stateHash} from './backup-hash.ts';
 export type FileResult={kind:'file';noteId:string;revision:number;path:string};
 const normalize:(text:string)=>string=normalizeSearchText;
@@ -48,7 +48,7 @@ export function mergeStoredSearchResults<T extends {noteId:string;revision?:numb
 export function searchStoredPage(notes:any[],query:string,{offset=0,limit=12}:{offset?:number;limit?:number}={}){
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
  const window=10021;
- const hits=mergeStoredSearchResults(findStoredFiles(notes,query,window,window),searchStoredNotesWindow(notes,query,window),window,query,window);
+ const hits=mergeStoredSearchResults(findStoredFiles(notes,query,window,window),searchStoredNotesUniqueWindow(notes,query,window),window,query,window);
  return {hits:hits.slice(offset,offset+limit),hasMore:hits.length>offset+limit};
 }
 /** Reject continuation against a different corpus or query instead of silently

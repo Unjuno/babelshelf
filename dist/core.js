@@ -108,6 +108,10 @@ export function searchStoredNotesWindow(notes,query,limit){
  if(!Number.isSafeInteger(limit)||limit<1||limit>10021)throw Error('Invalid search window');
  return searchLowMemoryNotes(notes,query,limit,true,10021);
 }
+export function searchStoredNotesUniqueWindow(notes,query,limit){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>10021)throw Error('Invalid search window');
+ return searchLowMemoryNotes(notes,query,limit,true,10021,true);
+}
 // Callers must keep `notes` unchanged across pages or restart their search.
 // The ordinary search API retains its existing 20-result bound.
 export function searchStoredNotesPage(notes,query,{offset=0,limit=12}={}){
@@ -120,7 +124,7 @@ export function searchStoredNotesPage(notes,query,{offset=0,limit=12}={}){
 // creates a second corpus-sized structure that is immediately discarded.
 // Two scans keep the same BM25 inputs and stable ranking while retaining only
 // corpus statistics and the requested top results.
-function searchLowMemoryNotes(notes,query,limit,stored,maxResults=20){
+function searchLowMemoryNotes(notes,query,limit,stored,maxResults=20,uniqueOnly=false){
  const q=norm(query);if(!q)return [];
  const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),scriptTerms=terms.filter(t=>!lexical.has(t)&&Array.from(t).length>=2),map=new Map(notes.map(n=>[n.id,n])),df=new Map(terms.map(term=>[term,0])),memo=new Map();
  let docCount=0,tokenCount=0;
@@ -150,7 +154,7 @@ function searchLowMemoryNotes(notes,query,limit,stored,maxResults=20){
   const hit={noteId:d.n.id,revision:d.v.version,title:d.v.title,...d.c,score};
   if(!stored){insertTop(ranked,hit);return;}
   const prior=bestByNote.get(hit.noteId);
-  if(!prior||before(hit,prior)){if(prior)insertTop(extras,prior);bestByNote.set(hit.noteId,hit);}else insertTop(extras,hit);
+  if(!prior||before(hit,prior)){if(prior&&!uniqueOnly)insertTop(extras,prior);bestByNote.set(hit.noteId,hit);}else if(!uniqueOnly)insertTop(extras,hit);
  });
  if(!stored)return ranked;
  return [...bestByNote.values()].sort(compare).concat(extras).slice(0,cap).map(hit=>({...hit,groundingEligible:eligible(map.get(hit.noteId),map,memo)}));
