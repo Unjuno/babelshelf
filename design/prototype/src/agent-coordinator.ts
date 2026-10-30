@@ -89,7 +89,7 @@ function namedFilesReadCompletely(question:string,history:readonly {tool:string;
  return new Set(ids).size===names.length&&allNamedSourcesFullyRead(history,ids);
 }
 
-export type AgentBudgetReason='context'|'activity-capacity'|'profile-limit'|'both-limits';
+export type AgentBudgetReason='context'|'source-capacity'|'activity-capacity'|'profile-limit'|'both-limits';
 
 /** Application boundary for registry selection, audited tool execution and source observation. */
 export async function coordinateAgentTurn(input:{
@@ -168,7 +168,7 @@ export async function coordinateAgentTurn(input:{
   }),
   hasUsefulEvidence:history=>{
    const calls=history.filter(item=>!item.error);
-   return agentEvidenceFromCalls(calls,customEvidence).length>0||agentCalculationsFromCalls(calls).length>0||agentClockReadingsFromCalls(calls).length>0||agentCustomResultsFromCalls(calls).length>0||agentToolInfoFromCalls(calls).length>0;
+   return customEvidence.length>0||calls.some(call=>agentEvidenceFromCalls([call]).length>0||agentCalculationsFromCalls([call]).length>0||agentClockReadingsFromCalls([call]).length>0||agentCustomResultsFromCalls([call]).length>0||agentToolInfoFromCalls([call]).length>0);
   },
   selectNextPlan:history=>{
    // A literal selected package ID is already resolved. Prepare its current
@@ -302,7 +302,7 @@ export async function coordinateAgentTurn(input:{
    }catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;if(input.signal.aborted){input.check();throw Error('Stopped');}if(error instanceof AgentToolResultTooLargeError)throw error;throw new AgentToolExecutionError(call.tool,error);}
   },
  });
- const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
+ const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='source-capacity'?'source-capacity':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
  return {final:loop.final,calls:loop.calls,customEvidence,context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
  }finally{if(bridge)await bridge.then(connection=>connection.close()).catch(()=>{});}
 }

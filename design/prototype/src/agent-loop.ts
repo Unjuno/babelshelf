@@ -39,6 +39,9 @@ export class AgentToolExecutionError extends Error {
 export class AgentContextCapacityError extends Error {
  constructor(){super('Input exceeds context capacity');this.name='AgentContextCapacityError';}
 }
+export class AgentSourceCapacityError extends AgentContextCapacityError {
+ constructor(){super();this.message='Context limit · fewer sources';this.name='AgentSourceCapacityError';}
+}
 
 function exactKeys(value:Record<string,unknown>,expected:string[]){
  const actual=Object.keys(value).sort(),wanted=[...expected].sort();
@@ -80,7 +83,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  onBudgetExhausted?:(history:readonly AgentToolAttempt[])=>Promise<Final>|Final;
  execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;
  check:()=>void;
-}):Promise<{final:Final;calls:readonly AgentToolResult[];attempts:readonly AgentToolAttempt[];budgetExhausted?:boolean;budgetCause?:'context'|'tool-limit'}>{
+}):Promise<{final:Final;calls:readonly AgentToolResult[];attempts:readonly AgentToolAttempt[];budgetExhausted?:boolean;budgetCause?:'context'|'source-capacity'|'tool-limit'}>{
  // This loop currently executes read-only local tools. Other effects have
  // explicit types but cannot enter this executor until their review/network
  // adapters enforce their commit/connection boundaries.
@@ -97,7 +100,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
    input.check();
    if(!(error instanceof AgentContextCapacityError)||!history.length||!input.onBudgetExhausted)throw error;
    const final=await input.onBudgetExhausted(structuredClone(history));input.check();
-   return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'context'};
+   return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:error instanceof AgentSourceCapacityError?'source-capacity':'context'};
   }
   input.check();
   if(!validRecord(plan)||typeof plan.kind!=='string')throw new AgentProtocolError('Invalid agent plan');

@@ -71,6 +71,17 @@ function input(plans,overrides={}){
  return {value,operations,calls};
 }
 
+test('source capacity returns partial work without executing another tool or losing receipts',async()=>{
+ const plans=Array.from({length:6},(_,i)=>JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:`batch-${i}`})}));
+ const {value,operations}=input(plans,{question:'Compare the saved records.',maxToolCalls:null,search:async query=>{const batch=Number(query.slice(6));return Array.from({length:11},(_,i)=>({noteId:`note-${batch}-${i}`,revision:1,start:0,end:3,quote:'one',title:`Notes/${batch}-${i}.md`}));}});
+ value.engine.plannerProtocol='native-tool-calls';value.engine.manifest.contextTokens=100000;value.engine.count=async()=>({prompt_tokens:1000});
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.budgetExhausted,true);assert.equal(result.budgetReason,'source-capacity');assert.equal(result.final.action,'answer');
+ assert.equal(result.calls.length,6);assert.equal(operations.filter(item=>item.tool==='memory.search').length,6);
+ const {agentAnswerEvidenceFromCalls}=await import('../src/agent-evidence.ts');
+ const refs=agentAnswerEvidenceFromCalls(result.calls,[],true);assert.equal(refs.length,64);assert.equal(new Set(refs.map(ref=>ref.noteId)).size,64);
+});
+
 test('agent selects the registered device clock and retains its result for answering',async()=>{
  const clockPackage={definition:clock.definition,entry:'Tools/time.now/tool.ts',sources:[{path:'Tools/time.now/SKILL.md',body:'Read the device clock.'},{path:'Tools/time.now/tool.ts',body:'Trusted clock.'}],run:clock.run};
  const {value,operations}=input([JSON.stringify({action:'tool',query:'time.now',body:'{}'}),JSON.stringify({action:'answer',query:'What time is it?',target:'knowledge'})],{question:'What time is it?',enabledTools:['time.now'],builtinPackages:[clockPackage]});

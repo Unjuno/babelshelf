@@ -1,4 +1,4 @@
-import type {AgentToolResult} from './agent-loop.ts';
+import {AgentSourceCapacityError,type AgentToolResult} from './agent-loop.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import type {SourceRef} from './conversation.ts';
 import type {FileResult} from './file-discovery.ts';
@@ -63,11 +63,11 @@ function uniqueBoundedRefs(refs:readonly SourceRef[]):SourceRef[]{
  }
  return out;
 }
-function sourceCoverage(refs:readonly SourceRef[]):SourceRef[]{
+function sourceCoverage(refs:readonly SourceRef[],allowPartial=false):SourceRef[]{
  const seen=new Set<string>(),first:SourceRef[]=[],extra:SourceRef[]=[];
  for(const ref of refs){const key=JSON.stringify([ref.noteId,ref.revision]);if(seen.has(key))extra.push(ref);else{seen.add(key);first.push(ref);}}
  const selected=uniqueBoundedRefs([...first,...extra]);
- if(first.some(ref=>!selected.some(item=>item.noteId===ref.noteId&&item.revision===ref.revision)))throw Error('Context limit · fewer sources');
+ if(!allowPartial&&first.some(ref=>!selected.some(item=>item.noteId===ref.noteId&&item.revision===ref.revision)))throw new AgentSourceCapacityError();
  return selected;
 }
 /** Convert exact results observed at the trusted host.search boundary into source refs. */
@@ -255,7 +255,7 @@ export function agentEvidenceFromCalls(calls:readonly AgentToolResult[],hostObse
 }
 
 /** Prefer reads while retaining search ranges that the reads did not cover. */
-export function agentAnswerEvidenceFromCalls(calls:readonly AgentToolResult[],hostObservedRefs:readonly SourceRef[]=[]):SourceRef[]{
+export function agentAnswerEvidenceFromCalls(calls:readonly AgentToolResult[],hostObservedRefs:readonly SourceRef[]=[],allowPartial=false):SourceRef[]{
  const reads=collectAgentEvidence(calls.filter(call=>call.tool==='memory.read'));
  const searches=collectAgentEvidence(calls.filter(call=>call.tool==='memory.search')).filter(ref=>!reads.some(read=>read.noteId===ref.noteId&&read.revision===ref.revision&&read.start<=ref.start&&read.end>=ref.end));
  // A partial read of the start must not displace a query match elsewhere in
@@ -263,5 +263,5 @@ export function agentAnswerEvidenceFromCalls(calls:readonly AgentToolResult[],ho
  const all=[...reads.flatMap(read=>[...searches.filter(ref=>ref.noteId===read.noteId&&ref.revision===read.revision),read]),...searches,...hostObservedRefs.filter(validSourceRef)];
  // Reserve one excerpt for each source before filling remaining slots with
  // additional ranges; otherwise one long source can hide a later source.
- return sourceCoverage(all);
+ return sourceCoverage(all,allowPartial);
 }
