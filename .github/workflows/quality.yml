@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: design/prototype/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            design/prototype/package-lock.json
       - name: Install pinned dependencies
         run: npm ci --prefix design/prototype
       - name: Install root test dependencies
