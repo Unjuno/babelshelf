@@ -5,7 +5,8 @@ import type {ChatEngine,DialogueContext,DialoguePlan} from './conversation.ts';
 import {listMemoryEntries,resolveToolNotes} from './tools/tool-host.ts';
 import {SYSTEM_FOLDERS} from './memory-paths.ts';
 import type {ToolPackage} from './tools/tool-registry.ts';
-import {AgentToolExecutionError,AgentToolInputError,type AgentToolCall,type AgentToolResult,type AgentToolCapability} from './agent-loop.ts';
+import {AgentToolExecutionError,AgentToolInputError,AgentSearchSnapshotChangedError,type AgentToolCall,type AgentToolResult,type AgentToolCapability} from './agent-loop.ts';
+import {SearchSnapshotChangedError} from './file-discovery.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import {validateToolArguments,type ToolInputSchema} from './tools/tool-input.ts';
 import type {ActivityTool} from './harness-activity.ts';
@@ -293,7 +294,7 @@ export async function coordinateAgentTurn(input:{
     if(isCustom)await input.ensureCustomRuntime();
     const host:ToolHost={
      search:(query,signal)=>input.search(query,signal),
-     searchPage:input.searchPage?(query,options,signal)=>input.searchPage!(query,options,signal):undefined,
+     searchPage:input.searchPage?async(query,options,signal)=>{try{return await input.searchPage!(query,options,signal);}catch(error){if(call.tool==='memory.search'&&error instanceof SearchSnapshotChangedError)throw new AgentSearchSnapshotChangedError();throw error;}}:undefined,
      resolve:async(query,signal)=>{const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
      list:async(path,offset,limit,signal)=>{const [notes,folders]=await Promise.all([input.views(signal),input.listFolders?.()??Promise.resolve([])]);signal?.throwIfAborted();return listMemoryEntries(path,notes,[...SYSTEM_FOLDERS,...folders],offset,limit);},
      check:input.check,signal:input.signal,
@@ -302,7 +303,7 @@ export async function coordinateAgentTurn(input:{
     const result=await registry.run(call.tool,call.arguments,transaction?.host??host);
     if(transaction){input.check();pendingCustomCommit=transaction.commit;pendingCustomSources=transaction.observed;}
     return result;
-   }catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;if(input.signal.aborted){input.check();throw Error('Stopped');}if(error instanceof AgentToolResultTooLargeError)throw error;throw new AgentToolExecutionError(call.tool,error);}
+   }catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;if(input.signal.aborted){input.check();throw Error('Stopped');}if(error instanceof AgentToolResultTooLargeError||error instanceof AgentSearchSnapshotChangedError)throw error;throw new AgentToolExecutionError(call.tool,error);}
   },
  });
  const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='source-capacity'?'source-capacity':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;

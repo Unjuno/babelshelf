@@ -53,11 +53,12 @@ export function searchStoredPage(notes:any[],query:string,{offset=0,limit=12}:{o
 }
 /** Reject continuation against a different corpus or query instead of silently
  * skipping or repeating ranked records. The digest is transient and local. */
+export class SearchSnapshotChangedError extends Error {constructor(){super('Search changed · restart');this.name='SearchSnapshotChangedError';}}
 export function searchStoredPageChecked(notes:any[],query:string,{offset=0,limit=12,snapshot}:{offset?:number;limit?:number;snapshot?:string}={}){
  if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
  if(offset>0&&typeof snapshot!=='string')throw Error('Search snapshot required');
  const current=stateHash({query,notes});
- if(snapshot!==undefined&&snapshot!==current)throw Error('Search changed · restart');
+ if(snapshot!==undefined&&snapshot!==current)throw new SearchSnapshotChangedError();
  const page=searchStoredPage(notes,query,{offset,limit});
  const next=offset+page.hits.length;
  return {...page,offset,limit,snapshot:current,nextOffset:page.hasMore&&next<=10000?next:null,...(page.hasMore&&next>10000?{windowLimit:true}:{})};

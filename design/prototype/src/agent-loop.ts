@@ -14,7 +14,8 @@ export type AgentToolCall={kind:'tool';tool:string;arguments:Record<string,unkno
 export type AgentToolBatch={kind:'tools';calls:AgentToolCall[];assistantContent?:string};
 export type AgentPlan<Final> = AgentToolCall|AgentToolBatch|{kind:'final';value:Final};
 export type AgentToolResult={tool:string;arguments:Record<string,unknown>;result:unknown;batchId?:string;assistantContent?:string};
-export type AgentToolAttempt=AgentToolResult&{error?:{code:'invalid_tool_input'|'tool_execution'|'result_too_large'|'no_progress_loop'|'batch_not_executed'}};
+export type AgentToolAttempt=AgentToolResult&{error?:{code:'invalid_tool_input'|'tool_execution'|'search_snapshot_changed'|'result_too_large'|'no_progress_loop'|'batch_not_executed'}};
+export class AgentSearchSnapshotChangedError extends Error {constructor(){super('Search changed · restart');this.name='AgentSearchSnapshotChangedError';}}
 
 /** Only the trusted pre-execution schema check may issue this recoverable error. */
 export class AgentToolInputError extends Error {
@@ -166,7 +167,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
      const final=await input.onBudgetExhausted(structuredClone(history));input.check();
      return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'source-capacity'};
     }
-    const code=error instanceof AgentToolInputError?'invalid_tool_input':error instanceof AgentToolExecutionError?'tool_execution':error instanceof AgentToolResultTooLargeError?'result_too_large':null;
+    const code=error instanceof AgentToolInputError?'invalid_tool_input':error instanceof AgentSearchSnapshotChangedError?'search_snapshot_changed':error instanceof AgentToolExecutionError?'tool_execution':error instanceof AgentToolResultTooLargeError?'result_too_large':null;
     if(!code)throw error;
     history.push({tool:recordedTool,arguments:recordedArguments,result:null,error:{code},...(call.assistantContent?{assistantContent:call.assistantContent}:{}),...(batchId?{batchId}:{})});
    }

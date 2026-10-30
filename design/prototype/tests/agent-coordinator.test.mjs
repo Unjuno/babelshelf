@@ -86,6 +86,19 @@ test('agent executes paged search and retains original evidence from later pages
  for(const ref of refs){const note=notes.find(note=>note.id===ref.noteId);assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
 });
 
+test('a changed search snapshot gives the agent a specific restart signal',async()=>{
+ const notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water ${i}`,path:`Inbox/water-${i}.md`}));
+ const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12});
+ const pkg={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search with pages.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:pagedSearch.run};
+ const plans=[{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:0})},{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:12,snapshot:first.snapshot})},{action:'answer',query:'water',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:'Find saved water information.',builtinPackages:[pkg],searchPage:async(query,options)=>searchStoredPageChecked(options.offset?[...notes,createNote({title:'water new',body:'water new'})]:notes,query,options)});
+ const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...rest)=>{prompts.push(messages);return generate(messages,...rest);};
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.calls.length,1);
+ assert.match(JSON.stringify(prompts.at(-1)),/search_snapshot_changed/);
+ assert.match(JSON.stringify(prompts.at(-1)),/restart/i);
+});
+
 test('source capacity returns partial work without executing another tool or losing receipts',async()=>{
  const plans=Array.from({length:6},(_,i)=>JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:`batch-${i}`})}));
  const {value,operations}=input(plans,{question:'Compare the saved records.',maxToolCalls:null,search:async query=>{const batch=Number(query.slice(6));return Array.from({length:11},(_,i)=>({noteId:`note-${batch}-${i}`,revision:1,start:0,end:3,quote:'one',title:`Notes/${batch}-${i}.md`}));}});
