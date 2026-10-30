@@ -5,4 +5,5 @@ export const knownPackageBodies:Record<string,string[]>={
 // Earlier ranged-reader guidance described offsets as characters before the
 // UTF-16 boundary contract was made explicit. Match that exact revision too.
 const readVersions=knownPackageBodies['builtin-package-memory.read/SKILL.md'];
+knownPackageBodies['builtin-package-memory.search/SKILL.md'].push('# memory.search\n\nUse for local saved-record search by topic, phrase or clues, including “find what I saved about …” requests. Use `memory.read` when an exact ID, full path or filename is known.\n\nInput: `{query: string}`. Execution uses the current canonical host snapshot. Results retain IDs and revisions; quotes are excerpts, and `partial: true` marks an excerpt shortened for the result budget. Use `memory.read` to inspect more of a source. No writes, network, installation or permission changes. Guidance is not execution authority.\n');
 readVersions.splice(1,0,readVersions[1].replace('Offsets and lengths count UTF-16 code units; the returned range may adjust a boundary to keep a character intact. The default range is the first 2,000 code units;', 'The default range is the first 2,000 characters;'));

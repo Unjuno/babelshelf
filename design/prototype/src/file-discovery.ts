@@ -2,10 +2,11 @@
 // @ts-expect-error Shared canonical paths are JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared search folding is JavaScript.
-import {normalizeSearchText} from '../../../dist/core.js';
+import {normalizeSearchText,searchStoredNotesWindow} from '../../../dist/core.js';
+import {stateHash} from './backup-hash.ts';
 export type FileResult={kind:'file';noteId:string;revision:number;path:string};
 const normalize:(text:string)=>string=normalizeSearchText;
-export function findStoredFiles(notes:any[],query:string,limit=12):FileResult[]{
+export function findStoredFiles(notes:any[],query:string,limit=12,maxResults=20):FileResult[]{
  const q=normalize(query);if(!q||q.length>2000)return [];
  const terms=q.split(' ');
  return notes.filter(n=>n.state==='active').flatMap(n=>{
@@ -13,12 +14,12 @@ export function findStoredFiles(notes:any[],query:string,limit=12):FileResult[]{
   if(!terms.every(term=>fields.some(field=>field.includes(term))))return [];
   const score=fields.some(field=>field===q)?100:fields.some(field=>field.includes(q))?50:10;
   return [{score,file:{kind:'file' as const,noteId:n.id,revision:v.version,path}}];
- }).sort((a,b)=>b.score-a.score||a.file.path.localeCompare(b.file.path)||a.file.noteId.localeCompare(b.file.noteId)).slice(0,Math.max(1,Math.min(20,limit))).map(r=>r.file);
+ }).sort((a,b)=>b.score-a.score||a.file.path.localeCompare(b.file.path)||a.file.noteId.localeCompare(b.file.noteId)).slice(0,Math.max(1,Math.min(maxResults,limit))).map(r=>r.file);
 }
 /** File and passage discovery share a bounded result budget. Alternate the
  * two ranked lists so neither kind can hide the other; keep the passage when
  * both describe the same file. These results do not grant read/write authority. */
-export function mergeStoredSearchResults<T extends {noteId:string;revision?:number;quote?:string}>(files:FileResult[],passages:T[],limit=12,query=''):(FileResult|T)[]{
+export function mergeStoredSearchResults<T extends {noteId:string;revision?:number;quote?:string}>(files:FileResult[],passages:T[],limit=12,query='',maxResults=20):(FileResult|T)[]{
  const q=normalize(query),exact=q.includes('/')?files.filter(file=>normalize(file.path)===q):[];
  // A bare filename with an existing exact match is a file lookup. Otherwise
  // a previously generated answer mentioning that name can outrank the very
@@ -34,7 +35,7 @@ export function mergeStoredSearchResults<T extends {noteId:string;revision?:numb
  // its metadata row, so the agent can navigate without rediscovering it.
  const metadataById=new Map(files.map(file=>[file.noteId,file]));
  passages=passages.map(passage=>{const file=metadataById.get(passage.noteId);return file&&file.revision===passage.revision?{...passage,path:file.path}:passage;});
- const cap=Math.max(1,Math.min(20,limit)),passageById=new Map<string,T>();
+ const cap=Math.max(1,Math.min(maxResults,limit)),passageById=new Map<string,T>();
  for(const passage of passages)if(!passageById.has(passage.noteId))passageById.set(passage.noteId,passage);
  const seen=new Set<string>(),merged:(FileResult|T)[]=[];
  const add=(item:FileResult|T|undefined)=>{if(item&&!seen.has(item.noteId)){seen.add(item.noteId);merged.push(item);}};
@@ -42,6 +43,24 @@ export function mergeStoredSearchResults<T extends {noteId:string;revision?:numb
   const file=files[i];add(file?(passageById.get(file.noteId)??file):undefined);if(merged.length<cap)add(passages[i]);
  }
  return merged;
+}
+/** The caller must use an unchanged canonical snapshot between pages. */
+export function searchStoredPage(notes:any[],query:string,{offset=0,limit=12}:{offset?:number;limit?:number}={}){
+ if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
+ const window=10021;
+ const hits=mergeStoredSearchResults(findStoredFiles(notes,query,window,window),searchStoredNotesWindow(notes,query,window),window,query,window);
+ return {hits:hits.slice(offset,offset+limit),hasMore:hits.length>offset+limit};
+}
+/** Reject continuation against a different corpus or query instead of silently
+ * skipping or repeating ranked records. The digest is transient and local. */
+export function searchStoredPageChecked(notes:any[],query:string,{offset=0,limit=12,snapshot}:{offset?:number;limit?:number;snapshot?:string}={}){
+ if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
+ if(offset>0&&typeof snapshot!=='string')throw Error('Search snapshot required');
+ const current=stateHash({query,notes});
+ if(snapshot!==undefined&&snapshot!==current)throw Error('Search changed · restart');
+ const page=searchStoredPage(notes,query,{offset,limit});
+ const next=offset+page.hits.length;
+ return {...page,offset,limit,snapshot:current,nextOffset:page.hasMore&&next<=10000?next:null,...(page.hasMore&&next>10000?{windowLimit:true}:{})};
 }
 export function validateFileResults(value:unknown):asserts value is FileResult[]{
  if(!Array.isArray(value)||value.length>20||value.some(r=>!r||Object.keys(r).sort().join(',')!=='kind,noteId,path,revision'||r.kind!=='file'||typeof r.noteId!=='string'||!r.noteId||!Number.isInteger(r.revision)||r.revision<1||typeof r.path!=='string'||!r.path||r.path.length>1024))throw Error('Invalid file result');

@@ -31,7 +31,7 @@ function explicitlyNamesReadTarget(query:string,question:string){
 }
 
 function rememberExactReadTargets(targets:Set<string>,result:unknown){
- const rows=Array.isArray(result)?result:result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as Record<string,unknown>).entries)?(result as {entries:unknown[]}).entries:[];
+ const rows=Array.isArray(result)?result:result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as Record<string,unknown>).entries)?(result as {entries:unknown[]}).entries:result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as Record<string,unknown>).hits)?(result as {hits:unknown[]}).hits:[];
  for(const item of rows){
   if(!item||typeof item!=='object'||Array.isArray(item))continue;
   const row=item as Record<string,unknown>;
@@ -105,6 +105,7 @@ export async function coordinateAgentTurn(input:{
  builtinPackages:readonly ToolPackage[];
  readToolSources:()=>Promise<ToolSourceRecord[]>;
  search:(query:string,signal?:AbortSignal)=>Promise<MemorySearchResult[]>;
+ searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string},signal?:AbortSignal)=>Promise<unknown>;
  views:(signal?:AbortSignal)=>Promise<ToolNote[]>;
  listFolders?:()=>Promise<string[]>;
  ensureCustomRuntime:()=>Promise<unknown>;
@@ -254,9 +255,10 @@ export async function coordinateAgentTurn(input:{
     // to the planner and may introduce new implicit read targets.
     rememberExactReadTargets(exactReadTargets,projected);
     if(call.tool==='memory.search'){
-     latestSearchNoteIds=Array.isArray(projected)?[...new Set(projected.flatMap(item=>item&&typeof item==='object'&&!Array.isArray(item)&&typeof (item as Record<string,unknown>).noteId==='string'?[(item as Record<string,string>).noteId]:[]))]:[];
-     latestSearchQuotes=new Set(Array.isArray(projected)?projected.flatMap(item=>item&&typeof item==='object'&&!Array.isArray(item)&&typeof (item as Record<string,unknown>).quote==='string'&&((item as Record<string,string>).quote).trim()?[(item as Record<string,string>).quote]:[]):[]);
-     if(Array.isArray(projected))explicitSearchResults.push(...projected);
+     const rows=Array.isArray(projected)?projected:projected&&typeof projected==='object'&&Array.isArray((projected as {hits?:unknown[]}).hits)?(projected as {hits:unknown[]}).hits:[];
+     latestSearchNoteIds=[...new Set(rows.flatMap(item=>item&&typeof item==='object'&&!Array.isArray(item)&&typeof (item as Record<string,unknown>).noteId==='string'?[(item as Record<string,string>).noteId]:[]))];
+     latestSearchQuotes=new Set(rows.flatMap(item=>item&&typeof item==='object'&&!Array.isArray(item)&&typeof (item as Record<string,unknown>).quote==='string'&&((item as Record<string,string>).quote).trim()?[(item as Record<string,string>).quote]:[]));
+     explicitSearchResults.push(...rows);
     }
    }
    return projected;
@@ -291,6 +293,7 @@ export async function coordinateAgentTurn(input:{
     if(isCustom)await input.ensureCustomRuntime();
     const host:ToolHost={
      search:(query,signal)=>input.search(query,signal),
+     searchPage:input.searchPage?(query,options,signal)=>input.searchPage!(query,options,signal):undefined,
      resolve:async(query,signal)=>{const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
      list:async(path,offset,limit,signal)=>{const [notes,folders]=await Promise.all([input.views(signal),input.listFolders?.()??Promise.resolve([])]);signal?.throwIfAborted();return listMemoryEntries(path,notes,[...SYSTEM_FOLDERS,...folders],offset,limit);},
      check:input.check,signal:input.signal,

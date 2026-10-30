@@ -152,6 +152,14 @@ export function projectAgentToolResult(tool:string,result:unknown,maxChars?:numb
  if(/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool)){
   return JSON.parse(serializeCustomToolResult(result,true));
  }
+ if(tool==='memory.search'&&result&&typeof result==='object'&&!Array.isArray(result)){
+  const page=result as Record<string,unknown>,{hits,offset,limit,snapshot,nextOffset,hasMore,windowLimit}=page;
+  if(Object.keys(page).some(key=>!['hits','offset','limit','snapshot','nextOffset','hasMore','windowLimit'].includes(key))||!Array.isArray(hits)||!Number.isSafeInteger(offset)||Number(offset)<0||Number(offset)>10000||!Number.isSafeInteger(limit)||Number(limit)<1||Number(limit)>12||hits.length>Number(limit)||typeof snapshot!=='string'||!/^[a-f0-9]{64}$/.test(snapshot)||typeof hasMore!=='boolean'||windowLimit!==undefined&&windowLimit!==true||nextOffset!==(hasMore&&Number(offset)+hits.length<=10000?Number(offset)+hits.length:null)||hasMore&&hits.length===0||Boolean(windowLimit)!==(hasMore&&Number(offset)+hits.length>10000))throw Error('Invalid search page');
+  const metadata={offset,limit,snapshot,nextOffset,hasMore,...(windowLimit?{windowLimit:true}:{})};
+  const budget=maxChars===undefined?undefined:maxChars-JSON.stringify({...metadata,hits:[]}).length;
+  if(budget!==undefined&&budget<2)throw new AgentToolResultTooLargeError();
+  return {...metadata,hits:projectAgentToolResult('memory.search',hits,budget)};
+ }
  if(!Array.isArray(result))throw Error('Invalid local tool result');
  if(tool==='math.calculate'){
   if(result.length!==1)throw Error('Invalid calculation result');
@@ -236,11 +244,12 @@ export function projectAgentActivityResult(tool:string,result:unknown,maxChars?:
 function collectAgentEvidence(calls:readonly AgentToolResult[],hostObservedRefs:readonly SourceRef[]=[]):SourceRef[]{
  const refs:SourceRef[]=[];
  for(const call of calls){
-  if(!Array.isArray(call.result))continue;
-  if(call.tool==='memory.search')for(const item of call.result as any[]){
+  const rows=Array.isArray(call.result)?call.result:call.tool==='memory.search'&&call.result&&typeof call.result==='object'&&Array.isArray((call.result as any).hits)?(call.result as any).hits:null;
+  if(!rows)continue;
+  if(call.tool==='memory.search')for(const item of rows as any[]){
    if(item&&typeof item.noteId==='string'&&Number.isSafeInteger(item.revision)&&Number.isSafeInteger(item.start)&&Number.isSafeInteger(item.end)&&item.end>=item.start&&typeof item.quote==='string'&&item.end-item.start===item.quote.length)refs.push({noteId:item.noteId,revision:item.revision,start:item.start,end:item.end,quote:item.quote,...(typeof item.title==='string'?{title:boundedPrefix(item.title,240)}:{}),...(typeof item.groundingEligible==='boolean'?{groundingEligible:item.groundingEligible}:{})});
   }
-  else if(call.tool==='memory.read')for(const item of call.result as any[]){
+  else if(call.tool==='memory.read')for(const item of rows as any[]){
    if(item&&typeof item.noteId==='string'&&typeof item.path==='string'&&Number.isSafeInteger(item.revision)&&item.revision>0&&Number.isSafeInteger(item.start)&&item.start>=0&&typeof item.excerpt==='string'&&item.excerpt.length)refs.push({noteId:item.noteId,revision:item.revision,start:item.start,end:item.start+item.excerpt.length,quote:item.excerpt,title:boundedPrefix(item.path,240)});
   }
  }

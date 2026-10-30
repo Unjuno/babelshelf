@@ -4,7 +4,7 @@ import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorr
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
-import {findStoredFiles,mergeStoredSearchResults} from './file-discovery.ts';
+import {findStoredFiles,mergeStoredSearchResults,searchStoredPageChecked} from './file-discovery.ts';
 import type {MemorySearchResult,MemoryPassageResult} from './memory-search-types.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
@@ -128,6 +128,7 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
  const updated=applyKnowledgeChanges(records,[],batch.notes);
  return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
+function searchableRecords(all:Canonical[],query:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query);return explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
  private name:string;
@@ -362,7 +363,8 @@ export class KnowledgeStore {
 
  search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
  search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
- async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12,query);}
+ async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query);if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12,query);}
+ async searchPage(query:string,options:{offset:number;limit:number;snapshot?:string},signal?:AbortSignal){const all=await this.all(signal);signal?.throwIfAborted();return searchStoredPageChecked(searchableRecords(all,query),query,options);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};

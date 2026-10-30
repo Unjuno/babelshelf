@@ -2,7 +2,7 @@ import type {MemorySearchResult} from '../memory-search-types.ts';
 import {MAX_FOLDER_DEPTH} from '../memory-paths.ts';
 export interface ToolNote {id:string;path:string;version:number;body:string;start?:number;totalChars?:number}
 /** A tool receives only search results or records explicitly resolved by ID/path/name. */
-export interface ToolHost {search(query:string,signal?:AbortSignal):Promise<MemorySearchResult[]>;resolve(query:string,signal?:AbortSignal):Promise<ToolNote[]>;list?(path:string,offset:number,limit:number,signal?:AbortSignal):Promise<unknown>;check():void;signal?:AbortSignal}
+export interface ToolHost {search(query:string,signal?:AbortSignal):Promise<MemorySearchResult[]>;searchPage?(query:string,options:{offset:number;limit:number;snapshot?:string},signal?:AbortSignal):Promise<unknown>;resolve(query:string,signal?:AbortSignal):Promise<ToolNote[]>;list?(path:string,offset:number,limit:number,signal?:AbortSignal):Promise<unknown>;check():void;signal?:AbortSignal}
 export function resolveToolNotes(notes:ToolNote[],query:string):ToolNote[]{
  const byId=notes.filter(note=>note.id===query);
  if(byId.length>1)throw Error('Conflicting record ID');

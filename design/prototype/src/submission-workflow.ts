@@ -199,7 +199,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       readToolSources:async()=>(await refreshSnapshot()).map(note=>({path:note.path,body:note.body})),
       // Tool discovery includes exact file metadata. Citable passages are
       // separately validated when evidence is selected for the final answer.
-      search:(query,signal)=>knowledge.search(query,true,signal),views:signal=>knowledge.views(signal),listFolders:async()=>await knowledge.getState<string[]>('folders')??[],
+      search:(query,signal)=>knowledge.search(query,true,signal),searchPage:(query,options,signal)=>knowledge.searchPage(query,options,signal),views:signal=>knowledge.views(signal),listFolders:async()=>await knowledge.getState<string[]>('folders')??[],
       ensureCustomRuntime:()=>ensureProductRuntime('custom-tools',false),check:checkSend,signal:run.signal,trace,
       activityEventCount:pagingAvailable?undefined:currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??activityEventCount,
        });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentBudgetExhausted=coordinated.budgetExhausted;agentBudgetReason=coordinated.budgetReason;return coordinated.final;

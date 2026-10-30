@@ -14,6 +14,9 @@ import {captureTurnExecutionSnapshot} from '../src/turn-execution-snapshot.ts';
 import * as clock from '../src/tools/time.now/tool.ts';
 import {agentClockReadingsFromCalls} from '../src/agent-evidence.ts';
 import {PlannerOutputError} from '../src/planner-error.ts';
+import * as pagedSearch from '../src/tools/memory.search/tool.ts';
+import {searchStoredPageChecked} from '../src/file-discovery.ts';
+import {createNote} from '../../../dist/core.js';
 
 test('native planner protocol failure is recorded and retried once without executing malformed output',async()=>{
  const {value,calls}=input([],{question:'Summarize the previous answer.',context:{...context(),recent:[{id:'prior',user:'Hello',answer:'Previous answer'}],turnCount:1}});let generations=0;const prompts=[],receipts=[];
@@ -70,6 +73,18 @@ function input(plans,overrides={}){
  value.snapshot=overrides.snapshot??captureTurnExecutionSnapshot({turnId:'turn-test',textModel:value.model,textManifest:{models:[{id:value.model,revision:'model-r1'}],runtime:{revision:'runtime-r1'}},decisionModel:'',decisionIdentity:{model:'',revision:''},speechModel:'',ocrModel:'',visionModel:'',profile:{id:'test-profile',label:'Test',enabledTools:value.enabledTools,maxToolCalls:value.maxToolCalls,maxResultChars:value.maxResultChars},replyStyle:'balanced',userGuidance:'',attachments:[]});
  return {value,operations,calls};
 }
+
+test('agent executes paged search and retains original evidence from later pages',async()=>{
+ const notes=Array.from({length:15},(_,i)=>createNote({title:`water ${i}`,body:`water reserve ${i}`,path:`Inbox/water-${i}.md`}));
+ const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12});
+ const pkg={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search with pages.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:pagedSearch.run};
+ const plans=[{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:0})},{action:'tool',query:'memory.search',body:JSON.stringify({query:'water',offset:12,snapshot:first.snapshot})},{action:'answer',query:'water',target:'knowledge'}].map(JSON.stringify);
+ const {value}=input(plans,{question:'Find saved water information.',builtinPackages:[pkg],searchPage:async(query,options)=>searchStoredPageChecked(notes,query,options)});
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.calls.length,2);assert.equal(result.calls[1].result.hits.length,3);
+ const refs=agentEvidenceFromCalls(result.calls);assert.equal(new Set(refs.map(ref=>ref.noteId)).size,15);
+ for(const ref of refs){const note=notes.find(note=>note.id===ref.noteId);assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
+});
 
 test('source capacity returns partial work without executing another tool or losing receipts',async()=>{
  const plans=Array.from({length:6},(_,i)=>JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:`batch-${i}`})}));

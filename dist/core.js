@@ -104,12 +104,23 @@ function buildNoteIndex(notes,force,stored){
 }
 export function searchNotes(notes,query,limit=8){return searchLowMemoryNotes(notes,query,limit,false);}
 export function searchStoredNotes(notes,query,limit=8){return searchLowMemoryNotes(notes,query,limit,true);}
+export function searchStoredNotesWindow(notes,query,limit){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>10021)throw Error('Invalid search window');
+ return searchLowMemoryNotes(notes,query,limit,true,10021);
+}
+// Callers must keep `notes` unchanged across pages or restart their search.
+// The ordinary search API retains its existing 20-result bound.
+export function searchStoredNotesPage(notes,query,{offset=0,limit=12}={}){
+ if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
+ const ranked=searchStoredNotesWindow(notes,query,offset+limit+1);
+ return {hits:ranked.slice(offset,offset+limit),hasMore:ranked.length>offset+limit};
+}
 // Grounded search only needs the best bounded set of passages. Building the
 // full multilingual postings map for every freshly-read IndexedDB snapshot
 // creates a second corpus-sized structure that is immediately discarded.
 // Two scans keep the same BM25 inputs and stable ranking while retaining only
 // corpus statistics and the requested top results.
-function searchLowMemoryNotes(notes,query,limit,stored){
+function searchLowMemoryNotes(notes,query,limit,stored,maxResults=20){
  const q=norm(query);if(!q)return [];
  const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),scriptTerms=terms.filter(t=>!lexical.has(t)&&Array.from(t).length>=2),map=new Map(notes.map(n=>[n.id,n])),df=new Map(terms.map(term=>[term,0])),memo=new Map();
  let docCount=0,tokenCount=0;
@@ -123,7 +134,7 @@ function searchLowMemoryNotes(notes,query,limit,stored){
  };
  for(const n of notes)visit(n,d=>{docCount++;tokenCount+=d.tokens.length;for(const term of terms)if(d.present.has(term))df.set(term,df.get(term)+1);});
  if(!docCount)return [];
- const avg=tokenCount/docCount,cap=Math.max(1,Math.min(20,limit)),ranked=[],bestByNote=stored?new Map():null,extras=stored?[]:null;
+ const avg=tokenCount/docCount,cap=Math.max(1,Math.min(maxResults,limit)),ranked=[],bestByNote=stored?new Map():null,extras=stored?[]:null;
  const compare=(a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start,before=(a,b)=>compare(a,b)<0;
  const insertTop=(list,hit)=>{let at=list.findIndex(item=>before(hit,item));if(at<0)at=list.length;if(at>=cap)return;list.splice(at,0,hit);if(list.length>cap)list.pop();};
  for(const n of notes)visit(n,d=>{
