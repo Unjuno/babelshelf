@@ -6757,3 +6757,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 — text-model discovery (PC)
 - Models now exposes Browse text models beside the Text model heading, using the same icon pattern as other model roles. The existing selection, registered libraries, saved preferences and downloaded assets are not changed automatically.
 - PC Playwright: the new discovery flow opened the catalog and displayed LFM3 Q8; the existing LFM3 context-settings persistence scenario passed. Product build 5423d4be85e1f47f succeeded. No model download, generation, iPhone or deployment was tested for this change.
+
+2026-10-30 — exact quote recovery and CI lockfile
+- Reproduced a case-changed identifier being accepted as verbatim recovery. Recovery now requires a case-sensitive contiguous substring of the verified excerpt; search normalization is unchanged. A controlled OCR-reading fixture rejects abc123 for AbC123 and accepts the exact value. Relevant Node tests 203/203 passed; this is not a real OCR or model quality test.
+- GitHub Actions run 41025503419 failed during npm ci under Node 24.22.1 / npm 11.19.1 because @emnapi/core and runtime 1.11.3 were absent from the lockfile. Regenerated the lockfile with npm 11.19.1; a Linux x64 npm ci dry run passed locally. Actual Linux CI outcome remains to be checked after push.

@@ -263,7 +263,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   let value:unknown;try{value=JSON.parse(safe.text);}catch{throw Error('Invalid model JSON · retry');}
   if(value&&typeof value==='object'&&!Array.isArray(value)&&(value as any).status==='insufficient_evidence'&&typeof (value as any).answer==='string'&&(value as any).answer.trim()&&Object.keys(value).every(key=>key==='status'||key==='answer'))return {answer:(value as {answer:string}).answer.trim(),sources:[],status:'insufficient_evidence' as const};
   if(!value||typeof value!=='object'||Array.isArray(value)||typeof (value as any).answer!=='string'||!(value as any).answer.trim()||Object.keys(value).some(key=>key!=='answer'))throw Error('Invalid model JSON · retry');
-  const answer=(value as any).answer.trim(),source=evidence.find(ref=>ref.quote.toLocaleLowerCase().includes(answer.toLocaleLowerCase()));if(!source)throw Error('Answer needs a verified quote · retry');
+  const answer=(value as any).answer.trim(),source=evidence.find(ref=>ref.quote.includes(answer));if(!source)throw Error('Answer needs a verified quote · retry');
   recovery='verbatim-source';
   const {noteId,revision,start,end,quote,title}=source;return {answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
  };
