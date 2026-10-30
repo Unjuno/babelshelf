@@ -4,6 +4,19 @@ import {parsePreference,updatePreference,type HarnessPreferences,type Preference
 import {MAX_CONFIGURED_AGENT_TOOLS} from './agent-loop.ts';
 import type {ToolPackage} from './tools/tool-registry.ts';
 
+/** A three-call setting may be intentional; only a reviewed proposal changes it. */
+export async function prepareToolLimitReview(records:any[]){
+ const targets=records.filter(record=>record.id==='settings-harness');
+ if(targets.length!==1)throw Error('Harness settings unavailable');
+ const target=targets[0],{group,value}=settingsCorrectionTarget(target);
+ if(group!=='harness')throw Error('Harness settings unavailable');
+ const preferences=value as unknown as HarnessPreferences;
+ const profile=preferences.profiles.find(item=>item.id===preferences.activeProfileId);
+ if(!profile||profile.maxToolCalls!==3)throw Error('No three-call limit to review');
+ const profiles=preferences.profiles.map(item=>item.id===profile.id?{...item,maxToolCalls:null}:item);
+ return prepareCorrection(target,'Review tool call limit',JSON.stringify({action:'patch',changes:{profiles}}),records);
+}
+
 /** Validate a profile's current packages as inert data, then use the shared CAS/Undo review. */
 export async function prepareHarnessProfileChange(records:any[],profileId:string,builtins:readonly ToolPackage[]){
  const targets=records.filter(record=>record.id==='settings-harness');
