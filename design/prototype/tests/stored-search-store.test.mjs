@@ -22,7 +22,7 @@ test('folder-scoped search includes descendants only and binds continuation to t
  try{
   await store.initialize(seeds);
   const host={search:()=>{throw Error('Unexpected unscoped search');},searchPage:(q,o)=>store.searchPage(q,o),resolve:async()=>[],check(){}};
-  const first=await searchTool.run({query:'water',offset:0,limit:12,pathPrefix:'Inbox/travel'},host);
+  const first=await searchTool.run({query:'water',pathPrefix:'Inbox/travel'},host);
   const next=await searchTool.run({query:'water',offset:12,limit:12,snapshot:first.snapshot,pathPrefix:'Inbox/travel'},host);
   const ids=[...first.hits,...next.hits].map(hit=>hit.noteId);
   assert.equal(ids.length,15);assert.ok(ids.includes('nested'));assert.ok(!ids.includes('sibling'));
