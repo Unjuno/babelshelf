@@ -348,9 +348,11 @@ export class KnowledgeStore {
  async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[]){
   ({before,next,refs}=structuredClone({before,next,refs}));
   validateDialogue(next);if(!Array.isArray(refs)||!refs.length)throw Error('Source required');
+  const previous=new Map((before?.turns??[]).map(turn=>[turn.id,turn]));
+  const addedRefs=next.turns.flatMap(turn=>equal(turn.refs,previous.get(turn.id)?.refs)?[]:turn.refs??[]);
   const sources=refs,db=await this.open();return new Promise<void>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
-   const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(!validateGroundingRefs(notes.result,sources).ok)throw new GroundingConflictError();settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
+   const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(!validateGroundingRefs(notes.result,sources).ok||addedRefs.length&&!validateGroundingRefs(notes.result,addedRefs).ok)throw new GroundingConflictError();settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
    dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
  }

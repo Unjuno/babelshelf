@@ -20,6 +20,28 @@ test('grounded dialogue commit checks source and conversation in the same transa
  db.close();
 });
 
+test('grounded commit also validates the references actually added to the answer',async()=>{
+ const store=new KnowledgeStore('grounded-actual-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'source',path:'Notes/source.md',body:'Source text',version:1,history:[]}]);
+  const checked={noteId:'source',revision:1,start:0,end:6,quote:'Source'},forged={...checked,quote:'Forged'};
+  const next=appendTurn(emptyDialogue(),{id:'turn',user:'Question',answer:'Answer',refs:[forged]});
+  await assert.rejects(store.compareGroundedDialogue(undefined,next,[checked]),/Source changed/);
+  assert.equal(await store.getState('dialogue'),undefined);
+ }finally{store.close();}
+});
+
+test('grounded commit retains unchanged historical references even when their source is unavailable',async()=>{
+ const store=new KnowledgeStore('grounded-history-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'source',path:'Notes/source.md',body:'Source text',version:1,history:[]}]);
+  const oldRef={noteId:'unavailable',revision:1,start:0,end:3,quote:'Old'},ref={noteId:'source',revision:1,start:0,end:6,quote:'Source'};
+  const before=appendTurn(emptyDialogue(),{id:'old',user:'Earlier',answer:'Old answer',refs:[oldRef]});await store.compareState('dialogue',undefined,before);
+  const next=appendTurn(before,{id:'new',user:'Question',answer:'Answer',refs:[ref]});await store.compareGroundedDialogue(before,next,[ref]);
+  assert.deepEqual(await store.getState('dialogue'),next);
+ }finally{store.close();}
+});
+
 test('a rejected stale source leaves the dialogue writer usable for an error and retry',async()=>{
  const store=new KnowledgeStore('grounded-recovery-'+crypto.randomUUID()),db=await store.open();
  const note=createNote({path:'Inbox/water.md',body:'水は七リットル。'}),ref={noteId:note.id,revision:1,start:2,end:7,quote:'七リットル'};
