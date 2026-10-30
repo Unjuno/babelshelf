@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import {runReadOnlyAgentLoop,AgentContextCapacityError,AgentSourceCapacityError,AgentToolExecutionError,AgentSearchSnapshotChangedError,AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 const memoryTools=[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}];
 
+test('failed source continuation cannot leave older source metadata in the final answer',async()=>{
+ const tools=[{id:'memory.sources',effect:'read',network:'none'}],plans=[{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1}},{kind:'tool',tool:'memory.sources',arguments:{id:'summary',revision:1,offset:12,snapshot:'old'}},{kind:'final',value:'done'}];let count=0,lastHistory;
+ const result=await runReadOnlyAgentLoop({allowedTools:tools,plan:async history=>{lastHistory=history;return plans.shift();},execute:async()=>{if(++count===2)throw new AgentToolExecutionError();return {noteId:'summary',revision:1,snapshot:'old',items:[]};},check:()=>{}});
+ assert.equal(result.calls.length,0);assert.equal(result.attempts.length,2);assert.equal(lastHistory[0].result,null);
+});
+
 test('changed search invalidates older pages in answer evidence while retaining the execution history',async()=>{
  const plans=[{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:0}},{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:12,snapshot:'old'}},{kind:'tool',tool:'memory.search',arguments:{query:'water',offset:0}},{kind:'final',value:'done'}];let count=0,lastHistory;
  const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async history=>{lastHistory=history;return plans.shift();},execute:async()=>{count++;if(count===2)throw new AgentSearchSnapshotChangedError();return {snapshot:count===1?'old':'new',hits:[{noteId:'n',revision:count===1?1:2,quote:'water'}]};},check:()=>{}});

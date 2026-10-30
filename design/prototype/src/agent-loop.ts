@@ -77,11 +77,14 @@ function snapshotBoundedResult(result:unknown,maxChars=MAX_AGENT_RESULT_CHARS):u
 // answer evidence or to justify a partial-budget answer.
 function usableHistory(history:readonly AgentToolAttempt[]):AgentToolAttempt[]{
  const stale=new Set(history.filter(item=>item.tool==='memory.search'&&item.error?.code==='search_snapshot_changed'&&typeof item.arguments.query==='string'&&typeof item.arguments.snapshot==='string').map(item=>JSON.stringify([item.arguments.query,item.arguments.snapshot])));
- return history.filter(item=>{if(item.error||item.tool!=='memory.search'||!validRecord(item.result)||typeof item.result.snapshot!=='string')return true;return !stale.has(JSON.stringify([item.arguments.query,item.result.snapshot]));});
+ // A failed continuation cannot prove that earlier source metadata remains
+ // current. Keep attempts for audit, but do not offer them as answer data.
+ const staleSources=new Set(history.filter(item=>item.tool==='memory.sources'&&item.error?.code==='tool_execution'&&typeof item.arguments.id==='string'&&typeof item.arguments.snapshot==='string').map(item=>JSON.stringify([item.arguments.id,item.arguments.revision,item.arguments.snapshot])));
+ return history.filter(item=>{if(item.error||!validRecord(item.result)||typeof item.result.snapshot!=='string')return true;if(item.tool==='memory.search')return !stale.has(JSON.stringify([item.arguments.query,item.result.snapshot]));if(item.tool==='memory.sources')return !staleSources.has(JSON.stringify([item.arguments.id,item.arguments.revision,item.result.snapshot]));return true;});
 }
 function plannerHistory(history:readonly AgentToolAttempt[]):AgentToolAttempt[]{
  const usable=new Set(usableHistory(history));
- return history.map(item=>usable.has(item)?item:{...item,result:null,error:{code:'search_snapshot_changed'}});
+ return history.map(item=>usable.has(item)?item:{...item,result:null,error:{code:item.tool==='memory.sources'?'tool_execution':'search_snapshot_changed'}});
 }
 
 /** Run a bounded sequence of registered tools, then return the model's final plan.
