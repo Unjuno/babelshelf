@@ -11,9 +11,12 @@ test('turn summary totals only observed model metrics and registered agent tool 
   activity('math.calculate','2026-01-01T00:00:02.000Z','2026-01-01T00:00:02.025Z'),
   activity('tools.search','2026-01-01T00:00:02.025Z','2026-01-01T00:00:02.030Z'),
   activity('knowledge.answer','2026-01-01T00:00:02.030Z','2026-01-01T00:00:03.000Z'),
-  activity('external.shell','2026-01-01T00:00:03.000Z','2026-01-01T00:00:08.000Z'),
+  activity('knowledge.answer','2026-01-01T00:00:03.000Z','2026-01-01T00:00:04.000Z','succeeded',{model:{id:'test'},sourceCount:1,inference:{measuredModelCalls:1,promptTokens:80,outputTokens:12,countMs:1.1,generationWallMs:150.5}}),
+  activity('external.shell','2026-01-01T00:00:04.000Z','2026-01-01T00:00:09.000Z'),
  ];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:2,promptTokens:220,outputTokens:43,tokenCountMs:5.7,generationMs:1300.8,measuredToolCalls:2,toolElapsedMs:30});
+ const summary=summarizeTurnWork(rows);assert.ok(summary);
+ const {tokenCountMs,...totals}=summary;assert.deepEqual(totals,{measuredModelCalls:3,promptTokens:300,outputTokens:55,generationMs:1451.3,measuredToolCalls:2,toolElapsedMs:30});
+ assert.ok(Math.abs(tokenCountMs-6.8)<1e-9);
 });
 
 test('summary omits unavailable and malformed measurements instead of inventing zeroes',()=>{

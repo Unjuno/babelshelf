@@ -43,7 +43,7 @@ export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependen
  const result=select(await store.all());check();if(!result)return null;
  return trace('knowledge.answer',{model:result.model.id,question,mode:'answer',execution:'current-vision-result',inputReadings:readings},async()=>{
   const fresh=select(await store.all());check();if(!fresh||JSON.stringify(fresh)!==JSON.stringify(result))throw Error('Source changed · retry');return result;
- });
+ },value=>({model:value.model.id,sourceCount:value.sources.length,execution:'current-vision-result'}));
 }
 
 // Application execution returns data. The caller owns turn persistence,
@@ -54,8 +54,8 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
   async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[];budgetReason?:AgentBudgetReason}={}){
-   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}));
-   check();return {kind:'answer' as const,...parsed};
+   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}),value=>({model:value.model,sourceCount:value.sources.length,...(value.status?{status:value.status}:{}),...(value.inference?{inference:value.inference}:{})}));
+   check();const {inference:_inference,...answer}=parsed;return {kind:'answer' as const,...answer};
   },
   async schedule(context:DialogueContext){
    const proposal=await trace('schedule.propose',{model,instruction:question},()=>proposeTask(engine,question,context,check),value=>({...value,reviewRequired:!!value.task}));check();

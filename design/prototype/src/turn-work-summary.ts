@@ -31,7 +31,7 @@ function isAgentTool(tool:string){
 export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummary|null{
  let measuredModelCalls=0,promptTokens:number|undefined,outputTokens:number|undefined,tokenCountMs:number|undefined,generationMs:number|undefined,measuredToolCalls=0,toolElapsedMs:number|undefined;
  for(const activity of activities){
-  if(activity.tool==='dialogue.plan'&&activity.status==='succeeded'){
+  if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer')&&activity.status==='succeeded'){
    const inference=record(record(activity.output)?.inference);
    if(!inference)continue;
    measuredModelCalls++;

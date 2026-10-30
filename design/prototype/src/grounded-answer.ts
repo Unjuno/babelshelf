@@ -80,8 +80,33 @@ export type GroundedAnswerRequest={
  reply?:SourceLabelAnswer;
 };
 export type GroundedAnswerDependencies={store:Pick<KnowledgeStore,'all'|'search'>;engine:TextRuntime;acquireModel?:()=>Promise<TextRuntime>};
+type AnswerInference={measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number};
+function addMeasurement(total:number|undefined,value:unknown,integer=false){
+ if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER||integer&&!Number.isSafeInteger(value))return total;
+ const next=(total??0)+value;return Number.isFinite(next)&&next<=Number.MAX_SAFE_INTEGER?next:total;
+}
+/** Capture bounded inference measurements without retaining generated content. */
+function observeAnswerInference(runtime:TextRuntime,usage:AnswerInference):TextRuntime{
+ return new Proxy(runtime,{get(target,property){
+  if(property==='count'){
+   const count=Reflect.get(target,property,target) as TextRuntime['count'];
+   return async(...args:Parameters<TextRuntime['count']>)=>{const started=performance.now();try{return await count.apply(target,args);}finally{usage.countMs=addMeasurement(usage.countMs,performance.now()-started);}};
+  }
+  if(property==='generate'){
+   const generate=Reflect.get(target,property,target) as TextRuntime['generate'];
+   return async(...args:Parameters<TextRuntime['generate']>)=>{
+    const started=performance.now(),result=await generate.apply(target,args);usage.generationWallMs=addMeasurement(usage.generationWallMs,performance.now()-started);usage.measuredModelCalls++;
+    const promptTokens=addMeasurement(usage.promptTokens,result.metrics?.runtimePromptTokens,true),outputTokens=addMeasurement(usage.outputTokens,result.outputTokens??result.metrics?.outputTokens,true),runtimeCountMs=addMeasurement(usage.countMs,result.metrics?.countMs);
+    if(promptTokens!==undefined)usage.promptTokens=promptTokens;if(outputTokens!==undefined)usage.outputTokens=outputTokens;if(runtimeCountMs!==undefined)usage.countMs=runtimeCountMs;
+    return result;
+   };
+  }
+  return Reflect.get(target,property,target);
+ }});
+}
 export async function groundedAnswer(dependencies:GroundedAnswerDependencies,request:GroundedAnswerRequest){
  let {engine}=dependencies;const {store}=dependencies;
+ const inference:AnswerInference={measuredModelCalls:0};
  const {model,question,context,check=()=>{},prepareContext,toolEvidence,replyStyle='balanced',userGuidance=''}=request;
  let {query=question,mode='answer'}=request;
  const scope=request.scope;
@@ -167,7 +192,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // Evidence selection needs no resident model. Acquire only after the source
  // contract succeeds, through the application's existing ownership manager.
  if(engine.loaded!==model){if(dependencies.acquireModel)engine=await dependencies.acquireModel();else{if(!engine.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await engine.load(model);}}
- check();if(engine.loaded!==model)throw Error('Text model did not load');engine=engine.pin?.()??engine;
+ check();if(engine.loaded!==model)throw Error('Text model did not load');engine=engine.pin?.()??engine;engine=observeAnswerInference(engine,inference);
  if(answerContext&&prepareContext){answerContext=await prepareContext();check();}
  if(!dialogueOnly&&answerContext&&prepareContext){const fresh=await store.all();check();if(!validateGroundingRefs(fresh,hits).ok)throw Error('Source changed · retry');}
  const citePresentation='Do not print citation labels such as S1/S2 in answer prose; use them only in JSON sources because the app renders citations separately.';
@@ -336,5 +361,5 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if(!validateGroundingRefs(current,parsed.status==='insufficient_evidence'?evidence:parsed.sources).ok)throw Error('Source changed · retry');
  }
  check();
- return {answer:parsed.answer as string,sources:parsed.sources as any[],...(parsed.status==='insufficient_evidence'?{status:parsed.status,checkedSources:bindLabels(evidence.map(ref=>ref.label))}:{}),...(recovery?{recovery}:{}),...(recovery==='verbatim-source'&&recoveryReason?{recoveryReason}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+ return {answer:parsed.answer as string,sources:parsed.sources as any[],...(parsed.status==='insufficient_evidence'?{status:parsed.status,checkedSources:bindLabels(evidence.map(ref=>ref.label))}:{}),...(recovery?{recovery}:{}),...(recovery==='verbatim-source'&&recoveryReason?{recoveryReason}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference}:{})};
 }

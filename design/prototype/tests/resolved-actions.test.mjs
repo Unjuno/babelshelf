@@ -53,6 +53,18 @@ function fixture(overrides={}){
  return {events,engine,store,actions:createResolvedActions({store,engine,model:'test',question:'Find meeting',check,trace,registry,snapshot:async()=>[],...overrides})};
 }
 
+test('generated answer activity retains measured inference only and leaves answer bytes in the dialogue result',async()=>{
+ let savedActivity;
+ const trace=async(tool,input,work,project=value=>value)=>{const result=await work();if(tool==='knowledge.answer')savedActivity={input,output:project(result)};return result;};
+ const f=fixture({trace});f.engine.generate=async()=>({text:'A private answer body.',outputTokens:7,metrics:{runtimePromptTokens:44,countMs:2.5}});
+ const result=await f.actions.answer({model:'test',question:'Say hello.',mode:'chat',scope:{kind:'conversation'}});
+ assert.equal(result.answer,'A private answer body.');assert.equal('inference' in result,false);
+ assert.equal(savedActivity.output.sourceCount,0);assert.deepEqual(savedActivity.output.inference.measuredModelCalls,1);
+ assert.equal(savedActivity.output.inference.promptTokens,44);assert.equal(savedActivity.output.inference.outputTokens,7);
+ assert.ok(savedActivity.output.inference.countMs>=2.5);assert.ok(savedActivity.output.inference.generationWallMs>0);
+ assert.equal(JSON.stringify(savedActivity.output).includes(result.answer),false);assert.equal('sources' in savedActivity.output,false);
+});
+
 test('Application explicit search preserves fallback and never starts a model or writes',async()=>{
  const {actions,events}=fixture();const result=await actions.search('meeting');
  assert.deepEqual(events,['meeting','Find meeting']);assert.equal(result.kind,'search');assert.equal(result.status,'No matching notes');assert.deepEqual(result.files,[]);
