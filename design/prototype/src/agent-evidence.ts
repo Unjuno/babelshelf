@@ -39,8 +39,8 @@ export function agentClockReadingsFromCalls(calls:readonly AgentToolResult[]):Cl
  const readings=calls.filter(call=>call.tool==='time.now').map(call=>validateClockReading(call.result));
  if(readings.length>MAX_CONTEXT_SOURCE_REFS)throw Error('Too many device clock readings');return readings;
 }
-// A turn's bounded activity log supports at most 64 tool operations. Preserve
-// comparable source coverage; final prompt fit is checked by the model tokenizer.
+// Evidence retained for a response is bounded independently of paged activity
+// storage. Final prompt fit is also checked by the model tokenizer.
 const maxObservedEvidenceRefs=MAX_CONTEXT_SOURCE_REFS,maxObservedEvidenceChars=192_000,maxObservedQuoteChars=24_000;
 function deliverableHostResult(value:unknown):boolean{try{return new TextEncoder().encode(JSON.stringify(value)).byteLength<=24_000;}catch{return false;}}
 function validSourceRef(value:unknown):value is SourceRef{
