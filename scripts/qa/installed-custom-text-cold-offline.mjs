@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
 import {createReadStream} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {mkdir,readFile,stat,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,stat,writeFile,rm} from 'node:fs/promises';
 import {join,isAbsolute} from 'node:path';
 import {chromium} from '../../design/prototype/node_modules/playwright-core/index.mjs';
 import {parseStateBackup} from '../../design/prototype/src/backup-state.ts';
 import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
+import {shouldRemoveInstalledPwaProfile} from './installed-pwa-profile-policy.mjs';
 
 const [profileDir,outputDir,modelFile,url='http://127.0.0.1:4182/']=process.argv.slice(2);
 for(const path of [profileDir,outputDir,modelFile])assert.ok(path&&isAbsolute(path),'Supply absolute fresh profile/output paths and a local model file');
 assert.equal(new URL(url).hostname,'127.0.0.1','This QA must use the local product server');
 for(const path of [profileDir,outputDir]){let exists=false;try{await stat(path);exists=true;}catch(error){if(error.code!=='ENOENT')throw error;}assert.equal(exists,false,'Refusing to reuse QA data: '+path);}
+const profileWasAbsentBeforeRun=true;
 await mkdir(outputDir,{recursive:true});
 const manifest=JSON.parse(await readFile('dist/lfm-model-manifest.json','utf8'));
 const model=manifest.models.find(entry=>entry.id==='lfm25-230m-qad-q4-0');assert.ok(model,'Pinned LFM2.5-230M model absent');
@@ -51,4 +53,4 @@ try{
 
  const third=await launch(true);await input();await page.getByRole('textbox',{name:'Message',exact:true}).fill('Search QA-LFM2-cold-offline-answer');await page.getByRole('button',{name:'Send',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.sent-message:last-child .turn-status')?.textContent==='Found · 1',null,{timeout:60000});third.savedAnswerFoundAfterRestart=(await page.locator('.sent-message').last().innerText()).includes(text);assert.ok(third.savedAnswerFoundAfterRestart);third.externalRequests=[...external];assert.deepEqual(external,[]);await page.screenshot({path:join(outputDir,'cold-search.png')});await context.close();context=null;
  evidence.pass=true;
-}catch(error){evidence.error=String(error);if(page&&!page.isClosed())await page.screenshot({path:join(outputDir,'failure.png')}).catch(()=>{});process.exitCode=1;}finally{await context?.close();try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}evidence.externalRequests=external;await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));console.log(JSON.stringify(evidence,null,2));}
+}catch(error){evidence.error=String(error);if(page&&!page.isClosed())await page.screenshot({path:join(outputDir,'failure.png')}).catch(()=>{});process.exitCode=1;}finally{await context?.close();try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}evidence.externalRequests=external;await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));if(shouldRemoveInstalledPwaProfile({profileWasAbsentBeforeRun,retainProfile:false}))try{await rm(profileDir,{recursive:true,force:true});console.log('Removed temporary QA profile');}catch(error){evidence.cleanupError=String(error);process.exitCode=1;await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));}console.log(JSON.stringify(evidence,null,2));}
