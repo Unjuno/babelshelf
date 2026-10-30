@@ -26,7 +26,9 @@ test('saving an answer rechecks its retained source metadata after review',async
   await store.compareState('dialogue',undefined,before);await store.compareGroundedDialogue(before,answer,[],[guard]);
   const copy=reviewedDialogueCopy(answer,makeAnswerCopyReview(answer,'turn','The source is current.'),'The source is current.');
   const note=createNewNoteView({id:'copy',path:'Inbox/copy.md',...copy});
-  const source=views.find(item=>item.id==='source');await store.commit(views,views.map(item=>item.id==='source'?{...source,body:'Water 9',version:2,history:[...source.history,source.body]}:item));
+  const source=views.find(item=>item.id==='source'),changed=views.map(item=>item.id==='source'?{...source,body:'Water 9',version:2,history:[...source.history,source.body]}:item);
+  await assert.rejects(store.commit(views,[...changed,note]),/Source changed/);assert.deepEqual(await store.views(),views);
+  await store.commit(views,changed);
   views=await store.views();await assert.rejects(store.commit(views,[...views,note]),/Source changed/);
   assert.equal((await store.views()).some(item=>item.id==='copy'),false);
  }finally{store.close();}
