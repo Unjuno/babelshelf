@@ -22,7 +22,7 @@
     "test:quality:device-memory": "npm --prefix design/prototype run test:runtime -- tests/device-memory-smoke.spec.ts",
     "test:quality:schedule-ui": "npm --prefix design/prototype run test:runtime -- tests/schedule-screen.spec.ts tests/schedule-memory-ui.spec.ts",
     "test:quality:editorial": "npm --prefix design/prototype run test:runtime -- -c playwright.editorial.config.ts",
-    "test:quality:settings-ui": "npm --prefix design/prototype run test:runtime -- tests/model-catalog-contrast.spec.ts tests/media-vision-navigation.spec.ts tests/settings-home.spec.ts",
+    "test:quality:settings-ui": "npm --prefix design/prototype run test:runtime -- tests/model-catalog-contrast.spec.ts tests/media-vision-navigation.spec.ts tests/settings-home.spec.ts tests/initial-preparation-size.spec.ts",
     "test:quality:inference-lock": "npm --prefix design/prototype run test:runtime -- tests/inference-lease.spec.ts",
     "test:quality:app-update": "node --test scripts/qa/app-update.mjs",
     "test:quality:offline-calculation": "npm --prefix design/prototype run test:runtime -- --config=playwright.product-calculation.config.ts --workers=1",
