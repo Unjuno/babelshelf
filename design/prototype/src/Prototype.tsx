@@ -1010,7 +1010,8 @@ export default function Prototype() {
    }finally{setFileSaving(false);}
    return;
   }
-  pendingCaptureTurn.current=capture.turnId;setDialogueCopyReview(capture.source);setFileKind(capture.source?'generated':capture.kind);setFileSources(structuredClone(capture.source?.source.refs??capture.sources));setFileBody(capture.body);setFileName(suggestedNoteName(capture.body));setActiveFolder('Inbox');setMemoryScope('folder');setCreationError('');setCreationConflict(null);setSheet('file');
+  const review=capture.source??(capture.kind==='generated'?makeAnswerCopyReview(dialogue.current,capture.turnId,capture.body):null);
+  pendingCaptureTurn.current=capture.turnId;setDialogueCopyReview(review);setFileKind(review?'generated':capture.kind);setFileSources(structuredClone(review?.source.refs??capture.sources));setFileBody(capture.body);setFileName(suggestedNoteName(capture.body));setActiveFolder('Inbox');setMemoryScope('folder');setCreationError('');setCreationConflict(null);setSheet('file');
   await finishTurn(capture.turnId,{status:'Review new note'});
  }
 
