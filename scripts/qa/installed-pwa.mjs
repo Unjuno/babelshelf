@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {randomUUID} from 'node:crypto';
+import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
 
 const [profileArg,outputArg]=process.argv.slice(2),runId=randomUUID();
 const ownsProfile=!profileArg;
@@ -28,6 +29,7 @@ try{
 }finally{
  let cleanupError;
  if(server.listening)try{await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}catch(error){cleanupError=error;}
+ try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){cleanupError??=error;}
  if(ownsProfile)try{await rm(profileDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}
  if(cleanupError){
   if(primaryError)console.error('QA cleanup also failed:',cleanupError);
