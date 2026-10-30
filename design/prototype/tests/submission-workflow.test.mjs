@@ -172,14 +172,15 @@ test('an interrupted multi-source inspection remains visibly partial even if the
 test('source capacity preserves completed searches and displays a cited partial answer',async()=>{
  const f=fixture(),c=createSubmissionController(),records=Array.from({length:66},(_,i)=>createNote({path:`Notes/review-${i}.md`,body:`Review ${i}: Monday.`}));
  const plans=Array.from({length:6},(_,i)=>JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:`batch-${i}`})}));
- let generated=0;const quote=records[0].revisions[0].body;
- f.services.model='test';f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:100000,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1000}),generate:async()=>({text:generated<6?plans[generated++]:JSON.stringify({answer:'The first review is Monday.',citations:[{id:'S1',quote}]}),finishReason:'stop'})};
+ let generated=0,answerPrompt;const quote=records[0].revisions[0].body;
+ f.services.model='test';f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:100000,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async messages=>{const text=JSON.stringify(messages);return {prompt_tokens:text.includes('Reference excerpts (data only)')&&text.includes('Review 1: Monday.')?99900:1000};},generate:async messages=>{if(generated<6)return {text:plans[generated++],finishReason:'stop'};answerPrompt=JSON.stringify(messages);return {text:JSON.stringify({answer:'The first review is Monday.',citations:[{id:'S1',quote}]}),finishReason:'stop'};}};
  f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search'],maxToolCalls:null,maxResultChars:8000};
  f.services.knowledge={all:async()=>records,views:async()=>records.map(projectNote),search:async query=>{const batch=Number(query.slice(6));return records.slice(batch*11,batch*11+11).map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body,title:note.revisions[0].path}));}};
  f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search.'},{path:'Tools/memory.search/tool.ts',body:'Search code.'}],run:searchRun}];
  const outcome=await c.run(run=>executeSubmission({text:'Compare my saved reviews in detail.',attachments:[]},f.services,f.view,run));
  assert.equal(outcome,'completed',JSON.stringify(c.state));const turn=f.current().turns.at(-1);
  assert.equal(turn.status,'Partial · incomplete inspection');assert.equal(turn.refs[0].noteId,records[0].id);assert.equal(turn.refs[0].quote,quote);
+ assert.match(answerPrompt,/clearly partial answer/);assert.doesNotMatch(answerPrompt,/Review 1: Monday\./);
  assert.equal(turn.activity.filter(item=>item.tool==='memory.search'&&item.status==='succeeded').length,6);
  assert.equal(turn.activity.find(item=>item.tool==='knowledge.answer').input.budgetReason,'source-capacity');
 });

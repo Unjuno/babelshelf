@@ -213,7 +213,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // A tool-selected source that cannot fit must not silently disappear from a
  // comparison or a generated note. Multiple excerpts from one revision may
  // still be reduced to the excerpts that fit.
- if(toolEvidence?.used&&toolEvidence.refs.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId&&hit.revision===ref.revision)))throw Error('Context limit · fewer sources');
+ if(toolEvidence?.used&&toolEvidence.refs.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId&&hit.revision===ref.revision))&&!(toolEvidence.budgetExhausted&&evidence.length))throw Error('Context limit · fewer sources');
  if(inputReadings.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId)))throw Error('Context limit · fewer attachments');
  if(!dialogueOnly&&!evidence.length&&!operationalEvidence)throw Error(hits.length?'Context limit':'No matching notes');
  type ParsedAnswer={answer:string;sources:any[];status?:'insufficient_evidence'};
