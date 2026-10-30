@@ -8,7 +8,7 @@ import {initialPreparationPlan} from '../src/initial-preparation.ts';
 import {settings} from '../src/app-settings.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-speech','text-image','text-vision','local-text-media','text-image-audio','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-speech','text-image','text-vision','local-text-media','text-image-audio','text-image-audio-q8','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -49,6 +49,7 @@ test('task presets expose connected text choices without implying device verific
   'text-vision':['lfm3-1.7b-qad-q4-0','','','','lfm25-vl-450m-q4f16'],
   'local-text-media':['lfm3-1.7b-qad-q4-0','','whisper-tiny','tesseract-7',''],
   'text-image-audio':['lfm3-1.7b-qad-q4-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
+  'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
   'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7',''],
  };
  for(const set of modelSets){
@@ -190,4 +191,15 @@ test('image and audio set prepares only its selected local readers',()=>{
  assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','vision']);
  assert.equal(plan.steps.some(step=>step.role==='decision'),false);
  assert.equal(plan.bytes,modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'text-image-audio'));
+});
+
+test('Q8 can be selected with image and audio without changing existing model preferences',()=>{
+ const before=readPreference('models',initialPreferenceNotes),snapshot=structuredClone(before);
+ const selected=applyModelSet(before,'text-image-audio-q8');
+ assert.equal(selected.textModel,'lfm3-1.7b-q8-0');assert.equal(selected.transcriptionModel,'whisper-tiny');
+ assert.equal(selected.ocrModel,'tesseract-7');assert.equal(selected.visionModel,'lfm25-vl-450m-q4f16');assert.equal(selected.decisionModel,'');
+ assert.deepEqual(before,snapshot);assert.equal(readPreference('connection',initialPreferenceNotes).downloads,false);
+ assert.equal(matchingModelSet(selected)?.id,'text-image-audio-q8');
+ const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,vision:false});
+ assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','vision']);assert.equal(plan.bytes,modelSetAssetBytes(before,'text-image-audio-q8'));
 });
