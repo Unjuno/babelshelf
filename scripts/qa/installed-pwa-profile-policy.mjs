@@ -12,3 +12,7 @@ export function parseInstalledPwaArguments(args){
 export function shouldRemoveInstalledPwaProfile({profileWasAbsentBeforeRun,retainProfile}){
  return profileWasAbsentBeforeRun===true&&retainProfile!==true;
 }
+
+export function shouldRemoveInstalledPwaOutput({outputWasGenerated}){
+ return outputWasGenerated===true;
+}

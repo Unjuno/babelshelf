@@ -7,12 +7,14 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {randomUUID} from 'node:crypto';
 import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
-import {parseInstalledPwaArguments,shouldRemoveInstalledPwaProfile} from './installed-pwa-profile-policy.mjs';
+import {parseInstalledPwaArguments,shouldRemoveInstalledPwaOutput,shouldRemoveInstalledPwaProfile} from './installed-pwa-profile-policy.mjs';
 
 const {profileArg,outputArg,retainProfile}=parseInstalledPwaArguments(process.argv.slice(2)),runId=randomUUID();
 const profileDir=profileArg??join(tmpdir(),`babelshelf-installed-pwa-${runId}-profile`);
 const outputDir=outputArg??join(tmpdir(),`babelshelf-installed-pwa-${runId}-results`);
+const outputWasGeneratedBeforeRun=outputArg===undefined;
 try{await lstat(profileDir);throw Error('Refusing to reuse an existing QA profile: '+profileDir);}catch(error){if(error?.code!=='ENOENT')throw error;}
+try{await lstat(outputDir);throw Error('Refusing to reuse an existing QA output directory: '+outputDir);}catch(error){if(error?.code!=='ENOENT')throw error;}
 const profileWasAbsentBeforeRun=true;
 const server=createDevServer('design/prototype/dist/app');
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
@@ -33,6 +35,7 @@ try{
  if(server.listening)try{await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}catch(error){cleanupError=error;}
  try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){cleanupError??=error;}
  if(shouldRemoveInstalledPwaProfile({profileWasAbsentBeforeRun,retainProfile}))try{await rm(profileDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}
+ if(shouldRemoveInstalledPwaOutput({outputWasGenerated:outputWasGeneratedBeforeRun}))try{await rm(outputDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}
  if(cleanupError){
   if(primaryError)console.error('QA cleanup also failed:',cleanupError);
   else throw cleanupError;
