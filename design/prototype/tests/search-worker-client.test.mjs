@@ -48,3 +48,10 @@ test('worker failures settle all pending searches and late results cannot affect
  const fresh=client.search([],'water',{offset:0,limit:12});workers[0].reply({id:workers[0].sent[0].id,ok:true,value:'late'});workers[1].reply({id:workers[1].sent[0].id,ok:true,value:'fresh'});
  assert.equal(await fresh,'fresh');client.close();
 });
+
+test('a request that cannot be posted does not interrupt other searches',async()=>{
+ const worker=new ControlledWorker(),post=worker.postMessage.bind(worker);worker.postMessage=message=>{if(message.query==='bad')throw Error('Cannot clone');post(message);};
+ const client=createPagedSearchClient(()=>worker),running=client.search([],'water',{offset:0,limit:12}),bad=client.search([],'bad',{offset:0,limit:12});
+ await assert.rejects(bad,/search failed/i);assert.equal(worker.terminated,false);
+ worker.reply({id:worker.sent[0].id,ok:true,value:'water result'});assert.equal(await running,'water result');client.close();
+});

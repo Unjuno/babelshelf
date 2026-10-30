@@ -30,7 +30,7 @@ export function createPagedSearchClient(factory:()=>SearchWorker=()=>new Worker(
    return new Promise((resolve,reject)=>{
     const id=++sequence,item:Pending={resolve,reject,signal};item.abort=()=>retire(id);pending.set(id,item);signal?.addEventListener('abort',item.abort,{once:true});
     if(signal?.aborted){retire(id);return;}
-    try{current.postMessage({id,notes,query,options});}catch{retire();}
+    try{current.postMessage({id,notes,query,options});}catch{pending.delete(id);detach(item);reject(Error('Local search failed'));}
    });
   },
   close(){retire();},
