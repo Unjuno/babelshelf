@@ -7,6 +7,7 @@ import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-s
 import {settingsPatchResult} from '../src/settings-corrections.ts';
 import {settings} from '../src/app-settings.ts';
 import {deletionContents} from '../src/memory-trash.ts';
+import {setBuiltinToolEnabled} from '../src/builtin-tool-preferences.ts';
 
 function legacyPreference(group,value){return formatPreference(group,value).replace('  "schemaVersion": 1,\n','');}
 
@@ -141,6 +142,13 @@ test('existing standard profile keeps its tool selection after a new tool is add
  const old=parsePreference('harness',record.body);old.profiles[0].enabledTools=old.profiles[0].enabledTools.filter(id=>id!=='time.now'&&id!=='memory.sources');
  record.body=formatPreference('harness',old);const before=record.body;
  assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('time.now'),false);assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('memory.sources'),false);assert.equal(record.body,before);
+});
+
+test('source details can be explicitly enabled while preserving other profile selections',()=>{
+ const records=structuredClone(initialPreferenceNotes),before=readPreference('harness',records),old=records.find(note=>note.id==='settings-harness');
+ assert.equal(before.profiles[0].enabledTools.includes('memory.sources'),false);
+ const updated=updatePreference('harness',records,value=>setBuiltinToolEnabled(value,'standard','memory.sources',true)),after=readPreference('harness',updated),saved=updated.find(note=>note.id==='settings-harness');
+ assert.deepEqual(after.profiles[0].enabledTools,[...before.profiles[0].enabledTools,'memory.sources']);assert.deepEqual(after.profiles.slice(1),before.profiles.slice(1));assert.equal(saved.version,old.version+1);assert.equal(saved.history.at(-1),old.body);
 });
 
 test('harness config rejects unknown tools, invalid budgets and non-read-only capabilities',()=>{
