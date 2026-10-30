@@ -1432,7 +1432,7 @@ test('a work-limit fallback carries a partial-coverage instruction into the cite
  const store={all:async()=>[note],search:async()=>[]};
  const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{messages=value;return {text:JSON.stringify({answer:'The first review is Monday at 10.',citations:[{id:'S1',quote}]})};}};
  const answer=await groundedAnswer({store,engine:runtime},{model:'test',question:'Compare all three reviews.',query:'reviews',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],memoryUsed:true,budgetExhausted:true}});
- assert.equal(answer.sources.length,1);assert.match(messages[0].content,/configured tool-call preference or the selected model context capacity was reached/i);assert.match(messages[0].content,/clearly partial answer/i);assert.match(messages[0].content,/do not imply that all requested sources or steps were completed/i);
+ assert.equal(answer.sources.length,1);assert.match(messages[0].content,/could not complete all planned inspection/i);assert.doesNotMatch(messages[0].content,/because a configured tool-call preference or the selected model context capacity was reached/i);assert.match(messages[0].content,/clearly partial answer/i);assert.match(messages[0].content,/do not imply that all requested sources or steps were completed/i);
 });
 
 test('a local arithmetic result reaches the sourced answer without becoming a citation',async()=>{

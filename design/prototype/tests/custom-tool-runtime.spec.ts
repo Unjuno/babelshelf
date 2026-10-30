@@ -13,7 +13,7 @@ test('reports failed interpreter startup promptly without blaming package code',
  // Let the development server finish discovering the worker dependencies
  // before intercepting its WASM fetch. Otherwise Vite's dependency reload can
  // navigate this fixture during the operation being measured.
- await expect.poll(async()=>{try{return await page.evaluate(async()=>(window as any).customToolFixture.run({code:'() => 42',input:{},capabilities:[]}));}catch(error){if(!String(error).includes('Execution context was destroyed'))throw error;return null;}},{timeout:10000}).toBe(42);
+ await expect.poll(async()=>{try{return await page.evaluate(async()=>{const fixture=(window as any).customToolFixture;return fixture?fixture.run({code:'() => 42',input:{},capabilities:[]}):null;});}catch(error){if(!String(error).includes('Execution context was destroyed'))throw error;return null;}},{timeout:10000}).toBe(42);
  await context.route(/\.wasm(?:\?|$)/,route=>route.abort('failed'));
  const result=await page.evaluate(async()=>{
   const start=performance.now();

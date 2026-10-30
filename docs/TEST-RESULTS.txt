@@ -6804,3 +6804,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 · strict custom-tool and MCP input metadata (Windows PC)
 - A schema field type supplied as an array such as ["string"] and a nested capability array were previously coerced to strings and accepted as metadata. Registration/import and the local MCP adapter now reject these shapes; argument validation also rejects an invalid field type even if that field is omitted. Existing Memory files are not rewritten.
 - Product build c8f347afc9208975, TypeScript check, prototype Node suite 1508/1508 and Chromium offline MCP fixture 1/1 passed. MCP remains an unconnected in-process adapter; the checks do not establish model-selected tool calling or mobile support.
+
+2026-10-30 · partial-answer explanation and worker-test startup (Windows PC)
+- When an agent stops with incomplete inspection, the answer prompt now states partial coverage without asserting that a user preference or context window caused it; the actual limit may be activity storage. Conversation/agent coordinator/loop tests 273/273 passed and the product build passed.
+- Linux Actions run 41040789810 reproduced a fixture reload while Vite was resolving worker dependencies. The startup-failure test now waits for a working fixture before blocking WASM, then still requires the expected failure within five seconds. PC custom-tool runtime checks passed 19/19. The latest Linux run is needed to verify the CI-specific fix.
