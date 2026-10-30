@@ -6753,3 +6753,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 - refreshAppVersion now activates an already-installed waiting worker on explicit refresh before attempting another browser network update. If no verified worker is waiting, the bounded network check and timeout remain unchanged. Activation must still be confirmed as the controlling worker; the existing UI draft/work guards remain in place.
 - Node: offline-shell waiting and existing update tests 22/22 passed. PC Chromium 149: app-update fixture passed with real product service workers, synthetic assets and disposable storage, including offline reload and preserved records. Product build 2c5f1c9a8512a8b7 passed; this is not an iPhone or production rollout check.
 - This change does not alter already-loaded legacy clients; they must first exit the old client or otherwise apply the waiting update. It does not automatically replace a user's model selection or acquire model files.
+
+2026-10-30 — text-model discovery (PC)
+- Models now exposes Browse text models beside the Text model heading, using the same icon pattern as other model roles. The existing selection, registered libraries, saved preferences and downloaded assets are not changed automatically.
+- PC Playwright: the new discovery flow opened the catalog and displayed LFM3 Q8; the existing LFM3 context-settings persistence scenario passed. Product build 5423d4be85e1f47f succeeded. No model download, generation, iPhone or deployment was tested for this change.
