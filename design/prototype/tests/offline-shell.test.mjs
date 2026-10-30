@@ -21,7 +21,7 @@ test('offline shell is registered only by an explicit Online choice and reuses a
 
 test('Refresh returns a retryable error when the browser update check never settles',async()=>{
  let release,activations=0;const worker=new Worker('installed');worker.postMessage=()=>activations++;
- const registration={waiting:worker,update:()=>new Promise(resolve=>{release=resolve;})};
+ const registration={waiting:null,update:()=>new Promise(resolve=>{release=resolve;})};
  const result=refreshAppVersion(registration,new EventTarget(),5).then(()=> 'success',error=>error.message);
  assert.match(await Promise.race([result,new Promise(resolve=>setTimeout(()=>resolve('still waiting'),100))]),/Update timed out/);
  release();await new Promise(resolve=>setTimeout(resolve,0));

@@ -112,6 +112,10 @@ export async function refreshAppVersion(registration:ServiceWorkerRegistration,c
  // Timeout releases the UI, not the browser-owned installation. A later
  // explicit refresh may finish applying that same verified worker.
  const deadline=Date.now()+timeoutMs,remaining=()=>Math.max(0,deadline-Date.now());
+ if(registration.waiting?.state==='installed'){
+  await activateWaitingUpdate(registration,container,remaining());
+  return 'Updated';
+ }
  await boundedUpdateCheck(registration.update(),remaining());
  const outcome=await appUpdateOutcome(registration,remaining());
  if(outcome==='Update ready')await activateWaitingUpdate(registration,container,remaining());
