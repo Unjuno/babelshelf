@@ -282,6 +282,7 @@ export class KnowledgeStore {
  });}
  async readNotification(id:string){return this.editRecords(records=>{const old=records.find(n=>n.id===id&&n.state==='active');if(!old)throw Error('Notification unavailable');const data=noticeView(old),note=data.read?old:reviseNote(old,{body:noticeBody({...data,read:true})},latest(old).version);return {put:[note],value:projectNote(note)};});}
  async restoreDefaults(expected:NoteView[]){
+  expected=structuredClone(expected);
   return this.transaction<void>(['notes'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
    try{const before=q.result.filter(n=>n.state==='active').map(projectNote);
     for(const id of ['settings-models','settings-appearance','settings-connection','settings-harness']){

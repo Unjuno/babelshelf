@@ -7,6 +7,7 @@ import {appendTurn,emptyDialogue} from '../src/conversation.ts';
 import {prepareOriginal,originalRef,readOriginal} from '../src/original-assets.ts';
 import {makePdfText} from '../src/pdf-text.ts';
 import {makeTranscript} from '../src/speech-transcript.ts';
+import {initialPreferenceNotes} from '../src/preference-records.ts';
 
 test('new file save freezes the reviewed body before opening storage',async()=>{
  const store=new KnowledgeStore('save-snapshot-'+crypto.randomUUID());
@@ -76,5 +77,15 @@ test('dialogue CAS and settings writes freeze their inputs before storage opens'
   assert.equal((await store.getState('dialogue')).turns[0].user,'Original');
   const value={enabled:false},set=store.setState('test-setting',value);value.enabled=true;await set;
   assert.equal((await store.getState('test-setting')).enabled,false);
+ }finally{store.close();}
+});
+
+test('resetting settings cannot replace a stale reviewed snapshot while opening storage',async()=>{
+ const store=new KnowledgeStore('reset-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize(initialPreferenceNotes);const current=await store.views(),reviewed=structuredClone(current),stale=reviewed.find(note=>note.id==='settings-models');
+  stale.body+='\nChanged elsewhere';const attempt=store.restoreDefaults(reviewed);stale.body=current.find(note=>note.id==='settings-models').body;
+  await assert.rejects(attempt,/Settings changed/);assert.deepEqual(await store.views(),current);
+  await store.restoreDefaults(current);assert.equal((await store.views()).filter(note=>note.path.startsWith('Settings/')).length,current.filter(note=>note.path.startsWith('Settings/')).length);
  }finally{store.close();}
 });
