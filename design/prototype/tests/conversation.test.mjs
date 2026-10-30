@@ -1146,6 +1146,10 @@ test('an empty exact memory read directs topic lookup to memory.search without t
  assert.match(emptyRead[0].content,/empty memory\.read result.*topic.*memory\.search/i);
  const matchedRead=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'Notes\/meeting.md'},result:[{path:'Notes/meeting.md'}]}]});
  assert.doesNotMatch(matchedRead[0].content,/empty memory\.read result/i);
+ const pagedThenEmpty=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.search',arguments:{query:'meeting',offset:0},result:{hits:[{kind:'file',noteId:'a',revision:1,path:'Notes/meeting.md'}],offset:0,limit:12,snapshot:'a'.repeat(64),nextOffset:null,hasMore:false}},{tool:'memory.read',arguments:{query:'meeting'},result:[]}]});
+ assert.match(pagedThenEmpty[0].content,/Retry using an exact ID or full path from the successful memory\.search results/i);
+ const omittedThenEmpty=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.search',arguments:{query:'meeting',offset:0},result:{hits:[{kind:'file',noteId:'a',revision:1,path:'Notes/meeting.md'}]},resultOmitted:'not visible'},{tool:'memory.read',arguments:{query:'meeting'},result:[]}]});
+ assert.doesNotMatch(omittedThenEmpty[0].content,/Retry using an exact ID or full path from the successful memory\.search results/i);
  const tooLargeRead=planDialogueMessages('Read the saved file.',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'Notes/long.md',length:3000},result:null,error:{code:'result_too_large'}}]});
  assert.match(tooLargeRead[0].content,/result exceeded the active context budget.*narrower request/i);
  assert.match(tooLargeRead[0].content,/smaller length and start offset/i);
