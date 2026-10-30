@@ -56,11 +56,14 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  let before,afterEdit,afterRestart;
  try{
   await phase(false,async(p,entry)=>{
-   await p.getByRole('textbox',{name:'Message',exact:true}).fill('Remember '+original);await p.getByRole('button',{name:'Send',exact:true}).click();
-   assert.equal(await p.getByRole('textbox',{name:'New file content'}).inputValue(),original);await p.getByRole('dialog',{name:'New file'}).locator('form').evaluate(form=>{form.requestSubmit();form.requestSubmit();});await p.getByRole('button',{name:'History',exact:true}).waitFor();
+   // Explicit model-free capture is available without preparing an inference model.
+   await p.getByRole('textbox',{name:'Message',exact:true}).fill(original+'メモして');await p.getByRole('button',{name:'Send',exact:true}).click();
+   await p.locator('.turn-status').filter({hasText:'Saved · Inbox/Process restart '+marker+'.md'}).waitFor();
+   // Exercise the current file-creation sheet separately and keep the double-submit regression.
+   await go(p,'BabelShelf');await p.getByRole('button',{name:'New file',exact:true}).click();await p.getByRole('textbox',{name:'File name',exact:true}).fill('Double submit check');await p.getByRole('textbox',{name:'New file content',exact:true}).fill('Duplicate form test only');await p.getByRole('dialog',{name:'New file'}).locator('form').evaluate(form=>{form.requestSubmit();form.requestSubmit();});await p.getByRole('button',{name:'History',exact:true}).waitFor();
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(inputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text process-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();
-   before=await backup(p,'before.brainpack');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body===original).length,1,'Double submit created duplicate notes');entry.savedNote=true;entry.duplicateSubmitControl=true;entry.importedOriginals=2;
+   before=await backup(p,'before.brainpack');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body===original).length,1,'Capture did not create exactly one note');assert.equal(before.notes.filter(n=>n.revisions.at(-1).body==='Duplicate form test only').length,1,'Double submit created duplicate notes');entry.savedNote=true;entry.duplicateSubmitControl=true;entry.importedOriginals=2;
   });
   await afterBootstrap?.();
   await phase(true,async(p,entry)=>{
@@ -68,7 +71,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
    await p.getByRole('button',{name:'View source',exact:true}).last().click();entry.source=await p.getByRole('dialog').innerText();assert.match(entry.source,/\bv1\b/);assert.ok(entry.source.includes(original),'Source must contain the saved original');
    await p.getByRole('button',{name:'Open file',exact:true}).click();await p.getByRole('button',{name:'Edit',exact:true}).click();await p.getByRole('textbox',{name:'Markdown content'}).fill(edited);await p.getByRole('button',{name:'Save',exact:true}).click();
    await p.getByRole('button',{name:'History',exact:true}).click();for(const version of ['v1','v2'])await p.getByRole('dialog').getByText(version,{exact:true}).click();entry.history=await p.getByRole('dialog').innerText();assert.ok(entry.history.includes('18リットル')&&entry.history.includes('24リットル'));await p.screenshot({path:join(outputDir,'history.png')});
-   await p.getByRole('button',{name:'Close',exact:true}).click();await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();await p.getByRole('button',{name:'Rebuild index',exact:true}).click();await input(p);
+   await p.getByRole('button',{name:'Close',exact:true}).click();/* Search scans canonical records; there is currently no separate index to rebuild. */await input(p);
    entry.attachmentSearch=await search(p,'充電器','充電器は青い箱にあります。');assert.ok(entry.attachmentSearch.includes('青い箱'));
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(offlineInputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text offline-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();entry.offlineImportedOriginals=2;
