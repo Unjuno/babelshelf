@@ -10,9 +10,9 @@ import {readFile} from 'node:fs/promises';
 
 test('prior bundled search guidance upgrades without changing user notes',async()=>{
  const name='search-skill-upgrade-'+crypto.randomUUID(),store=new KnowledgeStore(name),id='builtin-package-memory.search/SKILL.md',path='Tools/memory.search/SKILL.md';
- const old=knownPackageBodies[id].at(-1),body=await readFile(new URL('../src/tools/memory.search/SKILL.md',import.meta.url),'utf8');
+ const old=knownPackageBodies[id].at(-3),intermediate=knownPackageBodies[id].at(-1),body=await readFile(new URL('../src/tools/memory.search/SKILL.md',import.meta.url),'utf8');
  const seed={id,path,body,protected:true},user={id:'user',path:'Inbox/user.md',body:'keep me',version:1,history:[]};
- try{await store.initialize([{...seed,body:old},user]);await store.initialize([seed,user]);const records=await store.all(),note=records.find(n=>n.id===id);assert.deepEqual(note.revisions.map(r=>r.body),[old,body]);assert.equal(records.find(n=>n.id==='user').revisions[0].body,'keep me');}
+ try{await store.initialize([{...seed,body:old},user]);await store.initialize([{...seed,body:intermediate},user]);await store.initialize([seed,user]);const records=await store.all(),note=records.find(n=>n.id===id);assert.deepEqual(note.revisions.map(r=>r.body),[old,intermediate,body]);assert.equal(records.find(n=>n.id==='user').revisions[0].body,'keep me');}
  finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
 });
 
