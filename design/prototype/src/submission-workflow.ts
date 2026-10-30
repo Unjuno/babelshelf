@@ -135,10 +135,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     snapshot:async()=>{await settled();checkSend();await flushStorage();checkSend();setChatProgress(items.length?'Saving originals…':'');return {prior:currentDialogue(),expected:storedDialogue()};},
     original:ref=>knowledge.original(ref),
      read:async(asset,item)=>{const result=await readInputOriginal(asset,{ocrModel,ocrReady:ocr.ready,ocrLanguage,visionModel,visionReady:visionAvailable,videoAudioOnly:items.length===1&&audioOnlySuffix(text),speechModel,speechReady:speech.ready,speechLanguage:modelPreferences.transcriptionLanguage,customSpeechModels:modelPreferences.customSpeechModels,customVisionModels:modelPreferences.customVisionModels},readingAdapters,run.signal,label=>{run.progress(item.name+' · '+label,'reading',{id:item.id,label});},(tool,input,work,project)=>traceProcessing(tool,input,work,project,()=>run.signal.aborted));run.progress('');return result;},
-    commit:async({expected,next,originals,readings})=>{if(items.length)return knowledge.submitInput(expected,next,originals,readings);await saveDialogue(next);return [];},
+    commit:async({expected,next,originals,readings})=>{if(typeof knowledge.submitInput==='function')return knowledge.submitInput(expected,next,originals,readings,services.settingsRevisions);await saveDialogue(next);return [];},
    });
    const {sent,saved,next}=submissionResult;prior=submissionResult.prior;
-   if(items.length)view.adopt(next,sent);
+   view.adopt(next,sent);
    const imported:Note[]=saved.map(projectNote);
    view.consume(text);if(items.length)await refreshStorage();run.progress('','planning');checkSend();
    if(unspecifiedSavedSearch(text,items.length>0)){await finishTurn(id,{status:'What should I search for?',refs:[]});return {kind:'displayed'};}

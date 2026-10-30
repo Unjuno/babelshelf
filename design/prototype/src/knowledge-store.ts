@@ -208,14 +208,16 @@ export class KnowledgeStore {
  async saveVisionText(id:string,value:VisionText,newOriginal?:OriginalAsset){
   return this.saveReading(id,value,newOriginal,'Vision note already saved',(asset,snapshot)=>visionTextNote(id,asset,snapshot));
  }
- async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
-  ({expected,next,originals,readings}=structuredClone({expected,next,originals,readings}));
+ async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[],expectedSettingsRevisions?:{models:number|null;harness:number|null}){
+  ({expected,next,originals,readings,expectedSettingsRevisions}=structuredClone({expected,next,originals,readings,expectedSettingsRevisions}));
+  if(expectedSettingsRevisions&&['models','harness'].some(group=>{const revision=expectedSettingsRevisions![group as 'models'|'harness'];return revision!==null&&(!Number.isSafeInteger(revision)||revision<1);}))throw Error('Invalid settings revision');
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');
   const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||!Array.isArray(turn.attachments)||new Set(turn.attachments.map(a=>a.id)).size!==turn.attachments.length||[...ids].some(id=>!turn.attachments!.some(a=>a.id===id))||turn.attachments.some(a=>!a.asset||a.asset.id!==a.id))throw Error('Attachment input mismatch');
   const db=await this.open();return new Promise<any[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown,inputNotes=created;
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
+    if(expectedSettingsRevisions)for(const group of ['models','harness'] as const){const id=group==='models'?'settings-models':'settings-harness',record=current.notes.find(note=>note.id===id&&note.state==='active'),revision=record?latest(record).version:null;if(revision!==expectedSettingsRevisions[group])throw Error('Settings changed in another tab · send again');}
     if(created.some(n=>current.notes.some(old=>old.id===n.id))||originals.some(a=>current.runs.some(r=>r.key===originalKey(a.id))))throw Error('Original already saved');
     const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===inputReadingKind(n))))throw Error('Input reading mismatch');checkNotes(notes);assertFolderNamespace(notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
     for(const a of turn.attachments!)if(a.reading&&!notes.some(n=>n.id===a.reading?.noteId&&n.state==='active'&&latest(n).version===a.reading?.revision))throw Error('Input source changed');

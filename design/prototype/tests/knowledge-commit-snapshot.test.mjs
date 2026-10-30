@@ -7,7 +7,7 @@ import {appendTurn,emptyDialogue} from '../src/conversation.ts';
 import {prepareOriginal,originalRef,readOriginal} from '../src/original-assets.ts';
 import {makePdfText} from '../src/pdf-text.ts';
 import {makeTranscript} from '../src/speech-transcript.ts';
-import {initialPreferenceNotes} from '../src/preference-records.ts';
+import {initialPreferenceNotes,updatePreference} from '../src/preference-records.ts';
 
 test('new file save freezes the reviewed body before opening storage',async()=>{
  const store=new KnowledgeStore('save-snapshot-'+crypto.randomUUID());
@@ -35,6 +35,19 @@ test('input transaction freezes the validated dialogue before opening storage',a
   await store.initialize([]);const next=appendTurn(emptyDialogue(),{id:'turn-one',user:'Original message',attachments:[]});
   const save=store.submitInput(undefined,next,[]);next.turns[0].user='Changed after validation';
   await save;assert.equal((await store.getState('dialogue')).turns[0].user,'Original message');
+ }finally{store.close();}
+});
+
+test('input commit rejects a stale model or harness settings revision atomically',async()=>{
+ const store=new KnowledgeStore('input-settings-cas-'+crypto.randomUUID());
+ try{
+  await store.initialize(initialPreferenceNotes);const observed=await store.views(),expected={models:observed.find(note=>note.id==='settings-models').version,harness:observed.find(note=>note.id==='settings-harness').version};
+  const next=appendTurn(emptyDialogue(),{id:'turn-one',user:'Use the selected assistant profile',attachments:[]});
+  const changed=updatePreference('harness',observed,value=>({...value,replyStyle:'concise'}));await store.commit(observed,changed);
+  await assert.rejects(store.submitInput(undefined,next,[],[],expected),/Settings changed in another tab/);
+  assert.equal(await store.getState('dialogue'),undefined,'the stale prompt must not be committed');
+  const current=await store.views(),revisions={models:current.find(note=>note.id==='settings-models').version,harness:current.find(note=>note.id==='settings-harness').version};
+  await store.submitInput(undefined,next,[],[],revisions);assert.equal((await store.getState('dialogue')).turns[0].user,'Use the selected assistant profile');
  }finally{store.close();}
 });
 
