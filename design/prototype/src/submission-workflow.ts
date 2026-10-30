@@ -20,7 +20,7 @@ import {decisionAssetInput} from './asset-activity.ts';
 import {appendDiagnosticLog} from './diagnostic-logs.ts';
 import {recordUnclassifiedTurnFailure} from './turn-failure-log.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
-import {coordinateAgentTurn} from './agent-coordinator.ts';
+import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
 import {createTurnActivityTracer,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
 import {inspectDialogueText} from './text-transform.ts';
 import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
@@ -168,7 +168,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
-   let agentToolCalls:{tool:string;arguments:Record<string,unknown>;result:unknown}[]=[],customAccessEvidence:ReturnType<typeof agentEvidenceFromCalls>=[],agentBudgetExhausted=false;
+   let agentToolCalls:{tool:string;arguments:Record<string,unknown>;result:unknown}[]=[],customAccessEvidence:ReturnType<typeof agentEvidenceFromCalls>=[],agentBudgetExhausted=false,agentBudgetReason:AgentBudgetReason|undefined;
    run.progress('','planning');
    const resolution=await resolveTurnRoute({current:request,question:text,check:checkSend,
     prepareContinuation:decisionFirst?async source=>{
@@ -195,7 +195,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       search:(query,signal)=>knowledge.search(query,true,signal),views:signal=>knowledge.views(signal),listFolders:async()=>await knowledge.getState<string[]>('folders')??[],
       ensureCustomRuntime:()=>ensureProductRuntime('custom-tools',false),check:checkSend,signal:run.signal,trace,
       activityEventCount:currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??activityEventCount,
-       });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentBudgetExhausted=coordinated.budgetExhausted;return coordinated.final;
+       });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentBudgetExhausted=coordinated.budgetExhausted;agentBudgetReason=coordinated.budgetReason;return coordinated.final;
     }
    });
    request=resolution.request;if(resolution.source==='decision'||resolution.source==='planner')setChatProgress('');
@@ -281,7 +281,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      await ensureText();
      const captureQuery=groundingQuery(text,request.query,inputReadings.length>0);
      const scope=inputReadings.length?{kind:'attachments' as const,readings:inputReadings}:{kind:'knowledge' as const};
-     const parsed=await actions().answer({model,question:text,query:captureQuery,mode:'summary',context,check:checkSend,scope,toolEvidence,reply:request.reply,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{mode:'capture',toolCalls:agentToolCalls.map(call=>call.tool)});
+     const parsed=await actions().answer({model,question:text,query:captureQuery,mode:'summary',context,check:checkSend,scope,toolEvidence,reply:request.reply,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{mode:'capture',toolCalls:agentToolCalls.map(call=>call.tool),budgetReason:agentBudgetReason});
      checkSend();
      if(parsed.status==='insufficient_evidence'){
       await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources);
@@ -310,7 +310,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     }
     if(result.kind==='continue'){request={...request,action:result.action,query:result.query,target:'knowledge'};}
    }
-   if(text&&request){if(!deferredKnowledge&&!deferredFile)await ensureText();run.progress('','generating');if(request.action!=='answer'&&request.action!=='summary'&&request.action!=='chat')throw Error('Unresolved answer action');const answerQuery=groundingQuery(text,request.query,inputReadings.length>0),answerMode=request.action==='chat'&&agentToolCalls.some(call=>call.tool==='time.now')?'answer':request.action,parsed=await actions().answer({model:model,question:text,query:answerQuery,mode:answerMode,context:context,check:checkSend,scope:(workingFile?{kind:'file',file:workingFile}:(inputReadings.length?{kind:'attachments',readings:inputReadings}:(answerMode==='chat'?{kind:'conversation'}:{kind:'knowledge'}))),prepareContext:deferredContext,toolEvidence:toolEvidence,reply:request.reply,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{toolCalls:agentToolCalls.map(call=>call.tool)});checkSend();
+   if(text&&request){if(!deferredKnowledge&&!deferredFile)await ensureText();run.progress('','generating');if(request.action!=='answer'&&request.action!=='summary'&&request.action!=='chat')throw Error('Unresolved answer action');const answerQuery=groundingQuery(text,request.query,inputReadings.length>0),answerMode=request.action==='chat'&&agentToolCalls.some(call=>call.tool==='time.now')?'answer':request.action,parsed=await actions().answer({model:model,question:text,query:answerQuery,mode:answerMode,context:context,check:checkSend,scope:(workingFile?{kind:'file',file:workingFile}:(inputReadings.length?{kind:'attachments',readings:inputReadings}:(answerMode==='chat'?{kind:'conversation'}:{kind:'knowledge'}))),prepareContext:deferredContext,toolEvidence:toolEvidence,reply:request.reply,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{toolCalls:agentToolCalls.map(call=>call.tool),budgetReason:agentBudgetReason});checkSend();
     if(parsed.status==='insufficient_evidence'){
      await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources);
      return {kind:'needsInput',reason:'insufficient-evidence'};

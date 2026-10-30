@@ -80,7 +80,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  onBudgetExhausted?:(history:readonly AgentToolAttempt[])=>Promise<Final>|Final;
  execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;
  check:()=>void;
-}):Promise<{final:Final;calls:readonly AgentToolResult[];attempts:readonly AgentToolAttempt[];budgetExhausted?:boolean}>{
+}):Promise<{final:Final;calls:readonly AgentToolResult[];attempts:readonly AgentToolAttempt[];budgetExhausted?:boolean;budgetCause?:'context'|'tool-limit'}>{
  // This loop currently executes read-only local tools. Other effects have
  // explicit types but cannot enter this executor until their review/network
  // adapters enforce their commit/connection boundaries.
@@ -97,7 +97,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
    input.check();
    if(!(error instanceof AgentContextCapacityError)||!history.length||!input.onBudgetExhausted)throw error;
    const final=await input.onBudgetExhausted(structuredClone(history));input.check();
-   return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true};
+   return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'context'};
   }
   input.check();
   if(!validRecord(plan)||typeof plan.kind!=='string')throw new AgentProtocolError('Invalid agent plan');
@@ -115,7 +115,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   if(maxToolCalls!==null&&history.length+calls.length>maxToolCalls){
    if(input.onBudgetExhausted){
     const final=await input.onBudgetExhausted(structuredClone(history));input.check();
-    return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true};
+    return {final,calls:history.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'tool-limit'};
    }
    throw new AgentProtocolError('Agent tool call limit reached');
   }

@@ -91,11 +91,21 @@ test('coordinator derives a transparent tool budget from remaining receipt capac
   JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:'meeting'})}),
  ],{enabledTools:['memory.search','memory.read'],builtinPackages:[...builtinPackages,readPackage],maxToolCalls:null,activityEventCount:122});
  const result=await coordinateAgentTurn(value);
- assert.equal(result.final.action,'answer');assert.equal(result.budgetExhausted,true);
+ assert.equal(result.final.action,'answer');assert.equal(result.budgetExhausted,true);assert.equal(result.budgetReason,'activity-capacity');
  assert.deepEqual(calls,[['search','meeting']]);
  assert.equal(operations.find(row=>row.tool==='dialogue.plan').details.effectiveToolBudget,1);
  assert.equal(operations.some(row=>row.tool==='memory.read'),false,'the action that exceeded available receipts was not executed');
  assert.equal(result.calls.length,1,'previous completed evidence remains available to the answer stage');
+});
+
+test('tool-limit provenance distinguishes the profile from tied storage and profile limits',async()=>{
+ for(const [activityEventCount,expected] of [[undefined,'profile-limit'],[122,'both-limits']]){
+  const {value}=input([
+   JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})}),
+   JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:'meeting'})}),
+  ],{enabledTools:['memory.search','memory.read'],builtinPackages:[...builtinPackages,readPackage],maxToolCalls:1,activityEventCount});
+  const result=await coordinateAgentTurn(value);assert.equal(result.budgetReason,expected);assert.equal(result.calls.length,1);
+ }
 });
 
 test('an explicitly named enabled package has its current guide observed before model selection without executing code',async()=>{

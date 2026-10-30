@@ -35,7 +35,7 @@ test('native tool batches are bounded by the live turn budget, not a fixed eight
 
 test('agent loop rejects an over-budget batch before executing any member',async()=>{
  let executions=0;const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,maxToolCalls:1,plan:async()=>({kind:'tools',calls:[{kind:'tool',tool:'memory.search',arguments:{query:'a'}},{kind:'tool',tool:'memory.search',arguments:{query:'b'}}]}),execute:async()=>{executions++;return [];},onBudgetExhausted:()=>({partial:true}),check:()=>{}});
- assert.equal(result.final.partial,true);assert.equal(result.budgetExhausted,true);assert.equal(executions,0);
+ assert.equal(result.final.partial,true);assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'tool-limit');assert.equal(executions,0);
 });
 
 test('a final plan exits without invoking a tool',async()=>{
@@ -87,7 +87,7 @@ test('default agent loop has no arbitrary call ceiling while each call adds dist
 
 test('context capacity returns partial-work callback with existing evidence instead of retrying',async()=>{
  let executions=0;const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],plan:async history=>{if(history.length===2)throw new AgentContextCapacityError();return {kind:'tool',tool:'memory.search',arguments:{query:`part-${history.length}`}};},execute:async()=>{executions++;return [{quote:'evidence'}];},onBudgetExhausted:history=>({partial:true,evidence:history.length}),check:()=>{}});
- assert.equal(result.final.partial,true);assert.equal(result.final.evidence,2);assert.equal(result.budgetExhausted,true);assert.equal(executions,2);
+ assert.equal(result.final.partial,true);assert.equal(result.final.evidence,2);assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'context');assert.equal(executions,2);
 });
 
 test('Stop during a context-capacity failure does not start partial-result generation',async()=>{

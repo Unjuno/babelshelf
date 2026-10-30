@@ -89,6 +89,8 @@ function namedFilesReadCompletely(question:string,history:readonly {tool:string;
  return new Set(ids).size===names.length&&allNamedSourcesFullyRead(history,ids);
 }
 
+export type AgentBudgetReason='context'|'activity-capacity'|'profile-limit'|'both-limits';
+
 /** Application boundary for registry selection, audited tool execution and source observation. */
 export async function coordinateAgentTurn(input:{
  onPreview?:(text:string)=>void;
@@ -110,10 +112,12 @@ export async function coordinateAgentTurn(input:{
  signal:AbortSignal;
  trace:Trace;
  activityEventCount?:number;
-}) : Promise<{final:DialoguePlan;calls:readonly AgentToolResult[];customEvidence:ReturnType<typeof agentEvidenceFromCalls>;context:DialogueContext;budgetExhausted:boolean;snapshot:TurnExecutionSnapshot}> {
+}) : Promise<{final:DialoguePlan;calls:readonly AgentToolResult[];customEvidence:ReturnType<typeof agentEvidenceFromCalls>;context:DialogueContext;budgetExhausted:boolean;budgetReason?:AgentBudgetReason;snapshot:TurnExecutionSnapshot}> {
  if(input.snapshot.models.text.id!==input.model)throw Error('Execution snapshot model mismatch');
  const execution=turnExecutionReceipt(input.snapshot);
- const maxToolCalls=input.activityEventCount===undefined?input.snapshot.harness.maxToolCalls:activityBoundedToolBudget(input.activityEventCount,input.snapshot.harness.maxToolCalls);
+ const profileLimit=input.snapshot.harness.maxToolCalls;
+ const activityLimit=input.activityEventCount===undefined?null:activityBoundedToolBudget(input.activityEventCount,null);
+ const maxToolCalls=activityLimit===null?profileLimit:profileLimit===null?activityLimit:Math.min(activityLimit,profileLimit);
  const excludedTools=new Set(input.excludedTools??[]);
  const configuredTools=input.snapshot.harness.enabledTools.filter(id=>!excludedTools.has(id));
  const sources=await input.readToolSources();
@@ -287,5 +291,6 @@ export async function coordinateAgentTurn(input:{
    }catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;if(input.signal.aborted){input.check();throw Error('Stopped');}if(error instanceof AgentToolResultTooLargeError)throw error;throw new AgentToolExecutionError(call.tool,error);}
   },
  });
- return {final:loop.final,calls:loop.calls,customEvidence,context,budgetExhausted:loop.budgetExhausted===true,snapshot:input.snapshot};
+ const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
+ return {final:loop.final,calls:loop.calls,customEvidence,context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
 }

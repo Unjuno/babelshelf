@@ -3,6 +3,7 @@ import type {KnowledgeStore,NoteView} from './knowledge-store.ts';
 import type {TextRuntime} from './text-inference.ts';
 import type {DialogueContext} from './conversation.ts';
 import type {createTurnActivityTracer} from './harness-activity.ts';
+import type {AgentBudgetReason} from './agent-coordinator.ts';
 import {proposeTask} from './task-proposals.ts';
 import {literalCorrectionProposal,proposeCorrection,resolveCorrectionTarget} from './note-corrections.ts';
 import type {builtinToolRegistry} from './tool-package-records.ts';
@@ -52,8 +53,8 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
  const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search')},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:q=>store.search(q,true)}));
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
-  async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[]}={}){
-   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}));
+  async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[];budgetReason?:AgentBudgetReason}={}){
+   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}));
    check();return {kind:'answer' as const,...parsed};
   },
   async schedule(context:DialogueContext){

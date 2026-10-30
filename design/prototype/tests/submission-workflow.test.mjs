@@ -151,6 +151,7 @@ test('an interrupted multi-source inspection remains visibly partial even if the
  const outcome=await c.run(run=>executeSubmission({text:'Compare my saved reviews in detail.',attachments:[]},f.services,f.view,run));
  assert.equal(outcome,'completed',JSON.stringify(c.state));const turn=f.current().turns.at(-1);
  assert.equal(turn.answer,'The first review is Monday at 10.');assert.equal(turn.status,'Partial · incomplete inspection');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.activity.some(a=>a.tool==='memory.read'),false);
+ assert.equal(turn.activity.find(a=>a.tool==='knowledge.answer').input.budgetReason,'profile-limit');
 });
 
 test('an agent can search saved Memory, ground a new note, and retain the exact source citation',async()=>{

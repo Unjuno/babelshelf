@@ -6812,3 +6812,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-10-30 · partial inspection visibility (Windows PC)
 - A controlled submission hit the configured tool limit after retrieving one source; the answer model returned an unqualified sentence. The host now labels the completed answer as partial without changing its text or citations. The unexecuted read remained unexecuted.
 - Submission/conversation/coordinator Node checks passed 296/296. Product build and a Chromium UI fixture confirming that the stored partial status survives reload passed. The fixture does not establish real-model quality.
+
+2026-10-30 · distinguish work-limit causes (Windows PC)
+- The loop now distinguishes context exhaustion from its effective tool limit. The coordinator identifies whether the latter came from activity capacity, the profile limit, or both; the answer activity receipt carries that reason without changing the partial answer or granting more work.
+- Loop/coordinator/submission/conversation Node checks passed 326/326, TypeScript passed and product build cb59c1fc01478b6f passed. This preserves the existing 128-event per-turn bound; durable activity paging and separation from storage capacity remain unimplemented.
