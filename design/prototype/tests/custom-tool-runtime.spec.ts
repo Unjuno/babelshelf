@@ -14,13 +14,14 @@ test('reports failed interpreter startup promptly without blaming package code',
  // before intercepting its WASM fetch. Otherwise Vite's dependency reload can
  // navigate this fixture during the operation being measured.
  await expect.poll(async()=>{try{return await page.evaluate(async()=>{const fixture=(window as any).customToolFixture;return fixture?fixture.run({code:'() => 42',input:{},capabilities:[]}):null;});}catch(error){if(!String(error).includes('Execution context was destroyed'))throw error;return null;}},{timeout:10000}).toBe(42);
- await context.route(/\.wasm(?:\?|$)/,route=>route.abort('failed'));
+ let blocked=0;await context.route(/\.wasm(?:\?|$)/,route=>{blocked++;return route.abort('failed');});
  const result=await page.evaluate(async()=>{
   const start=performance.now();
   try{await (window as any).customToolFixture.run({code:'() => 42',input:{},capabilities:[]});return {error:'unexpected success',elapsed:performance.now()-start};}
   catch(error){return {error:String((error as Error).message),elapsed:performance.now()-start};}
  });
  expect(result.error).toMatch(/runtime could not start/i);
+ expect(blocked).toBeGreaterThan(0);
  expect(result.elapsed).toBeLessThan(5000);
 });
 
