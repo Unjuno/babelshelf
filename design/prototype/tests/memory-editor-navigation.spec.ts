@@ -27,7 +27,7 @@ test('a removed source remains inspectable at its original version without an un
 
 async function memory(page:Page){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:'Memory',exact:true}).click();
+ await page.getByRole('menuitem',{name:'BabelShelf',exact:true}).click();
 }
 async function create(page:Page){
  await page.goto('/');await memory(page);
@@ -263,19 +263,16 @@ test('answer copy chooses an earlier source by text and preserves its original t
  await page.reload();await memory(page);await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open Earlier reviewed answer.md',exact:true}).click();await expect(page.locator('.file-body')).toHaveText([edited,first]);
 });
 
-for(const dirty of [false,true])test(`capture review cancellation persists an honest outcome without a note write: dirty=${dirty}`,async({page})=>{
+test('explicit capture is saved directly without a second confirmation and duplicate names stay unique',async({page})=>{
  await page.goto('/');
  const count=()=>page.evaluate(()=>new Promise<number>((resolve,reject)=>{const q=indexedDB.open('mlb-memory-v1');q.onsuccess=()=>{const db=q.result,r=db.transaction('notes').objectStore('notes').count();r.onsuccess=()=>{db.close();resolve(r.result);};r.onerror=()=>{db.close();reject(r.error);};};q.onerror=()=>reject(q.error);}));
  await expect(page.getByRole('button',{name:'Send',exact:true})).toBeEnabled();const before=await count();
- await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Original capture body');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue('Original capture body');
- if(dirty){await page.getByRole('textbox',{name:'New file content',exact:true}).fill('Edited capture draft');await page.keyboard.press('Escape');await page.getByRole('button',{name:'Keep editing',exact:true}).click();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue('Edited capture draft');await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('button',{name:'Discard changes',exact:true}).click();}
- else await page.getByRole('button',{name:'Cancel',exact:true}).click();
- await expect(page.getByText('Save cancelled',{exact:true})).toBeVisible();expect(await count()).toBe(before);await page.reload();await expect(page.getByText('Save cancelled',{exact:true})).toBeVisible();await expect(page.getByText('Review before saving',{exact:true})).toHaveCount(0);expect(await count()).toBe(before);
-});
-
-test('approved capture Save remains Saved rather than cancellation when the creation sheet closes',async({page})=>{
- await page.goto('/');await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Approved capture body');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveValue('Approved capture body');await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('.file-body')).toHaveText('Approved capture body');
- await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/');await expect(page.getByText('Save cancelled',{exact:true})).toHaveCount(0);await page.reload();await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/');
+ await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Original capture body');await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'New file content',exact:true})).toHaveCount(0);expect(await count()).toBe(before+1);
+ await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/Original capture body.md');
+ await page.getByRole('textbox',{name:'Message',exact:true}).fill('note: Original capture body');await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/Original capture body (2).md');expect(await count()).toBe(before+2);
+ await page.reload();await expect(page.locator('.sent-message').last()).toContainText('Saved · Inbox/Original capture body (2).md');expect(await count()).toBe(before+2);
 });
 
 test('search presents both matching files when one long file has many matching passages',async({page})=>{
