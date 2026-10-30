@@ -4,6 +4,7 @@ import {isAbsolute,join} from 'node:path';
 import {chromium} from '../../design/prototype/node_modules/playwright-core/index.mjs';
 import {parseStateBackup} from '../../design/prototype/src/backup-state.ts';
 import {validateGroundingRefs} from '../../dist/core.js';
+import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
 
 const [profileDir,outputDir,url='http://127.0.0.1:4184/']=process.argv.slice(2);
 for(const path of [profileDir,outputDir])assert.ok(path&&isAbsolute(path),'Supply absolute existing isolated QA profile and fresh output paths');
@@ -65,4 +66,4 @@ try{
 
  const afterSave=await launch('offline-cold-restart-saved-answer');assert.deepEqual(afterSave.external,[],'Post-save cold launch made an external request');assert.notEqual(afterSave.browserPid,cold.browserPid,'Second cold restart must use a new browser process');await input();await page.getByRole('textbox',{name:'Message',exact:true}).fill('Read: '+saved.revisions.at(-1).path);await page.getByRole('button',{name:'Send',exact:true}).click();await page.getByRole('button',{name:'History',exact:true}).waitFor({timeout:60000});assert.equal(await page.locator('.file-body').first().innerText(),answer.text);afterSave.reopenedAnswer=true;evidence.externalRequests=evidence.phases.flatMap(p=>p.external??[]);assert.deepEqual(evidence.externalRequests,[]);evidence.pass=true;await page.screenshot({path:join(outputDir,'cold-read-saved-answer.png')});
 }catch(error){evidence.error=String(error);if(page&&!page.isClosed()){evidence.failureScreen=await page.locator('body').innerText().catch(()=>null);await page.screenshot({path:join(outputDir,'failure.png')}).catch(()=>{});}process.exitCode=1;}
-finally{await context?.close();await persist();console.log(JSON.stringify({pass:evidence.pass,error:evidence.error,build:evidence.build,model:evidence.model,phases:evidence.phases.map(p=>p.name??p.label),source:evidence.source,answer:evidence.answer,refs:evidence.refs,saved:evidence.saved,externalRequests:evidence.externalRequests},null,2));}
+finally{await context?.close();try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}await persist();console.log(JSON.stringify({pass:evidence.pass,error:evidence.error,cleanupError:evidence.cleanupError,build:evidence.build,model:evidence.model,phases:evidence.phases.map(p=>p.name??p.label),source:evidence.source,answer:evidence.answer,refs:evidence.refs,saved:evidence.saved,externalRequests:evidence.externalRequests},null,2));}
