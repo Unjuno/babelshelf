@@ -229,6 +229,8 @@ export function explicitWorkingFileCorrection(question:string,hasWorkingFile:boo
  * rewrite. This only opens review; ambiguous references/operations keep planning. */
 export function explicitNewTextCapture(question:string,scoped=false){
  if(scoped||question.length>30050||requestNamesEarlierDialogue(question))return null;
+ const english=/^remember:\s*([\s\S]+?)\s*$/iu.exec(question.trim());
+ if(english){const body=english[1];return body.length<=30000?{action:'capture' as const,query:'',body}:null;}
  const found=/^([\s\S]+[。.!！])\s*(?:メモして|記録して)(?:ください)?[。.!！]?$/u.exec(question.trim());
  if(!found)return null;const body=found[1];
  if(body.length>30000||/(?:これ|それ|この|その|あの|上記|前述|ファイル|添付|回答|返答|ツール|実行|計算|検索|要約|翻訳|修正|直して|削除|置き換|まとめて|調べて|取得|して|ください|教えて|答えて|説明|見せて|表示|作って|作成|比較|探して|読んで|開いて|[?？]|```)|\b(?:explain|calculate|search|summari[sz]e|translate|rewrite|run|execute|open|read|show|compare|create)\b/iu.test(body))return null;

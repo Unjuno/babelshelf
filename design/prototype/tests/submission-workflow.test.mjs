@@ -555,6 +555,18 @@ test('literal new-note prose is saved exactly without model acquisition, even wh
  assert.equal(outcome,'completed');assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,'QA星見の持ち物は水と充電器。');assert.equal(f.reviews[0].kind,'original');assert.equal(f.modelCalls(),0);assert.equal(f.current().turns.at(-1).status,'Review new note');
 });
 
+test('a model-authored new note is always reviewed before persistence',async()=>{
+ const f=fixture(),c=createSubmissionController();let generations=0;
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxToolCalls:0,maxResultChars:8000};
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{generations++;return {text:JSON.stringify({action:'capture',query:'',body:'The model omitted the exact reserve amount.'}),finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
+ f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ f.services.refreshSnapshot=async()=>[];
+ const outcome=await c.run(run=>executeSubmission({text:'Create a note about my emergency water reserve.',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'awaitingApproval',c.state.error);assert.equal(generations,1);assert.equal(f.reviews.length,1);
+ assert.equal(f.reviews[0].body,'The model omitted the exact reserve amount.');assert.equal(f.reviews[0].kind,'generated');
+ assert.equal(f.current().turns.at(-1).status,'Review new note');
+});
+
 test('copying the current answer remains pending until the user saves the review',async()=>{
  const f=fixture(),c=createSubmissionController(),answer='Original answer',refs=[{noteId:'source',revision:2,start:0,end:5,quote:'proof'}];
  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'answer',user:'Question',answer,refs}],currentResult:{turnId:'answer'}});

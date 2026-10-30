@@ -10,6 +10,14 @@ test('current answer copy shortcut excludes compound requests and attachments',(
  assert.equal(router.explicitCurrentAnswerCapture('今の回答をメモに保存して',true),null);
 });
 
+test('Remember colon is an exact model-free original capture command',()=>{
+ const body='The emergency water reserve is exactly 24 litres. Identifier: LFM3-COLD-8C496430BFAAE3DD.';
+ assert.deepEqual(router.explicitNewTextCapture(`Remember: ${body}`),{action:'capture',query:'',body});
+ assert.deepEqual(router.explicitNewTextCapture(`remember:\n${body}\n`),{action:'capture',query:'',body});
+ assert.equal(router.explicitNewTextCapture('Remember: ',false),null);
+ assert.equal(router.explicitNewTextCapture(`Remember: ${body}`,true),null);
+});
+
 test('a completed read can skip only a redundant final tool-planning step',()=>{
  assert.equal(requestsMoreToolWorkAfterRead('Search Memory, read the matching note, then compare it with last week and calculate the change.'),true);
  assert.equal(requestsMoreToolWorkAfterRead('Search Memory, read the matching note, then search for the earlier version.'),true);

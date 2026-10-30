@@ -281,7 +281,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    const metadataGuards=distinctSourceMetadataGuards(agentToolCalls.filter(call=>call.tool==='memory.sources').map(call=>{const page=call.result as {noteId:string;revision:number;snapshot:string};return {noteId:page.noteId,revision:page.revision,snapshot:page.snapshot};}));
    if(request?.action==='capture'){
     const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;
-    let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';
+    // Only an explicit, model-free literal capture is original content. A
+    // planner/Decision proposal may rewrite or omit user facts, so it must be
+    // shown in the existing new-note review before it can be saved.
+    let sources=previous?.refs??[],kind:'original'|'generated'=previous||resolution.source!=='explicit'?'generated':'original';
     // When the agent inspected Memory or current inputs before choosing to
     // create a note, ground the new content once and carry those exact source
     // revisions into the capture. Saving an already generated dialogue answer
