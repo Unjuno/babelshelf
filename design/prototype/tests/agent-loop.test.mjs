@@ -21,6 +21,12 @@ test('a failed revision check also removes earlier search evidence for that exac
  assert.equal(history[0].result,null);assert.equal(result.calls.length,0);
 });
 
+test('a failed filename continuation invalidates earlier search hits identified by the preceding read',async()=>{
+ const plans=[{kind:'tool',tool:'memory.search',arguments:{query:'water'}},{kind:'tool',tool:'memory.read',arguments:{query:'one.md'}},{kind:'tool',tool:'memory.read',arguments:{query:'one.md',start:3,expectedRevision:1}},{kind:'final',value:'done'}];let count=0;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async()=>plans.shift(),execute:async()=>{count++;if(count===3)throw new AgentToolExecutionError('memory.read');return count===1?[{noteId:'one',revision:1,quote:'old'}]:[{noteId:'one',path:'Notes/one.md',revision:1,excerpt:'old'}];},check(){}});
+ assert.equal(result.calls.length,0);
+});
+
 test('rereading after failed continuations is not mistaken for an unchanged-result loop',async()=>{
  const read={kind:'tool',tool:'memory.read',arguments:{query:'one',start:0,length:3}},next={kind:'tool',tool:'memory.read',arguments:{query:'one',start:3,expectedRevision:1}},plans=[read,next,read,next,read,{kind:'final',value:'done'}];let count=0;
  const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,plan:async()=>plans.shift(),execute:async()=>{if(++count===2||count===4)throw new AgentToolExecutionError('memory.read');return [{noteId:'one',revision:1,excerpt:'old'}];},check(){}});
