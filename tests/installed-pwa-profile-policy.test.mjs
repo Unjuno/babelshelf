@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseInstalledPwaArguments,shouldRemoveInstalledPwaOutput,shouldRemoveInstalledPwaProfile} from '../scripts/qa/installed-pwa-profile-policy.mjs';
+import {shouldRemoveGeneratedOfflineQaPath} from '../scripts/qa/offline-process.mjs';
 
 test('installed-PWA profiles are ephemeral by default, including caller-named fresh paths',()=>{
  assert.deepEqual(parseInstalledPwaArguments([]),{profileArg:undefined,outputArg:undefined,retainProfile:false});
@@ -19,4 +20,9 @@ test('retention is explicit and only applies to a caller-named profile',()=>{
 test('generated installed-PWA evidence is temporary unless the caller names an output path',()=>{
  assert.equal(shouldRemoveInstalledPwaOutput({outputWasGenerated:true}),true);
  assert.equal(shouldRemoveInstalledPwaOutput({outputWasGenerated:false}),false);
+});
+
+test('offline-process QA removes only paths it generated itself',()=>{
+ assert.equal(shouldRemoveGeneratedOfflineQaPath({generated:true}),true);
+ assert.equal(shouldRemoveGeneratedOfflineQaPath({generated:false}),false);
 });

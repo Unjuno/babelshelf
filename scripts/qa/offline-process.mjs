@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdir,readFile,writeFile,stat} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,stat,rm} from 'node:fs/promises';
 import {join,isAbsolute,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash,randomUUID} from 'node:crypto';
@@ -102,12 +102,18 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   }catch(e){evidence.pass=false;evidence.error=String(e);await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));throw e;}finally{await new Promise(resolve=>probeServer.close(()=>resolve(undefined)));}
 }
 
+export function shouldRemoveGeneratedOfflineQaPath({generated}){return generated===true;}
+
 // Reuses the repository-pinned Playwright dependency; never downloads a browser.
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const [profileArg,outputArg,engine='chromium',urlArg]=process.argv.slice(2);assert.ok(['chromium','webkit'].includes(engine),'Choose chromium or webkit');
- const runId=`${Date.now()}-${randomUUID()}`,profileDir=profileArg??join(tmpdir(),`babelshelf-offline-${runId}-profile`),outputDir=outputArg??join(tmpdir(),`babelshelf-offline-${runId}-results`);
+ const runId=`${Date.now()}-${randomUUID()}`,profileDir=profileArg??join(tmpdir(),`babelshelf-offline-${runId}-profile`),outputDir=outputArg??join(tmpdir(),`babelshelf-offline-${runId}-results`),generatedProfile=profileArg===undefined,generatedOutput=outputArg===undefined;
  let server,url=urlArg;
  if(!url){server=createDevServer(fileURLToPath(new URL('../../design/prototype/dist/app/',import.meta.url)));await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});url=`http://127.0.0.1:${server.address().port}/`;}
  try{const browsers=await import('../../design/prototype/node_modules/playwright-core/index.mjs');console.log(JSON.stringify(await runOfflineProcessCheck(browsers[engine],{profileDir,outputDir,url}),null,2));}
- finally{if(server)await new Promise(resolve=>server.close(()=>resolve(undefined)));}
+ finally{
+  if(server)await new Promise(resolve=>server.close(()=>resolve(undefined)));
+  if(shouldRemoveGeneratedOfflineQaPath({generated:generatedProfile}))await rm(profileDir,{recursive:true,force:true});
+  if(shouldRemoveGeneratedOfflineQaPath({generated:generatedOutput}))await rm(outputDir,{recursive:true,force:true});
+ }
 }
