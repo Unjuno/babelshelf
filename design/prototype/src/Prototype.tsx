@@ -186,10 +186,10 @@ export default function Prototype() {
   lastRenderedTurnCount.current=value.turns.length;
  }
  useEffect(()=>{if(!storageReady)return;let alive=true;knowledge.getState<Dialogue>('dialogue').then(value=>{if(!alive)return;storedDialogue.current=value;dialogue.current=value?validateDialogue(value):emptyDialogue();renderDialogue(dialogue.current);setDialogueReady(true);}).catch(e=>{if(alive)setDialogueError(e.message);});return()=>{alive=false;};},[storageReady]);
- const writeDialogue=async(value:Dialogue,refs?:SourceRef[])=>{if(refs?.length)await knowledge.compareGroundedDialogue(storedDialogue.current,value,refs);else await knowledge.compareState('dialogue',storedDialogue.current,value);storedDialogue.current=value;dialogue.current=value;renderDialogue(value);};
+ const writeDialogue=async(value:Dialogue,refs?:SourceRef[],metadata?:import('./note-provenance').SourceMetadataGuard[])=>{if(refs?.length||metadata?.length)await knowledge.compareGroundedDialogue(storedDialogue.current,value,refs??[],metadata);else await knowledge.compareState('dialogue',storedDialogue.current,value);storedDialogue.current=value;dialogue.current=value;renderDialogue(value);};
  const dialogueWriter=useRef<ReturnType<typeof createDialogueWriter>|null>(null);if(!dialogueWriter.current)dialogueWriter.current=createDialogueWriter(()=>dialogue.current,writeDialogue);
  async function saveDialogue(value:Dialogue){await dialogueWriter.current!.replace(value);}
- async function finishTurn(id:string,value:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:SourceRef[]){await dialogueWriter.current!.update(current=>completeTurn(current,id,value),guardSources);}
+ async function finishTurn(id:string,value:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:SourceRef[],metadata?:import('./note-provenance').SourceMetadataGuard[]){await dialogueWriter.current!.update(current=>completeTurn(current,id,value),guardSources,metadata);}
  const fileFocusQueue=useRef<ReturnType<typeof createFileFocusQueue>|null>(null);if(!fileFocusQueue.current)fileFocusQueue.current=createFileFocusQueue(()=>dialogue.current,(value,remove)=>dialogueWriter.current!.update(current=>remove?withoutWorkingFile(current,remove):withWorkingFile(current,value.currentFile!)));
  const inputFile=dialogue.current.currentFile,inputFileNote=inputFile?notes.find(note=>note.id===inputFile.noteId):undefined;
  const inputFilePath=inputFileNote&&inputFile?(inputFileNote.paths?.[inputFile.revision-1]??inputFileNote.path):'File';

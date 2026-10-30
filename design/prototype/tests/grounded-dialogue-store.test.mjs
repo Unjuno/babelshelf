@@ -5,6 +5,22 @@ import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {emptyDialogue,appendTurn,completeTurn} from '../src/conversation.ts';
 import {createDialogueWriter} from '../src/dialogue-writer.ts';
+import {noteSourceMetadata} from '../src/note-provenance.ts';
+import {stateHash} from '../src/backup-hash.ts';
+
+test('source metadata is rechecked in the same transaction as the final answer',async()=>{
+ const store=new KnowledgeStore('metadata-guard-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'source',path:'Inbox/source.md',body:'Water 17',version:1,history:[]}]);
+  const base=await store.views(),ref={noteId:'source',revision:1,start:0,end:8,quote:'Water 17'},summary={id:'summary',path:'Inbox/summary.md',body:'Summary',version:1,history:[],kind:'generated',sources:[ref]};
+  await store.commit(base,[...base,summary]);const records=await store.all(),guard={noteId:'summary',revision:1,snapshot:stateHash(noteSourceMetadata(records,'summary',1))};
+  const before=appendTurn(emptyDialogue(),{id:'turn',user:'Source?'}),next=completeTurn(before,'turn',{answer:'The source is current.'});await store.compareState('dialogue',undefined,before);
+  await store.compareGroundedDialogue(before,next,[],[guard]);assert.deepEqual(await store.getState('dialogue'),next);await store.compareState('dialogue',next,before);
+  const views=await store.views(),source=views.find(item=>item.id==='source');await store.commit(views,views.map(item=>item.id==='source'?{...source,body:'Water 9',version:2,history:[...source.history,source.body]}:item));
+  let current=before;const writer=createDialogueWriter(()=>current,async(value,refs,metadata)=>{await store.compareGroundedDialogue(current,value,refs??[],metadata);current=value;});
+  await assert.rejects(writer.update(()=>next,undefined,[guard]),/source changed/i);assert.deepEqual(await store.getState('dialogue'),before);assert.deepEqual(current,before);
+ }finally{store.close();}
+});
 
 test('grounded dialogue commit checks source and conversation in the same transaction',async()=>{
  const store=new KnowledgeStore('grounded-'+crypto.randomUUID()),db=await store.open();

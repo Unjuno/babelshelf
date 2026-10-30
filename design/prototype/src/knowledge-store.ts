@@ -1,4 +1,4 @@
-import {sourceReferenceForView,type SavedSourceRef} from './note-provenance.ts';
+import {sourceReferenceForView,noteSourceMetadata,type SavedSourceRef} from './note-provenance.ts';
 import {GroundingConflictError} from './grounding-conflict.ts';
 import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorrection,PENDING_CORRECTION_KEY,type PendingCorrection} from './pending-correction.ts';
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
@@ -352,14 +352,14 @@ export class KnowledgeStore {
  /** Commit a newly grounded dialogue result only while its reviewed sources
   * and expected conversation are still current. Historical turns are not
   * revalidated here. */
- async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[]){
-  ({before,next,refs}=structuredClone({before,next,refs}));
-  validateDialogue(next);if(!Array.isArray(refs)||!refs.length)throw Error('Source required');
+ async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[],metadataGuards:{noteId:string;revision:number;snapshot:string}[]=[]){
+  ({before,next,refs,metadataGuards}=structuredClone({before,next,refs,metadataGuards}));
+  validateDialogue(next);if(!Array.isArray(refs)||!Array.isArray(metadataGuards)||!refs.length&&!metadataGuards.length||metadataGuards.some(guard=>!guard||typeof guard.noteId!=='string'||!guard.noteId||!Number.isSafeInteger(guard.revision)||guard.revision<1||typeof guard.snapshot!=='string'||!/^[a-f0-9]{64}$/.test(guard.snapshot)))throw Error('Source required');
   const previous=new Map((before?.turns??[]).map(turn=>[turn.id,turn]));
   const addedRefs=next.turns.flatMap(turn=>equal(turn.refs,previous.get(turn.id)?.refs)?[]:turn.refs??[]);
   const sources=refs,db=await this.open();return new Promise<void>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
-   const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(!validateGroundingRefs(notes.result,sources).ok||addedRefs.length&&!validateGroundingRefs(notes.result,addedRefs).ok)throw new GroundingConflictError();settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
+   const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(sources.length&&!validateGroundingRefs(notes.result,sources).ok||addedRefs.length&&!validateGroundingRefs(notes.result,addedRefs).ok)throw new GroundingConflictError();try{for(const guard of metadataGuards)if(stateHash(noteSourceMetadata(notes.result,guard.noteId,guard.revision))!==guard.snapshot)throw Error('changed');}catch{throw new GroundingConflictError();}settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
    dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
  }

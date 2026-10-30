@@ -84,7 +84,7 @@ export type SubmissionServices={
  modelPreferences:Preferences['models'];harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;connectionPreferences:Pick<Preferences['connection'],'diagnosticLogs'>;
  diagnostics:Pick<Storage,'getItem'|'setItem'>;
  currentDialogue:()=>Dialogue;storedDialogue:()=>Dialogue|undefined;settled:()=>Promise<void>;
- saveDialogue:(next:Dialogue)=>Promise<void>;finishTurn:(id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:NonNullable<DialogueTurn['refs']>)=>Promise<void>;
+ saveDialogue:(next:Dialogue)=>Promise<void>;finishTurn:(id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:NonNullable<DialogueTurn['refs']>,metadata?:import('./note-provenance.ts').SourceMetadataGuard[])=>Promise<void>;
  flushStorage:()=>Promise<unknown>;refreshStorage:()=>Promise<unknown>;refreshSnapshot:()=>Promise<NoteView[]>;
  ensureProductRuntime:(role:ProductRuntimeRole,acquire:boolean)=>Promise<void>;
  traceProcessing:<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(value:T)=>unknown,stopped:()=>boolean)=>Promise<T>;
@@ -277,6 +277,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    // A native reply may cite an exact search range even after a longer read.
    // Preserve the observed ranges; only legacy generation reselects evidence.
    const toolEvidence=agentToolCalls.length?{used:true as const,refs:agentBudgetReason==='source-capacity'?agentAnswerEvidenceFromCalls(agentToolCalls,customAccessEvidence,true):(request?.reply?agentEvidenceFromCalls:agentAnswerEvidenceFromCalls)(agentToolCalls,customAccessEvidence),calculations:agentCalculationsFromCalls(agentToolCalls),clockReadings:agentClockReadingsFromCalls(agentToolCalls),customResults:agentCustomResultsFromCalls(agentToolCalls),toolInfo:agentToolInfoFromCalls(agentToolCalls),completedToolIds:[...new Set(agentToolCalls.map(call=>call.tool))],memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0,...(agentBudgetExhausted?{budgetExhausted:true}:{})}:undefined;
+   const metadataGuards=agentToolCalls.filter(call=>call.tool==='memory.sources').map(call=>{const page=call.result as {noteId:string;revision:number;snapshot:string};return {noteId:page.noteId,revision:page.revision,snapshot:page.snapshot};});
    if(request?.action==='capture'){
     const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;
     let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';
@@ -291,10 +292,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      const parsed=await actions().answer({model,question:text,query:captureQuery,mode:'summary',context,check:checkSend,scope,toolEvidence,reply:request.reply,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{mode:'capture',toolCalls:agentToolCalls.map(call=>call.tool),budgetReason:agentBudgetReason});
      checkSend();
      if(parsed.status==='insufficient_evidence'){
-      await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources);
+      await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources,metadataGuards);
       return {kind:'needsInput',reason:'insufficient-evidence'};
      }
-     request.body=parsed.answer;sources=parsed.sources.map(source=>({noteId:source.noteId,revision:source.revision,start:source.start,end:source.end,quote:source.quote,...(source.citedQuote?{citedQuote:source.citedQuote}:{})}));kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Saving note',refs:sources});
+     request.body=parsed.answer;sources=parsed.sources.map(source=>({noteId:source.noteId,revision:source.revision,start:source.start,end:source.end,quote:source.quote,...(source.citedQuote?{citedQuote:source.citedQuote}:{})}));kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Saving note',refs:sources},undefined,metadataGuards);
     }else await finishTurn(id,{status:'Saving note',refs:importedRefs});
     await view.saveCapture({turnId:id,source:captureSource,body:request.body!,sources,kind});return captureSource||kind==='generated'?{kind:'awaitingApproval'}:{kind:'answered'};
    }
@@ -319,10 +320,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    if(text&&request){if(!deferredKnowledge&&!deferredFile)await ensureText();run.progress('','generating');if(request.action!=='answer'&&request.action!=='summary'&&request.action!=='chat')throw Error('Unresolved answer action');const answerQuery=groundingQuery(text,request.query,inputReadings.length>0),answerMode=request.action==='chat'&&agentToolCalls.some(call=>call.tool==='time.now')?'answer':request.action,parsed=await actions().answer({model:model,question:text,query:answerQuery,mode:answerMode,context:context,check:checkSend,scope:(workingFile?{kind:'file',file:workingFile}:(inputReadings.length?{kind:'attachments',readings:inputReadings}:(answerMode==='chat'?{kind:'conversation'}:{kind:'knowledge'}))),prepareContext:deferredContext,toolEvidence:toolEvidence,reply:request.reply,replyStyle:harnessPreferences.replyStyle,userGuidance:harnessPreferences.userGuidance},{toolCalls:agentToolCalls.map(call=>call.tool),budgetReason:agentBudgetReason});checkSend();
     if(parsed.status==='insufficient_evidence'){
-     await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources);
+     await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources,metadataGuards);
      return {kind:'needsInput',reason:'insufficient-evidence'};
     }
-    const guard=!selectedDialogueSources&&parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:selectedDialogueSources??parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':request.action==='summary'?'Summary · selected excerpts':undefined},guard);return {kind:'answered'};}
+    const guard=!selectedDialogueSources&&parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:selectedDialogueSources??parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':request.action==='summary'?'Summary · selected excerpts':undefined},guard,metadataGuards);return {kind:'answered'};}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
    return items.length?(sent.every(a=>a.reading||a.voice||a.status==='Text available')?{kind:'imported'}:{kind:'partial',reason:'unread-input'}):{kind:'needsPreparation',reason:'model-unavailable'};
   }catch(e){try{recordUnclassifiedTurnFailure(diagnostics,connectionPreferences.diagnosticLogs,activityFailureRecorded,e);}catch{/* Diagnostics must never change the operation result. */}recoverDraft();try{if(currentDialogue().turns.some(t=>t.id===id))await finishTurn(id,{status:searchScopeFailure((e as Error).message,text,!!prior.currentFile,items.length>0)});else view.toast((e as Error).message);}catch(failure){view.failure((failure as Error).message);view.toast((failure as Error).message);}throw e;}

@@ -5,6 +5,7 @@ import {latest,validateGroundingRefs} from '../../../dist/core.js';
 // @ts-expect-error Shared canonical path contract is JavaScript.
 import {notePath} from '../../../dist/files.js';
 export type SavedSourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string};
+export type SourceMetadataGuard={noteId:string;revision:number;snapshot:string};
 export function sourceReferenceForView(source:SavedSourceRef):SavedSourceRef{
  const {noteId,revision,start,end,quote}=source;
  return {noteId,revision,start,end,quote,...(typeof source.citedQuote==='string'&&source.citedQuote&&typeof quote==='string'&&quote.includes(source.citedQuote)?{citedQuote:source.citedQuote}:{})};
