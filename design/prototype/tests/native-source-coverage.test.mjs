@@ -19,3 +19,8 @@ test('conflicting quotations for the same original version and range are rejecte
  const beyond={tool:'memory.search',arguments:{query:'beyond'},result:[{noteId:'note',revision:1,start:192,end:195,quote:'one'}]};
  assert.throws(()=>agentEvidenceFromCalls([...crowded,beyond,{...beyond,result:[{...beyond.result[0],quote:'two'}]}]),/Source.*conflict/);
 });
+
+test('duplicate references never restore grounding eligibility withdrawn by a later observation',()=>{
+ const call=groundingEligible=>({tool:'memory.search',arguments:{query:'note'},result:[{noteId:'note',revision:1,start:0,end:3,quote:'one',groundingEligible}]});
+ for(const calls of [[call(true),call(false)],[call(false),call(true)]])assert.equal(agentEvidenceFromCalls(calls)[0].groundingEligible,false);
+});

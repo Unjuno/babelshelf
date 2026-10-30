@@ -49,13 +49,17 @@ function validSourceRef(value:unknown):value is SourceRef{
  return typeof ref.noteId==='string'&&ref.noteId.length>0&&ref.noteId.length<=160&&typeof ref.revision==='number'&&Number.isSafeInteger(ref.revision)&&ref.revision>0&&typeof ref.start==='number'&&Number.isSafeInteger(ref.start)&&ref.start>=0&&typeof ref.end==='number'&&Number.isSafeInteger(ref.end)&&ref.end>=ref.start&&typeof ref.quote==='string'&&ref.quote.length>0&&ref.end-ref.start===ref.quote.length&&ref.quote.length<=maxObservedQuoteChars&&(ref.title===undefined||typeof ref.title==='string'&&ref.title.length<=240);
 }
 function uniqueBoundedRefs(refs:readonly SourceRef[]):SourceRef[]{
- const out:SourceRef[]=[],seen=new Map<string,string>();let chars=0;
+ const out:SourceRef[]=[],seen=new Map<string,{quote:string;index:number|null}>();let chars=0;
  for(const ref of refs){
   const key=JSON.stringify([ref.noteId,ref.revision,ref.start,ref.end]),previous=seen.get(key);
-  if(previous!==undefined){if(previous!==ref.quote)throw Error('Source quotation conflict');continue;}
-  seen.set(key,ref.quote);
+  if(previous!==undefined){
+   if(previous.quote!==ref.quote)throw Error('Source quotation conflict');
+   if(ref.groundingEligible===false&&previous.index!==null)out[previous.index]={...out[previous.index],groundingEligible:false};
+   continue;
+  }
+  const entry={quote:ref.quote,index:null as number|null};seen.set(key,entry);
   if(out.length>=maxObservedEvidenceRefs||chars+ref.quote.length>maxObservedEvidenceChars)continue;
-  chars+=ref.quote.length;out.push(ref);
+  chars+=ref.quote.length;entry.index=out.length;out.push(ref);
  }
  return out;
 }
