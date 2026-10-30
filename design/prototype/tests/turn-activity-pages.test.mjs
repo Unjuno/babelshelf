@@ -15,6 +15,8 @@ test('paged activity storage preserves legacy receipts and survives backup and r
   const items=[];
   for(let i=0;i<35;i++){const started=startActivity('memory.search',{query:`q${i}`});await store.recordTurnActivity('turn-1',started,dialogue);const finished=finishActivity(started,{output:[i]});await store.recordTurnActivity('turn-1',finished,dialogue);items.push(finished);}
   assert.deepEqual(await store.turnActivities('turn-1'),items);assert.deepEqual((await store.getState('dialogue')).turns[0].activity,[old]);
+  const first=await store.turnActivityPage('turn-1',0),second=await store.turnActivityPage('turn-1',1),last=await store.turnActivityPage('turn-1',2);
+  assert.deepEqual(first.items,items.slice(0,16));assert.equal(first.nextPage,1);assert.deepEqual(second.items,items.slice(16,32));assert.equal(second.nextPage,2);assert.deepEqual(last.items,items.slice(32));assert.equal(last.nextPage,null);await assert.rejects(store.turnActivityPage('turn-1',3),/unavailable/i);
   const snapshot=await store.snapshot();assert.ok(snapshot.runs.filter(r=>r.value?.type==='turn-activity-page').length>1);
   const pack=JSON.stringify(await store.backup());const review=await restored.reviewBackup(pack);await restored.restore(pack,review.expected);
   assert.deepEqual(await restored.turnActivities('turn-1'),items);assert.deepEqual((await restored.getState('dialogue')).turns[0].activity,[old]);

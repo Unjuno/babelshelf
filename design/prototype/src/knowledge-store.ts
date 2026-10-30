@@ -400,6 +400,20 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity record unavailable'));
   });
  }
+ /** Read one bounded activity page and its current continuation. */
+ async turnActivityPage(turnId:string,pageNumber:number):Promise<{items:Activity[];nextPage:number|null}>{
+  const metaKey=turnActivityMetaKey(turnId),pageKey=turnActivityPageKey(turnId,pageNumber),db=await this.open();
+  return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),page=runs.get(pageKey);let pending=2,error:unknown,result:{items:Activity[];nextPage:number|null}={items:[],nextPage:null};
+   const read=()=>{if(--pending)return;try{
+    const value=meta.result as TurnActivityMeta|undefined,record=page.result as TurnActivityPage|undefined;
+    if(!value){if(record||pageNumber!==0)throw Error('Activity page unavailable');return;}
+    validateTurnActivityMeta(metaKey,value);const length=Math.min(TURN_ACTIVITY_PAGE_SIZE,value.count-pageNumber*TURN_ACTIVITY_PAGE_SIZE);
+    if(length<1||!record)throw Error('Activity page unavailable');validateTurnActivityPage(pageKey,record);
+    if(record.turnId!==turnId||record.page!==pageNumber||record.items.length!==length)throw Error('Activity page unavailable');
+    result={items:structuredClone(record.items),nextPage:(pageNumber+1)*TURN_ACTIVITY_PAGE_SIZE<value.count?pageNumber+1:null};
+   }catch(e){error=e;tx.abort();}};meta.onsuccess=read;page.onsuccess=read;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity page unavailable'));
+  });
+ }
  async turnActivities(turnId:string):Promise<Activity[]>{
   const prefix=turnActivityPagePrefix(turnId),metaKey=turnActivityMetaKey(turnId),db=await this.open();
   return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),request=runs.getAll(IDBKeyRange.bound(prefix,prefix+'\uffff'));let result:Activity[]=[],pending=2,error:unknown;
