@@ -89,3 +89,23 @@ test('resetting settings cannot replace a stale reviewed snapshot while opening 
   await store.restoreDefaults(current);assert.equal((await store.views()).filter(note=>note.path.startsWith('Settings/')).length,current.filter(note=>note.path.startsWith('Settings/')).length);
  }finally{store.close();}
 });
+
+test('trash operation freezes its confirmed target before opening storage',async()=>{
+ const store=new KnowledgeStore('trash-target-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'one',path:'Inbox/one.md',body:'One',version:1,history:[]},{id:'two',path:'Inbox/two.md',body:'Two',version:1,history:[]}]);
+  const expectedNotes=await store.views(),action={kind:'delete',target:{kind:'file',value:'one'},expectedNotes,id:'batch-one',label:'one.md'};
+  const saving=store.recoverMemory(action,undefined,undefined);action.target.value='two';
+  await saving;const notes=await store.all();assert.equal(notes.find(note=>note.id==='one').state,'withdrawn');assert.equal(notes.find(note=>note.id==='two').state,'active');
+ }finally{store.close();}
+});
+
+test('folder create and rename freeze their conflict-check snapshots',async()=>{
+ const store=new KnowledgeStore('folder-snapshot-'+crypto.randomUUID());
+ try{
+  await store.initialize([{id:'one',path:'Inbox/Old/one.md',body:'One',version:1,history:[]}]);await store.setState('folders',['Inbox/Old']);
+  const stale=['Inbox/Stale'],creation=store.createFolder('Inbox/New',stale);stale[0]='Inbox/Old';await assert.rejects(creation,/changed/i);
+  const notes=await store.views(),folders=await store.getState('folders'),renaming=store.renameFolder('Inbox/Old','New',notes,folders);notes[0].body='Changed';folders.push('Inbox/Other');
+  await renaming;assert.equal((await store.views()).find(note=>note.id==='one').path,'Inbox/New/one.md');
+ }finally{store.close();}
+});
