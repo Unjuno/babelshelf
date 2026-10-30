@@ -6,6 +6,16 @@ async function openSettingsItem(page:Page,name:string){
  await item.click();
 }
 
+test('a custom package can explicitly select the device clock',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Tools');
+ await page.getByRole('button',{name:'Create tool package',exact:true}).click();
+ const clock=page.getByRole('checkbox',{name:'time.now'});await expect(clock).not.toBeChecked();await clock.check();
+ await page.getByRole('textbox',{name:'Tool code',exact:true}).fill('({ capabilities }) => capabilities.timeNow()');await page.getByRole('button',{name:'Save files'}).click();
+ await expect(page.getByText('Tools/user.my-tool/SKILL.md',{exact:true})).toBeVisible();
+ const body=await page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();try{return (await store.all()).find((note:any)=>note.revisions.at(-1).path==='Tools/user.my-tool/SKILL.md')?.revisions.at(-1).body;}finally{store.close();}});
+ expect(JSON.parse(body.split('\n')[1]).capabilities).toEqual(['time.now']);
+});
+
 test('unsaved tool source survives closing and protects app refresh until explicitly discarded',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Tools');
