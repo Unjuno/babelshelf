@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {inspectCustomToolPackage,inspectImportedCustomToolFiles,createCustomToolPackageFiles,CUSTOM_TOOL_STARTER_CODE} from '../src/custom-tool-package.ts';
+import {validateToolArguments} from '../src/tools/tool-input.ts';
 
 const metadata={id:'user.date-format',version:1,title:'Date format',inputSchema:{type:'object',required:['value'],additionalProperties:false,properties:{value:{type:'string',minLength:1,maxLength:100}}},capabilities:['memory.read']};
 const records=[
@@ -28,6 +29,8 @@ test('package creation stores an editable closed input schema with multiple type
  assert.deepEqual(pkg.inputSchema,inputSchema);
  const metadata=JSON.parse(files[0].body.split('---\n')[1].split('\n---')[0]);assert.deepEqual(metadata.inputSchema,inputSchema);
  assert.throws(()=>createCustomToolPackageFiles({id:'user.bad-schema',title:'Bad schema',instructions:'Use it',code:'({input})=>input',capabilities:[],inputSchema:{...inputSchema,additionalProperties:true}}),/Invalid tool input schema/);
+ assert.throws(()=>createCustomToolPackageFiles({id:'user.bad-schema',title:'Bad schema',instructions:'Use it',code:'({input})=>input',capabilities:[],inputSchema:{...inputSchema,properties:{...inputSchema.properties,expression:{type:['string']}}}}),/Unsupported tool input field/);
+ assert.throws(()=>validateToolArguments({type:'object',required:[],additionalProperties:false,properties:{optional:{type:['string']}}},{}),/Invalid tool input schema/);
 });
 
 test('custom packages may declare the registered local calculator without gaining other access',async()=>{
@@ -42,7 +45,9 @@ test('inspection refuses capability escalation, ambiguous packages and malformed
  for(const bad of [
   change(r=>r[0].body='---\n'+JSON.stringify({...metadata,network:'https'})+'\n---\nUse it.'),
   change(r=>r[0].body='---\n'+JSON.stringify({...metadata,capabilities:['memory.write']})+'\n---\nUse it.'),
+  change(r=>r[0].body='---\n'+JSON.stringify({...metadata,capabilities:[['memory.read']]})+'\n---\nUse it.'),
   change(r=>r[0].body='---\n'+JSON.stringify({...metadata,inputSchema:{type:'object',properties:{value:{type:'string',pattern:'^.*$'}}}})+'\n---\nUse it.'),
+  change(r=>r[0].body='---\n'+JSON.stringify({...metadata,inputSchema:{...metadata.inputSchema,properties:{value:{type:['string']}}}})+'\n---\nUse it.'),
   [...records,records[1]],
  ])await assert.rejects(inspectCustomToolPackage(bad));
 });

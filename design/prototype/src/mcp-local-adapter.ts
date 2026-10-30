@@ -11,7 +11,7 @@ function validSchema(value:unknown):value is ToolInputSchema{
  return Object.values(fields).every(raw=>{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return false;
   const field=raw as Record<string,unknown>,type=field.type;
-  if(!['string','number','integer','boolean'].includes(String(type))||Object.keys(field).some(k=>!['type','description','minLength','maxLength','minimum','maximum'].includes(k)))return false;
+  if(typeof type!=='string'||!['string','number','integer','boolean'].includes(type)||Object.keys(field).some(k=>!['type','description','minLength','maxLength','minimum','maximum'].includes(k)))return false;
   if(field.description!==undefined&&(typeof field.description!=='string'||field.description.length>1000))return false;
   if(type!=='string'&&(field.minLength!==undefined||field.maxLength!==undefined)||type!=='number'&&type!=='integer'&&(field.minimum!==undefined||field.maximum!==undefined))return false;
   if(['minLength','maxLength'].some(k=>field[k]!==undefined&&(!Number.isSafeInteger(field[k])||Number(field[k])<0))||['minimum','maximum'].some(k=>field[k]!==undefined&&(typeof field[k]!=='number'||!Number.isFinite(field[k]))))return false;

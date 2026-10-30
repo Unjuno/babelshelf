@@ -15,7 +15,7 @@ export function validateCustomToolInputSchema(value:unknown):CustomInputSchema{
  for(const [name,raw] of Object.entries(properties)){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid tool input schema');
   const field=raw as Record<string,unknown>,type=field.type;
-  if(!['string','number','integer','boolean'].includes(String(type))||!exactKeys(field,['type','description','minLength','maxLength','minimum','maximum']))throw Error('Unsupported tool input field');
+  if(typeof type!=='string'||!['string','number','integer','boolean'].includes(type)||!exactKeys(field,['type','description','minLength','maxLength','minimum','maximum']))throw Error('Unsupported tool input field');
   if(field.description!==undefined&&!safeText(field.description,240))throw Error('Invalid tool input field');
   if(type!=='string'&&(field.minLength!==undefined||field.maxLength!==undefined)||type==='string'&&(field.minimum!==undefined||field.maximum!==undefined)||type==='boolean'&&(field.minLength!==undefined||field.maxLength!==undefined||field.minimum!==undefined||field.maximum!==undefined))throw Error('Invalid tool input field');
   if(field.minLength!==undefined&&(!Number.isSafeInteger(field.minLength)||Number(field.minLength)<0)||field.maxLength!==undefined&&(!Number.isSafeInteger(field.maxLength)||Number(field.maxLength)<1||Number(field.maxLength)>2000)||field.minLength!==undefined&&field.maxLength!==undefined&&Number(field.minLength)>Number(field.maxLength))throw Error('Invalid tool input field bounds');
@@ -31,7 +31,7 @@ function metadataFrom(skillFile:CustomToolSourceRecord){
  let metadata:unknown;try{metadata=JSON.parse(match[1]);}catch{throw Error('Invalid tool package metadata');}
  if(!metadata||typeof metadata!=='object'||Array.isArray(metadata))throw Error('Invalid tool package metadata');
  const record=metadata as Record<string,unknown>;
- if(!exactKeys(record,['id','version','title','inputSchema','capabilities'])||typeof record.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(record.id)||!Number.isSafeInteger(record.version)||Number(record.version)<1||!safeText(record.title,120)||!Array.isArray(record.capabilities)||record.capabilities.length>4||record.capabilities.some(capability=>!['memory.search','memory.list','memory.read','math.calculate'].includes(String(capability)))||new Set(record.capabilities).size!==record.capabilities.length)throw Error('Invalid tool package metadata');
+ if(!exactKeys(record,['id','version','title','inputSchema','capabilities'])||typeof record.id!=='string'||!/^user\.[a-z][a-z0-9-]{0,47}$/.test(record.id)||!Number.isSafeInteger(record.version)||Number(record.version)<1||!safeText(record.title,120)||!Array.isArray(record.capabilities)||record.capabilities.length>4||record.capabilities.some(capability=>typeof capability!=='string'||!['memory.search','memory.list','memory.read','math.calculate'].includes(capability))||new Set(record.capabilities).size!==record.capabilities.length)throw Error('Invalid tool package metadata');
  return {id:record.id,version:Number(record.version),title:record.title as string,inputSchema:validateCustomToolInputSchema(record.inputSchema),capabilities:[...record.capabilities].sort() as CustomToolCapability[] ,instructions:match[2]};
 }
 

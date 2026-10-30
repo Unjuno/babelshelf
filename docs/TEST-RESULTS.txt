@@ -6800,3 +6800,7 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 - Chromium loaded the adapter fixture and completed MCP discovery and a call after Playwright set the browser context offline (1/1); this does not test an offline PWA restart or any mobile device.
 - Product build and TypeScript check passed; Linux x64 npm ci dry-run passed. The adapter is not connected to the product Agent, does not open external MCP connections, and is not a user-visible capability. Write approval, citations and audit persistence remain the caller's responsibility.
 - Desktop Playwright WebKit also passed the in-memory MCP fixture offline (1/1); this is not a physical iOS test.
+
+2026-10-30 · strict custom-tool and MCP input metadata (Windows PC)
+- A schema field type supplied as an array such as ["string"] and a nested capability array were previously coerced to strings and accepted as metadata. Registration/import and the local MCP adapter now reject these shapes; argument validation also rejects an invalid field type even if that field is omitted. Existing Memory files are not rewritten.
+- Product build c8f347afc9208975, TypeScript check, prototype Node suite 1508/1508 and Chromium offline MCP fixture 1/1 passed. MCP remains an unconnected in-process adapter; the checks do not establish model-selected tool calling or mobile support.

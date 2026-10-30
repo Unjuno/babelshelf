@@ -28,6 +28,7 @@ test('invalid, unknown or non-read-only calls do not reach the host',async()=>{
  }finally{await c.close();}
  assert.throws(()=>createLocalMcpServer({tools:[{...tools[0],effect:'review'}],invoke:async()=>null}),/read-only/);
  assert.throws(()=>createLocalMcpServer({tools:[{...tools[0],inputSchema:{...schema,properties:{query:{type:'invented'}}}}],invoke:async()=>null}),/schemas/);
+ assert.throws(()=>createLocalMcpServer({tools:[{...tools[0],inputSchema:{...schema,properties:{query:{type:['string']}}}}],invoke:async()=>null}),/schemas/);
 });
 test('host failures do not expose private error text to the MCP client',async()=>{
  const c=await connected(async()=>{throw Error('PRIVATE FILE CONTENT');});
