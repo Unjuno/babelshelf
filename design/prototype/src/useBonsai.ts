@@ -4,7 +4,6 @@ import {createLfm3TextBackend} from './lfm3-text-backend';
 import {customLfm3TextModels,describeLfm3Text,lfm3TextModels} from './lfm3-text-manifest';
 import {runtimeStatus} from './runtime-status';
 import {textExecutionRoute} from './text-execution-route';
-import {assertTextRouteAllowed,currentDeviceSignals} from './text-device-policy';
 import './fast-hash';
 import type {EngineGenerationFormat} from './text-inference';
 import {TextEngineRouter} from './text-engine-router';
@@ -60,7 +59,7 @@ export function useBonsai(models:CustomLocalModel[]=[],ready=true,selectedModel=
  async function refreshStatus(){return operation(async check=>{const synced=await syncRegistry(records.current,check);check();const assets=synced??await engine.current.call('status',{model:selection.current});check();setAssets(assets);statusTarget.current=selection.current;setProgress('');return assets;});}
  async function importCustom(record:CustomLocalModel,files:File[]){return operation(async check=>{const models=[...records.current.filter(m=>m.id!==record.id),record];await syncRegistry(models,check);check();await engine.current.call('prepare',{model:record.id,allowNetwork:false,modelFile:files.find(f=>f.name.toLowerCase().endsWith('.gguf')),localFiles:files},events);check();const assets=await engine.current.call('status',{model:record.id});check();setAssets(assets);statusTarget.current=record.id;setProgress('Verified');});}
  async function load(model:string){return operation(async check=>{
-  assertTextRouteAllowed(textExecutionRoute(model,records.current),currentDeviceSignals());
+  if(!textExecutionRoute(model,records.current))throw Error('Selected text engine route unavailable');
   if(!engine.current)throw Error('Storage not ready');if(engine.current.needsRecovery&&await engine.current.recover()){initialized.current=Promise.resolve();configured.current='';statusTarget.current='';webmlConfigured.current='';}check();
   await syncRegistry(records.current,check);check();setLoaded('');
   let acquired:InferenceLease|null=null;if(!residentLease.current)acquired=await inferenceLeaseManager.acquire('Text');

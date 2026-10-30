@@ -14,7 +14,7 @@ import {createLfmTextRuntime} from './lfm-text-runtime.ts';
 import {createTextWorkerHost} from './text-worker-host.ts';
 import {ownChildWorkers} from './owned-workers.ts';
 import {preferHighPerformanceAdapterRequests} from './webgpu-preference.ts';
-import {currentDeviceSignals,textBackendPolicy} from './text-device-policy.ts';
+import {textBackendPolicy} from './text-device-policy.ts';
 
 const owned=ownChildWorkers(self as unknown as {Worker:typeof Worker});
 // Wllama/Emdawn asks navigator.gpu.requestAdapter directly. A separate
@@ -41,5 +41,5 @@ self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  const assets:Record<string,{filesPresent:boolean}>={};
  for(const model of manifest.models){let present=false;try{present=(await readFile(model.id)).size===model.file.bytes;}catch{/* missing is not ready */}assets[model.id]={filesPresent:present};}
  const adapter=new Lfm3Adapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:3072,reusePrompt:true,onProgress:progress});
- return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets,backend:textBackendPolicy(currentDeviceSignals())});
+ return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets,backend:textBackendPolicy()});
 },message=>self.postMessage(message),owned.dispose);
