@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {runReadOnlyAgentLoop,AgentContextCapacityError,AgentToolExecutionError,AgentToolResultTooLargeError} from '../src/agent-loop.ts';
+import {runReadOnlyAgentLoop,AgentContextCapacityError,AgentSourceCapacityError,AgentToolExecutionError,AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 const memoryTools=[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}];
 
 test('agent loop carries each typed tool result into the next planner step and returns the final request',async()=>{
@@ -94,6 +94,14 @@ test('Stop during a context-capacity failure does not start partial-result gener
  let stopped=false,partialCalls=0;const stop=Error('Stopped');
  await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],plan:async history=>{if(history.length){stopped=true;throw new AgentContextCapacityError();}return {kind:'tool',tool:'memory.search',arguments:{query:'x'}};},execute:async()=>[{quote:'evidence'}],onBudgetExhausted:()=>{partialCalls++;return {partial:true};},check:()=>{if(stopped)throw stop;}}),error=>error===stop);
  assert.equal(partialCalls,0);
+});
+
+test('Stop or partial-result failure after source capacity is never hidden or retried',async()=>{
+ for(const mode of ['stop','partial-failure']){
+  let stopped=false,executions=0,partialCalls=0;const failure=Error(mode==='stop'?'Stopped':'Partial result unavailable');
+  await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],plan:async history=>{if(history.length){stopped=mode==='stop';throw new AgentSourceCapacityError();}return {kind:'tool',tool:'memory.search',arguments:{query:'x'}};},execute:async()=>{executions++;return [{quote:'evidence'}];},onBudgetExhausted:()=>{partialCalls++;throw failure;},check:()=>{if(stopped)throw failure;}}),error=>error===failure);
+  assert.equal(executions,1);assert.equal(partialCalls,mode==='stop'?0:1);
+ }
 });
 
 test('budget exhaustion returns completed tool evidence without executing the refused next action',async()=>{
