@@ -1,6 +1,7 @@
 import {newNoteSourceRef} from './note-creation.ts';
 import {createResolvedActions,answerCurrentVisionInput} from './resolved-actions.ts';
 import {makeDialogueCopyReview,type DialogueCopyReview} from './dialogue-copy.ts';
+import {distinctSourceMetadataGuards} from './note-provenance.ts';
 import {resolveReadCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
 import {createInputSubmission} from './input-submission.ts';
@@ -277,7 +278,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    // A native reply may cite an exact search range even after a longer read.
    // Preserve the observed ranges; only legacy generation reselects evidence.
    const toolEvidence=agentToolCalls.length?{used:true as const,refs:agentBudgetReason==='source-capacity'?agentAnswerEvidenceFromCalls(agentToolCalls,customAccessEvidence,true):(request?.reply?agentEvidenceFromCalls:agentAnswerEvidenceFromCalls)(agentToolCalls,customAccessEvidence),calculations:agentCalculationsFromCalls(agentToolCalls),clockReadings:agentClockReadingsFromCalls(agentToolCalls),customResults:agentCustomResultsFromCalls(agentToolCalls),toolInfo:agentToolInfoFromCalls(agentToolCalls),completedToolIds:[...new Set(agentToolCalls.map(call=>call.tool))],memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0,...(agentBudgetExhausted?{budgetExhausted:true}:{})}:undefined;
-   const metadataGuards=agentToolCalls.filter(call=>call.tool==='memory.sources').map(call=>{const page=call.result as {noteId:string;revision:number;snapshot:string};return {noteId:page.noteId,revision:page.revision,snapshot:page.snapshot};});
+   const metadataGuards=distinctSourceMetadataGuards(agentToolCalls.filter(call=>call.tool==='memory.sources').map(call=>{const page=call.result as {noteId:string;revision:number;snapshot:string};return {noteId:page.noteId,revision:page.revision,snapshot:page.snapshot};}));
    if(request?.action==='capture'){
     const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;
     let sources=previous?.refs??[],kind:'original'|'generated'=previous?'generated':'original';

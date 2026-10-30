@@ -6,6 +6,12 @@ import {latest,validateGroundingRefs} from '../../../dist/core.js';
 import {notePath} from '../../../dist/files.js';
 export type SavedSourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string};
 export type SourceMetadataGuard={noteId:string;revision:number;snapshot:string};
+/** Pages of one source report share a snapshot; retain each distinct observation once. */
+export function distinctSourceMetadataGuards(guards:readonly SourceMetadataGuard[]):SourceMetadataGuard[]{
+ const unique=new Map<string,SourceMetadataGuard>();
+ for(const guard of guards)unique.set(JSON.stringify([guard.noteId,guard.revision,guard.snapshot]),guard);
+ return [...unique.values()];
+}
 export function sourceReferenceForView(source:SavedSourceRef):SavedSourceRef{
  const {noteId,revision,start,end,quote}=source;
  return {noteId,revision,start,end,quote,...(typeof source.citedQuote==='string'&&source.citedQuote&&typeof quote==='string'&&quote.includes(source.citedQuote)?{citedQuote:source.citedQuote}:{})};

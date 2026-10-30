@@ -5,10 +5,15 @@ import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {emptyDialogue,appendTurn,completeTurn} from '../src/conversation.ts';
 import {createDialogueWriter} from '../src/dialogue-writer.ts';
-import {noteSourceMetadata} from '../src/note-provenance.ts';
+import {noteSourceMetadata,distinctSourceMetadataGuards} from '../src/note-provenance.ts';
 import {stateHash} from '../src/backup-hash.ts';
 import {makeAnswerCopyReview,reviewedDialogueCopy} from '../src/dialogue-copy.ts';
 import {createNewNoteView} from '../src/note-creation.ts';
+
+test('source pages share a guard without hiding distinct source states',()=>{
+ const first={noteId:'note',revision:1,snapshot:'a'.repeat(64)},changed={...first,snapshot:'b'.repeat(64)},other={...first,noteId:'other'};
+ assert.deepEqual(distinctSourceMetadataGuards([...Array(70).fill(first),changed,other]),[first,changed,other]);
+});
 
 test('saving an answer rechecks its retained source metadata after review',async()=>{
  const store=new KnowledgeStore('metadata-copy-'+crypto.randomUUID());
