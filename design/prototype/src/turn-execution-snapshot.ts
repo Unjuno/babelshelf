@@ -11,6 +11,7 @@ export type TurnExecutionSnapshot=Readonly<{
   ocr:string;
   vision:string;
  }>;
+ settingsRevisions:Readonly<{models:number|null;harness:number|null}>;
  harness:Readonly<{profileId:string;enabledTools:readonly string[];maxToolCalls:number|null;maxResultChars:number}>;
  response:Readonly<{style:ReplyStyle;userGuidance:string}>;
  attachments:readonly Readonly<{id:string;kind:string;status:string;asset?:Readonly<{id:string;revision:1;sha256:string}>;reading?:Readonly<{kind:string;noteId:string;revision:number}>}>[];
@@ -32,6 +33,7 @@ export function captureTurnExecutionSnapshot(input:{
   speechModel:string;
   ocrModel:string;
   visionModel:string;
+  settingsRevisions?:{models:number|null;harness:number|null};
   profile:HarnessProfile;
   replyStyle:ReplyStyle;
   userGuidance:string;
@@ -39,6 +41,8 @@ export function captureTurnExecutionSnapshot(input:{
 }):TurnExecutionSnapshot{
  if(typeof input.turnId!=='string'||!input.turnId||input.turnId.length>128)throw Error('Invalid turn identity');
  if(!input.profile||!Array.isArray(input.profile.enabledTools)||(input.profile.maxToolCalls!==null&&!Number.isSafeInteger(input.profile.maxToolCalls))||!Number.isSafeInteger(input.profile.maxResultChars))throw Error('Invalid active harness profile');
+ const settingsRevisions=input.settingsRevisions??{models:null,harness:null};
+ if(['models','harness'].some(group=>{const revision=settingsRevisions[group as 'models'|'harness'];return revision!==null&&(!Number.isSafeInteger(revision)||revision<1);}))throw Error('Invalid settings revision');
  const attachments=input.attachments.map(item=>{
   if(!item||typeof item.id!=='string'||!item.id||typeof item.kind!=='string'||typeof item.status!=='string')throw Error('Invalid turn attachment identity');
   return Object.freeze({id:item.id,kind:item.kind,status:item.status,...(item.asset?{asset:Object.freeze({...item.asset})}:{}),...(item.reading?{reading:Object.freeze({...item.reading})}:{})});
@@ -51,6 +55,7 @@ export function captureTurnExecutionSnapshot(input:{
    decision:Object.freeze({id:input.decisionModel,revision:input.decisionIdentity.model===input.decisionModel?input.decisionIdentity.revision:null}),
    speech:input.speechModel,ocr:input.ocrModel,vision:input.visionModel,
   }),
+  settingsRevisions:Object.freeze({...settingsRevisions}),
   harness:Object.freeze({profileId:input.profile.id,enabledTools:Object.freeze([...input.profile.enabledTools]),maxToolCalls:input.profile.maxToolCalls,maxResultChars:input.profile.maxResultChars}),
   response:Object.freeze({style:input.replyStyle,userGuidance:input.userGuidance}),
   attachments:Object.freeze(attachments),
@@ -59,5 +64,5 @@ export function captureTurnExecutionSnapshot(input:{
 
 /** Safe-to-record identity: excludes the prompt, guidance, filenames and source text. */
 export function turnExecutionReceipt(snapshot:TurnExecutionSnapshot){
- return Object.freeze({turnId:snapshot.turnId,textModel:snapshot.models.text.id,textRevision:snapshot.models.text.revision,textRuntimeRevision:snapshot.models.text.runtimeRevision,decisionModel:snapshot.models.decision.id,decisionRevision:snapshot.models.decision.revision,harnessProfileId:snapshot.harness.profileId,configuredToolIds:Object.freeze([...snapshot.harness.enabledTools]),attachmentCount:snapshot.attachments.length});
+ return Object.freeze({turnId:snapshot.turnId,textModel:snapshot.models.text.id,textRevision:snapshot.models.text.revision,textRuntimeRevision:snapshot.models.text.runtimeRevision,decisionModel:snapshot.models.decision.id,decisionRevision:snapshot.models.decision.revision,modelSettingsRevision:snapshot.settingsRevisions.models,harnessSettingsRevision:snapshot.settingsRevisions.harness,harnessProfileId:snapshot.harness.profileId,configuredToolIds:Object.freeze([...snapshot.harness.enabledTools]),attachmentCount:snapshot.attachments.length});
 }

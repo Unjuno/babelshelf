@@ -20,7 +20,7 @@ function fixture(){
   knowledge:{},builtinToolPackages:[],builtinToolRegistry:createToolRegistry([{definition,entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate locally.'},{path:'Tools/math.calculate/tool.ts',body:'Bounded calculator'}],run:calculate}]),bonsai:{manifest:{models:[],runtime:{revision:'test-runtime'}},loaded:'',assets:{},load:async()=>{modelCalls++;throw Error('Unexpected model');}},
   decision:{identity:{model:'',revision:'test-decision'},enabled:false,ready:false},ocr:{ready:false},speech:{ready:false,transcribe:async()=>{throw Error('Unexpected speech');}},vision:{describe:async()=>{throw Error('Unexpected vision');}},
   ocrModel:'',ocrLanguage:'eng',speechModel:'',visionModel:'',visionAvailable:false,model:'',decisionModel:'',
-  modelPreferences:{transcriptionLanguage:'auto',customSpeechModels:[],customVisionModels:[],customDecisionModels:[]},harnessPreferences:{replyStyle:'balanced',userGuidance:''},activeHarnessProfile:{id:'test-profile',label:'Test',enabledTools:[],maxToolCalls:4,maxResultChars:10000},connectionPreferences:{diagnosticLogs:false},
+  modelPreferences:{transcriptionLanguage:'auto',customSpeechModels:[],customVisionModels:[],customDecisionModels:[]},harnessPreferences:{replyStyle:'balanced',userGuidance:''},activeHarnessProfile:{id:'test-profile',label:'Test',enabledTools:[],maxToolCalls:4,maxResultChars:10000},settingsRevisions:{models:12,harness:8},connectionPreferences:{diagnosticLogs:false},
   diagnostics:{getItem:()=>null,setItem:()=>{}},
   currentDialogue:()=>dialogue,storedDialogue:()=>dialogue,settled:async()=>{},flushStorage:async()=>{},refreshStorage:async()=>{},refreshSnapshot:async()=>[],
   saveDialogue:async next=>{validateDialogue(next);dialogue=next;events.push('save');},finishTurn:async(id,result)=>{dialogue=completeTurn(dialogue,id,result);},
@@ -52,6 +52,7 @@ test('a selected device clock reaches the final answer through the submission fl
  f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
  assert.equal(await c.run(run=>executeSubmission({text:'What time is it?',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
  assert.match(seen.at(-1),/device-clock/);assert.equal(f.current().turns.at(-1).answer,'Device time noted.');assert.deepEqual(f.current().turns.at(-1).refs,[]);
+ const planReceipt=f.current().turns.at(-1).activity.find(item=>item.tool==='dialogue.plan'&&item.input?.execution);assert.equal(planReceipt.input.execution.modelSettingsRevision,12);assert.equal(planReceipt.input.execution.harnessSettingsRevision,8);
 });
 
 test('an unspecified saved-note search asks for a topic without acquiring a model or reading Memory',async()=>{

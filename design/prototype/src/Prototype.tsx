@@ -938,7 +938,7 @@ export default function Prototype() {
   if(ocrLock.current||pdfLock.current||speechDecodeLock.current||speech.busy||recorder.current||microphoneGate.current.pending||attachments.some(a=>a.status==='Reading'))return toast('Reading attachments');
   if(!storageReady||!dialogueReady||storagePending)return toast('Saving');
   await submissionController.current!.run(run=>executeSubmission({text,attachments},{
-   knowledge,builtinToolRegistry,builtinToolPackages,bonsai,decision,ocr,speech,vision,model,ocrModel,ocrLanguage,speechModel,visionModel,visionAvailable,decisionModel,modelPreferences,harnessPreferences,activeHarnessProfile,connectionPreferences,diagnostics:localStorage,
+   knowledge,builtinToolRegistry,builtinToolPackages,bonsai,decision,ocr,speech,vision,model,ocrModel,ocrLanguage,speechModel,visionModel,visionAvailable,decisionModel,modelPreferences,harnessPreferences,activeHarnessProfile,settingsRevisions:{models:notes.find(record=>record.id==='settings-models')?.version??null,harness:notes.find(record=>record.id==='settings-harness')?.version??null},connectionPreferences,diagnostics:localStorage,
    currentDialogue:()=>dialogue.current,storedDialogue:()=>storedDialogue.current,
    settled:async()=>{await fileFocusQueue.current!.settled();await dialogueWriter.current!.settled();},
    saveDialogue,finishTurn,flushStorage,refreshStorage,refreshSnapshot,ensureProductRuntime,traceProcessing,

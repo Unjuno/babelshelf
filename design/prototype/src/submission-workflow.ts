@@ -82,7 +82,7 @@ export type SubmissionServices={
  speech:{ready:boolean;transcribe:AutomaticReadingAdapterPorts['transcribe']};
  vision:AutomaticReadingAdapterPorts['vision'];
  model:string;ocrModel:string;ocrLanguage:AutomaticReadingAdapterPorts['ocrLanguage'];speechModel:string;visionModel:string;visionAvailable:boolean;decisionModel:string;
- modelPreferences:Preferences['models'];harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;connectionPreferences:Pick<Preferences['connection'],'diagnosticLogs'>;
+ modelPreferences:Preferences['models'];harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;settingsRevisions?:{models:number|null;harness:number|null};connectionPreferences:Pick<Preferences['connection'],'diagnosticLogs'>;
  diagnostics:Pick<Storage,'getItem'|'setItem'>;
  currentDialogue:()=>Dialogue;storedDialogue:()=>Dialogue|undefined;settled:()=>Promise<void>;
  saveDialogue:(next:Dialogue)=>Promise<void>;finishTurn:(id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:NonNullable<DialogueTurn['refs']>,metadata?:import('./note-provenance.ts').SourceMetadataGuard[])=>Promise<void>;
@@ -98,7 +98,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
  const {openNote,startToolPackageFromChat}=view;
  const models=createModelExecutionManager({text:bonsai,decision,ensureRuntime:ensureProductRuntime});
  const {text}=input,items=input.attachments.map(a=>({...a})),id=run.id,checkSend=run.check;
- const snapshot=captureTurnExecutionSnapshot({turnId:id,textModel:serviceModel,textManifest:bonsai.manifest,decisionModel:serviceDecisionModel,decisionIdentity:decision.identity,speechModel:serviceSpeechModel,ocrModel:serviceOcrModel,visionModel:serviceVisionModel,profile:serviceHarnessProfile,replyStyle:serviceHarnessPreferences.replyStyle,userGuidance:serviceHarnessPreferences.userGuidance,attachments:items.map(({id,kind,status,asset,reading})=>({id,kind,status,...(asset?{asset}:{}),...(reading?{reading}:{})}))});
+ const snapshot=captureTurnExecutionSnapshot({turnId:id,textModel:serviceModel,textManifest:bonsai.manifest,decisionModel:serviceDecisionModel,decisionIdentity:decision.identity,speechModel:serviceSpeechModel,ocrModel:serviceOcrModel,visionModel:serviceVisionModel,settingsRevisions:services.settingsRevisions,profile:serviceHarnessProfile,replyStyle:serviceHarnessPreferences.replyStyle,userGuidance:serviceHarnessPreferences.userGuidance,attachments:items.map(({id,kind,status,asset,reading})=>({id,kind,status,...(asset?{asset}:{}),...(reading?{reading}:{})}))});
  const model=snapshot.models.text.id,decisionModel=snapshot.models.decision.id,ocrModel=snapshot.models.ocr,speechModel=snapshot.models.speech,visionModel=snapshot.models.vision,harnessPreferences={replyStyle:snapshot.response.style,userGuidance:snapshot.response.userGuidance};
  const activeHarnessProfile={...serviceHarnessProfile,enabledTools:[...snapshot.harness.enabledTools],maxToolCalls:snapshot.harness.maxToolCalls,maxResultChars:snapshot.harness.maxResultChars};
  const setChatProgress=(value:string)=>run.progress(value);
