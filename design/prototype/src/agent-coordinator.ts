@@ -20,7 +20,7 @@ import {explicitlyNamedSearchResultIds,requestsCompoundSearchTask,requestsImplic
 import {DEFERRED_TOOL_READ_SKILL_CAPABILITY,DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOOL_SEARCH_ID,explicitDeferredToolIds,readDeferredToolSkill,searchDeferredTools} from './deferred-tool-search.ts';
 
 type AgentAttachment={name:string;kind:string;status:string};
-type Trace=<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(result:T)=>unknown)=>Promise<T>;
+type Trace=<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(result:T)=>unknown,failureOf?:(result:T)=>unknown,failureProject?:(error:unknown)=>unknown)=>Promise<T>;
 
 function explicitlyNamesReadTarget(query:string,question:string){
  if(!question.includes(query))return false;
@@ -170,7 +170,7 @@ export async function coordinateAgentTurn(input:{
     const {assistantContent:_transient,...operation}=plan;receipt=operation;
    }
    return {...receipt,...(inference?{inference}:{})};
-  }),
+  },undefined,()=>{const inference=readMetrics();return inference?{inference}:undefined;}),
   hasUsefulEvidence:history=>{
    const calls=history.filter(item=>!item.error);
    return customEvidence.length>0||calls.some(call=>agentEvidenceFromCalls([call]).length>0||agentCalculationsFromCalls([call]).length>0||agentClockReadingsFromCalls([call]).length>0||agentCustomResultsFromCalls([call]).length>0||agentToolInfoFromCalls([call]).length>0);

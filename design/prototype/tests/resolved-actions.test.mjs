@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createResolvedActions} from '../src/resolved-actions.ts';
 import * as application from '../src/resolved-actions.ts';
+import {recordOperation} from '../src/harness-activity.ts';
+import {summarizeTurnWork} from '../src/turn-work-summary.ts';
 import {prepareOriginal,originalNote} from '../src/original-assets.ts';
 import {makeVisionText,visionTextNote} from '../src/vision-text.ts';
 import {visionManifest} from '../src/vision-assets.ts';
@@ -63,6 +65,16 @@ test('generated answer activity retains measured inference only and leaves answe
  assert.equal(savedActivity.output.inference.promptTokens,44);assert.equal(savedActivity.output.inference.outputTokens,7);
  assert.ok(savedActivity.output.inference.countMs>=2.5);assert.ok(savedActivity.output.inference.generationWallMs>0);
  assert.equal(JSON.stringify(savedActivity.output).includes(result.answer),false);assert.equal('sources' in savedActivity.output,false);
+});
+
+test('failed answer inference reaches the persisted receipt and activity summary without answer text',async()=>{
+ const receipts=[],error=Error('PRIVATE_RUNTIME_FAILURE_MARKER');
+ const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+ const f=fixture({trace});f.engine.generate=async()=>{throw error;};
+ await assert.rejects(f.actions.answer({model:'test',question:'PRIVATE_QUESTION_MARKER',mode:'chat',scope:{kind:'conversation'}}),/PRIVATE_RUNTIME_FAILURE_MARKER/);
+ const failed=receipts.at(-1);assert.equal(failed.tool,'knowledge.answer');assert.equal(failed.status,'failed');assert.equal(failed.output.inference.measuredModelCalls,1);assert.ok(Number.isFinite(failed.output.inference.generationWallMs));
+ assert.doesNotMatch(JSON.stringify(failed.output),/PRIVATE_RUNTIME_FAILURE_MARKER|PRIVATE_QUESTION_MARKER/);
+ const summary=summarizeTurnWork(receipts);assert.equal(summary.measuredModelCalls,1);assert.equal(summary.generationMs,failed.output.inference.generationWallMs);assert.equal(summary.tokenCountMs,failed.output.inference.countMs);assert.equal(summary.measuredToolCalls,0);
 });
 
 test('Application explicit search preserves fallback and never starts a model or writes',async()=>{

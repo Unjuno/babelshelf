@@ -33,6 +33,15 @@ test('summary omits unavailable and malformed measurements instead of inventing 
  assert.equal(summarizeTurnWork([activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','failed')]),null);
 });
 
+test('failed inference receipts count only explicit attempted calls and preserve measured timing',()=>{
+ const rows=[
+  activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','failed',{raw:'bad planner output',inference:{measuredModelCalls:1,promptTokens:80,generationWallMs:240}}),
+  activity('knowledge.answer','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','stopped',{inference:{measuredModelCalls:2,promptTokens:100,generationWallMs:500}}),
+  activity('knowledge.answer','2026-01-01T00:00:02.000Z','2026-01-01T00:00:03.000Z','failed',{error:'preflight failed'}),
+ ];
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,promptTokens:180,generationMs:740,measuredToolCalls:0});
+});
+
 test('failed registered calls remain counted as real tool work but unfinished or reversed intervals do not',()=>{
  const rows=[
   activity('memory.read','2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.040Z','failed',{error:'hidden'}),

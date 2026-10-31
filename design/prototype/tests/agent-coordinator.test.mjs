@@ -24,8 +24,8 @@ import {agentToolInfoFromCalls} from '../src/agent-evidence.ts';
 test('native planner protocol failure is recorded and retried once without executing malformed output',async()=>{
  const {value,calls}=input([],{question:'Summarize the previous answer.',context:{...context(),recent:[{id:'prior',user:'Hello',answer:'Previous answer'}],turnCount:1}});let generations=0;const prompts=[],receipts=[];
  value.engine.plannerProtocol='native-tool-calls';value.engine.generate=async(messages)=>{prompts.push(messages);if(++generations===1)throw new PlannerOutputError('Invalid native tool calls','UNTRUSTED','native-tool-call');return {text:JSON.stringify({action:'chat',query:''})};};
- value.trace=(tool,details,work,project)=>recordOperation(tool,details,work,async row=>receipts.push(row),project);
- const result=await coordinateAgentTurn(value);assert.equal(result.final.action,'chat');assert.equal(generations,2);assert.deepEqual(calls,[]);assert.equal(receipts.find(r=>r.status==='failed').error.code,'planner_protocol');assert.equal(prompts[1][0].content,prompts[0][0].content);assert.match(prompts[1].at(-1).content,/previous.*rejected/i);assert.doesNotMatch(JSON.stringify(prompts[1]),/UNTRUSTED/);
+ value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+ const result=await coordinateAgentTurn(value);assert.equal(result.final.action,'chat');assert.equal(generations,2);assert.deepEqual(calls,[]);const failed=receipts.find(r=>r.status==='failed');assert.equal(failed.error.code,'planner_protocol');assert.equal(failed.output.inference.measuredModelCalls,1);assert.ok(failed.output.inference.generationWallMs>=0);assert.equal(failed.output.inference.outputTokens,undefined);assert.equal(prompts[1][0].content,prompts[0][0].content);assert.match(prompts[1].at(-1).content,/previous.*rejected/i);assert.doesNotMatch(JSON.stringify(prompts[1]),/UNTRUSTED/);
 });
 
 test('a native final answer that exposes internal source labels gets one content-only replan',async()=>{

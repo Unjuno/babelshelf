@@ -76,17 +76,20 @@ export type GroundedAnswerRequest={
  model:string;question:string;query?:string;mode?:'answer'|'summary'|'chat';scope:AnswerScope;
  context?:DialogueContext;check?:()=>void;prepareContext?:()=>Promise<DialogueContext>;
  toolEvidence?:AnswerToolEvidence;replyStyle?:ReplyStyle;userGuidance?:string;
+ /** Bounded numeric execution measurements only; generated content is never passed here. */
+ onInference?:(metrics:Readonly<AnswerInference>)=>void;
  /** A terminal native reply already generated from the same observed tool evidence. */
  reply?:SourceLabelAnswer;
 };
 export type GroundedAnswerDependencies={store:Pick<KnowledgeStore,'all'|'search'>;engine:TextRuntime;acquireModel?:()=>Promise<TextRuntime>};
-type AnswerInference={measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number};
+export type AnswerInference={measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number};
 function addMeasurement(total:number|undefined,value:unknown,integer=false){
  if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER||integer&&!Number.isSafeInteger(value))return total;
  const next=(total??0)+value;return Number.isFinite(next)&&next<=Number.MAX_SAFE_INTEGER?next:total;
 }
 /** Capture bounded inference measurements without retaining generated content. */
-function observeAnswerInference(runtime:TextRuntime,usage:AnswerInference):TextRuntime{
+function observeAnswerInference(runtime:TextRuntime,usage:AnswerInference,onInference?:GroundedAnswerRequest['onInference']):TextRuntime{
+ const notify=()=>{try{onInference?.({...usage});}catch{/* Measurement observers must never change inference results. */}};
  return new Proxy(runtime,{get(target,property){
   if(property==='count'){
    const count=Reflect.get(target,property,target) as TextRuntime['count'];
@@ -95,10 +98,13 @@ function observeAnswerInference(runtime:TextRuntime,usage:AnswerInference):TextR
   if(property==='generate'){
    const generate=Reflect.get(target,property,target) as TextRuntime['generate'];
    return async(...args:Parameters<TextRuntime['generate']>)=>{
-    const started=performance.now(),result=await generate.apply(target,args);usage.generationWallMs=addMeasurement(usage.generationWallMs,performance.now()-started);usage.measuredModelCalls++;
-    const promptTokens=addMeasurement(usage.promptTokens,result.metrics?.runtimePromptTokens,true),outputTokens=addMeasurement(usage.outputTokens,result.outputTokens??result.metrics?.outputTokens,true),runtimeCountMs=addMeasurement(usage.countMs,result.metrics?.countMs);
-    if(promptTokens!==undefined)usage.promptTokens=promptTokens;if(outputTokens!==undefined)usage.outputTokens=outputTokens;if(runtimeCountMs!==undefined)usage.countMs=runtimeCountMs;
-    return result;
+    const started=performance.now();usage.measuredModelCalls++;
+    try{
+     const result=await generate.apply(target,args);
+     const promptTokens=addMeasurement(usage.promptTokens,result.metrics?.runtimePromptTokens,true),outputTokens=addMeasurement(usage.outputTokens,result.outputTokens??result.metrics?.outputTokens,true),runtimeCountMs=addMeasurement(usage.countMs,result.metrics?.countMs);
+     if(promptTokens!==undefined)usage.promptTokens=promptTokens;if(outputTokens!==undefined)usage.outputTokens=outputTokens;if(runtimeCountMs!==undefined)usage.countMs=runtimeCountMs;
+     return result;
+    }finally{usage.generationWallMs=addMeasurement(usage.generationWallMs,performance.now()-started);notify();}
    };
   }
   return Reflect.get(target,property,target);
@@ -192,7 +198,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // Evidence selection needs no resident model. Acquire only after the source
  // contract succeeds, through the application's existing ownership manager.
  if(engine.loaded!==model){if(dependencies.acquireModel)engine=await dependencies.acquireModel();else{if(!engine.assets[model]?.filesPresent)throw Error('Model not prepared · Settings');await engine.load(model);}}
- check();if(engine.loaded!==model)throw Error('Text model did not load');engine=engine.pin?.()??engine;engine=observeAnswerInference(engine,inference);
+ check();if(engine.loaded!==model)throw Error('Text model did not load');engine=engine.pin?.()??engine;engine=observeAnswerInference(engine,inference,request.onInference);
  if(answerContext&&prepareContext){answerContext=await prepareContext();check();}
  if(!dialogueOnly&&answerContext&&prepareContext){const fresh=await store.all();check();if(!validateGroundingRefs(fresh,hits).ok)throw Error('Source changed · retry');}
  const citePresentation='Do not print citation labels such as S1/S2 in answer prose; use them only in JSON sources because the app renders citations separately.';

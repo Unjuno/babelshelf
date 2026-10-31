@@ -1,4 +1,4 @@
-import {groundedAnswer,type GroundedAnswerRequest} from './grounded-answer.ts';
+import {groundedAnswer,type AnswerInference,type GroundedAnswerRequest} from './grounded-answer.ts';
 import type {KnowledgeStore,NoteView} from './knowledge-store.ts';
 import type {TextRuntime} from './text-inference.ts';
 import type {DialogueContext} from './conversation.ts';
@@ -54,7 +54,8 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
   async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[];budgetReason?:AgentBudgetReason}={}){
-   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,query:request.query,mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check}),value=>({model:value.model,sourceCount:value.sources.length,...(value.status?{status:value.status}:{}),...(value.inference?{inference:value.inference}:{})}));
+   let observedInference:AnswerInference|undefined;
+   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,...(request.query!==undefined?{query:request.query}:{}),mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check,onInference:metrics=>{observedInference={...metrics};request.onInference?.(metrics);}}),value=>({model:value.model,sourceCount:value.sources.length,...(value.status?{status:value.status}:{}),...(value.inference?{inference:value.inference}:{})}),undefined,()=>observedInference?{inference:observedInference}:undefined);
    check();const {inference:_inference,...answer}=parsed;return {kind:'answer' as const,...answer};
   },
   async schedule(context:DialogueContext){

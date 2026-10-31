@@ -57,23 +57,28 @@ export class ActivityPersistenceError extends Error {
 }
 async function persistActivity(persist:(activity:Activity)=>Promise<void>,activity:Activity){try{await persist(structuredClone(activity));}catch{throw new ActivityPersistenceError();}}
 export function finishActivity(a:Activity,result:{output?:unknown;error?:unknown}):Activity{validateActivity([a]);if(a.status!=='running')throw Error('Activity already finished');let next:Activity;if('error' in result){const error=failure(result.error);next={...a,finishedAt:new Date().toISOString(),status:error.code==='stopped'?'stopped':'failed',error,...(result.output!==undefined?{output:payload(result.output)}:{})};}else next={...a,finishedAt:new Date().toISOString(),status:'succeeded',output:payload(result.output??null)};validateActivity([next]);return structuredClone(next);}
-export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined):Promise<T>{
+export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined):Promise<T>{
  const started=startActivity(tool,input);await persistActivity(persist,started);let result:T;
- try{result=await work();}catch(error){try{await persistActivity(persist,finishActivity(started,{error,...(['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?{output:error.diagnostic}:{})}));}catch{throw new ActivityPersistenceError();}throw error;}
+ try{result=await work();}catch(error){try{
+  const diagnostic=['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?error.diagnostic:undefined;
+  const projected=failureProject(error);
+  const output=diagnostic&&projected&&typeof projected==='object'&&!Array.isArray(projected)?{...diagnostic,...projected}:projected??diagnostic;
+  await persistActivity(persist,finishActivity(started,{error,...(output!==undefined?{output}:{})}));
+ }catch{throw new ActivityPersistenceError();}throw error;}
  let output:unknown,reported:unknown;
  try{output=project(result);reported=failureOf(result);}catch(error){try{await persistActivity(persist,finishActivity(started,{error}));}catch{throw new ActivityPersistenceError();}throw error;}
  // A final persistence failure must not run the tool again or invent a tool failure.
  try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
 }
 export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
- return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined){
+ return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined){
   return recordOperation(tool,input,async()=>{ports.check();const result=await work();ports.check();return result;},async activity=>{
    if(ports.persistActivity)await ports.persistActivity(activity);
    else{const previous=ports.readActivities();if(!previous)throw Error('Input unavailable');await ports.persistActivities(updateActivity(previous,activity));}
    if(activity.status==='failed'||activity.status==='stopped'){
     ports.onFailureRecorded();if(ports.diagnosticsEnabled)try{ports.writeDiagnostic({tool:activity.tool,status:activity.status,code:activity.error?.code??activity.status,message:activity.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}
    }
-  },project,failureOf);
+  },project,failureOf,failureProject);
  };
 }
 /** Preserve old inline receipts and append overflow in separately persisted pages. */

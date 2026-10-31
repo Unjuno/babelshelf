@@ -47,6 +47,12 @@ test('invalid planner output is bounded audit evidence only, never accepted or a
  engine.generate=async()=>({text:raw,stopped:true});const stopped=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>stopped.push(a)),/Stopped/);assert.equal(stopped[1].output,undefined);
  const forged=Object.assign(Error('Invalid model action'),{diagnostic:{raw:'untrusted'}}),generic=[];await assert.rejects(recordOperation('dialogue.plan',{},async()=>{throw forged},async a=>generic.push(a)));assert.equal(generic[1].output,undefined);
 });
+test('a stopped planner retains attempt metrics but never its partial generated text',async()=>{
+ let observed;const entries=[];
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:'PRIVATE_PARTIAL_PLANNER_TEXT',stopped:true})};
+ await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'Find meeting notes.',{summary:'',recent:[],refs:[],turnCount:0},[],{allowedTools:[],history:[],onInference:metrics=>{observed=metrics;}}),async activity=>entries.push(activity),undefined,undefined,()=>observed?{inference:observed}:undefined),/Stopped/);
+ assert.equal(entries[1].status,'stopped');assert.equal(entries[1].output.inference.measuredModelCalls,1);assert.ok(Number.isFinite(entries[1].output.inference.generationWallMs));assert.doesNotMatch(JSON.stringify(entries[1].output),/PRIVATE_PARTIAL_PLANNER_TEXT/);
+});
 test('read-only attempt is persisted before work and records detached exact input/output once',async()=>{
  const events=[];const args=structuredClone(input),out={count:1,ids:['note1']};const result=await recordOperation('memory.search',args,async()=>{assert.equal(events.length,1);assert.equal(events[0].status,'running');args.query='changed';return out;},async a=>events.push(structuredClone(a)));
  assert.equal(result,out);assert.equal(events[1].status,'succeeded');assert.equal(events[1].input.query,input.query);out.ids.push('late');assert.deepEqual(events[1].output.ids,['note1']);assert.equal(events[0].id,events[1].id);
@@ -54,6 +60,13 @@ test('read-only attempt is persisted before work and records detached exact inpu
 test('failed and stopped operations retain typed errors, and a failed start never runs work',async()=>{
  for(const [message,code,status] of [['Model not configured · Settings','not_prepared','failed'],['Source changed · retry','source_changed','failed'],['Stopped','stopped','stopped'],['Model not prepared · Settings','not_prepared','failed'],['Invalid model JSON · retry','invalid_model_output','failed']]){const entries=[];await assert.rejects(recordOperation('knowledge.answer',{question:'q'},async()=>{throw Error(message);},async e=>entries.push(e)),e=>e.message===message);assert.equal(entries[1].status,status);assert.deepEqual(entries[1].error,{code,message});}
  let ran=false;await assert.rejects(recordOperation('memory.search',input,async()=>{ran=true;},async()=>{throw Error('storage unavailable');}),error=>error.code==='persistence_failure');assert.equal(ran,false);
+});
+test('failure projections retain bounded numeric measurements without copying thrown content',async()=>{
+ const entries=[],error=Error('PRIVATE_PROMPT_OR_OUTPUT_MARKER');
+ await assert.rejects(recordOperation('knowledge.answer',{question:'private request'},async()=>{throw error;},async activity=>entries.push(activity),undefined,undefined,()=>({inference:{measuredModelCalls:1,generationWallMs:125.5}})),error);
+ assert.deepEqual(entries[1].output,{inference:{measuredModelCalls:1,generationWallMs:125.5}});
+ assert.doesNotMatch(JSON.stringify(entries[1].output),/PRIVATE_PROMPT_OR_OUTPUT_MARKER|private request/);
+ validateActivity([entries[1]]);
 });
 test('completion persistence failure never re-executes work or rewrites a completed result as a tool failure',async()=>{
  let calls=0,writes=0;await assert.rejects(recordOperation('memory.search',input,async()=>{calls++;return {count:0};},async()=>{if(++writes===2)throw Error('disk full');}),/receipt|record/i);assert.equal(calls,1);assert.equal(writes,2);

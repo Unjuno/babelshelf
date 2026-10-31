@@ -54,7 +54,7 @@ export function plannerScope(context:DialogueContext,inputs=false,question=''):P
 }
 export type AgentPlannerHistoryEntry={tool:string;arguments:Record<string,unknown>;result?:unknown;resultOmitted?:string;batchId?:string;assistantContent?:string;error?:{code:'invalid_tool_input'|'tool_execution'|'search_snapshot_changed'|'result_too_large'|'no_progress_loop'|'batch_not_executed'}};
 const plannerMetricNames=['visibleTextTtftMs','generationMs','generationTokensPerSecond','runtimeTtftMs','runtimePrefillMs','runtimeDecodeMs','runtimeDecodeTokensPerSecond','runtimePromptTokens','runtimeCachedTokens','requestedThreads','runtimeThreads','runtimeObservedGpuLayers','runtimeObservedGpuTotalLayers'] as const;
-export type PlannerInferenceMetrics={promptTokens:number;maxOutputTokens:number;countMs:number;generationWallMs:number;outputTokens?:number}&Pick<RuntimeGenerationMetrics,typeof plannerMetricNames[number]>;
+export type PlannerInferenceMetrics={measuredModelCalls:number;promptTokens:number;maxOutputTokens:number;countMs:number;generationWallMs:number;outputTokens?:number}&Pick<RuntimeGenerationMetrics,typeof plannerMetricNames[number]>;
 export type AgentPlannerContext={allowedTools:readonly AgentToolCapability[];history:readonly AgentPlannerHistoryEntry[];observedSources?:ReadonlyMap<number,readonly SourceRef[]>;maxToolCalls?:number|null;userGuidance?:string;replyStyle?:ReplyStyle;historySelectorRejected?:boolean;deferredToolRejected?:boolean;nativeCallRejected?:boolean|'mixed-final'|'source-label-leak';onPreview?:(text:string)=>void;onInference?:(metrics:PlannerInferenceMetrics)=>void};
 function plannerVisibleTools(agent:AgentPlannerContext|undefined){
  if(!agent)return [];
@@ -366,12 +366,14 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
   if(!fits)throw new AgentContextCapacityError();
  }
  const generationStart=performance.now();
- let generated;try{generated=await engine.generate(messages,maxOutputTokens,format,agent?.onPreview);}catch(error){if(error instanceof PlannerOutputError||error instanceof Error&&error.message==='Stopped')throw error;throw new ModelRuntimeError(error);}if(generated.stopped)throw Error('Stopped');
- const inference:PlannerInferenceMetrics={promptTokens,maxOutputTokens,countMs,generationWallMs:performance.now()-generationStart};
+ const inference:PlannerInferenceMetrics={measuredModelCalls:1,promptTokens,maxOutputTokens,countMs,generationWallMs:0};
+ let generated;try{generated=await engine.generate(messages,maxOutputTokens,format,agent?.onPreview);}catch(error){inference.generationWallMs=performance.now()-generationStart;agent?.onInference?.({...inference});if(error instanceof PlannerOutputError||error instanceof Error&&error.message==='Stopped')throw error;throw new ModelRuntimeError(error);}
+ inference.generationWallMs=performance.now()-generationStart;
  if(typeof generated.outputTokens==='number'&&Number.isSafeInteger(generated.outputTokens)&&generated.outputTokens>=0)inference.outputTokens=generated.outputTokens;
  const metrics=safeRuntimeMetrics(generated.metrics);
  for(const key of plannerMetricNames){const value=metrics?.[key];if(value!==undefined)inference[key]=value;}
- agent?.onInference?.(inference);
+ agent?.onInference?.({...inference});
+ if(generated.stopped)throw Error('Stopped');
  const invalid=(reason:string,message='Invalid model action'):never=>{throw new PlannerOutputError(message,generated.text,reason);};
  let value;try{value=parseJSON(generated.text);}catch{invalid('json','Invalid model JSON');}
  if(!value||typeof value!=='object'||Array.isArray(value))invalid('object');

@@ -283,8 +283,16 @@ test('dialogue-only generation has no knowledge-store dependency while keeping c
  const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{checks++;},scope:{kind:'conversation'},prepareContext:async()=>{prepared++;return context;}});
  assert.equal(reads,0);assert.equal(prepared,1);assert.equal(result.answer,'Hello Mira.');assert.deepEqual(result.sources,[]);assert.ok(checks>1);
  assert.match(JSON.stringify(received),/My name is Mira/);assert.equal(received.at(-1).content,'Hello.');assert.doesNotMatch(JSON.stringify(received),/not evidence/);
- let cancelled=false;await assert.rejects(groundedAnswer({store:store,engine:{...runtime,generate:async()=>{cancelled=true;return {text:'Late output',finishReason:'stop'};}}},{model:'test',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{if(cancelled)throw Error('Stopped');},scope:{kind:'conversation'}}),/Stopped/);assert.equal(reads,0);
+ let cancelled=false;const stoppedMetrics=[];await assert.rejects(groundedAnswer({store:store,engine:{...runtime,generate:async()=>{cancelled=true;return {text:'Late output',finishReason:'stop'};}}},{model:'test',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{if(cancelled)throw Error('Stopped');},scope:{kind:'conversation'},onInference:value=>stoppedMetrics.push(value)}),/Stopped/);assert.equal(reads,0);assert.equal(stoppedMetrics[0].measuredModelCalls,1);assert.doesNotMatch(JSON.stringify(stoppedMetrics),/Late output/);
  await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is in this file?',query:'',mode:'chat',context:context,check:()=>{},scope:({noteId:'file',revision:1}?{kind:'file',file:{noteId:'file',revision:1}}:{kind:'conversation'})}),/Knowledge read must not run/);assert.equal(reads,1);
+});
+
+test('failed answer generation reports only attempted-call timing to its observer',async()=>{
+ const store={all:async()=>{throw Error('Knowledge read must not run');},search:async()=>{throw Error('Search must not run');}},metrics=[];
+ const engine={manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},loaded:'test',assets:{},count:async()=>({prompt_tokens:100}),generate:async()=>{throw Error('PRIVATE_MODEL_FAILURE');}};
+ await assert.rejects(groundedAnswer({store,engine},{model:'test',question:'Hello.',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'},onInference:value=>metrics.push(value)}),/PRIVATE_MODEL_FAILURE/);
+ assert.equal(metrics.length,1);assert.equal(metrics[0].measuredModelCalls,1);assert.ok(Number.isFinite(metrics[0].generationWallMs));assert.equal(metrics[0].outputTokens,undefined);
+ assert.doesNotMatch(JSON.stringify(metrics),/PRIVATE_MODEL_FAILURE|Hello\./);
 });
 
 test('plain original writing stays a conversation even when a small planner would search notes',async()=>{
