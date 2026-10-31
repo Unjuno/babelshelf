@@ -1,3 +1,6 @@
+2026-11-01 — Clean-checkout CI rerun and current gate reconciliation, commit `2574999e47858e7cb7e254cc26e02551da21158b`.
+GitHub Actions Local PWA quality run `41247134550` passed all workflow stages in 10m52s. The first attempt had one transient Settings navigation wait timeout at `Appearance`; the same CI job passed on rerun without a code change. The Settings UI suite had passed locally (16/16), so this is recorded as a flaky navigation signal rather than a code fix. `docs/REMAINING-GATES.md` now points at the current successful commit/run and preserves the initial failure. This CI result covers the automated PC/clean-checkout gates only; it does not establish physical-device inference, live-model quality, or cold offline launch.
+
 2026-10-31 — Metadata-only Memory tool Activity receipts.
 New `memory.search`, `memory.read`, `memory.list` and `memory.sources` receipts retain
 stable source identity/version and bounded operation metadata, while omitting raw
