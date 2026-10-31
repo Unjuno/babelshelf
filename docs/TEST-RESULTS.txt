@@ -3,8 +3,10 @@ The focused Playwright settings-home file passed 11/11 on PC Chromium. Its isola
 IndexedDB fixture removes model fields added after schema v1 while retaining the old
 selected Bonsai 2B value. Reload displays that selection without rewriting the stored
 revision; explicitly adding/selecting LFM3 Q8 then writes one new revision and keeps
-the original body and 2B model entry. This validates a controlled old-record UI flow,
-not every historical user database or physical-device storage behavior.
+the original body and 2B model entry. GitHub Actions run `41149500252` passed the
+complete `test:quality` workflow on commit `47604ba`, including this regression. This
+validates a controlled old-record UI flow, not every historical user database or
+physical-device storage behavior.
 
 2026-10-31 — Additive migration for version-1 settings, build `62f3d2a21f9f36e2`.
 Settings stayed at schemaVersion 1 while model, OCR, vision, font, palette, log and
