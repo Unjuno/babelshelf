@@ -44,9 +44,9 @@ test('text choices expose pinned download size without claiming device readiness
  assert.ok(small>0&&small<standard&&standard<large);
  assert.match(textModelChoiceHint('9B'),/2\.00 GB · experimental · PC prose unstable/);
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
- assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0'),/1\.05 GB · WebGPU first · CPU fallback if unavailable · device execution not tested/);
+ assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0'),/1\.05 GB · Configured route: WebGPU first · CPU fallback if unavailable · device execution not tested/);
  assert.equal(textModelFileSize('lfm3-1.7b-q8-0'),1846238496);
- assert.match(textModelChoiceHint('lfm3-1.7b-q8-0'),/1\.85 GB · WebGPU first · CPU fallback if unavailable · device execution not tested/);
+ assert.match(textModelChoiceHint('lfm3-1.7b-q8-0'),/1\.85 GB · Configured route: WebGPU first · CPU fallback if unavailable · device execution not tested/);
  assert.equal(textModelFileSize('unknown'),null);
 });
 test('custom model choices disclose their app-owned adapter class and untested generation',()=>{
@@ -54,10 +54,10 @@ test('custom model choices disclose their app-owned adapter class and untested g
  const lfm={...model,id:'local-lfm',engine:'wllama-lfm2',label:'Custom LFM2'};
  const qwen35={...model,id:'local-'+'d'.repeat(64),file:{...model.file,sha256:'d'.repeat(64)},engine:'webml-qwen35',label:'Custom Qwen3.5',inspection:{...model.inspection,architecture:'qwen35',tensorTypes:[0,143]}};
  const lfm3={...model,id:'local-'+'e'.repeat(64),file:{...model.file,sha256:'e'.repeat(64)},engine:'wllama-lfm3',label:'Custom LFM3'};
- assert.match(textModelChoiceHint(model.id,[model]),/2\.31 GB · CPU WASM path · execution not tested/);
- assert.match(textModelChoiceHint(lfm.id,[lfm]),/2\.31 GB · CPU WASM path · execution not tested/);
- assert.match(textModelChoiceHint(qwen35.id,[qwen35]),/2\.31 GB · WebGPU path · execution not tested/);
- assert.match(textModelChoiceHint(lfm3.id,[lfm3]),/2\.31 GB · WebGPU first · CPU fallback if unavailable · execution not tested/);
+ assert.match(textModelChoiceHint(model.id,[model]),/2\.31 GB · Configured route: CPU WASM · execution not tested/);
+ assert.match(textModelChoiceHint(lfm.id,[lfm]),/2\.31 GB · Configured route: CPU WASM · execution not tested/);
+ assert.match(textModelChoiceHint(qwen35.id,[qwen35]),/2\.31 GB · Configured route: WebGPU · execution not tested/);
+ assert.match(textModelChoiceHint(lfm3.id,[lfm3]),/2\.31 GB · Configured route: WebGPU first · CPU fallback if unavailable · execution not tested/);
 });
 test('the standard add list contains at least three prepared-path text choices and hides disconnected candidates',()=>{
  const available=settings.models.text.filter(model=>canAddModel('text',model.value));
