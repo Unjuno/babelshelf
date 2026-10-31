@@ -1,5 +1,7 @@
 ## Current status · 2026-11-01
 
+The latest verification-record commit `bdd211b161319224eef315e9796aeac6f79cbe5c` passed clean-checkout CI run **41227943643** in 10m20s. Every stage passed, including the full core/build/acceptance, review/offline, tools/MCP, device/settings, editorial/iOS, and app-update/offline/installed-PWA gates. This is controlled CI evidence; the physical-device and live-model limitations listed in this document remain open.
+
 The verification-record commit `f57227b5bf54eabdf2b7f3ec8d2c9c1eb708a8aa` also passed clean-checkout CI run **41227207361** in 8m21s. All workflow gates passed on the pushed branch; device and live-model caveats above remain unchanged.
 
 Latest clean-checkout CI run **41226345432** passed in 10m19s on the documentation follow-up commit `8f3e21292c9fba0c62123e81b018ad5eb64c81fe`. All workflow stages passed: core/build/acceptance, review and offline calculation, tools/MCP/Markdown, device/settings, editorial/iOS handoff, and app-update/offline/installed-PWA. The implementation change is `57a28430a14ce2116462667667969177c023e9ab`; its dedicated full rerun **41224873205** also passed. These PC/CI results do not establish live-model mobile inference, physical offline cold start, or exhaustive migration behavior for every historic backup.
