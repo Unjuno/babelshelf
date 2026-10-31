@@ -2,7 +2,7 @@ import {workingFileEvidence,workingFileNote,type WorkingFile} from './working-fi
 import {checkAnswerConsistency} from './answer-consistency.ts';
 // This adapter can read evidence and generate prose. It has no write/delete tools.
 // @ts-expect-error Shared baseline core is JavaScript.
-import {parseAnswer,validateGroundingRefs} from '../../../dist/core.js';
+import {parseAnswer,searchNotes,validateGroundingRefs} from '../../../dist/core.js';
 import type {KnowledgeStore} from './knowledge-store';
 import type {TextRuntime} from './text-inference';
 import {readingEvidence,type CurrentInputRef} from './input-readings.ts';
@@ -87,6 +87,28 @@ function addMeasurement(total:number|undefined,value:unknown,integer=false){
  if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER||integer&&!Number.isSafeInteger(value))return total;
  const next=(total??0)+value;return Number.isFinite(next)&&next<=Number.MAX_SAFE_INTEGER?next:total;
 }
+function exactNamedSavedNote(records:any[],subject:string){
+ // A filename/ID selector is an exact read target, not a lexical topic. Resolve
+ // it against canonical metadata first so an ID near the end of a long body
+ // cannot make search return only the ID's surrounding excerpt.
+ if(!/[\p{N}_.\/\\-]/u.test(subject))return null;
+ const fold=(value:string)=>value.normalize('NFKC').trim().toLocaleLowerCase();
+ const wanted=fold(subject),matches=records.filter(note=>{
+  if(note?.state!=='active')return false;
+  const path=typeof note.path==='string'?note.path:'';
+  const filename=path.split(/[\\/]/u).at(-1)??'';
+  const stem=filename.replace(/\.(?:md|markdown|txt)$/iu,'');
+  const title=typeof note.revisions?.at(-1)?.title==='string'?note.revisions.at(-1).title:'';
+  return [note.id,path,filename,stem,title].some(value=>typeof value==='string'&&fold(value)===wanted);
+ });
+ if(matches.length>1)throw Error('More than one saved file matches this name · use its full path');
+ return matches[0]??null;
+}
+function exactNamedNoteQuestion(question:string,subject:string){
+ const escaped=subject.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+ const withoutName=question.replace(new RegExp(escaped,'iu'),' ');
+ return withoutName.replace(/[\s,，:：()[\]{}「」『』"“”]+/gu,' ').trim()||question;
+}
 /** Capture bounded inference measurements without retaining generated content. */
 function observeAnswerInference(runtime:TextRuntime,usage:AnswerInference,onInference?:GroundedAnswerRequest['onInference']):TextRuntime{
  const notify=()=>{try{onInference?.({...usage});}catch{/* Measurement observers must never change inference results. */}};
@@ -145,16 +167,18 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // enumerate/index every note merely to validate an empty citation list.
  const dialogueOnly=mode==='chat'&&!workingFile&&!inputReadings.length;
  const pinnedRecords=workingFile?await store.all():undefined;
- let hits:(SourceRef&{coverage?:string;score?:number})[]=toolEvidence?.used&&!calculationOnlyScope?[...toolEvidence.refs]:workingFile?workingFileEvidence(pinnedRecords!,workingFile,question):inputReadings.length?readingEvidence(await store.all(),inputReadings,query):mode==='chat'?[]:await store.search(query);
+ const records=dialogueOnly?[]:await store.all();
+ const englishSubject=scope.kind==='knowledge'&&!toolEvidence?.used?namedEnglishSavedSubject(question):null;
+ const namedSubject=scope.kind==='knowledge'&&!toolEvidence?.used?(namedJapaneseSavedSubject(question)||englishSubject):null;
+ const exactNamed= namedSubject?exactNamedSavedNote(records,namedSubject):null;
+ let hits:(SourceRef&{coverage?:string;score?:number})[]=toolEvidence?.used&&!calculationOnlyScope?[...toolEvidence.refs]:workingFile?workingFileEvidence(pinnedRecords!,workingFile,question):inputReadings.length?readingEvidence(records,inputReadings,query):mode==='chat'?[]:exactNamed?searchNotes([exactNamed],exactNamedNoteQuestion(question,namedSubject!),12):await store.search(query);
  if(toolEvidence?.memoryUsed&&workingFile)hits.push(...workingFileEvidence(pinnedRecords!,workingFile,question));
  if(toolEvidence?.memoryUsed&&inputReadings.length)hits.push(...readingEvidence(await store.all(),inputReadings,query));
  hits=hits.filter((ref,index,all)=>all.findIndex(value=>value.noteId===ref.noteId&&value.revision===ref.revision&&value.start===ref.start&&value.end===ref.end)===index);
  if(!toolEvidence?.used&&!hits.length&&!workingFile&&mode!=='chat'&&!inputReadings.length)hits=await store.search(question);
  if(request.reply===undefined&&toolEvidence?.used&&toolEvidence.memoryUsed&&!calculationOnlyScope&&!hits.length&&mode!=='chat'&&!inputReadings.length){if(workingFile)hits=workingFileEvidence(pinnedRecords!,workingFile,question);else hits=await store.search(question);}
  if(toolEvidence?.used&&!calculationOnlyScope&&!hits.length&&!inputReadings.length&&!workingFile&&!operationalEvidence&&request.reply?.status!=='insufficient_evidence')throw Error('No matching notes');
- const records=dialogueOnly?[]:await store.all(),pinned=(workingFile||toolEvidence?.used||mode==='chat'?[]:context?.refs??[]).filter(ref=>validateGroundingRefs(records,[ref]).ok);check();
- const englishSubject=scope.kind==='knowledge'&&!toolEvidence?.used?namedEnglishSavedSubject(question):null;
- const namedSubject=scope.kind==='knowledge'&&!toolEvidence?.used?(namedJapaneseSavedSubject(question)||englishSubject):null;
+ const pinned=(workingFile||toolEvidence?.used||mode==='chat'?[]:context?.refs??[]).filter(ref=>validateGroundingRefs(records,[ref]).ok);check();
  if(namedSubject){const matching=new Set(records.filter((n:any)=>{const current=n.revisions?.at(-1);return [current?.path,current?.title,current?.body,...(n.aliases??[])].some(value=>typeof value==='string'&&matchesNamedSource(value,namedSubject,!!englishSubject));}).map((n:any)=>n.id));hits=hits.filter((ref:any)=>matching.has(ref.noteId));}
  // A changed search result is not an empty search. Never replace it with an
  // unrelated historical source after another tab edits/withdraws the result.

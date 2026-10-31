@@ -65,11 +65,12 @@ test('an unspecified saved-note search asks for a topic without acquiring a mode
 
 test('a named saved-note ID reaches grounded answer and exact citation through Send',async()=>{
  const f=fixture(),c=createSubmissionController(),mark='LFM3-Q8-product-flow';
- const target=createNote({path:`Inbox/${mark}.md`,body:'The emergency water reserve is exactly 24 litres.'});
+ const keyFact='The emergency water reserve is exactly 24 litres.';
+ const target=createNote({path:`Inbox/${mark}.md`,body:'Routine inventory record. '.repeat(32)+keyFact+' Identifier: '+mark+'.'});
  const decoy=createNote({path:'Inbox/emergency-water.md',body:'The emergency water reserve is exactly 80 litres.'});
- const records=[target,decoy],queries=[];
+ const records=[target,decoy],queries=[];let evidence=[];
  f.services.model='test';
- f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'{"answer":"24 litres","sources":["S1"]}',finishReason:'stop'}),load:async()=>{throw Error('Already loaded');}};
+ f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{const payload=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);evidence=payload.evidence;return {text:'{"answer":"24 litres","sources":["S1"]}',finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
  f.services.knowledge={getState:async()=>undefined,all:async()=>records,views:async()=>records.map(projectNote),search:async query=>{queries.push(query);return searchNotes(records,query);}};
  f.services.refreshSnapshot=async()=>records.map(projectNote);
  const question=`In my saved note ${mark}, exactly how many litres is the emergency water reserve?`;
@@ -79,7 +80,9 @@ test('a named saved-note ID reaches grounded answer and exact citation through S
  assert.equal(turn.answer,'24 litres');
  assert.equal(turn.refs.length,1);
  assert.equal(turn.refs[0].noteId,target.id);
- assert.equal(turn.refs[0].quote,target.revisions[0].body);
+ assert.ok(turn.refs[0].quote.includes(keyFact));
+ assert.ok(evidence[0].quote.includes(keyFact));
+ assert.ok(!evidence[0].quote.includes('exactly 80 litres'));
 });
 
 test('cancelling a search clarification does not search or load a model',async()=>{
