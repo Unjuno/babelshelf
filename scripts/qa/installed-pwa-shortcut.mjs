@@ -19,7 +19,7 @@ export function belongsToInstalledPwaProfile(entry,profileDir){
 export async function removeOwnedInstalledPwaShortcut(profileDir,{platform=process.platform,run=execFileSync,remove=unlink,stat=lstat}={}){
  if(platform!=='win32')return {removed:0,reason:'not-windows'};
  if(!absolutePath(profileDir))throw Error('Installed PWA profile path must be absolute');
- const script='$desktop=[Environment]::GetFolderPath("Desktop");$shell=New-Object -ComObject WScript.Shell;$items=@(Get-ChildItem -LiteralPath $desktop -Filter "BabelShelf*.lnk" -File -ErrorAction SilentlyContinue | ForEach-Object {$s=$shell.CreateShortcut($_.FullName);[pscustomobject]@{path=$_.FullName;target=$s.TargetPath;arguments=$s.Arguments}});ConvertTo-Json -InputObject $items -Compress';
+ const script='$desktop=[Environment]::GetFolderPath("Desktop");$shell=New-Object -ComObject WScript.Shell;$items=@(Get-ChildItem -LiteralPath $desktop -File -ErrorAction SilentlyContinue | Where-Object {$_.Extension -eq ".lnk" -and $_.BaseName -match "^(BabelShelf|Memory)"} | ForEach-Object {$s=$shell.CreateShortcut($_.FullName);[pscustomobject]@{path=$_.FullName;target=$s.TargetPath;arguments=$s.Arguments}});ConvertTo-Json -InputObject $items -Compress';
  const output=run('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',windowsHide:true});
  const entries=JSON.parse(String(output).replace(/^\uFEFF/,''));
  if(!Array.isArray(entries))throw Error('Invalid desktop shortcut inventory');
