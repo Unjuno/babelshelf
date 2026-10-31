@@ -8,7 +8,7 @@ Current runtime, ownership and dependency boundaries: [application architecture]
 
 ## Run the native PWA locally
 
-Use Node.js **22.18+** or a compatible newer version; development was checked with **24.6.0**. From the repository root:
+Use Node.js **22.18+** or a compatible newer version. CI uses the exact Node/npm versions in [`.node-version`](.node-version) and verifies both before installing dependencies. From the repository root:
 
 ```sh
 npm --prefix design/prototype ci
