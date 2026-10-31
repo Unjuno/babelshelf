@@ -17,11 +17,18 @@ test('many operation results remain validated and a native answer is not regener
  assert.throws(()=>agentToolInfoFromCalls(bad),/identity changed/);
 });
 
-test('legacy generation fails explicitly when operation data cannot fit its context',async()=>{
+test('operation data that cannot fit the final context is not silently dropped and gets an actionable error',async()=>{
  const toolInfo=agentToolInfoFromCalls(Array.from({length:65},(_,i)=>({tool:'tools.search',arguments:{query:`term-${i}`},result:[]})));
  const engine={loaded:'test',manifest:{contextTokens:1024,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1000}),generate:async()=>{throw Error('Unexpected generation');}};
  const store={all:async()=>[],search:async()=>{throw Error('Unexpected search');}};
- await assert.rejects(groundedAnswer({store,engine},{model:'test',question:'Summarize tool discovery.',query:'tool discovery',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],toolInfo,memoryUsed:false}}),/Input exceeds context limit/);
+ await assert.rejects(groundedAnswer({store,engine},{model:'test',question:'Summarize tool discovery.',query:'tool discovery',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],toolInfo,memoryUsed:false}}),/Answer with tool results exceeds context · narrow the request and retry/);
+ await assert.rejects(groundedAnswer({store,engine},{model:'test',question:'Summarize tool discovery.',query:'tool discovery',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],toolInfo:toolInfo.slice(0,1),memoryUsed:false}}),/Answer with tool results exceeds context · narrow the request and retry/);
+});
+
+test('Stop after final-input token counting wins over context exhaustion',async()=>{
+ const stop=Error('Stopped'),engine={loaded:'test',manifest:{contextTokens:1024,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:1000}),generate:async()=>{throw Error('Unexpected generation');}};
+ const store={all:async()=>[],search:async()=>{throw Error('Unexpected search');}};
+ await assert.rejects(groundedAnswer({store,engine},{model:'test',question:'Summarize tool discovery.',query:'tool discovery',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],toolInfo:[{tool:'tools.search',arguments:{query:'x'},result:[]}],memoryUsed:false},check:()=>{throw stop;}}),error=>error===stop);
 });
 
 test('many clock readings remain independently validated for a native terminal answer',async()=>{

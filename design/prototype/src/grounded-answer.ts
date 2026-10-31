@@ -207,9 +207,12 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const evidence:any[]=[];
  const answerFormat=(sourceCount:number):GenerationFormat=>mode==='chat'?'prose':{type:'grounded-answer',sourceCount};
  let messages=input([]),format=answerFormat(0);
- const initialTokens=(await engine.count(messages,format)).prompt_tokens;
+ const initialTokens=(await engine.count(messages,format)).prompt_tokens;check();
  const availableOutputTokens=engine.manifest.contextTokens-initialTokens;
- if(availableOutputTokens<128)throw Error('Input exceeds context limit');check();
+ if(availableOutputTokens<128){
+  const operationResultCount=toolInfo.length+customResults.length+calculations.length+clockReadings.length;
+  throw Error(operationResultCount?'Answer with tool results exceeds context · narrow the request and retry':'Input exceeds context limit · shorten the message or reduce retained context');
+ }
  const outputLimits=mode==='chat'?dialogueOutputLimits(replyStyle,question,availableOutputTokens):undefined;
  const modelOutputLimit=engine.manifest.maxOutputTokens??availableOutputTokens;
  let replyTokens=Math.min(outputLimits?.segment??groundedOutputTokens(replyStyle,question,availableOutputTokens),modelOutputLimit,availableOutputTokens);
