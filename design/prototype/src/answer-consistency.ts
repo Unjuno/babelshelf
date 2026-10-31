@@ -6,10 +6,40 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // a distance or a proximity relation. Permit the claim only when the source
  // states that comparison, or contains two comparable measured distances.
  const evidence=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?[item.quote.normalize('NFKC')]:[]);
- const distanceUnits=(text:string)=>[...text.matchAll(/([0-9]+(?:[.,][0-9]+)?)\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])/giu)].map(match=>{
-  const unit=match[2].toLocaleLowerCase();return /^(?:km|kilomet|キロ)/u.test(unit)?'km':/^(?:mi|mile)/u.test(unit)?'mi':'m';
- });
- const comparableDistanceEvidence=['km','m','mi'].some(unit=>evidence.reduce((count,text)=>count+distanceUnits(text).filter(value=>value===unit).length,0)>=2);
+ const distancePattern='([0-9]+(?:[.,][0-9]+)?)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';
+ const distanceInMeters=(amount:string,unit:string)=>{
+  const value=Number(amount.replace(',','.')),normalized=unit.toLocaleLowerCase();
+  if(!Number.isFinite(value)||value<=0)return null;
+  if(/^(?:km|kilomet|キロ)/u.test(normalized))return value*1000;
+  if(/^(?:mi|mile)/u.test(normalized))return value*1609.344;
+  return value;
+ };
+ const measuredPlaces=(text:string)=>{
+  const found:{name:string;meters:number}[]=[];
+  const add=(name:string,amount:string,unit:string)=>{
+   const meters=distanceInMeters(amount,unit),normalized=name.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
+   if(meters!==null&&normalized.length>1)found.push({name:normalized,meters});
+  };
+  // Only bind distances that are explicitly attached to a named place. A
+  // pair of numbers somewhere in the citations is not comparison evidence.
+  for(const clause of text.split(/[,;，；、。\n]|\band\b/giu)){
+   const japanese=new RegExp(`([\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{N}A-Za-z・ー]{2,40}?)(?:まで|は|が|から)\\s*(?:約|およそ)?${distancePattern}`,'giu');
+   for(const match of clause.matchAll(japanese))add(match[1],match[2],match[3]);
+   const english=new RegExp(`([\\p{L}\\p{N}][\\p{L}\\p{N}'’ -]{1,48}?)\\s+(?:is\\s+)?(?:about\\s+)?${distancePattern}`,'giu');
+   for(const match of clause.matchAll(english))add(match[1].replace(/\\s+is$/iu,''),match[2],match[3]);
+   const afterUnit=new RegExp(`${distancePattern}\\s+(?:from|to)\\s+([\\p{L}\\p{N}][\\p{L}\\p{N}'’ -]{1,48})`,'giu');
+   for(const match of clause.matchAll(afterUnit))add(match[3],match[1],match[2]);
+  }
+  return found;
+ };
+ const comparisonPlaces=(sentence:string)=>{
+  const places:string[]=[];
+  for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)(?:の方が|のほうが)(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[1]);
+  for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)より(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[1]);
+  for(const match of sentence.matchAll(/([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40}?)\s+(?:is\s+)?(?:closer|nearer|nearest)\s+than\s+([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40})/giu))places.push(match[1].replace(/\s+is$/iu,''),match[2]);
+  for(const match of sentence.matchAll(/([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40}?)\s+(?:is\s+)?(?:closer|nearer|nearest)\b/giu))places.push(match[1].replace(/\s+is$/iu,''));
+  return [...new Set(places.map(value=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase()).filter(value=>value.length>1))];
+ };
  const normalizeClaim=(value:string)=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase();
  const comparativeLocationSentences=a.split(/[。.!！?？\n]+/u).map(value=>value.trim()).filter(Boolean).filter(value=>/(?:の方が|のほうが|より)\s*(?:ずっと|もっと)?近(?:い|く|かった|いです|かったです)|\b(?:closer|nearer|nearest)\b/iu.test(value));
  for(const sentence of comparativeLocationSentences){
@@ -19,7 +49,19 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   const uncertainty=/(?:どちら|どっち|どの場所|どの地点).{0,24}近.{0,60}(?:分から|わから|判断でき|特定でき|記載.{0,6}(?:ない|ありません)|書かれて.{0,6}(?:ない|いません)|不明|cannot determine|can't determine|unable to determine|not stated|no distance)/iu.test(sentence);
   if(uncertainty)continue;
   const supported=evidence.some(source=>[...claims,...englishClaims].some(claim=>normalizeClaim(source).includes(normalizeClaim(claim))));
-  if(!supported&&!comparableDistanceEvidence)throw Error('Answer contains unsupported location comparison · try again');
+  const operands=comparisonPlaces(sentence);
+  const supportedByMeasuredDistances=operands.length>0&&evidence.some(source=>{
+   const measurements=measuredPlaces(source),byPlace=new Map<string,number[]>();
+   for(const measurement of measurements){const values=byPlace.get(measurement.name)??[];values.push(measurement.meters);byPlace.set(measurement.name,values);}
+   const placeKey=(value:string)=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase();
+   const matching=(name:string)=>[...byPlace].find(([candidate])=>placeKey(candidate).includes(placeKey(name))||placeKey(name).includes(placeKey(candidate)));
+   const left=matching(operands[0]);if(!left||left[1].length!==1)return false;
+   if(operands.length>1){
+    const right=matching(operands[1]);return !!right&&right[0]!==left[0]&&right[1].length===1&&left[1][0]<right[1][0];
+   }
+   return [...byPlace].filter(([name,values])=>name!==left[0]&&values.length===1).length>0&&[...byPlace].filter(([name,values])=>name!==left[0]&&values.length===1).every(([,values])=>left[1][0]<values[0]);
+  });
+  if(!supported&&!supportedByMeasuredDistances)throw Error('Answer contains unsupported location comparison · try again');
  }
  const colorQuestion=/(?:何色|どんな色|何の色|what colou?r|which colou?r)/iu.test(q);
  const onlyQuantity=/^(?:(?:約|およそ)\s*)?(?:[0-9０-９.,]+|[零〇一二三四五六七八九十百千万]+)\s*(?:リットル|リッター|ミリリットル|キログラム|グラム|メートル|lit(?:er|re)s?|millilit(?:er|re)s?|kilograms?|grams?|meters?|metres?|l|ml|kg|g|m)(?:\s*です)?[。.!！\s]*$/iu.test(a);
