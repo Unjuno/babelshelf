@@ -22,6 +22,7 @@ test('an existing three-call setting is preserved until the user reviews and app
  await expect(page.getByRole('dialog',{name:'Review changes'})).toBeHidden();
  await expect(page.getByRole('button',{name:'Review call limit',exact:true})).toHaveCount(0);
  await expect(page.getByRole('region',{name:'Assistant profile',exact:true}).getByText('No profile limit',{exact:true})).toBeVisible();
+ await expect(page.getByText('Context and storage still apply',{exact:true})).toBeVisible();
 });
 
 test('an untouched schema-1 Standard default is modernized only after full before/after review',async({page})=>{
