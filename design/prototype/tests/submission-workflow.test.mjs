@@ -63,6 +63,25 @@ test('an unspecified saved-note search asks for a topic without acquiring a mode
  assert.equal(f.modelCalls(),0);
 });
 
+test('a named saved-note ID reaches grounded answer and exact citation through Send',async()=>{
+ const f=fixture(),c=createSubmissionController(),mark='LFM3-Q8-product-flow';
+ const target=createNote({path:`Inbox/${mark}.md`,body:'The emergency water reserve is exactly 24 litres.'});
+ const decoy=createNote({path:'Inbox/emergency-water.md',body:'The emergency water reserve is exactly 80 litres.'});
+ const records=[target,decoy],queries=[];
+ f.services.model='test';
+ f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'{"answer":"24 litres","sources":["S1"]}',finishReason:'stop'}),load:async()=>{throw Error('Already loaded');}};
+ f.services.knowledge={getState:async()=>undefined,all:async()=>records,views:async()=>records.map(projectNote),search:async query=>{queries.push(query);return searchNotes(records,query);}};
+ f.services.refreshSnapshot=async()=>records.map(projectNote);
+ const question=`In my saved note ${mark}, exactly how many litres is the emergency water reserve?`;
+ assert.equal(await c.run(run=>executeSubmission({text:question,attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.deepEqual(queries,[mark]);
+ const turn=f.current().turns.at(-1);
+ assert.equal(turn.answer,'24 litres');
+ assert.equal(turn.refs.length,1);
+ assert.equal(turn.refs[0].noteId,target.id);
+ assert.equal(turn.refs[0].quote,target.revisions[0].body);
+});
+
 test('cancelling a search clarification does not search or load a model',async()=>{
  const f=fixture(),c=createSubmissionController();
  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'q',user:'保存したメモを探して',status:'What should I search for?'}]});
