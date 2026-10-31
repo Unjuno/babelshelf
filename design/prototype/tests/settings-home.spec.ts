@@ -72,6 +72,24 @@ test('pinned LFM3 context window is selectable and persists without loading mode
  await expect(page.getByText('Loaded',{exact:true})).toHaveCount(0);
 });
 
+test('older schema-1 settings keep the selected model until an explicit edit adds a history revision',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('button',{name:'Input',exact:true})).toBeVisible();
+ const legacyBody=await page.evaluate(async()=>{
+  const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();
+  try{const db=await store.open();return await new Promise<string>((resolve,reject)=>{
+   const tx=db.transaction(['notes'],'readwrite'),notes=tx.objectStore('notes'),request=notes.get('settings-models');let body='';
+   request.onsuccess=()=>{const record=request.result;if(!record){tx.abort();return;}const revision=record.revisions.at(-1),match=revision.body.match(/^# Models\n\n```json\n([\s\S]+)\n```\n?$/);if(!match){tx.abort();return;}const models=JSON.parse(match[1]);models.textModel='2B';for(const key of ['textLibrary','decisionLibrary','transcriptionLanguage','ocrModel','ocrLibrary','ocrLanguage','visionModel','visionLibrary','customModels','customDecisionModels','customSpeechModels','customVisionModels','customSets','lfm3ContextTokens'])delete models[key];body=`# Models\n\n\`\`\`json\n${JSON.stringify(models,null,2)}\n\`\`\`\n`;revision.body=body;notes.put(record);};
+   tx.oncomplete=()=>resolve(body);tx.onabort=()=>reject(tx.error??Error('Legacy settings fixture failed'));tx.onerror=()=>reject(tx.error??Error('Legacy settings fixture failed'));
+  });}finally{store.close();}
+ });
+ await page.reload();await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Text model',exact:true})).toContainText('Bonsai 2 · 2B');
+ const readBack=async()=>page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();try{const db=await store.open();return await new Promise<any>((resolve,reject)=>{const tx=db.transaction(['notes'],'readonly'),request=tx.objectStore('notes').get('settings-models');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}finally{store.close();}});
+ const untouched=await readBack();expect(untouched.revisions.at(-1).body).toBe(legacyBody);expect(untouched.revisions).toHaveLength(1);
+ await page.getByRole('button',{name:'Browse text models',exact:true}).click();await page.getByRole('button',{name:'Add LFM3 · 1.7B · Q8_0',exact:true}).click();
+ const saved=await readBack(),latest=JSON.parse(saved.revisions.at(-1).body.match(/```json\n([\s\S]+)\n```/)[1]);expect(saved.revisions).toHaveLength(2);expect(saved.revisions[0].body).toBe(legacyBody);expect(latest.textModel).toBe('lfm3-1.7b-q8-0');expect(latest.textLibrary).toContain('2B');expect(latest.textLibrary).toContain('lfm3-1.7b-q8-0');
+});
+
 test('one malformed settings file can be recovered without restoring the other settings',async({page})=>{
  await page.goto('/');
  await expect(page.getByRole('button',{name:'Input',exact:true})).toBeVisible();
