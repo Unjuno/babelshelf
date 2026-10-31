@@ -1,3 +1,17 @@
+2026-10-31 — Exact cited-phrase highlight, build `0e125b6642a405ca`.
+The source sheet previously highlighted the full retrieved passage when the model
+selected a shorter exact `citedQuote`. It now narrows the highlight only when that
+exact phrase occurs once inside the host-validated original range. Repeated phrases
+remain highlighted as the full verified passage because their exact location is
+ambiguous; a malformed range is not highlighted. No source ID, revision, canonical
+range, original bytes, or saved answer is rewritten. Citation preview tests passed
+4/4, full prototype tests 1,629/1,629, root tests 235/235, product acceptance 8/8,
+prototype TypeScript, `npm run check`, and `git diff --check`. The 163-asset product
+build passed. This verifies source-sheet presentation using controlled component
+fixtures; it does not prove model claims are semantically entailed by citations or
+physical-device behavior. The focused live model flow was not rerun for this UI-only
+change.
+
 2026-10-31 — Offline QA profile lifecycle and product restart flow, build `ac8ffccd13a2cb59`.
 The default `scripts/qa/offline-process.mjs` invocation previously left its uniquely
 generated persistent browser profile and result directory in `%TEMP%` on success or
