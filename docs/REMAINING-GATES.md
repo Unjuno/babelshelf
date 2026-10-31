@@ -1,5 +1,7 @@
 ## Current status · 2026-11-01
 
+The verification-record commit `f57227b5bf54eabdf2b7f3ec8d2c9c1eb708a8aa` also passed clean-checkout CI run **41227207361** in 8m21s. All workflow gates passed on the pushed branch; device and live-model caveats above remain unchanged.
+
 Latest clean-checkout CI run **41226345432** passed in 10m19s on the documentation follow-up commit `8f3e21292c9fba0c62123e81b018ad5eb64c81fe`. All workflow stages passed: core/build/acceptance, review and offline calculation, tools/MCP/Markdown, device/settings, editorial/iOS handoff, and app-update/offline/installed-PWA. The implementation change is `57a28430a14ce2116462667667969177c023e9ab`; its dedicated full rerun **41224873205** also passed. These PC/CI results do not establish live-model mobile inference, physical offline cold start, or exhaustive migration behavior for every historic backup.
 
 Preference migration follow-up commits `5edc3d7` and `897391f`, plus the regenerated offline shell `4488cfb`, passed full clean-checkout CI **41214132530** in 9m05s. Local `npm test` passed 246/246 after those changes. Schema-2 settings preserve explicit current values while projecting v0/v1 records in memory; the service-worker network authority accepts schemas 1 and 2 and rejects future or malformed versions. These checks establish the current code path, not an exhaustive audit of every deployed user backup.
