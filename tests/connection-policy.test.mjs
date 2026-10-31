@@ -27,7 +27,7 @@ test('current versioned connection records and legacy records share the same fai
  assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),true);
  current.revisions[0].body=formatPreference('connection',{downloads:false,diagnosticLogs:false});
  assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
- for(const schemaVersion of [0,2,'1',null]){
+ for(const schemaVersion of [0,3,'1',null]){
   current.revisions[0].body='# Connection\n\n```json\n'+JSON.stringify({schemaVersion,downloads:true,diagnosticLogs:false})+'\n```\n';
   assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
  }
