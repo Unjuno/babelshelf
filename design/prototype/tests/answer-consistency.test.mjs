@@ -38,4 +38,5 @@ test('answers cannot add a location ranking absent from cited excerpts',()=>{
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'青葉図書館の方が緑川公園より近いと原文に書かれています。',[{quote:'青葉図書館の方が緑川公園より近いと記載されています。'}]));
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'青葉図書館の方が近いです。',[{quote:'青葉図書館まで2 km、緑川公園まで5 kmです。'}]));
  assert.throws(()=>checkAnswerConsistency(question,'Aoba Library is closer.',[{quote:'The trip takes 17 minutes to Aoba Library and 9 minutes to Midorikawa Park.'}]),/unsupported location comparison/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('「より近い」とはどういう意味ですか？','「より近い」とは、距離が短いことを表します。',[]));
 });
