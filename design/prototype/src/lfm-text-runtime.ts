@@ -65,9 +65,8 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
     if(backend!=='auto'||effectiveBackend!=='webgpu'||failure?.cleanupUnconfirmed===true||code!=='webgpu_unavailable'&&code!=='webgpu_load_failed')throw error;
     check();await adapter.unload();loadedBackend=undefined;check();effectiveBackend='cpu';
     (onProgress??adapter.onProgress)?.(code==='webgpu_load_failed'?'WebGPU load failed · Trying CPU/WASM':'WebGPU unavailable · Using CPU/WASM');
-    await adapter.preflightBackend?.('cpu');check();
-    try{rawMetrics=await adapter.load(immutableFile,id,{backend:'cpu'});}
-    catch(cpuError){check();const combined=Error('WebGPU load failed · CPU/WASM retry failed');(combined as Error&{cause?:unknown;gpuFailure?:unknown}).cause=cpuError;(combined as Error&{gpuFailure?:unknown}).gpuFailure=error;(combined as Error&{code?:string}).code='backend_load_failed';throw combined;}
+    try{await adapter.preflightBackend?.('cpu');check();rawMetrics=await adapter.load(immutableFile,id,{backend:'cpu'});}
+    catch(cpuError){check();const combined=Error(`${code==='webgpu_load_failed'?'WebGPU model load failed':'WebGPU unavailable'} · CPU/WASM retry failed`);Object.assign(combined,{cause:cpuError,gpuFailure:error,code:'backend_fallback_failed',...(cpuError&&typeof cpuError==='object'&&(cpuError as {cleanupUnconfirmed?:unknown}).cleanupUnconfirmed===true?{cleanupUnconfirmed:true}:{})});throw combined;}
    }
    check();if(!adapter.supportsExactCount){await adapter.unload();loadedBackend=undefined;throw Error('Exact pre-generation token count unavailable');}loadedBackend=effectiveBackend;
    const source=rawMetrics&&typeof rawMetrics==='object'?rawMetrics as Record<string,unknown>:{};
