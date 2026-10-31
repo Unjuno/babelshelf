@@ -5,7 +5,7 @@ import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {emptyDialogue,appendTurn} from '../src/conversation.ts';
 import {startActivity,finishActivity,persistTurnActivity,createTurnActivityTracer} from '../src/harness-activity.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
-import {turnActivityPageKey} from '../src/turn-activity-pages.ts';
+import {turnActivityMetaKey,turnActivityPageKey} from '../src/turn-activity-pages.ts';
 
 test('paged activity storage preserves legacy receipts and survives backup and restore',async()=>{
  const store=new KnowledgeStore('paged-'+crypto.randomUUID()),restored=new KnowledgeStore('paged-restore-'+crypto.randomUUID());
@@ -93,5 +93,33 @@ test('turn tracer writes overflow to pages and refuses work when conversation ch
   failFinish=true;await assert.rejects(trace('memory.search',{query:'quota'},async()=>{executed++;return ['not committed'];}),error=>error.code==='persistence_failure');failFinish=false;assert.equal(executed,2);assert.equal((await store.turnActivities('turn-1'))[2].status,'running');
   const other={...dialogue,revision:dialogue.revision+1};await store.compareState('dialogue',dialogue,other);
   await assert.rejects(trace('memory.search',{query:'stale'},async()=>{executed++;return []; }),error=>error.code==='persistence_failure');assert.equal(executed,2);
+ }finally{store.close();}
+});
+
+test('IndexedDB quota failures roll back all receipt writes and never replay completed work',async()=>{
+ const store=new KnowledgeStore('paged-quota-'+crypto.randomUUID());
+ try{
+  const inline=Array.from({length:128},(_,i)=>finishActivity(startActivity('memory.search',{query:`old-${i}`}),{output:[]}));
+  const dialogue=appendTurn(emptyDialogue(),{id:'turn-quota',user:'question',activity:inline});await store.compareState('dialogue',undefined,dialogue);
+  const metaKey=turnActivityMetaKey('turn-quota'),pageKey=turnActivityPageKey('turn-quota',0),nativePut=IDBObjectStore.prototype.put;
+  let failMeta=true,failFinish=false,executions=0;
+  const persistActivity=activity=>persistTurnActivity({turnId:'turn-quota',readActivities:()=>inline,readStored:()=>dialogue,persistInline:async()=>{throw Error('Unexpected inline receipt write');},persistPaged:(id,item,expected)=>store.recordTurnActivity(id,item,expected)},activity);
+  const trace=createTurnActivityTracer({check(){},readActivities:()=>inline,persistActivities:async()=>{throw Error('Unexpected inline receipt write');},persistActivity,onFailureRecorded(){},diagnosticsEnabled:false,writeDiagnostic(){}});
+  IDBObjectStore.prototype.put=function(value,key){
+   if(this.name==='runs'&&key===metaKey&&failMeta)throw new DOMException('Full','QuotaExceededError');
+   if(this.name==='runs'&&key===pageKey&&failFinish&&value?.items?.some(item=>item.status==='succeeded'))throw new DOMException('Full','QuotaExceededError');
+   return nativePut.call(this,value,key);
+  };
+  try{
+   await assert.rejects(trace('memory.search',{query:'start-quota'},async()=>{executions++;return ['not run'];}),error=>error.code==='persistence_failure');
+   assert.equal(executions,0,'a tool cannot execute when its running receipt was not stored');
+   assert.deepEqual(await store.turnActivities('turn-quota'),[],'the page, index and metadata writes from the failed transaction must roll back together');
+   const snapshot=await store.snapshot();assert.equal(snapshot.runs.filter(item=>item.key.startsWith('ui-v1-turn-activity-')).length,0);
+
+   failMeta=false;failFinish=true;
+   await assert.rejects(trace('memory.search',{query:'finish-quota'},async()=>{executions++;return ['completed once'];}),error=>error.code==='persistence_failure');
+   assert.equal(executions,1,'failed final receipt persistence must not rerun the completed operation');
+   const records=await store.turnActivities('turn-quota');assert.equal(records.length,1);assert.equal(records[0].status,'running','the committed start remains honestly incomplete when its finish cannot be stored');
+  }finally{IDBObjectStore.prototype.put=nativePut;}
  }finally{store.close();}
 });
