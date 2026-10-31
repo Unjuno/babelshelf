@@ -35,8 +35,36 @@ test('context preparation saves changed compaction onto the latest dialogue revi
  assert.equal(saved[0].compaction.through>0,true);
  assert.equal(context.recent.at(-1).id,'t7');
  assert.equal(context.recent.some(turn=>turn.id==='newer'),false);
- assert.deepEqual(traceCalls,[{tool:'dialogue.compact',input:{model:'local-test',question:'What did I ask earlier?',priorTurns:8,through:0}}]);
+ assert.deepEqual(traceCalls,[{tool:'dialogue.compact',input:{model:'local-test',priorTurns:8,through:0}}]);
  assert.ok(progress.length>1);assert.ok(progress.slice(0,-1).every(value=>value==='Compacting…'));assert.equal(progress.at(-1),'');
+});
+
+test('context compaction records bounded inference measurements without copying prompt or summary text',async()=>{
+ const prior={schema:1,revision:1,turns:Array.from({length:6},(_,index)=>({id:`private-${index}`,user:`PRIVATE QUESTION ${index} ${'detail '.repeat(35)}`,answer:`PRIVATE ANSWER ${index} ${'history '.repeat(25)}`})),compaction:null};
+ const runtime={manifest:{contextTokens:1024,maxOutputTokens:256},pin(){return this;},async count(messages){return {prompt_tokens:Math.ceil(JSON.stringify(messages).length/4)};},async generate(){return {text:'PRIVATE GENERATED SUMMARY',outputTokens:4,metrics:{runtimePromptTokens:40,countMs:2}};}};
+ const activities=[];
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');
+ const trace=createTurnActivityTracer({check(){},readActivities:()=>activities,persistActivities:async next=>{activities.splice(0,activities.length,...next);},onFailureRecorded(){},diagnosticsEnabled:false,writeDiagnostic(){}});
+ await prepareTurnContext({prior,engine:runtime,model:'test',question:'PRIVATE CURRENT QUESTION',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async()=>{},trace});
+ assert.equal(activities.length,1);
+ const compact=activities.find(item=>item.tool==='dialogue.compact'&&item.status==='succeeded');assert.ok(compact);
+ assert.deepEqual(compact.output.compaction,{through:compact.output.compaction.through,summaryCharacters:'PRIVATE GENERATED SUMMARY'.length});
+ assert.deepEqual(compact.output.inference.measuredModelCalls,1);
+ assert.equal(compact.output.inference.outputTokens,4);assert.equal(compact.output.inference.promptTokens,40);
+ assert.ok(compact.output.inference.countMs>=2);assert.ok(compact.output.inference.generationWallMs>=0);
+ const receipt=JSON.stringify(compact);assert.doesNotMatch(receipt,/PRIVATE QUESTION|PRIVATE ANSWER|PRIVATE CURRENT QUESTION|PRIVATE GENERATED SUMMARY/);
+});
+
+test('failed compaction keeps measured attempts in its failure receipt without source text',async()=>{
+ const prior={schema:1,revision:1,turns:Array.from({length:5},(_,index)=>({id:`secret-${index}`,user:`SECRET ${index} ${'record '.repeat(30)}`,answer:`SECRET ANSWER ${index} ${'old '.repeat(25)}`})),compaction:null};
+ const runtime={manifest:{contextTokens:1024,maxOutputTokens:256},pin(){return this;},async count(messages){return {prompt_tokens:Math.ceil(JSON.stringify(messages).length/4)};},async generate(){throw Error('Runtime unavailable');}};
+ const activities=[];
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');
+ const trace=createTurnActivityTracer({check(){},readActivities:()=>activities,persistActivities:async next=>{activities.splice(0,activities.length,...next);},onFailureRecorded(){},diagnosticsEnabled:false,writeDiagnostic(){}});
+ await assert.rejects(()=>prepareTurnContext({prior,engine:runtime,model:'test',question:'SECRET CURRENT REQUEST',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async()=>{},trace}),/Runtime unavailable/);
+ const failed=activities.find(item=>item.tool==='dialogue.compact'&&item.status==='failed');assert.ok(failed);
+ assert.equal(failed.output.inference.measuredModelCalls,1);assert.ok(failed.output.inference.countMs>=0);assert.ok(failed.output.inference.generationWallMs>=0);
+ assert.doesNotMatch(JSON.stringify(failed),/SECRET CURRENT REQUEST|SECRET ANSWER|SECRET 0/);
 });
 
 test('context preparation refuses a summary based on a changed archived turn',async()=>{

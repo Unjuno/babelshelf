@@ -24,6 +24,14 @@ test('answer activity counts measured model retries instead of treating the rece
  assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,promptTokens:240,outputTokens:36,tokenCountMs:4,generationMs:1200,measuredToolCalls:0});
 });
 
+test('context compaction inference is included and count-only work remains visible',()=>{
+ const rows=[
+  activity('dialogue.compact','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{compaction:{through:3,summaryCharacters:82},inference:{measuredModelCalls:2,promptTokens:90,outputTokens:24,countMs:11,generationWallMs:740}}),
+  activity('dialogue.compact','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','succeeded',{inference:{measuredModelCalls:0,countMs:4}}),
+ ];
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:2,promptTokens:90,outputTokens:24,tokenCountMs:15,generationMs:740,measuredToolCalls:0});
+});
+
 test('summary omits unavailable and malformed measurements instead of inventing zeroes',()=>{
  const rows=[
   activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{promptTokens:-1,outputTokens:'unknown',countMs:NaN,generationWallMs:Infinity}}),

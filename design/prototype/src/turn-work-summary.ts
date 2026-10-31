@@ -31,7 +31,7 @@ function isAgentTool(tool:string){
 export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummary|null{
  let measuredModelCalls=0,promptTokens:number|undefined,outputTokens:number|undefined,tokenCountMs:number|undefined,generationMs:number|undefined,measuredToolCalls=0,toolElapsedMs:number|undefined;
  for(const activity of activities){
-  if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer')&&activity.status!=='running'){
+  if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer'||activity.tool==='dialogue.compact')&&activity.status!=='running'){
    const inference=record(record(activity.output)?.inference);
    if(!inference)continue;
    const recordedCalls=inference.measuredModelCalls;
@@ -49,6 +49,6 @@ export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummar
   measuredToolCalls++;
   toolElapsedMs=add(toolElapsedMs,elapsed);
  }
- if(!measuredModelCalls&&!measuredToolCalls)return null;
+ if(!measuredModelCalls&&!measuredToolCalls&&tokenCountMs===undefined)return null;
  return {measuredModelCalls,...(promptTokens!==undefined?{promptTokens}:{}),...(outputTokens!==undefined?{outputTokens}:{}),...(tokenCountMs!==undefined?{tokenCountMs}:{}),...(generationMs!==undefined?{generationMs}:{}),measuredToolCalls,...(toolElapsedMs!==undefined?{toolElapsedMs}:{})};
 }

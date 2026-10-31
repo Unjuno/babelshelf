@@ -24,7 +24,7 @@ import {resolveToolNotes} from './tools/tool-host.ts';
 import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
 import {createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
 import {inspectDialogueText} from './text-transform.ts';
-import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
+import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type ChatEngine,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
 import {prepareTurnContext} from './turn-context-preparation.ts';
 import {PENDING_CORRECTION_STATE} from './pending-correction.ts';
 import {agentCorrectionTarget} from './agent-correction-target.ts';
@@ -114,7 +114,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     inference=await models.text(model,checkSend,work=>trace('model.load',{model},work));
     run.progress('','planning');
    };
-  const prepareContext=(fitsPlanner?:(candidate:DialogueContext)=>Promise<boolean>)=>prepareTurnContext({prior,engine:inference,model,question:text,currentInputs:items.length>0,check:checkSend,setProgress:setChatProgress,currentDialogue:()=>currentDialogue(),saveDialogue,trace,fitsPlanner});
+  const prepareContext=(fitsPlanner?:(candidate:DialogueContext,engine?:ChatEngine)=>Promise<boolean>)=>prepareTurnContext({prior,engine:inference,model,question:text,currentInputs:items.length>0,check:checkSend,setProgress:setChatProgress,currentDialogue:()=>currentDialogue(),saveDialogue,trace,fitsPlanner});
   const reviewedCalculation=async():Promise<SubmissionOutcome>=>{
    if(!view.reviewSourcedCalculation)throw Error('Check source values · enter the calculation explicitly');
    const sources=prior.turns.at(-1)!.refs!,records=await knowledge.all();checkSend();setChatProgress('Preparing calculation…');
@@ -193,7 +193,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       engine:inference,snapshot,model,question:text,context,attachments:descriptors,excludedTools:needsSourcedCalculationReview(text,prior.turns.at(-1))?['math.calculate']:[],
       prepareContext:async allowedTools=>{
        const withInputs=(value:DialogueContext)=>planningContextForInputs({...value,refs:[...value.refs,...importedRefs]},inputReadings.length>0);
-       const prepared=await prepareContext(candidate=>plannerContextFits(inference,text,withInputs(candidate),descriptors,{allowedTools,history:[],maxToolCalls:activeHarnessProfile.maxToolCalls,userGuidance:harnessPreferences.userGuidance,replyStyle:snapshot.response.style}));
+       const prepared=await prepareContext((candidate,measuredEngine=inference)=>plannerContextFits(measuredEngine,text,withInputs(candidate),descriptors,{allowedTools,history:[],maxToolCalls:activeHarnessProfile.maxToolCalls,userGuidance:harnessPreferences.userGuidance,replyStyle:snapshot.response.style}));
        return withInputs(prepared);
       },
        builtinPackages:builtinToolPackages,
