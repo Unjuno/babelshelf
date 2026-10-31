@@ -13,8 +13,8 @@
     },
     {
       "path": "./connection-policy.js",
-      "bytes": 1896,
-      "sha256": "76d2dd84de1fffbef1ec85fbd507d274f451e8afe04342bfa55a75a4fc9d7c15"
+      "bytes": 1909,
+      "sha256": "d594e3f3207eae4746802f379f8be1d7b43b196cb1d8956d0edf0cdaf6c68412"
     },
     {
       "path": "./core.js",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "6c54f32364b9826cefdfaa002d067a8614376e2b51c868463a1494964d02a56a"
+      "sha256": "8f8d1218092287d96a6f9f21b1ce06c73f30542fb60ebc6bc43d9256d394a3b0"
     },
     {
       "path": "./ui.js",
