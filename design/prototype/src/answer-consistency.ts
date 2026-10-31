@@ -10,20 +10,36 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // copied the cited value correctly. Guard the narrow, explicit liquid-volume
  // case where both question and answer identify the quantity and unit.
  const volumeQuestion=/(?:\bhow\s+(?:much|many)\b.{0,80}\b(?:water|liquid|lit(?:er|re)s?|millilit(?:er|re)s?|ml)\b|\b(?:water|liquid)\s+(?:amount|volume|quantity)\b|水量|水の量|水の備蓄量|(?:水|飲料水|備蓄水).{0,24}(?:何\s*(?:リットル|リッター|ミリリットル|ml|l)|どれくらい|どのくらい|量)|何\s*(?:リットル|リッター|ミリリットル|ml|l).{0,12}(?:水|飲料水|備蓄水))/iu.test(q);
- const volumeMeasures=(text:string)=>{
+ const volumeMeasures=(text:string,preferWaterEvidence=false)=>{
   const parseJapanese=(raw:string)=>{
    if(!/[十百千万零〇一二三四五六七八九]/u.test(raw))return Number(raw.replace(/,/gu,''));
    const digit:Record<string,number>={零:0,〇:0,一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};let total=0,section=0,current=0;
    for(const char of raw){if(char in digit){current=digit[char];continue;}const unit=char==='十'?10:char==='百'?100:char==='千'?1000:char==='万'?10000:0;if(!unit)continue;if(unit===10000){section=(section+current||1)*unit;total+=section;section=0;current=0;}else section+=(current||1)*unit,current=0;}
    return total+section+current;
   };
-  const values:number[]=[];
+  const values:{value:number;start:number;end:number}[]=[];
   const pattern=/((?:[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?|[零〇一二三四五六七八九十百千万]+))\s*(millilit(?:er|re)s?|ml|lit(?:er|re)s?|l|ミリリットル|リットル|リッター|ℓ)(?![A-Za-z])/giu;
-  for(const match of text.matchAll(pattern)){const amount=parseJapanese(match[1]),unit=match[2].toLocaleLowerCase();if(!Number.isFinite(amount)||amount<0)continue;values.push(/^(?:ml|millilit|ミリ)/u.test(unit)?amount/1000:amount);}
-  return values;
+  const matches=[...text.matchAll(pattern)].flatMap(match=>{
+   const amount=parseJapanese(match[1]),unit=match[2].toLocaleLowerCase();
+   if(!Number.isFinite(amount)||amount<0||match.index===undefined)return[];
+   return[{value:/^(?:ml|millilit|ミリ)/u.test(unit)?amount/1000:amount,start:match.index,end:match.index+match[0].length}];
+  });
+  if(!preferWaterEvidence)return matches.map(item=>item.value);
+  // A citation can contain several liquid quantities. Prefer a measurement
+  // whose nearest explicit substance is water over a nearby fuel/oil amount.
+  const waterTerms=[...text.matchAll(/\b(?:water|liquid)\b|水|飲料水|備蓄水/giu)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length}]);
+  const otherLiquidTerms=[...text.matchAll(/\b(?:fuel|gasoline|petrol|diesel|kerosene|oil)\b|燃料|燃油|ガソリン|軽油|灯油|重油|油/giu)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length}]);
+  if(!waterTerms.length&&!otherLiquidTerms.length)return matches.map(item=>item.value);
+  const distance=(a:{start:number;end:number},b:{start:number;end:number})=>a.end<b.start?b.start-a.end:b.end<a.start?a.start-b.end:0;
+  return matches.filter(measure=>{
+   const nearestWater=Math.min(Infinity,...waterTerms.map(term=>distance(measure,term)));
+   const nearestOther=Math.min(Infinity,...otherLiquidTerms.map(term=>distance(measure,term)));
+   if(!waterTerms.length)return false;
+   return nearestWater<=nearestOther;
+  }).map(item=>item.value);
  };
  if(volumeQuestion){
-  const citedVolumes=evidence.flatMap(volumeMeasures),answerVolumes=volumeMeasures(a);
+  const citedVolumes=evidence.flatMap(quote=>volumeMeasures(quote,true)),answerVolumes=volumeMeasures(a);
   if(evidence.length&&answerVolumes.some(value=>!citedVolumes.some(cited=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9))))throw Error('Answer quantity conflicts with cited quantity · try again');
  }
  const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
