@@ -6,12 +6,11 @@ import {createHash,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import {createDevServer} from '../serve.mjs';
-import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
 import {closeQaContextOnAbort} from './process-signals.mjs';
 
 // Pass a Playwright BrowserType from the caller. No bundled browser/dependency,
 // inference stub, database access, process kill or existing profile reuse.
-export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,url='http://127.0.0.1:4180/',channel,installedPwa=false,afterBootstrap,signal}){
+export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,url='http://127.0.0.1:4180/',channel,installedPwa=false,onPwaInstallAttempt,afterBootstrap,signal}){
  const engine=browserType.name();assert.ok(['chromium','webkit'].includes(engine),'Unsupported QA browser');assert.ok(!installedPwa||engine==='chromium','Installed PWA diagnostics require Chromium');if(installedPwa)channel??='chrome';
  assert.ok(isAbsolute(profileDir)&&isAbsolute(outputDir),'Use absolute QA paths');
  assert.equal(new URL(url).hostname,'127.0.0.1','QA uses the local product server');
@@ -47,7 +46,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   const events=[];c.on('close',()=>events.push({event:'context-close'}));c.browser().on('disconnected',()=>events.push({event:'browser-disconnected'}));c.on('page',page=>observe(page));function observe(page){page.on('crash',()=>events.push({event:'page-crash'}));page.on('pageerror',error=>events.push({event:'pageerror',message:String(error)}));}for(const page of c.pages())observe(page);
   try{if(signal?.aborted)throw signal.reason??Error('QA interrupted');await c.setOffline(offline);c.setDefaultTimeout(7000);let p=c.pages()[0]??await c.newPage();const session=engine==='chromium'?await c.browser().newBrowserCDPSession():null;let installation,launch;
    if(!installedPwa||!offline){await p.goto(url,{timeout:15000});if(!offline){await p.getByRole('button',{name:'Offline · Tap to switch Online',exact:true}).click();}await p.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:180000});if(!offline){await p.getByRole('button',{name:'Online · Tap to switch Offline',exact:true}).click();}}
-   if(installedPwa){if(!offline){installation=await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});}const result=await Promise.all([c.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);p=result[0];launch=result[1];await p.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:180000});const display=await p.evaluate(()=>({url:location.href,standalone:matchMedia('(display-mode: standalone)').matches,browser:matchMedia('(display-mode: browser)').matches}));(evidence.launchAttempts??=[]).push({offline,installation,launch,display});assert.equal(display.standalone,true,'Expected actual standalone display mode');}
+   if(installedPwa){if(!offline){onPwaInstallAttempt?.();installation=await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});}const result=await Promise.all([c.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);p=result[0];launch=result[1];await p.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:180000});const display=await p.evaluate(()=>({url:location.href,standalone:matchMedia('(display-mode: standalone)').matches,browser:matchMedia('(display-mode: browser)').matches}));(evidence.launchAttempts??=[]).push({offline,installation,launch,display});assert.equal(display.standalone,true,'Expected actual standalone display mode');}
    let pid;if(session){const info=await session.send('SystemInfo.getProcessInfo');await session.detach();pid=info.processInfo.find(v=>v.type==='browser')?.id;assert.ok(pid);assert.ok(evidence.phases.every(v=>v.pid!==pid),'Each phase uses a different browser process');}
    const build=await p.evaluate(()=>new Promise((resolve,reject)=>{const ch=new MessageChannel(),timer=setTimeout(()=>reject(Error('No worker build reply')),3000);ch.port1.onmessage=e=>{clearTimeout(timer);resolve(e.data);};navigator.serviceWorker.controller.postMessage('build',[ch.port2]);}));
     const onlineSignal=await p.evaluate(()=>navigator.onLine),probePage=await c.newPage();let networkProbe;
@@ -57,7 +56,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
     const entry={...(pid?{pid}:{}),engine,offline,onlineSignal,networkProbe,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build,sha256Module:{path:hashAsset.path,bytes:hashAsset.bytes,verifiedDigest:sha256Result}};
     assert.equal(networkProbe.reachable,!offline,`Network probe mismatch: requested offline=${offline}, probe=${JSON.stringify(networkProbe)}`);if(evidence.phases.length)assert.deepEqual(build,evidence.phases[0].build);
    evidence.phases.push(entry);await work(p,entry);
-  }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();if(activeContext===c)activeContext=undefined;if(installedPwa){const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}}
+  }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();if(activeContext===c)activeContext=undefined;}
  }
  let before,afterEdit,afterRestart;
  try{

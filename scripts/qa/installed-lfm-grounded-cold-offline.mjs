@@ -5,6 +5,7 @@ import {chromium} from '../../design/prototype/node_modules/playwright-core/inde
 import {parseStateBackup} from '../../design/prototype/src/backup-state.ts';
 import {validateGroundingRefs} from '../../dist/core.js';
 import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
+import {uninstallInstalledPwa} from './installed-pwa-uninstall.mjs';
 
 const [profileDir,outputDir,url='http://127.0.0.1:4184/']=process.argv.slice(2);
 for(const path of [profileDir,outputDir])assert.ok(path&&isAbsolute(path),'Supply absolute existing isolated QA profile and fresh output paths');
@@ -16,7 +17,7 @@ await mkdir(outputDir,{recursive:true});
 const productBuild=JSON.parse(await readFile('design/prototype/dist/app/build.json','utf8')).build;
 const fixtureCode='PINE-'+productBuild.slice(0,8).toUpperCase();const fixture={title:'QA Water Reserve '+fixtureCode,pathSuffix:'QA Water Reserve '+fixtureCode+'.md',body:'# Water Reserve '+fixtureCode+'\n\nThe emergency water reserve is exactly 24 litres. Identifier: '+fixtureCode+'.'};
 const evidence={scope:'Isolated Windows PC Chrome installed PWA; local model/runtime already registered; Chromium network isolation; synthetic knowledge fixture only',build:productBuild,fixture,model:{id:'lfm25-230m-qad-q4-0',revision:'03502067c64ce32ac4fe87b0cec0310a1a13d3e9',bytes:149081056,sha256:'e75f83268de11b2a1bcfab5f3b5c5c0c97569ddbbc0990aad88437e45b8ba292',runtime:'Wllama 3.8.1 / llama.cpp b11364',backend:'cpu-wasm'},phases:[],externalRequests:[],pass:false};
-let context,page;
+let context,page,pwaInstallAttempted=false;
 function observe(ctx,phase){ctx.on('request',r=>{if(!r.url().startsWith(url)&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:'))phase.external.push(r.url());});}
 async function persist(){await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));}
 async function checkpoint(name,details={}){evidence.phases.push({name,...details});await persist();}
@@ -25,7 +26,7 @@ async function launch(label){
  context=await chromium.launchPersistentContext(profileDir,{channel:'chrome',headless:true,offline:true,viewport:{width:390,height:844},acceptDownloads:true});context.setDefaultTimeout(30000);
  const phase={label,network:'Chromium offline emulation',external:[],browserVersion:context.browser().version()};observe(context,phase);
  const session=await context.browser().newBrowserCDPSession();
- try{await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});const [appPage,launched]=await Promise.all([context.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);page=appPage;phase.launch=launched;}finally{await session.detach();}
+ try{pwaInstallAttempted=true;await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});const [appPage,launched]=await Promise.all([context.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);page=appPage;phase.launch=launched;}finally{await session.detach();}
  await page.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:30000});
  phase.serviceWorkerBuild=await build(page);assert.equal(phase.serviceWorkerBuild.build,productBuild,'Installed app is serving a different build');
  phase.display=await page.evaluate(()=>({standalone:matchMedia('(display-mode: standalone)').matches,onlineSignal:navigator.onLine,crossOriginIsolated}));
@@ -66,4 +67,4 @@ try{
 
  const afterSave=await launch('offline-cold-restart-saved-answer');assert.deepEqual(afterSave.external,[],'Post-save cold launch made an external request');assert.notEqual(afterSave.browserPid,cold.browserPid,'Second cold restart must use a new browser process');await input();await page.getByRole('textbox',{name:'Message',exact:true}).fill('Read: '+saved.revisions.at(-1).path);await page.getByRole('button',{name:'Send',exact:true}).click();await page.getByRole('button',{name:'History',exact:true}).waitFor({timeout:60000});assert.equal(await page.locator('.file-body').first().innerText(),answer.text);afterSave.reopenedAnswer=true;evidence.externalRequests=evidence.phases.flatMap(p=>p.external??[]);assert.deepEqual(evidence.externalRequests,[]);evidence.pass=true;await page.screenshot({path:join(outputDir,'cold-read-saved-answer.png')});
 }catch(error){evidence.error=String(error);if(page&&!page.isClosed()){evidence.failureScreen=await page.locator('body').innerText().catch(()=>null);await page.screenshot({path:join(outputDir,'failure.png')}).catch(()=>{});}process.exitCode=1;}
-finally{await context?.close();try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}await persist();console.log(JSON.stringify({pass:evidence.pass,error:evidence.error,cleanupError:evidence.cleanupError,build:evidence.build,model:evidence.model,phases:evidence.phases.map(p=>p.name??p.label),source:evidence.source,answer:evidence.answer,refs:evidence.refs,saved:evidence.saved,externalRequests:evidence.externalRequests},null,2));}
+finally{await context?.close();try{if(pwaInstallAttempted)await uninstallInstalledPwa({profileDir,manifestId:url,channel:'chrome'});}catch(error){evidence.cleanupError=String(error);process.exitCode=1;}try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){evidence.cleanupError??=String(error);process.exitCode=1;}await persist();console.log(JSON.stringify({pass:evidence.pass,error:evidence.error,cleanupError:evidence.cleanupError,build:evidence.build,model:evidence.model,phases:evidence.phases.map(p=>p.name??p.label),source:evidence.source,answer:evidence.answer,refs:evidence.refs,saved:evidence.saved,externalRequests:evidence.externalRequests},null,2));}
