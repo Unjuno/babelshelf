@@ -30,20 +30,20 @@ test('compatibility agent budget reflects receipt costs and reserves completion 
  assert.throws(()=>activityBoundedToolBudget(129,null),/budget/i);
 });
 
-test('unresolved speaker choice retains actual bounded model failure without becoming history or permission',async()=>{
- const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts'),entries=[],raw='{"source":"none"}';
+test('invalid speaker choice persists content-free failure metadata without becoming history or permission',async()=>{
+ const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts'),entries=[],raw='{"source":"none","quote":"PRIVATE_SOURCE_SENTINEL"}';
  const a={turnId:'a',turnIndex:0,speaker:'user',quote:'user words',start:0,end:10},b={turnId:'b',turnIndex:1,speaker:'assistant',quote:'answer',start:0,end:6};
- await assert.rejects(recordOperation('dialogue.subject',{question:'which?',a,b},()=>resolveDialogueSubject({manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:raw})},'which?',a,b),async entry=>entries.push(entry)),/Original unavailable/);
- assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.equal(entries[1].output.raw,raw);assert.equal(entries[1].output.reason,'unresolved');validateActivity(entries.slice(1));
+ await assert.rejects(recordOperation('dialogue.subject',{question:'which?',a,b},()=>resolveDialogueSubject({manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:raw})},'which?',a,b),async entry=>entries.push(entry)),/Invalid model source/);
+ assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.equal(entries[1].output.rawBytes,new TextEncoder().encode(raw).byteLength);assert.equal(entries[1].output.reason,'source');assert.equal(entries[1].output.truncated,false);assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_SOURCE_SENTINEL|\"raw\"/);validateActivity(entries.slice(1));
  const state=appendTurn(emptyDialogue(),{id:'turn',user:'which?',activity:entries.slice(1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/source|dialogue.subject/);
 });
-test('invalid planner output is bounded audit evidence only, never accepted or added to model history',async()=>{
- const raw='{"action":"recall","historyIndex":0,"historyPart":"user"}',entries=[];
+test('invalid planner output persists content-free audit metadata, never accepted or added to model history',async()=>{
+ const raw='{"action":"recall","historyIndex":0,"historyPart":"user","quoted":"PRIVATE_PLAN_SENTINEL"}',entries=[];
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:10}),generate:async()=>({text:raw})};
  await assert.rejects(recordOperation('dialogue.plan',{question:'first message?'},()=>planDialogue(engine,'first message?',{summary:'',recent:[],refs:[],turnCount:1}),async a=>entries.push(a)),/Invalid model action/);
- assert.equal(entries[1].status,'failed');assert.equal(entries[1].error.code,'planner_protocol');assert.equal(entries[1].output.raw,raw);assert.equal(entries[1].output.reason,'query');assert.equal(entries[1].output.truncated,false);
+ assert.equal(entries[1].status,'failed');assert.equal(entries[1].error.code,'planner_protocol');assert.equal(entries[1].output.rawBytes,new TextEncoder().encode(raw).byteLength);assert.equal(entries[1].output.reason,'query');assert.equal(entries[1].output.truncated,false);assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_PLAN_SENTINEL|\"raw\"/);
  const state=appendTurn(emptyDialogue(),{id:'failed',user:'first message?',activity:entries.slice(-1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/historyIndex/);
- engine.generate=async()=>({text:'x'.repeat(20000)});const malformed=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>malformed.push(a)),/JSON/);assert.ok(malformed[1].output.raw.length<=8192);assert.equal(malformed[1].output.reason,'json');assert.equal(malformed[1].output.truncated,true);
+ engine.generate=async()=>({text:'x'.repeat(20000)});const malformed=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>malformed.push(a)),/JSON/);assert.equal(malformed[1].output.rawBytes,8192);assert.equal(malformed[1].output.reason,'json');assert.equal(malformed[1].output.truncated,true);assert.equal(Object.hasOwn(malformed[1].output,'raw'),false);
  engine.generate=async()=>({text:raw,stopped:true});const stopped=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>stopped.push(a)),/Stopped/);assert.equal(stopped[1].output,undefined);
  const forged=Object.assign(Error('Invalid model action'),{diagnostic:{raw:'untrusted'}}),generic=[];await assert.rejects(recordOperation('dialogue.plan',{},async()=>{throw forged},async a=>generic.push(a)));assert.equal(generic[1].output,undefined);
 });

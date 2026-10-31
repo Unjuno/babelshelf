@@ -60,7 +60,10 @@ export function finishActivity(a:Activity,result:{output?:unknown;error?:unknown
 export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined):Promise<T>{
  const started=startActivity(tool,input);await persistActivity(persist,started);let result:T;
  try{result=await work();}catch(error){try{
-  const diagnostic=['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?error.diagnostic:undefined;
+  // Invalid model output can echo prompts, source text or private note content.
+  // Keep the raw value only on the transient error used by in-turn repair;
+  // durable Activity receipts retain content-free metadata only.
+  const diagnostic=['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?{reason:error.diagnostic.reason,rawBytes:new TextEncoder().encode(error.diagnostic.raw).byteLength,truncated:error.diagnostic.truncated}:undefined;
   const projected=failureProject(error);
   const output=diagnostic&&projected&&typeof projected==='object'&&!Array.isArray(projected)?{...diagnostic,...projected}:projected??diagnostic;
   await persistActivity(persist,finishActivity(started,{error,...(output!==undefined?{output}:{})}));
