@@ -111,14 +111,14 @@ import { ReferenceCard } from './ReferenceCard';
 import {SourceCitationPreview,type SourceCitationPreviewModel} from './SourceCitationPreview';
 import {CitationReview} from './CitationReview';
 import { nextScheduleOccurrence, nextDefaultScheduleDate, repeatOptions, localDate, type ScheduleRule } from './schedule-time';
-import { initialPreferenceNotes, readPreferenceWithFallback, updatePreference, preferenceGroup, parsePreference, recoverPreferenceRecord, type PreferenceGroup } from './preference-records';
+import { initialPreferenceNotes, readPreferenceWithFallback, updatePreference, recoverPreferenceRecord, type PreferenceGroup } from './preference-records';
 import { builtinToolNotes } from './tool-definitions';
 import { builtinPackageNotes,builtinToolPackages,builtinToolRegistry } from './tool-package-records';
 import { settings } from './app-settings';
 import {modelSetsFor,createUserModelSet,matchingModelSet,applyModelSet,modelSetAssetBytes,modelSetGroup,type ModelSetId} from './model-sets';
 import {ModelSetSheets,type ModelSetSheetsView} from './ModelSetSheets';
 import { deletionContents, canRestore, trashLocation } from './memory-trash';
-import { memoryFilePath as filePath, uniqueMemoryFilePath, memoryFolderPath as folderPath, validateMemoryFilePath as validateFilePath, suggestedNoteName, SYSTEM_FOLDERS, isSystemFolder, MAX_FOLDER_DEPTH } from './memory-paths';
+import { memoryFilePath as filePath, uniqueMemoryFilePath, memoryFolderPath as folderPath, suggestedNoteName, SYSTEM_FOLDERS, isSystemFolder, MAX_FOLDER_DEPTH } from './memory-paths';
 import { memoryBreadcrumbs, memoryFolderEntries, memoryNoteMatchesScope, memoryCreationFolder, type MemoryScope } from './memory-navigation';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import {DeferredViewBoundary} from './DeferredViewBoundary';
@@ -1061,7 +1061,7 @@ export default function Prototype() {
   finally{setFileSaving(false);if(toolPackageImport.current)toolPackageImport.current.value='';}
  }
  function startFile(){requestEditorExit(()=>{setEditing(false);setCreationError('');setDialogueCopyReview(null);setFileSources([]);setFileKind('original');keyboard.hide();setSheet('file');setOpened(null);setFileName('');setFileBody('');setFolderName('');});}
- async function save(){if(directSaveLock.current||!current)return;if(current.version!==editVersion)return toast('Version conflict · reopen editor');if(current.managed){if(editPath!==current.path)return toast('Settings file path is protected');try{parsePreference(preferenceGroup(current.path)!,editBody);}catch(e){return toast((e as Error).message);}}if(current.protected)return toast('Built-in definition is protected');let path:string;try{path=editPath.trim()===current.path?current.path:validateFilePath(editPath.trim());}catch(e){return toast((e as Error).message);}if(notes.some(n=>n.id!==current.id&&n.path===path))return toast('Path already exists');const target=current.id,expectedVersion=editVersion,body=editBody;directSaveLock.current=true;setEditSaving(true);try{setNotes(all=>all.map(n=>{if(n.id!==target)return n;if(n.version!==expectedVersion)throw Error('Version conflict · reopen editor');return {...n,path,body,version:n.version+1,history:[...n.history,n.body],paths:[...(n.paths??n.history.map(()=>n.path)),n.path]};}));await flushStorage();setLastDirectSave({id:target,version:expectedVersion+1});setActiveFolder(path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setEditing(false);keyboard.hide();toast('Saved');}catch(e){toast((e as Error).message);}finally{directSaveLock.current=false;setEditSaving(false);}}
+ async function save(){if(directSaveLock.current||!current)return;if(current.version!==editVersion)return toast('Version conflict · reopen editor');const target=current.id,expectedVersion=editVersion,path=editPath.trim(),body=editBody;directSaveLock.current=true;setEditSaving(true);let committed=false;try{await flushStorage();const saved=await knowledge.saveFileEdit(target,expectedVersion,path,body);committed=true;setLastDirectSave({id:target,version:saved.version});setActiveFolder(saved.path.split('/').slice(0,-1).join('/'));setMemoryScope('folder');setEditing(false);keyboard.hide();await refreshStorage();toast('Saved');}catch(e){toast(committed?'Saved · reopen app to refresh':(e as Error).message);}finally{directSaveLock.current=false;setEditSaving(false);}}
  async function exportNoteMarkdown(id:string,revision:number,closeMenu=false){
   if(markdownExportLock.current)return;markdownExportLock.current=true;setMarkdownExporting(true);if(closeMenu)setSheet(null);
   try{await flushStorage();const file=await knowledge.exportMarkdown(id,revision),url=URL.createObjectURL(new Blob([file.text],{type:file.path.endsWith('.ts')?'text/plain;charset=utf-8':'text/markdown;charset=utf-8'})),link=document.createElement('a');

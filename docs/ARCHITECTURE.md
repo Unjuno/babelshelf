@@ -20,6 +20,8 @@ Controlled page navigation and same-origin dedicated/shared Worker entry respons
 
 IndexedDB `mlb-memory-v1` is the canonical knowledge store. The Memory tree projects note paths; it is not a host filesystem. Original attachment bytes, extracted text, dialogue receipts, model assets, and UI projections have separate ownership and backup rules. See `STORAGE-CONTRACT.md`, `MEDIA-HARNESS.md`, `CONVERSATION-CONTRACT.md`, and `BACKUP-CONTRACT.md` for schemas and limits.
 
+Manual file edits cross the same store boundary as other knowledge changes: `KnowledgeStore.saveFileEdit` performs a version compare-and-swap in one IndexedDB transaction, applies canonical path/managed-file rules, and appends the prior body and path to revision history. The editor does not build a whole-store diff or treat its rendered list as the write authority.
+
 ## Dependency direction
 
 ```text

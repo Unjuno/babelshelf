@@ -310,6 +310,20 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
   });
  }
+  /** Revision a user-edited file through one explicit CAS operation; the UI never constructs a storage-wide diff. */
+  async saveFileEdit(id:string,expectedVersion:number,path:string,body:string){
+   if(typeof id!=='string'||!id||!Number.isSafeInteger(expectedVersion)||expectedVersion<1||typeof path!=='string'||typeof body!=='string')throw Error('Invalid file edit');
+   ({id,expectedVersion,path,body}=structuredClone({id,expectedVersion,path,body}));
+   return this.transaction<NoteView>(['notes'],'readwrite',(tx,done,fail)=>{
+    const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{try{
+     const record=q.result.find((note:Canonical)=>note.id===id&&note.state==='active');if(!record)throw Error('File unavailable');
+     const before=projectNote(record);if(before.version!==expectedVersion)throw Error('Version conflict · reopen editor');
+     const next={...before,path:path.trim()===before.path?before.path:path.trim(),body,version:before.version+1,history:[...before.history,before.body],paths:[...(before.paths??before.history.map(()=>before.path)),path.trim()===before.path?before.path:path.trim()]};
+     const updated=applyKnowledgeChanges(q.result,[before],[next]),saved=updated.find((note:Canonical)=>note.id===id);if(!saved)throw Error('File unavailable');
+     store.put(saved);done(projectNote(saved));
+    }catch(error){fail(error);}};
+   });
+  }
  async createFolder(path:string,expected:string[]|undefined){expected=structuredClone(expected);const db=await this.open();return new Promise<{path:string;folders:string[]}>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('settings'),rows=tx.objectStore('notes').getAll(),folders=store.get('ui-v1-folders');let pending=2,error:unknown,result:{path:string;folders:string[]};const commit=()=>{if(--pending)return;try{if(!equal(folders.result,expected))throw Error('Local data changed in another tab · reopen to continue');const old=folders.result??[],occupied=[...old];for(const n of rows.result){const parts=notePath(n).split('/');while(parts.length){occupied.push(parts.join('/'));parts.pop();}}const parts=path.split('/'),name=parts.pop()??'',clean=memoryFolderPath(parts.join('/'),name,occupied);if(clean!==path)throw Error('Invalid folder path');const next=[...old,clean];assertFolderNamespace(rows.result,next);store.put(next,'ui-v1-folders');result={path:clean,folders:next};}catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder save failed'));});}
  async renameFolder(from:string,name:string,expectedNotes:NoteView[],expectedFolders:string[]|undefined){
   ({expectedNotes,expectedFolders}=structuredClone({expectedNotes,expectedFolders}));

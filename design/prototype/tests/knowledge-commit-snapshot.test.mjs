@@ -19,6 +19,38 @@ test('new file save freezes the reviewed body before opening storage',async()=>{
  }finally{store.close();}
 });
 
+test('direct file edit is one revisioned command and preserves the previous path',async()=>{
+ const store=new KnowledgeStore('direct-file-edit-'+crypto.randomUUID()),reopened=new KnowledgeStore(store.name);
+ try{
+  await store.initialize([{id:'edit-target',path:'Notes/original.md',body:'Original bytes',version:1,history:[]}]);
+  const saved=await store.saveFileEdit('edit-target',1,'Notes/renamed.md','Corrected bytes');
+  assert.deepEqual({id:saved.id,path:saved.path,body:saved.body,version:saved.version,history:saved.history,paths:saved.paths},{id:'edit-target',path:'Notes/renamed.md',body:'Corrected bytes',version:2,history:['Original bytes'],paths:['Notes/original.md','Notes/renamed.md']});
+  await reopened.open();const stored=(await reopened.views()).find(note=>note.id==='edit-target');
+  assert.deepEqual(stored,saved);
+ }finally{store.close();reopened.close();}
+});
+
+test('direct file edit refuses stale revisions, duplicate paths, and managed-setting moves atomically',async()=>{
+ const name='direct-file-edit-conflicts-'+crypto.randomUUID(),first=new KnowledgeStore(name),second=new KnowledgeStore(name);
+ try{
+  await first.initialize([{id:'one',path:'Notes/one.md',body:'v1',version:1,history:[]},{id:'two',path:'Notes/two.md',body:'keep',version:1,history:[]}]);
+  await second.views();
+  await first.saveFileEdit('one',1,'Notes/one.md','v2');
+  await assert.rejects(second.saveFileEdit('one',1,'Notes/one.md','stale'),/Version conflict/);
+  await assert.rejects(first.saveFileEdit('one',2,'Notes/two.md','collision'),/path conflict/i);
+  assert.deepEqual((await first.views()).map(({id,path,body,version,history})=>({id,path,body,version,history})),[
+   {id:'one',path:'Notes/one.md',body:'v2',version:2,history:['v1']},
+   {id:'two',path:'Notes/two.md',body:'keep',version:1,history:[]}
+  ]);
+  const settings=new KnowledgeStore('direct-managed-edit-'+crypto.randomUUID());
+  try{
+   await settings.initialize(initialPreferenceNotes);const modelSettings=(await settings.views()).find(note=>note.id==='settings-models');
+   await assert.rejects(settings.saveFileEdit(modelSettings.id,modelSettings.version,'Notes/models.md','not a setting'),/Settings path is protected/);
+   assert.equal((await settings.views()).find(note=>note.id===modelSettings.id).body,modelSettings.body);
+  }finally{settings.close();}
+ }finally{first.close();second.close();}
+});
+
 test('input transaction retains the original attachment snapshot',async()=>{
  const store=new KnowledgeStore('input-asset-snapshot-'+crypto.randomUUID());
  try{
