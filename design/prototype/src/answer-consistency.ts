@@ -6,6 +6,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // a distance or a proximity relation. Permit the claim only when the source
  // states that comparison, or contains two comparable measured distances.
  const evidence=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?[item.quote.normalize('NFKC')]:[]);
+ const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').replace(/^(?:the|a|an)\s+/iu,'').toLocaleLowerCase();
  const distancePattern='([0-9]+(?:[.,][0-9]+)?)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';
  const distanceInMeters=(amount:string,unit:string)=>{
   const value=Number(amount.replace(',','.')),normalized=unit.toLocaleLowerCase();
@@ -17,7 +18,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  const measuredPlaces=(text:string)=>{
   const found:{name:string;meters:number}[]=[];
   const add=(name:string,amount:string,unit:string)=>{
-   const meters=distanceInMeters(amount,unit),normalized=name.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
+   const meters=distanceInMeters(amount,unit),normalized=placeKey(name);
    if(meters!==null&&normalized.length>1)found.push({name:normalized,meters});
   };
   // Only bind distances that are explicitly attached to a named place. A
@@ -41,7 +42,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)より(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[1]);
   for(const match of sentence.matchAll(/([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40}?)\s+(?:is\s+)?(?:closer|nearer|nearest)\s+than\s+([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40})/giu))places.push(match[1].replace(/\s+is$/iu,''),match[2]);
   for(const match of sentence.matchAll(/([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40}?)\s+(?:is\s+)?(?:closer|nearer|nearest)\b/giu))places.push(match[1].replace(/\s+is$/iu,''));
-  return [...new Set(places.map(value=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase()).filter(value=>value.length>1))];
+  return [...new Set(places.map(placeKey).filter(value=>value.length>1))];
  };
  const normalizeClaim=(value:string)=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase();
  const comparativeLocationSentences=a.split(/[。.!！?？\n]+/u).map(value=>value.trim()).filter(Boolean).filter(value=>/(?:の方が|のほうが|より)\s*(?:ずっと|もっと)?近(?:い|く|かった|いです|かったです)|\b(?:closer|nearer|nearest)\b/iu.test(value));
@@ -56,11 +57,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   const operandSentence=sentence.replace(/\b(?:is|are|was|were)\s+not\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\b(?:isn't|aren't|wasn't|weren't)\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\bno\s+(?=(?:closer|nearer)\s+than\b)/giu,'');
   const operands=comparisonPlaces(operandSentence);
    const assertedLeftIsCloser=!negated;
-   const placeKey=(value:string)=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase();
-   const samePlace=(left:string,right:string)=>{
-    const a=placeKey(left),b=placeKey(right);
-    return a===b||a.length>2&&b.length>2&&(a.includes(b)||b.includes(a));
-   };
+   const samePlace=(left:string,right:string)=>placeKey(left)===placeKey(right);
    const observedRelations:boolean[]=[];
    if(operands.length>1){
     for(const source of evidence){
@@ -79,7 +76,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    for(const source of evidence){
    const measurements=measuredPlaces(source),byPlace=new Map<string,number[]>();
    for(const measurement of measurements){const values=byPlace.get(measurement.name)??[];values.push(measurement.meters);byPlace.set(measurement.name,values);}
-   const matching=(name:string)=>[...byPlace].find(([candidate])=>placeKey(candidate).includes(placeKey(name))||placeKey(name).includes(placeKey(candidate)));
+   const matching=(name:string)=>[...byPlace].find(([candidate])=>placeKey(candidate)===placeKey(name));
     const left=matching(operands[0]);if(!left||left[1].length!==1)continue;
    if(operands.length>1){
      const right=matching(operands[1]);
