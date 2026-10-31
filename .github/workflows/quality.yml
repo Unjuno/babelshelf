@@ -29,6 +29,10 @@ jobs:
             package-lock.json
             design/prototype/package-lock.json
       - name: Install pinned dependencies
+        # This PWA CI exercises browser inference only; the Node CUDA EP is unused.
+        # Avoid the upstream postinstall's network fetch from NuGet.
+        env:
+          ONNXRUNTIME_NODE_INSTALL: skip
         run: npm ci --prefix design/prototype
       - name: Install root test dependencies
         run: npm ci
