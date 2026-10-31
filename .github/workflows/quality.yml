@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   local-quality:
     # Pin the OS family while ubuntu-latest transitions from 24.04 to 26.04.
