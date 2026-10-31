@@ -24,3 +24,18 @@ test('direct English quote requests reject an exact but unrelated heading',()=>{
  assert.throws(()=>checkAnswerConsistency(question,'I cannot find the water-cache amount in this file.',evidence),/does not match source/);
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture',evidence),/does not match/);
 });
+
+test('answers cannot add a location ranking absent from cited excerpts',()=>{
+ const question='保存した二つのメモを読み、集合場所と飲料水の量を比較し、新しいノートに保存してください。';
+ const evidence=[
+  {quote:'集合場所は青葉図書館の東入口です。飲料水は17リットルあります。'},
+  {quote:'集合場所は緑川公園の西入口です。飲料水は9リットルあります。'}
+ ];
+ const unsupported='集合場所は青葉図書館の東入口で、飲料水は17リットルです。集合場所は緑川公園の西入口で、飲料水は9リットルです。青葉図書館の方が近いため、飲料水も17リットルの方が多いです。';
+ assert.throws(()=>checkAnswerConsistency(question,unsupported,evidence),/unsupported location comparison/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'二つのメモは集合場所が異なり、水量は17リットルと9リットルです。',evidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'どちらが近いかは、引用したメモには距離の情報がなく判断できません。',evidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'青葉図書館の方が緑川公園より近いと原文に書かれています。',[{quote:'青葉図書館の方が緑川公園より近いと記載されています。'}]));
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'青葉図書館の方が近いです。',[{quote:'青葉図書館まで2 km、緑川公園まで5 kmです。'}]));
+ assert.throws(()=>checkAnswerConsistency(question,'Aoba Library is closer.',[{quote:'The trip takes 17 minutes to Aoba Library and 9 minutes to Midorikawa Park.'}]),/unsupported location comparison/i);
+});

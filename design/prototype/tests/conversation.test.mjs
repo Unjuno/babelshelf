@@ -1834,6 +1834,17 @@ test('terminal reply validation preserves exact content without inference and re
  assert.equal(insufficient.status,'insufficient_evidence');assert.deepEqual(insufficient.sources,[]);assert.deepEqual(insufficient.checkedSources,[ref]);
 });
 
+test('terminal grounded summaries reject an unsupported proximity comparison before save review',async()=>{
+ const notes=[
+  createNote({path:'Notes/aoba.md',body:'集合場所は青葉図書館の東入口です。飲料水は17リットルあります。'}),
+  createNote({path:'Notes/midorikawa.md',body:'集合場所は緑川公園の西入口です。飲料水は9リットルあります。'})
+ ];
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));
+ const engine={manifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{throw Error('Unexpected load');},count:async()=>{throw Error('Unexpected count');},generate:async()=>{throw Error('Unexpected regeneration');}};
+ const request={model:'test',question:'保存した二つのメモを読み、集合場所と飲料水の量を比較し、新しいノートに保存してください。',mode:'summary',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true},reply:{answer:'集合場所は青葉図書館の東入口で、飲料水は17リットルです。集合場所は緑川公園の西入口で、飲料水は9リットルです。青葉図書館の方が近いため、飲料水も17リットルの方が多いです。',sources:refs}};
+ await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>[]},engine},request),/unsupported location comparison/i);
+});
+
 
 test('native citation labels keep their identity when context fitting omits older evidence',async()=>{
  const history=[

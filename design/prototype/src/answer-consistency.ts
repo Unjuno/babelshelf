@@ -1,6 +1,25 @@
 /** Reject an obvious type mismatch without claiming to verify semantic entailment. */
 export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string}[]=[]){
  const q=question.normalize('NFKC'),a=answer.normalize('NFKC').trim();
+ // This is a narrow contradiction guard, not general semantic entailment. A
+ // live model run compared two locations even though neither excerpt contained
+ // a distance or a proximity relation. Permit the claim only when the source
+ // states that comparison, or contains two comparable measured distances.
+ const evidence=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?[item.quote.normalize('NFKC')]:[]);
+ const distanceUnits=(text:string)=>[...text.matchAll(/([0-9]+(?:[.,][0-9]+)?)\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])/giu)].map(match=>{
+  const unit=match[2].toLocaleLowerCase();return /^(?:km|kilomet|キロ)/u.test(unit)?'km':/^(?:mi|mile)/u.test(unit)?'mi':'m';
+ });
+ const comparableDistanceEvidence=['km','m','mi'].some(unit=>evidence.reduce((count,text)=>count+distanceUnits(text).filter(value=>value===unit).length,0)>=2);
+ const normalizeClaim=(value:string)=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase();
+ const comparativeLocationSentences=a.split(/[。.!！?？\n]+/u).map(value=>value.trim()).filter(Boolean).filter(value=>/(?:の方が|のほうが|より)\s*(?:ずっと|もっと)?近(?:い|く|かった|いです|かったです)|\b(?:closer|nearer|nearest)\b/iu.test(value));
+ for(const sentence of comparativeLocationSentences){
+  const uncertainty=/(?:どちら|どっち|どの場所|どの地点).{0,24}近.{0,60}(?:分から|わから|判断でき|特定でき|記載.{0,6}(?:ない|ありません)|書かれて.{0,6}(?:ない|いません)|不明|cannot determine|can't determine|unable to determine|not stated|no distance)/iu.test(sentence);
+  if(uncertainty)continue;
+  const claims=sentence.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{1,28}(?:の方が|のほうが|より)(?:ずっと|もっと)?近(?:い|く|かった|いです|かったです)?/gu)??[];
+  const englishClaims=sentence.match(/\b[\p{L}\p{N}][\p{L}\p{N}'’ -]{0,32}\b(?:closer|nearer|nearest)\b(?:\s+than\s+[\p{L}\p{N}][\p{L}\p{N}'’ -]{0,32})?/giu)??[];
+  const supported=evidence.some(source=>[...claims,...englishClaims].some(claim=>normalizeClaim(source).includes(normalizeClaim(claim))));
+  if(!supported&&!comparableDistanceEvidence)throw Error('Answer contains unsupported location comparison · try again');
+ }
  const colorQuestion=/(?:何色|どんな色|何の色|what colou?r|which colou?r)/iu.test(q);
  const onlyQuantity=/^(?:(?:約|およそ)\s*)?(?:[0-9０-９.,]+|[零〇一二三四五六七八九十百千万]+)\s*(?:リットル|リッター|ミリリットル|キログラム|グラム|メートル|lit(?:er|re)s?|millilit(?:er|re)s?|kilograms?|grams?|meters?|metres?|l|ml|kg|g|m)(?:\s*です)?[。.!！\s]*$/iu.test(a);
  if(colorQuestion&&onlyQuantity)throw Error('Answer does not match question · try again');

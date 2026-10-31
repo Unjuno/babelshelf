@@ -164,7 +164,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const parsed=bindSourceLabelAnswer({answer:request.reply.answer,sources:labels,...(request.reply.status?{status:request.reply.status}:{})},labelled,{userText:question});
   checkRepeatedOutput(parsed.answer);
   if(parsed.status!=='insufficient_evidence'){
-   if(mode==='answer')checkAnswerConsistency(question,parsed.answer,hits);
+   checkAnswerConsistency(question,parsed.answer,hits);
    if(mode==='summary'&&requestsOneSentence(question)&&/[。！？!?]\s*\S|\.\s+\S/u.test(parsed.answer))throw Error('One sentence requested · try again');
    if(mode==='summary'&&summaryRepeatsRequest(question,parsed.answer,parsed.sources))throw Error('Summary repeated the request · try again');
   }
@@ -348,7 +348,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if(echoedRequest())throw Error('Summary repeated the request · try again');
   if(wantsOneSentence&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
  }
- if(mode==='answer'&&parsed.status!=='insufficient_evidence'){
+ if(mode!=='chat'&&parsed.status!=='insufficient_evidence'){
   try{checkAnswerConsistency(question,parsed.answer,evidence);}catch(error){
    if(error instanceof Error&&error.message==='Answer does not match question · try again'&&workingFile)throw Error('Could not answer from the selected excerpts');
    throw error;
