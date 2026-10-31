@@ -107,18 +107,30 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  const onlyOtherFacts=statements.length>0&&statements.every(text=>/^(?:集合場所|飲料水|水の量|備蓄量)\s*(?:は|:|：)/u.test(text));
  if(meetingTime&&!timeOrUncertainty&&(onlyQuantity||onlyOtherFacts))throw Error('Answer does not match question · try again');
  // Exact substring validation proves provenance, not relevance. For explicit
- // English quote requests, require at least one non-generic topic word from
- // the question to occur in the quoted answer as well.
- if(/\b(?:quote|copy|extract)\b/iu.test(q)&&/\b(?:file|document|pdf|text|attachment|image|audio|video)\b/iu.test(q)){
+ // quote requests in English or Japanese, bind the answer to a relevant source
+ // sentence; Japanese topic hints use small character n-grams after removing
+ // common request words because this browser build has no Japanese segmenter.
+ const englishQuoteRequest=/\b(?:quote|copy|extract)\b/iu.test(q)&&/\b(?:file|document|pdf|text|attachment|image|audio|video)\b/iu.test(q);
+ const japaneseQuoteRequest=/(?:原文|一文|文章|箇所|部分|引用文).{0,20}(?:引用|そのまま|抜き出|書き写)|(?:引用|抜き出|書き写).{0,20}(?:原文|一文|文章|箇所|部分|引用文)|(?:引用|抜き出|書き写).{0,12}(?:して|ください|ほしい|くれ|もらえ)|そのまま.{0,12}(?:引用|抜き出|書き写)/u.test(q);
+ if(englishQuoteRequest||japaneseQuoteRequest){
   const ignored=new Set(['quote','copy','extract','sentence','passage','paragraph','this','that','these','those','the','from','using','only','attached','current','file','document','pdf','text','attachment','image','audio','video','that','states','state','gives','give','contains','contain','about','with','which','what','where','when','who','why','how','is','are','was','were','in','on','of','and','for','to']);
   const terms=(value:string)=>new Set((value.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu)??[]).filter(word=>word.length>2&&!ignored.has(word)));
   const topics=terms(q),quoted=terms(a);
-  if(topics.size&&![...topics].some(word=>quoted.has(word)))throw Error('Quoted answer does not match question · try again');
+  const requestWords=/(?:この|その|あの|どの|ファイル|文書|テキスト|メモ|内容|書いてある|書かれている|書かれた|記載された|中から|について|に関する|原文|一文|文章|箇所|部分|引用文|引用|そのまま|抜き出して|抜き出す|書き写して|書き写す|してください|してほしい|教えて|ですか|でしたか|です|ます|する|して|されて|として|ある|いる|こと|もの|これ|あれ|どれ|から|まで|より|の|は|が|を|に|で|と|へ|も|や|など)/gu;
+  const japaneseNgrams=(value:string)=>{
+   const cleaned=value.normalize('NFKC').toLocaleLowerCase().replace(requestWords,' ');
+   const grams=new Set<string>();
+   for(const run of cleaned.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}]{2,}/gu)??[]){const chars=Array.from(run);for(let index=0;index+1<chars.length;index++)grams.add(chars.slice(index,index+2).join(''));}
+   return grams;
+  };
+  const japaneseTopicGrams=japaneseNgrams(q);
+  const hasTopic=(value:string)=>[...terms(value)].some(word=>topics.has(word))||[...japaneseNgrams(value)].some(gram=>japaneseTopicGrams.has(gram));
+  if((topics.size||japaneseTopicGrams.size)&&!hasTopic(answer))throw Error('Quoted answer does not match question · try again');
   const normalize=(value:string)=>value.normalize('NFKC').replace(/[“”„]/gu,'"').replace(/[‘’]/gu,"'").replace(/\s+/gu,' ').trim().toLocaleLowerCase();
-  const response=normalize(answer),relevant=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?item.quote.split(/\r?\n+/u).flatMap(line=>line.match(/[^.!?。！？]+[.!?。！？]?/gu)??[]):[]).map(sentence=>sentence.trim()).filter(sentence=>sentence&&[...terms(sentence)].some(word=>topics.has(word)));
+  const response=normalize(answer),relevant=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?item.quote.split(/\r?\n+/u).flatMap(line=>line.match(/[^.!?。！？]+[.!?。！？]?/gu)??[]):[]).map(sentence=>sentence.trim()).filter(sentence=>sentence&&hasTopic(sentence));
   // A quote request must reproduce a complete matching sentence that is
   // present in the scoped evidence. Echoing the request with an unrelated
   // citation is provenance-valid text, but not an answer to the request.
-  if(relevant.length&&!relevant.some(sentence=>response.includes(normalize(sentence))))throw Error('Quoted answer does not match source · try again');
+  if(!relevant.length||!relevant.some(sentence=>response.includes(normalize(sentence))))throw Error('Quoted answer does not match source · try again');
  }
 }

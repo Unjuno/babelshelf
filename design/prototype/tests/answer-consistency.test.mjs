@@ -18,11 +18,20 @@ test('explicit meeting-time questions reject unrelated sourced excerpts while al
 test('direct English quote requests reject an exact but unrelated heading',()=>{
  const question='From this file, quote the sentence that states the water-cache amount?';
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture'),/does not match/);
- assert.doesNotThrow(()=>checkAnswerConsistency(question,'The local water cache contains exactly 18 litres.'));
+ assert.throws(()=>checkAnswerConsistency(question,'The local water cache contains exactly 18 litres.'),/Quoted answer does not match source/i);
  const evidence=[{quote:'# Temporary evaluation fixture\n\nThe local water cache contains exactly 18 litres.'}];
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'The local water cache contains exactly 18 litres.',evidence));
  assert.throws(()=>checkAnswerConsistency(question,'I cannot find the water-cache amount in this file.',evidence),/does not match source/);
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture',evidence),/does not match/);
+});
+
+test('Japanese verbatim quote requests keep the answer in the relevant original sentence',()=>{
+ const question='このメモから「水の備蓄量」について原文を一文そのまま引用して。';
+ const evidence=[{quote:'# 防災メモ\n\n水の備蓄量は17リットルです。\n集合場所は緑川公園です。'}];
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'水の備蓄量は17リットルです。',evidence));
+ assert.throws(()=>checkAnswerConsistency(question,'水の備蓄量は17リットルです。'),/Quoted answer does not match source/i);
+ assert.throws(()=>checkAnswerConsistency(question,'集合場所は緑川公園です。',evidence),/Quoted answer does not match question/i);
+ assert.throws(()=>checkAnswerConsistency(question,'水の備蓄量は17 Lです。',evidence),/Quoted answer does not match source/i);
 });
 
 test('answers cannot add a location ranking absent from cited excerpts',()=>{
