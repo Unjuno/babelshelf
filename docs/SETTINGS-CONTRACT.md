@@ -26,7 +26,7 @@ Assistant instructions are included as a bounded system-message extension before
 
 Each record has a stable ID and path, a current body, a version and retained earlier bodies. A validated save appends a revision. Undo appends the prior valid body as a new revision. Restoring defaults also appends a revision and preserves the existing history.
 
-Preference documents carry `schemaVersion: 1`. Known version-0 records are migrated in memory using deterministic migrations; merely reading one does not rewrite it. Its next explicit save writes the current format as a new revision. Unknown fields and malformed values are rejected. A future schema version is preserved and not overwritten; the app can fall back to the latest compatible revision or bundled defaults and offer targeted recovery.
+Preference documents carry `schemaVersion: 2`. Known version-0 and version-1 records are projected to the current shape in memory; merely reading one does not rewrite stored bytes. Only older schemas receive default-value migrations. Current-schema values remain explicit user settings, even when they equal a former factory default. The next explicit save writes the current format as a new revision. Unknown fields and malformed values are rejected. A future schema version is preserved and not overwritten; the app can fall back to the latest compatible revision or bundled defaults and offer targeted recovery.
 
 Managed Settings edits use an exact record/path check and expected-revision comparison. Chat proposals show the target and complete Before/After values. Saving requires explicit approval. A stale, invalid or unsupported proposal changes nothing. Settings backup/restore retains the records and history and refuses conflicts instead of overwriting them silently.
 

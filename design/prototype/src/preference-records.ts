@@ -19,7 +19,7 @@ export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';
 export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number};
 export type HarnessPreferences={replyStyle:ReplyStyle;userGuidance:string;activeProfileId:string;profiles:HarnessProfile[]};
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
-export const PREFERENCE_SCHEMA_VERSION=1 as const;
+export const PREFERENCE_SCHEMA_VERSION=2 as const;
 export class UnsupportedPreferenceSchemaError extends Error{
  readonly group:PreferenceGroup;readonly version:number;
  constructor(group:PreferenceGroup,version:number){super('Settings use a newer format · update the app');this.name='UnsupportedPreferenceSchemaError';this.group=group;this.version=version;}
@@ -81,8 +81,11 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
  if(group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
  if(group==='harness'&&!('userGuidance' in value))value.userGuidance='';
- if(schemaVersion===0)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
- if(group==='harness'&&Array.isArray(value.profiles)){
+ if(schemaVersion<PREFERENCE_SCHEMA_VERSION)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
+ // Profile defaults may evolve only while reading an older settings schema.
+ // Current-schema values are explicit user settings, even when they happen
+ // to equal a former built-in default such as an eight-call budget.
+ if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles)){
   // Project only untouched built-in defaults; preserve all customized profile values.
   for(const profile of value.profiles){
    const oldStandard=['math.calculate','memory.read','memory.search'].sort().join('|');
