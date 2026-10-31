@@ -47,34 +47,41 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  const schemaVersion=value.schemaVersion===undefined?0:value.schemaVersion;
  if(!Number.isSafeInteger(schemaVersion)||schemaVersion<0)throw Error('Invalid settings schema version');
  if(schemaVersion>PREFERENCE_SCHEMA_VERSION)throw new UnsupportedPreferenceSchemaError(group,schemaVersion);
- if(schemaVersion===0){
-  // v0 records predate an explicit schema stamp; migrate only those known legacy shapes.
-  if(group==='models'&&!('textLibrary' in value)&&!('decisionLibrary' in value)){value.textLibrary=value.textModel?[value.textModel]:[];value.decisionLibrary=value.decisionModel?[value.decisionModel]:[];}
-  if(group==='models'&&!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
-  if(group==='models'&&!('ocrModel' in value)&&!('ocrLibrary' in value)&&!('ocrLanguage' in value)){value.ocrModel='';value.ocrLibrary=[];value.ocrLanguage='eng+jpn';}
-  if(group==='models'&&!('visionModel' in value)&&!('visionLibrary' in value)){value.visionModel='';value.visionLibrary=[];}
-  if(group==='models'&&!('customModels' in value))value.customModels=[];
-  if(group==='models'&&!('customDecisionModels' in value))value.customDecisionModels=[];
-  if(group==='models'&&!('customSpeechModels' in value))value.customSpeechModels=[];
-  if(group==='models'&&!('customVisionModels' in value))value.customVisionModels=[];
-  if(group==='models'&&!('customSets' in value))value.customSets=[];
-  if(group==='appearance'&&!('fontFamily' in value)){value.fontFamily='system';value.fonts=[];}
-  if(group==='appearance'){
-   if(!('paletteRegistry' in value)){
-    const legacyPalette=validateAppearancePalette('palette' in value?value.palette:null);
-    value.paletteRegistry=legacyPalette?[{id:'palette-legacy',...legacyPalette}]:[];
-    value.activePaletteId=legacyPalette?'palette-legacy':'';
-    delete value.palette;
-   }else if('palette' in value)throw Error('Ambiguous legacy palette setting');
-   if(!('activePaletteId' in value))value.activePaletteId='';
-  }
-  if(group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
-  if(group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
-  if(group==='harness'&&!('userGuidance' in value))value.userGuidance='';
-  value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
+ // The settings schema has remained v1 while additive fields were introduced.
+ // Project only known missing fields for both unstamped and v1 records; never
+ // rewrite the stored body during a read or guess over a present invalid value.
+ if(group==='models'){
+  if(!('textLibrary' in value))value.textLibrary=value.textModel?[value.textModel]:[];
+  if(!('decisionLibrary' in value))value.decisionLibrary=value.decisionModel?[value.decisionModel]:[];
+  if(!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
+  if(!('ocrModel' in value))value.ocrModel='';
+  if(!('ocrLibrary' in value))value.ocrLibrary=value.ocrModel?[value.ocrModel]:[];
+  if(!('ocrLanguage' in value))value.ocrLanguage='eng+jpn';
+  if(!('visionModel' in value))value.visionModel='';
+  if(!('visionLibrary' in value))value.visionLibrary=value.visionModel?[value.visionModel]:[];
+  if(!('customModels' in value))value.customModels=[];
+  if(!('customDecisionModels' in value))value.customDecisionModels=[];
+  if(!('customSpeechModels' in value))value.customSpeechModels=[];
+  if(!('customVisionModels' in value))value.customVisionModels=[];
+  if(!('customSets' in value))value.customSets=[];
+  // Preserve the selected model if the older record predates a role library.
+  if(!('lfm3ContextTokens' in value))value.lfm3ContextTokens=8192;
  }
- // Known additive model preference; older Settings/models.md keeps its choices.
- if(group==='models'&&!('lfm3ContextTokens' in value))value.lfm3ContextTokens=8192;
+ if(group==='appearance'){
+  if(!('fontFamily' in value))value.fontFamily='system';
+  if(!('fonts' in value))value.fonts=[];
+  if(!('paletteRegistry' in value)){
+   const legacyPalette=validateAppearancePalette('palette' in value?value.palette:null);
+   value.paletteRegistry=legacyPalette?[{id:'palette-legacy',...legacyPalette}]:[];
+   if(!('activePaletteId' in value))value.activePaletteId=legacyPalette?'palette-legacy':'';
+   delete value.palette;
+  }else if('palette' in value)throw Error('Ambiguous legacy palette setting');
+  if(!('activePaletteId' in value))value.activePaletteId='';
+ }
+ if(group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
+ if(group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
+ if(group==='harness'&&!('userGuidance' in value))value.userGuidance='';
+ if(schemaVersion===0)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
  if(group==='harness'&&Array.isArray(value.profiles)){
   // Project only untouched built-in defaults; preserve all customized profile values.
   for(const profile of value.profiles){

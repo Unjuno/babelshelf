@@ -1,3 +1,16 @@
+2026-10-31 — Additive migration for version-1 settings, build `62f3d2a21f9f36e2`.
+Settings stayed at schemaVersion 1 while model, OCR, vision, font, palette, log and
+harness fields were added. A prior version-1 record missing one of those known fields
+was rejected by the exact-key validator and fell back to older history or defaults.
+Reads now project only known missing fields in memory for schema 0 and schema 1,
+preserving existing model/OCR selections. Present invalid fields and future schema
+versions still fail validation. Stored bodies and revisions are untouched by reads;
+an explicit subsequent edit writes a canonical new revision and retains the old body
+in History. Focused settings tests passed 35/35; full prototype tests 1,630/1,630,
+root tests 235/235, `npm run check`, prototype TypeScript, 163-asset product build,
+and product acceptance 8/8 passed. The test uses controlled migration fixtures and
+does not prove every historical user record has the same shape.
+
 2026-10-31 — Exact cited-phrase highlight, build `0e125b6642a405ca`.
 The source sheet previously highlighted the full retrieved passage when the model
 selected a shorter exact `citedQuote`. It now narrows the highlight only when that
