@@ -53,22 +53,30 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   const uncertainty=/(?:どちら|どっち|どの場所|どの地点).{0,24}近.{0,60}(?:分から|わから|判断でき|特定でき|記載.{0,6}(?:ない|ありません)|書かれて.{0,6}(?:ない|いません)|不明|cannot determine|can't determine|unable to determine|not stated|no distance)/iu.test(sentence);
   if(uncertainty)continue;
   const negated=/(?:\b(?:not|never)\s+(?:closer|nearer|nearest)\b|\b(?:isn't|aren't|wasn't|weren't)\s+(?:closer|nearer|nearest)\b|\bno\s+(?:closer|nearer)\s+than\b|近(?:く|い)(?:は|が)?(?:ありませんでした|ありません|なかったです|なかった|ないです|ない))/iu.test(sentence);
-  const supported=evidence.some(source=>negated?normalizeClaim(source).includes(normalizeClaim(sentence)):[...claims,...englishClaims].some(claim=>normalizeClaim(source).includes(normalizeClaim(claim))));
   const operandSentence=sentence.replace(/\b(?:is|are|was|were)\s+not\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\b(?:isn't|aren't|wasn't|weren't)\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\bno\s+(?=(?:closer|nearer)\s+than\b)/giu,'');
   const operands=comparisonPlaces(operandSentence);
    const assertedLeftIsCloser=!negated;
    const samePlace=(left:string,right:string)=>placeKey(left)===placeKey(right);
+   const sourceRelation=(sourceSentence:string)=>{
+    const sourceNegated=/(?:\b(?:not|never)\s+(?:closer|nearer|nearest)\b|\b(?:isn't|aren't|wasn't|weren't)\s+(?:closer|nearer|nearest)\b|\bno\s+(?:closer|nearer)\s+than\b|近(?:く|い)(?:は|が)?(?:ありませんでした|ありません|なかったです|なかった|ないです|ない))/iu.test(sourceSentence);
+    const sourceOperandSentence=sourceSentence.replace(/\b(?:is|are|was|were)\s+not\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\b(?:isn't|aren't|wasn't|weren't)\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\bno\s+(?=(?:closer|nearer)\s+than\b)/giu,'');
+    const sourceOperands=comparisonPlaces(sourceOperandSentence);
+    if(sourceOperands.length!==operands.length||!operands.length)return null;
+    if(operands.length===1)return samePlace(sourceOperands[0],operands[0])?!sourceNegated:null;
+    if(samePlace(sourceOperands[0],operands[0])&&samePlace(sourceOperands[1],operands[1]))return !sourceNegated;
+    if(samePlace(sourceOperands[0],operands[1])&&samePlace(sourceOperands[1],operands[0]))return sourceNegated;
+    return null;
+   };
+   // Direct quoted comparison evidence must name the same parsed entities.
+   // Substring matching a clipped claim ("Aoba Park is closer") incorrectly
+   // accepted a different full entity ("New Aoba Park").
+   const supported=evidence.some(source=>source.split(/[。.!！?？\n]+/u).map(value=>value.trim()).filter(Boolean).some(sourceSentence=>sourceRelation(sourceSentence)===assertedLeftIsCloser));
    const observedRelations:boolean[]=[];
    if(operands.length>1){
     for(const source of evidence){
      for(const sourceSentence of source.split(/[。.!！?？\n]+/u).map(value=>value.trim()).filter(Boolean)){
-      const sourceOperands=comparisonPlaces(sourceSentence);
-      if(sourceOperands.length<2)continue;
-      const sourceNegated=/(?:\b(?:not|never)\s+(?:closer|nearer|nearest)\b|\b(?:isn't|aren't|wasn't|weren't)\s+(?:closer|nearer|nearest)\b|\bno\s+(?:closer|nearer)\s+than\b|近(?:く|い)(?:は|が)?(?:ありませんでした|ありません|なかったです|なかった|ないです|ない))/iu.test(sourceSentence);
-      const sameOrder=samePlace(sourceOperands[0],operands[0])&&samePlace(sourceOperands[1],operands[1]);
-      const reverseOrder=samePlace(sourceOperands[0],operands[1])&&samePlace(sourceOperands[1],operands[0]);
-      if(sameOrder)observedRelations.push(!sourceNegated);
-      else if(reverseOrder)observedRelations.push(sourceNegated);
+      const relation=sourceRelation(sourceSentence);
+      if(relation!==null)observedRelations.push(relation);
      }
     }
    }
