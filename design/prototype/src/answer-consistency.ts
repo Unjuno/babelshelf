@@ -6,7 +6,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // a distance or a proximity relation. Permit the claim only when the source
  // states that comparison, or contains two comparable measured distances.
  const evidence=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?[item.quote.normalize('NFKC')]:[]);
- const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').replace(/^(?:the|a|an)\s+/iu,'').toLocaleLowerCase();
+ const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
  const distancePattern='([0-9]+(?:[.,][0-9]+)?)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';
  const distanceInMeters=(amount:string,unit:string)=>{
   const value=Number(amount.replace(',','.')),normalized=unit.toLocaleLowerCase();
