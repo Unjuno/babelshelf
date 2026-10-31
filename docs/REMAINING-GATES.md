@@ -1,5 +1,7 @@
 ## Current status · 2026-11-01
 
+Latest clean-checkout CI run **41226345432** passed in 10m19s on the documentation follow-up commit `8f3e21292c9fba0c62123e81b018ad5eb64c81fe`. All workflow stages passed: core/build/acceptance, review and offline calculation, tools/MCP/Markdown, device/settings, editorial/iOS handoff, and app-update/offline/installed-PWA. The implementation change is `57a28430a14ce2116462667667969177c023e9ab`; its dedicated full rerun **41224873205** also passed. These PC/CI results do not establish live-model mobile inference, physical offline cold start, or exhaustive migration behavior for every historic backup.
+
 Preference migration follow-up commits `5edc3d7` and `897391f`, plus the regenerated offline shell `4488cfb`, passed full clean-checkout CI **41214132530** in 9m05s. Local `npm test` passed 246/246 after those changes. Schema-2 settings preserve explicit current values while projecting v0/v1 records in memory; the service-worker network authority accepts schemas 1 and 2 and rejects future or malformed versions. These checks establish the current code path, not an exhaustive audit of every deployed user backup.
 
 Latest citation hardening commit `9dcb50ce1ea578af2a801c0c479d945be88a1de9` passed complete clean-checkout CI **41210762301** in 9m26s. The deterministic comparison-identity change is covered by CI; this does not establish general semantic entailment or live-model/device behavior.
