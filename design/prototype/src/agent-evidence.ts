@@ -235,6 +235,17 @@ export function projectAgentActivityInput(tool:string,args:unknown,identity:unkn
   const id=(args as Record<string,string>).id;if(!/^user\.[a-z][a-z0-9-]{0,47}$/.test(id))throw Error('Invalid tool skill activity');
   return {kind:'local_tool_skill_read',id,...identity as Record<string,unknown>};
  }
+ if(['memory.search','memory.read','memory.list','memory.sources'].includes(tool)){
+  if(!args||typeof args!=='object'||Array.isArray(args)||!identity||typeof identity!=='object'||Array.isArray(identity))throw Error('Invalid Memory activity input');
+  const input=args as Record<string,unknown>,bytes=(value:unknown)=>typeof value==='string'?new TextEncoder().encode(value).byteLength:null;
+  const bounded=(key:string,min:number,max:number)=>Number.isSafeInteger(input[key])&&Number(input[key])>=min&&Number(input[key])<=max?Number(input[key]):undefined;
+  const snapshot=typeof input.snapshot==='string'&&/^[a-f0-9]{64}$/.test(input.snapshot)?input.snapshot:undefined;
+  const base={builtin:tool,...identity as Record<string,unknown>};
+  if(tool==='memory.search')return {kind:'memory_search',queryBytes:bytes(input.query),...(input.pathPrefix!==undefined?{pathPrefixBytes:bytes(input.pathPrefix)}:{}),...(bounded('offset',0,10000)!==undefined?{offset:bounded('offset',0,10000)}:{}),...(bounded('limit',1,12)!==undefined?{limit:bounded('limit',1,12)}:{}),...(snapshot?{snapshot}:{}),...base};
+  if(tool==='memory.read')return {kind:'memory_read',selectorBytes:bytes(input.query),...(bounded('start',0,10_000_000)!==undefined?{start:bounded('start',0,10_000_000)}:{}),...(bounded('length',1,3_000)!==undefined?{length:bounded('length',1,3_000)}:{}),...(bounded('expectedRevision',1,Number.MAX_SAFE_INTEGER)!==undefined?{expectedRevision:bounded('expectedRevision',1,Number.MAX_SAFE_INTEGER)}:{}),...base};
+  if(tool==='memory.list')return {kind:'memory_list',...(input.path!==undefined?{pathBytes:bytes(input.path)}:{}),...(bounded('offset',0,1_000_000)!==undefined?{offset:bounded('offset',0,1_000_000)}:{}),...(bounded('limit',1,25)!==undefined?{limit:bounded('limit',1,25)}:{}),...base};
+  return {kind:'memory_sources',noteId:typeof input.id==='string'?input.id:null,...(bounded('revision',1,Number.MAX_SAFE_INTEGER)!==undefined?{revision:bounded('revision',1,Number.MAX_SAFE_INTEGER)}:{}),...(bounded('offset',0,10000)!==undefined?{offset:bounded('offset',0,10000)}:{}),...(bounded('limit',1,12)!==undefined?{limit:bounded('limit',1,12)}:{}),...(snapshot?{snapshot}:{}),...base};
+ }
  if(!/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool)){
   if(!args||typeof args!=='object'||Array.isArray(args)||!identity||typeof identity!=='object'||Array.isArray(identity))throw Error('Invalid tool activity input');
   return {...args as Record<string,unknown>,...identity as Record<string,unknown>};
@@ -253,6 +264,26 @@ export function projectAgentActivityResult(tool:string,result:unknown,maxChars?:
  if(/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool)){
   const serialized=serializeCustomToolResult(result,true);
   return {kind:'custom_tool_result',resultBytes:new TextEncoder().encode(serialized).byteLength};
+ }
+ if(tool==='memory.search'){
+  const projected=projectAgentToolResult(tool,result,maxChars) as any;
+  const hits=Array.isArray(projected)?projected:projected.hits;
+  const receiptHits=hits.map((item:any)=>item.kind==='file'
+   ?{kind:'file',noteId:item.noteId,revision:item.revision,pathBytes:new TextEncoder().encode(item.path).byteLength}
+   :{kind:'passage',noteId:item.noteId,revision:item.revision,start:item.start,end:item.end,quoteBytes:new TextEncoder().encode(item.quote).byteLength,...(typeof item.title==='string'?{titleBytes:new TextEncoder().encode(item.title).byteLength}:{}),...(typeof item.path==='string'?{pathBytes:new TextEncoder().encode(item.path).byteLength}:{}),...(typeof item.groundingEligible==='boolean'?{groundingEligible:item.groundingEligible}:{}),...(item.partial?{partial:true}:{})});
+  return Array.isArray(projected)?{kind:'memory_search_result',hits:receiptHits}:{kind:'memory_search_result',offset:projected.offset,limit:projected.limit,snapshot:projected.snapshot,nextOffset:projected.nextOffset,hasMore:projected.hasMore,...(projected.windowLimit?{windowLimit:true}:{}),hits:receiptHits};
+ }
+ if(tool==='memory.read'){
+  const rows=projectAgentToolResult(tool,result,maxChars) as any[];
+  return {kind:'memory_read_result',items:rows.map(item=>({noteId:item.noteId,revision:item.revision,start:item.start,end:item.start+item.excerpt.length,excerptBytes:new TextEncoder().encode(item.excerpt).byteLength,totalChars:item.totalChars,partial:item.partial,pathBytes:new TextEncoder().encode(item.path).byteLength}))};
+ }
+ if(tool==='memory.list'){
+  const page=projectAgentToolResult(tool,result) as any;
+  return {kind:'memory_list_result',pathBytes:new TextEncoder().encode(page.path).byteLength,offset:page.offset,limit:page.limit,total:page.total,hasMore:page.hasMore,nextOffset:page.nextOffset,folders:page.entries.filter((item:any)=>item.kind==='folder').length,files:page.entries.filter((item:any)=>item.kind==='file').length};
+ }
+ if(tool==='memory.sources'){
+  const page=projectAgentToolResult(tool,result) as any;
+  return {kind:'memory_sources_result',noteId:page.noteId,revision:page.revision,status:page.status,offset:page.offset,limit:page.limit,nextOffset:page.nextOffset,snapshot:page.snapshot,...(page.windowLimit?{windowLimit:true}:{}),items:page.items.map((item:any)=>({noteId:item.noteId,revision:item.revision,start:item.start,end:item.end,status:item.status,historicalAvailable:item.historicalAvailable,...(item.currentRevision!==undefined?{currentRevision:item.currentRevision}:{})}))};
  }
  return projectAgentToolResult(tool,result,maxChars);
 }

@@ -1,3 +1,14 @@
+2026-10-31 — Metadata-only Memory tool Activity receipts.
+New `memory.search`, `memory.read`, `memory.list` and `memory.sources` receipts retain
+stable source identity/version and bounded operation metadata, while omitting raw
+queries, paths, titles, excerpts and quotes. The model-facing tool result and grounded
+answer/citation path remain unchanged. Existing stored Activity records are not
+rewritten. Agent-evidence tests passed 27/27, coordinator tests 69/69, submission
+workflow tests 59/59, full prototype suite 1,645/1,645, root suite 246/246, product
+acceptance 8/8, `npm run check`, and the production build passed on Windows PC. The
+build reports the existing >500 kB chunk advisory. These checks do not include a
+physical iPhone run or live-model quality evaluation.
+
 2026-10-31 — Browser migration path for older schema-v1 model settings, build `62f3d2a21f9f36e2`.
 The focused Playwright settings-home file passed 11/11 on PC Chromium. Its isolated
 IndexedDB fixture removes model fields added after schema v1 while retaining the old

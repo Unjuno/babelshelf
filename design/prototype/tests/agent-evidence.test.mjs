@@ -65,8 +65,29 @@ test('custom-tool activity inputs retain package identity and byte count, never 
  const receipt=projectAgentActivityInput('user.lookup',args,identity);
  assert.deepEqual(receipt,{kind:'custom_tool_call',argumentBytes:new TextEncoder().encode(JSON.stringify(args)).byteLength,...identity});
  assert.doesNotMatch(JSON.stringify(receipt),/PRIVATE_ARGUMENT_SENTINEL/);
- assert.deepEqual(projectAgentActivityInput('memory.search',{query:'meeting'},{package:'memory.search'}),{query:'meeting',package:'memory.search'});
+ assert.deepEqual(projectAgentActivityInput('memory.search',{query:'meeting'},{version:4}),{kind:'memory_search',queryBytes:7,builtin:'memory.search',version:4});
  assert.throws(()=>projectAgentActivityInput('user.lookup',{query:'x'.repeat(9000)},identity),/context limit/);
+});
+
+test('Memory activity receipts keep target and range metadata without retaining query, path or source text',()=>{
+ const privateText='PRIVATE_MEMORY_SENTINEL',identity={version:4};
+ const searchInput=projectAgentActivityInput('memory.search',{query:privateText,pathPrefix:'Notes/private',offset:0,limit:12},{builtin:'memory.search',...identity});
+ assert.deepEqual(searchInput,{kind:'memory_search',queryBytes:new TextEncoder().encode(privateText).byteLength,pathPrefixBytes:new TextEncoder().encode('Notes/private').byteLength,offset:0,limit:12,builtin:'memory.search',version:4});
+ const readInput=projectAgentActivityInput('memory.read',{query:'Notes/private.md',start:10,length:3000,expectedRevision:7},{builtin:'memory.read',...identity});
+ assert.deepEqual(readInput,{kind:'memory_read',selectorBytes:16,start:10,length:3000,expectedRevision:7,builtin:'memory.read',version:4});
+ const searchResult=projectAgentActivityResult('memory.search',[{noteId:'n1',revision:7,start:10,end:10+privateText.length,quote:privateText,title:'Notes/private.md',path:'Notes/private.md',groundingEligible:true}]);
+ assert.deepEqual(searchResult,{kind:'memory_search_result',hits:[{kind:'passage',noteId:'n1',revision:7,start:10,end:10+privateText.length,quoteBytes:new TextEncoder().encode(privateText).byteLength,titleBytes:16,pathBytes:16,groundingEligible:true}]});
+ const readResult=projectAgentActivityResult('memory.read',[{id:'n1',path:'Notes/private.md',version:7,body:privateText,start:10,totalChars:100}]);
+ assert.deepEqual(readResult,{kind:'memory_read_result',items:[{noteId:'n1',revision:7,start:10,end:10+privateText.length,excerptBytes:new TextEncoder().encode(privateText).byteLength,totalChars:100,partial:true,pathBytes:16}]});
+ for(const receipt of [searchInput,readInput,searchResult,readResult])assert.doesNotMatch(JSON.stringify(receipt),/PRIVATE_MEMORY_SENTINEL|Notes\/private\.md/);
+});
+
+test('folder listing and source activity retain counts and stable source versions, not user paths',()=>{
+ const listing=projectAgentActivityResult('memory.list',{path:'Notes/private',entries:[{kind:'file',name:'secret.md',path:'Notes/private/secret.md',id:'n1',version:3},{kind:'folder',name:'drafts',path:'Notes/private/drafts'}],offset:0,limit:25,total:2,hasMore:false,nextOffset:null});
+ assert.deepEqual(listing,{kind:'memory_list_result',pathBytes:13,offset:0,limit:25,total:2,hasMore:false,nextOffset:null,folders:1,files:1});
+ const source=projectAgentActivityResult('memory.sources',{noteId:'n1',revision:3,status:'current',items:[{noteId:'n1',path:'Notes/private/secret.md',revision:3,start:5,end:10,status:'current',historicalAvailable:true}],offset:0,limit:12,snapshot:'a'.repeat(64),nextOffset:null});
+ assert.deepEqual(source,{kind:'memory_sources_result',noteId:'n1',revision:3,status:'current',offset:0,limit:12,nextOffset:null,snapshot:'a'.repeat(64),items:[{noteId:'n1',revision:3,start:5,end:10,status:'current',historicalAvailable:true}]});
+ assert.doesNotMatch(JSON.stringify([listing,source]),/secret\.md|Notes\/private/);
 });
 
 test('agent calculations retain only exact local arithmetic and never become source citations',()=>{

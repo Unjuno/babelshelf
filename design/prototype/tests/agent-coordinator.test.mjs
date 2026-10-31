@@ -495,7 +495,7 @@ test('explicit search-read-answer binds a single search hit when the model passe
  assert.equal(result.final.action,'answer');assert.deepEqual(result.calls.map(call=>call.tool),['memory.search','memory.read']);
  assert.equal(result.calls[1].arguments.query,note.id);assert.equal(result.calls[1].result[0].noteId,note.id);
  assert.equal(result.calls[1].result[0].revision,note.version);assert.equal(result.calls[1].result[0].excerpt,note.body);
- assert.equal(receipts.find(row=>row.tool==='memory.read').details.query,note.id);
+  const readReceipt=receipts.find(row=>row.tool==='memory.read');assert.ok(readReceipt,JSON.stringify(receipts));assert.equal(readReceipt.details.selectorBytes,new TextEncoder().encode(note.id).byteLength);assert.equal('query' in readReceipt.details,false);assert.deepEqual(readReceipt.result,{kind:'memory_read_result',items:[{noteId:note.id,revision:note.version,start:0,end:note.body.length,excerptBytes:new TextEncoder().encode(note.body).byteLength,totalChars:note.body.length,partial:false,pathBytes:new TextEncoder().encode(note.path).byteLength}]});assert.doesNotMatch(JSON.stringify(readReceipt),/emergency water reserve|Reserve: 24 litres|Notes\/water\.md/);
   assert.equal(result.final.action,'answer');
  });
 
@@ -902,7 +902,7 @@ test('search keeps six identities inside a small budget and allows the sixth exa
  const receipts=[];value.trace=(tool,details,work,project)=>recordOperation(tool,details,work,async row=>receipts.push(row),project);
  const result=await coordinateAgentTurn(value);
  assert.equal(result.calls[0].result.length,6);assert.ok(JSON.stringify(result.calls[0].result).length<=1000);
- assert.equal(result.calls[1].arguments.query,'note-5');assert.equal(receipts.find(row=>row.tool==='memory.search'&&row.status==='succeeded').output.length,6);
+ assert.equal(result.calls[1].arguments.query,'note-5');const receipt=receipts.find(row=>row.tool==='memory.search'&&row.status==='succeeded').output;assert.equal(receipt.kind,'memory_search_result');assert.equal(receipt.hits.length,6);assert.equal('quote' in receipt.hits[0],false);
 });
 
 test('oversized read is recorded as failed before planner retries a narrower source',async()=>{

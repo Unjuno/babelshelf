@@ -257,6 +257,7 @@ test('an agent can search saved Memory, ground a new note, and retain the exact 
  const outcome=await c.run(run=>executeSubmission({text,attachments:[]},f.services,f.view,run));
  assert.equal(outcome,'awaitingApproval',JSON.stringify({error:c.state.error,turn:f.current().turns.at(-1)}));
  assert.equal(generations,3);assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,'The workshop is on Monday at 10:00 in Cedar Hall.');assert.deepEqual(f.reviews[0].sources,[{noteId:note.id,revision:1,start:0,end:full.length,quote:full,citedQuote:full}]);
+ const searchReceipt=f.current().turns.at(-1).activity.find(item=>item.tool==='memory.search'&&item.status==='succeeded');assert.equal(searchReceipt.output.kind,'memory_search_result');assert.equal(searchReceipt.output.hits[0].noteId,note.id);assert.equal('quote' in searchReceipt.output.hits[0],false);assert.doesNotMatch(JSON.stringify(searchReceipt),/workshop|Monday at 10:00|Notes\/workshop\.md/);
  assert.equal(f.reviews[0].kind,'generated');assert.equal(f.reviews[0].source,null);
  const {discardPendingNoteReview,createNewNoteView}=await import('../src/note-creation.ts');
  const draft=f.reviews[0],discarded=discardPendingNoteReview(f.current(),draft.turnId);
@@ -292,7 +293,8 @@ test('agent file lookup uses canonical discovery instead of reciting an earlier 
  assert.equal(await c.run(run=>executeSubmission({text:'Find alpha.md and beta.md, compare their meeting places and water, and save a new note.',attachments:[]},f.services,f.view,run)),'awaitingApproval',JSON.stringify({state:c.state,turn:f.current().turns.at(-1)}));
  const searches=f.current().turns.at(-1).activity.filter(item=>item.tool==='memory.search');
  assert.equal(searches.length,2);
- assert.deepEqual(searches.map(item=>item.output.map(hit=>hit.noteId)),[[a.id],[b.id]]);
+ assert.deepEqual(searches.map(item=>item.output.hits.map(hit=>hit.noteId)),[[a.id],[b.id]]);
+ assert.ok(searches.every(item=>item.output.hits.every(hit=>!('quote' in hit)&&!('path' in hit))));
  assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,body);
  assert.deepEqual(new Set(f.reviews[0].sources.map(ref=>ref.noteId)),new Set([a.id,b.id]));
  assert.deepEqual(records,before,'retrieval and review do not write source files');
