@@ -1,6 +1,6 @@
 ## Current status · 2026-11-01
 
-The latest verification-record commit `bdd211b161319224eef315e9796aeac6f79cbe5c` passed clean-checkout CI run **41227943643** in 10m20s. Every stage passed, including the full core/build/acceptance, review/offline, tools/MCP, device/settings, editorial/iOS, and app-update/offline/installed-PWA gates. This is controlled CI evidence; the physical-device and live-model limitations listed in this document remain open.
+The latest application-code verification is commit `1376ce5d9a5f2f8c3eb58aa7c0a5d1c3c27c72c2`, which passed clean-checkout GitHub Actions CI run **41228856270** in 9m05s. Every stage passed, including core/build/acceptance, review/offline, tools/MCP/help/Markdown, device/settings, editorial/iOS handoff, and app-update/offline/installed-PWA gates. The current documentation-only follow-up is not an application-code change. This controlled PC/CI evidence does not close the physical-device or live-model limitations listed below.
 
 The verification-record commit `f57227b5bf54eabdf2b7f3ec8d2c9c1eb708a8aa` also passed clean-checkout CI run **41227207361** in 8m21s. All workflow gates passed on the pushed branch; device and live-model caveats above remain unchanged.
 
