@@ -34,7 +34,9 @@ export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummar
   if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer')&&activity.status==='succeeded'){
    const inference=record(record(activity.output)?.inference);
    if(!inference)continue;
-   measuredModelCalls++;
+   const recordedCalls=inference.measuredModelCalls;
+   const callCount=finiteCounter(recordedCalls)&&Number.isSafeInteger(recordedCalls)?recordedCalls:1;
+   measuredModelCalls=add(measuredModelCalls,callCount,true)??measuredModelCalls;
    promptTokens=add(promptTokens,inference.promptTokens,true);
    outputTokens=add(outputTokens,inference.outputTokens,true);
    tokenCountMs=add(tokenCountMs,inference.countMs);

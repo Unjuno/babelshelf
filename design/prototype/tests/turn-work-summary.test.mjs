@@ -19,6 +19,11 @@ test('turn summary totals only observed model metrics and registered agent tool 
  assert.ok(Math.abs(tokenCountMs-6.8)<1e-9);
 });
 
+test('answer activity counts measured model retries instead of treating the receipt as one call',()=>{
+ const rows=[activity('knowledge.answer','2026-01-01T00:00:00.000Z','2026-01-01T00:00:02.000Z','succeeded',{model:{id:'test'},inference:{measuredModelCalls:3,promptTokens:240,outputTokens:36,countMs:4,generationWallMs:1200}})];
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,promptTokens:240,outputTokens:36,tokenCountMs:4,generationMs:1200,measuredToolCalls:0});
+});
+
 test('summary omits unavailable and malformed measurements instead of inventing zeroes',()=>{
  const rows=[
   activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{promptTokens:-1,outputTokens:'unknown',countMs:NaN,generationWallMs:Infinity}}),
