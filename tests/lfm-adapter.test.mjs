@@ -83,6 +83,20 @@ test('WebGPU adapter availability and configured offload request are not reporte
   const lfm3Model={...model,contextTokens:8192},adapter=new Lfm3Adapter({Wllama:Runtime,paths:{default:'/lfm3.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[lfm3Model]});const info=await adapter.load(file,lfm3Model.id,{backend:'webgpu'});assert.equal(info.actualGpuLayers,null);assert.equal(info.totalModelLayers,null);assert.equal(info.gpuLayerEvidence,'unobserved');await adapter.unload();
  }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
 });
+test('a WebGPU model-load error is typed for CPU fallback only after runtime cleanup succeeds',async()=>{
+ const {Lfm3Adapter}=await import('../dist/lfm-adapter.js');const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');let exited=0;const gpuFailure=Error('controlled GPU load failure');
+ try{Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{async requestAdapter(){return {};}}}});class Runtime{setCompat(){}async loadModel(){throw gpuFailure;}getChatTemplate(){return 'unused'}async exit(){exited++;}}
+  const lfm3Model={...model,contextTokens:8192},adapter=new Lfm3Adapter({Wllama:Runtime,paths:{default:'/lfm3.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[lfm3Model]});
+  await assert.rejects(adapter.load(file,lfm3Model.id,{backend:'webgpu'}),error=>error.code==='webgpu_load_failed'&&error.cause===gpuFailure&&error.cleanupUnconfirmed!==true);assert.equal(exited,1);assert.equal(adapter.runtime,null);assert.equal(adapter.loaded,null);
+ }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
+});
+test('a WebGPU load cleanup failure is marked unconfirmed and cannot authorize CPU fallback',async()=>{
+ const {Lfm3Adapter}=await import('../dist/lfm-adapter.js');const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ try{Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{async requestAdapter(){return {};}}}});class Runtime{setCompat(){}async loadModel(){throw Error('controlled GPU load failure');}getChatTemplate(){return 'unused'}async exit(){throw Error('controlled cleanup failure');}}
+  const lfm3Model={...model,contextTokens:8192},adapter=new Lfm3Adapter({Wllama:Runtime,paths:{default:'/lfm3.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[lfm3Model]});
+  await assert.rejects(adapter.load(file,lfm3Model.id,{backend:'webgpu'}),error=>error.code==='webgpu_load_failed'&&error.cleanupUnconfirmed===true);assert.equal(adapter.runtime,null);assert.equal(adapter.loaded,null);
+ }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
+});
 test('Qwen3 uses a separate fixed architecture and identical nonthinking count/generation options',async()=>{
  const {Qwen3Adapter}=await import('../dist/qwen3-adapter.js');const seen=[];let exited=0;
  class Runtime{static getLibllamaVersion(){return 'fixture'}setCompat(){}async loadModel(_files,p){seen.push({load:p});}getChatTemplate(){return 'fixture'}getLoadedContextInfo(){return {metadata:{'general.architecture':'qwen3'},n_ctx:model.contextTokens}}getWorkerResources(){return {compat:true,wasmPath:'/compat.wasm'}}async countChatTokens(options){seen.push({count:options});return 12;}async createChatCompletion(options){seen.push({generate:options});return (async function*(){yield {choices:[{delta:{content:'fixture'}}],usage:{prompt_tokens:12,completion_tokens:1}};})();}async exit(){exited++;}}

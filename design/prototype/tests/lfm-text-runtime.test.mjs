@@ -158,9 +158,19 @@ test('automatic backend does not mask WebGPU setup errors or attempt a CPU retry
  await assert.rejects(runtime.load('local'),/WebGPU initialization failed/);assert.deepEqual(f.calls,[['preflight','webgpu']]);assert.deepEqual(reads,[]);
 });
 test('automatic backend retries CPU when WebGPU disappears between preflight and adapter load',async()=>{
- const f=fixture();f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);};f.adapter.load=async(_file,id,{backend})=>{f.calls.push(['load-attempt',backend]);if(backend==='webgpu'){const error=Error('WebGPU unavailable');error.code='webgpu_unavailable';throw error;}f.adapter.loaded=id;};
+ const f=fixture(),progress=[];f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);};f.adapter.load=async(_file,id,{backend})=>{f.calls.push(['load-attempt',backend]);if(backend==='webgpu'){const error=Error('WebGPU unavailable');error.code='webgpu_unavailable';throw error;}f.adapter.loaded=id;};
+ const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}}),onProgress:value=>progress.push(value)});
+ const metrics=await runtime.load('local');assert.deepEqual(f.calls,[['preflight','webgpu'],['unload'],['load-attempt','webgpu'],['unload'],['preflight','cpu'],['load-attempt','cpu']]);assert.equal(metrics.executionBackend,'cpu-wasm');assert.equal(runtime.loaded,'local');assert.deepEqual(progress,['WebGPU unavailable · Using CPU/WASM']);
+});
+test('automatic backend retries CPU when WebGPU model loading fails after adapter preflight',async()=>{
+ const f=fixture(),progress=[];f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);};f.adapter.load=async(_file,id,{backend})=>{f.calls.push(['load-attempt',backend]);if(backend==='webgpu'){const error=Error('GPU model allocation failed');error.code='webgpu_load_failed';throw error;}f.adapter.loaded=id;return {runtimeLoadMs:40};};
+ const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}}),onProgress:value=>progress.push(value)});
+ const metrics=await runtime.load('local');assert.deepEqual(f.calls,[['preflight','webgpu'],['unload'],['load-attempt','webgpu'],['unload'],['preflight','cpu'],['load-attempt','cpu']]);assert.equal(metrics.executionBackend,'cpu-wasm');assert.equal(metrics.runtimeLoadMs,40);assert.equal(runtime.loaded,'local');assert.deepEqual(progress,['WebGPU load failed · Trying CPU/WASM']);
+});
+test('automatic backend does not retry CPU when WebGPU runtime cleanup is unconfirmed',async()=>{
+ const f=fixture();f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);};f.adapter.load=async(_file,_id,{backend})=>{f.calls.push(['load-attempt',backend]);const error=Error('GPU model allocation failed');error.code='webgpu_load_failed';error.cleanupUnconfirmed=true;throw error;};
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}})});
- const metrics=await runtime.load('local');assert.deepEqual(f.calls,[['preflight','webgpu'],['unload'],['load-attempt','webgpu'],['preflight','cpu'],['load-attempt','cpu']]);assert.equal(metrics.executionBackend,'cpu-wasm');assert.equal(runtime.loaded,'local');
+ await assert.rejects(runtime.load('local'),error=>error.code==='webgpu_load_failed'&&error.cleanupUnconfirmed===true);assert.deepEqual(f.calls,[['preflight','webgpu'],['unload'],['load-attempt','webgpu']]);
 });
 test('GGUF adapter requests high-performance WebGPU and rejects absence before inspecting or hashing the file',async()=>{
  const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');let fileSizeReads=0,runtimeConstructions=0,adapterOptions;

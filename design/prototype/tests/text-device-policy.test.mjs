@@ -17,5 +17,5 @@ test('GPU-first routing falls back to CPU/WASM when WebGPU becomes unavailable d
  const runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>file,readAssets:()=>({test:{filesPresent:true}}),backend:textBackendPolicy()});
  const loaded=await runtime.load('test');
  assert.equal(loaded.executionBackend,'cpu-wasm');
- assert.deepEqual(calls,[['preflight','webgpu'],['unload'],['load','webgpu'],['preflight','cpu'],['load','cpu']]);
+ assert.deepEqual(calls,[['preflight','webgpu'],['unload'],['load','webgpu'],['unload'],['preflight','cpu'],['load','cpu']]);
 });
