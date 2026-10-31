@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {createDecisionSession} from '../src/decision-execution.ts';
 
 test('Decision prefers WebGPU and uses WASM if GPU session creation fails',async()=>{
- const attempts=[],progress=[];const result=await createDecisionSession({preferred:'webgpu',create:async backend=>{attempts.push(backend);if(backend==='webgpu')throw Error('adapter cannot create this graph');return 'wasm-session';},check:()=>{},onFallback:()=>progress.push('fallback')});
- assert.deepEqual(attempts,['webgpu','wasm']);assert.deepEqual(progress,['fallback']);assert.deepEqual(result,{session:'wasm-session',device:'wasm',fellBack:true});
+ const attempts=[],progress=[],gpuFailure=Error('adapter cannot create this graph');const result=await createDecisionSession({preferred:'webgpu',create:async backend=>{attempts.push(backend);if(backend==='webgpu')throw gpuFailure;return 'wasm-session';},check:()=>{},onFallback:error=>progress.push(error)});
+ assert.deepEqual(attempts,['webgpu','wasm']);assert.deepEqual(progress,[gpuFailure]);assert.deepEqual(result,{session:'wasm-session',device:'wasm',fellBack:true});
 });
 
 test('successful WebGPU session does not initialize a second backend',async()=>{
