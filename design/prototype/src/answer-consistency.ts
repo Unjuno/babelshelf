@@ -34,6 +34,9 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  };
  const comparisonPlaces=(sentence:string)=>{
   const places:string[]=[];
+   for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)の方が([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)より(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[1],match[2]);
+   for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)より([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)の方が(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[2],match[1]);
+   if(places.length)return [...new Set(places.map(value=>value.normalize('NFKC').replace(/[\s。.!！?？,，、:：]/gu,'').toLocaleLowerCase()).filter(value=>value.length>1))];
   for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)(?:の方が|のほうが)(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[1]);
   for(const match of sentence.matchAll(/([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{N}A-Za-z・ー]{2,32}?)より(?:(?:ずっと|もっと)\s*)?近/gu))places.push(match[1]);
   for(const match of sentence.matchAll(/([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40}?)\s+(?:is\s+)?(?:closer|nearer|nearest)\s+than\s+([\p{L}\p{N}][\p{L}\p{N}'’ -]{1,40})/giu))places.push(match[1].replace(/\s+is$/iu,''),match[2]);
@@ -48,8 +51,10 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   if(!claims.length&&!englishClaims.length)continue;
   const uncertainty=/(?:どちら|どっち|どの場所|どの地点).{0,24}近.{0,60}(?:分から|わから|判断でき|特定でき|記載.{0,6}(?:ない|ありません)|書かれて.{0,6}(?:ない|いません)|不明|cannot determine|can't determine|unable to determine|not stated|no distance)/iu.test(sentence);
   if(uncertainty)continue;
-  const supported=evidence.some(source=>[...claims,...englishClaims].some(claim=>normalizeClaim(source).includes(normalizeClaim(claim))));
-  const operands=comparisonPlaces(sentence);
+  const negated=/(?:\b(?:not|never)\s+(?:closer|nearer|nearest)\b|\b(?:isn't|aren't|wasn't|weren't)\s+(?:closer|nearer|nearest)\b|\bno\s+(?:closer|nearer)\s+than\b|近(?:く|い)(?:は|が)?(?:ありませんでした|ありません|なかったです|なかった|ないです|ない))/iu.test(sentence);
+  const supported=evidence.some(source=>negated?normalizeClaim(source).includes(normalizeClaim(sentence)):[...claims,...englishClaims].some(claim=>normalizeClaim(source).includes(normalizeClaim(claim))));
+  const operandSentence=sentence.replace(/\b(?:is|are|was|were)\s+not\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\b(?:isn't|aren't|wasn't|weren't)\s+(?=(?:closer|nearer|nearest)\b)/giu,'').replace(/\bno\s+(?=(?:closer|nearer)\s+than\b)/giu,'');
+  const operands=comparisonPlaces(operandSentence);
   const supportedByMeasuredDistances=operands.length>0&&evidence.some(source=>{
    const measurements=measuredPlaces(source),byPlace=new Map<string,number[]>();
    for(const measurement of measurements){const values=byPlace.get(measurement.name)??[];values.push(measurement.meters);byPlace.set(measurement.name,values);}
@@ -57,8 +62,9 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    const matching=(name:string)=>[...byPlace].find(([candidate])=>placeKey(candidate).includes(placeKey(name))||placeKey(name).includes(placeKey(candidate)));
    const left=matching(operands[0]);if(!left||left[1].length!==1)return false;
    if(operands.length>1){
-    const right=matching(operands[1]);return !!right&&right[0]!==left[0]&&right[1].length===1&&left[1][0]<right[1][0];
+    const right=matching(operands[1]);return !!right&&right[0]!==left[0]&&right[1].length===1&&(negated?left[1][0]>=right[1][0]:left[1][0]<right[1][0]);
    }
+   if(negated)return false;
    return [...byPlace].filter(([name,values])=>name!==left[0]&&values.length===1).length>0&&[...byPlace].filter(([name,values])=>name!==left[0]&&values.length===1).every(([,values])=>left[1][0]<values[0]);
   });
   if(!supported&&!supportedByMeasuredDistances)throw Error('Answer contains unsupported location comparison · try again');

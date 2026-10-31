@@ -46,5 +46,11 @@ test('answers cannot add a location ranking absent from cited excerpts',()=>{
  assert.throws(()=>checkAnswerConsistency('二つの場所を比較してください。','青葉図書館の方が緑川公園より近いです。',[{quote:'青葉図書館まで5 km、緑川公園まで2 kmです。'}]),/unsupported location comparison/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('二つの場所を比較してください。','緑川公園より青葉図書館の方が近いです。',[{quote:'青葉図書館まで2 km、緑川公園まで5 kmです。'}]));
  assert.throws(()=>checkAnswerConsistency('二つの場所を比較してください。','緑川公園より青葉図書館の方が近いです。',[{quote:'青葉図書館まで5 km、緑川公園まで2 kmです。'}]),/unsupported location comparison/i);
+ assert.throws(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is not closer than Midorikawa Park.',[{quote:'Aoba Library is 2 km from home and Midorikawa Park is 5 km from home.'}]),/unsupported location comparison/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is not closer than Midorikawa Park.',[{quote:'Aoba Library is 5 km from home and Midorikawa Park is 2 km from home.'}]));
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is not closer than Midorikawa Park.',[{quote:'Aoba Library is not closer than Midorikawa Park.'}]));
+ assert.throws(()=>checkAnswerConsistency('二つの場所を比較してください。','青葉図書館の方が緑川公園より近くありません。',[{quote:'青葉図書館まで2 km、緑川公園まで5 kmです。'}]),/unsupported location comparison/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('二つの場所を比較してください。','青葉図書館の方が緑川公園より近くありません。',[{quote:'青葉図書館まで5 km、緑川公園まで2 kmです。'}]));
+ assert.doesNotThrow(()=>checkAnswerConsistency('二つの場所を比較してください。','青葉図書館の方が緑川公園より近くありません。',[{quote:'青葉図書館の方が緑川公園より近くありません。'}]));
  assert.doesNotThrow(()=>checkAnswerConsistency('「より近い」とはどういう意味ですか？','「より近い」とは、距離が短いことを表します。',[]));
 });
