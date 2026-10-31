@@ -50,21 +50,23 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   const citedVolumes=quantitySources.flatMap(item=>volumeMeasures(item.quote!,true)),answerMeasures=volumeMeasures(a),answerVolumes=answerMeasures.map(item=>item.value);
   const sameVolume=(value:number,cited:number)=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9);
   if(evidence.length&&answerVolumes.some(value=>!citedVolumes.some(cited=>sameVolume(value,cited.value))))throw Error('Answer quantity conflicts with cited quantity · try again');
-  // For comparisons, exact note titles in both the request and answer can bind
-  // an amount to a source. Associate each amount only with its unique nearest
-  // title in the same sentence; if titles overlap or the distance ties, leave
-  // that amount to the general cited-value check above instead of guessing.
+  // For comparisons, an exact cited title in the answer can bind a quantity
+  // even when the user refers to the files generically. The prompt may name
+  // only one source for a direct question; title candidates still include all
+  // citations so conflicting values from another note cannot mask its value.
+  // The generated answer may introduce exact titles while comparing files
+  // that the user referred to generically, so bind against all cited titles,
+  // not only titles repeated in the question.
   const titleCandidates=new Map<string,{noteId:string;title:string;values:number[]}[]>();
   for(const source of sourceRows){
    if(!source.noteId||!source.title?.trim())continue;
    const title=source.title.normalize('NFKC').trim(),key=title.toLocaleLowerCase();
-   if(!normalizedQuestion.includes(key))continue;
    const candidates=titleCandidates.get(key)??[];
    let candidate=candidates.find(item=>item.noteId===source.noteId);
    if(!candidate){candidate={noteId:source.noteId,title,values:[]};candidates.push(candidate);titleCandidates.set(key,candidates);}
    candidate.values.push(...volumeMeasures(source.quote!,true).map(item=>item.value));
   }
-  const sentenceMatches=[...a.matchAll(/[^.!?。！？\n]+/gu)].flatMap(match=>match.index===undefined?[]:[{text:match[0],start:match.index}]);
+  const sentenceMatches=[...a.matchAll(/[^.!?。！？;；、\n]+/gu)].flatMap(match=>match.index===undefined?[]:[{text:match[0],start:match.index}]);
   const titleSpans=(text:string)=>[...titleCandidates.entries()].flatMap(([key,candidates])=>{
    if(candidates.length!==1)return[];
    const escaped=candidates[0].title.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
@@ -73,15 +75,12 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   });
   for(const sentence of sentenceMatches){
    const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
-   // Nested names (for example “Park” and “The Park”) make title-to-value
-   // association ambiguous, so skip this sentence.
-   const overlaps=spans.some((left,index)=>spans.slice(index+1).some(right=>left.start<right.end&&right.start<left.end&&left.key!==right.key));
-   if(overlaps)continue;
+   // Multiple titles in one sentence need a stronger parser than nearest-word
+   // distance: the next title can be closer to a value that belongs to the
+   // previous one. Bind only one unambiguous cited title per clause.
+   if(spans.length!==1)continue;
    for(const measure of measures){
-    const distance=(span:{start:number;end:number})=>span.end<measure.start?measure.start-span.end:measure.end<span.start?span.start-measure.end:0;
-    const ranked=spans.map(span=>({span,gap:distance(span)})).sort((left,right)=>left.gap-right.gap);
-    if(!ranked.length||ranked.length>1&&ranked[0].gap===ranked[1].gap)continue;
-    const {candidate}=ranked[0].span;
+    const {candidate}=spans[0];
     if(candidate.values.length&&!candidate.values.some(value=>sameVolume(measure.value,value)))throw Error('Answer quantity conflicts with cited quantity · try again');
    }
   }
