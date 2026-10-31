@@ -8,7 +8,7 @@ type Registered=TextBackendRegistration&{instance:TextBackend|null};
 function validOutputLimit(value:unknown,contextTokens:number){return value===undefined||Number.isSafeInteger(value)&&Number(value)>0&&Number(value)<=contextTokens;}
 // Trusted factories come from application code. Stored models/config cannot supply code.
 export class TextEngineRouter{
- private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';private nativeStructuredOutput=false;private createBase:(()=>TextBackend)|undefined;private cleanupFailure:Error|null=null;
+ private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';private residentLoadMetrics:{executionBackend:'webgpu'|'cpu-wasm'}|undefined;private nativeStructuredOutput=false;private createBase:(()=>TextBackend)|undefined;private cleanupFailure:Error|null=null;
  constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend,nativeStructuredOutput=false){
   this.nativeStructuredOutput=nativeStructuredOutput===true;
   this.webml=webml;this.base=webml.manifest;this.createBase=createBase;
@@ -28,7 +28,7 @@ export class TextEngineRouter{
   if(current.instance&&this.active===current.instance)throw Error('Unload model first');
   const occupied=new Set<string>((this.base.models??[]).map((m:any)=>m.id));for(let i=0;i<this.registrations.length;i++)if(i!==index)for(const model of this.registrations[i].modelIds)occupied.add(model);
   for(const modelId of replacement.modelIds.length?replacement.modelIds:['']){if(replacement.modelIds.length&&(typeof modelId!=='string'||!modelId||occupied.has(modelId)))throw Error('Invalid text engine registration');const described=replacement.describe(modelId);if(!described||!Number.isSafeInteger(described.contextTokens)||described.contextTokens<1||!validOutputLimit(described.maxOutputTokens,described.contextTokens)||!described.runtime?.revision||!Array.isArray(described.models)||described.models.length!==replacement.modelIds.length||described.models.some((m:any)=>!replacement.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(described.models.map((m:any)=>m.id)).size!==replacement.modelIds.length)throw Error('Invalid text engine registration');if(modelId)occupied.add(modelId);}
-  if(current.instance){current.instance.abort();current.instance.worker.terminate();}
+  if(current.instance){if(this.active===current.instance){this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}current.instance.abort();current.instance.worker.terminate();}
   this.registrations[index]={...replacement,modelIds:Object.freeze([...replacement.modelIds]),instance:null};
  }
  /** Registry edits should evict only a backend whose own live configuration changes. */
@@ -57,7 +57,7 @@ export class TextEngineRouter{
  async recover(){
   if(!this.webml.failed)return false;
   if(!this.createBase)throw Error('Reload app to restart model worker');
-  const epoch=this.epoch,old=this.webml;this.residentIdentity='';if(this.active===old)this.active=null;old.abort();old.worker.terminate();
+  const epoch=this.epoch,old=this.webml;this.residentIdentity='';this.residentLoadMetrics=undefined;if(this.active===old)this.active=null;old.abort();old.worker.terminate();
   const replacement=this.createBase();this.webml=replacement;
   try{await replacement.init();this.check(epoch);return true;}
   catch(error){replacement.abort();replacement.worker.terminate();if(this.webml===replacement)this.webml=old;throw error;}
@@ -70,11 +70,11 @@ export class TextEngineRouter{
   throw Error('Unknown text operation');
  }
  async load(id:string,events?:any){if(this.cleanupFailure)throw this.cleanupFailure;const epoch=this.epoch,registration=this.registration(id);if(!registration&&!this.base.models?.some((m:any)=>m.id===id))throw Error('Unknown text model');const manifest=registration?.describe(id)??this.base,identity=JSON.stringify([id,manifest.models.find((m:any)=>m.id===id),manifest.runtime,manifest.contextTokens]);
-  if(this.active&&(registration?registration.instance===this.active:this.active===this.webml)&&this.active.loaded===id&&!this.active.failed&&this.residentIdentity===identity)return {model:id,reused:true};
-  this.residentIdentity='';if(this.active){const old=this.active;this.active=null;await this.closeActive(old);}this.check(epoch);const backend=this.backend(id);this.active=backend;
-  try{const result=await backend.load(id,events);this.check(epoch);this.residentIdentity=identity;return result;}catch(error){if((error as {cleanupUnconfirmed?:boolean})?.cleanupUnconfirmed===true)this.cleanupFailure=error as Error;if(this.active===backend)this.active=null;throw error;}
+  if(this.active&&(registration?registration.instance===this.active:this.active===this.webml)&&this.active.loaded===id&&!this.active.failed&&this.residentIdentity===identity)return {model:id,reused:true,...this.residentLoadMetrics};
+  this.residentIdentity='';this.residentLoadMetrics=undefined;if(this.active){const old=this.active;this.active=null;await this.closeActive(old);}this.check(epoch);const backend=this.backend(id);this.active=backend;
+  try{const result=await backend.load(id,events);this.check(epoch);this.residentIdentity=identity;const executionBackend=result?.executionBackend;if(executionBackend==='webgpu'||executionBackend==='cpu-wasm')this.residentLoadMetrics={executionBackend};return result;}catch(error){if((error as {cleanupUnconfirmed?:boolean})?.cleanupUnconfirmed===true)this.cleanupFailure=error as Error;if(this.active===backend)this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;throw error;}
  }
- async unload(){if(this.cleanupFailure)throw this.cleanupFailure;const epoch=this.epoch,old=this.active;this.active=null;if(old)await this.closeActive(old);this.check(epoch);}
+ async unload(){if(this.cleanupFailure)throw this.cleanupFailure;const epoch=this.epoch,old=this.active;this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;if(old)await this.closeActive(old);this.check(epoch);}
  releaseInactive(selectedModel:string){for(const r of this.registrations)if(!r.modelIds.includes(selectedModel)&&r.instance&&r.instance!==this.active){const old=r.instance;r.instance=null;old.abort();old.worker.terminate();}}
  private nativeArgs(args:any){const {responseTool:_ignored,...rest}=args;return {...rest,...nativeOutputRequest(args.messages,args.format)};}
  generate(messages:any[],events?:any,maxTokens=256,format?:EngineGenerationFormat){
@@ -84,6 +84,6 @@ export class TextEngineRouter{
    if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
   });
  }
- abort(){this.epoch++;const pending:Promise<void>[]=[Promise.resolve(this.webml.abort())];for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;pending.push(Promise.resolve(old.abort()));old.worker.terminate();}return Promise.all(pending).then(()=>{});}
- worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;}};
+ abort(){this.epoch++;this.residentIdentity='';this.residentLoadMetrics=undefined;const pending:Promise<void>[]=[Promise.resolve(this.webml.abort())];for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;pending.push(Promise.resolve(old.abort()));old.worker.terminate();}return Promise.all(pending).then(()=>{});}
+ worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
 }

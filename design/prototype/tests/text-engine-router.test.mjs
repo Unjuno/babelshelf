@@ -316,12 +316,12 @@ test('switching away releases an idle optional worker and reselecting starts a f
 
 test('native structured transport is opt-in until full harness quality is verified',async()=>{const f=setup(),seen=[];f.webml.call=async(cmd,args)=>{seen.push(args);return{};};await f.router.load('4B');const messages=[{role:'user',content:'Question'}];await f.router.call('count',{messages,format:'dialogue-answer'});await f.router.generate(messages,undefined,32,'dialogue-answer');for(const args of seen){assert.equal(args.responseTool,undefined);assert.deepEqual(args.messages,messages);}});
 
-test('same model and runtime identity reuse the resident backend; a changed context reloads it',async()=>{
+test('same model and runtime identity reuse the resident backend and its verified load metadata; a changed context reloads it',async()=>{
  const f=setup(),calls=[];let context=8192;
- const backend={manifest:{},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){calls.push('load');this.loaded=id;},async unload(){calls.push('unload');this.loaded=null;},abort(){this.loaded=null;}};
+ const backend={manifest:{},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){calls.push('load');this.loaded=id;return {executionBackend:'webgpu'};},async unload(){calls.push('unload');this.loaded=null;},abort(){this.loaded=null;}};
  const describe=()=>({contextTokens:context,runtime:{revision:'runtime'},models:[{id:'lfm3-fixture',revision:'model'}]});
  const router=new TextEngineRouter(f.webml,()=>{throw Error('unused');},[{id:'lfm3',modelIds:['lfm3-fixture'],describe,create:()=>backend}]);
- await router.load('lfm3-fixture');assert.deepEqual(await router.load('lfm3-fixture'),{model:'lfm3-fixture',reused:true});assert.deepEqual(calls,['load']);
+ await router.load('lfm3-fixture');assert.deepEqual(await router.load('lfm3-fixture'),{model:'lfm3-fixture',reused:true,executionBackend:'webgpu'});assert.deepEqual(calls,['load']);
  context=16384;await router.load('lfm3-fixture');assert.deepEqual(calls,['load','unload','load']);
 });
 
