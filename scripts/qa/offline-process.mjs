@@ -7,6 +7,7 @@ import {createServer} from 'node:http';
 import {tmpdir} from 'node:os';
 import {createDevServer} from '../serve.mjs';
 import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
+import {closeQaContextOnAbort} from './process-signals.mjs';
 
 // Pass a Playwright BrowserType from the caller. No bundled browser/dependency,
 // inference stub, database access, process kill or existing profile reuse.
@@ -39,8 +40,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  }
  async function backup(p,name,alreadyLocal=false){if(!alreadyLocal){await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();}const pending=p.waitForEvent('download');await p.getByRole('button',{name:'Export backup',exact:true}).click();const path=join(outputDir,name);await(await pending).saveAs(path);return JSON.parse(await readFile(path,'utf8')).payload;}
  let activeContext;
- const closeActive=()=>{if(activeContext)void activeContext.close().catch(()=>{});};
- signal?.addEventListener('abort',closeActive);
+ const disconnectAbort=closeQaContextOnAbort(signal,()=>activeContext);
  async function phase(offline,work){
   if(signal?.aborted)throw signal.reason??Error('QA interrupted');
   const c=await browserType.launchPersistentContext(profileDir,{channel,headless:true,offline,viewport:{width:360,height:780},acceptDownloads:true});activeContext=c;
@@ -103,7 +103,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   assert.deepEqual(afterEdit.notes,afterRestart.notes);for(const run of before.runs)assert.deepEqual(afterEdit.runs.find(v=>v.key===run.key),run,'Prior run changed');assert.deepEqual(afterEdit.runs,afterRestart.runs);
   for(const file of [...inputs,...offlineInputs]){const pack=offlineInputs.includes(file)?afterEdit:before;const raw=pack.runs.find(v=>v.value.name===file.name)?.value;assert.ok(raw);const bytes=Buffer.from(raw.data,'base64');assert.equal(bytes.toString('utf8'),file.body);assert.equal(createHash('sha256').update(bytes).digest('hex'),raw.sha256);assert.equal(pack.notes.find(n=>n.id===raw.id).revisions[0].body,file.body);}
   evidence.pass=true;await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));return evidence;
-  }catch(e){evidence.pass=false;evidence.error=String(e);await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));throw e;}finally{signal?.removeEventListener('abort',closeActive);await new Promise(resolve=>probeServer.close(()=>resolve(undefined)));}
+  }catch(e){evidence.pass=false;evidence.error=String(e);await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));throw e;}finally{disconnectAbort();await new Promise(resolve=>probeServer.close(()=>resolve(undefined)));}
 }
 
 export function shouldRemoveGeneratedOfflineQaPath({generated}){return generated===true;}

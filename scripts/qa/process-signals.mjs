@@ -8,3 +8,10 @@ export function connectQaProcessSignals(processLike=process,controller=new Abort
  }
  return {signal:controller.signal,dispose(){for(const [name,listener] of listeners)processLike.removeListener(name,listener);listeners.clear();}};
 }
+
+export function closeQaContextOnAbort(signal,getContext){
+ const close=()=>{const context=getContext();if(context)void context.close().catch(()=>{});};
+ signal?.addEventListener('abort',close);
+ if(signal?.aborted)close();
+ return ()=>signal?.removeEventListener('abort',close);
+}

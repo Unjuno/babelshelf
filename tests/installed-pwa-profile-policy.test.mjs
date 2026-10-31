@@ -2,12 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseInstalledPwaArguments,shouldRemoveInstalledPwaOutput,shouldRemoveInstalledPwaProfile} from '../scripts/qa/installed-pwa-profile-policy.mjs';
 import {shouldRemoveGeneratedOfflineQaPath} from '../scripts/qa/offline-process.mjs';
-import {runOfflineProcessCheck} from '../scripts/qa/offline-process.mjs';
-import {connectQaProcessSignals} from '../scripts/qa/process-signals.mjs';
+import {closeQaContextOnAbort,connectQaProcessSignals} from '../scripts/qa/process-signals.mjs';
 import {EventEmitter} from 'node:events';
-import {mkdtemp,rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
 
 test('installed-PWA profiles are ephemeral by default, including caller-named fresh paths',()=>{
  assert.deepEqual(parseInstalledPwaArguments([]),{profileArg:undefined,outputArg:undefined,retainProfile:false});
@@ -40,10 +36,13 @@ test('graceful process interruption aborts the QA run and removes installed sign
 });
 
 test('an interrupted offline QA closes its active browser context before unwinding',async()=>{
- const base=await mkdtemp(join(tmpdir(),'babelshelf-signal-cleanup-test-')),outputDir=join(base,'evidence'),controller=new AbortController();let closes=0;
- const contextEvents=new EventEmitter(),browserEvents=new EventEmitter(),browserType={name:()=> 'chromium',launchPersistentContext:async()=>({on:contextEvents.on.bind(contextEvents),browser:()=>({on:browserEvents.on.bind(browserEvents)}),pages:()=>[],setOffline:async()=>controller.abort(Error('test interrupt')),setDefaultTimeout:()=>{},newPage:async()=>{throw Error('context closed');},close:async()=>{closes++;}})};
- try{
-  await assert.rejects(runOfflineProcessCheck(browserType,{profileDir:join(base,'profile'),outputDir,url:'http://127.0.0.1:1/',signal:controller.signal}),/test interrupt|context closed/);
-  assert.ok(closes>=1,'Active context must close in its phase cleanup');assert.equal(controller.signal.aborted,true);
- }finally{await rm(base,{recursive:true,force:true});}
+ const controller=new AbortController();let closes=0;const context={close:async()=>{closes++;}};
+ const disconnect=closeQaContextOnAbort(controller.signal,()=>context);
+ controller.abort(Error('test interrupt'));await Promise.resolve();
+ assert.equal(closes,1);disconnect();
+});
+
+test('an already-aborted QA run closes a newly connected active context',async()=>{
+ const controller=new AbortController();controller.abort();let closes=0;
+ closeQaContextOnAbort(controller.signal,()=>({close:async()=>{closes++;}}));await Promise.resolve();assert.equal(closes,1);
 });
