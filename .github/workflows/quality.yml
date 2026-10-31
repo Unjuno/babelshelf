@@ -31,5 +31,40 @@ jobs:
         run: npm --prefix design/prototype exec -- playwright install --with-deps chromium webkit
       - name: Build prototype packaging fixtures
         run: npm run build:prototype
-      - name: Run product quality gates
-        run: npm run test:quality
+      - name: Core tests, static checks, production build and acceptance
+        run: |
+          npm test
+          npm run test:prototype
+          npm run check
+          npm run build:app
+          npm run test:app
+          npm run test:editor:built
+      - name: Review store and offline calculation
+        run: |
+          npm run test:quality:review-store
+          npm run test:quality:offline-calculation
+      - name: Tool, MCP, help and Markdown acceptance
+        run: |
+          npm run test:help:built
+          npm run test:tools:built
+          npm run test:markdown
+          npm run test:quality:hash
+          npm run test:quality:custom-tools
+          npm run test:quality:mcp
+          npm run test:quality:mcp:webkit
+      - name: Device memory, inference, schedule and settings acceptance
+        run: |
+          npm run test:quality:device-memory
+          npm run test:quality:inference-lock
+          npm run test:quality:schedule-ui
+          npm run test:quality:settings-ui
+      - name: Editorial and iOS handoff acceptance
+        run: |
+          npm run test:quality:editorial
+          npm run test:ios-handoff:built
+          npm run test:ios-handoff:webkit:built
+      - name: App update, offline and installed PWA acceptance
+        run: |
+          npm run test:quality:app-update
+          npm run test:quality:offline
+          npm run test:quality:installed-pwa
