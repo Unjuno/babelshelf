@@ -1,5 +1,7 @@
 ## Current status · 2026-10-31
 
+Latest citation hardening commit `9dcb50ce1ea578af2a801c0c479d945be88a1de9` passed complete clean-checkout CI **41210762301** in 9m26s. The deterministic comparison-identity change is covered by CI; this does not establish general semantic entailment or live-model/device behavior.
+
 Product commit `21b7901055cb54587d69895b6e037d6077978320` passed GitHub Actions Local PWA quality run **41195575429** in 9m30s. The subsequent QA PWA cleanup fix at `6a7ac8fe596795599e54510f7f2d31b8dfd0a4bc` passed complete clean-checkout run **41197340797** in 10m53s, covering core/build/acceptance, review/offline calculation, tools/MCP/Markdown, device/settings, editorial/iOS handoff, app update, offline and installed-PWA gates. Local verification for the product state passed root 246/246, submission 85/85 and `npm run test:agent-coordinator`; the exact named-note route has deterministic coverage and one post-fix offline Q8 product flow through answer, citation and reviewed save. These are PC/CI findings only.
 
 Earlier source commit `1e2314b77f5842fe2c13008a2f4aefc191d82767` passed complete clean-checkout CI run **41202048972**, attempt 2, in 10m31s. Attempt 1 hit one timeout while a Settings menu item detached during navigation; the same focused settings test passed five consecutive PC runs, then the complete CI rerun passed every stage. This is a transient UI-test race signal, not evidence that the timeout can never recur.
