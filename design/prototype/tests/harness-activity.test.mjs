@@ -17,14 +17,16 @@ test('device-clock activity displays a plain action label instead of an internal
  assert.equal(activityLabel(entries.at(-1).tool),'Read time');
 });
 
-test('agent tool budget follows remaining activity receipts and preserves completion slots',async()=>{
- const {activityBoundedToolBudget,MAX_ACTIVITY_EVENTS_PER_TURN}=await import('../src/harness-activity.ts');
+test('compatibility agent budget reflects receipt costs and reserves completion plus repairs',async()=>{
+ const {activityBoundedToolBudget,MAX_ACTIVITY_EVENTS_PER_TURN,ACTIVITY_EVENTS_PER_AGENT_TOOL,RESERVED_AGENT_REPAIR_EVENTS}=await import('../src/harness-activity.ts');
  assert.equal(MAX_ACTIVITY_EVENTS_PER_TURN,128);
- assert.equal(activityBoundedToolBudget(0,null),62);
- assert.equal(activityBoundedToolBudget(122,null),1);
- assert.equal(activityBoundedToolBudget(124,null),0);
+ assert.equal(ACTIVITY_EVENTS_PER_AGENT_TOOL,4);
+ assert.equal(RESERVED_AGENT_REPAIR_EVENTS,6);
+ assert.equal(activityBoundedToolBudget(0,null),29);
+ assert.equal(activityBoundedToolBudget(114,null),1);
+ assert.equal(activityBoundedToolBudget(118,null),0);
  assert.equal(activityBoundedToolBudget(122,0),0);
- assert.equal(activityBoundedToolBudget(122,8),1);
+ assert.equal(activityBoundedToolBudget(114,8),1);
  assert.throws(()=>activityBoundedToolBudget(129,null),/budget/i);
 });
 

@@ -220,7 +220,7 @@ test('coordinator derives a transparent tool budget from remaining receipt capac
  const {value,operations,calls}=input([
   JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})}),
   JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:'meeting'})}),
- ],{enabledTools:['memory.search','memory.read'],builtinPackages:[...builtinPackages,readPackage],maxToolCalls:null,activityEventCount:122});
+ ],{enabledTools:['memory.search','memory.read'],builtinPackages:[...builtinPackages,readPackage],maxToolCalls:null,activityEventCount:114});
  const result=await coordinateAgentTurn(value);
  assert.equal(result.final.action,'answer');assert.equal(result.budgetExhausted,true);assert.equal(result.budgetReason,'activity-capacity');
  assert.deepEqual(calls,[['search','meeting']]);
@@ -230,7 +230,7 @@ test('coordinator derives a transparent tool budget from remaining receipt capac
 });
 
 test('tool-limit provenance distinguishes the profile from tied storage and profile limits',async()=>{
- for(const [activityEventCount,expected] of [[undefined,'profile-limit'],[122,'both-limits']]){
+ for(const [activityEventCount,expected] of [[undefined,'profile-limit'],[114,'both-limits']]){
   const {value}=input([
    JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})}),
    JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:'meeting'})}),

@@ -17,13 +17,19 @@ export const activityTools=Object.freeze([...builtinToolIds,...Object.keys(lifec
 export type ActivityTool=typeof activityTools[number]|`user.${string}`;
 export const MAX_ACTIVITY_EVENTS_PER_TURN=128;
 export const RESERVED_AGENT_COMPLETION_EVENTS=4;
+// The no-paging compatibility route must account for the planner receipt and
+// the tool receipt for each attempted call. Each operation stores a start and
+// finish event; a one-call/one-plan sequence therefore costs four events.
+// Reserve the at-most-three typed planner repairs separately from completion.
+export const ACTIVITY_EVENTS_PER_AGENT_TOOL=4;
+export const RESERVED_AGENT_REPAIR_EVENTS=6;
 /** Bound tool work by the actual per-turn receipt capacity, not a separate hidden loop ceiling. */
 export function activityBoundedToolBudget(recordedEvents:number,configured:number|null){
  if(!Number.isSafeInteger(recordedEvents)||recordedEvents<0||recordedEvents>MAX_ACTIVITY_EVENTS_PER_TURN||configured!==null&&(!Number.isSafeInteger(configured)||configured<0))throw Error('Invalid activity budget');
  const remaining=MAX_ACTIVITY_EVENTS_PER_TURN-recordedEvents;
- // Each tool can require one planning receipt and one tool receipt. Preserve
- // room for a final plan/answer and both bounded planner-repair attempts.
- const storageBudget=Math.max(0,Math.floor((remaining-RESERVED_AGENT_COMPLETION_EVENTS)/2));
+ // One plan plus one tool operation cost four receipts in the worst case.
+ // Keep room for a final plan/answer and all three distinct bounded repairs.
+ const storageBudget=Math.max(0,Math.floor((remaining-RESERVED_AGENT_COMPLETION_EVENTS-RESERVED_AGENT_REPAIR_EVENTS)/ACTIVITY_EVENTS_PER_AGENT_TOOL));
  return configured===null?storageBudget:Math.min(configured,storageBudget);
 }
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
