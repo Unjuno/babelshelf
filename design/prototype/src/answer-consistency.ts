@@ -6,6 +6,26 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // a distance or a proximity relation. Permit the claim only when the source
  // states that comparison, or contains two comparable measured distances.
  const evidence=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?[item.quote.normalize('NFKC')]:[]);
+ // Exact citation spans prove where text came from, not that a numeric answer
+ // copied the cited value correctly. Guard the narrow, explicit liquid-volume
+ // case where both question and answer identify the quantity and unit.
+ const volumeQuestion=/(?:\bhow\s+(?:much|many)\b.{0,80}\b(?:water|liquid|lit(?:er|re)s?|millilit(?:er|re)s?|ml)\b|\b(?:water|liquid)\s+(?:amount|volume|quantity)\b|水量|水の量|水の備蓄量|(?:水|飲料水|備蓄水).{0,24}(?:何\s*(?:リットル|リッター|ミリリットル|ml|l)|どれくらい|どのくらい|量)|何\s*(?:リットル|リッター|ミリリットル|ml|l).{0,12}(?:水|飲料水|備蓄水))/iu.test(q);
+ const volumeMeasures=(text:string)=>{
+  const parseJapanese=(raw:string)=>{
+   if(!/[十百千万零〇一二三四五六七八九]/u.test(raw))return Number(raw.replace(/,/gu,''));
+   const digit:Record<string,number>={零:0,〇:0,一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};let total=0,section=0,current=0;
+   for(const char of raw){if(char in digit){current=digit[char];continue;}const unit=char==='十'?10:char==='百'?100:char==='千'?1000:char==='万'?10000:0;if(!unit)continue;if(unit===10000){section=(section+current||1)*unit;total+=section;section=0;current=0;}else section+=(current||1)*unit,current=0;}
+   return total+section+current;
+  };
+  const values:number[]=[];
+  const pattern=/((?:[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?|[零〇一二三四五六七八九十百千万]+))\s*(millilit(?:er|re)s?|ml|lit(?:er|re)s?|l|ミリリットル|リットル|リッター|ℓ)(?![A-Za-z])/giu;
+  for(const match of text.matchAll(pattern)){const amount=parseJapanese(match[1]),unit=match[2].toLocaleLowerCase();if(!Number.isFinite(amount)||amount<0)continue;values.push(/^(?:ml|millilit|ミリ)/u.test(unit)?amount/1000:amount);}
+  return values;
+ };
+ if(volumeQuestion){
+  const citedVolumes=evidence.flatMap(volumeMeasures),answerVolumes=volumeMeasures(a);
+  if(evidence.length&&answerVolumes.some(value=>!citedVolumes.some(cited=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9))))throw Error('Answer quantity conflicts with cited quantity · try again');
+ }
  const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
  const distancePattern='([0-9]+(?:[.,][0-9]+)?)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';
  const distanceInMeters=(amount:string,unit:string)=>{

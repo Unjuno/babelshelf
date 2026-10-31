@@ -15,6 +15,18 @@ test('explicit meeting-time questions reject unrelated sourced excerpts while al
  assert.doesNotThrow(()=>checkAnswerConsistency('集合場所はどこ？','図書館です。'));
 });
 
+test('explicit liquid-volume answers cannot contradict the cited amount',()=>{
+ const evidence=[{quote:'The saved reserve contains 17 litres of water.'}];
+ assert.throws(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 18 litres.',evidence),/conflicts with cited quantity/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 17 L.',evidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 17000 ml.',evidence));
+ assert.throws(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 18 litres.',[{quote:'The reserve has been prepared for emergencies.'}]),/conflicts with cited quantity/i);
+ const japanese=[{quote:'備蓄水は17 Lです。'}];
+ assert.throws(()=>checkAnswerConsistency('備蓄水は何リットルですか？','備蓄水は18リットルです。',japanese),/conflicts with cited quantity/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('備蓄水は何リットルですか？','備蓄水は17リットルです。',japanese));
+ assert.throws(()=>checkAnswerConsistency('水の備蓄量を教えて。','水は18リットルです。',japanese),/conflicts with cited quantity/i);
+});
+
 test('direct English quote requests reject an exact but unrelated heading',()=>{
  const question='From this file, quote the sentence that states the water-cache amount?';
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture'),/does not match/);

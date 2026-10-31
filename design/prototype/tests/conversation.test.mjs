@@ -835,6 +835,13 @@ test('a stored-knowledge answer with evidence cannot accept an uncited claim cop
  const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]},context={summary:'',recent:[],refs:[ref]};const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'PINE-9191',citations:[]})})};await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the code?',query:'code',mode:'answer',context:context,scope:{kind:'knowledge'}}),/citation|source/i);
 });
 
+test('grounded answers cannot change an explicitly requested water amount while citing the exact source',async()=>{
+ const note=createNote({body:'The saved water reserve contains 17 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'The reserve contains 18 litres.',sources:['S1']})};}};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the saved reserve?',query:'water reserve amount',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
+ assert.equal(calls,1,'a directly contradictory value must fail closed without generating an alternate answer automatically');
+});
+
 test('invalidated current retrieval must reject before unrelated historical pins can replace it',async()=>{
  const old=createNote({body:'The pine code is PINE-9191.'}),fresh=createNote({body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),changed=reviseNote(fresh,{body:'The copper code is Maple 43.'},1);let generated=false;
  const store={search:async()=>[ref(fresh)],all:async()=>[old,changed]},context={summary:'PINE-9191',recent:[],refs:[ref(old)]},e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{generated=true;return {text:JSON.stringify({answer:'PINE-9191',citations:[{id:'S1',quote:'PINE-9191'}]})};}};
