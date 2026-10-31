@@ -41,6 +41,24 @@ test('a question naming one cited note checks its value against that note, not a
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','17 litres and 29 litres.',evidence));
 });
 
+test('named notes in a multi-source comparison keep each explicitly labelled quantity with its own source',()=>{
+ const evidence=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
+ ];
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','Alpha reserve: 17 litres; Beta reserve: 29 litres.',evidence));
+ assert.throws(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','Alpha reserve: 29 litres; Beta reserve: 17 litres.',evidence),/conflicts with cited quantity/i);
+ // When the generated prose does not bind a value to a title, do not guess
+ // which of the two values belongs to which note.
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','The amounts are 17 litres and 29 litres.',evidence));
+ const japanese=[
+  {noteId:'aoba',title:'青葉備蓄',quote:'青葉備蓄の飲料水は17リットルです。'},
+  {noteId:'midorikawa',title:'緑川備蓄',quote:'緑川備蓄の飲料水は29リットルです。'},
+ ];
+ assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄は29リットル、緑川備蓄は17リットルです。',japanese),/conflicts with cited quantity/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄は17リットル、緑川備蓄は29リットルです。',japanese));
+});
+
 test('direct English quote requests reject an exact but unrelated heading',()=>{
  const question='From this file, quote the sentence that states the water-cache amount?';
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture'),/does not match/);

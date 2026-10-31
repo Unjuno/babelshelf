@@ -10,7 +10,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // Exact citation spans prove where text came from, not that a numeric answer
  // copied the cited value correctly. Guard the narrow, explicit liquid-volume
  // case where both question and answer identify the quantity and unit.
- const volumeQuestion=/(?:\bhow\s+(?:much|many)\b.{0,80}\b(?:water|liquid|lit(?:er|re)s?|millilit(?:er|re)s?|ml)\b|\b(?:water|liquid)\s+(?:amount|volume|quantity)\b|水量|水の量|水の備蓄量|(?:水|飲料水|備蓄水).{0,24}(?:何\s*(?:リットル|リッター|ミリリットル|ml|l)|どれくらい|どのくらい|量)|何\s*(?:リットル|リッター|ミリリットル|ml|l).{0,12}(?:水|飲料水|備蓄水))/iu.test(q);
+ const volumeQuestion=/(?:\bhow\s+(?:much|many)\b.{0,80}\b(?:water|liquid|lit(?:er|re)s?|millilit(?:er|re)s?|ml)\b|\b(?:water|liquid)\s+(?:amount|volumes?|quantit(?:y|ies))\b|\b(?:compar(?:e|ison))\b.{0,60}\b(?:water|liquid)\s+volumes?\b|水量|水の量|水の備蓄量|水量.{0,16}(?:比較|比べ)|水の量.{0,16}(?:比較|比べ)|(?:水|飲料水|備蓄水).{0,24}(?:何\s*(?:リットル|リッター|ミリリットル|ml|l)|どれくらい|どのくらい|量)|何\s*(?:リットル|リッター|ミリリットル|ml|l).{0,12}(?:水|飲料水|備蓄水))/iu.test(q);
  const volumeMeasures=(text:string,preferWaterEvidence=false)=>{
   const parseJapanese=(raw:string)=>{
    if(!/[十百千万零〇一二三四五六七八九]/u.test(raw))return Number(raw.replace(/,/gu,''));
@@ -25,19 +25,19 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    if(!Number.isFinite(amount)||amount<0||match.index===undefined)return[];
    return[{value:/^(?:ml|millilit|ミリ)/u.test(unit)?amount/1000:amount,start:match.index,end:match.index+match[0].length}];
   });
-  if(!preferWaterEvidence)return matches.map(item=>item.value);
+  if(!preferWaterEvidence)return matches;
   // A citation can contain several liquid quantities. Prefer a measurement
   // whose nearest explicit substance is water over a nearby fuel/oil amount.
   const waterTerms=[...text.matchAll(/\b(?:water|liquid)\b|水|飲料水|備蓄水/giu)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length}]);
   const otherLiquidTerms=[...text.matchAll(/\b(?:fuel|gasoline|petrol|diesel|kerosene|oil)\b|燃料|燃油|ガソリン|軽油|灯油|重油|油/giu)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length}]);
-  if(!waterTerms.length&&!otherLiquidTerms.length)return matches.map(item=>item.value);
+  if(!waterTerms.length&&!otherLiquidTerms.length)return matches;
   const distance=(a:{start:number;end:number},b:{start:number;end:number})=>a.end<b.start?b.start-a.end:b.end<a.start?a.start-b.end:0;
   return matches.filter(measure=>{
    const nearestWater=Math.min(Infinity,...waterTerms.map(term=>distance(measure,term)));
    const nearestOther=Math.min(Infinity,...otherLiquidTerms.map(term=>distance(measure,term)));
    if(!waterTerms.length)return false;
    return nearestWater<=nearestOther;
-  }).map(item=>item.value);
+  });
  };
  if(volumeQuestion){
   // When the user names exactly one cited note, compare against that note's
@@ -47,8 +47,44 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   const normalizedQuestion=q.toLocaleLowerCase();
   const namedNoteIds=new Set(sourceRows.flatMap(item=>typeof item.noteId==='string'&&typeof item.title==='string'&&item.title.trim()&&normalizedQuestion.includes(item.title.normalize('NFKC').trim().toLocaleLowerCase())?[item.noteId]:[]));
   const quantitySources=namedNoteIds.size===1?sourceRows.filter(item=>item.noteId&&namedNoteIds.has(item.noteId)):sourceRows;
-  const citedVolumes=quantitySources.flatMap(item=>volumeMeasures(item.quote!,true)),answerVolumes=volumeMeasures(a);
-  if(evidence.length&&answerVolumes.some(value=>!citedVolumes.some(cited=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9))))throw Error('Answer quantity conflicts with cited quantity · try again');
+  const citedVolumes=quantitySources.flatMap(item=>volumeMeasures(item.quote!,true)),answerMeasures=volumeMeasures(a),answerVolumes=answerMeasures.map(item=>item.value);
+  const sameVolume=(value:number,cited:number)=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9);
+  if(evidence.length&&answerVolumes.some(value=>!citedVolumes.some(cited=>sameVolume(value,cited.value))))throw Error('Answer quantity conflicts with cited quantity · try again');
+  // For comparisons, exact note titles in both the request and answer can bind
+  // an amount to a source. Associate each amount only with its unique nearest
+  // title in the same sentence; if titles overlap or the distance ties, leave
+  // that amount to the general cited-value check above instead of guessing.
+  const titleCandidates=new Map<string,{noteId:string;title:string;values:number[]}[]>();
+  for(const source of sourceRows){
+   if(!source.noteId||!source.title?.trim())continue;
+   const title=source.title.normalize('NFKC').trim(),key=title.toLocaleLowerCase();
+   if(!normalizedQuestion.includes(key))continue;
+   const candidates=titleCandidates.get(key)??[];
+   let candidate=candidates.find(item=>item.noteId===source.noteId);
+   if(!candidate){candidate={noteId:source.noteId,title,values:[]};candidates.push(candidate);titleCandidates.set(key,candidates);}
+   candidate.values.push(...volumeMeasures(source.quote!,true).map(item=>item.value));
+  }
+  const sentenceMatches=[...a.matchAll(/[^.!?。！？\n]+/gu)].flatMap(match=>match.index===undefined?[]:[{text:match[0],start:match.index}]);
+  const titleSpans=(text:string)=>[...titleCandidates.entries()].flatMap(([key,candidates])=>{
+   if(candidates.length!==1)return[];
+   const escaped=candidates[0].title.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
+   const expression=new RegExp(escaped,'giu');
+   return [...text.matchAll(expression)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length,key,candidate:candidates[0]}]);
+  });
+  for(const sentence of sentenceMatches){
+   const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
+   // Nested names (for example “Park” and “The Park”) make title-to-value
+   // association ambiguous, so skip this sentence.
+   const overlaps=spans.some((left,index)=>spans.slice(index+1).some(right=>left.start<right.end&&right.start<left.end&&left.key!==right.key));
+   if(overlaps)continue;
+   for(const measure of measures){
+    const distance=(span:{start:number;end:number})=>span.end<measure.start?measure.start-span.end:measure.end<span.start?span.start-measure.end:0;
+    const ranked=spans.map(span=>({span,gap:distance(span)})).sort((left,right)=>left.gap-right.gap);
+    if(!ranked.length||ranked.length>1&&ranked[0].gap===ranked[1].gap)continue;
+    const {candidate}=ranked[0].span;
+    if(candidate.values.length&&!candidate.values.some(value=>sameVolume(measure.value,value)))throw Error('Answer quantity conflicts with cited quantity · try again');
+   }
+  }
  }
  const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
  const distancePattern='([0-9]+(?:[.,][0-9]+)?)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';

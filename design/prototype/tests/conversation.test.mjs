@@ -853,6 +853,11 @@ test('a named-note quantity cannot borrow a matching value from another cited no
  answer='Alpha reserve contains 17 litres.';
  const accepted=await groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in Alpha reserve?',query:'water',scope:{kind:'knowledge'}});
  assert.equal(accepted.answer,answer);assert.deepEqual(accepted.sources.map(source=>source.noteId),[alpha.id,beta.id]);
+ answer='Alpha reserve: 29 litres; Beta reserve: 17 litres.';
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in Alpha reserve and Beta reserve.',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
+ answer='Alpha reserve: 17 litres; Beta reserve: 29 litres.';
+ const comparison=await groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in Alpha reserve and Beta reserve.',query:'water',scope:{kind:'knowledge'}});
+ assert.equal(comparison.answer,answer);assert.deepEqual(comparison.sources.map(source=>source.noteId),[alpha.id,beta.id]);
 });
 
 test('invalidated current retrieval must reject before unrelated historical pins can replace it',async()=>{
