@@ -5,8 +5,10 @@ is no configured call-count limit. Production activity paging does not impose a
 matching the selected model context and the real persistence boundary without
 adding a hidden tool-call cap. The reviewed legacy-limit browser flow passed 2/2,
 the Settings UI suite passed 16/16, `npm run check` passed, the product shell
-verified 163 assets, and product acceptance passed 8/8 on Windows PC. This is
-copy/contract verification, not a live-model long-run or device resource test.
+verified 163 assets, and product acceptance passed 8/8 on Windows PC. Clean-checkout
+GitHub Actions run `41248968672` passed every quality stage in 10m26s on commit
+`6986b28d05cbed9e9a08578d57d00bb8fe38cf13`. This is copy/contract verification,
+not a live-model long-run or device resource test.
 
 2026-11-01 — Clean-checkout CI rerun and current gate reconciliation, commit `2574999e47858e7cb7e254cc26e02551da21158b`.
 GitHub Actions Local PWA quality run `41247134550` passed all workflow stages in 10m52s. The first attempt had one transient Settings navigation wait timeout at `Appearance`; the same CI job passed on rerun without a code change. The Settings UI suite had passed locally (16/16), so this is recorded as a flaky navigation signal rather than a code fix. `docs/REMAINING-GATES.md` now points at the current successful commit/run and preserves the initial failure. This CI result covers the automated PC/clean-checkout gates only; it does not establish physical-device inference, live-model quality, or cold offline launch.
