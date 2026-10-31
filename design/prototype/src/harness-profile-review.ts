@@ -1,6 +1,6 @@
 import {prepareCorrection} from './note-corrections.ts';
 import {settingsCorrectionTarget} from './settings-corrections.ts';
-import {parsePreference,updatePreference,type HarnessPreferences,type PreferenceRecord} from './preference-records.ts';
+import {initialPreferenceNotes,parsePreference,updatePreference,type HarnessPreferences,type PreferenceRecord} from './preference-records.ts';
 import {MAX_CONFIGURED_AGENT_TOOLS} from './agent-loop.ts';
 import type {ToolPackage} from './tools/tool-registry.ts';
 
@@ -15,6 +15,32 @@ export async function prepareToolLimitReview(records:any[]){
  if(!profile||profile.maxToolCalls!==3)throw Error('No three-call limit to review');
  const profiles=preferences.profiles.map(item=>item.id===profile.id?{...item,maxToolCalls:null}:item);
  return prepareCorrection(target,'Review tool call limit',JSON.stringify({action:'patch',changes:{profiles}}),records);
+}
+
+/** Identify only the exact schema-1 Standard default from the 3-tool/3-call era. */
+function legacyStandardDefault(record:any){
+ if(!record||record.id!=='settings-harness'||record.path&&record.path!=='Settings/harness.md'||record.revisions?.at(-1)?.path&&record.revisions.at(-1)?.path!=='Settings/harness.md'||record.managed!==true&&record.ui?.managed!==true||record.protected||record.ui?.protected)return null;
+ try{
+  const body=record.body??record.revisions?.at(-1)?.body;if(typeof body!=='string')return null;
+  const match=body.match(/^# [^\n]+\n\n```json\n([\s\S]+)\n```\n?$/);if(!match)return null;
+  const raw=JSON.parse(match[1]);if(raw?.schemaVersion!==1||raw.activeProfileId!=='standard'||raw.replyStyle!=='balanced'||raw.userGuidance!=='')return null;
+  const profile=raw.profiles?.find((item:any)=>item?.id==='standard');
+  return profile&&profile.label==='Standard'&&profile.maxToolCalls===3&&profile.maxResultChars===8000&&Array.isArray(profile.enabledTools)&&profile.enabledTools.slice().sort().join('|')==='math.calculate|memory.read|memory.search'&&Object.keys(profile).sort().join('|')==='enabledTools|id|label|maxResultChars|maxToolCalls'?raw:null;
+ }catch{return null;}
+}
+export function hasLegacyStandardDefault(record:any){return legacyStandardDefault(record)!==null;}
+
+/** Offer a reviewed migration for a proven built-in default, never for an edited profile. */
+export async function prepareLegacyStandardReview(records:PreferenceRecord[]){
+ const targets=records.filter(record=>record.id==='settings-harness');if(targets.length!==1||!hasLegacyStandardDefault(targets[0]))throw Error('No untouched legacy Standard default');
+ const target=targets[0],legacy=legacyStandardDefault(target);if(!legacy)throw Error('No untouched legacy Standard default');
+ const current=settingsCorrectionTarget(target).value as unknown as HarnessPreferences;
+ const factory=initialPreferenceNotes.find(record=>record.id==='settings-harness');if(!factory)throw Error('Current Standard default unavailable');
+ const currentDefault=parsePreference('harness',factory.body) as unknown as HarnessPreferences;
+ const standard=current.profiles.find(item=>item.id==='standard'),nextStandard=currentDefault.profiles.find(item=>item.id==='standard');
+ if(!standard||!nextStandard)throw Error('Standard profile unavailable');
+ const profiles=legacy.profiles.map((item:any)=>item.id==='standard'?structuredClone(nextStandard):structuredClone(item));
+ return prepareCorrection(target,'Review legacy Standard defaults',JSON.stringify({action:'patch',changes:{profiles}}),records);
 }
 
 /** Validate a profile's current packages as inert data, then use the shared CAS/Undo review. */
