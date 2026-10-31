@@ -29,6 +29,18 @@ test('explicit liquid-volume answers cannot contradict the cited amount',()=>{
  assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 17 litres.',[{quote:'The reserve contains 17 litres of water, and the fuel can contains 18 litres of fuel.'}]));
 });
 
+test('a question naming one cited note checks its value against that note, not another citation',()=>{
+ const evidence=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
+ ];
+ assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in Alpha reserve?','Alpha reserve contains 17 litres.',evidence));
+ assert.throws(()=>checkAnswerConsistency('How much water is in Alpha reserve?','Alpha reserve contains 29 litres.',evidence),/conflicts with cited quantity/i);
+ // A multi-source comparison remains supported when the request names both
+ // notes; this guard does not infer which amount belongs to which prose label.
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','17 litres and 29 litres.',evidence));
+});
+
 test('direct English quote requests reject an exact but unrelated heading',()=>{
  const question='From this file, quote the sentence that states the water-cache amount?';
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture'),/does not match/);

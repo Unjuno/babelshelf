@@ -1,11 +1,12 @@
 /** Reject an obvious type mismatch without claiming to verify semantic entailment. */
-export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string}[]=[]){
+export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=[]){
  const q=question.normalize('NFKC'),a=answer.normalize('NFKC').trim();
  // This is a narrow contradiction guard, not general semantic entailment. A
  // live model run compared two locations even though neither excerpt contained
  // a distance or a proximity relation. Permit the claim only when the source
  // states that comparison, or contains two comparable measured distances.
- const evidence=(sourceEvidence??[]).flatMap(item=>typeof item?.quote==='string'?[item.quote.normalize('NFKC')]:[]);
+ const sourceRows=(sourceEvidence??[]).filter(item=>typeof item?.quote==='string').map(item=>({...item,quote:item.quote!.normalize('NFKC')}));
+ const evidence=sourceRows.map(item=>item.quote!);
  // Exact citation spans prove where text came from, not that a numeric answer
  // copied the cited value correctly. Guard the narrow, explicit liquid-volume
  // case where both question and answer identify the quantity and unit.
@@ -39,7 +40,14 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   }).map(item=>item.value);
  };
  if(volumeQuestion){
-  const citedVolumes=evidence.flatMap(quote=>volumeMeasures(quote,true)),answerVolumes=volumeMeasures(a);
+  // When the user names exactly one cited note, compare against that note's
+  // measurements. A matching number in another cited note must not mask a
+  // value accidentally assigned to the requested note. Multiple named notes
+  // intentionally keep the general comparison behavior below.
+  const normalizedQuestion=q.toLocaleLowerCase();
+  const namedNoteIds=new Set(sourceRows.flatMap(item=>typeof item.noteId==='string'&&typeof item.title==='string'&&item.title.trim()&&normalizedQuestion.includes(item.title.normalize('NFKC').trim().toLocaleLowerCase())?[item.noteId]:[]));
+  const quantitySources=namedNoteIds.size===1?sourceRows.filter(item=>item.noteId&&namedNoteIds.has(item.noteId)):sourceRows;
+  const citedVolumes=quantitySources.flatMap(item=>volumeMeasures(item.quote!,true)),answerVolumes=volumeMeasures(a);
   if(evidence.length&&answerVolumes.some(value=>!citedVolumes.some(cited=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9))))throw Error('Answer quantity conflicts with cited quantity · try again');
  }
  const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();

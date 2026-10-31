@@ -842,6 +842,19 @@ test('grounded answers cannot change an explicitly requested water amount while 
  assert.equal(calls,1,'a directly contradictory value must fail closed without generating an alternate answer automatically');
 });
 
+test('a named-note quantity cannot borrow a matching value from another cited note',async()=>{
+ const alpha=createNote({title:'Alpha reserve',path:'Notes/Alpha reserve.md',body:'Alpha reserve contains 17 litres of water.'}),beta=createNote({title:'Beta reserve',path:'Notes/Beta reserve.md',body:'Beta reserve contains 29 litres of water.'});
+ const ref=note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body,title:note.revisions[0].title}),refs=[ref(alpha),ref(beta)],store={all:async()=>[alpha,beta],search:async()=>refs};let answer='Alpha reserve contains 29 litres.';
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async messages=>{
+  const request=messages.at(-1).content;assert.match(request,/Alpha reserve/);assert.match(request,/Beta reserve/);
+  return {text:JSON.stringify({answer,sources:['S1','S2']})};
+ }};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in Alpha reserve?',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
+ answer='Alpha reserve contains 17 litres.';
+ const accepted=await groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in Alpha reserve?',query:'water',scope:{kind:'knowledge'}});
+ assert.equal(accepted.answer,answer);assert.deepEqual(accepted.sources.map(source=>source.noteId),[alpha.id,beta.id]);
+});
+
 test('invalidated current retrieval must reject before unrelated historical pins can replace it',async()=>{
  const old=createNote({body:'The pine code is PINE-9191.'}),fresh=createNote({body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),changed=reviseNote(fresh,{body:'The copper code is Maple 43.'},1);let generated=false;
  const store={search:async()=>[ref(fresh)],all:async()=>[old,changed]},context={summary:'PINE-9191',recent:[],refs:[ref(old)]},e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{generated=true;return {text:JSON.stringify({answer:'PINE-9191',citations:[{id:'S1',quote:'PINE-9191'}]})};}};
