@@ -36,7 +36,9 @@ try{
  processSignals.dispose();
  let cleanupError;
  if(server?.listening)try{await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}catch(error){cleanupError=error;}
- if(primaryError&&pwaInstallAttempted)try{await lstat(profileDir);await uninstallInstalledPwa({browserType:chromium,profileDir,manifestId:url,channel:'chromium'});}catch(error){if(error?.code!=='ENOENT')cleanupError??=error;}
+ // PWA.install registers the app outside the disposable browser profile. Always
+ // unregister it, including successful runs, before removing the profile.
+ if(pwaInstallAttempted)try{await lstat(profileDir);await uninstallInstalledPwa({browserType:chromium,profileDir,manifestId:url,channel:'chromium'});}catch(error){if(error?.code!=='ENOENT')cleanupError??=error;}
  try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){cleanupError??=error;}
  if(shouldRemoveInstalledPwaProfile({profileWasAbsentBeforeRun,retainProfile}))try{await rm(profileDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}
  if(shouldRemoveInstalledPwaOutput({outputWasGenerated:outputWasGeneratedBeforeRun}))try{await rm(outputDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}
