@@ -1,6 +1,6 @@
 ## Current status · 2026-11-01
 
-The latest fully verified application-code commit before this follow-up is `5ffa340`, which passed clean-checkout GitHub Actions CI run **41232045850** in 8m17s. This follow-up adds per-named-note water-value consistency checks on top of that baseline. Local focused answer/conversation checks pass 204/204, all prototype tests pass 1,655/1,655, static checks pass, and product acceptance passes 8/8 on shell `a8e557b36aedbec3`; clean-checkout CI for the follow-up is pending. Controlled PC/CI evidence does not close the physical-device or live-model limitations listed below.
+The latest verified application-code commit is `61c45394a25ea1b3c0d3d361363eb727e158961d`, which passed clean-checkout GitHub Actions CI run **41233232875** in 10m59s. It adds per-named-note water-value consistency checks on top of the prior verified baseline. Local focused answer/conversation checks pass 204/204, all prototype tests pass 1,655/1,655, static checks pass, and product acceptance passes 8/8 on shell `a8e557b36aedbec3`. Controlled PC/CI evidence does not close the physical-device or live-model limitations listed below.
 
 The verification-record commit `f57227b5bf54eabdf2b7f3ec8d2c9c1eb708a8aa` also passed clean-checkout CI run **41227207361** in 8m21s. All workflow gates passed on the pushed branch; device and live-model caveats above remain unchanged.
 
@@ -48,3 +48,5 @@ The post-fix Q8 named-note offline answer/citation/reviewed-save flow is recorde
 ## Evidence location
 
 Dated runs and the exact prior status document are preserved in [TEST-RESULTS.txt](TEST-RESULTS.txt). The prior status snapshot has SHA-256 8637016ccf264fc474c89ea9e25864fb8e773d3eebe20f4fae3e53071637695b. Search it by build or feature; add detailed runs there, and keep this file limited to current state and unresolved gates. Runtime-specific findings remain in [LFM3-RUNTIME-SPIKE.md](LFM3-RUNTIME-SPIKE.md).
+
+2026-11-01: Clean-checkout GitHub Actions run **41233232875** passed every stage on commit 61c45394a25ea1b3c0d3d361363eb727e158961d in 10m59s. Core/build/acceptance, review/offline calculation, tools/MCP/Markdown, device memory/inference/schedule/settings, editorial/iOS handoff, and app-update/offline/installed-PWA acceptance all passed. This verifies the named-note citation guard in clean CI, not live-model response quality, physical iPhone/Android inference, or real-device offline cold restart.
