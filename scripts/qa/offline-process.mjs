@@ -10,7 +10,7 @@ import {removeOwnedInstalledPwaShortcut} from './installed-pwa-shortcut.mjs';
 
 // Pass a Playwright BrowserType from the caller. No bundled browser/dependency,
 // inference stub, database access, process kill or existing profile reuse.
-export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,url='http://127.0.0.1:4180/',channel,installedPwa=false,afterBootstrap}){
+export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,url='http://127.0.0.1:4180/',channel,installedPwa=false,afterBootstrap,signal}){
  const engine=browserType.name();assert.ok(['chromium','webkit'].includes(engine),'Unsupported QA browser');assert.ok(!installedPwa||engine==='chromium','Installed PWA diagnostics require Chromium');if(installedPwa)channel??='chrome';
  assert.ok(isAbsolute(profileDir)&&isAbsolute(outputDir),'Use absolute QA paths');
  assert.equal(new URL(url).hostname,'127.0.0.1','QA uses the local product server');
@@ -38,10 +38,14 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   const text=await p.locator('.sent-message').last().innerText();assert.ok(text.includes(expected),text);return text;
  }
  async function backup(p,name,alreadyLocal=false){if(!alreadyLocal){await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();}const pending=p.waitForEvent('download');await p.getByRole('button',{name:'Export backup',exact:true}).click();const path=join(outputDir,name);await(await pending).saveAs(path);return JSON.parse(await readFile(path,'utf8')).payload;}
+ let activeContext;
+ const closeActive=()=>{if(activeContext)void activeContext.close().catch(()=>{});};
+ signal?.addEventListener('abort',closeActive);
  async function phase(offline,work){
-  const c=await browserType.launchPersistentContext(profileDir,{channel,headless:true,offline,viewport:{width:360,height:780},acceptDownloads:true});await c.setOffline(offline);
+  if(signal?.aborted)throw signal.reason??Error('QA interrupted');
+  const c=await browserType.launchPersistentContext(profileDir,{channel,headless:true,offline,viewport:{width:360,height:780},acceptDownloads:true});activeContext=c;
   const events=[];c.on('close',()=>events.push({event:'context-close'}));c.browser().on('disconnected',()=>events.push({event:'browser-disconnected'}));c.on('page',page=>observe(page));function observe(page){page.on('crash',()=>events.push({event:'page-crash'}));page.on('pageerror',error=>events.push({event:'pageerror',message:String(error)}));}for(const page of c.pages())observe(page);
-  try{c.setDefaultTimeout(7000);let p=c.pages()[0]??await c.newPage();const session=engine==='chromium'?await c.browser().newBrowserCDPSession():null;let installation,launch;
+  try{if(signal?.aborted)throw signal.reason??Error('QA interrupted');await c.setOffline(offline);c.setDefaultTimeout(7000);let p=c.pages()[0]??await c.newPage();const session=engine==='chromium'?await c.browser().newBrowserCDPSession():null;let installation,launch;
    if(!installedPwa||!offline){await p.goto(url,{timeout:15000});if(!offline){await p.getByRole('button',{name:'Offline · Tap to switch Online',exact:true}).click();}await p.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:180000});if(!offline){await p.getByRole('button',{name:'Online · Tap to switch Offline',exact:true}).click();}}
    if(installedPwa){if(!offline){installation=await session.send('PWA.install',{manifestId:url,installUrlOrBundleUrl:url});await session.send('PWA.changeAppUserSettings',{manifestId:url,displayMode:'standalone'});}const result=await Promise.all([c.waitForEvent('page',{timeout:30000}),session.send('PWA.launch',{manifestId:url})]);p=result[0];launch=result[1];await p.waitForFunction(()=>!!navigator.serviceWorker.controller,null,{timeout:180000});const display=await p.evaluate(()=>({url:location.href,standalone:matchMedia('(display-mode: standalone)').matches,browser:matchMedia('(display-mode: browser)').matches}));(evidence.launchAttempts??=[]).push({offline,installation,launch,display});assert.equal(display.standalone,true,'Expected actual standalone display mode');}
    let pid;if(session){const info=await session.send('SystemInfo.getProcessInfo');await session.detach();pid=info.processInfo.find(v=>v.type==='browser')?.id;assert.ok(pid);assert.ok(evidence.phases.every(v=>v.pid!==pid),'Each phase uses a different browser process');}
@@ -53,7 +57,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
     const entry={...(pid?{pid}:{}),engine,offline,onlineSignal,networkProbe,...(installedPwa?{standalone:true,installation,launch}:{}),version:c.browser().version(),script:await p.locator('script[src]').getAttribute('src'),build,sha256Module:{path:hashAsset.path,bytes:hashAsset.bytes,verifiedDigest:sha256Result}};
     assert.equal(networkProbe.reachable,!offline,`Network probe mismatch: requested offline=${offline}, probe=${JSON.stringify(networkProbe)}`);if(evidence.phases.length)assert.deepEqual(build,evidence.phases[0].build);
    evidence.phases.push(entry);await work(p,entry);
-  }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();if(installedPwa){const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}}
+  }catch(error){(evidence.failures??=[]).push({offline,events:[...events],error:String(error)});throw error;}finally{await c.close();if(activeContext===c)activeContext=undefined;if(installedPwa){const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}}
  }
  let before,afterEdit,afterRestart;
  try{
@@ -99,7 +103,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   assert.deepEqual(afterEdit.notes,afterRestart.notes);for(const run of before.runs)assert.deepEqual(afterEdit.runs.find(v=>v.key===run.key),run,'Prior run changed');assert.deepEqual(afterEdit.runs,afterRestart.runs);
   for(const file of [...inputs,...offlineInputs]){const pack=offlineInputs.includes(file)?afterEdit:before;const raw=pack.runs.find(v=>v.value.name===file.name)?.value;assert.ok(raw);const bytes=Buffer.from(raw.data,'base64');assert.equal(bytes.toString('utf8'),file.body);assert.equal(createHash('sha256').update(bytes).digest('hex'),raw.sha256);assert.equal(pack.notes.find(n=>n.id===raw.id).revisions[0].body,file.body);}
   evidence.pass=true;await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));return evidence;
-  }catch(e){evidence.pass=false;evidence.error=String(e);await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));throw e;}finally{await new Promise(resolve=>probeServer.close(()=>resolve(undefined)));}
+  }catch(e){evidence.pass=false;evidence.error=String(e);await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));throw e;}finally{signal?.removeEventListener('abort',closeActive);await new Promise(resolve=>probeServer.close(()=>resolve(undefined)));}
 }
 
 export function shouldRemoveGeneratedOfflineQaPath({generated}){return generated===true;}
@@ -108,10 +112,10 @@ export function shouldRemoveGeneratedOfflineQaPath({generated}){return generated
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const [profileArg,outputArg,engine='chromium',urlArg]=process.argv.slice(2);assert.ok(['chromium','webkit'].includes(engine),'Choose chromium or webkit');
  const runId=`${Date.now()}-${randomUUID()}`,profileDir=profileArg??join(tmpdir(),`babelshelf-offline-${runId}-profile`),outputDir=outputArg??join(tmpdir(),`babelshelf-offline-${runId}-results`),generatedProfile=profileArg===undefined,generatedOutput=outputArg===undefined;
- let server,url=urlArg;
- if(!url){server=createDevServer(fileURLToPath(new URL('../../design/prototype/dist/app/',import.meta.url)));await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});url=`http://127.0.0.1:${server.address().port}/`;}
- try{const browsers=await import('../../design/prototype/node_modules/playwright-core/index.mjs');console.log(JSON.stringify(await runOfflineProcessCheck(browsers[engine],{profileDir,outputDir,url}),null,2));}
+ const {connectQaProcessSignals}=await import('./process-signals.mjs');const processSignals=connectQaProcessSignals();let server,url=urlArg;
+ try{if(!url){server=createDevServer(fileURLToPath(new URL('../../design/prototype/dist/app/',import.meta.url)));await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});url=`http://127.0.0.1:${server.address().port}/`;}const browsers=await import('../../design/prototype/node_modules/playwright-core/index.mjs');console.log(JSON.stringify(await runOfflineProcessCheck(browsers[engine],{profileDir,outputDir,url,signal:processSignals.signal}),null,2));}
  finally{
+   processSignals.dispose();
   if(server)await new Promise(resolve=>server.close(()=>resolve(undefined)));
   if(shouldRemoveGeneratedOfflineQaPath({generated:generatedProfile}))await rm(profileDir,{recursive:true,force:true});
   if(shouldRemoveGeneratedOfflineQaPath({generated:generatedOutput}))await rm(outputDir,{recursive:true,force:true});
