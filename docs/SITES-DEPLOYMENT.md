@@ -1,3 +1,7 @@
+# Public v277 — isolated Worker communication failure (2026-11-02 JST)
+
+Build `fbd03eca57ef9cf3`, entry `index-DCzMAMR-.js`; app3c223e2 passed complete CI41319218387 in10m45s. Site source `5910c7cf199bc2892db197eaefcb8e4220b02382`; deployment `appgdep_6ae7577a437881918f1a546bf1d34af3` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle, retained conversation and input-file v1, then returned Offline. This checks delivery/adoption, not actual inference failure or device performance. Previous entries are historical.
+
 # Public v276 — ONNX request tensor ownership (2026-11-02 JST)
 
 Build `4815c523c6047863`, entry `index-BsG08iPS.js`; code f0841de passed complete CI41317933354. Site source `e23f532175a5552821b5086392746d5a3fc45b0d`; deployment `appgdep_6ae753dccad481919322e3a9d8ce07a6` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle, retained conversation and input-file state, then returned Offline. No new model inference, measured speedup or physical-device verification is claimed. Older sections are historical.
