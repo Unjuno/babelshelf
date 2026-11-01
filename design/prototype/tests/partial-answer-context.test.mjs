@@ -18,3 +18,17 @@ test('partial work cannot invent an answer when no original fits',async()=>{
  await assert.rejects(groundedAnswer({store:{all:async()=>[note],search:async()=>[]},engine},{model:'test',question:'Explain the source.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],memoryUsed:true,budgetExhausted:true}}),/Context limit.*sources/);
  assert.equal(generations,0);
 });
+
+test('required evidence reduces answer space explicitly without losing source identity',async()=>{
+ const note=createNote({path:'Notes/one.md',body:'First source: alpha.'});
+ const ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ for(const promptTokens of [100,1700]){
+  let allocated;
+  const engine={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async messages=>({prompt_tokens:JSON.stringify(messages).includes(ref.quote)?promptTokens:100}),generate:async (_messages,tokens)=>{allocated=tokens;return {text:JSON.stringify({answer:'Alpha.',citations:[{id:'S1',quote:ref.quote}]})};}};
+  const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[]},engine},{model:'test',question:'Explain this source in detail.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],memoryUsed:true}});
+  assert.equal(result.answer,'Alpha.');assert.equal(result.sources[0].noteId,note.id);assert.equal(result.sources[0].revision,1);
+  assert.notEqual(result.status,'insufficient_evidence');
+  if(promptTokens===1700){assert.equal(allocated,348);assert.equal(result.answerBudget.allocatedTokens,allocated);assert.ok(result.answerBudget.requestedTokens>allocated);assert.equal(result.answerBudget.reason,'required-evidence');}
+  else assert.equal(result.answerBudget,undefined);
+ }
+});

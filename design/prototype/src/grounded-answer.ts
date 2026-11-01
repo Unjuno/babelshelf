@@ -223,6 +223,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const outputLimits=mode==='chat'?dialogueOutputLimits(replyStyle,question,availableOutputTokens):undefined;
  const modelOutputLimit=engine.manifest.maxOutputTokens??availableOutputTokens;
  let replyTokens=Math.min(outputLimits?.segment??groundedOutputTokens(replyStyle,question,availableOutputTokens),modelOutputLimit,availableOutputTokens);
+ const requestedReplyTokens=replyTokens;
  // Reserve one excerpt per required source before additional excerpts compete
  // for context; retain the original order within each group.
  if(toolEvidence?.used||inputReadings.length){
@@ -383,5 +384,5 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if(!validateGroundingRefs(current,parsed.status==='insufficient_evidence'?evidence:parsed.sources).ok)throw Error('Source changed · retry');
  }
  check();
- return {answer:parsed.answer as string,sources:parsed.sources as any[],...(parsed.status==='insufficient_evidence'?{status:parsed.status,checkedSources:bindLabels(evidence.map(ref=>ref.label))}:{}),...(recovery?{recovery}:{}),...(recovery==='verbatim-source'&&recoveryReason?{recoveryReason}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference}:{})};
+ return {answer:parsed.answer as string,sources:parsed.sources as any[],...(replyTokens<requestedReplyTokens?{answerBudget:{requestedTokens:requestedReplyTokens,allocatedTokens:replyTokens,reason:'required-evidence' as const}}:{}),...(parsed.status==='insufficient_evidence'?{status:parsed.status,checkedSources:bindLabels(evidence.map(ref=>ref.label))}:{}),...(recovery?{recovery}:{}),...(recovery==='verbatim-source'&&recoveryReason?{recoveryReason}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference}:{})};
 }
