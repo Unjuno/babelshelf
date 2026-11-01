@@ -7224,3 +7224,15 @@ Inventory: 742 direct BabelShelf-named Temp directories; no matching active proc
 
 2026-11-01: Bonsai/WebML Worker received usage.prompt_tokens and usage.cached_tokens but omitted them from common metrics; answer Activity therefore missed those reported counts. Forward only safe nonnegative integer values as runtimePromptTokens/runtimeCachedTokens, preserve zero, and leave absent/malformed values null (shared boundary omits null). Do not substitute the separate preflight count or text-chunk count. Existing actual-worker VM regression failed before fix; focused worker/native/inference tests 30/30 and root suite 251/251 passed, static shell hashes passed, production build f7279f48789e9d2e with 163 verified assets and product acceptance 8/8 passed. Controlled tests are not model-quality evidence.
 Same sidebar tab initially reported browser.user unavailable after a turn boundary; resetting only the CUA REPL and rebinding the same tab restored interaction. No new browser/profile was created. Started the same 4184 preview origin, temporarily selected Online, clicked Update and observed index-oGWJeDF3.js matching the new build; restored Offline. Existing saved results survived. A bound-file request against the retained synthetic generated answer visibly showed Loading model then Generating, and returned an answer with a source button. Activity now records one model call, 578 observed prompt tokens, 27 output tokens, 21ms token counting, 35.8s generation and one read receipt (31ms). Same Windows sidebar Chrome/156.0.0.0 and Bonsai 4B/runtime revisions as prior run. No independent GPU placement or memory measurement; no speedup claim. No additional note was saved. Local screenshots current-sidebar-generating.jpg and current-sidebar-metrics.jpg stay in existing qa-retained, outside Git.
+
+2026-11-01 — Sidebar real-model generation deadline.
+Local build f7279f48789e9d2e, Windows in-app browser, retained Bonsai2 4B.
+Temporarily set the active Standard profile maxGenerationMs to 1000 through
+Memory's editor. A bound-file explanation ended with Generation time budget
+reached; no answer or Save note was offered, and the draft was restored.
+No late answer appeared during subsequent settings restoration. Restored the
+entire original harness text and verified exact equality, then cleared the QA
+draft and input binding. No model or knowledge original was removed.
+The stopped turn's View activity button did not open its dialog on two attempts;
+this remains a UI investigation, not a verified fix. Offline was the application
+setting only; this run does not establish airplane-mode or cold-restart behavior.
