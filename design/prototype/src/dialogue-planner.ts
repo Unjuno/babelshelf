@@ -243,8 +243,10 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
  // Preserve complete data but put retained dialogue before volatile selectors.
  // Otherwise a changed turnCount invalidates the entire retained-input prefix.
  // Native cache/checkpoint validation still decides whether any state is reusable.
- const {summary,recent,...selectors}=historyPayload(context);
- const metadata={...selectors,...(attachments.length?{currentAttachments:attachments}:{})};
+ const {summary,recent,originalEarlierExcerpts,...selectors}=historyPayload(context);
+ // Native historyMessages already carries exact recalled excerpts with speaker
+ // and outcome semantics. Do not duplicate their bodies in navigation metadata.
+ const metadata={...selectors,...(!nativeToolProtocol&&originalEarlierExcerpts?{originalEarlierExcerpts}:{}),...(attachments.length?{currentAttachments:attachments}:{})};
  // Native models already understand user/assistant turns. Reuse the same
  // history projection as ordinary answering, instead of turning old requests
  // and assistant claims into one fresh user instruction. Storage stays intact.

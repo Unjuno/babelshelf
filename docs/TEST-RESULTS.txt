@@ -7825,3 +7825,6 @@ Call1:4535prompt/449output,133103.155ms wall,95130.605prefill,37930.675decode,ca
 
 2026-11-02 Context inference measurement consolidation
 Shared bounded aggregation now covers ordinary inference and context compaction. Compaction receipts retain reported prefill/decode/cache metrics previously discarded; invalid Infinity excluded and private generated summary excluded by regression. No inference settings, user data or default model changed. Node targeted context/LFM tests55/55; check PASS; build4d496fda8c61ae1a (163 assets); app8/8; protected runtime28files PASS. This is observability/refactoring, not measured speedup or physical-device acceptance. Public remains v298 until a later verified release.
+
+2026-11-02 Native recalled-history deduplication
+Native planner supplied exact recalled dialogue twice: historyMessages and metadata.originalEarlierExcerpts. Removed only native metadata duplicate; legacy JSON retains its original excerpt projection. Controlled test proves one copy with speaker/index retained, current-result selector retained, explicit untrusted-history guidance retained, input context unchanged. Conversation/native/context243/243; check PASS; build4bd8618bf8a800b7 (163 assets); app8/8. No measured latency claim, no source-validation or runtime tuning change. Existing uncommitted adapter preserved. Public remains v298 pending release.

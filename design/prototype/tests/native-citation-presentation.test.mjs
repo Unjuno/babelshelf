@@ -28,3 +28,21 @@ test('native reply rules occur once in shared instructions without weakening fun
  assert.match(text,/unless explicitly requested or literal source content/);
  assert.match(text,/insufficient_evidence with sources=\[\]/);
 });
+
+
+test('native planner includes recalled originals once while preserving legacy history and selectors',()=>{
+ const quote='ARCHIVE_UNIQUE_42',context={summary:'Earlier summary',recent:[],refs:[],turnCount:4,lastAnswerIndex:3,currentResult:{turnId:'last'},recalled:[{turnId:'earlier',turnIndex:1,speaker:'assistant',quote,start:0,end:quote.length}]},before=structuredClone(context);
+ for(const native of [false,true]){
+  const messages=planDialogueMessages('Continue our discussion',context,[],{allowedTools:[],history:[]},native);
+  const text=messages.map(message=>message.content).join('\n');
+  assert.equal(text.split(quote).length-1,1);
+  assert.match(text,/"speaker":"assistant"/);assert.match(text,/"turnIndex":1/);
+  assert.match(text,/"currentResult":\{"turnId":"last"\}/);
+  if(native){
+   const metadata=messages.find(message=>message.content.startsWith('Current application context'));
+   assert.doesNotMatch(metadata.content,/ARCHIVE_UNIQUE_42|originalEarlierExcerpts/);
+   assert.match(text,/Distinguish user statements from assistant claims/);
+  }else assert.match(text,/originalEarlierExcerpts/);
+ }
+ assert.deepEqual(context,before);
+});
