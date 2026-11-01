@@ -1,12 +1,9 @@
 import {boundedDialogueContext,compactDialogue,dialogueContextFits,independentSavedKnowledgeContext,type ChatEngine,type Dialogue,type DialogueContext} from './conversation.ts';
+import {addMeasurement,recordGenerationMeasurements,type InferenceMeasurements} from './inference-measurements.ts';
 import type {ActivityTool} from './harness-activity.ts';
 
 type Trace=<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(value:T)=>unknown,failureOf?:(value:T)=>unknown,failureProject?:(error:unknown)=>unknown)=>Promise<T>;
-type ContextInference={measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number;lastCountPromptTokens?:number;contextTokens?:number};
-function addMeasurement(total:number|undefined,value:unknown,integer=false){
- if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER||integer&&!Number.isSafeInteger(value))return total;
- const next=(total??0)+value;return Number.isFinite(next)&&next<=Number.MAX_SAFE_INTEGER?next:total;
-}
+type ContextInference=InferenceMeasurements&{lastCountPromptTokens?:number;contextTokens?:number};
 /** Observe context preparation without retaining prompt or generated text in the activity receipt. */
 function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatEngine{
  return new Proxy(engine,{get(target,property){
@@ -27,8 +24,7 @@ function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatE
    const started=performance.now();usage.measuredModelCalls++;
    try{
     const result=await target.generate(...args);
-    const promptTokens=addMeasurement(usage.promptTokens,result.metrics?.runtimePromptTokens,true),outputTokens=addMeasurement(usage.outputTokens,result.outputTokens??result.metrics?.outputTokens,true),runtimeCountMs=addMeasurement(usage.countMs,result.metrics?.countMs);
-    if(promptTokens!==undefined)usage.promptTokens=promptTokens;if(outputTokens!==undefined)usage.outputTokens=outputTokens;if(runtimeCountMs!==undefined)usage.countMs=runtimeCountMs;
+    recordGenerationMeasurements(usage,result);
     return result;
    }finally{usage.generationWallMs=addMeasurement(usage.generationWallMs,performance.now()-started);}
   };
@@ -36,7 +32,8 @@ function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatE
  }});
 }
 function inferenceReceipt(usage:ContextInference){
- return {measuredModelCalls:usage.measuredModelCalls,...(usage.lastCountPromptTokens!==undefined?{lastCountPromptTokens:usage.lastCountPromptTokens}:{}),...(usage.contextTokens!==undefined?{contextTokens:usage.contextTokens}:{}),...(usage.promptTokens!==undefined?{promptTokens:usage.promptTokens}:{}),...(usage.outputTokens!==undefined?{outputTokens:usage.outputTokens}:{}),...(usage.countMs!==undefined?{countMs:usage.countMs}:{}),...(usage.generationWallMs!==undefined?{generationWallMs:usage.generationWallMs}:{})};
+ // usage is populated only by the bounded measurement collector and exact count.
+ return {...usage};
 }
 
 /** Prepare one planner context from a pinned dialogue, persisting only a changed compaction. */
