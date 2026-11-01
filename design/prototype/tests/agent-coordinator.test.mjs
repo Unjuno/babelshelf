@@ -60,10 +60,11 @@ test('target repair cannot loop or create an unavailable file scope',async()=>{
  assert.equal(generated,2);assert.deepEqual(calls,[]);
 });
 
-test('legacy query repair is bounded and cannot bypass stop or persistence failure',async()=>{
+test('legacy protocol repairs are bounded and cannot bypass stop or persistence failure',async()=>{
+ for(const invalid of ['{"action":"chat"}','{"action":"answer","query":"items","target":"invalid"}'])
  for(const failure of ['repeat','stop','storage']){
   let generated=0,stopped=false;
-  const {value,calls}=input(['{"action":"chat"}','{"action":"chat"}','{"action":"chat","query":""}'],{check:()=>{if(stopped)throw Error('Stopped');}});
+  const {value,calls}=input([invalid,invalid,'{"action":"chat","query":""}'],{check:()=>{if(stopped)throw Error('Stopped');}});
   const generate=value.engine.generate;value.engine.generate=async(...args)=>{generated++;return generate(...args);};
   value.trace=async(_tool,_details,work)=>{try{return await work();}catch(error){if(failure==='stop')stopped=true;if(failure==='storage')throw Error('Receipt storage unavailable');throw error;}};
   await assert.rejects(coordinateAgentTurn(value),failure==='repeat'?/Invalid model action/:failure==='stop'?/Stopped/:/Receipt storage unavailable/);
@@ -71,14 +72,16 @@ test('legacy query repair is bounded and cannot bypass stop or persistence failu
  }
 });
 
-test('legacy query repair consumes the existing per-Send generation budget',async()=>{
+test('legacy protocol repairs consume the existing per-Send generation budget',async()=>{
+ for(const invalid of ['{"action":"chat"}','{"action":"answer","query":"items","target":"invalid"}']){
  const {createTurnInferenceBudget}=await import('../src/turn-inference-budget.ts');
  const {value,calls}=input([]);let generated=0;
- value.engine.generate=async()=>{generated++;return {text:'{"action":"chat"}',outputTokens:256};};
+ value.engine.generate=async()=>{generated++;return {text:invalid,outputTokens:256};};
  const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null});
  value.engine=budget.wrap(value.engine);
  await assert.rejects(coordinateAgentTurn(value),/Generation token budget reached/);
  assert.equal(generated,1);assert.equal(budget.generatedTokens,256);assert.deepEqual(calls,[]);
+ }
 });
 
 test('a native final answer that exposes internal source labels gets one content-only replan',async()=>{
