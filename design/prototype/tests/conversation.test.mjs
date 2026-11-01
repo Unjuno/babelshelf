@@ -2168,3 +2168,18 @@ test('independent Japanese saved-material questions do not inherit a long unrela
  for(const question of ['さっきの回答と保存してある資料を比較して。','このファイルと保存してある資料を比較して。','資料を保存してほしい。'])assert.equal(independentSavedKnowledgeContext(question),null);
  assert.deepEqual(context,before);
 });
+
+
+test('pinned-file terminal answers share the initial snapshot but revalidate before delivery',async()=>{
+ const note=createNote({path:'Notes/meeting.md',body:'Meet Monday.'});
+ const ref={noteId:note.id,revision:1,start:0,end:12,quote:'Meet Monday.'};
+ const engine={manifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>{throw Error('Unexpected count');},generate:async()=>{throw Error('Unexpected generation');}};
+ const request={model:'test',question:'What does this file say?',mode:'answer',scope:{kind:'file',file:{noteId:note.id,revision:1}},toolEvidence:{used:true,refs:[ref],memoryUsed:true},reply:{answer:'Meet Monday.',sources:[ref]}};
+ for(const changed of [false,true]){
+  let reads=0;
+  const store={all:async()=>++reads>1&&changed?[reviseNote(note,{body:'Meet Tuesday.'},1)]:[note],search:async()=>{throw Error('Unexpected search');}};
+  if(changed)await assert.rejects(groundedAnswer({store,engine},request),/changed/i);
+  else{const result=await groundedAnswer({store,engine},request);assert.equal(result.answer,request.reply.answer);assert.deepEqual(result.sources,[ref]);}
+  assert.equal(reads,2);
+ }
+});

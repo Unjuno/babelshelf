@@ -140,8 +140,9 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // Ordinary dialogue has no stored-source evidence. Its generation must not
  // enumerate/index every note merely to validate an empty citation list.
  const dialogueOnly=mode==='chat'&&!workingFile&&!inputReadings.length;
- const pinnedRecords=workingFile?await store.all():undefined;
  const records=dialogueOnly?[]:await store.all();
+ // Share the initial snapshot; delivery still revalidates against fresh records.
+ const pinnedRecords=workingFile?records:undefined;
  const englishSubject=scope.kind==='knowledge'&&!toolEvidence?.used?namedEnglishSavedSubject(question):null;
  const namedSubject=scope.kind==='knowledge'&&!toolEvidence?.used?(namedJapaneseSavedSubject(question)||englishSubject):null;
  const exactNamed= namedSubject?exactNamedSavedNote(records,namedSubject):null;

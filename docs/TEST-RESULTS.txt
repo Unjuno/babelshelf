@@ -7509,3 +7509,6 @@ Read/search completion and schedule proposal now use acquireModel before count/g
 
 2026-11-01 — Search acquisition ownership consolidated
 Removed caller-side eager ensureText before resolved search. The resolved action owns acquisition only when passage results require completion inference; empty/metadata-only results do not acquire text. Existing explicit search remains local/model-free. Acquisition, submission, model lifecycle and per-Send budget regression100/100; product build c4fde4a16621892c with163verified assets, product8/8 and protected runtime28 passed. CI41314237653 for preceding f88d531 was still in progress at observation; not claimed passed. Public remains273. No real-model speedup claimed.
+
+2026-11-01 — Pinned-file evidence snapshot reuse
+Grounded answers now share one initial Knowledge snapshot for working-file evidence and source validation, removing a duplicate all-record read. Final delivery still reads current records and validates pinned revision and citation bytes. A terminal-file regression asserts exactly two snapshots (initial and delivery), unchanged answer/source bytes, no inference regeneration, and rejection when the second snapshot has a new source revision. Conversation/grounded dialogue214/214 and TypeScript pass. This reduces one full-store read on the scoped path; no measured device latency claim.
