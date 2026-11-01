@@ -1,6 +1,20 @@
 // Audit data only. A receipt never authorizes execution, replay, writes or network.
 import {PlannerOutputError} from './planner-error.ts';
+// @ts-expect-error Shared baseline is JavaScript.
+import {parseJSON} from '../../../dist/core.js';
+import {validHarnessAction} from './harness-actions.ts';
 import {builtinTools,builtinToolIds} from './tools/builtin-tools.ts';
+
+// Retain only protocol categories, never model-authored strings or key names.
+function queryFailureShape(error:PlannerOutputError){
+ if(error.diagnostic.reason!=='query'||error.diagnostic.truncated)return {};
+ try{
+  const value=parseJSON(error.diagnostic.raw);
+  if(!value||typeof value!=='object'||Array.isArray(value))return {};
+  const query=value.query;
+  return {queryShape:{action:validHarnessAction(value.action)?value.action:'unknown',target:['file','path','knowledge','inputs','current','history'].includes(value.target)?value.target:'other',type:query===undefined?'missing':query===null?'null':Array.isArray(query)?'array':typeof query,...(typeof query==='string'?{empty:!query.trim(),overLimit:query.length>2000}:{})}};
+ }catch{return {};}
+}
 
 // Non-tool lifecycle operations remain explicit. Executable built-ins derive
 // their IDs and labels from the same catalog used by the actual registry.
@@ -63,7 +77,7 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
   // Invalid model output can echo prompts, source text or private note content.
   // Keep the raw value only on the transient error used by in-turn repair;
   // durable Activity receipts retain content-free metadata only.
-  const diagnostic=['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?{reason:error.diagnostic.reason,rawBytes:new TextEncoder().encode(error.diagnostic.raw).byteLength,truncated:error.diagnostic.truncated}:undefined;
+  const diagnostic=['dialogue.plan','dialogue.subject'].includes(tool)&&error instanceof PlannerOutputError?{reason:error.diagnostic.reason,rawBytes:new TextEncoder().encode(error.diagnostic.raw).byteLength,truncated:error.diagnostic.truncated,...queryFailureShape(error)}:undefined;
   const projected=failureProject(error);
   const output=diagnostic&&projected&&typeof projected==='object'&&!Array.isArray(projected)?{...diagnostic,...projected}:projected??diagnostic;
   await persistActivity(persist,finishActivity(started,{error,...(output!==undefined?{output}:{})}));

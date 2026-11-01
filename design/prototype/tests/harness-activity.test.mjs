@@ -37,10 +37,21 @@ test('invalid speaker choice persists content-free failure metadata without beco
  assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.equal(entries[1].output.rawBytes,new TextEncoder().encode(raw).byteLength);assert.equal(entries[1].output.reason,'source');assert.equal(entries[1].output.truncated,false);assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_SOURCE_SENTINEL|\"raw\"/);validateActivity(entries.slice(1));
  const state=appendTurn(emptyDialogue(),{id:'turn',user:'which?',activity:entries.slice(1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/source|dialogue.subject/);
 });
+test('query failure diagnostics expose only allowlisted categories and no model-authored values',async()=>{
+ const {PlannerOutputError}=await import('../src/planner-error.ts');
+ for(const [query,type] of [[undefined,'missing'],[null,'null'],[23,'number'],[['PRIVATE'],'array'],[{PRIVATE:'PRIVATE'},'object'],['PRIVATE','string']]){
+  const entries=[],raw='```json\n'+JSON.stringify({action:'PRIVATE_ACTION',target:'PRIVATE_TARGET',query})+'\n```';
+  await assert.rejects(recordOperation('dialogue.plan',{},async()=>{throw new PlannerOutputError('Invalid model action',raw,'query');},async a=>entries.push(a)));
+  assert.deepEqual(entries[1].output.queryShape,{action:'unknown',target:'other',type,...(type==='string'?{empty:false,overLimit:false}:{})});
+  assert.doesNotMatch(JSON.stringify(entries),/PRIVATE/);
+ }
+});
+
 test('invalid planner output persists content-free audit metadata, never accepted or added to model history',async()=>{
  const raw='{"action":"recall","historyIndex":0,"historyPart":"user","quoted":"PRIVATE_PLAN_SENTINEL"}',entries=[];
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:10}),generate:async()=>({text:raw})};
  await assert.rejects(recordOperation('dialogue.plan',{question:'first message?'},()=>planDialogue(engine,'first message?',{summary:'',recent:[],refs:[],turnCount:1}),async a=>entries.push(a)),/Invalid model action/);
+ assert.deepEqual(entries[1].output.queryShape,{action:'recall',target:'other',type:'missing'});
  assert.equal(entries[1].status,'failed');assert.equal(entries[1].error.code,'planner_protocol');assert.equal(entries[1].output.rawBytes,new TextEncoder().encode(raw).byteLength);assert.equal(entries[1].output.reason,'query');assert.equal(entries[1].output.truncated,false);assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_PLAN_SENTINEL|\"raw\"/);
  const state=appendTurn(emptyDialogue(),{id:'failed',user:'first message?',activity:entries.slice(-1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/historyIndex/);
  engine.generate=async()=>({text:'x'.repeat(20000)});const malformed=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>malformed.push(a)),/JSON/);assert.equal(malformed[1].output.rawBytes,8192);assert.equal(malformed[1].output.reason,'json');assert.equal(malformed[1].output.truncated,true);assert.equal(Object.hasOwn(malformed[1].output,'raw'),false);

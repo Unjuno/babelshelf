@@ -43,7 +43,7 @@ function planningContextForRequest(context:DialogueContext,inputs:boolean,questi
  const saved=independentSavedKnowledgeContext(question,inputs);if(saved)return saved;
  const planning=planningContextForInputs(context,inputs);
  if(!planning.currentFile||!requestNamesWorkingFile(question)||requestNamesEarlierDialogue(question))return planning;
- const {lastAnswerIndex,recalled,historyAssistantIndices,...rest}=planning;
+ const {lastAnswerIndex,recalled,historyAssistantIndices,currentResult,...rest}=planning;
  return {...rest,summary:'',recent:[],turnCount:0,historyAssistantIndices:[]};
 }
 export function plannerScope(context:DialogueContext,inputs=false,question=''):PlannerScope{
