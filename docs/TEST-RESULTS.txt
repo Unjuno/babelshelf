@@ -7407,3 +7407,8 @@ Added regressions for source-label repair with guidance and verbatim recovery wi
 - Activity confirmed read-completion selected summary and Answer input mode summary. Text model4B revision8d6557168168f91ea6697a4a49ed2ef622b53adb runtime621e20782f208660f4f58283c2ce58430020f243.
 - Total2model calls,2196observed prompt tokens,89generated tokens,29mscounting,99.7sgeneration,one tool12ms. Answer stage:1call,695prompt,54output,9.395mscount,15872.56msTTFT,5488.57msdecode,21362.17msgeneration,0cached tokens. Total minus answer is not an isolated benchmark but indicates most generation time occurred before final answer.
 - Screenshots reused current-sidebar-metrics.jpg and current-sidebar-generating.jpg. Previous failed run retained in this text log; no new folders/profiles.
+
+2026-11-01 legacy planner execution-status prefix separation
+- Both native and legacy planner transports now append volatile application execution feedback after retained context/tool results instead of changing the leading legacy protocol. Preserves budgets, errors, pagination/omission instructions and the final original user request. Static available-action/schema changes still invalidate the prefix when scope changes.
+- Updated four tests that assumed mutable feedback was at message0 or tool results were penultimate: assert the same required content in system messages / named result envelope. Added exact prefix-equality and remaining-budget/order test across a completed call. No semantic checks removed.
+- Conversation/coordinator277/277, build:app including TS, product acceptance8/8 and diff check passed. No measured cache reuse or speedup from this change yet. Summary refusal remains unresolved.

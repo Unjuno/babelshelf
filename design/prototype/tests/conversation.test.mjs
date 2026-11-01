@@ -1226,29 +1226,29 @@ test('an empty exact memory read directs topic lookup to memory.search without t
  const context={summary:'',recent:[],refs:[],turnCount:0};
  const allowedTools=[{id:'memory.read',effect:'read',network:'none',usage:'Read an exact saved record.'},{id:'memory.search',effect:'read',network:'none',usage:'Search saved records by topic or clues.'}];
  const initial=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[]});
- assert.match(initial[0].content,/memory\.search.*topics?.*memory\.read.*exact ID.*path.*filename/i);
- assert.match(initial[0].content,/A read selector must be an exact ID, path or filename.*never invent one/i);
+ assert.match(initial.filter(message=>message.role==='system').map(message=>message.content).join(' '),/memory\.search.*topics?.*memory\.read.*exact ID.*path.*filename/i);
+ assert.match(initial.filter(message=>message.role==='system').map(message=>message.content).join(' '),/A read selector must be an exact ID, path or filename.*never invent one/i);
  const emptyRead=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'meeting'},result:[]}]});
- assert.match(emptyRead[0].content,/empty memory\.read result.*topic.*memory\.search/i);
+ assert.match(emptyRead.filter(message=>message.role==='system').map(message=>message.content).join(' '),/empty memory\.read result.*topic.*memory\.search/i);
  const matchedRead=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'Notes\/meeting.md'},result:[{path:'Notes/meeting.md'}]}]});
- assert.doesNotMatch(matchedRead[0].content,/empty memory\.read result/i);
+ assert.doesNotMatch(matchedRead.filter(message=>message.role==='system').map(message=>message.content).join(' '),/empty memory\.read result/i);
  const pagedThenEmpty=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.search',arguments:{query:'meeting',offset:0},result:{hits:[{kind:'file',noteId:'a',revision:1,path:'Notes/meeting.md'}],offset:0,limit:12,snapshot:'a'.repeat(64),nextOffset:null,hasMore:false}},{tool:'memory.read',arguments:{query:'meeting'},result:[]}]});
- assert.match(pagedThenEmpty[0].content,/Retry using an exact ID or full path from the successful memory\.search results/i);
+ assert.match(pagedThenEmpty.filter(message=>message.role==='system').map(message=>message.content).join(' '),/Retry using an exact ID or full path from the successful memory\.search results/i);
  const omittedThenEmpty=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.search',arguments:{query:'meeting',offset:0},result:{hits:[{kind:'file',noteId:'a',revision:1,path:'Notes/meeting.md'}]},resultOmitted:'not visible'},{tool:'memory.read',arguments:{query:'meeting'},result:[]}]});
- assert.doesNotMatch(omittedThenEmpty[0].content,/Retry using an exact ID or full path from the successful memory\.search results/i);
+ assert.doesNotMatch(omittedThenEmpty.filter(message=>message.role==='system').map(message=>message.content).join(' '),/Retry using an exact ID or full path from the successful memory\.search results/i);
  const tooLargeRead=planDialogueMessages('Read the saved file.',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'Notes/long.md',length:3000},result:null,error:{code:'result_too_large'}}]});
- assert.match(tooLargeRead[0].content,/result exceeded the active context budget.*narrower request/i);
- assert.match(tooLargeRead[0].content,/smaller length and start offset/i);
+ assert.match(tooLargeRead.filter(message=>message.role==='system').map(message=>message.content).join(' '),/result exceeded the active context budget.*narrower request/i);
+ assert.match(tooLargeRead.filter(message=>message.role==='system').map(message=>message.content).join(' '),/smaller length and start offset/i);
 });
 
 test('planner distinguishes further search matches from complete or omitted results',()=>{
  const context={summary:'',recent:[],refs:[],turnCount:0},allowedTools=[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.'}];
  const item={tool:'memory.search',arguments:{query:'water',offset:0},result:{hits:[{kind:'file',noteId:'a',revision:1,path:'Notes/a.md'}],offset:0,limit:1,snapshot:'a'.repeat(64),nextOffset:1,hasMore:true}};
- const prompt=entry=>planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[entry]})[0].content;
+ const prompt=entry=>planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[entry]}).filter(message=>message.role==='system').map(message=>message.content).join(' ');
  assert.match(prompt(item),/more.*matches.*not.*complete/i);
- const afterRead=planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[item,{tool:'memory.read',arguments:{query:'Notes/a.md'},result:[]}]})[0].content;assert.match(afterRead,/more.*matches.*not.*complete/i);
- const finished=planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[item,{...item,arguments:{query:'water',offset:1},result:{...item.result,offset:1,hasMore:false,nextOffset:null}}]})[0].content;assert.doesNotMatch(finished,/more.*matches.*not.*complete/i);
- const another=planDialogueMessages('Find both',context,[],{allowedTools,history:[item,{...item,arguments:{query:'food',offset:0},result:{...item.result,hasMore:false,nextOffset:null}}]})[0].content;assert.match(another,/more.*matches.*not.*complete/i);
+ const afterRead=planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[item,{tool:'memory.read',arguments:{query:'Notes/a.md'},result:[]}]}).filter(message=>message.role==='system').map(message=>message.content).join(' ');assert.match(afterRead,/more.*matches.*not.*complete/i);
+ const finished=planDialogueMessages('Find all water notes',context,[],{allowedTools,history:[item,{...item,arguments:{query:'water',offset:1},result:{...item.result,offset:1,hasMore:false,nextOffset:null}}]}).filter(message=>message.role==='system').map(message=>message.content).join(' ');assert.doesNotMatch(finished,/more.*matches.*not.*complete/i);
+ const another=planDialogueMessages('Find both',context,[],{allowedTools,history:[item,{...item,arguments:{query:'food',offset:0},result:{...item.result,hasMore:false,nextOffset:null}}]}).filter(message=>message.role==='system').map(message=>message.content).join(' ');assert.match(another,/more.*matches.*not.*complete/i);
  assert.doesNotMatch(prompt({...item,result:{...item.result,hasMore:false,nextOffset:null}}),/more.*matches.*not.*complete/i);
  assert.doesNotMatch(prompt({...item,resultOmitted:'not visible'}),/more.*matches.*not.*complete/i);
  const capped=prompt({...item,result:{...item.result,offset:10000,nextOffset:null,windowLimit:true}});assert.match(capped,/search window.*limit/i);
@@ -1729,7 +1729,7 @@ test('planner compacts oversized tool history to fit the selected model without 
  const engine={manifest:{contextTokens:2048},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{planned.push(value);return {text:calls++===0?' {"action":"tool","query":"memory.search","body":"{\\"query\\":\\"meeting\\"}"}':'{"action":"answer","query":"meeting","target":"knowledge"}'};}};
  const result=await planDialogueAgent({engine,question:'When is the meeting?',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],allowedTools:[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.'}],execute:async()=>evidence,check:()=>{}});
  assert.deepEqual(result.final,{action:'answer',query:'meeting',target:'knowledge'});assert.doesNotMatch(JSON.stringify(planned[1]),new RegExp(secret));
- assert.match(planned[1].at(-2).content,/omitted from this planner prompt to fit the selected model context/i);assert.match(planned[1].at(-2).content,/memory.search/);assert.deepEqual(result.calls[0].result,evidence);
+ assert.match(planned[1].find(message=>message.content.startsWith('Tool attempts and results')).content,/omitted from this planner prompt to fit the selected model context/i);assert.match(planned[1].find(message=>message.content.startsWith('Tool attempts and results')).content,/memory.search/);assert.deepEqual(result.calls[0].result,evidence);
  assert.equal((await engine.count(planned[1])).prompt_tokens<engine.manifest.contextTokens-160,true);
 });
 
@@ -2140,4 +2140,18 @@ test('verbatim recovery retains preferences without retaining a contradictory an
  assert.match(seen[1][1].content,/exact, contiguous substring/);
  assert.deepEqual(seen[1].slice(2),seen[0].slice(2));
  assert.equal(seen[1].filter(message=>message.role==='system').length,2);
+});
+
+
+test('legacy planner keeps changing call allowance outside its stable protocol',()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};
+ const allowedTools=[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.'}];
+ const first=planDialogueMessages('Find notes',context,[],{allowedTools,history:[],maxToolCalls:3});
+ const next=planDialogueMessages('Find notes',context,[],{allowedTools,history:[{tool:'memory.search',arguments:{query:'notes'},result:[]}],maxToolCalls:3});
+ assert.deepEqual(first.slice(0,2),next.slice(0,2));
+ assert.match(first.at(-2).content,/Remaining tool-call budget: 3/);
+ assert.match(next.at(-2).content,/Remaining tool-call budget: 2/);
+ assert.equal(next.at(-2).role,'system');
+ assert.match(next.at(-3).content,/Tool attempts and results/);
+ assert.deepEqual(first.at(-1),next.at(-1));
 });

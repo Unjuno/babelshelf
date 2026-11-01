@@ -174,7 +174,8 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
  const replySources=plannerReplySources(agent,scope.inputs,nativeToolProtocol,sourceCatalog);
  const instructions=nativeToolProtocol?nativePlannerInstructions(scope,agent):[plannerRoutingInstruction(scope)];
  const stepInstructions:string[]=[];
- const step=(text:string)=>(nativeToolProtocol?stepInstructions:instructions).push(text);
+ // Volatile execution feedback follows the retained prefix in both transports.
+ const step=(text:string)=>stepInstructions.push(text);
  // JSON action routing is a separate transport. Native agents receive their
  // function schemas directly, without the legacy target/dispatch protocol.
  if(!nativeToolProtocol){

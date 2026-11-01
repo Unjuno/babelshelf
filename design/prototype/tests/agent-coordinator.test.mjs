@@ -88,7 +88,7 @@ test('an invalid history selector gets one audited replan without guessing an or
  const result=await coordinateAgentTurn(value);
  assert.equal(result.final.action,'answer');assert.deepEqual(calls,[]);assert.equal(prompts.length,2);
  assert.deepEqual(receipts.filter(r=>r.status!=='running').map(r=>r.status),['failed','succeeded']);
- assert.match(prompts[1][0].content,/invalid history selector.*rejected without execution/i);
+ assert.match(prompts[1].filter(message=>message.role==='system').map(message=>message.content).join(' '),/invalid history selector.*rejected without execution/i);
  assert.equal(prompts[1].at(-1).content,'その集合の持ち物は何？');
  assert.doesNotMatch(JSON.stringify(prompts[1]),/"raw"/);
 });
