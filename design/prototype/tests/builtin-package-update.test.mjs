@@ -22,7 +22,7 @@ test('only exact known protected skill revisions migrate and retain their prior 
 
 test('initialization upgrades known skill records once and leaves unrelated records untouched',async()=>{
  const name='builtin-skills-'+crypto.randomUUID(),store=new KnowledgeStore(name);
- const seeds=await Promise.all(['read','search'].map(async kind=>({id:`builtin-package-memory.${kind}/SKILL.md`,path:`Tools/memory.${kind}/SKILL.md`,body:await readFile(new URL(`../src/tools/memory.${kind}/SKILL.md`,import.meta.url),'utf8'),protected:true})));
+ const seeds=await Promise.all(['memory.read','memory.search','memory.sources','math.calculate'].map(async kind=>({id:`builtin-package-${kind}/SKILL.md`,path:`Tools/${kind}/SKILL.md`,body:await readFile(new URL(`../src/tools/${kind}/SKILL.md`,import.meta.url),'utf8'),protected:true})));
  const previous=seeds.map(seed=>({...seed,body:knownPackageBodies[seed.id].at(-1)}));
  const user={id:'user-note',path:'Notes/user.md',body:'Keep original',version:1,history:[]};
  try{

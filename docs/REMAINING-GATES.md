@@ -1,6 +1,6 @@
 ## Current status · 2026-11-02
 
-Local candidate: standard tool guides shortened2776→2050 characters; execution/schema unchanged. Prototype1757/app8/build49cf00099b29a5eb/check pass. Token count and real-model recovery remain unmeasured.
+Local candidate: standard tool guides shortened2776→2050 characters; execution/schema unchanged. Prototype1757/app8/build98e853bd7470f99a/check pass. Exact prior protected guide revisions now migrate with history; altered records stay untouched. Token count and real-model recovery remain unmeasured.
 
 Public v293: application215b5f3/build1c7b0f4a0ed4eb16/index-BV02NErg.js; CI41341708837 all stages passed. Sourcecab773ad862cb350b57f6473a4f2cb43b9e1e00e; deploymentappgdep_6ae7945a45888191a5e5e3f6fc83f6f2 succeeded. Sidebar Update verified the exact entry and retained98 earlier messages, then returned appOffline. Bounded target repair shares the protocol-repair allowance; controlled stop/storage/token-budget checks pass. Real-model replay failed: initial invalid target at1881prompt/14output/45.735s; repair then exceeded context before generation. Both failures recorded; no tools, answer or save. No recovery or speed gain. Additional tests and runtime contract docs pushed through e3a9cb5.
 

@@ -7739,3 +7739,6 @@ Updated via UI to index-BV02NErg.js and returned appOffline, retaining98 earlier
 
 2026-11-02 · Compact standard tool guides
 Simplified the four standard SKILL.md guides (search/read/sources/calculator) from2776 to2050 characters combined. Kept paging/snapshot/revision semantics, exact selectors, UTF16 ranges, source metadata versus citation boundary, arithmetic precision and no-write/network restrictions. No execution/schema/settings changes. Prototype1757/app8/build49cf00099b29a5eb(163 assets)/check passed. This is character reduction, not a measured tokenizer, latency or quality improvement. Actual v293 failure remains the last model evidence; do not claim the reduced guides recover it until replayed.
+
+2026-11-02 · Standard-guide Memory migration
+Audit found the compact executable guide registry would update but stored protected guide projections needed exact previous-body registration. Added published706b578 guide bytes in LF/CRLF forms for all4standard tools to the existing known-revision migration. Extended initialization coverage from search/read to sources/calculator; existing all-known-version tests verify altered user text/path is not migrated, original bytes remain in revision history, and initialization is idempotent. Prototype1757/app8/build98e853bd7470f99a/check pass. Public remainsv293; no real-model acceptance for compact guides yet.
