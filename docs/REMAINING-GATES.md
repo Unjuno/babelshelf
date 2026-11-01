@@ -1,6 +1,6 @@
 ## Current status · 2026-11-02
 
-Local follow-up: native terminal-function reply guidance deduplicated into shared planner instructions; source schemas/validators, output budgets and reviewed save unchanged. Prototype1760/app8/static/build bfaf6f7743a74bc8 pass. Not deployed; actual token/latency and prose-quality effect unverified.
+Local follow-up: native terminal-function reply guidance deduplicated into shared planner instructions; source schemas/validators, output budgets and reviewed save unchanged. Prototype1760/app8/static/build bfaf6f7743a74bc8 pass. Subsequent LFM accounting fix forwards full adapter inputTokens instead of only newly evaluated prompt_n; runtime/inference/summary62 and app8/static/build d022e5c3d748015a pass. Not deployed; actual token/latency and prose-quality effect unverified.
 
 Latest public v296 sidebar LFM3 QAD Q4_0 sample completed memory.sources → memory.read → native answer → original-v1 citation → approved exact save. One QA note retained; original model selection restored. Three model calls383.3s; 1408 cached tokens on calls2/3, runtime reports25/25 GPU layers. Slow input processing and verbose internal IDs in the reply remain defects; this is not search-discovery or cross-device acceptance. See the dated LFM3 provenance entry in TEST-RESULTS.txt.
 

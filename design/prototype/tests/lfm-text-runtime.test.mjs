@@ -114,7 +114,7 @@ test('prepared adapter timing reaches the shared inference result without raw ru
 test('prepared runtime separates native prompt/decode timing and reported threads without exposing metadata',async()=>{
  const f=fixture();await f.runtime.load('local');
  f.adapter.info={requestedThreads:4,activeThreads:1,actualGpuLayers:24,totalModelLayers:28,gpuLayerEvidence:'runtime-offload-log',context:{private:'hidden'},template:'hidden'};
- f.adapter.generate=async()=>({text:'hello',timings:{prompt_ms:900,predicted_ms:80,predicted_per_second:25,prompt_n:120,cache_n:0,private:'hidden'}});
+ f.adapter.generate=async()=>({text:'hello',inputTokens:120,timings:{prompt_ms:900,predicted_ms:80,predicted_per_second:25,prompt_n:120,cache_n:0,private:'hidden'}});
  assert.deepEqual((await f.runtime.generate([],16,'prose')).metrics,{runtimePrefillMs:900,runtimeDecodeMs:80,runtimeDecodeTokensPerSecond:25,runtimePromptTokens:120,runtimeCachedTokens:0,requestedThreads:4,runtimeThreads:1,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:28});
  f.adapter.info={requestedThreads:0,activeThreads:2.5};
  f.adapter.generate=async()=>({text:'hello',timings:{prompt_ms:-1,predicted_ms:NaN,predicted_per_second:Infinity,prompt_n:1.5,cache_n:-1}});
@@ -286,4 +286,19 @@ test('the local immutable File snapshot reaches the adapter unchanged for safe d
  const file=new File(['weights'],'pinned.gguf'),received=[];const adapter={loaded:null,supportsExactCount:true,maxReplyTokens:256,async load(value,id){received.push(value);this.loaded=id;},async unload(){this.loaded=null;},abort(){},async count(){return 1;},async generate(){return {text:'ok'};}};
  const manifest={contextTokens:2048,runtime:{revision:'fixed-count-runtime'},models:[{id:'local',revision:'sha',contextTokens:2048,file:{name:'pinned.gguf',bytes:file.size}}]};const runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>file,readAssets:()=>({local:{filesPresent:true}})});
  await runtime.load('local');await runtime.unload();await runtime.load('local');assert.equal(received.length,2);assert.equal(received[0],file);assert.equal(received[1],file);await runtime.unload();
+});
+
+
+test('cached inference accounts for the full input, not only newly evaluated tokens',async()=>{
+ const {observeInference}=await import('../src/inference-measurements.ts');
+ const f=fixture();await f.runtime.load('local');
+ f.adapter.generate=async()=>({text:'hello',inputTokens:4328,outputTokens:2,timings:{prompt_n:2920,cache_n:1408}});
+ const usage={measuredModelCalls:0};
+ const result=await observeInference(f.runtime,usage).generate([],16,'prose');
+ assert.equal(result.metrics.runtimePromptTokens,4328);
+ assert.equal(result.metrics.runtimeCachedTokens,1408);
+ assert.equal(usage.promptTokens,4328);
+ assert.equal(usage.runtimeCachedTokens,1408);
+ f.adapter.generate=async()=>({text:'hello',timings:{prompt_n:2920}});
+ assert.equal((await f.runtime.generate([],16,'prose')).metrics?.runtimePromptTokens,undefined,'missing total must not be guessed from processed tokens');
 });
