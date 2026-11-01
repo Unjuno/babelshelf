@@ -395,6 +395,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
    generated=await engine.generate(retry,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
    parsed=summaryLabelBinding?parseSingleLabelSummary(generated.text):parse(generated.text);
    if(parsed.status!=='insufficient_evidence')checkAnswerConsistency(question,parsed.answer,parsed.sources);
+   if(mode==='summary'&&parsed.status!=='insufficient_evidence'&&echoedRequest())throw Error('Summary repeated the request · try again');
    if(wantsOneSentence&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
   }
  }
