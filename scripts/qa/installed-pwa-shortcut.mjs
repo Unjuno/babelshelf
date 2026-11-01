@@ -45,7 +45,7 @@ function isHistoricalQaProfile(profileDir,{tempDirectory,documentsCodex}){
  return false;
 }
 
-export async function removeOwnedInstalledPwaShortcut(profileDir,{platform=process.platform,run=execFileSync,remove=unlink,stat=lstat,profileExists=async path=>{try{await lstat(path);return true;}catch(error){if(error?.code==='ENOENT')return false;throw error;}},tempDirectory=tmpdir(),documentsCodex=process.env.USERPROFILE?win32.join(process.env.USERPROFILE,'Documents','Codex'):undefined}={}){
+export async function removeOwnedInstalledPwaShortcut(profileDir,{platform=process.platform,run=execFileSync,remove=unlink,stat=lstat,tempDirectory=tmpdir(),documentsCodex=process.env.USERPROFILE?win32.join(process.env.USERPROFILE,'Documents','Codex'):undefined}={}){
  if(platform!=='win32')return {removed:0,reason:'not-windows'};
  if(!absolutePath(profileDir))throw Error('Installed PWA profile path must be absolute');
  const script='$start=Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs";$roots=@([Environment]::GetFolderPath("Desktop"))+@(Get-ChildItem -LiteralPath $start -Directory -ErrorAction SilentlyContinue | Where-Object {$_.Name -match "^(Chrome|Chromium)"} | Select-Object -ExpandProperty FullName);$shell=New-Object -ComObject WScript.Shell;$items=@($roots | Where-Object {Test-Path -LiteralPath $_} | ForEach-Object {Get-ChildItem -LiteralPath $_ -File -ErrorAction SilentlyContinue} | Where-Object {$_.Extension -eq ".lnk" -and $_.BaseName -match "^(BabelShelf|Memory)"} | ForEach-Object {$s=$shell.CreateShortcut($_.FullName);[pscustomobject]@{path64=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($_.FullName));target64=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($s.TargetPath));arguments64=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($s.Arguments))}});ConvertTo-Json -InputObject $items -Compress';
@@ -58,15 +58,15 @@ export async function removeOwnedInstalledPwaShortcut(profileDir,{platform=proce
   const owned=belongsToInstalledPwaProfile(entry,profileDir);
   const match=typeof entry?.arguments==='string'?entry.arguments.match(/(?:^|\s)--user-data-dir=(?:"([^"]+)"|(\S+))/i):null;
   const candidate=match?.[1]??match?.[2];
-  // A killed QA process can leave a dead desktop link. Reap only links whose
-  // target is one of our UUID-named temporary profiles and whose profile is
-  // already absent. Never infer ownership from the app title alone.
-  const orphan=!owned&&/\\chrome_proxy\.exe$/i.test(entry?.target??'')&&isManagedTemporaryProfile(candidate,tempDirectory)&&!await profileExists(candidate);
+  // An interrupted QA process can leave both its isolated profile and its OS
+  // link behind. The UUID-scoped Temp path identifies the QA-owned link; remove
+  // only the .lnk and preserve the profile (and any data it contains).
+  const managedTemp=!owned&&/\\chrome_proxy\.exe$/i.test(entry?.target??'')&&isManagedTemporaryProfile(candidate,tempDirectory);
   // Older BabelShelf QA runs used product-prefixed Temp profiles and numbered
   // pwa-installed-unit fixtures. Their Start Menu links outlived the run.
   // Remove only those links; do not touch the referenced profile or its data.
-  const historical=!owned&&!orphan&&/\\chrome_proxy\.exe$/i.test(entry?.target??'')&&isHistoricalQaProfile(candidate,{tempDirectory,documentsCodex});
-  if(!owned&&!orphan&&!historical)continue;
+  const historical=!owned&&!managedTemp&&/\\chrome_proxy\.exe$/i.test(entry?.target??'')&&isHistoricalQaProfile(candidate,{tempDirectory,documentsCodex});
+  if(!owned&&!managedTemp&&!historical)continue;
   const info=await stat(entry.path);
   if(!info.isFile()||info.isSymbolicLink())throw Error('Refusing to remove a non-file shortcut');
   await remove(entry.path);removed++;

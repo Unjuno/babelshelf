@@ -25,9 +25,9 @@ test('historical BabelShelf Temp and unit-test app links are removed without tou
  const qaProfiles=[`${tempDirectory}\\BabelShelf-lfm230-ac228037cebb433599a2df158440bd76`,`${tempDirectory}\\babelshelf-installed-pwa-01234567-89ab-4def-8123-456789abcdef-profile`,`${documentsCodex}\\pwa-installed-unit129b`];
  const links=qaProfiles.map((path,index)=>({...link,path:`C:\\Users\\tester\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Chrome Apps\\Memory (${index}).lnk`,arguments:link.arguments.replace(profile,path)}));
  const personal={...link,path:'C:\\Users\\tester\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Chrome Apps\\Memory - Personal.lnk',arguments:link.arguments.replace(profile,'C:\\Users\\tester\\AppData\\Local\\Google\\Chrome\\User Data')};
- const removed=[],profileChecks=[];
- const result=await removeOwnedInstalledPwaShortcut('C:\\Users\\tester\\AppData\\Local\\Temp\\active-profile',{platform:'win32',tempDirectory,documentsCodex,run:()=>JSON.stringify([...links,personal]),profileExists:async path=>{profileChecks.push(path);return false;},stat:async path=>({isFile:()=>true,isSymbolicLink:()=>false,path}),remove:async path=>removed.push(path)});
- assert.deepEqual(result,{removed:3});assert.deepEqual(removed,links.map(item=>item.path));assert.deepEqual(profileChecks,[qaProfiles[1]]);
+ const removed=[];
+ const result=await removeOwnedInstalledPwaShortcut('C:\\Users\\tester\\AppData\\Local\\Temp\\active-profile',{platform:'win32',tempDirectory,documentsCodex,run:()=>JSON.stringify([...links,personal]),stat:async path=>({isFile:()=>true,isSymbolicLink:()=>false,path}),remove:async path=>removed.push(path)});
+ assert.deepEqual(result,{removed:3});assert.deepEqual(removed,links.map(item=>item.path));
 });
 
 test('Temp shortcuts with an unrecognized BabelShelf profile name are preserved',async()=>{
@@ -37,15 +37,15 @@ test('Temp shortcuts with an unrecognized BabelShelf profile name are preserved'
  assert.deepEqual(result,{removed:0});assert.deepEqual(removed,[]);
 });
 
-test('Windows cleanup also removes only dead shortcuts to UUID-named QA temp profiles',async()=>{
+test('Windows cleanup removes QA links even when an interrupted QA profile remains, without deleting that profile',async()=>{
  const tempDirectory='C:\\Users\\tester\\AppData\\Local\\Temp',orphanProfile=`${tempDirectory}\\babelshelf-installed-pwa-01234567-89ab-4def-8123-456789abcdef-profile`;
  const stale={...link,path:'C:\\Users\\tester\\Desktop\\Memory (stale).lnk',arguments:link.arguments.replace(profile,orphanProfile)};
  const personalProfile='C:\\Users\\tester\\AppData\\Local\\Google\\Chrome\\User Data';
  const live={...link,path:'C:\\Users\\tester\\Desktop\\BabelShelf (live).lnk',arguments:link.arguments.replace(profile,personalProfile)};
  const unrelated={...stale,path:'C:\\Users\\tester\\Desktop\\Memory (personal).lnk',arguments:stale.arguments.replace(orphanProfile,personalProfile)};
  const removed=[];
- const result=await removeOwnedInstalledPwaShortcut(profile,{platform:'win32',tempDirectory,profileExists:async path=>path!==orphanProfile,run:()=>JSON.stringify([stale,live,unrelated]),stat:async path=>({isFile:()=>true,isSymbolicLink:()=>false,path}),remove:async path=>removed.push(path)});
- assert.deepEqual(result,{removed:1});assert.deepEqual(removed,[stale.path]);
+ const result=await removeOwnedInstalledPwaShortcut(profile,{platform:'win32',tempDirectory,run:()=>JSON.stringify([stale,live,unrelated]),stat:async path=>({isFile:()=>true,isSymbolicLink:()=>false,path}),remove:async path=>removed.push(path)});
+ assert.deepEqual(result,{removed:1});assert.deepEqual(removed,[stale.path]);assert.ok(removed.every(path=>path.endsWith('.lnk')));
 });
 
 test('non-Windows cleanup does not invoke shell or remove paths',async()=>{
