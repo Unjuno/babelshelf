@@ -7687,3 +7687,6 @@ Complete CI41335227459 passed for86c2c2c, including offline/installed PWA accept
 
 2026-11-02 — Same-worker generation lifetime regression
 Router now retires pending generation on actual model reload/unload/termination, even when the same backend instance is selected again. Resident model reuse retains its pending generation and avoids an unnecessary reload. Regression covers late prose previews and final results after unload/reload versus resident reuse. PC: test:prototype 1752/1752; test:app 8/8; build:app and check passed. This is lifecycle correctness evidence, not measured GPU throughput or physical-device compatibility. Public deployment remains v289 until this change is deployed.
+
+2026-11-02 — Unified generation event lifetime
+Applied the router generation lifetime guard to every backend callback, including structured generation; previously only WebML prose callbacks were guarded. Existing events remain unchanged while active; WebML prose delta conversion remains specific to that engine. Regression verifies structured progress before completion, then suppression of late progress/preview after stop or completion. PC: prototype 1753/1753; app 8/8; build and check passed. No new actual-model or device throughput claim; public v289 unchanged.

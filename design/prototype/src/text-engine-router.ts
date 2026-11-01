@@ -97,11 +97,11 @@ export class TextEngineRouter{
   const epoch=this.epoch,session=this.generationSession,backend=this.active;let preview='',finished=false;
   // WebML sends text deltas; the shared UI protocol expects cumulative prose.
   // Keep JSON/tool generation private and retire callbacks on stop/switch/end.
-  const receive=events&&backend===this.webml&&format==='prose'?(type:string,value:unknown)=>{
+  const receive=events?(type:string,value:unknown)=>{
    if(finished||epoch!==this.epoch||session!==this.generationSession||this.active!==backend)return;
    events(type,value);
-   if(type==='text'&&typeof value==='string'&&preview.length<32768){preview=(preview+value).slice(0,32768);events('answer-preview',preview);}
-  }:events;
+   if(backend===this.webml&&format==='prose'&&type==='text'&&typeof value==='string'&&preview.length<32768){preview=(preview+value).slice(0,32768);events('answer-preview',preview);}
+  }:undefined;
   return backend.call('generate',native?this.nativeArgs(args):args,receive).then(result=>{
    this.check(epoch);if(session!==this.generationSession||this.active!==backend)throw Error('Stopped');return result;
   }).catch(error=>{

@@ -400,3 +400,16 @@ test('reloading the same worker retires old generation while resident reuse pres
   else{assert.equal((await pending).text,'answer');assert.ok(seen.includes('answer-preview'));}
  }
 });
+
+
+test('structured generation callbacks retire on stop and terminal completion',async()=>{
+ for(const stop of [false,true]){
+  const f=setup(),seen=[];await f.router.load('4B');let finish,emit;
+  f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise(resolve=>{finish=resolve;});};
+  const pending=f.router.generate([],type=>seen.push(type));
+  emit('progress',1);assert.deepEqual(seen,['progress']);
+  if(stop)await f.router.abort();
+  finish({text:'{}'});if(stop)await assert.rejects(pending,/Stopped/);else await pending;
+  emit('progress',2);emit('answer-preview','late');assert.deepEqual(seen,['progress']);
+ }
+});
