@@ -1,3 +1,11 @@
+2026-11-01 — LFM3 device preflight fallback disclosure.
+The read-only text device check now reports that CPU/WASM fallback may be
+tried for registered LFM3 routes when WebGPU is unavailable. Other WebGPU routes
+do not advertise that fallback. Focused device-check tests passed 5/5,
+`npx tsc --noEmit -p design/prototype/tsconfig.json` passed, and `npm run check`
+passed. This describes the configured route only; it does not prove that the
+fallback loads or generates on a particular device.
+
 2026-11-01 — Overlapping citation-title binding and clean-checkout CI.
 Citation consistency now prefers the longest exact title span when one cited
 title contains another (for example, `Alpha` and `Alphabet reserve`). A question

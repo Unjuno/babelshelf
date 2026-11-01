@@ -5,7 +5,7 @@ import {getLfm3TextManifest} from './lfm3-text-manifest.ts';
 import {getOnnxTextManifest} from './text-model-manifest.ts';
 import type {CustomLocalModel} from './preference-records.ts';
 
-export type TextExecutionRoute={engine:'webml-qwen35'|'wllama-lfm2'|'wllama-lfm3'|'wllama-qwen3'|'transformers-causal-wasm'|'transformers-causal-webgpu';backend:'webgpu'|'cpu-wasm'};
+export type TextExecutionRoute={engine:'webml-qwen35'|'wllama-lfm2'|'wllama-lfm3'|'wllama-qwen3'|'transformers-causal-wasm'|'transformers-causal-webgpu';backend:'webgpu'|'cpu-wasm';fallbackBackend?:'cpu-wasm'};
 export type TextExecutionIdentity=TextExecutionRoute&{revision:string;runtimeRevision:string};
 
 /** Resolve diagnostics from the same app-owned model registrations used by the text router. */
@@ -13,7 +13,7 @@ export function textExecutionRoute(modelId:string,customModels:readonly CustomLo
  const custom=customModels.find(model=>model.id===modelId);
  if(custom){
   if(custom.engine==='webml-qwen35')return {engine:custom.engine,backend:'webgpu'};
-  if(custom.engine==='wllama-lfm3')return {engine:custom.engine,backend:'webgpu'};
+  if(custom.engine==='wllama-lfm3')return {engine:custom.engine,backend:'webgpu',fallbackBackend:'cpu-wasm'};
   if(custom.engine==='wllama-lfm2'||custom.engine==='wllama-qwen3')return {engine:custom.engine,backend:'cpu-wasm'};
   return null;
  }
@@ -21,7 +21,7 @@ export function textExecutionRoute(modelId:string,customModels:readonly CustomLo
  if(onnx?.engine==='transformers-causal-wasm'&&onnx.device==='wasm')return {engine:'transformers-causal-wasm',backend:'cpu-wasm'};
  if(onnx?.engine==='transformers-causal-webgpu'&&onnx.device==='webgpu')return {engine:'transformers-causal-webgpu',backend:'webgpu'};
  if(getLfmTextManifest(modelId))return {engine:'wllama-lfm2',backend:'cpu-wasm'};
- if(getLfm3TextManifest(modelId))return {engine:'wllama-lfm3',backend:'webgpu'};
+ if(getLfm3TextManifest(modelId))return {engine:'wllama-lfm3',backend:'webgpu',fallbackBackend:'cpu-wasm'};
  if(getQwen3TextManifest(modelId))return {engine:'wllama-qwen3',backend:'cpu-wasm'};
  // IDs in the base manifest route through the base WebML backend in TextEngineRouter.
  if(baseManifest.models.some(model=>model.id===modelId))return {engine:'webml-qwen35',backend:'webgpu'};
