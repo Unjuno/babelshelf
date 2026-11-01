@@ -1,3 +1,7 @@
+# Public v276 — ONNX request tensor ownership (2026-11-02 JST)
+
+Build `4815c523c6047863`, entry `index-BsG08iPS.js`; code f0841de passed complete CI41317933354. Site source `e23f532175a5552821b5086392746d5a3fc45b0d`; deployment `appgdep_6ae753dccad481919322e3a9d8ce07a6` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle, retained conversation and input-file state, then returned Offline. No new model inference, measured speedup or physical-device verification is claimed. Older sections are historical.
+
 # Public v275 — live Decision residency (2026-11-01)
 
 Build `d90b81baebc851b5`, entry `index-B8RbomAb.js`; code c552e6a passed complete CI41316702597. Site source `380b6c6aae8d1b3a5733f1ae426a3941cb1c79ba`; deployment `appgdep_6ae7500273c88191a4bf44bb3827b859` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle with dialogue and input-file state retained, then returned Offline. No real-model or physical-device speedup is established. Previous entries are historical.
