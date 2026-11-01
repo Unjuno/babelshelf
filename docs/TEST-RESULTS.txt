@@ -7684,3 +7684,6 @@ TextEngineRouter now rejects successful generation completions after abort epoch
 
 2026-11-02 — v289 public adoption
 Complete CI41335227459 passed for86c2c2c, including offline/installed PWA acceptance. Public Site289/build2e32709bcc9aad04/index-__9IIVr2.js adopted via existing sidebar Update. Visible dialogue retained; appOffline restored. No separate browser, data reset or model download. Delivery only: actual inference/physical-device performance not rerun.
+
+2026-11-02 — Same-worker generation lifetime regression
+Router now retires pending generation on actual model reload/unload/termination, even when the same backend instance is selected again. Resident model reuse retains its pending generation and avoids an unnecessary reload. Regression covers late prose previews and final results after unload/reload versus resident reuse. PC: test:prototype 1752/1752; test:app 8/8; build:app and check passed. This is lifecycle correctness evidence, not measured GPU throughput or physical-device compatibility. Public deployment remains v289 until this change is deployed.

@@ -22,7 +22,7 @@ function templateMessages(messages:any[],initialSystemOnly=false){
 function validOutputLimit(value:unknown,contextTokens:number){return value===undefined||Number.isSafeInteger(value)&&Number(value)>0&&Number(value)<=contextTokens;}
 // Trusted factories come from application code. Stored models/config cannot supply code.
 export class TextEngineRouter{
- private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private webml:TextBackend;private residentIdentity='';private residentLoadMetrics:{executionBackend:'webgpu'|'cpu-wasm'}|undefined;private nativeStructuredOutput=false;private createBase:(()=>TextBackend)|undefined;private cleanupFailure:Error|null=null;
+ private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private generationSession=0;private webml:TextBackend;private residentIdentity='';private residentLoadMetrics:{executionBackend:'webgpu'|'cpu-wasm'}|undefined;private nativeStructuredOutput=false;private createBase:(()=>TextBackend)|undefined;private cleanupFailure:Error|null=null;
  constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend,nativeStructuredOutput=false){
   this.nativeStructuredOutput=nativeStructuredOutput===true;
   this.webml=webml;this.base=webml.manifest;this.createBase=createBase;
@@ -85,29 +85,29 @@ export class TextEngineRouter{
  }
  async load(id:string,events?:any){if(this.cleanupFailure)throw this.cleanupFailure;const epoch=this.epoch,registration=this.registration(id);if(!registration&&!this.base.models?.some((m:any)=>m.id===id))throw Error('Unknown text model');const manifest=registration?.describe(id)??this.base,identity=JSON.stringify([id,manifest.models.find((m:any)=>m.id===id),manifest.runtime,manifest.contextTokens]);
   if(this.active&&(registration?registration.instance===this.active:this.active===this.webml)&&this.active.loaded===id&&!this.active.failed&&this.residentIdentity===identity)return {model:id,reused:true,...this.residentLoadMetrics};
-  this.residentIdentity='';this.residentLoadMetrics=undefined;if(this.active){const old=this.active;this.active=null;await this.closeActive(old);}this.check(epoch);const backend=this.backend(id);this.active=backend;
+  this.generationSession++;this.residentIdentity='';this.residentLoadMetrics=undefined;if(this.active){const old=this.active;this.active=null;await this.closeActive(old);}this.check(epoch);const backend=this.backend(id);this.active=backend;
   try{const result=await backend.load(id,events);this.check(epoch);this.residentIdentity=identity;const executionBackend=result?.executionBackend;if(executionBackend==='webgpu'||executionBackend==='cpu-wasm')this.residentLoadMetrics={executionBackend};return result;}catch(error){if((error as {cleanupUnconfirmed?:boolean})?.cleanupUnconfirmed===true)this.cleanupFailure=error as Error;if(this.active===backend)this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;throw error;}
  }
- async unload(){if(this.cleanupFailure)throw this.cleanupFailure;const epoch=this.epoch,old=this.active;this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;if(old)await this.closeActive(old);this.check(epoch);}
+ async unload(){if(this.cleanupFailure)throw this.cleanupFailure;const epoch=this.epoch,old=this.active;this.generationSession++;this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;if(old)await this.closeActive(old);this.check(epoch);}
  releaseInactive(selectedModel:string){for(const r of this.registrations)if(!r.modelIds.includes(selectedModel)&&r.instance&&r.instance!==this.active){const old=r.instance;r.instance=null;old.abort();old.worker.terminate();}}
  private nativeArgs(args:any){const {responseTool:_ignored,...rest}=args;return {...rest,...nativeOutputRequest(args.messages,args.format)};}
  generate(messages:any[],events?:any,maxTokens=256,format?:EngineGenerationFormat){
   if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));
   const args={messages:templateMessages(messages,this.active===this.webml),maxTokens,...(format?{format}:{})},native=this.active===this.webml&&this.nativeStructuredOutput;
-  const epoch=this.epoch,backend=this.active;let preview='',finished=false;
+  const epoch=this.epoch,session=this.generationSession,backend=this.active;let preview='',finished=false;
   // WebML sends text deltas; the shared UI protocol expects cumulative prose.
   // Keep JSON/tool generation private and retire callbacks on stop/switch/end.
   const receive=events&&backend===this.webml&&format==='prose'?(type:string,value:unknown)=>{
-   if(finished||epoch!==this.epoch||this.active!==backend)return;
+   if(finished||epoch!==this.epoch||session!==this.generationSession||this.active!==backend)return;
    events(type,value);
    if(type==='text'&&typeof value==='string'&&preview.length<32768){preview=(preview+value).slice(0,32768);events('answer-preview',preview);}
   }:events;
   return backend.call('generate',native?this.nativeArgs(args):args,receive).then(result=>{
-   this.check(epoch);if(this.active!==backend)throw Error('Stopped');return result;
+   this.check(epoch);if(session!==this.generationSession||this.active!==backend)throw Error('Stopped');return result;
   }).catch(error=>{
    if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
   }).finally(()=>{finished=true;});
  }
  abort(){this.epoch++;this.residentIdentity='';this.residentLoadMetrics=undefined;const pending:Promise<void>[]=[Promise.resolve(this.webml.abort())];for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;pending.push(Promise.resolve(old.abort()));old.worker.terminate();}return Promise.all(pending).then(()=>{});}
- worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
+ worker={terminate:()=>{this.generationSession++;this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
 }

@@ -387,3 +387,16 @@ test('a late successful generation cannot escape stop or unload for prose or str
   await assert.rejects(pending,/Stopped/);
  }
 });
+
+
+test('reloading the same worker retires old generation while resident reuse preserves it',async()=>{
+ for(const reload of [false,true]){
+  const f=setup(),seen=[];await f.router.load('4B');let finish,emit;
+  f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise(resolve=>{finish=resolve;});};
+  const pending=f.router.generate([],type=>seen.push(type),128,'prose');
+  if(reload)await f.router.unload();
+  await f.router.load('4B');emit('text','old');finish({text:'answer'});
+  if(reload){await assert.rejects(pending,/Stopped/);assert.deepEqual(seen,[]);}
+  else{assert.equal((await pending).text,'answer');assert.ok(seen.includes('answer-preview'));}
+ }
+});
