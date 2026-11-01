@@ -357,3 +357,22 @@ test('registered model manifest retains its own runtime identity before loading'
  const registration={id:'example',modelIds:['other'],describe:()=>({contextTokens:2048,runtime:{revision:'other-runtime'},models:[{id:'other',revision:'other-model'}]}),create(){throw Error('must stay lazy');}};
  const router=new TextEngineRouter(base,()=>{throw Error('unused');},[registration]);assert.equal(router.manifest.models.find(model=>model.id==='other').runtime.revision,'other-runtime');
 });
+
+test('WebML prose deltas reach cumulative previews before completion and retire afterward',async()=>{
+ const f=setup(),seen=[];await f.router.load('4B');let emit,finish;
+ f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise(resolve=>{finish=resolve;});};
+ const pending=f.router.generate([{role:'user',content:'Story'}],(type,value)=>{if(type==='answer-preview')seen.push(value);},128,'prose');
+ emit('text','Hello');emit('text',' world');assert.deepEqual(seen,['Hello','Hello world']);
+ finish({text:'Hello world'});assert.equal((await pending).text,'Hello world');emit('text','late');assert.equal(seen.length,2);
+});
+test('WebML preview retires on stop and failure and never exposes structured text',async()=>{
+ for(const mode of ['stop','error','json']){
+  const f=setup(),seen=[];await f.router.load('4B');let emit,resolve,reject;
+  f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise((yes,no)=>{resolve=yes;reject=no;});};
+  const pending=f.router.generate([],type=>seen.push(type),128,mode==='json'?undefined:'prose');
+  if(mode==='stop')await f.router.abort();
+  if(mode==='error'){reject(Error('GPU lost'));await assert.rejects(pending,/GPU lost/);}
+  emit('text','private');assert.ok(!seen.includes('answer-preview'));
+  if(mode!=='error'){resolve({text:''});await pending;}
+ }
+});

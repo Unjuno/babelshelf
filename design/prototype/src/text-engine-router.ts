@@ -94,9 +94,17 @@ export class TextEngineRouter{
  generate(messages:any[],events?:any,maxTokens=256,format?:EngineGenerationFormat){
   if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));
   const args={messages:templateMessages(messages,this.active===this.webml),maxTokens,...(format?{format}:{})},native=this.active===this.webml&&this.nativeStructuredOutput;
-  return this.active.call('generate',native?this.nativeArgs(args):args,events).catch(error=>{
+  const epoch=this.epoch,backend=this.active;let preview='',finished=false;
+  // WebML sends text deltas; the shared UI protocol expects cumulative prose.
+  // Keep JSON/tool generation private and retire callbacks on stop/switch/end.
+  const receive=events&&backend===this.webml&&format==='prose'?(type:string,value:unknown)=>{
+   if(finished||epoch!==this.epoch||this.active!==backend)return;
+   events(type,value);
+   if(type==='text'&&typeof value==='string'&&preview.length<32768){preview=(preview+value).slice(0,32768);events('answer-preview',preview);}
+  }:events;
+  return backend.call('generate',native?this.nativeArgs(args):args,receive).catch(error=>{
    if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
-  });
+  }).finally(()=>{finished=true;});
  }
  abort(){this.epoch++;this.residentIdentity='';this.residentLoadMetrics=undefined;const pending:Promise<void>[]=[Promise.resolve(this.webml.abort())];for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;pending.push(Promise.resolve(old.abort()));old.worker.terminate();}return Promise.all(pending).then(()=>{});}
  worker={terminate:()=>{this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
