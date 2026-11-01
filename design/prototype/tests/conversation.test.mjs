@@ -2092,3 +2092,34 @@ test('legacy query repair preserves the stable planner prefix and adds only appl
  assert.deepEqual(repaired.at(-1),initial.at(-1),'current request stays intact and last');
  assert.doesNotMatch(initial[0].content,/missing or invalid query/);
 });
+
+test('citation repair preserves user preferences and replaces the application protocol only',async()=>{
+ const note=createNote({path:'Notes/repair.md',body:'The item is a blue notebook.'});
+ const ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const seen=[];
+ const runtime={loaded:'test',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
+  seen.push(structuredClone(messages));
+  return {text:JSON.stringify({answer:seen.length===1?'S1 says the item is a blue notebook.':'The item is a blue notebook.',sources:['S1']})};
+ }};
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:runtime},{model:'test',question:'What is the item?',mode:'answer',scope:{kind:'knowledge'},userGuidance:'Prefer concise wording.'});
+ assert.equal(seen.length,2);assert.equal(result.recovery,'citation-retry');
+ assert.deepEqual(seen[1][0],seen[0][0],'user preference is not the repair target');
+ assert.match(seen[1][1].content,/previous answer exposed an internal source label/i);
+ assert.deepEqual(seen[1].slice(2),seen[0].slice(2),'question and immutable evidence stay unchanged');
+ assert.deepEqual(result.sources,[ref]);
+});
+
+test('verbatim recovery retains preferences without retaining a contradictory answer protocol',async()=>{
+ const note=createNote({path:'Notes/recovery.md',body:'Blue notebook.'});
+ const ref={noteId:note.id,revision:1,start:0,end:14,quote:'Blue notebook.'};
+ const seen=[];
+ const runtime={loaded:'test',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
+  seen.push(structuredClone(messages));return {text:seen.length===1?'{}':'{"answer":"Blue notebook."}'};
+ }};
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:runtime},{model:'test',question:'Quote the item.',mode:'answer',scope:{kind:'knowledge'},userGuidance:'Prefer concise wording.'});
+ assert.equal(result.recovery,'verbatim-source');assert.equal(seen.length,2);
+ assert.deepEqual(seen[1][0],seen[0][0]);
+ assert.match(seen[1][1].content,/exact, contiguous substring/);
+ assert.deepEqual(seen[1].slice(2),seen[0].slice(2));
+ assert.equal(seen[1].filter(message=>message.role==='system').length,2);
+});
