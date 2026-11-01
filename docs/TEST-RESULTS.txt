@@ -7333,3 +7333,9 @@ App c2e54dd, build 0c4f04ae9c743cd1. Existing Sites checkout synchronized before
 - Context receipts now record lastCountPromptTokens and the counting engine's contextTokens, separately from generated prompt totals. Failed counts clear stale candidate measurements; no source/prompt text is added.
 - Focused context tests 14/14, TypeScript noEmit, build 8b1202bd0dcce35a (163 assets), product artifact checks 8/8 passed. Diagnostic change is not yet deployed; setup failure remains open.
 - Remote CI 41297605912 for a06946253b92b0994a23cf815a874fd9eedec31d completed successfully.
+
+2026-11-01: compact Memory planner guidance (PC sidebar)
+- Shortened memory.search/read guides while retaining exact selectors, ambiguity, UTF-16 ranges, revision checks, pagination/snapshot and incomplete-result semantics; removed redundant planner prose. Tool schemas, permissions and execution code unchanged.
+- Existing conversation/tool/context regressions passed 237/237 without weakening assertions; tsc and build 0505f54e7b84803c passed, artifact checks 8/8.
+- Sidebar localhost:4184, retained Bonsai 4B pinned revisions as above, app Offline (not network emulation): synthetic pinned-file item question passed context setup, planner input 1433/output 24 tokens, runtimeTTFT 74150.51ms, decode 2477.785ms, wall 76634.345ms, cache0. Planner failed reason=query; no answer/citation/save. This does not prove public settings fit or semantic recovery.
+- An optional omitted-query normalization experiment also failed this question and was removed rather than accepting malformed output without evidence. The source diff retains only guidance reduction. Query failure subtype remains to diagnose; no public rollout of these changes yet.
