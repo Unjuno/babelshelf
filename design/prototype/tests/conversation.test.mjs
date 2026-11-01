@@ -2232,3 +2232,33 @@ test('stopped prose rejects late previews and never returns a saveable answer',a
  assert.throws(()=>emit('Late'),/Stopped/);finish({text:'Late',finishReason:'stop'});
  await assert.rejects(pending,/Stopped/);assert.deepEqual(previews,['Beginning']);
 });
+
+
+test('fully archived dialogue recompresses its summary once against the actual consumer budget',async()=>{
+ const prior={...emptyDialogue(),turns:[{id:'old',user:'Keep AMBER-42.',answer:'Noted.'}],compaction:{through:1,summary:'Long working summary. '.repeat(50)}},before=structuredClone(prior);let calls=0;
+ const runtime={...engine(),generate:async(messages,limit,format)=>{calls++;assert.equal(format,'prose');assert.ok(limit<768);assert.match(messages.at(-1).content,/untrusted data/);return {text:'Keep AMBER-42.',finishReason:'stop'};}};
+ const result=await compactDialogue(prior,runtime,'A short question',()=>{},async context=>context.summary.length<100);
+ assert.equal(calls,1);assert.equal(result.compaction.through,1);assert.equal(result.compaction.summary,'Keep AMBER-42.');assert.deepEqual(result.turns,before.turns);assert.deepEqual(prior,before);
+});
+
+test('a still-oversized summary fails after one rewrite without blaming the short input or altering originals',async()=>{
+ const prior={...emptyDialogue(),turns:[{id:'old',user:'Original'}],compaction:{through:1,summary:'Too verbose. '.repeat(50)}},before=structuredClone(prior);let calls=0;
+ const runtime={...engine(),generate:async()=>{calls++;return {text:prior.compaction.summary,finishReason:'stop'};}};
+ await assert.rejects(compactDialogue(prior,runtime,'Hi',()=>{},async context=>!context.summary),/Conversation summary exceeds model context/);
+ assert.equal(calls,1);assert.deepEqual(prior,before);
+});
+
+test('stopped or truncated summary rewrites never replace the stored compaction',async()=>{
+ const prior={...emptyDialogue(),turns:[{id:'old',user:'Original'}],compaction:{through:1,summary:'Retain identity and unresolved actions. '.repeat(15)}},before=structuredClone(prior);
+ for(const result of [{text:'Partial',stopped:true},{text:'Partial',finishReason:'length'}]){
+  await assert.rejects(compactDialogue(prior,{...engine(),generate:async()=>result},'Hi',()=>{},async context=>!context.summary),/Stopped|Compaction incomplete/);
+  assert.deepEqual(prior,before);
+ }
+});
+
+
+test('summary-only recovery also rechecks the generic history quota with the reserved answer space',async()=>{
+ const prior={...emptyDialogue(),turns:[{id:'old',user:'Keep AMBER-42.'}],compaction:{through:1,summary:'A'.repeat(3500)}},before=structuredClone(prior);let calls=0;
+ const result=await compactDialogue(prior,{...engine(),generate:async()=>{calls++;return {text:'Keep AMBER-42.',finishReason:'stop'};}},'Hello');
+ assert.equal(calls,1);assert.equal(result.compaction.summary,'Keep AMBER-42.');assert.deepEqual(prior,before);
+});
