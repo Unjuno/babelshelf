@@ -7412,3 +7412,8 @@ Added regressions for source-label repair with guidance and verbatim recovery wi
 - Both native and legacy planner transports now append volatile application execution feedback after retained context/tool results instead of changing the leading legacy protocol. Preserves budgets, errors, pagination/omission instructions and the final original user request. Static available-action/schema changes still invalidate the prefix when scope changes.
 - Updated four tests that assumed mutable feedback was at message0 or tool results were penultimate: assert the same required content in system messages / named result envelope. Added exact prefix-equality and remaining-budget/order test across a completed call. No semantic checks removed.
 - Conversation/coordinator277/277, build:app including TS, product acceptance8/8 and diff check passed. No measured cache reuse or speedup from this change yet. Summary refusal remains unresolved.
+
+2026-11-01 Site271 deployment
+- App f2c5791 / buildb924e85743fa1c1f, Sites source52dcd524f04e7e493b33c7d03bd16bb04d22e8b7. Existing public audience preserved. Delivery adapter bytes/gzip/identity/method and offline-shell headers passed. Stager retained current/previous manifests and pruned26obsolete generated assets; no browser/model/knowledge data touched.
+- Version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f4ed526a6728819189cd15209afaeb6f (271). Deployment appgdep_6ae728c7c3e481918129063f5b93f264 succeeded2026-11-01T11:56:11.890824+00:00.
+- Archive reused qa-retained/current-site.tar, sha2567388fe1390439e4ea6bab8e238a93b523369918bc92c63d370e989057459b077,84449280bytes,193files. Browser adoption remains pending; real-model summary failure not resolved by publication.
