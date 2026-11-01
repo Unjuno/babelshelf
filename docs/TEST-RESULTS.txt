@@ -7394,3 +7394,9 @@ Added regressions for source-label repair with guidance and verbatim recovery wi
 - FAIL: response in English refused summary because the source was a placeholder/dummy memo, despite containing summarizable facts; UI reported Not enough evidence and no source citation. Do not treat this as successful summary/citation/save acceptance. Did not save the failed answer or modify original notes.
 - Visible Activity: 2 recorded agent model calls, 1935 observed prompt tokens, 89 generated tokens, counting27ms, generation93.9s, one tool call10ms. No adapter placement or speedup inferred. This run does not establish that any repaired branch ran.
 - App Offline only; no OS/network isolation or physical-device acceptance. Screenshots reused workspace qa-retained/current-sidebar-metrics.jpg and current-sidebar-generating.jpg.
+
+2026-11-01 summary task contract consolidation
+- In response to the recorded local summary refusal, separated textual summary from external truth verification in one shared summary instruction used by initial and repair protocols. Fictional/hypothetical/example material remains qualified as such. Scope/exclusions and insufficient-evidence behavior retained; no extra inference or special-case source matching.
+- Removed duplicated summary boilerplate. Citation parser, immutable refs, write review and normal-answer instruction remain unchanged.
+- Conversation204/204, build:app (TypeScript) passed build44804e8720f47b1d, product acceptance8/8, diff check passed.
+- This validates instruction propagation only. Real-model refusal/language/latency improvement is NOT yet established; previous failed run remains the current behavioral evidence.

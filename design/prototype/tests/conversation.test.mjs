@@ -2118,6 +2118,10 @@ test('summary echo repair retains preferences and the exact source rather than t
  }};
  const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:runtime},{model:'test',question,mode:'summary',scope:{kind:'knowledge'},userGuidance:'Use plain language.'});
  assert.equal(seen.length,2);assert.deepEqual(seen[1][0],seen[0][0]);
+ for(const messages of seen){
+  assert.match(messages[1].content,/Summarize what the supplied excerpts say/);
+  assert.match(messages[1].content,/Preserve those qualifications, the requested scope and exclusions/);
+ }
  assert.match(seen[1][1].content,/Summarize the excerpt, not the request/);
  assert.deepEqual(JSON.parse(seen[1].at(-1).content),{request:question,excerpt:quote,label:'S1'});
  assert.equal(result.answer,'北口に水を持参する。');assert.deepEqual(result.sources,[ref]);
