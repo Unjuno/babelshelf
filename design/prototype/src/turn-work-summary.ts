@@ -34,9 +34,11 @@ export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummar
   if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer'||activity.tool==='dialogue.compact')&&activity.status!=='running'){
    const inference=record(record(activity.output)?.inference);
    if(!inference)continue;
+   // Successful activity does not prove that a model call happened: some
+   // plans are application-selected, and historical/custom receipts may omit
+   // this metric. Count only an explicit measured value.
    const recordedCalls=inference.measuredModelCalls;
-   const callCount=finiteCounter(recordedCalls)&&Number.isSafeInteger(recordedCalls)?recordedCalls:activity.status==='succeeded'?1:0;
-   measuredModelCalls=add(measuredModelCalls,callCount,true)??measuredModelCalls;
+   if(finiteCounter(recordedCalls)&&Number.isSafeInteger(recordedCalls))measuredModelCalls=add(measuredModelCalls,recordedCalls,true)??measuredModelCalls;
    promptTokens=add(promptTokens,inference.promptTokens,true);
    outputTokens=add(outputTokens,inference.outputTokens,true);
    tokenCountMs=add(tokenCountMs,inference.countMs);

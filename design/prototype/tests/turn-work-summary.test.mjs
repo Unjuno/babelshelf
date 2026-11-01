@@ -6,8 +6,8 @@ function activity(tool,startedAt,finishedAt,status='succeeded',output){return {s
 
 test('turn summary totals only observed model metrics and registered agent tool time',()=>{
  const rows=[
-  activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{promptTokens:120,outputTokens:25,countMs:3.5,generationWallMs:700.5}}),
-  activity('dialogue.plan','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','succeeded',{inference:{promptTokens:100,outputTokens:18,countMs:2.2,generationWallMs:600.3}}),
+  activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{measuredModelCalls:1,promptTokens:120,outputTokens:25,countMs:3.5,generationWallMs:700.5}}),
+  activity('dialogue.plan','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','succeeded',{inference:{measuredModelCalls:1,promptTokens:100,outputTokens:18,countMs:2.2,generationWallMs:600.3}}),
   activity('math.calculate','2026-01-01T00:00:02.000Z','2026-01-01T00:00:02.025Z'),
   activity('tools.search','2026-01-01T00:00:02.025Z','2026-01-01T00:00:02.030Z'),
   activity('knowledge.answer','2026-01-01T00:00:02.030Z','2026-01-01T00:00:03.000Z'),
@@ -37,8 +37,15 @@ test('summary omits unavailable and malformed measurements instead of inventing 
   activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{promptTokens:-1,outputTokens:'unknown',countMs:NaN,generationWallMs:Infinity}}),
   activity('dialogue.plan','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','failed',{reason:'invalid output'}),
  ];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:1,measuredToolCalls:0});
+ assert.equal(summarizeTurnWork(rows),null);
  assert.equal(summarizeTurnWork([activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','failed')]),null);
+});
+
+test('successful activity without an explicit model-call measurement does not invent one',()=>{
+ const rows=[
+  activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{countMs:12}}),
+ ];
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:0,tokenCountMs:12,measuredToolCalls:0});
 });
 
 test('failed inference receipts count only explicit attempted calls and preserve measured timing',()=>{
