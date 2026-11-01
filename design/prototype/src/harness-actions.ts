@@ -44,5 +44,8 @@ export const harnessActionCatalog=(currentInputs=false,scope?:PlannerScope)=>JSO
 // schemas. Share the exact owned prefix so no arbitrary policy text is removed.
 export function plannerRoutingInstruction(scope:PlannerScope,native?:readonly {id:string;purpose:string}[]){
  if(native)return 'Route the CURRENT request for a local assistant. Offered functions define allowed arguments and targets. Function purposes:\n'+native.map(action=>action.id+': '+action.purpose).join('\n')+'.';
- return 'Route the CURRENT request. Return one JSON object with one action ID and its required fields; never combine IDs. Available actions and their allowed target names: '+harnessActionCatalog(scope.inputs,scope)+'.';
+ // Compact only the model-facing serialization; the registry and validator keep
+ // their full contracts. Each tuple retains purpose, targets and tool restrictions.
+ const catalog=Object.fromEntries(scopedHarnessActions(scope).map(action=>[action.id,[action.purpose,action.targets,...('toolIds' in action?[action.toolIds]:[])]]));
+ return 'Route the CURRENT request. Return one JSON object with one action ID and its required fields; never combine IDs. Actions map ID to [purpose, allowed targets, optional tool IDs]: '+JSON.stringify(catalog)+'.';
 }

@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local candidate: compact model-facing action catalog preserves every purpose, target and tool-ID restriction in48 scoped roundtrips. Prototype1755/app8/build/check pass (cb22d1dcafe01db7). Actual tokenizer fit and model-choice verification remain pending; not deployed.
+
 Public v291: applicationb7887ab, build5093633fab1819f5/index-CYuwP8g9.js. CI41338757975 passed every stage, including the corrected default-tool UI test. Sites deployment appgdep_6ae78ccbb51c8191b534100959ec3d74 succeeded. Sidebar Update loaded the exact entry, retained history and returned app Offline. Source0ef85cc83adee10b55a8b58a37705b18d31165a5. This is delivery verification, not performance or device acceptance.
 
 Changes: fresh Standard/Source first include memory.sources; stored profiles remain unchanged. JSON-planner guidance is shorter without removing schemas, validators or budgets. Prototype1754/app8/build/check passed. Existing sidebar profile has search/read/calculator/source details and three-call limit (only Source details was enabled through UI for testing).

@@ -1175,7 +1175,7 @@ test('planner advertises the same available scopes it sends to local structured 
  await planDialogue(e,'Read this',context,[{name:'recording.wav',kind:'audio',status:'Not prepared'}]);
  assert.deepEqual(seen[0].format,{type:'dialogue-plan',scope:{inputs:false,file:true,current:true,historyCount:2,assistantIndices:[]}});
  assert.deepEqual(seen[1].format,{type:'dialogue-plan',scope:{inputs:true,file:false,current:true,historyCount:2,assistantIndices:[]}});
- const catalog=messages=>JSON.parse(messages[0].content.split('Available actions and their allowed target names: ')[1].split('. ')[0]);
+ const catalog=messages=>Object.entries(JSON.parse(messages[0].content.split('Actions map ID to [purpose, allowed targets, optional tool IDs]: ')[1].split('. ')[0])).map(([id,[purpose,targets]])=>({id,purpose,targets}));
  assert.ok(catalog(seen[0].messages).find(a=>a.id==='answer').targets.includes('file'));
  assert.deepEqual(catalog(seen[1].messages).find(a=>a.id==='answer').targets,['inputs']);
  assert.equal(seen[1].format.scope.permission,undefined);assert.equal(context.currentFile.noteId,'opened');
@@ -1194,7 +1194,7 @@ test('an explicitly current-file question cannot be routed to coincidentally mat
  assert.equal(plannerScope(context,false,'この入力ファイルにある持ち物だけを日本語で答えてください。集合時刻には触れないでください。').current,false);
  assert.equal(plannerScope(context,false,'What did we decide in our previous conversation?').current,true);
  assert.deepEqual(context,before);
- const catalog=JSON.parse(messages[0].content.split('Available actions and their allowed target names: ')[1].split('. ')[0]);assert.equal(catalog.some(a=>a.id==='recall'),false);assert.ok(catalog.find(a=>a.id==='answer').targets.includes('file'));
+ const catalog=Object.entries(JSON.parse(messages[0].content.split('Actions map ID to [purpose, allowed targets, optional tool IDs]: ')[1].split('. ')[0])).map(([id,[purpose,targets]])=>({id,purpose,targets}));assert.equal(catalog.some(a=>a.id==='recall'),false);assert.ok(catalog.find(a=>a.id==='answer').targets.includes('file'));
  const historical=plannerScope(context,false,'What did we decide in our previous conversation?');assert.equal(historical.historyCount,54);assert.deepEqual(historical.assistantIndices,[3,22]);
  const japanese=plannerScope(context,false,'前回の会話でこのメモについて何を話した？');assert.equal(japanese.historyCount,54);assert.deepEqual(japanese.assistantIndices,[3,22]);
  const invalid={...e,generate:async()=>({text:'{"action":"recall","query":"marker and reserve","target":"history","historyIndex":0,"historyPart":"user"}'})};await assert.rejects(planDialogue(invalid,question,context),/not selected by the current request/i);

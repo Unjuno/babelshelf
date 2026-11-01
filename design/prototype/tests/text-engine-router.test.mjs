@@ -128,7 +128,8 @@ test('native planner omits duplicate catalog syntax but retains purposes and eve
  for(const action of scopedHarnessActions(scope))assert.ok(system.includes(action.purpose),action.id);
  const tail=messages[0].content.slice(messages[0].content.indexOf('. To answer or summarize')+1);
  assert.ok(system.includes(tail));
- assert.ok(system.length<messages[0].content.length);
+ assert.ok(!system.includes('Actions map ID to [purpose, allowed targets, optional tool IDs]'));
+ assert.ok(system.includes('Offered functions define allowed arguments and targets.'));
  assert.deepEqual(messages,before);assert.deepEqual(r.messages.slice(1),messages.slice(1));
  const custom=[{role:'system',content:'Custom policy '+messages[0].content},{role:'user',content:messages[0].content}];
  assert.ok(nativeOutputRequest(custom,format).messages[0].content.startsWith(custom[0].content));

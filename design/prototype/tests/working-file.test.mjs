@@ -205,3 +205,18 @@ test('other echoed target shapes cannot choose a file or bypass pinned scope val
   const output=await planDialogue(engine,'このファイルを書き直して',context);assert.throws(()=>bindWorkingFileRequest(output,pin),/Invalid default file target/);
  }
 });
+
+
+test('compact planner catalog retains every scoped purpose, target and tool restriction',async()=>{
+ const {plannerRoutingInstruction,scopedHarnessActions,harnessActionCatalog}=await import('../src/harness-actions.ts');
+ for(const inputs of [false,true])for(const file of [false,true])for(const current of [false,true])for(const historyCount of [0,3]){
+  const scope={inputs,file,current,historyCount,toolIds:['memory.search','memory.read','memory.sources']};
+  for(const restricted of [scope,{...scope,requiredToolIds:['memory.sources']},{...scope,requiredActionIds:['answer']}]){
+   const instruction=plannerRoutingInstruction(restricted),prefix='Actions map ID to [purpose, allowed targets, optional tool IDs]: ';
+   const serialized=instruction.slice(instruction.indexOf(prefix)+prefix.length,-1),catalog=JSON.parse(serialized);
+   const expanded=Object.entries(catalog).map(([id,[purpose,targets,toolIds]])=>({id,purpose,targets,...(toolIds?{toolIds}:{})}));
+   assert.deepEqual(expanded,scopedHarnessActions(restricted));
+   assert.ok(serialized.length<harnessActionCatalog(inputs,restricted).length);
+  }
+ }
+});
