@@ -41,3 +41,19 @@ test('many clock readings remain independently validated for a native terminal a
  const request={model:'test',question:'What time is it?',query:'time',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],clockReadings,memoryUsed:false},reply:{answer:'The device clock says 09:00.',sources:[]}};
  const result=await groundedAnswer({store,engine},request);assert.equal(result.answer,request.reply.answer);assert.deepEqual(result.sources,[]);
 });
+
+test('citation repair retains operation and partial-coverage instructions with optional guidance',async()=>{
+ const {createNote}=await import('../../../dist/core.js');
+ const note=createNote({body:'集合場所は北口。'}),quote=note.revisions[0].body;
+ const ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};
+ const seen=[];
+ const engine={loaded:'test',manifest:{contextTokens:8192,models:[],runtime:{}},count:async()=>({prompt_tokens:400}),generate:async messages=>{seen.push(structuredClone(messages));return {text:JSON.stringify(seen.length===1?{answer:'集合場所は北口。',citations:[{id:'S1',quote:'not original'}]}:{answer:'集合場所は北口。',sources:['S1']})};}};
+ const toolInfo=agentToolInfoFromCalls([{tool:'tools.search',arguments:{query:'guide'},result:[]}]);
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine},{model:'test',question:'集合場所を要約して',mode:'summary',scope:{kind:'knowledge'},userGuidance:'Use plain wording.',toolEvidence:{used:true,refs:[ref],toolInfo,memoryUsed:true,budgetExhausted:true}});
+ assert.equal(seen.length,2);assert.equal(result.sources[0].quote,quote);
+ assert.deepEqual(seen[1][0],seen[0][0]);assert.deepEqual(seen[1].slice(2),seen[0].slice(2));
+ assert.ok(seen[1][1].content.startsWith(seen[0][1].content));
+ assert.match(seen[1][1].content,/clearly partial answer/);
+ assert.match(seen[1][1].content,/Reading a guide does not execute/);
+ assert.match(seen[1][1].content,/Fictional, hypothetical and example/);
+});
