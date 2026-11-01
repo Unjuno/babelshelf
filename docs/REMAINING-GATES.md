@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local follow-up: generic dialogue history now scales to 42% of the selected context instead of min(850,42%). Exact total counting and 512-token reply reserve remain. Controlled 8192-context test avoids unnecessary model compaction above850 tokens; no real-model speedup is claimed. Prototype1747/1747, app8/8 and build546f0f1936500d52 pass. This follow-up is not yet public; Site287 below remains the deployed build.
+
 Application 6bf8fe9 is public in Site 287: build 4d72faea1076cff2 / index-CmzM1_EI.js. Existing sidebar updated without data deletion and returned to app Offline (not OS network isolation).
 
 Actual cached Bonsai 4B / context 2048 completed the observatory story: 4 model calls, 2,694 observed prompt tokens, 378 output tokens, 108.6 s aggregate generation. Final answer: 307 prompt / 231 output tokens, TTFT 7.933 s, decode 23.837 s, generation 31.771 s. Unchanged final text reached save review; cancelled to avoid a duplicate QA note.

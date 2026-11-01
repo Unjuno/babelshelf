@@ -452,7 +452,8 @@ test('long histories choose a counted compaction batch without counting every gr
  let state=emptyDialogue();for(let i=0;i<128;i++)state=appendTurn(state,{id:'batch-'+i,user:'Original request '+i+' 日本語 🌳',answer:'Original answer '+i});
  const before=structuredClone(state),batches=[];let probes=0,serialized=0;
  const port={manifest:{contextTokens:8192},count:async messages=>{const payload=JSON.stringify(messages);if(messages[0].content.startsWith('Summarize earlier dialogue')){probes++;serialized+=payload.length;}return {prompt_tokens:Math.ceil(payload.length/4)};},generate:async(messages,budget)=>{assert.ok(Math.ceil(JSON.stringify(messages).length/4)+budget<=8192);const raw=messages.at(-1).content;assert.ok(raw.startsWith('Archived dialogue JSON'));batches.push(JSON.parse(raw.slice(raw.indexOf('\n')+1)));return {text:'Retained working summary'};}};
- const compact=await compactDialogue(state,port,'Next');assert.equal(compact.compaction.through,127);assert.equal(batches.length,1);assert.deepEqual(batches[0],historyPayload({summary:'',recent:state.turns.slice(0,127),refs:[]}).recent);assert.ok(probes<=10,'Count probes: '+probes);assert.ok(serialized<80000,'Serialized count input: '+serialized);assert.deepEqual(state,before);assert.deepEqual(compact.turns,before.turns);assert.equal(dialogueContext(compact).recent[0].id,'batch-127');
+ // Force consumer pressure independently of the generic context allowance.
+ const compact=await compactDialogue(state,port,'Next',()=>{},async context=>context.recent.length<2);assert.equal(compact.compaction.through,127);assert.equal(batches.length,1);assert.deepEqual(batches[0],historyPayload({summary:'',recent:state.turns.slice(0,127),refs:[]}).recent);assert.ok(probes<=10,'Count probes: '+probes);assert.ok(serialized<80000,'Serialized count input: '+serialized);assert.deepEqual(state,before);assert.deepEqual(compact.turns,before.turns);assert.equal(dialogueContext(compact).recent[0].id,'batch-127');
 });
 test('batch probing never generates an uncounted or over-budget compaction candidate',async()=>{
  let state=emptyDialogue();for(let i=0;i<40;i++)state=appendTurn(state,{id:'bounded-'+i,user:'Original 日本語 🌳 '.repeat(12)+i,answer:'Assistant '+i});
@@ -2285,4 +2286,22 @@ test('optional recalled excerpts fit the consumer without rewriting original dia
  const fitted=await boundedDialogueContext(compact,runtime,'amber lighthouse',fits);
  assert.deepEqual(fitted.recalled,[]);assert.equal(fitted.summary,prior.compaction.summary);assert.deepEqual(fitted.recent,baseline.recent);assert.deepEqual(prior,before);
  await assert.rejects(boundedDialogueContext(prior,runtime,'amber lighthouse',async()=>{throw Error('Stopped');}),/Stopped/);
+});
+
+
+test('generic history uses the selected context capacity instead of a fixed 850-token ceiling',async()=>{
+ const prior={...emptyDialogue(),turns:[{id:'large',user:'Keep these details. '.repeat(280)}]},before=structuredClone(prior);
+ const runtime={...engine(8192),generate:async()=>{throw Error('History fits: no model compaction needed');}};
+ const count=(await runtime.count([{role:'user',content:JSON.stringify(historyPayload(dialogueContext(prior)))}])).prompt_tokens;
+ assert.ok(count>850&&count<Math.floor(8192*.42));
+ assert.equal(await compactDialogue(prior,runtime,'Continue'),prior);assert.deepEqual(prior,before);
+});
+
+test('generic history still enforces the selected window and reply reserve',async()=>{
+ const {dialogueContextFits}=await import('../src/conversation.ts');
+ const context={summary:'Earlier facts',recent:[],refs:[]};
+ for(const [history,total,expected] of [[1400,2000,true],[3500,4000,false],[100,7800,false]]){
+  const runtime={...engine(8192),count:async messages=>({prompt_tokens:messages[0]?.content==='Continue dialogue'?total:history})};
+  assert.equal(await dialogueContextFits(runtime,'Continue',context),expected);
+ }
 });

@@ -201,7 +201,7 @@ export function compactionMessages(summary:string,input:{turns:DialogueTurn[]}|{
 }
 /** Shared fallback budget for preparation and final projection when no planner is supplied. */
 export async function dialogueContextFits(engine:ChatEngine,question:string,context:DialogueContext){
- const budget=Math.min(850,Math.floor(engine.manifest.contextTokens*.42)),payload=historyPayload(context);
+ const budget=Math.floor(engine.manifest.contextTokens*.42),payload=historyPayload(context);
  const historyCount=(await engine.count([{role:'user',content:JSON.stringify(payload)}])).prompt_tokens;
  const total=(await engine.count([{role:'system',content:'Continue dialogue'},{role:'user',content:JSON.stringify({history:payload,question})}])).prompt_tokens;
  if(!Number.isSafeInteger(historyCount)||historyCount<0||!Number.isSafeInteger(total)||total<0)throw Error('Invalid token count');
