@@ -92,9 +92,9 @@ export async function parseStateBackup(text:string):Promise<StatePayload>{
  checkBackupText(text);const pack=JSON.parse(text);
  if(pack.payload?.schema===1){
   // Historical schema 1 was note-only (`makeBackup`). Do not let a payload
-  // with extra settings/runs bypass schema-2 validation through the legacy
-  // parser, even if its checksum is internally consistent.
-  if(!pack.payload||Object.keys(pack.payload).sort().join('|')!=='createdAt|notes|schema'||typeof pack.payload.createdAt!=='string')throw Error('Backup verification failed · legacy backup contains unsupported state');
+  // or wrapper with unrecognized state bypass schema-2 validation through the
+  // legacy parser, even if its checksum is internally consistent.
+  if(!exactObjectKeys(pack,['format','payload','sha256'])||!exactObjectKeys(pack.payload,['createdAt','notes','schema'])||typeof pack.payload.createdAt!=='string')throw Error('Backup verification failed · legacy backup contains unsupported state');
   const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;
  }
  if(!exactObjectKeys(pack,['format','payload','sha256'])||pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||!exactObjectKeys(pack.payload,['createdAt','excluded','notes','runs','schema','settings','undefinedPaths'])||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed · unsupported backup fields');

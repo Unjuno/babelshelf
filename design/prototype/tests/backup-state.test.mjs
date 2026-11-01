@@ -81,6 +81,8 @@ test('legacy note-only brainpacks remain readable and explicitly distinguish mis
 test('legacy note-only brainpacks cannot smuggle unvalidated auxiliary state through schema 1',async()=>{
  const pack=await makeBackup(snapshot().notes);pack.payload.settings=[{key:'ui-v1-connection',value:{downloads:true}}];pack.sha256=await digest(JSON.stringify(pack.payload));
  await assert.rejects(()=>parseStateBackup(JSON.stringify(pack)),/legacy backup contains unsupported state/i);
+ const wrapper=await makeBackup(snapshot().notes);wrapper.settings=[{key:'ui-v1-connection',value:{downloads:true}}];
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(wrapper)),/legacy backup contains unsupported state/i);
 });
 test('state backups reject unknown wrapper or payload fields rather than silently dropping them',async()=>{
  const pack=await makeStateBackup(snapshot());assert.equal((await parseStateBackup(JSON.stringify(pack))).schema,2);
