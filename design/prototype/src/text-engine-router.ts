@@ -102,7 +102,9 @@ export class TextEngineRouter{
    events(type,value);
    if(type==='text'&&typeof value==='string'&&preview.length<32768){preview=(preview+value).slice(0,32768);events('answer-preview',preview);}
   }:events;
-  return backend.call('generate',native?this.nativeArgs(args):args,receive).catch(error=>{
+  return backend.call('generate',native?this.nativeArgs(args):args,receive).then(result=>{
+   this.check(epoch);if(this.active!==backend)throw Error('Stopped');return result;
+  }).catch(error=>{
    if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
   }).finally(()=>{finished=true;});
  }

@@ -7678,3 +7678,6 @@ Found subsequent prose segments omitted the manifest output cap although the ini
 
 2026-11-02 — shared answer tokenizer validation
 All grounded-answer counts now pass through checkedAnswerCount, covering evidence packing and citation/summary/consistency repair as well as prose continuation. Invalid NaN/infinite/negative/fractional counts abort before initial/next generation. Existing citation validation, retries and persistence unchanged. Prototype1750/1750, app8/8 and build8afb991c1fbc3973 pass. Controlled adapter tests, not real-model quality evidence.
+
+2026-11-02 — retire late generation completions
+TextEngineRouter now rejects successful generation completions after abort epoch change or active backend unload/change. Previously preview events retired, but terminal success depended on downstream cancellation checks. Controlled pending-worker completion tests cover prose and structured calls after abort/unload; normal completion remains valid. Prototype1751/app8/build2e32709bcc9aad04 pass. Not an actual GPU failure or device acceptance claim.

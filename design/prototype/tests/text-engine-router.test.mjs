@@ -373,6 +373,17 @@ test('WebML preview retires on stop and failure and never exposes structured tex
   if(mode==='stop')await f.router.abort();
   if(mode==='error'){reject(Error('GPU lost'));await assert.rejects(pending,/GPU lost/);}
   emit('text','private');assert.ok(!seen.includes('answer-preview'));
-  if(mode!=='error'){resolve({text:''});await pending;}
+  if(mode!=='error'){resolve({text:''});if(mode==='stop')await assert.rejects(pending,/Stopped/);else await pending;}
+ }
+});
+
+
+test('a late successful generation cannot escape stop or unload for prose or structured calls',async()=>{
+ for(const action of ['abort','unload'])for(const format of ['prose',undefined]){
+  const f=setup();await f.router.load('4B');let finish;
+  f.webml.call=()=>new Promise(resolve=>{finish=resolve;});
+  const pending=f.router.generate([],undefined,128,format);
+  await f.router[action]();finish({text:'Late successful answer'});
+  await assert.rejects(pending,/Stopped/);
  }
 });
