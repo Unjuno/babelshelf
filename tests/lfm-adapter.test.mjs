@@ -221,15 +221,20 @@ test('LFM3 runtime verification rejects a mismatched llama.cpp patch pin',async(
 });
 
 test('native final arguments are previewed before the stream completes, without reasoning or tool JSON',async()=>{
- const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[]}),seen=[];
+ let now=100;
+ const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[],clock:()=>now}),seen=[];
  adapter.loaded='local';adapter.runtime={createChatCompletion:async()=> (async function*(){
   yield {choices:[{delta:{reasoning_content:'private reasoning'}}]};
   yield {choices:[{delta:{reasoning_content:'more reasoning'}}]};
   assert.deepEqual(seen,[],'non-answer tokens must not trigger view updates');
+  now=140;
   yield {choices:[{delta:{tool_calls:[{index:0,function:{name:'finish_answer',arguments:'{"reply":{"answer":"日'}}]}}]};
   assert.equal(seen.at(-1),'日');
+  now=180;
   yield {choices:[{delta:{tool_calls:[{index:0,function:{arguments:'本語","sources":[],"status":"answered"}}'}}]}}]};
  })()};
  const result=await adapter.generate([{role:'user',content:'test'}],{json:false,tools:[{type:'function',function:{name:'finish_answer',parameters:{type:'object'}}}],maxTokens:32,onAnswerPreview:text=>seen.push(text)});
  assert.equal(result.toolCalls[0].arguments.reply.answer,'日本語');assert.deepEqual(seen,['日','日本語']);
+ assert.equal(result.firstContentMs,40,'first visible answer preview owns TTFT, not private reasoning or stream completion');
+ assert.equal(result.totalMs,80);
 });

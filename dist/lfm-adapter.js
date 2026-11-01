@@ -93,7 +93,7 @@ export class PreparedGgufAdapter {
      }
     }
     const preview=nativeAnswerPreview(calls);
-    if(preview!==lastAnswerPreview){lastAnswerPreview=preview;onAnswerPreview(preview);}
+    if(preview!==lastAnswerPreview){if(first===null&&preview.trim())first=this.clock();lastAnswerPreview=preview;onAnswerPreview(preview);}
     if(chunk.usage)usage=chunk.usage;
     if(chunk.timings)timings=chunk.timings;
    }
