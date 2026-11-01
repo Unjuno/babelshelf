@@ -1,3 +1,7 @@
+# Public v282 — separate evidence and request (2026-11-02 JST)
+
+Build `e9b502c70a25b449`, entry `index-BC_B3b6b.js`; complete CI41326118763 passed at `a1bd300ec2e603ae846c7b89700ff46447599808`. Site source `df28548e2e731bb2d69b1a8a3a28369c0951b8b7`; deployment `appgdep_6ae76a4ca9848191a71a613fb84dbeb3` succeeded. Public audience retained. The grounded prompt separates reference data from the final user request. Actual sidebar outcome is recorded in TEST-RESULTS.txt; publication alone does not establish improved model compliance. Previous entries are historical.
+
 # Public v281 — WebML execution feedback compatibility (2026-11-02 JST)
 
 Build `5f70fe584d1e43ae`, entry `index-Dx_IaVF3.js`; complete CI41324494187 passed at `ace89ed797ff76439708e372898214f78f7e7783`. Site source `c0702695c0ae14b89f4646afbe9d90cdca632433`; deployment `appgdep_6ae7657f5fa48191a97ef224c0ead68a` succeeded. Public audience retained. WebML now places plain application system blocks at the beginning consistently for count/generation; other engines retain late execution feedback. Actual sidebar outcome is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
