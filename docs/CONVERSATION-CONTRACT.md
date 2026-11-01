@@ -268,3 +268,5 @@ The generic (no dedicated planner) route uses the same dialogueContextFits predi
 
 ### WebML prose stream boundary (2026-11-02)
 TextEngineRouter translates WebML text deltas into the cumulative answer-preview protocol only for prose generation. Projection is bounded to32768 characters without truncating final generated text. JSON/tool streams stay private. End, failure, stop epoch and backend changes retire old callbacks. Downstream reasoning filtering and run ownership still apply; preview never authorizes persistence or citations. Other runtimes retain their own preview protocol.
+
+Continuation budget contract (2026-11-02): every prose continuation respects the selected runtime maxOutputTokens as well as remaining context and total turn allowance. Initial and continuation tokenizer counts must be finite nonnegative safe integers; invalid counts cannot become generation budgets. The model output cap must be a positive safe integer. This changes no source, approval or persistence contract.

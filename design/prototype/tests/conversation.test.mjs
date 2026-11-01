@@ -2305,3 +2305,21 @@ test('generic history still enforces the selected window and reply reserve',asyn
   assert.equal(await dialogueContextFits(runtime,'Continue',context),expected);
  }
 });
+
+
+test('prose continuation respects the custom model output cap on every call',async()=>{
+ const budgets=[],store={all:async()=>[],search:async()=>[]};
+ const runtime={...engine(4096),loaded:'custom',assets:{},manifest:{contextTokens:4096,maxOutputTokens:96,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async(_messages,budget)=>{budgets.push(budget);return budgets.length===1?{text:'First part. ',finishReason:'length'}:{text:'Complete.',finishReason:'stop'};}};
+ const result=await groundedAnswer({store,engine:runtime},{model:'custom',question:'Write a detailed story.',mode:'chat',scope:{kind:'conversation'}});
+ assert.deepEqual(budgets,[96,96]);assert.equal(result.answer,'First part. Complete.');
+});
+
+test('invalid initial and continuation token counts never reach generation with invalid budgets',async()=>{
+ const store={all:async()=>[],search:async()=>[]};
+ for(const invalid of [NaN,Infinity,-1,0.5])for(const atContinuation of [false,true]){
+  let calls=0;
+  const runtime={...engine(4096),loaded:'custom',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:atContinuation&&calls===0?100:invalid}),generate:async()=>{calls++;return {text:'Beginning. ',finishReason:'length'};}};
+  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'custom',question:'Write a detailed story.',mode:'chat',scope:{kind:'conversation'}}),/Invalid token count/);
+  assert.equal(calls,atContinuation?1:0);
+ }
+});

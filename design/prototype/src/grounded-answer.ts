@@ -53,12 +53,14 @@ async function continueDialogue(engine:TextRuntime,messages:{role:string;content
   let previous=parts.join(''),continuation:{role:string;content:string}[]=[],available=0;
   for(let trim=0;trim<8;trim++){
    continuation=[...messages,{role:'assistant',content:previous},{role:'user',content:'Continue the preceding answer exactly where it ends. Do not repeat earlier text. Finish the original requested format and length. Return only the continuation.'}];
-   const tokens=(await engine.count(continuation,'prose')).prompt_tokens;check();available=engine.manifest.contextTokens-tokens;
+   const tokens=(await engine.count(continuation,'prose')).prompt_tokens;check();
+   if(!Number.isSafeInteger(tokens)||tokens<0)throw Error('Invalid token count');
+   available=engine.manifest.contextTokens-tokens;
    if(available>=256)break;
    previous=Array.from(previous).slice(Math.ceil(Array.from(previous).length/2)).join('');
   }
   if(available<128)throw Error('Response exceeded model context limit');
-  const budget=Math.min(768,available,totalBudget-spent);result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
+  const budget=Math.min(768,engine.manifest.maxOutputTokens??768,available,totalBudget-spent);result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
   if(!result.text.trim())throw Error('Empty model continuation');
   const previousSegment=parts.at(-1)!.trim(),nextSegment=result.text.trim();
   if(previousSegment.length>=32&&nextSegment===previousSegment)throw Error('Model continuation repeated · retry');
@@ -229,6 +231,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const answerFormat=(sourceCount:number):GenerationFormat=>mode==='chat'?'prose':{type:'grounded-answer',sourceCount};
  let messages=input([]),format=answerFormat(0);
  const initialTokens=(await engine.count(messages,format)).prompt_tokens;check();
+ if(!Number.isSafeInteger(initialTokens)||initialTokens<0)throw Error('Invalid token count');
  const availableOutputTokens=engine.manifest.contextTokens-initialTokens;
  if(availableOutputTokens<128){
   const operationResultCount=toolInfo.length+customResults.length+calculations.length+clockReadings.length;
@@ -236,6 +239,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  }
  const outputLimits=mode==='chat'?dialogueOutputLimits(replyStyle,question,availableOutputTokens):undefined;
  const modelOutputLimit=engine.manifest.maxOutputTokens??availableOutputTokens;
+ if(!Number.isSafeInteger(modelOutputLimit)||modelOutputLimit<1)throw Error('Invalid model output limit');
  let replyTokens=Math.min(outputLimits?.segment??groundedOutputTokens(replyStyle,question,availableOutputTokens),modelOutputLimit,availableOutputTokens);
  const requestedReplyTokens=replyTokens;
  // Reserve one excerpt per required source before additional excerpts compete

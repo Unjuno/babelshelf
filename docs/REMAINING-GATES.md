@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local follow-up: prose continuations now respect custom-model output caps and reject invalid tokenizer counts before generation. Prototype1749/app8/build700f07c3b8ea55bf pass; not yet public and not a measured speed improvement.
+
 Public v288 follow-up: generic dialogue history now scales to 42% of the selected context instead of min(850,42%). Exact total counting and 512-token reply reserve remain. Controlled 8192-context test avoids unnecessary model compaction above850 tokens; no real-model speedup is claimed. Prototype1747/1747, app8/8 and build546f0f1936500d52 pass. CI41333230189 passed all stages. Site288 is deployed; sidebar Update adopted index-DmgXQouA.js without storage reset, retained dialogue and returned app Offline. Site287 measurements below remain historical, not a v288 speed measurement.
 
 Application 6bf8fe9 is public in Site 287: build 4d72faea1076cff2 / index-CmzM1_EI.js. Existing sidebar updated without data deletion and returned to app Offline (not OS network isolation).

@@ -7672,3 +7672,6 @@ Removed fixed850-token ceiling while retaining42% of selected context, actual to
 
 2026-11-02 — e2202f2 complete CI and v288 delivery
 CI41333230189 passed every quality stage in9m17s including installed/offline PWA and Chromium/WebKit acceptance. This is CI browser evidence, not physical iPhone/Android acceptance. Site288 build546f0f1936500d52/index-DmgXQouA.js published; existing sidebar Update adopted matching script, preserved visible conversation, returned appOffline. No reset/new browser/model download. Our stopped QA draft cleared before update. Screenshot reused qa-retained/current-update.png. No v288 real-model latency measurement.
+
+2026-11-02 — custom-model continuation limits
+Found subsequent prose segments omitted the manifest output cap although the initial segment applied it. Applied maxOutputTokens on every continuation; reject invalid initial/continuation counts and model output limits before generation. Controlled96-token custom-runtime test verifies both calls stay96; NaN/Infinity/negative/fractional counts reject without the next generation. Prototype1749/1749, app8/8, build700f07c3b8ea55bf pass. Not actual-model performance evidence; public remainsv288.
