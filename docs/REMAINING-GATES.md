@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local candidate: standard tool guides shortened2776→2050 characters; execution/schema unchanged. Prototype1757/app8/build49cf00099b29a5eb/check pass. Token count and real-model recovery remain unmeasured.
+
 Public v293: application215b5f3/build1c7b0f4a0ed4eb16/index-BV02NErg.js; CI41341708837 all stages passed. Sourcecab773ad862cb350b57f6473a4f2cb43b9e1e00e; deploymentappgdep_6ae7945a45888191a5e5e3f6fc83f6f2 succeeded. Sidebar Update verified the exact entry and retained98 earlier messages, then returned appOffline. Bounded target repair shares the protocol-repair allowance; controlled stop/storage/token-budget checks pass. Real-model replay failed: initial invalid target at1881prompt/14output/45.735s; repair then exceeded context before generation. Both failures recorded; no tools, answer or save. No recovery or speed gain. Additional tests and runtime contract docs pushed through e3a9cb5.
 
 Historical v292 replay passes preflight but fails model target validation: turn d8c427f8-a9b5-497a-870c-a29b45e01fef, Bonsai4B/context2048. Compaction3calls/887input/194output/49.382s; planner1882input/14output/max166/45.523s, TTFT44.036s,cached0. Invalid target, no tool execution, answer or save. Tool profile retained3calls with source details enabled. This is not provenance acceptance or a demonstrated speed gain. Fixed protocol leaves too little headroom; inspect target-contract clarity and recovery without bypassing validation.
