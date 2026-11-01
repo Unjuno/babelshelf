@@ -338,3 +338,17 @@ test('restore all defaults refuses missing or tampered managed records without c
   const records=structuredClone(initialPreferenceNotes);mutate(records);const before=structuredClone(records);assert.throws(()=>restoreDefaultPreferences(records),/Settings record unavailable/);assert.deepEqual(records,before);
  }
 });
+
+test('schema-2 explicit tools and old-default call caps survive schema-3 projection and save',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),value=parsePreference('harness',record.body);
+ value.profiles[0].enabledTools=['memory.search','memory.read','math.calculate'];value.profiles[0].maxToolCalls=8;
+ value.profiles[1].enabledTools=['memory.search','memory.read'];value.profiles[1].maxToolCalls=2;
+ for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
+ record.body=formatPreference('harness',value).replace('"schemaVersion": 3','"schemaVersion": 2');const before=structuredClone(records);
+ const projected=readPreference('harness',records);
+ for(let i=0;i<2;i++){assert.deepEqual(projected.profiles[i].enabledTools,value.profiles[i].enabledTools);assert.equal(projected.profiles[i].maxToolCalls,value.profiles[i].maxToolCalls);}
+ assert.deepEqual(records,before);
+ const updated=updatePreference('harness',records,current=>({...current,replyStyle:'detailed'}));
+ const saved=updated.find(note=>note.id===record.id);assert.equal(saved.history.at(-1),record.body);
+ assert.equal(readPreference('harness',updated).profiles[0].maxToolCalls,8);assert.equal(readPreference('harness',updated).profiles[1].maxToolCalls,2);
+});

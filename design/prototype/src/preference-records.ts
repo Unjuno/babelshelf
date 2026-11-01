@@ -83,10 +83,10 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(group==='harness'&&!('userGuidance' in value))value.userGuidance='';
  if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles))for(const profile of value.profiles){if(profile&&typeof profile==='object'){if(!('maxGenerationTokens' in profile))profile.maxGenerationTokens=null;if(!('maxGenerationMs' in profile))profile.maxGenerationMs=null;}}
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
- // Profile defaults may evolve only while reading an older settings schema.
- // Current-schema values are explicit user settings, even when they happen
- // to equal a former built-in default such as an eight-call budget.
- if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles)){
+ // This defaults migration belongs only to schema 1 -> 2. Later schema
+ // additions must preserve explicit tools and limits, even when they match
+ // former built-in defaults such as an eight-call budget.
+ if(group==='harness'&&schemaVersion<2&&Array.isArray(value.profiles)){
   // Project only untouched built-in defaults; preserve all customized profile values.
   for(const profile of value.profiles){
    const oldStandard=['math.calculate','memory.read','memory.search'].sort().join('|');
