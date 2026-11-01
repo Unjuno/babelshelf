@@ -7681,3 +7681,6 @@ All grounded-answer counts now pass through checkedAnswerCount, covering evidenc
 
 2026-11-02 — retire late generation completions
 TextEngineRouter now rejects successful generation completions after abort epoch change or active backend unload/change. Previously preview events retired, but terminal success depended on downstream cancellation checks. Controlled pending-worker completion tests cover prose and structured calls after abort/unload; normal completion remains valid. Prototype1751/app8/build2e32709bcc9aad04 pass. Not an actual GPU failure or device acceptance claim.
+
+2026-11-02 — v289 public adoption
+Complete CI41335227459 passed for86c2c2c, including offline/installed PWA acceptance. Public Site289/build2e32709bcc9aad04/index-__9IIVr2.js adopted via existing sidebar Update. Visible dialogue retained; appOffline restored. No separate browser, data reset or model download. Delivery only: actual inference/physical-device performance not rerun.
