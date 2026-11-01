@@ -2109,6 +2109,20 @@ test('citation repair preserves user preferences and replaces the application pr
  assert.deepEqual(result.sources,[ref]);
 });
 
+test('summary echo repair retains preferences and the exact source rather than the echoed request',async()=>{
+ const question='このファイルを一文で短く要約してください。';
+ const note=createNote({body:'集合場所は北口。持ち物は水。'}),quote=note.revisions[0].body;
+ const ref={noteId:note.id,revision:1,start:0,end:quote.length,quote},seen=[];
+ const runtime={loaded:'test',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
+  seen.push(structuredClone(messages));return {text:JSON.stringify(seen.length===1?{answer:question,citations:[{id:'S1',quote}]}:{answer:'北口に水を持参する。',sources:['S1']})};
+ }};
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:runtime},{model:'test',question,mode:'summary',scope:{kind:'knowledge'},userGuidance:'Use plain language.'});
+ assert.equal(seen.length,2);assert.deepEqual(seen[1][0],seen[0][0]);
+ assert.match(seen[1][1].content,/Summarize the excerpt, not the request/);
+ assert.deepEqual(JSON.parse(seen[1].at(-1).content),{request:question,excerpt:quote,label:'S1'});
+ assert.equal(result.answer,'北口に水を持参する。');assert.deepEqual(result.sources,[ref]);
+});
+
 test('verbatim recovery retains preferences without retaining a contradictory answer protocol',async()=>{
  const note=createNote({path:'Notes/recovery.md',body:'Blue notebook.'});
  const ref={noteId:note.id,revision:1,start:0,end:14,quote:'Blue notebook.'};

@@ -7380,3 +7380,10 @@ Existing sidebar babelshelf.com updated through Online/Update/Offline. DOM scrip
 2026-11-01 · answer-repair ownership with custom guidance
 Found that citation/consistency/format retries replaced messages[0], which is optional user guidance when configured, rather than the application answer system message. Verbatim recovery also dropped that guidance while keeping the old answer protocol. Repairs now address the known application-message index and preserve preference, current request and evidence messages. No new repair attempt, relaxed citation validation or persistence change.
 Added regressions for source-label repair with guidance and verbatim recovery without a duplicate contradictory protocol. Related conversation/input216/216 before the second test; conversation203/203 after it; production build17b88c802681c31c with TypeScript/163assets and app8/8 passed. Controlled model fixtures establish message ownership, not live answer quality. Public remains Site270. CI41302103091 still running; keep this correction local until that exact-code run finishes rather than repeatedly cancelling CI.
+
+2026-11-01 summary echo repair preferences (after 580e3d9)
+- Fixed the isolated single-source summary echo recovery to retain validated user guidance before its application protocol. Source payload remains exact; no additional retry or source validation relaxation.
+- Node conversation tests: 204/204 pass, including explicit guidance/payload preservation through echo repair.
+- build:app passed (TypeScript included), build dec4561f020695fe; test:app 8/8; git diff --check passed.
+- This is deterministic contract evidence, not real-model quality or device-performance evidence. Public v270 does not yet contain this fix.
+- Follow-up required checks: protected mobile runtime 28/28 unchanged; memory path/navigation tests 9/9 pass. Submission workflow passes original text as question and retrieval query separately; the observed real-model exclusion failure is not resolved by this repair.

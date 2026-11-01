@@ -380,7 +380,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   // Retry only for a single known source. Keep the original request as data,
   // but present the excerpt separately so small models do not summarize it.
   if(evidence.length!==1||calculations.length)throw Error('Summary repeated the request · try again');
-  const retry=[{role:'system',content:singleLabelSystem+' Summarize the excerpt, not the request. Do not repeat the request.'+(wantsOneSentence?' Write exactly one sentence.':'')},{role:'user',content:JSON.stringify({request:question,excerpt:evidence[0].quote,label:evidence[0].label})}];
+  const retry=[...(guidance?[guidance]:[]),{role:'system',content:singleLabelSystem+' Summarize the excerpt, not the request. Do not repeat the request.'+(wantsOneSentence?' Write exactly one sentence.':'')},{role:'user',content:JSON.stringify({request:question,excerpt:evidence[0].quote,label:evidence[0].label})}];
   if((await engine.count(retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Context limit · summary retry');check();
   const revised=await engine.generate(retry,replyTokens,format);check();if(revised.stopped)throw Error('Stopped');checkRepeatedOutput(revised.text);if(outputLimited(revised,replyTokens))throw Error('Response exceeded model output limit');
   parsed=parseSingleLabelSummary(revised.text);recovery='citation-retry';
