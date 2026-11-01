@@ -263,3 +263,5 @@ The half-length rewrite instruction is a soft content target. Generation uses th
 
 ### Optional archive retrieval uses the consumer budget (2026-11-02)
 The bounded dialogue projection checks optional recalled excerpts against the actual consumer fit before requesting more summary generation. If the retrieval bundle does not fit, the bundle is omitted from this transient projection as a unit, preserving correction adjacency rather than leaving a stale statement alone. The summary, active recent turns, identities and archive remain unchanged. Final turn preparation repeats the same fit so reconstruction cannot reinsert omitted retrieval. Originals remain available to history reads. This is not permission to truncate current requests, tool definitions or live tool observations.
+
+The generic (no dedicated planner) route uses the same dialogueContextFits predicate during compaction and final reconstruction. Its existing850-token/history and512-token answer-reserve bounds are unchanged; exact token counts must be valid nonnegative integers.

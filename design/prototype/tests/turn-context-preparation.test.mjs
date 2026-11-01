@@ -181,3 +181,10 @@ test('prepared context does not reinsert optional archive retrieval after exact 
  const context=await prepareTurnContext({prior,engine:{...fakeEngine(),count:async()=>({prompt_tokens:10}),generate:async()=>{throw Error('Must not compact');}},model:'test',question:'Amber lighthouse',fitsPlanner:async value=>!value.recalled?.length,check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async()=>{throw Error('Must not save');},trace:async(_tool,_input,work)=>work()});
  assert.deepEqual(context.recalled,[]);assert.equal(context.summary,prior.compaction.summary);assert.deepEqual(prior,before);
 });
+
+test('generic preparation shares its fallback recall budget with final projection',async()=>{
+ const prior={schema:1,revision:1,turns:[{id:'old',user:'Amber lighthouse is north.'}],compaction:{through:1,summary:'Amber lighthouse.'}},before=structuredClone(prior);
+ const runtime={...fakeEngine(),count:async messages=>({prompt_tokens:JSON.stringify(messages).includes('originalEarlierExcerpts')?1600:100}),generate:async()=>{throw Error('Must not compact');}};
+ const context=await prepareTurnContext({prior,engine:runtime,model:'test',question:'Amber lighthouse',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async()=>{throw Error('Must not save');},trace:async(_tool,_input,work)=>work()});
+ assert.deepEqual(context.recalled,[]);assert.equal(context.summary,prior.compaction.summary);assert.deepEqual(prior,before);
+});
