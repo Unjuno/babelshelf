@@ -1056,6 +1056,15 @@ test('single-source time difference uses checked local arithmetic and retains th
  assert.equal((await import('../src/time-answer.ts')).exactMinutesBefore('How many minutes before 15:00?','14:40 and 14:50'),null);
 });
 
+test('checked arithmetic rejects a source removed before delivery',async()=>{
+ const note=createNote({body:'The meeting is at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ let reads=0;
+ const store={all:async()=>++reads===1?[note]:[],search:async()=>[ref]};
+ const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{throw Error('unnecessary generation');}};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'How many minutes before 15:00 is the meeting?',scope:{kind:'knowledge'}}),/Source changed/);
+ assert.equal(reads,2);
+});
+
 test('named saved-note question retrieves the real index excerpt before checked arithmetic',async()=>{
  const note=createNote({title:'The blue lantern meeting',body:'The blue lantern meeting is on 19 November at 14:40 in Cedar Room.',path:'Inbox/The blue lantern meeting.md'});
  const question='In the saved blue lantern meeting note, how many minutes before 15:00 is the meeting? Cite the note.';

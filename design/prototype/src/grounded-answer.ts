@@ -185,7 +185,11 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  }
  if(mode==='answer'&&!workingFile&&!inputReadings.length&&hits.length===1){
   const exact=exactMinutesBefore(question,hits[0].quote);
-  if(exact){check();return {answer:exact,sources:[hits[0]],model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};}
+  if(exact){
+   const fresh=await store.all();check();
+   if(!validateGroundingRefs(fresh,hits).ok)throw Error('Source changed · retry');
+   return {answer:exact,sources:[hits[0]],model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+  }
  }
  // The planner already resolved the search query using dialogue. A new top source
  // starts a fresh grounding scope: old assistant facts must not crowd it out.

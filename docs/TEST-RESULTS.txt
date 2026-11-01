@@ -7562,3 +7562,10 @@ Two controlled regressions failed on the earlier implementation: same-range cove
 
 Agent search/read overlap validation (2026-11-02 JST)
 Reproduced conflicting search quotation being removed solely because a memory.read range contained it. agentAnswerEvidenceFromCalls now drops covered search ranges only when the exact read substring matches. Same-range conflicts reach Source quotation conflict; conflicting partial ranges remain for canonical original validation. Matching overlaps still collapse. Agent/evidence/context107/107, TypeScript, protected runtime28, build and product8/8 passed. Controlled host-result fault injection, not an observed device fault or semantic validation claim. Originals and stored receipts unchanged.
+
+2026-11-02 checked-arithmetic source freshness (PC Node; no model performance claim)
+- Revalidate canonical sources immediately before delivering the model-free time-difference answer; removed or changed sources cannot be delivered from the initial snapshot.
+- Regression: source removed between initial read and delivery rejects with Source changed; no model generation required.
+- conversation.test.mjs: 208/208 passed. TypeScript noEmit passed. Protected mobile runtime: 28/28 unchanged.
+- Production build: 9d9e744be5885155, 163 verified assets. Product acceptance: 8/8 passed.
+- Physical iPhone/Android/macOS and actual GPU speed remain unmeasured for this change. Saved Site v278 predates this fix; do not describe v278 as including it.
