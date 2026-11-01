@@ -11,6 +11,15 @@ const networkFetch=globalThis.fetch.bind(globalThis);
 globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));
 let manifest,baseManifest,model,session,controller,busy=false,root,loadedModelInfo=null,runtimeModules;
 const send=(id,type,value)=>postMessage({id,type,value});
+// One bounded, session-owned count avoids repeating preflight tokenization.
+let countedInput=null;
+function countInput(messages,options){
+ const key=JSON.stringify([messages,options]);
+ if(countedInput?.session===session&&countedInput.key===key)return countedInput.value;
+ const value=session.count_tokens(messages,options);
+ countedInput=key.length<=262144?{session,key,value}:null;
+ return value;
+}
 async function directory(){return root??=await (await navigator.storage.getDirectory()).getDirectoryHandle('mlb-assets-v1',{create:true});}
 async function file(name){return (await (await directory()).getFileHandle(name)).getFile();}
 const pinnedFiles=createPinnedFileSnapshots({read:name=>file(name),hash:(snapshot,options)=>hashFile(snapshot,options?.progress?ratio=>options.progress(ratio):undefined)});
@@ -58,13 +67,14 @@ async function load(id,size){
  return {...loadedModelInfo,device:model.deviceInfo(),memory:model.memoryStats(),timings:{verificationMs,importMs,runtimeModuleReused,runtimeLoadMs,totalLoadMs:performance.now()-started,hashBackend:streamingSHA256Backend(),decodePipelineDepth:1}};
 }
 async function unload(){
+ countedInput=null;
  const oldSession=session,oldModel=model;session=null;model=null;loadedModelInfo=null;
  const errors=[];try{await oldSession?.dispose();}catch(error){errors.push(error);}try{await oldModel?.dispose();}catch(error){errors.push(error);}
  if(errors.length)throw errors.length===1?errors[0]:new AggregateError(errors,'Model cleanup failed');
 }
 onmessage=async({data})=>{
  const {id,cmd,args={}}=data;
- if(cmd==='abort'){controller?.abort(new DOMException('Stopped','AbortError'));return;}
+ if(cmd==='abort'){countedInput=null;controller?.abort(new DOMException('Stopped','AbortError'));return;}
  if(busy){send(id,'error','Busy');return;}busy=true;controller=new AbortController();
  try{
   let result;
@@ -94,15 +104,16 @@ onmessage=async({data})=>{
    }
    case 'load':result=await load(id,args.model);break;
    case 'unload':await unload();result=true;break;
-   case 'count':if(!session)throw Error('Model not loaded');result=session.count_tokens(args.messages,{enable_thinking:false,...(args.responseTool?{tools:nativeResponseTools(args.responseTool)}:{})});break;
+   case 'count':if(!session)throw Error('Model not loaded');result=countInput(args.messages,{enable_thinking:false,...(args.responseTool?{tools:nativeResponseTools(args.responseTool)}:{})});break;
    case 'generate':{
     if(!session)throw Error('Model not loaded');
     if(args.profile!==undefined&&!['greedy','bonsai-nonthinking'].includes(args.profile))throw Error('Unsupported generation profile');
     if(args.seed!==undefined&&(!Number.isSafeInteger(args.seed)||args.seed<0||args.seed>4294967295))throw Error('Invalid sampling seed');
     if(args.decodePipelineDepth!==undefined&&![1,4].includes(args.decodePipelineDepth))throw Error('Unsupported diagnostic decode pipeline');
-    if(args.resetSession===true)session.reset();
+    if(args.resetSession===true){countedInput=null;session.reset();}
     const responseOptions={enable_thinking:false,...(args.responseTool?{tools:nativeResponseTools(args.responseTool)}:{})};
-    const countStarted=performance.now(),count=session.count_tokens(args.messages,responseOptions),countMs=performance.now()-countStarted;if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
+    const countStarted=performance.now(),count=countInput(args.messages,responseOptions),countMs=performance.now()-countStarted;if(count.prompt_tokens+args.maxTokens>model.contextLength)throw Error(`Context limit · ${count.prompt_tokens} tokens`);
+    countedInput=null; // Generation changes session prefix/cache state.
     const start=performance.now();let first=null,last=null,text='',chunks=0;const toolCalls=[];
     const sampling=args.profile==='bonsai-nonthinking'?{do_sample:true,temperature:.7,top_p:.8,top_k:20,min_p:0,seed:args.seed??0}:{do_sample:false};
     const memoryBefore=model.memoryStats?.()??null;

@@ -7236,3 +7236,15 @@ draft and input binding. No model or knowledge original was removed.
 The stopped turn's View activity button did not open its dialog on two attempts;
 this remains a UI investigation, not a verified fix. Offline was the application
 setting only; this run does not establish airplane-mode or cold-restart behavior.
+
+2026-11-01 — WebML preflight tokenization reuse.
+The Qwen/WebML Worker retains one exact messages/options count, bounded to
+262144 serialized characters and tied to its current session. Generation
+consumes/invalidate it; abort, explicit reset and unload invalidate it too.
+Changed messages/tool definitions cannot reuse a different count. This removes
+one duplicate tokenization when preflight and generation match, without reducing
+context/output budgets or changing sampling/GPU settings. Root tests 252/252,
+static checks, product build 925705222165d1c5 and app acceptance 8/8 passed.
+Native-tool regression now expects count+generate rather than count+count+generate,
+while preserving exact tool schema equality, duplicate-call and context rejection.
+No real-model speedup, iPhone/Android/macOS performance or GPU gain is claimed.

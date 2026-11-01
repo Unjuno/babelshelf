@@ -133,3 +133,22 @@ test('worker usage metrics preserve zero and do not invent missing or malformed 
   assert.equal(result.value.inputTokens,99,'preflight count is separate from reported runtime usage');
  }
 });
+
+
+test('worker reuses exact preflight count once and invalidates after generation, abort and session change',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ let calls=0;const events=[];
+ const makeSession=()=>({count_tokens:()=>{calls++;return {prompt_tokens:12};},generate:()=>({async *[Symbol.asyncIterator](){yield {type:'text',text:'ok'};},result:Promise.resolve({usage:{completion_tokens:1}})})});
+ const context=vm.createContext({createPinnedFileSnapshots,fetch:()=>{},postMessage:m=>events.push(m),AbortController,DOMException,performance});
+ vm.runInContext(source+'\nglobalThis.install=s=>{session=s;model={contextLength:512};};',context);
+ context.install(makeSession());
+ const args={messages:[{role:'user',content:'hello'}],maxTokens:20};
+ const run=async(cmd,a=args)=>context.onmessage({data:{id:1,cmd,args:a}});
+ await run('count');await run('generate');assert.equal(calls,1);assert.equal(events.at(-1).type,'done');
+ await run('count');assert.equal(calls,2,'generation invalidates cache');
+ await run('count',{...args,messages:[{role:'user',content:'different'}]});assert.equal(calls,3);
+ await run('abort');await run('count',{...args,messages:[{role:'user',content:'different'}]});assert.equal(calls,4);
+ context.install(makeSession());await run('count',{...args,messages:[{role:'user',content:'different'}]});assert.equal(calls,5);
+ await run('count',{...args,messages:[{role:'user',content:'x'.repeat(262145)}]});
+ await run('count',{...args,messages:[{role:'user',content:'x'.repeat(262145)}]});assert.equal(calls,7,'oversized inputs are not retained');
+});

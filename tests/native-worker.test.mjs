@@ -13,7 +13,7 @@ test('actual Worker counts tool definitions, serializes one call and rejects dup
  context.install({count_tokens:(_m,o)=>{options.push(o);return {prompt_tokens:o.tools?280:20};},generate:(_m,o)=>{options.push(o);return {async *[Symbol.asyncIterator](){yield {type:'tool_call',tool_call:call};if(duplicate)yield {type:'tool_call',tool_call:call};},result:Promise.resolve({finish_reason:'tool_calls',message:{role:'assistant',content:'',tool_calls:duplicate?[call,call]:[call]}})};}});
  const args={messages:[],responseTool:spec,maxTokens:32};
  await context.onmessage({data:{id:1,cmd:'count',args}});assert.equal(events.at(-1).value.prompt_tokens,280);
- await context.onmessage({data:{id:2,cmd:'generate',args}});assert.equal(events.at(-1).type,'done');assert.equal(events.at(-1).value.text,'{"answer":"56"}');assert.deepEqual(options[0].tools,options[1].tools);assert.deepEqual(options[1].tools,options[2].tools);
+ await context.onmessage({data:{id:2,cmd:'generate',args}});assert.equal(events.at(-1).type,'done');assert.equal(events.at(-1).value.text,'{"answer":"56"}');assert.deepEqual(options[0].tools,options[1].tools);assert.equal(options.length,2,'exact preflight tools/count are reused by generation');
  duplicate=true;await context.onmessage({data:{id:3,cmd:'generate',args}});assert.equal(events.at(-1).type,'error');assert.equal(events.at(-1).diagnostic.reason,'native:shape');
  await context.onmessage({data:{id:4,cmd:'generate',args:{...args,maxTokens:300}}});assert.match(events.at(-1).value,/Context limit/);
 });
