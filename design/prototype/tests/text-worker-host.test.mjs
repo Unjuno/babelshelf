@@ -57,3 +57,19 @@ test('partial answer reaches the client before completion and late stopped event
  publish('日本');assert.deepEqual(events,[{type:'answer-preview',text:'日本'}]);
  client.abort();await assert.rejects(pending,/Stopped/);publish('late');finish();await new Promise(r=>setImmediate(r));assert.equal(events.length,1);
 });
+
+
+test('unreadable worker messages fail pending work, retire residency and ignore late output',async()=>{
+ for(const disposeHandshake of [false,true]){
+  let terminations=0;const sent=[],worker={postMessage(m){sent.push(m);},terminate(){terminations++;}},client=createIsolatedTextClient(worker,{disposeHandshake});
+  const loading=client.load('local');worker.onmessage({data:{id:sent.at(-1).id,type:'done',value:true}});await loading;
+  let previews=0;const pending=client.call('generate',{},()=>previews++),id=sent.at(-1).id;
+  const rejected=assert.rejects(pending,/Text worker stopped/);
+  worker.onmessageerror();await rejected;
+  assert.equal(client.loaded,null);assert.equal(client.failed,true);assert.equal(terminations,1);
+  worker.onmessage({data:{id,type:'preview',value:'late'}});worker.onmessage({data:{id,type:'done',value:'late'}});
+  assert.equal(previews,0);await assert.rejects(client.call('generate'),/Text worker stopped/);
+  if(disposeHandshake)await assert.rejects(client.abort(),/cleanup not confirmed/i);else await client.abort();
+  assert.equal(terminations,1);
+ }
+});
