@@ -45,6 +45,7 @@ test('explicit diagnostic reset isolates a generation and reports runtime comple
  assert.equal(result.finishReason,'stop');assert.equal(result.usage.cached_tokens,0);
  assert.equal(result.metrics.outputTokens,3);assert.ok(result.metrics.generationTokensPerSecond>0);assert.equal(result.metrics.decodePipelineDepth,1);assert.equal(result.metrics.memoryAfter,null);
  assert.equal(result.metrics.runtimeTtftMs,1);assert.equal(result.metrics.runtimeDecodeMs,5);assert.equal(result.metrics.runtimeDecodeTokensPerSecond,400);
+ assert.equal(result.metrics.runtimePromptTokens,12);assert.equal(result.metrics.runtimeCachedTokens,0);
  await context.onmessage({data:{id:2,cmd:'generate',args:{messages:[],maxTokens:32}}});
  assert.equal(resets,1,'ordinary generation keeps the existing session behavior');
 });
@@ -115,4 +116,20 @@ test('actual worker Load reuses verified code but recreates models/sessions and 
  assert.equal((await context.loadActual()).timings.runtimeModuleReused,false);assert.equal((await context.loadActual()).timings.runtimeModuleReused,true);
  assert.equal(imports,1);assert.equal(verifies,2);assert.equal(models.length,2);assert.equal(disposedModels,1);assert.equal(disposedSessions,1);
  models[0].lose(Error('old controlled device loss'));await Promise.resolve();assert.equal(context.currentModel(),models[1]);
+});
+
+
+test('worker usage metrics preserve zero and do not invent missing or malformed token counts',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const events=[],context=vm.createContext({createStreamingSHA256,streamingSHA256Backend,createPinnedFileSnapshots,fetch:()=>{throw Error("Unexpected network");},postMessage:m=>events.push(m),AbortController,DOMException,performance,console});
+ vm.runInContext(source+'\nglobalThis.install=s=>{session=s;model={contextLength:2048};};',context);
+ for(const value of [undefined,null,-1,1.5,'12',Infinity,Number.MAX_SAFE_INTEGER+1,0,12]){
+  context.install({count_tokens:()=>({prompt_tokens:99}),generate:()=>({async *[Symbol.asyncIterator](){yield {type:'text',text:'fixture'};},result:Promise.resolve({usage:{prompt_tokens:value,cached_tokens:value}})})});
+  await context.onmessage({data:{id:events.length+1,cmd:'generate',args:{messages:[],maxTokens:16}}});
+  const result=events.at(-1);assert.equal(result.type,'done');
+  const expected=Number.isSafeInteger(value)&&value>=0?value:null;
+  assert.equal(result.value.metrics.runtimePromptTokens,expected);
+  assert.equal(result.value.metrics.runtimeCachedTokens,expected);
+  assert.equal(result.value.inputTokens,99,'preflight count is separate from reported runtime usage');
+ }
 });
