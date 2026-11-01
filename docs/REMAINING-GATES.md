@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local follow-up: native terminal-function reply guidance deduplicated into shared planner instructions; source schemas/validators, output budgets and reviewed save unchanged. Prototype1760/app8/static/build bfaf6f7743a74bc8 pass. Not deployed; actual token/latency and prose-quality effect unverified.
+
 Latest public v296 sidebar LFM3 QAD Q4_0 sample completed memory.sources → memory.read → native answer → original-v1 citation → approved exact save. One QA note retained; original model selection restored. Three model calls383.3s; 1408 cached tokens on calls2/3, runtime reports25/25 GPU layers. Slow input processing and verbose internal IDs in the reply remain defects; this is not search-discovery or cross-device acceptance. See the dated LFM3 provenance entry in TEST-RESULTS.txt.
 
 Public v296: build d44a00bdc3bc531f / index-D5Q4vgV3.js; CI41347653011 passed all stages on 8f03f3f. Deployment appgdep_6ae7a534c64c81918f024f0eea6da9c2 succeeded. Sidebar Update adopted the exact entry, preserved conversation, and returned to app Offline. Actual-model replay failed: both planner attempts chose recall/current with missing query; no tools, answer or save. See v296 replay in TEST-RESULTS.txt.
