@@ -58,7 +58,15 @@ export async function prepareTurnContext(input:{
  const originalTurns=input.prior.turns.map(turn=>JSON.stringify(turn)),originalCompaction=JSON.stringify(input.prior.compaction);
  const usage:ContextInference={measuredModelCalls:0},engine=observeContextInference(input.engine,usage);
  const prepared=await input.trace('dialogue.compact',{model:input.model,priorTurns:input.prior.turns.length,through:input.prior.compaction?.through??0},async()=>{
-  const fitsPlanner=input.fitsPlanner?(context:DialogueContext)=>input.fitsPlanner!(context,engine):undefined;
+  // Compaction and final packing often check the identical candidate in sequence.
+  // Keep only one result for this preparation; never retain prompts across sends.
+  let previousKey:string|undefined,previousFit=false;
+  const fitsPlanner=input.fitsPlanner?async(context:DialogueContext)=>{
+   input.check();const key=JSON.stringify(context);
+   if(key===previousKey)return previousFit;
+   const fits=await input.fitsPlanner!(context,engine);input.check();
+   previousKey=key;previousFit=fits;return fits;
+  }:undefined;
   const compact=await compactDialogue(input.prior,engine,input.question,()=>{input.check();input.setProgress('Compacting…');},fitsPlanner);
   return {compact,context:await boundedDialogueContext(compact,engine,input.question,fitsPlanner??(context=>dialogueContextFits(engine,input.question,context)))};
  },value=>({compaction:value.compact.compaction?{through:value.compact.compaction.through,summaryCharacters:value.compact.compaction.summary.length}:null,inference:inferenceReceipt(usage)}),undefined,()=>({inference:inferenceReceipt(usage)}));

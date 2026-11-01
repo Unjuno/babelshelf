@@ -188,3 +188,11 @@ test('generic preparation shares its fallback recall budget with final projectio
  const context=await prepareTurnContext({prior,engine:runtime,model:'test',question:'Amber lighthouse',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async()=>{throw Error('Must not save');},trace:async(_tool,_input,work)=>work()});
  assert.deepEqual(context.recalled,[]);assert.equal(context.summary,prior.compaction.summary);assert.deepEqual(prior,before);
 });
+
+
+test('identical planner fit candidates are counted once per preparation, never across sends',async()=>{
+ const prior={schema:1,revision:1,turns:[],compaction:null};let calls=0;
+ const input={prior,engine:fakeEngine(),question:'Hello',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue(){throw Error('Unexpected save');},trace:async(_tool,_input,work)=>work(),fitsPlanner:async()=>{calls++;return true;}};
+ await prepareTurnContext(input);assert.equal(calls,1);
+ await prepareTurnContext(input);assert.equal(calls,2);
+});
