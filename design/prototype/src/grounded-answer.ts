@@ -106,6 +106,11 @@ function exactNamedNoteQuestion(question:string,subject:string){
  const withoutName=question.replace(new RegExp(escaped,'iu'),' ');
  return withoutName.replace(/[\s,，:：()[\]{}「」『』"“”]+/gu,' ').trim()||question;
 }
+// Equal ranges alone do not make two evidence records identical. Preserve
+// conflicting quotes for source validation and distinct coverage for the model.
+function sameExcerpt(a:SourceRef&{coverage?:string},b:SourceRef&{coverage?:string}){
+ return a.noteId===b.noteId&&a.revision===b.revision&&a.start===b.start&&a.end===b.end&&a.quote===b.quote&&a.title===b.title&&a.coverage===b.coverage;
+}
 export async function groundedAnswer(dependencies:GroundedAnswerDependencies,request:GroundedAnswerRequest){
  let {engine}=dependencies;const {store}=dependencies;
  const inference:AnswerInference={measuredModelCalls:0};
@@ -149,7 +154,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  let hits:(SourceRef&{coverage?:string;score?:number})[]=toolEvidence?.used&&!calculationOnlyScope?[...toolEvidence.refs]:workingFile?workingFileEvidence(pinnedRecords!,workingFile,question):inputReadings.length?readingEvidence(records,inputReadings,query):mode==='chat'?[]:exactNamed?searchNotes([exactNamed],exactNamedNoteQuestion(question,namedSubject!),12):await store.search(query);
  if(toolEvidence?.memoryUsed&&workingFile)hits.push(...workingFileEvidence(pinnedRecords!,workingFile,question));
  if(toolEvidence?.memoryUsed&&inputReadings.length)hits.push(...readingEvidence(await store.all(),inputReadings,query));
- hits=hits.filter((ref,index,all)=>all.findIndex(value=>value.noteId===ref.noteId&&value.revision===ref.revision&&value.start===ref.start&&value.end===ref.end)===index);
+ hits=hits.filter((ref,index,all)=>all.findIndex(value=>sameExcerpt(value,ref))===index);
  if(!toolEvidence?.used&&!hits.length&&!workingFile&&mode!=='chat'&&!inputReadings.length)hits=await store.search(question);
  if(request.reply===undefined&&toolEvidence?.used&&toolEvidence.memoryUsed&&!calculationOnlyScope&&!hits.length&&mode!=='chat'&&!inputReadings.length){if(workingFile)hits=workingFileEvidence(pinnedRecords!,workingFile,question);else hits=await store.search(question);}
  if(toolEvidence?.used&&!calculationOnlyScope&&!hits.length&&!inputReadings.length&&!workingFile&&!operationalEvidence&&request.reply?.status!=='insufficient_evidence')throw Error('No matching notes');
@@ -192,7 +197,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  let answerContext=inputReadings.length&&audioOnlySuffix(question)?undefined:inputReadings.length?context:newTopic?undefined:context;
  // Once retrieval selects sources, old excerpts may extend only those exact
  // note/revision pairs. An unrelated past citation is not new search evidence.
- hits=[...hits,...(newTopic?[]:pinned.filter(ref=>!hits.length||hits.some(hit=>hit.noteId===ref.noteId&&hit.revision===ref.revision)))].filter((r,i,a)=>a.findIndex(v=>v.noteId===r.noteId&&v.revision===r.revision&&v.start===r.start&&v.end===r.end)===i);
+ hits=[...hits,...(newTopic?[]:pinned.filter(ref=>!hits.length||hits.some(hit=>hit.noteId===ref.noteId&&hit.revision===ref.revision)))].filter((r,i,a)=>a.findIndex(v=>sameExcerpt(v,r))===i);
  if(!dialogueOnly&&!hits.length&&!operationalEvidence)throw Error('No matching notes');
  // Evidence selection needs no resident model. Acquire only after the source
  // contract succeeds, through the application's existing ownership manager.
