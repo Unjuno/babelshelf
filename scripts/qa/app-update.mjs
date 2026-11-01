@@ -92,6 +92,13 @@ test('one explicit refresh installs, activates and reopens a verified generation
    return new Promise(resolve=>{const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();resolve(false);},500);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data?.build==='3333333333333333');};worker.postMessage('build',[channel.port2]);});
   });
   assert.equal(await page.evaluate(()=>window.activeBuild()),versions[1].build);
+  const staged=await page.evaluate(async()=>{
+   const reg=await navigator.serviceWorker.getRegistration(),worker=reg.waiting;
+   const request=type=>new Promise((resolve,reject)=>{const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();reject(Error('Staged worker observation timed out'));},2000);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data);};worker.postMessage(type,[channel.port2]);});
+   return {installing:reg.installing?.state??null,waiting:worker?.state,build:await request('build'),shell:await request({type:'check-app-shell'}),events:window.events};
+  });
+  console.log(JSON.stringify({scope:'Staged worker before server publication',staged}));
+  assert.equal(staged.installing,null);assert.equal(staged.waiting,'installed');assert.equal(staged.build.build,versions[2].build);assert.equal(staged.shell.status,'ready');
   current=3;
   assert.equal(await page.evaluate(()=>window.update()),'Updated');
   assert.equal(await page.evaluate(()=>window.activeBuild()),versions[3].build);
