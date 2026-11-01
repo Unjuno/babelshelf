@@ -28,6 +28,39 @@ test('native planner protocol failure is recorded and retried once without execu
  const result=await coordinateAgentTurn(value);assert.equal(result.final.action,'chat');assert.equal(generations,2);assert.deepEqual(calls,[]);const failed=receipts.find(r=>r.status==='failed');assert.equal(failed.error.code,'planner_protocol');assert.equal(failed.output.inference.measuredModelCalls,1);assert.ok(failed.output.inference.generationWallMs>=0);assert.equal(failed.output.inference.outputTokens,undefined);assert.equal(prompts[1][0].content,prompts[0][0].content);assert.match(prompts[1].at(-1).content,/previous.*rejected/i);assert.doesNotMatch(JSON.stringify(prompts[1]),/UNTRUSTED/);
 });
 
+test('legacy query failure gets one audited model-directed repair without copying rejected content',async()=>{
+ const {value,calls}=input(['{"action":"chat","body":"PRIVATE_REJECTED_CONTENT"}','{"action":"answer","query":"items","target":"file"}'],{question:'What items are in this file?',context:context({noteId:'opened',revision:1})});
+ const prompts=[],receipts=[],generate=value.engine.generate;
+ value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
+ value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.final.action,'answer');assert.equal(result.final.target,'file');assert.equal(prompts.length,2);assert.deepEqual(calls,[]);
+ assert.match(prompts[1][0].content,/missing or invalid query.*rejected without execution/i);
+ assert.doesNotMatch(JSON.stringify(prompts[1]),/PRIVATE_REJECTED_CONTENT/);
+ assert.deepEqual(receipts.filter(r=>r.status!=='running').map(r=>r.status),['failed','succeeded']);
+});
+
+test('legacy query repair is bounded and cannot bypass stop or persistence failure',async()=>{
+ for(const failure of ['repeat','stop','storage']){
+  let generated=0,stopped=false;
+  const {value,calls}=input(['{"action":"chat"}','{"action":"chat"}','{"action":"chat","query":""}'],{check:()=>{if(stopped)throw Error('Stopped');}});
+  const generate=value.engine.generate;value.engine.generate=async(...args)=>{generated++;return generate(...args);};
+  value.trace=async(_tool,_details,work)=>{try{return await work();}catch(error){if(failure==='stop')stopped=true;if(failure==='storage')throw Error('Receipt storage unavailable');throw error;}};
+  await assert.rejects(coordinateAgentTurn(value),failure==='repeat'?/Invalid model action/:failure==='stop'?/Stopped/:/Receipt storage unavailable/);
+  assert.equal(generated,failure==='repeat'?2:1);assert.deepEqual(calls,[]);
+ }
+});
+
+test('legacy query repair consumes the existing per-Send generation budget',async()=>{
+ const {createTurnInferenceBudget}=await import('../src/turn-inference-budget.ts');
+ const {value,calls}=input([]);let generated=0;
+ value.engine.generate=async()=>{generated++;return {text:'{"action":"chat"}',outputTokens:256};};
+ const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null});
+ value.engine=budget.wrap(value.engine);
+ await assert.rejects(coordinateAgentTurn(value),/Generation token budget reached/);
+ assert.equal(generated,1);assert.equal(budget.generatedTokens,256);assert.deepEqual(calls,[]);
+});
+
 test('a native final answer that exposes internal source labels gets one content-only replan',async()=>{
  const action=(tool,args)=>JSON.stringify({action:'tool',query:tool,body:JSON.stringify(args)});
  const {value,calls}=input([

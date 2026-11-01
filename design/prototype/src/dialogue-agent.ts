@@ -7,14 +7,14 @@ import {requestsImplicitSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {validAgentResultAction} from './harness-actions.ts';
 import type {ReplyStyle} from './reply-style.ts';
 export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
- let historyRepairUsed=false,deferredToolRepairUsed=false,nativeCallRepairUsed=false;
+ let historyRepairUsed=false,deferredToolRepairUsed=false,protocolRepairUsed=false;
  const loop=await runReadOnlyAgentLoop({allowedTools:input.allowedTools,maxToolCalls:input.maxToolCalls,maxResultChars:input.maxResultChars,check:input.check,
   plan:async history=>{
    let inference:PlannerInferenceMetrics|undefined;
-   const attempt=(historySelectorRejected=false,deferredToolRejected=false,nativeCallRejected:boolean|'mixed-final'|'source-label-leak'=false)=>{
+   const attempt=(historySelectorRejected=false,deferredToolRejected=false,nativeCallRejected:boolean|'mixed-final'|'source-label-leak'=false,queryRejected=false)=>{
     inference=undefined;
     input.onPreview?.('');
-    const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
+    const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,queryRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
     return input.tracePlan?input.tracePlan(history.length,work,()=>inference):work();
    };
    let raw:DialoguePlan;
@@ -30,7 +30,8 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
      if(!(error instanceof PlannerOutputError))throw error;
      if(!historyRepairUsed&&error.diagnostic.reason==='history target'){historyRepairUsed=true;raw=await attempt(true);}
      else if(!deferredToolRepairUsed&&error.diagnostic.reason==='tool call'&&input.allowedTools.some(tool=>tool.id.startsWith('user.'))&&input.allowedTools.some(tool=>tool.id===DEFERRED_TOOL_SEARCH_ID)){deferredToolRepairUsed=true;raw=await attempt(false,true);}
-     else if(!nativeCallRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak'].includes(error.diagnostic.reason)){nativeCallRepairUsed=true;raw=await attempt(false,false,error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':true);}
+     else if(!protocolRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak'].includes(error.diagnostic.reason)){protocolRepairUsed=true;raw=await attempt(false,false,error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':true);}
+     else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&error.diagnostic.reason==='query'){protocolRepairUsed=true;raw=await attempt(false,false,false,true);}
      else throw error;
     }
    }
