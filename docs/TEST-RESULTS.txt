@@ -7285,3 +7285,29 @@ commit 965fbb563ce2c3608a5d312d976d58f31b248acf (before the diagnostic alignment
 above). Includes Chromium/WebKit product checks, review storage, tool/MCP,
 settings, update, offline and installed-PWA acceptance. No physical-device or
 real-model performance claim follows from this CI result.
+
+2026-11-01 — Actual sidebar runtime-phase receipt acceptance.
+Updated the existing Windows Chrome 156 sidebar at 127.0.0.1:4184 through the
+app Update control to build dd3068aa06e961fe (index-D7UyudMT.js), then restored
+application Offline. Existing dialogue/original retained; no new model/profile.
+Bonsai 4B revision 8d6557168168f91ea6697a4a49ed2ef622b53adb, runtime
+621e20782f208660f4f58283c2ce58430020f243 answered the existing QA-agent-current
+original correctly. Source opened the exact original v1. Activity recorded one
+model call, 584 prompt tokens, 26 output tokens, countMs 16.86,
+runtimeDecodeMs 2626.49, runtimeCachedTokens 0 and generationWallMs 35931.12.
+Prefill was not reported and remains absent. The difference is not automatically
+prefill time; no hardware placement or before/after speedup is proven. Load was
+observed separately before Generating. No duplicate answer note was saved.
+Application Offline is not browser network isolation or physical iOS evidence.
+
+2026-11-01 — Pinned WebML timing definition inspection.
+Fetched the manifest-pinned 2,208,435-byte runtime into process memory and checked
+SHA-256 00c1a72a962a84fee17000a6b1d18b24d75033e56d59996fc504b7c57cfc6488.
+Its generation method sets k when the first generated token arrives, then reports
+ttft_ms=(k||end)-start and decode_ms=k?end-k:0. It emits no prefill_ms.
+TTFT includes setup/input processing and the first token; it is not exclusively
+GPU prefill or first user-visible answer text. Answer inference receipts now also
+retain cumulative reported runtimeTtftMs, like other phase sums across attempts.
+Resolved-action/conversation tests 212/212 and TypeScript passed. Live-model
+receipt acceptance of this additional field is pending; no speedup claim.
+TTFT follow-up packaging: product build a7b89e70cae4a207 (163 verified assets) and app acceptance 8/8 passed; diff whitespace check passed.

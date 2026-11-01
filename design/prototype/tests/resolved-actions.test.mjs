@@ -58,12 +58,12 @@ function fixture(overrides={}){
 test('generated answer activity retains measured inference only and leaves answer bytes in the dialogue result',async()=>{
  let savedActivity;
  const trace=async(tool,input,work,project=value=>value)=>{const result=await work();if(tool==='knowledge.answer')savedActivity={input,output:project(result)};return result;};
- const f=fixture({trace});f.engine.generate=async()=>({text:'A private answer body.',outputTokens:7,metrics:{runtimePromptTokens:44,countMs:2.5,runtimePrefillMs:12,runtimeDecodeMs:30,runtimeCachedTokens:0}});
+ const f=fixture({trace});f.engine.generate=async()=>({text:'A private answer body.',outputTokens:7,metrics:{runtimePromptTokens:44,countMs:2.5,runtimeTtftMs:15,runtimePrefillMs:12,runtimeDecodeMs:30,runtimeCachedTokens:0}});
  const result=await f.actions.answer({model:'test',question:'Say hello.',mode:'chat',scope:{kind:'conversation'}});
  assert.equal(result.answer,'A private answer body.');assert.equal('inference' in result,false);
  assert.equal(savedActivity.output.sourceCount,0);assert.deepEqual(savedActivity.output.inference.measuredModelCalls,1);
  assert.equal(savedActivity.output.inference.promptTokens,44);assert.equal(savedActivity.output.inference.outputTokens,7);
- assert.equal(savedActivity.output.inference.runtimePrefillMs,12);assert.equal(savedActivity.output.inference.runtimeDecodeMs,30);assert.equal(savedActivity.output.inference.runtimeCachedTokens,0);assert.ok(savedActivity.output.inference.countMs>=2.5);assert.ok(savedActivity.output.inference.generationWallMs>0);
+ assert.equal(savedActivity.output.inference.runtimeTtftMs,15);assert.equal(savedActivity.output.inference.runtimePrefillMs,12);assert.equal(savedActivity.output.inference.runtimeDecodeMs,30);assert.equal(savedActivity.output.inference.runtimeCachedTokens,0);assert.ok(savedActivity.output.inference.countMs>=2.5);assert.ok(savedActivity.output.inference.generationWallMs>0);
  assert.equal(JSON.stringify(savedActivity.output).includes(result.answer),false);assert.equal('sources' in savedActivity.output,false);
 });
 
