@@ -38,7 +38,7 @@ test('a question naming one cited note checks its value against that note, not a
  assert.throws(()=>checkAnswerConsistency('How much water is in Alpha reserve?','Alpha reserve contains 29 litres.',evidence),/conflicts with cited quantity/i);
  // A multi-source comparison remains supported when the request names both
  // notes; this guard does not infer which amount belongs to which prose label.
- assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','17 litres and 29 litres.',evidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','Alpha reserve contains 17 litres; Beta reserve contains 29 litres.',evidence));
 });
 
 test('named notes in a multi-source comparison keep each explicitly labelled quantity with its own source',()=>{
@@ -47,15 +47,15 @@ test('named notes in a multi-source comparison keep each explicitly labelled qua
   {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
  ];
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','Alpha reserve: 17 litres; Beta reserve: 29 litres.',evidence));
- assert.throws(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','Alpha reserve: 29 litres; Beta reserve: 17 litres.',evidence),/conflicts with cited quantity/i);
+  assert.throws(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','Alpha reserve: 29 litres; Beta reserve: 17 litres.',evidence),/conflicts with cited quantity|not bound to their source/i);
  // When the generated prose does not bind a value to a title, do not guess
  // which of the two values belongs to which note.
- assert.doesNotThrow(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','The amounts are 17 litres and 29 litres.',evidence));
+ assert.throws(()=>checkAnswerConsistency('Compare Alpha reserve and Beta reserve water volumes.','The amounts are 17 litres and 29 litres.',evidence),/not bound to their source/i);
  const japanese=[
   {noteId:'aoba',title:'青葉備蓄',quote:'青葉備蓄の飲料水は17リットルです。'},
   {noteId:'midorikawa',title:'緑川備蓄',quote:'緑川備蓄の飲料水は29リットルです。'},
  ];
- assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄は29リットル、緑川備蓄は17リットルです。',japanese),/conflicts with cited quantity/i);
+  assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄は29リットル、緑川備蓄は17リットルです。',japanese),/conflicts with cited quantity|not bound to their source/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄は17リットル、緑川備蓄は29リットルです。',japanese));
 });
 
@@ -74,9 +74,9 @@ test('a comparison can bind answer quantities to cited note titles even when the
   {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
   {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
  ];
- assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 29 litres; Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity/i);
+  assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 29 litres; Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity|not bound to their source/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 17 litres; Beta reserve contains 29 litres.',evidence));
- assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 29 litres, while Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity/i);
+  assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 29 litres, while Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity|not bound to their source/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 17 litres, while Beta reserve contains 29 litres.',evidence));
  // Separating prose commas must not split grouped numeric values.
  const grouped=[
@@ -84,7 +84,7 @@ test('a comparison can bind answer quantities to cited note titles even when the
   {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 2,000 litres of water.'},
  ];
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 1,000 litres, while Beta reserve contains 2,000 litres.',grouped));
- assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 2,000 litres, while Beta reserve contains 1,000 litres.',grouped),/conflicts with cited quantity/i);
+  assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 2,000 litres, while Beta reserve contains 1,000 litres.',grouped),/conflicts with cited quantity|not bound to their source/i);
 });
 
 test('explicit title-bound water comparisons must agree with unique cited amounts',()=>{

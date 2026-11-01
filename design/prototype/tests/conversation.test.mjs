@@ -836,10 +836,13 @@ test('a stored-knowledge answer with evidence cannot accept an uncited claim cop
 });
 
 test('grounded answers cannot change an explicitly requested water amount while citing the exact source',async()=>{
- const note=createNote({body:'The saved water reserve contains 17 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0;
- const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'The reserve contains 18 litres.',sources:['S1']})};}};
+ const note=createNote({body:'The saved water reserve contains 17 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0,seen=[];
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{seen.push(messages);calls++;return {text:JSON.stringify({status:'answered',answer:calls===1?'The reserve contains 18 litres.':'The reserve contains 17 litres.',sources:['S1']})};}};
+ const result=await groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the saved reserve?',query:'water reserve amount',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}});
+ assert.equal(calls,2,'one mismatched draft gets one bounded correction attempt');assert.equal(result.answer,'The reserve contains 17 litres.');assert.match(seen[1][0].content,/failed a deterministic source-consistency check/i);
+ calls=0;runtime.generate=async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'The reserve contains 18 litres.',sources:['S1']})};};
  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the saved reserve?',query:'water reserve amount',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
- assert.equal(calls,1,'a directly contradictory value must fail closed without generating an alternate answer automatically');
+ assert.equal(calls,2,'a second contradictory draft fails closed');
 });
 
 test('a named-note quantity cannot borrow a matching value from another cited note',async()=>{
@@ -854,15 +857,18 @@ test('a named-note quantity cannot borrow a matching value from another cited no
  const accepted=await groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in Alpha reserve?',query:'water',scope:{kind:'knowledge'}});
  assert.equal(accepted.answer,answer);assert.deepEqual(accepted.sources.map(source=>source.noteId),[alpha.id,beta.id]);
  answer='Alpha reserve: 29 litres; Beta reserve: 17 litres.';
- await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in Alpha reserve and Beta reserve.',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
+  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in Alpha reserve and Beta reserve.',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity|not bound to their source/i);
  answer='Alpha reserve: 17 litres; Beta reserve: 29 litres.';
  const comparison=await groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in Alpha reserve and Beta reserve.',query:'water',scope:{kind:'knowledge'}});
  assert.equal(comparison.answer,answer);assert.deepEqual(comparison.sources.map(source=>source.noteId),[alpha.id,beta.id]);
  answer='Alpha reserve contains 29 litres; Beta reserve contains 17 litres.';
- await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in the cited reserves.',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
- answer='Alpha reserve contains 17 litres; Beta reserve contains 29 litres.';
+  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in the cited reserves.',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity|not bound to their source/i);
+ answer='The amounts are 17 litres and 29 litres.';
+ const comparisonReplies=['The amounts are 17 litres and 29 litres.','Alpha reserve contains 17 litres; Beta reserve contains 29 litres.'];let comparisonCalls=0;
+ runtime.generate=async()=>({text:JSON.stringify({answer:comparisonReplies[comparisonCalls++]??comparisonReplies.at(-1),sources:['S1','S2']})});
  const unnamedComparison=await groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in the cited reserves.',query:'water',scope:{kind:'knowledge'}});
- assert.equal(unnamedComparison.answer,answer);assert.deepEqual(unnamedComparison.sources.map(source=>source.noteId),[alpha.id,beta.id]);
+  assert.equal(unnamedComparison.answer,'Alpha reserve contains 17 litres; Beta reserve contains 29 litres.');assert.deepEqual(unnamedComparison.sources.map(source=>source.noteId),[alpha.id,beta.id]);assert.equal(comparisonCalls,2);
+  runtime.generate=async()=>({text:JSON.stringify({answer,sources:['S1','S2']})});
  answer='Beta reserve contains less water than Alpha reserve.';
  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'Compare the water volumes in the cited reserves.',query:'water',scope:{kind:'knowledge'}}),/comparison conflicts/i);
  answer='Beta reserve contains more water than Alpha reserve.';
@@ -1475,10 +1481,10 @@ test('grounded comparison rejects reversed title-bound volumes separated by an E
  const refs=[a,b].map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body,title:note.revisions[0].title}));let calls=0,reverse=true;
  const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async()=>{calls++;return {text:JSON.stringify({answer:reverse?'Alpha reserve contains 29 litres, while Beta reserve contains 17 litres.':'Alpha reserve contains 17 litres, while Beta reserve contains 29 litres.',sources:['S1','S2']})};}};
  const request={model:'test',question:'Compare the water volumes in the cited reserves.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true}};
- await assert.rejects(groundedAnswer({store:{all:async()=>[a,b],search:async()=>[]},engine:runtime},request),/conflicts with cited quantity/i);
- assert.equal(calls,1,'a rejected claim is not silently regenerated or rewritten');
+ await assert.rejects(groundedAnswer({store:{all:async()=>[a,b],search:async()=>[]},engine:runtime},request),/conflicts with cited quantity|not bound to their source/i);
+ assert.equal(calls,2,'a reversed claim receives one correction attempt, then fails closed');
  reverse=false;const accepted=await groundedAnswer({store:{all:async()=>[a,b],search:async()=>[]},engine:runtime},request);
- assert.match(accepted.answer,/Alpha reserve contains 17 litres, while Beta reserve contains 29 litres/);assert.deepEqual(accepted.sources.map(source=>source.noteId),[a.id,b.id]);assert.equal(calls,2);
+ assert.match(accepted.answer,/Alpha reserve contains 17 litres, while Beta reserve contains 29 litres/);assert.deepEqual(accepted.sources.map(source=>source.noteId),[a.id,b.id]);assert.equal(calls,3);
 });
 
 test('citation repair binds multiple source labels to exact host-held revisions and ranges',async()=>{

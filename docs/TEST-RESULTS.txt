@@ -1,3 +1,14 @@
+2026-11-01 — Multi-source citation binding and bounded answer correction.
+Numeric comparisons across titled sources now need each value bound to the
+exact source title in its own sentence/clause. Ambiguous unlabeled lists are
+rejected, and the grounded-answer route gets one correction attempt with the
+same evidence; a still-conflicting/ambiguous answer is not returned or offered
+for save. Windows PC checks: answer/conversation 209/209, prototype 1,676/1,676,
+root 250/250, submission 86/86, app acceptance 8/8, `npm run check`, production
+build with 163 verified shell assets. No model was downloaded and no user or
+production data was changed. This does not measure live-model correction quality
+or establish general semantic entailment.
+
 2026-11-01 — LFM3 preflight disclosure and complete clean-checkout CI.
 The LFM3 route now reports that CPU/WASM fallback may be tried when WebGPU is
 unavailable; other WebGPU routes do not imply this fallback. Focused device

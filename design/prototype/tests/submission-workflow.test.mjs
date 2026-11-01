@@ -291,7 +291,7 @@ test('agent file lookup uses canonical discovery instead of reciting an earlier 
  ];
  f.services.builtinToolRegistry=createToolRegistry(f.services.builtinToolPackages);
  f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.search','memory.read'],maxToolCalls:null,maxResultChars:8000};
- const body='Alpha meets in Cedar Hall with 17 litres; Beta meets in Riverside Park with 9 litres.';
+  const body='Inbox/alpha.md: Cedar Hall with 17 litres; Inbox/beta.md: Riverside Park with 9 litres.';
  const responses=[
   {action:'tool_batch',calls:[{tool:'memory.search',arguments:{query:'alpha.md'}},{tool:'memory.search',arguments:{query:'beta.md'}}]},
   {action:'tool_batch',calls:[{tool:'memory.read',arguments:{query:a.id}},{tool:'memory.read',arguments:{query:b.id}}]},

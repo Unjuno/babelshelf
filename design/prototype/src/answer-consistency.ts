@@ -39,7 +39,9 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    return nearestWater<=nearestOther;
   });
  };
- if(volumeQuestion){
+ const hasMeasuredWaterEvidence=sourceRows.some(source=>volumeMeasures(source.quote!,true).length>0);
+ const comparisonQuestion=/(?:\bcompar(?:e|ison)\b|比較|比べ|比べて)/iu.test(q);
+ if(volumeQuestion||comparisonQuestion&&hasMeasuredWaterEvidence){
   const titleCandidates=new Map<string,{noteId:string;title:string;values:number[]}[]>();
   for(const source of sourceRows){
    if(!source.noteId||!source.title?.trim())continue;
@@ -88,6 +90,22 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    clauses.push(text.slice(start));return clauses.map(value=>value.trim()).filter(Boolean);
   };
   const sentenceMatches=answerClauses(a).map(text=>({text,start:0}));
+  // A comparison that lists multiple distinct source values without naming
+  // which note each value belongs to is not verifiably ordered. Ask the model
+  // to label the values instead of silently accepting a potentially swapped
+  // comparison merely because both numbers occur somewhere in the citations.
+  const distinctNamedVolumes=new Set([...titleCandidates.values()].flatMap(candidates=>candidates.length===1&&new Set(candidates[0].values).size===1?candidates[0].values:[]));
+  if(comparisonQuestion&&titleCandidates.size>1&&distinctNamedVolumes.size>1&&new Set(answerVolumes).size>1){
+   const clauseBindings=new Set<string>();
+   for(const clause of sentenceMatches.map(sentence=>sentence.text)){
+    const spans=titleSpans(clause),measures=volumeMeasures(clause);
+    if(spans.length!==1||!spans[0].candidate||!measures.length)continue;
+    const candidate=spans[0].candidate,uniqueValue=[...new Set(candidate.values)];
+    if(uniqueValue.length===1&&measures.every(measure=>sameVolume(measure.value,uniqueValue[0])))clauseBindings.add(candidate.noteId);
+   }
+   const comparisonSources=[...titleCandidates.values()].filter(candidates=>candidates.length===1&&new Set(candidates[0].values).size===1).map(candidates=>candidates[0]);
+   if(comparisonSources.length>1&&comparisonSources.some(source=>!clauseBindings.has(source.noteId)))throw Error('Comparison values are not bound to their source notes · try again');
+  }
   for(const sentence of sentenceMatches){
    const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
    const [first,second]=spans;
