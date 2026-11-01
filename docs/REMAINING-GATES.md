@@ -4,6 +4,12 @@ Public v290 now contains application025607d: build913f7ca47a41241a/index-G8Gwnnh
 
 Latest public v289 unpinned saved-material replay completed search → Japanese answer → matching saved-answer v1 citation → unchanged save review (cancelled, no duplicate note). Cached Bonsai4B: load26.593s; three model calls2249prompt/79output,101.3s aggregate generation; final630prompt/38output,19.077s generation,15.266sTTFT,3.810sdecode,cached0. Search45ms. This supports investigating planner/prefill overhead before speculative kernel changes; it does not prove a GPU bottleneck or primary-original provenance. Detailed evidence remains in TEST-RESULTS.txt. Model/session reuse already exists; repeated model loading is not established as the cause.
 
+Citation follow-through remains an actual-model gate: memory.sources exposes revision-checked metadata, and memory.read must read the original text before it can become answer evidence. Existing controlled tests cover changed-original status, no promotion of metadata to citations, smaller pages, and snapshot invalidation. The latest public replay cited a saved answer and did not exercise that tool chain; do not count it as primary-original verification.
+
+Latency, prior grounded instruction-following failures, physical-device performance/offline restart, and real quota/eviction behavior remain open. This is not release-complete. Next work must verify model-selected provenance navigation and reduce measured orchestration/prefill cost without weakening source or approval boundaries.
+
+## Earlier checkpoints (historical; not the current status)
+
 Public v289 follow-up: prose continuations now respect custom-model output caps and reject invalid tokenizer counts before generation. Shared count validation also covers evidence packing and citation repairs. Late router generation completions after abort/unload are also rejected. Prototype1751/app8/build2e32709bcc9aad04 pass; CI41335227459 passed all stages. Site289 is public; sidebar Update adopted index-__9IIVr2.js/build2e32709bcc9aad04 with retained history and returned appOffline. This is not a measured speed improvement.
 
 Public v288 follow-up: generic dialogue history now scales to 42% of the selected context instead of min(850,42%). Exact total counting and 512-token reply reserve remain. Controlled 8192-context test avoids unnecessary model compaction above850 tokens; no real-model speedup is claimed. Prototype1747/1747, app8/8 and build546f0f1936500d52 pass. CI41333230189 passed all stages. Site288 is deployed; sidebar Update adopted index-DmgXQouA.js without storage reset, retained dialogue and returned app Offline. Site287 measurements below remain historical, not a v288 speed measurement.
@@ -17,8 +23,6 @@ A subsequent desert-library story visibly streamed from “The sun” to a growi
 Latency remains inadequate: repeated context/planning calls dominate this sample. No intervention-based GPU speedup or physical iPhone/Android/macOS acceptance is established. Prior grounded-answer instruction-following failures remain open. Next work should reduce avoidable orchestration/compaction work, then measure runtime optimizations separately from task latency. Preserve existing data and do not repeat fixture-specific prompt tuning.
 
 This is not release-complete. Use dated receipts below for historical evidence.
-
-## Earlier checkpoints (historical; not the current status)
 
 Earlier sidebar save-review run adopted build59393616b2cea3cd/index-CXv6ShF1.js; the newer5f0d165f57588d35 timing run is recorded in TEST-RESULTS.txt. With no selected file, cached LFM3 Q4 and app Offline, a natural saved-material question completed search → answer → exact cited-v1 preview → unchanged save review. Unrelated history compaction no longer blocked this request. The source was an existing saved answer, not a newly verified chain to the first original. Save review was cancelled to avoid duplicate QA notes. Activity measured2 model calls and129.8s aggregate generation; latency remains inadequate. LFM3 Q4 remains selected. Earlier original-citation → approved-save → reopen evidence is historical, not a claim that this latest replay persisted a new file. Physical offline restart, device compatibility and broad quality are still unverified.
 
