@@ -42,6 +42,10 @@ jobs:
         run: npm ci
       - name: Install Chromium and WebKit for real browser checks
         run: npm --prefix design/prototype exec -- playwright install --with-deps chromium webkit
+      - name: App update protocol acceptance
+        # This fixture uses production source and synthetic assets, not a build.
+        # Fail early on update integrity before the longer UI acceptance suite.
+        run: npm run test:quality:app-update
       - name: Build prototype packaging fixtures
         run: npm run build:prototype
       - name: Core tests, static checks, production build and acceptance
@@ -76,8 +80,7 @@ jobs:
           npm run test:quality:editorial
           npm run test:ios-handoff:built
           npm run test:ios-handoff:webkit:built
-      - name: App update, offline and installed PWA acceptance
+      - name: Offline and installed PWA acceptance
         run: |
-          npm run test:quality:app-update
           npm run test:quality:offline
           npm run test:quality:installed-pwa
