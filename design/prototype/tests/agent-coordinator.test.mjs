@@ -35,7 +35,7 @@ test('legacy query failure gets one audited model-directed repair without copyin
  value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
  const result=await coordinateAgentTurn(value);
  assert.equal(result.final.action,'answer');assert.equal(result.final.target,'file');assert.equal(prompts.length,2);assert.deepEqual(calls,[]);
- assert.match(prompts[1][0].content,/missing or invalid query.*rejected without execution/i);
+ assert.match(prompts[1].filter(message=>message.role==='system').map(message=>message.content).join('\n'),/missing or invalid query.*rejected without execution/i);
  assert.doesNotMatch(JSON.stringify(prompts[1]),/PRIVATE_REJECTED_CONTENT/);
  assert.deepEqual(receipts.filter(r=>r.status!=='running').map(r=>r.status),['failed','succeeded']);
 });

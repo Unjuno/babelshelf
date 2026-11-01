@@ -2079,3 +2079,16 @@ test('legacy answer generation receives successful custom output as transient op
  await assert.rejects(groundedAnswer({store,engine:runtime},{...request,toolEvidence:{...request.toolEvidence,completedToolIds,customResults:[]}}),/No matching notes/,'completed identities alone cannot invent result evidence');
  assert.equal(generations,1);
 });
+
+test('legacy query repair preserves the stable planner prefix and adds only application feedback',()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0};
+ const question='Find the requested item, excluding the location.';
+ const agent={allowedTools:[],history:[],maxToolCalls:3};
+ const initial=planDialogueMessages(question,context,[],agent);
+ const repaired=planDialogueMessages(question,context,[],{...agent,queryRejected:true});
+ assert.deepEqual(repaired.slice(0,-2),initial.slice(0,-1),'repair must not invalidate the static system and retained-context prefix');
+ assert.equal(repaired.at(-2).role,'system');
+ assert.match(repaired.at(-2).content,/Current execution status \(application-owned\).*missing or invalid query/);
+ assert.deepEqual(repaired.at(-1),initial.at(-1),'current request stays intact and last');
+ assert.doesNotMatch(initial[0].content,/missing or invalid query/);
+});
