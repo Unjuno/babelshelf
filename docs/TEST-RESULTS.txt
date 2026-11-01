@@ -7271,3 +7271,17 @@ these fields are runtime reports, not GPU hardware proof or measured speedup.
 Focused Worker/conversation/resolved-action checks 223/223, TypeScript, static
 checks, product build fb71ce760d33036c and app acceptance 8/8 passed. Live-model
 acceptance of the new measurements and cross-device performance remain open.
+
+2026-11-01 — Diagnostic/runtime numeric validation alignment.
+Saved device reports now reuse safeRuntimeMetrics for scalar bounds instead of
+accepting all nonnegative numbers. Fractional token/thread/layer counters and
+out-of-range thread/GPU-layer counts are rejected, while fractional durations
+and valid zero counters remain supported. Existing model/knowledge data is not
+rewritten. Device diagnostic/text-inference regressions 51/51, TypeScript,
+product build dd3068aa06e961fe and app acceptance 8/8 passed on Windows Node.
+These checks validate report integrity, not hardware performance or phone fit.
+Clean-checkout CI checkpoint: 41295269174 passed all stages in 10m34s on exact
+commit 965fbb563ce2c3608a5d312d976d58f31b248acf (before the diagnostic alignment
+above). Includes Chromium/WebKit product checks, review storage, tool/MCP,
+settings, update, offline and installed-PWA acceptance. No physical-device or
+real-model performance claim follows from this CI result.

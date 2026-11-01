@@ -271,3 +271,14 @@ test('unrelated and historical cache buckets cannot pass the current-build cache
  assert.equal((await check('Unknown',['babelshelf-product-Unknown'])).status,'warning');
  assert.equal((await check(env.appBuild,[])).status,'warning');
 });
+
+
+test('saved diagnostic counters obey the same integer bounds as runtime metrics',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt'}};
+ for(const runtimeMetrics of [{runtimeThreads:0},{requestedThreads:65},{runtimeThreads:1.5},{runtimePromptTokens:.5},{runtimeCachedTokens:.5},{runtimeObservedGpuLayers:1025},{runtimeObservedGpuTotalLayers:.5}]){
+  assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,runtimeMetrics}})),/Invalid/);
+ }
+ const runtimeMetrics={runtimeThreads:64,runtimeObservedGpuLayers:0,runtimeObservedGpuTotalLayers:1024,runtimeCachedTokens:0,runtimePrefillMs:.5};
+ writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,runtimeMetrics}}));
+ assert.deepEqual(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics,runtimeMetrics);
+});

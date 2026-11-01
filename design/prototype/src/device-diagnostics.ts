@@ -1,5 +1,5 @@
 import type {DeviceTestMode} from './device-model-test.ts';
-import {safeRuntimeLoadMetrics,type RuntimeLoadMetrics,type RuntimeGenerationMetrics} from './text-inference.ts';
+import {safeRuntimeMetrics,safeRuntimeLoadMetrics,type RuntimeLoadMetrics,type RuntimeGenerationMetrics} from './text-inference.ts';
 export type DiagnosticCheck={id:string;status:'pass'|'fail'|'warning'|'not-run';detail:string};
 export type ModelGenerationDiagnostic={status:'pass'|'fail'|'not-run'|'stopped'|'interrupted';testMode?:DeviceTestMode;quantization?:string;workload?:'ready-v1'|'prose-128-v1';inputTokens?:number;maxOutputTokens?:number;loadState?:'already-loaded'|'loaded-for-test'|'not-loaded';failureStage?:'load'|'runtime-setup'|'model-load'|'count'|'generation'|'output-validation'|'unload';model:string;modelRevision:string;runtimeRevision:string;loadDurationMs?:number;loadMetrics?:RuntimeLoadMetrics;durationMs?:number;outputTokens?:number;tokensPerSecond?:number;answerCharacters?:number;failureType?:string;runtimeMetrics?:RuntimeGenerationMetrics};
 export type SelectedModelDiagnostic={id:string;revision:string;engine?:string;backend?:'webgpu'|'cpu-wasm';runtimeRevision:string;filesPresent:boolean;loaded:boolean};
@@ -45,7 +45,7 @@ const validRuntimeMetrics=(value:unknown):value is RuntimeGenerationMetrics=>{
   if(!allowed.has(key))return false;
   if(key==='memoryBefore'||key==='memoryAfter'){
    if(!entry||typeof entry!=='object'||Array.isArray(entry)||Object.keys(entry).length>16||Object.entries(entry).some(([name,n])=>!/^[A-Za-z][A-Za-z0-9_]{0,31}$/.test(name)||typeof n!=='number'||!Number.isFinite(n)||n<0||n>Number.MAX_SAFE_INTEGER))return false;
-  }else if(typeof entry!=='number'||!Number.isFinite(entry)||entry<0||entry>Number.MAX_SAFE_INTEGER)return false;
+  }else if((safeRuntimeMetrics({[key]:entry}) as Record<string,unknown>|undefined)?.[key]!==entry)return false;
  }
  return true;
 };
