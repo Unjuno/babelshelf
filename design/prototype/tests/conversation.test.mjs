@@ -2236,7 +2236,7 @@ test('stopped prose rejects late previews and never returns a saveable answer',a
 
 test('fully archived dialogue recompresses its summary once against the actual consumer budget',async()=>{
  const prior={...emptyDialogue(),turns:[{id:'old',user:'Keep AMBER-42.',answer:'Noted.'}],compaction:{through:1,summary:'Long working summary. '.repeat(50)}},before=structuredClone(prior);let calls=0;
- const runtime={...engine(),generate:async(messages,limit,format)=>{calls++;assert.equal(format,'prose');assert.ok(limit<768);assert.match(messages.at(-1).content,/untrusted data/);return {text:'Keep AMBER-42.',finishReason:'stop'};}};
+ const runtime={...engine(),generate:async(messages,limit,format)=>{calls++;assert.equal(format,'prose');assert.equal(limit,768);assert.match(messages.at(-1).content,/untrusted data/);return {text:'Keep AMBER-42.',finishReason:'stop'};}};
  const result=await compactDialogue(prior,runtime,'A short question',()=>{},async context=>context.summary.length<100);
  assert.equal(calls,1);assert.equal(result.compaction.through,1);assert.equal(result.compaction.summary,'Keep AMBER-42.');assert.deepEqual(result.turns,before.turns);assert.deepEqual(prior,before);
 });
@@ -2261,4 +2261,15 @@ test('summary-only recovery also rechecks the generic history quota with the res
  const prior={...emptyDialogue(),turns:[{id:'old',user:'Keep AMBER-42.'}],compaction:{through:1,summary:'A'.repeat(3500)}},before=structuredClone(prior);let calls=0;
  const result=await compactDialogue(prior,{...engine(),generate:async()=>{calls++;return {text:'Keep AMBER-42.',finishReason:'stop'};}},'Hello');
  assert.equal(calls,1);assert.equal(result.compaction.summary,'Keep AMBER-42.');assert.deepEqual(prior,before);
+});
+
+
+test('summary rewrite completion reserve respects the exact input window and model output limit',async()=>{
+ const prior={...emptyDialogue(),turns:[{id:'old',user:'Original'}],compaction:{through:1,summary:'An overlong working summary.'}},before=structuredClone(prior);
+ for(const [inputTokens,modelLimit,expected] of [[1900,768,148],[100,96,96]]){
+  let calls=0;
+  const runtime={...engine(),manifest:{contextTokens:2048,maxOutputTokens:modelLimit},count:async()=>({prompt_tokens:inputTokens}),generate:async(_messages,limit)=>{calls++;assert.equal(limit,expected);return {text:'Original.',finishReason:'stop'};}};
+  const result=await compactDialogue(prior,runtime,'Hi',()=>{},async context=>context.summary.length<15);
+  assert.equal(calls,1);assert.equal(result.compaction.summary,'Original.');assert.deepEqual(prior,before);
+ }
 });
