@@ -1,3 +1,16 @@
+2026-11-01 — Overlapping citation-title binding and clean-checkout CI.
+Citation consistency now prefers the longest exact title span when one cited
+title contains another (for example, `Alpha` and `Alphabet reserve`). A question
+that explicitly asks for the longer title can no longer bind an answer quantity
+to the shorter substring. Duplicate titles and ambiguous multi-value sources
+remain unchecked rather than guessed. The focused answer-consistency suite passed
+11/11, the complete prototype suite passed 1,666/1,666, `npm run check` passed,
+the production build verified 163 assets, and app acceptance passed 8/8 on
+Windows PC. GitHub Actions Local PWA quality run `41272380005` passed all 17
+workflow steps in 9m29s on commit `1aa9f5d9e018f027d5d43e752a2c257b402f1dc0`.
+This does not establish general semantic entailment, live-model retry behavior,
+or phone/device performance.
+
 2026-11-01 — Activity model-call accounting and clean-checkout CI.
 The Activity rollup counts model calls only from receipts that explicitly report
 `measuredModelCalls`. A successful plan receipt or token-count/timing metadata
