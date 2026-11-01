@@ -7400,3 +7400,10 @@ Added regressions for source-label repair with guidance and verbatim recovery wi
 - Removed duplicated summary boilerplate. Citation parser, immutable refs, write review and normal-answer instruction remain unchanged.
 - Conversation204/204, build:app (TypeScript) passed build44804e8720f47b1d, product acceptance8/8, diff check passed.
 - This validates instruction propagation only. Real-model refusal/language/latency improvement is NOT yet established; previous failed run remains the current behavioral evidence.
+
+2026-11-01 real-model follow-up on summary contract (6c890cc)
+- Existing IAB localhost4184 updated to build44804e8720f47b1d / index-DUUGIaMM.js, then restored app Offline. Same pinned QA-agent-current v1 and exact one-sentence Japanese request; no settings/model substitution or original edits.
+- FAIL persists: identical English placeholder refusal, insufficient_evidence, no citations. No save performed. This does not validate semantic improvement; avoid further fixture-specific prompt tuning.
+- Activity confirmed read-completion selected summary and Answer input mode summary. Text model4B revision8d6557168168f91ea6697a4a49ed2ef622b53adb runtime621e20782f208660f4f58283c2ce58430020f243.
+- Total2model calls,2196observed prompt tokens,89generated tokens,29mscounting,99.7sgeneration,one tool12ms. Answer stage:1call,695prompt,54output,9.395mscount,15872.56msTTFT,5488.57msdecode,21362.17msgeneration,0cached tokens. Total minus answer is not an isolated benchmark but indicates most generation time occurred before final answer.
+- Screenshots reused current-sidebar-metrics.jpg and current-sidebar-generating.jpg. Previous failed run retained in this text log; no new folders/profiles.
