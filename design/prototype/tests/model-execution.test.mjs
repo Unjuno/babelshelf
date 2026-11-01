@@ -32,3 +32,12 @@ test('a resolved Load without an actual resident cannot claim successful Text or
  const f=setup();f.text.load=async()=>{};await assert.rejects(f.manager.loadText('t',()=>{}),/did not load/);
  f.decision.loaded=false;f.decision.load=async()=>({loaded:false});await assert.rejects(f.manager.decision(()=>{}),/did not load/);
 });
+
+
+test('automatic model acquisition retains bounded load evidence for the activity receipt',async()=>{
+ const f=setup(),load=f.text.load;let receipt;
+ f.text.load=async id=>{await load(id);return {executionBackend:'webgpu',runtimeLoadMs:23,totalLoadMs:31,verificationMs:-1,importMs:Infinity,privateAdapter:'not retained'};};
+ await f.manager.text('t',()=>{},async work=>{receipt=await work();return receipt;});
+ assert.deepEqual(receipt,{loaded:'t',metrics:{runtimeLoadMs:23,totalLoadMs:31,executionBackend:'webgpu'}});
+ let reloads=0;await f.manager.text('t',()=>{},async work=>{reloads++;return work();});assert.equal(reloads,0);
+});

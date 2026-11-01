@@ -1,4 +1,4 @@
-import {checkTextStorageStatus,type TextRuntime} from './text-inference.ts';
+import {checkTextStorageStatus,safeRuntimeLoadMetrics,type TextRuntime} from './text-inference.ts';
 import {releaseIdleInference} from './inference-ownership.ts';
 import {runtimeRoleForModelEngine,type ProductRuntimeRole} from './product-runtime-assets.ts';
 import {ModelPreparationRequired} from './execution-result.ts';
@@ -25,7 +25,7 @@ export function createModelExecutionManager<D extends Decision>(ports:{text:Text
  const loadText=async(model:string|undefined,check:()=>void,options:{allowNetwork?:boolean}={},runtimeReady=false)=>{
   check();const selected=requireText(model);
   if(!runtimeReady)await ensureTextRuntime(selected,options.allowNetwork===true);
-  check();await ports.text.load(selected);check();if(ports.text.loaded!==selected)throw Error('Text model did not load');return {loaded:selected};
+  check();const metrics=safeRuntimeLoadMetrics(await ports.text.load(selected));check();if(ports.text.loaded!==selected)throw Error('Text model did not load');return {loaded:selected,...(metrics?{metrics}:{})};
  };
  return {
   async loadText(model:string|undefined,check:()=>void,options:{allowNetwork?:boolean}={}){
