@@ -1,3 +1,7 @@
+# Public v284 — summary-only compaction recovery (2026-11-02 JST)
+
+Build `ff03e4651d043cfb`, entry `index-DH2DTzXl.js`, application `fe42c1bde7d9dc49b9d375bf8ed4303c191a2240`. Site source `eef85e78f915fc6e8d630b4e9525b369aaf2d3e4`; deployment `appgdep_6ae7709746cc81919ad466389e1a6507` succeeded. Public audience retained. Local prototype/product/build/delivery checks passed; CI41329161708 was still running at publication. Existing sidebar Update adopted the exact entry, retained dialogue, and returned Offline. Actual model evidence is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
+
 # Public v283 — prose streaming and generation budget (2026-11-02 JST)
 
 Build `6eeb45f414830f1d`, entry `index-BokLdPEt.js`, application `ac1a6aec044b388425f3c64a164e6975407c1aee`. Site source `3b9ce8d43b5fde4981616a23260f08d69b95fc2b`; deployment `appgdep_6ae76dc917d08191bfc00590919da9ac` succeeded. Public audience retained. Local prototype1735/product8/build/delivery checks passed; CI41328153600 was still running at publication. Existing sidebar Update adopted the exact entry and retained dialogue/input-file v1 before the conversation-stream check. Actual model evidence is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
