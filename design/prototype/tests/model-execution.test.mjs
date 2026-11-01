@@ -1,3 +1,4 @@
+import {DecisionClient} from '../src/decision-control.ts';
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createModelExecutionManager,ModelPreparationRequired} from '../src/model-execution.ts';
 function setup(){const events=[];let loaded='';let decisionLoaded=true;const text={get loaded(){return loaded;},busy:false,assets:{t:{filesPresent:true}},manifest:{models:[{id:'t',engine:'wllama-lfm2'}]},pin(){events.push('pin');return text;},async load(id){events.push('load:'+id);loaded=id;},async unload(){events.push('unload:text');loaded='';}};const decision={ready:true,enabled:true,get loaded(){return decisionLoaded;},set loaded(value){decisionLoaded=value;},busy:false,async load(){events.push('load:decision');decisionLoaded=true;return {loaded:true};},async unload(){events.push('unload:decision');decisionLoaded=false;}};const manager=createModelExecutionManager({text,decision,ensureRuntime:async(role,network)=>{events.push({role,network});}});return {manager,text,decision,events};}
@@ -47,4 +48,18 @@ test('Decision rejects a successful load receipt when no model is actually resid
  f.decision.load=async()=>({loaded:true});
  await assert.rejects(f.manager.decision(()=>{}),/Decision model did not load/);
  assert.equal(f.decision.loaded,false);
+});
+
+test('live Decision client retirement reaches Text acquisition without a redundant unload or stale reuse',async()=>{
+ const f=setup(),commands=[];let finishClassification;
+ const client=new DecisionClient(()=>({terminate(){commands.push('terminate');},postMessage(message){commands.push(message.type);const reply=()=>this.onmessage({data:{id:message.id,value:message.type==='load'?{loaded:true}:{answer:'observed'}}});if(message.type==='classify')finishClassification=reply;else queueMicrotask(reply);}}),()=>{});
+ const decision={enabled:true,ready:true,get loaded(){return client.loaded;},get busy(){return client.working;},load:()=>client.call('load'),unload:()=>client.call('unload')};
+ const manager=createModelExecutionManager({text:f.text,decision,ensureRuntime:async()=>{}});
+ await manager.decision(()=>{});assert.equal(decision.loaded,true);
+ const classify=client.call('classify');assert.equal(decision.busy,true);
+ await assert.rejects(manager.text('t',()=>{}),/busy/);
+ finishClassification();await classify;assert.equal(decision.loaded,false);assert.equal(decision.busy,false);
+ await manager.text('t',()=>{});assert.equal(f.text.loaded,'t');assert.deepEqual(commands,['load','classify','terminate']);
+ await manager.decision(()=>{});assert.equal(f.text.loaded,'');assert.equal(decision.loaded,true);
+ assert.deepEqual(commands,['load','classify','terminate','load']);client.dispose();
 });
