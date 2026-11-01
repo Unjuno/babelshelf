@@ -2,7 +2,11 @@
 
 Public v297: application e2b879d/build d022e5c3d748015a/index-mANsJy0c.js. CI41350643949 passed all stages. Deployment appgdep_6ae7adbef9b8819199ed30f367a8c482 succeeded; existing sidebar Refresh adopted the exact entry, retained conversation and QA-LFM3-source-check input reference, and returned to app Offline. Shared native reply guidance and full cached-input accounting are deployed. Actual post-change latency/prose quality and physical-device performance remain unverified.
 
-Latest public v296 sidebar LFM3 QAD Q4_0 sample completed memory.sources → memory.read → native answer → original-v1 citation → approved exact save. One QA note retained; original model selection restored. Three model calls383.3s; 1408 cached tokens on calls2/3, runtime reports25/25 GPU layers. Slow input processing and verbose internal IDs in the reply remain defects; this is not search-discovery or cross-device acceptance. See the dated LFM3 provenance entry in TEST-RESULTS.txt.
+Local follow-up 2e081d4: consecutive identical planner-fit checks are reused within one preparation only. Context19, conversation/planner222, root check and build06ed16be77948f25 pass; not deployed. Real-model latency benefit remains unmeasured.
+
+Prior public v296 sidebar LFM3 QAD Q4_0 sample completed memory.sources → memory.read → native answer → original-v1 citation → approved exact save. One QA note retained; original model selection restored. Three model calls383.3s; 1408 cached tokens on calls2/3, runtime reports25/25 GPU layers. Slow input processing and verbose internal IDs in the reply remain defects; this is not search-discovery or cross-device acceptance. See the dated LFM3 provenance entry in TEST-RESULTS.txt.
+
+## Earlier checkpoints (historical; not the current status)
 
 Public v296: build d44a00bdc3bc531f / index-D5Q4vgV3.js; CI41347653011 passed all stages on 8f03f3f. Deployment appgdep_6ae7a534c64c81918f024f0eea6da9c2 succeeded. Sidebar Update adopted the exact entry, preserved conversation, and returned to app Offline. Actual-model replay failed: both planner attempts chose recall/current with missing query; no tools, answer or save. See v296 replay in TEST-RESULTS.txt.
 
@@ -23,8 +27,6 @@ Changes: fresh Standard/Source first include memory.sources; stored profiles rem
 Performance evidence: latest completed v289 saved-material replay used cached Bonsai4B, three calls2249prompt/79output,101.3s aggregate generation; final630prompt/38output,19.077s generation,15.266sTTFT,3.810sdecode,cached0; search45ms. It cited a saved answer, not the primary original. Model/session reuse exists; repeated loading or GPU bottleneck is not established. Investigate planner/prefill overhead without changing trusted-message semantics merely for cache hits.
 
 Remaining: model-selected provenance navigation, grounded instruction following, latency, physical-device performance/offline restart and real quota/eviction behavior. Not release-complete. Detailed dated receipts are in TEST-RESULTS.txt; reuse existing QA artifacts and preserve data.
-
-## Earlier checkpoints (historical; not the current status)
 
 Public v289 follow-up: prose continuations now respect custom-model output caps and reject invalid tokenizer counts before generation. Shared count validation also covers evidence packing and citation repairs. Late router generation completions after abort/unload are also rejected. Prototype1751/app8/build2e32709bcc9aad04 pass; CI41335227459 passed all stages. Site289 is public; sidebar Update adopted index-__9IIVr2.js/build2e32709bcc9aad04 with retained history and returned appOffline. This is not a measured speed improvement.
 

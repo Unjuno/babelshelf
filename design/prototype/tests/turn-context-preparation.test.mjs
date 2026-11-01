@@ -196,3 +196,18 @@ test('identical planner fit candidates are counted once per preparation, never a
  await prepareTurnContext(input);assert.equal(calls,1);
  await prepareTurnContext(input);assert.equal(calls,2);
 });
+
+
+test('a stop while planner fit is pending cannot publish a prepared context or save history',async()=>{
+ const prior={schema:1,revision:1,turns:[],compaction:null},before=structuredClone(prior);let stopped=false,saves=0,calls=0;
+ await assert.rejects(()=>prepareTurnContext({prior,engine:fakeEngine(),question:'Hello',check(){if(stopped)throw Error('Stopped');},setProgress(){},currentDialogue:()=>prior,saveDialogue(){saves++;},trace:async(_tool,_input,work)=>work(),fitsPlanner:async()=>{calls++;stopped=true;return true;}}),/Stopped/);
+ assert.equal(calls,1);assert.equal(saves,0);assert.deepEqual(prior,before);
+});
+
+test('changed planner candidates are re-evaluated through compaction',async()=>{
+ const prior={schema:1,revision:1,turns:[{id:'a',user:'First',answer:'One'},{id:'b',user:'Second',answer:'Two'}],compaction:null},seen=[];let saved;
+ const context=await prepareTurnContext({prior,engine:fakeEngine(),question:'Continue',check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async next=>{saved=next;},trace:async(_tool,_input,work)=>work(),fitsPlanner:async candidate=>{seen.push(structuredClone(candidate));return candidate.recent.length<=1;}});
+ assert.ok(seen.some(candidate=>candidate.recent.length===2));
+ assert.ok(seen.some(candidate=>candidate.summary&&candidate.recent.length===1));
+ assert.equal(context.recent[0].id,'b');assert.equal(saved.compaction.through,1);assert.deepEqual(saved.turns,prior.turns);
+});

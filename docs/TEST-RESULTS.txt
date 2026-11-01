@@ -7808,3 +7808,6 @@ CI41350643949 completed success on e2b879db7e27cbaf8287cc4654d06852cf6e2114, inc
 
 2026-11-02 — consecutive planner-fit reuse
 prepareTurnContext now reuses only the immediately preceding identical serialized DialogueContext fit result inside one preparation. Both cache hits and completed counts check cancellation; different candidates are recounted, exceptions are not cached, and the result cannot cross sends. Controlled regression verifies one fit for an empty-dialogue preparation and a fresh count on the next send. Context17/17 and conversation/planner222/222 pass; root check and production build06ed16be77948f25 (163 verified assets) pass. No real-model latency reduction measured; this is tokenization/preflight work reduction, not a GPU kernel optimization.
+
+2026-11-02 — planner-fit boundary checks
+Additional controlled coverage confirms cancellation during an awaited fit prevents context publication/history save, and changed candidates are re-evaluated through compaction with originals retained. Context preparation19/19 passed. Current-status document now places old releases under the historical heading rather than mixing them into current status. No additional runtime changes or claimed speedup.
