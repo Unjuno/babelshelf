@@ -7497,3 +7497,6 @@ Existing sidebar updated to5f0d165f57588d35/index-Bh-2D-TL.js, returned app Offl
 
 2026-11-01 — Host hardware context for Windows sidebar runs
 Read-only Win32 CIM inventory on the current host: Windows11 Home10.0.26300, Intel Core i7-1250U (10 cores/12 logical processors), Intel Iris Xe Graphics driver31.0.101.5186. WMI AdapterRAM is not a usable shared-GPU memory budget and is not used for model-fit decisions. This is host inventory, not proof that the browser/runtime selected that adapter. Runtime receipts separately report25/25 offloaded layers; no vendor or utilization inference is added. Worker code already installs preferHighPerformanceAdapterRequests for runtime adapter requests, so no duplicate preference patch was added.
+
+2026-11-01 — Complete code-checkpoint CI passed
+Exact b9a2e8218b72bf78494684494d60d942e98ac749 run41312571454 completed successfully across every stage, including the reordered update protocol and final offline/installed-PWA checks. GPU teardown and preview timing changes are included in this tested commit. Later local commits only record evidence/current status; they do not change the tested application. Public deployment remains separate and unchanged at this point.
