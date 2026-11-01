@@ -1,3 +1,7 @@
+# Public v288 — context-scaled history (2026-11-02 JST)
+
+App e2202f20d9c4ef792e469c40b63029161d8c8407 passed complete CI41333230189 in9m17s. Build546f0f1936500d52/index-DmgXQouA.js. Site source c3bbc42f9840f76284ac30eeba40d94273b4186e; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_2ce00a0751e8819196b5db94549ba169; deployment appgdep_6ae77d7ac5b08191ad34a40b12eb18d6 succeeded2026-11-01T17:57:29.018895+00:00. Public audience preserved. ArchiveSHA2566f62055cf477450648c65c66f091e2cc97b6b0e94a65e9ac26229481d78b9e51,84449280bytes/193files. Reused stage/archive,pruned24olderassets; delivery checks passed. Existing sidebar Update adopted exact entry, retained history, returned appOffline; only our stopped QA draft was cleared before update. No new model inference or speedup measurement in this delivery check.
+
 # Public v287 — WebML prose preview bridge (2026-11-02 JST)
 App6bf8fe9c834647f2e4102b15b5c374d69f93d64f; build4d72faea1076cff2; entry index-CmzM1_EI.js. Source da40f6aeb19f2261dcbeddb23756aeb8cc542aa8; version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b2eb1e1bc50481919a0a199000f6688d; deployment appgdep_6ae7792120648191b761b0a59e4932e1 succeeded2026-11-01T17:38:56.750038+00:00. Public audience preserved. ArchiveSHA256 5acc2f5e9a3d6da1b971a3a366d644ab95ba09b0fb4b9e0f5153c72deee3cb6d,84449280bytes,193files. Delivery checks passed; reused staging/archive and pruned24obsolete assets. Sidebar adopted exact entry without storage reset and returned app Offline. Model replay and CI41332393009 tracked separately.
 
