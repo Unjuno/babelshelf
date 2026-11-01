@@ -759,3 +759,17 @@ test('Send time budget stops an in-flight model and cannot publish or save its l
  assert.equal(stops,1);assert.equal(generations,1);assert.equal(f.reviews.length,0);
  assert.equal(f.current().turns.at(-1).answer,undefined);assert.equal(f.current().turns.at(-1).status,'Generation time budget reached');assert.equal(c.state.preview,'');
 });
+
+test('bound-file read completion uses the measured application action before answering',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/meeting.md',body:'集合は午前10時。'}),records=[note];
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxResultChars:8000};
+ await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
+ const responses=[JSON.stringify({action:'read',target:'file',query:'meeting'}),'{"completion":"summary"}',JSON.stringify({status:'answered',answer:'集合は午前10時。',sources:['S1']})];
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:responses.shift(),finishReason:'stop',outputTokens:8}),load:async()=>{throw Error('Already resident');}};
+ f.services.knowledge={all:async()=>records,search:async query=>searchNotes(records,query)};
+ const result=await c.run(run=>executeSubmission({text:'この入力ファイルを一文で要約してください。',attachments:[]},f.services,f.view,run));
+ assert.equal(result,'completed',JSON.stringify(f.current().turns.at(-1)));
+ const turn=f.current().turns.at(-1),completion=turn.activity.find(a=>a.tool==='dialogue.plan'&&a.input?.stage==='read-completion');
+ assert.ok(completion,JSON.stringify(turn));assert.equal(completion.output.completion,'summary');assert.equal(completion.output.inference.measuredModelCalls,1);assert.equal(completion.output.inference.outputTokens,8);
+ assert.equal(turn.answer,'集合は午前10時。');assert.equal(turn.refs[0].noteId,note.id);assert.equal(f.reviews.length,0);
+});

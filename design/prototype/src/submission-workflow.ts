@@ -2,7 +2,6 @@ import {newNoteSourceRef} from './note-creation.ts';
 import {createResolvedActions,answerCurrentVisionInput} from './resolved-actions.ts';
 import {makeDialogueCopyReview,type DialogueCopyReview} from './dialogue-copy.ts';
 import {distinctSourceMetadataGuards} from './note-provenance.ts';
-import {resolveReadCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
 import {createInputSubmission} from './input-submission.ts';
 import {createModelExecutionManager} from './model-execution.ts';
@@ -226,7 +225,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    if(request?.target==='file'){
     if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;
     selectedFile=await trace('memory.read',{target:'file',binding:fileBinding?.binding??'explicit',...workingFile},async()=>{try{return workingFileNote(await knowledge.all(),filePin);}catch(error){if(sourceFile&&error instanceof Error&&['Working file original unavailable','Working file changed · reopen the file'].includes(error.message))throw Error('Source changed · retry');throw error;}},workingFileMetadata);checkSend();
-     if(request.action==='read'){const completion=literalRequest?.action==='read'||explicitSavedRequest?.action==='read'?'open':await trace('dialogue.plan',{stage:'read-completion',model,question:text,...workingFile},()=>resolveReadCompletion(inference,text,checkSend));checkSend();const metadata=workingFileMetadata(selectedFile),resolution=resolveReadIntent(text,completion,{noteId:selectedFile.id,path:metadata.path,revision:workingFile.revision,body:selectedFile.revisions.at(-1).body});if(resolution.kind==='continue'){request={...request,action:resolution.action,target:'file',query:resolution.query};workingFile=resolution.workingFile;}else{await finishTurn(id,{status:resolution.status,refs:resolution.refs});openNote(selectedFile.id,resolution.path);return {kind:'displayed'};}}
+     if(request.action==='read'){const completion=literalRequest?.action==='read'||explicitSavedRequest?.action==='read'?'open':await actions().completeRead(workingFile);checkSend();const metadata=workingFileMetadata(selectedFile),resolution=resolveReadIntent(text,completion,{noteId:selectedFile.id,path:metadata.path,revision:workingFile.revision,body:selectedFile.revisions.at(-1).body});if(resolution.kind==='continue'){request={...request,action:resolution.action,target:'file',query:resolution.query};workingFile=resolution.workingFile;}else{await finishTurn(id,{status:resolution.status,refs:resolution.refs});openNote(selectedFile.id,resolution.path);return {kind:'displayed'};}}
    }
    if(request?.action==='calculate'){
     if(needsSourcedCalculationReview(text,prior.turns.at(-1)))return await reviewedCalculation();
