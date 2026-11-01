@@ -1,5 +1,7 @@
 # Completion audit — Unit193
 
+> Historical snapshot for Unit193. Its build numbers, Site state and pending gates are not current. Use [REMAINING-GATES.md](REMAINING-GATES.md) for current evidence and [MVP-ACCEPTANCE.md](MVP-ACCEPTANCE.md) for the acceptance ledger. This record is retained as historical test evidence.
+
 2026-10-18. Local source includes the Unit187 read-completion seam; local product27fd2cd242b21f7e/113. Current local build was installed and verified cold-offline in Units191/192/193; published Site remains Unit177776c70a284785c23. Do not mix these builds. Whole goal is not achieved.
 
 | Required outcome | Authoritative evidence | Conclusion |
