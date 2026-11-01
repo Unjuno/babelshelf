@@ -1,6 +1,6 @@
 ## Current status · 2026-11-02
 
-Local follow-up: regenerated dialogue answers no longer inherit unread references from an earlier answer. The selected dialogue turn stays attributed via readTurn; exact-copy saving retains original references. Prototype1758/app8/build7bb213cbf8b6a147/check pass. Public remainsv294 pending CI/delivery and real-model acceptance.
+Local follow-up: regenerated dialogue answers no longer inherit unread references from an earlier answer. The selected dialogue turn stays attributed via readTurn; exact-copy saving retains original references. Prototype1758/app8/build7bb213cbf8b6a147/check pass. Literal replacement also drops inherited factual citations; lossless line formatting retains them. Follow-up67workflow/app8/build ebdec491d8c26b9b/check pass. Public remainsv294 pending CI/delivery and real-model acceptance.
 
 Public v294: application60a15d2/build98e853bd7470f99a/index-Cmkr6sV6.js; CI41343063954 all stages passed. Source11d104dac54377d280eb7ba0c040d9702d0aa696; deploymentappgdep_6ae798bcdfd88191aa7a6024211d0524 succeeded. Sidebar Update verified exact entry, retained history and returned appOffline. Compact standard guides and exact protected-guide migration are deployed; prototype1757/app8/build/check pass.
 

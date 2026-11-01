@@ -843,3 +843,14 @@ test('regenerated dialogue answers do not inherit unread references from the pre
  assert.equal(turn.answer,'I cannot verify the original.');assert.deepEqual(turn.refs,[]);
  assert.deepEqual(f.current().turns[0],prior);assert.equal(f.reviews.length,0);
 });
+
+test('literal replacement drops old factual citations while lossless line formatting retains them',async()=>{
+ for(const replacement of [true,false]){
+  const f=fixture(),c=createSubmissionController(),refs=[{noteId:'source',revision:1,start:0,end:11,quote:'Bring water'}],prior={id:'answer',user:'Packing?',answer:'Bring water',refs};
+  await f.services.saveDialogue({...emptyDialogue(),turns:[prior],currentResult:{turnId:'answer'}});
+  let calls=0;f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(++calls===1?{action:'transform',target:'current',query:''}:replacement?{action:'replace',find:'water',with:'tea'}:{action:'format_lines',format:'checklist'}),finishReason:'stop'})};
+  f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxResultChars:8000};
+  assert.equal(await c.run(run=>executeSubmission({text:'Please adjust the previous answer.',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+  const turn=f.current().turns.at(-1);assert.equal(turn.answer,replacement?'Bring tea':'- [ ] Bring water');assert.deepEqual(turn.refs,replacement?[]:refs);assert.deepEqual(f.current().turns[0],prior);assert.equal(turn.readTurn.turnId,'answer');
+ }
+});
