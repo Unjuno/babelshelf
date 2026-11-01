@@ -42,6 +42,11 @@ export function serializeStateBackup(pack:unknown,limit=MAX_BACKUP_BYTES){return
 function backupBytes(pack:unknown,visit:(bytes:Uint8Array)=>void,limit=MAX_BACKUP_BYTES){let count=0;visitJsonChunks(pack,text=>visitUtf8Chunks(text,bytes=>{count+=bytes.length;if(count>limit)throw Error('Backup too large · 200 MB limit');visit(bytes);}));}
 export function stateBackupBlob(pack:unknown,limit=MAX_BACKUP_BYTES){const parts:BlobPart[]=[];backupBytes(pack,bytes=>parts.push(bytes.slice().buffer),limit);return new Blob(parts,{type:'application/json'});}
 const equal=(a:unknown,b:unknown)=>stateHash(a)===stateHash(b);
+function exactObjectKeys(value:unknown,expected:readonly string[]){
+ if(!value||typeof value!=='object'||Array.isArray(value))return false;
+ const actual=Object.keys(value).sort(),wanted=[...expected].sort();
+ return actual.length===wanted.length&&actual.every((key,index)=>key===wanted[index]);
+}
 function jsonOnly(value:any){
  if(value===undefined||value===null||typeof value==='string'||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return;
  if(Array.isArray(value)){for(const item of value)jsonOnly(item);return;}
@@ -92,7 +97,7 @@ export async function parseStateBackup(text:string):Promise<StatePayload>{
   if(!pack.payload||Object.keys(pack.payload).sort().join('|')!=='createdAt|notes|schema'||typeof pack.payload.createdAt!=='string')throw Error('Backup verification failed · legacy backup contains unsupported state');
   const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;
  }
- if(pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed');
+ if(!exactObjectKeys(pack,['format','payload','sha256'])||pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||!exactObjectKeys(pack.payload,['createdAt','excluded','notes','runs','schema','settings','undefinedPaths'])||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed · unsupported backup fields');
  // JSON.parse owns this graph; restoring optional values cannot mutate caller data.
  const payload=pack.payload,paths=payload.undefinedPaths;
  if(!Array.isArray(paths)||paths.length>200000)throw Error('Invalid optional value encoding');const seen=new Set<string>();

@@ -82,6 +82,13 @@ test('legacy note-only brainpacks cannot smuggle unvalidated auxiliary state thr
  const pack=await makeBackup(snapshot().notes);pack.payload.settings=[{key:'ui-v1-connection',value:{downloads:true}}];pack.sha256=await digest(JSON.stringify(pack.payload));
  await assert.rejects(()=>parseStateBackup(JSON.stringify(pack)),/legacy backup contains unsupported state/i);
 });
+test('state backups reject unknown wrapper or payload fields rather than silently dropping them',async()=>{
+ const pack=await makeStateBackup(snapshot());assert.equal((await parseStateBackup(JSON.stringify(pack))).schema,2);
+ const wrapper=structuredClone(pack);wrapper.futureState={settings:[{key:'unknown',value:'must retain'}]};
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(wrapper)),/unsupported backup fields/i);
+ const payload=structuredClone(pack);payload.payload.futureState={settings:[{key:'unknown',value:'must retain'}]};payload.sha256=stateHash(payload.payload);
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(payload)),/unsupported backup fields/i);
+});
 test('historical dialogue citations remain portable after the original is withdrawn',async()=>{
  const state=snapshot(),n=state.notes[0];state.settings[0].value.turns[0].refs=[{noteId:n.id,revision:1,start:0,end:1,quote:'水'}];state.notes=[withdrawNote(n,1)];
  const pack=await makeStateBackup(state);assert.equal((await parseStateBackup(JSON.stringify(pack))).notes[0].state,'withdrawn');
