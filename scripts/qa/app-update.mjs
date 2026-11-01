@@ -86,10 +86,18 @@ test('one explicit refresh installs, activates and reopens a verified generation
   // Stage generation 3 without applying it, then publish generation 4.
   // One refresh must not stop at the already-waiting generation.
   await page.evaluate(async()=>{await (await navigator.serviceWorker.getRegistration()).update();});
-  await page.waitForFunction(async()=>{
-   const reg=await navigator.serviceWorker.getRegistration(),worker=reg?.waiting;
-   if(reg?.installing||worker?.state!=='installed')return false;
-   return new Promise(resolve=>{const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();resolve(false);},500);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data?.build==='3333333333333333');};worker.postMessage('build',[channel.port2]);});
+  // The pinned Playwright poller treats a Promise as a truthy predicate. Await
+  // the actual worker lifecycle in evaluate instead of an async waitForFunction.
+  await page.evaluate(async()=>{
+   const reg=await navigator.serviceWorker.getRegistration(),worker=reg.installing??reg.waiting;
+   if(!worker)throw Error('Staged worker missing');
+   await new Promise((resolve,reject)=>{
+    const finish=error=>{clearTimeout(timer);worker.removeEventListener('statechange',check);error?reject(error):resolve();};
+    const check=()=>{if(worker.state==='installed')finish();else if(worker.state==='redundant')finish(Error('Staged worker installation failed'));};
+    const timer=setTimeout(()=>finish(Error('Staged worker installation timed out')),5000);
+    worker.addEventListener('statechange',check);check();
+   });
+   if(reg.waiting!==worker)throw Error('Staged worker is not waiting');
   });
   assert.equal(await page.evaluate(()=>window.activeBuild()),versions[1].build);
   const staged=await page.evaluate(async()=>{
