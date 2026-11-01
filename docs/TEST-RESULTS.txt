@@ -7537,3 +7537,7 @@ Current-source rebuild d90b81baebc851b5/163 assets, product8/8 pass. Earlier d0d
 Site source380b6c6aae8d1b3a5733f1ae426a3941cb1c79ba; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_725a3bccb46881918a43b892c2f83280; deployment appgdep_6ae7500273c88191a4bf44bb3827b859 succeeded.
 Archive sha256:d5be18ce05cd52f2ebc339f04f4f0d8239631efda9ff8fe9c4e5a351cbc4c66b, 84449280 bytes/193 files.
 Existing IAB2/tab1 Update adopted index-B8RbomAb.js, retained conversation/input-file v1 and returned Offline. Screenshot current-public-update.png overwritten. This is update adoption, not new public inference or physical-device acceptance.
+
+ONNX request tensor ownership — 2026-11-01
+Inspection found count/generate input tensors and generation output had no explicit disposal in onnx-text-worker.ts. Installed Transformers Tensor.dispose delegates to ort_tensor.dispose. Request-scoped ownership now registers tokenizer outputs immediately, registers generation output before the cancellation check, and releases all owned objects before replying; shared model weights/caches are not registered. Duplicate object identities are released once. Cleanup failure attempts remaining releases and never replaces an existing inference/Stop error.
+Three controlled ownership regressions passed; full prototype1721/1721, TypeScript, product8/8, protected runtime28 and build4815c523c6047863/163 assets passed. No real GPU memory reduction or throughput claim; physical devices and actual ONNX repeated inference remain separate gates. Public remains Site275 pending CI/deployment.
