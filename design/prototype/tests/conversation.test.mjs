@@ -2323,3 +2323,15 @@ test('invalid initial and continuation token counts never reach generation with 
   assert.equal(calls,atContinuation?1:0);
  }
 });
+
+
+test('invalid token counts during evidence packing or citation repair stop before another generation',async()=>{
+ const note=createNote({path:'Notes/water.md',body:'Water: 4 liters.'}),records=[note];
+ for(const invalid of [NaN,Infinity,-1,0.5])for(const phase of ['packing','repair']){
+  let calls=0,counts=0;
+  const store={all:async()=>records,search:async query=>searchNotes(records,query)};
+  const runtime={...engine(4096),loaded:'4B',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>{counts++;return {prompt_tokens:phase==='repair'?(calls?invalid:100):(counts>1?invalid:100)};},generate:async()=>{calls++;return {text:'invalid JSON'};}};
+  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'4B',question:'How much water?',query:'Water',scope:{kind:'knowledge'}}),/Invalid token count/);
+  assert.equal(calls,phase==='repair'?1:0);
+ }
+});
