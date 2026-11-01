@@ -71,3 +71,26 @@ test('a delayed deadline timer still classifies a late runtime rejection by elap
   assert.equal(budget.generationMs,elapsed);assert.equal(budget.generatedTokens,32);assert.equal(cleared,1);
  }
 });
+
+
+test('concurrent pinned/model views cannot double-spend a shared budget or replace its deadline',async()=>{
+ let finish,expire,stops=0,clears=0,calls=0;
+ const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:1000,timers:{set(callback){expire=callback;return 1;},clear(){clears++;}}});
+ const first=budget.wrap(engine(()=>{calls++;return new Promise(resolve=>{finish=resolve;});},{stop(){stops++;}}));
+ const second=budget.wrap(engine(async()=>{calls++;return {text:'unexpected',outputTokens:200};}));
+ const pending=first.pin().generate([],200);
+ await assert.rejects(second.generate([],200),/Generation already running/);
+ assert.equal(calls,1);assert.equal(budget.generatedTokens,0);
+ expire();assert.equal(stops,1);
+ finish({text:'late',outputTokens:12});
+ await assert.rejects(pending,error=>error instanceof TurnInferenceBudgetError&&error.cause==='time');
+ assert.equal(clears,1);assert.equal(budget.generatedTokens,12);
+});
+
+test('the generation slot is released after a runtime failure without losing its charged allowance',async()=>{
+ const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null});
+ await assert.rejects(budget.wrap(engine(async()=>{throw Error('Runtime failed');})).generate([],200),/Runtime failed/);
+ const limits=[];
+ const result=await budget.wrap(engine(async(_messages,maxTokens)=>{limits.push(maxTokens);return {text:'retry',outputTokens:10};})).generate([],100);
+ assert.equal(result.text,'retry');assert.deepEqual(limits,[56]);assert.equal(budget.generatedTokens,210);
+});

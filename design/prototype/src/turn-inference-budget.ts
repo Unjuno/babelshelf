@@ -25,7 +25,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
  const {maxGenerationTokens,maxGenerationMs}=options,now=options.now??(()=>performance.now());
  const timers=options.timers??{set:(callback:()=>void,delay:number)=>setTimeout(callback,delay),clear:(handle:unknown)=>clearTimeout(handle as ReturnType<typeof setTimeout>)};
  if(maxGenerationTokens!==null&&(!Number.isSafeInteger(maxGenerationTokens)||maxGenerationTokens<256||maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||maxGenerationMs!==null&&(!Number.isSafeInteger(maxGenerationMs)||maxGenerationMs<1_000||maxGenerationMs>MAX_TURN_GENERATION_MS))throw Error('Invalid generation budget');
- let generatedTokens=0,generationMs=0,timer:unknown,expired=false;
+ let generatedTokens=0,generationMs=0,expired=false,active=false;
  const check=()=>{if(expired||maxGenerationMs!==null&&generationMs>=maxGenerationMs)throw new TurnInferenceBudgetError('time');if(maxGenerationTokens!==null&&generatedTokens>=maxGenerationTokens)throw new TurnInferenceBudgetError('tokens');};
  const checkCompleted=()=>{if(expired||maxGenerationMs!==null&&generationMs>maxGenerationMs)throw new TurnInferenceBudgetError('time');if(maxGenerationTokens!==null&&generatedTokens>maxGenerationTokens)throw new TurnInferenceBudgetError('tokens');};
  const budget:TurnInferenceBudget={
@@ -35,13 +35,16 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
     if(key==='pin')return ()=>budget.wrap(target.pin?.()??target);
     if(key==='generate')return async(messages:any[],maxTokens=256,format?:Parameters<TextEngine['generate']>[2],onPreview?:Parameters<TextEngine['generate']>[3])=>{
     check();
+    // All pinned/model views share one sequential generation slot. Otherwise
+    // concurrent calls reserve the same remaining budget and overwrite timers.
+    if(active)throw Error('Generation already running');
     const remaining=maxGenerationTokens===null?maxTokens:Math.min(maxTokens,maxGenerationTokens-generatedTokens);
     if(!Number.isSafeInteger(remaining)||remaining<1)throw new TurnInferenceBudgetError('tokens');
     const started=now(),remainingMs=maxGenerationMs===null?undefined:maxGenerationMs-generationMs;
     if(remainingMs!==undefined&&remainingMs<=0)throw new TurnInferenceBudgetError('time');
-    expired=false;let elapsedRecorded=false,tokensRecorded=false;
-    if(remainingMs!==undefined)timer=timers.set(()=>{expired=true;try{(target as TextEngine&{stop?:()=>void}).stop?.();}catch{/* The generation rejection below remains authoritative. */}},remainingMs);
+    active=true;expired=false;let elapsedRecorded=false,tokensRecorded=false,timer:unknown;
     try{
+     if(remainingMs!==undefined)timer=timers.set(()=>{expired=true;try{(target as TextEngine&{stop?:()=>void}).stop?.();}catch{/* The generation rejection below remains authoritative. */}},remainingMs);
      const result=await target.generate(messages,remaining,format,onPreview?preview=>{if(!expired&&(remainingMs===undefined||now()-started<=remainingMs))onPreview(preview);}:undefined);
      generationMs+=Math.max(0,now()-started);elapsedRecorded=true;
      const used=result.outputTokens??remaining;if(!Number.isSafeInteger(used)||used<0)throw Error('Invalid generated token count');generatedTokens+=used;tokensRecorded=true;
@@ -53,7 +56,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
      if(!tokensRecorded)generatedTokens+=remaining;
      if(expired||maxGenerationMs!==null&&generationMs>maxGenerationMs)throw new TurnInferenceBudgetError('time');
      throw error;
-    }finally{if(timer!==undefined){timers.clear(timer);timer=undefined;}}
+    }finally{active=false;if(timer!==undefined)timers.clear(timer);}
     };
     const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
    }});
