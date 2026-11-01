@@ -2,6 +2,8 @@
 
 Public v298: application a0c4962/build06ed16be77948f25/index-B2O0rWzh.js. CI41352040901 passed all stages. Deployment appgdep_6ae7b12f7e30819188101b3614407037 succeeded; sidebar Update adopted the exact entry and retained conversation and QA-LFM3-source-check input reference. Consecutive identical planner-fit checks are reused within one preparation only; Context19, conversation/planner222, root check/build and app8 pass. Real-model latency benefit remains unmeasured. Previous v297 shared reply guidance and full cached-input accounting remain included.
 
+Latest v298 LFM3 replay: original-ID read → answer → original-v1 citation → exact save preview passed; cancelled save to avoid duplicate QA data. 2model calls280.5s,9135input/1398output,1408cache tokens on secondcall. Full input accounting confirmed. Internal IDs/tool syntax remain in prose; response latency still unacceptable. It reused a source ID in history, not new search/provenance traversal. See dated evidence.
+
 Prior public v296 sidebar LFM3 QAD Q4_0 sample completed memory.sources → memory.read → native answer → original-v1 citation → approved exact save. One QA note retained; original model selection restored. Three model calls383.3s; 1408 cached tokens on calls2/3, runtime reports25/25 GPU layers. Slow input processing and verbose internal IDs in the reply remain defects; this is not search-discovery or cross-device acceptance. See the dated LFM3 provenance entry in TEST-RESULTS.txt.
 
 ## Earlier checkpoints (historical; not the current status)
