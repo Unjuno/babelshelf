@@ -7515,3 +7515,11 @@ Grounded answers now share one initial Knowledge snapshot for working-file evide
 
 2026-11-01 — Acquisition checkpoint CI and snapshot regression
 Exact08d069bde90b578b3cc11786d031afe726a6e729 completed CI41314416879 successfully in9m33s, including all browser/offline/installed-PWA stages. This includes acquisition and deferred-search changes, not the subsequent snapshot optimization. Snapshot commit5edc035 separately passed local prototype1715/1715, TypeScript, build aee507b9537b143e/163assets and product8/8. Physical-device and real-model latency gates remain open. Superseded generated deployment archive30362534bytes removed after inspecting its contents; currentv273 archive retained, no model or knowledge data removed.
+
+Public Site274 update adoption — 2026-11-01
+Complete CI41315315703 succeeded at c1e7d5155117408a22007d6355c619bb6b86abd5.
+Deployment appgdep_6ae74c41d02081919956393465699392 succeeded.
+Saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_8b37b65f52f481919036379b1aee822e; source bd1bee0a1adab3b13be244251530e8d7fbd1498b.
+Archive sha256 d7dad80e7915dde25235dd2757b6b96434bf7d4c077e0d33bbe429a99c28e8ce, 84449280 bytes, 193 files.
+Existing IAB2/tab1 at babelshelf.com: Offline -> Online -> Update -> DOM script index-qiMBeED6.js -> Offline. Conversation and QA-draft-v179 v1 input selection retained. Screenshot overwritten qa-retained/current-public-update.png. No new public inference performed in this update check.
+Local current build previously verified citation preview and unchanged Save note review; cancelled to avoid duplicate fixtures. No physical-device or measured speedup claim.

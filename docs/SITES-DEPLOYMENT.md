@@ -1,3 +1,7 @@
+# Public v274 — inference acquisition and evidence-read reuse (2026-11-01)
+
+Build `aee507b9537b143e`, entry `index-qiMBeED6.js`; complete CI41315315703 passed at `c1e7d5155117408a22007d6355c619bb6b86abd5`. Site source `bd1bee0a1adab3b13be244251530e8d7fbd1498b`; deployment `appgdep_6ae74c41d02081919956393465699392` succeeded. Public audience preserved. Existing sidebar Update adopted the exact bundle, preserved conversation/input-file state and returned Offline. This verifies update adoption, not physical-device inference or a measured GPU speedup. Previous sections are historical.
+
 # Public v273 — runtime ownership, native preview timing and saved-material scope (2026-11-01)
 
 Build `5f0d165f57588d35`, entry `index-Bh-2D-TL.js`; verified code `b9a2e82` passed complete CI41312571454. Site source `159265271ad08a2a36be125bb7e433dff3270739`; deployment `appgdep_6ae745b9e03c8191a8236c9cb731d287` succeeded. Existing public audience retained. Sidebar Update adopted the exact bundle and returned Offline with previous conversation and model selection visible. This is publication/update verification, not new public model inference or physical-device acceptance. Full immutable version/archive details are in TEST-RESULTS.txt, “Public Site273 update adoption”. Older entries below are historical.
