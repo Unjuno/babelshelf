@@ -747,3 +747,15 @@ test('a second search page can ground the exact answer and a reviewed new note',
   assert.deepEqual(notes,before);
  }
 });
+
+test('Send time budget stops an in-flight model and cannot publish or save its late answer',async()=>{
+ const f=fixture(),c=createSubmissionController();let stops=0,generations=0;
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxResultChars:8000,maxToolCalls:0,maxGenerationTokens:null,maxGenerationMs:1000};
+ let finish;
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:()=>{generations++;return new Promise(resolve=>{finish=resolve;});},stop(){stops++;finish({text:JSON.stringify({answer:'Late answer',citations:[]}),outputTokens:10,finishReason:'stop'});},load:async()=>{throw Error('Already loaded');}};
+ f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ const result=await c.run(run=>executeSubmission({text:'Explain how rain forms.',attachments:[]},f.services,f.view,run));
+ assert.equal(result,'failed');assert.equal(c.state.error,'Generation time budget reached');
+ assert.equal(stops,1);assert.equal(generations,1);assert.equal(f.reviews.length,0);
+ assert.equal(f.current().turns.at(-1).answer,undefined);assert.equal(f.current().turns.at(-1).status,'Generation time budget reached');assert.equal(c.state.preview,'');
+});
