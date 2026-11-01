@@ -7311,3 +7311,11 @@ retain cumulative reported runtimeTtftMs, like other phase sums across attempts.
 Resolved-action/conversation tests 212/212 and TypeScript passed. Live-model
 receipt acceptance of this additional field is pending; no speedup claim.
 TTFT follow-up packaging: product build a7b89e70cae4a207 (163 verified assets) and app acceptance 8/8 passed; diff whitespace check passed.
+
+2026-11-01 — Sidebar runtime TTFT receipt (f093433)
+- Existing sidebar only; updated through app Update to a7b89e70cae4a207 / index-DobGHT8z.js; returned to app Offline. No model download or storage reset.
+- Existing Bonsai 4B, model revision 8d6557168168f91ea6697a4a49ed2ef622b53adb, runtime 621e20782f208660f4f58283c2ce58430020f243. Bound synthetic QA-agent-current.md v1.
+- Correct meeting-time/items answer with source control. Activity: 1 model call, 584 prompt tokens, 26 output tokens, count 18.615 ms, runtime TTFT 33310.710 ms, decode 2647 ms, cached tokens 0, generation wall 35959.815 ms. No reported prefill value.
+- This cold-after-app-update sample identifies pre-first-token work as the dominant interval; it is not a measured optimization gain, pure GPU prefill timing, hardware selection proof, or phone/offline-restart acceptance. No duplicate note saved.
+- CI 41296085471 passed all stages on 4c3bd4a in 9m29s. f093433 pushed to codex/ui-design-handoff after that run completed; its CI is separate.
+- Warm follow-up, same sidebar/build/model/source/question, no app reload or model switch: 584 prompt / 26 output tokens, count 7.165 ms, runtime TTFT 3141.570 ms, decode 2614.735 ms, cached tokens 470, generation wall 5764.110 ms. Activity has no Load model step. Exact same synthetic answer and one source. This demonstrates existing session reuse for this repeated input; it is not an intervention-based speedup or a general workload/device benchmark. No duplicate note saved. Next optimization should target fresh-prefix processing without disabling working reuse.
