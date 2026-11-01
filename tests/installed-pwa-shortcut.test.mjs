@@ -30,6 +30,13 @@ test('historical BabelShelf Temp and unit-test app links are removed without tou
  assert.deepEqual(result,{removed:3});assert.deepEqual(removed,links.map(item=>item.path));assert.deepEqual(profileChecks,[qaProfiles[1]]);
 });
 
+test('Temp shortcuts with an unrecognized BabelShelf profile name are preserved',async()=>{
+ const tempDirectory='C:\\Users\\tester\\AppData\\Local\\Temp',profilePath=`${tempDirectory}\\babelshelf-project-profile`;
+ const shortcut={...link,path:'C:\\Users\\tester\\Desktop\\Memory - Project.lnk',arguments:link.arguments.replace(profile,profilePath)},removed=[];
+ const result=await removeOwnedInstalledPwaShortcut('C:\\Users\\tester\\AppData\\Local\\Temp\\active-profile',{platform:'win32',tempDirectory,run:()=>JSON.stringify([shortcut]),stat:async path=>({isFile:()=>true,isSymbolicLink:()=>false,path}),remove:async path=>removed.push(path)});
+ assert.deepEqual(result,{removed:0});assert.deepEqual(removed,[]);
+});
+
 test('Windows cleanup also removes only dead shortcuts to UUID-named QA temp profiles',async()=>{
  const tempDirectory='C:\\Users\\tester\\AppData\\Local\\Temp',orphanProfile=`${tempDirectory}\\babelshelf-installed-pwa-01234567-89ab-4def-8123-456789abcdef-profile`;
  const stale={...link,path:'C:\\Users\\tester\\Desktop\\Memory (stale).lnk',arguments:link.arguments.replace(profile,orphanProfile)};

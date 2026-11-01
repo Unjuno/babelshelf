@@ -32,7 +32,9 @@ function isHistoricalQaProfile(profileDir,{tempDirectory,documentsCodex}){
    const api=win32.isAbsolute(tempDirectory)?win32:{resolve};
    const root=canonicalPath(tempDirectory,tempDirectory),candidate=canonicalPath(profileDir,tempDirectory),relative=api.relative(root,candidate);
    const first=relative.split(/[\\/]/,1)[0];
-   if(relative&&relative!=='.'&&!relative.startsWith('..')&&!api.isAbsolute(relative)&&/^babelshelf-[a-z0-9][a-z0-9_-]*$/i.test(first))return true;
+   // Match only the known legacy QA naming scheme. A broad `babelshelf-*`
+   // prefix could also match a user's unrelated temporary Chrome profile.
+   if(relative&&relative!=='.'&&!relative.startsWith('..')&&!api.isAbsolute(relative)&&/^BabelShelf-lfm230-[0-9a-f]{32}$/i.test(first))return true;
   }
   if(absolutePath(documentsCodex)){
    const api=win32.isAbsolute(documentsCodex)?win32:{resolve};
