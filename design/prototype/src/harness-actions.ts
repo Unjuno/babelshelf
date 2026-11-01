@@ -3,7 +3,7 @@ import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONFIGURED_AGENT_TOOLS,MAX_PLANNER_AGENT_TO
 export const HARNESS_ACTIONS=[
  {id:'calculate',purpose:'Calculate an explicit arithmetic expression; query is the expression, no units or code',targets:[]},
  {id:'chat',purpose:'Conversation or semantic rewriting of dialogue',targets:[]},
- {id:'recall',purpose:'Read an exact dialogue original',targets:['current','history']},
+ {id:'recall',purpose:'Read exact dialogue wording, not verify its cited saved sources',targets:['current','history']},
  {id:'transform',purpose:'Literal split or replacement of dialogue text',targets:['current','history']},
  {id:'capture',purpose:'Save as a NEW note; never overwrite',targets:['current','history','inputs']},
  {id:'search',purpose:'Find saved notes',targets:['knowledge']},

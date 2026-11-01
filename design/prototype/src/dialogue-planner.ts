@@ -173,6 +173,7 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
  context=planningContextForRequest(context,attachments.length>0,question);const {scope,toolBudgetExhausted,visibleTools}=agentPlannerScope(question,context,attachments,agent,nativeToolProtocol);
  const replySources=plannerReplySources(agent,scope.inputs,nativeToolProtocol,sourceCatalog);
  const instructions=nativeToolProtocol?nativePlannerInstructions(scope,agent):[plannerRoutingInstruction(scope)];
+ if(scope.toolIds?.includes('memory.sources'))instructions.push('To verify a saved note against its sources, find the note, use memory.sources for its source links, then read the originals. Repeating dialogue or a saved answer does not verify its sources.');
  const stepInstructions:string[]=[];
  // Volatile execution feedback follows the retained prefix in both transports.
  const step=(text:string)=>stepInstructions.push(text);
