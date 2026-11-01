@@ -304,7 +304,9 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const directQuote=/\b(?:quote|copy|extract)\b/iu.test(question);
   const fallbackInstruction=directQuote?' This is a direct quote request: select the complete sentence that states the requested fact. Do not return a title, heading, filename, or another sentence that does not address the requested fact.':' Answer the last user question.';
   const fallback=messages.map((message,index)=>index===answerSystemIndex?{...message,content:'Use only the supplied original excerpts and checked calculations. Do not invent facts or paraphrase. If an excerpt answers the question, return only a JSON object with one nonempty answer string that is an exact, contiguous substring of one supplied excerpt. If no excerpt answers it, return only {"status":"insufficient_evidence","answer":"explain the missing detail in the user language"}.'+fallbackInstruction}:message);
-  const budget=Math.min(replyTokens,96);
+  // A protocol repair must not silently replace the user's answer budget with
+  // a short-output preset. The same context and per-Send limits still apply.
+  const budget=replyTokens;
   // A schema that accepts only {answer} would force an excerpt even when the
   // prompt explicitly permits insufficient evidence. Count and decode the
   // same bounded contract; tool-code generation keeps its strict answer-only form.

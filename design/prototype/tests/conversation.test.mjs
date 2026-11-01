@@ -920,7 +920,7 @@ test('one-source invalid citations retry as a bounded exact quote and retain can
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0,budgets=[];
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,budget,format)=>{calls++;budgets.push({budget,format});return calls===1?{text:JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'24 litres'}]})}:{text:'{"answer":"24 litres"}'};}};
  const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'In the saved water note, how many litres are stored?',scope:{kind:'knowledge'}});
- assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[ref]);assert.equal(calls,2);assert.equal(budgets[0].budget,768,'the ordinary answer follows the balanced response budget');assert.deepEqual(budgets[1].format,{type:'dialogue-answer',allowInsufficientEvidence:true});assert.ok(budgets[1].budget<=96,'verbatim recovery stays narrowly bounded');
+ assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[ref]);assert.equal(calls,2);assert.equal(budgets[0].budget,768,'the ordinary answer follows the balanced response budget');assert.deepEqual(budgets[1].format,{type:'dialogue-answer',allowInsufficientEvidence:true});assert.equal(budgets[1].budget,budgets[0].budget,'recovery preserves the selected response budget');
 });
 
 test('grounded answer counts and decodes the same source-bound schema on its first attempt',async()=>{
@@ -1031,6 +1031,19 @@ test('citation retry refuses changed originals before spending another generatio
  const notes=[createNote({body:'The place is North.'}),createNote({body:'Bring a notebook.'})],refs=notes.map(n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}));let records=notes,calls=0;
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;records=[reviseNote(notes[0],{body:'The place is South.'},1),notes[1]];return {text:JSON.stringify({answer:'North',citations:[{id:'S1',quote:'Not original'}]})};}};
  await assert.rejects(groundedAnswer({store:{all:async()=>records,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'}}),/Source changed/);assert.equal(calls,1);
+});
+
+test('single-source recovery preserves the original answer budget for long quotations',async()=>{
+ const body='The documented process includes preparation, validation, comparison, review, and preservation of the original records. '.repeat(6).trim();
+ const note=createNote({body}),ref={noteId:note.id,revision:1,start:0,end:body.length,quote:body};
+ const budgets=[];
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:8192,models:[],runtime:{}},generate:async(_messages,budget)=>{
+  budgets.push(budget);
+  return {text:budgets.length===1?JSON.stringify({answer:body,citations:[{id:'S0',quote:'invalid'}]}):JSON.stringify({answer:body})};
+ }};
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:runtime},{model:'test',question:'Quote the complete documented process.',scope:{kind:'knowledge'}});
+ assert.equal(budgets.length,2);assert.ok(budgets[0]>96);assert.equal(budgets[1],budgets[0]);
+ assert.equal(result.answer,body);assert.deepEqual(result.sources,[ref]);assert.equal(result.recovery,'verbatim-source');
 });
 
 test('single-source exact-quote recovery refuses a model answer outside the excerpt',async()=>{

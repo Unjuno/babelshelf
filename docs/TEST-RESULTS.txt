@@ -7576,3 +7576,8 @@ Site source541aaf743b65249f65c000778cd509169f11f55b; version appgprj_6ad46c7eb3a
 Archive sha256:a52e1df71e8439747c7d17fbf9b896bdf81ecafd5e24152eb740fdbc3be809bc, 84449280bytes/193files. Delivery gzip/identity, method and offline-shell checks passed. Staging retained current/previous assets, pruned24 superseded generated assets; no user/model data removed.
 Existing IAB browser2/tab1 at https://babelshelf.com/: switched Online, clicked Update, observed index-BdGjcEBK.js matching build9d9e744be5885155; conversation and Inbox/QA-draft-v179.md v1 retained. Restored Offline. Screenshot overwritten qa-retained/current-public-update.png.
 This was update adoption only, not new actual model inference, Airplane Mode, cold restart, GPU speedup or physical-device acceptance.
+
+2026-11-02 single-source recovery output budget
+Removed the separate96-token cap from exact-source protocol recovery. Recovery now uses the selected replyTokens budget, with existing context counting, output-limit detection, Stop, exact-quote validation, source freshness and per-Send orchestration unchanged.
+The previous test explicitly required <=96; changed it to require equality with the initial selected budget because fixed short-output recovery contradicts requested answer-depth preservation. Added a long original-quotation fixture proving unchanged answer/source provenance and the same budget across attempts. This is controlled inference, not measured model quality.
+Conversation209/209 passed, TypeScript noEmit passed, protected runtime28 passed, product8/8 passed. Buildd769343535a1d0d4/163 assets. Actual-model excluded-detail compliance and performance remain open. Publicv279 does not yet include this change.
