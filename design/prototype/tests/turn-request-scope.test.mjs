@@ -29,10 +29,10 @@ test('a literal file read keeps its path scope and does not get rebound to an at
  assert.deepEqual(result,{request:{action:'read',query:'Notes/meeting.md',target:'path'},inputs:[],fileBinding:{request:{action:'read',query:'Notes/meeting.md',target:'path'},binding:undefined}});
 });
 
-test('a question about the explicitly opened file binds to its pinned revision',()=>{
+test('an answer about the explicitly opened file keeps its resolved action and pinned scope',()=>{
  const result=scopeResolvedTurnRequest({
   request:{action:'answer',query:'the date',target:'knowledge'},question:'What date is written in this file?',literal:false,
   inputs:[],currentFile:file,
  });
- assert.deepEqual(result,{request:{action:'read',query:'What date is written in this file?',target:'file'},inputs:[],fileBinding:{request:{action:'read',query:'What date is written in this file?',target:'file'},binding:'explicit'}});
+ assert.deepEqual(result,{request:{action:'answer',query:'What date is written in this file?',target:'file'},inputs:[],fileBinding:{request:{action:'answer',query:'What date is written in this file?',target:'file'},binding:'explicit'}});
 });
