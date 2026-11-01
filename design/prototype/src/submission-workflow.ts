@@ -220,7 +220,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
     const scoped=scopeResolvedTurnRequest({request,question:text,literal:!!literalRequest,literalAction:literalRequest?.action,inputs:inputReadings,currentFile:sourceFile??prior.currentFile});
     request=scoped.request;inputReadings=scoped.inputs;const fileBinding=scoped.fileBinding;
-   const actions=()=>createResolvedActions({store:knowledge,engine:inference,model,question:text,check:checkSend,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;}});
+   const actions=()=>createResolvedActions({onPreview:run.preview,store:knowledge,engine:inference,model,question:text,check:checkSend,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;}});
    let selectedFile:any;let workingFile=request?.target==='file'?(sourceFile??prior.currentFile):undefined;
    if(request?.target==='file'){
     if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;

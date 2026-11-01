@@ -47,7 +47,7 @@ function cleanReasoningMarkup(text:string){
   .replace(/<\/think\s*>/giu,'\n\n').replace(/<think\b[^>]*>/giu,'')
   .replace(/[ \t]{2,}/gu,' ').replace(/[ \t]+\n/gu,'\n').replace(/\n{2,}[ \t]+/gu,'\n\n').replace(/\n{3,}/gu,'\n\n').trim();
 }
-async function continueDialogue(engine:TextRuntime,messages:{role:string;content:string}[],initial:GenerationResult,segmentBudget:number,totalBudget:number,check:()=>void){
+async function continueDialogue(engine:TextRuntime,messages:{role:string;content:string}[],initial:GenerationResult,segmentBudget:number,totalBudget:number,check:()=>void,onPreview?:(text:string)=>void){
  checkRepeatedOutput(initial.text);const parts=[initial.text];let result=initial,currentBudget=segmentBudget,spent=Math.min(totalBudget,segmentBudget);
  for(let segment=1;outputLimited(result,currentBudget)&&spent<totalBudget&&segment<4;segment++){
   let previous=parts.join(''),continuation:{role:string;content:string}[]=[],available=0;
@@ -58,11 +58,11 @@ async function continueDialogue(engine:TextRuntime,messages:{role:string;content
    previous=Array.from(previous).slice(Math.ceil(Array.from(previous).length/2)).join('');
   }
   if(available<128)throw Error('Response exceeded model context limit');
-  const budget=Math.min(768,available,totalBudget-spent);result=await engine.generate(continuation,budget,'prose');currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
+  const budget=Math.min(768,available,totalBudget-spent);result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
   if(!result.text.trim())throw Error('Empty model continuation');
   const previousSegment=parts.at(-1)!.trim(),nextSegment=result.text.trim();
   if(previousSegment.length>=32&&nextSegment===previousSegment)throw Error('Model continuation repeated · retry');
-  parts.push(result.text);spent=Math.min(totalBudget,spent+budget);
+  parts.push(result.text);onPreview?.(parts.join(''));spent=Math.min(totalBudget,spent+budget);
  }
  if(outputLimited(result,currentBudget))throw Error('Response exceeded model output limit');
  const answer=cleanReasoningMarkup(parts.join(''));if(!answer)throw Error('Empty model response');return answer;
@@ -79,6 +79,8 @@ export type GroundedAnswerRequest={
  toolEvidence?:AnswerToolEvidence;replyStyle?:ReplyStyle;userGuidance?:string;
  /** Bounded numeric execution measurements only; generated content is never passed here. */
  onInference?:(metrics:Readonly<AnswerInference>)=>void;
+ /** Transient prose only; never a validated answer or a save candidate. */
+ onPreview?:(text:string)=>void;
  /** A terminal native reply already generated from the same observed tool evidence. */
  reply?:SourceLabelAnswer;
 };
@@ -322,10 +324,17 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   recovery='verbatim-source';
   const {noteId,revision,start,end,quote,title}=source;return {answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
  };
- check();let generated=await engine.generate(messages,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);
+ const preview=mode==='chat'&&request.onPreview?(text:string)=>{
+  check();let visible=cleanReasoningMarkup(text);
+  const start=visible.lastIndexOf('<'),tail=visible.slice(start).toLowerCase();
+  if(start>=0&&['<think','</think'].some(marker=>marker.startsWith(tail)))visible=visible.slice(0,start).trimEnd();
+  // A bounded UI projection must not abort otherwise valid long generation.
+  try{request.onPreview?.(visible.slice(0,32768));}catch{/* Presentation only. */}
+ }:undefined;
+ check();let generated=await engine.generate(messages,replyTokens,format,preview);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);
  let parsed:ParsedAnswer;
  if(mode==='chat'){
-  const answer=await continueDialogue(engine,messages,generated,replyTokens,outputLimits?.total??replyTokens,check);
+  const answer=await continueDialogue(engine,messages,generated,replyTokens,outputLimits?.total??replyTokens,check,preview);
   parsed={answer:requestsOneSentence(question)?firstSentenceOnly(answer):answer,sources:[]};
  }
  else {

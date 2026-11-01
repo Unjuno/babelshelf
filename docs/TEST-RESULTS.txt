@@ -7616,3 +7616,10 @@ Quality remained failed: response still includes the excluded meeting location. 
 - Deadline handles are per invocation; rejected concurrent calls never start inference or consume allowance. Runtime failure releases the slot while retaining the conservative token charge. Existing time/token ceilings and unlimited defaults are unchanged.
 - Verification: turn-inference-budget 10/10; prototype 1732/1732; build:app passed (a2b64155c4557033, 163 verified assets); test:app 8/8; npm run check passed. Existing bundle-size warning remains.
 - Scope: Node/PC build checks, no physical-device or actual-model throughput measurement. Public deployment remains v282; no model/profile/knowledge changes or new browser processes.
+
+
+2026-11-02 — Ordinary prose streaming through Send
+- GroundedAnswer's conversation/prose branch now forwards transient text to resolved actions and SubmissionRun.preview; bounded continuation previews retain the earlier segments. Existing native-agent streaming is unchanged. Structured source-answer JSON remains excluded from this new preview path.
+- Preview strips thinking blocks and incomplete thinking delimiters, caps presentation at32768 characters without capping generation, and checks cancellation before delivery. Preview observer failures do not turn a valid answer into a runtime failure. Only the final validated result reaches existing persistence; Stop/error clears controller preview.
+- Deterministic tests observe text before the generation Promise settles, cumulative continuation text, Stop rejection, no persisted draft, and full Send completion/error cleanup. Prototype1735/1735, product8/8, build6eeb45f414830f1d (163 assets), static checks passed. No real-model or physical-device streaming acceptance is claimed for this change.
+- Regenerated baseline dist shell hashes after verifying lfm-adapter.js's LF bytes exactly match HEAD; its tracked shell entry was stale. No runtime code or model asset changes. Public site remains v282 pending publication.

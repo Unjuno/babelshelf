@@ -2205,3 +2205,30 @@ test('pinned-file terminal answers share the initial snapshot but revalidate bef
   assert.equal(reads,2);
  }
 });
+
+
+test('prose streams before generation settles and continuation previews retain the earlier answer',async()=>{
+ const store={all:async()=>[],search:async()=>[]},previews=[];let calls=0,emit,finish;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async(_messages,_budget,format,onPreview)=>{
+  assert.equal(format,'prose');calls++;
+  if(calls===1){onPreview('<thi');onPreview('<think>private reasoning</think>The lantern');return {text:'The lantern glowed. ',finishReason:'length'};}
+  emit=onPreview;return new Promise(resolve=>{finish=resolve;});
+ }};
+ const pending=groundedAnswer({store,engine:e},{model:'4B',question:'Write a story.',mode:'chat',scope:{kind:'conversation'},onPreview:text=>previews.push(text)});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(calls,2);assert.deepEqual(previews,['','The lantern']);
+ emit('Then dawn');assert.equal(previews.at(-1),'The lantern glowed. Then dawn');
+ finish({text:'Then dawn came.',finishReason:'stop'});
+ const result=await pending;
+ assert.equal(result.answer,'The lantern glowed. Then dawn came.');assert.deepEqual(result.sources,[]);
+ assert.equal(previews.at(-1),result.answer);assert.ok(previews.every(text=>!text.includes('private reasoning')));
+});
+
+test('stopped prose rejects late previews and never returns a saveable answer',async()=>{
+ const store={all:async()=>[],search:async()=>[]},previews=[];let stopped=false,emit,finish;
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},generate:async(_m,_b,_f,onPreview)=>{emit=onPreview;return new Promise(resolve=>{finish=resolve;});}};
+ const pending=groundedAnswer({store,engine:e},{model:'4B',question:'Write a story.',mode:'chat',scope:{kind:'conversation'},check:()=>{if(stopped)throw Error('Stopped');},onPreview:text=>previews.push(text)});
+ await new Promise(resolve=>setImmediate(resolve));emit('Beginning');stopped=true;
+ assert.throws(()=>emit('Late'),/Stopped/);finish({text:'Late',finishReason:'stop'});
+ await assert.rejects(pending,/Stopped/);assert.deepEqual(previews,['Beginning']);
+});

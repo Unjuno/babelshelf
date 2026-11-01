@@ -25,6 +25,7 @@ type Dependencies={
  check:()=>void;trace:ReturnType<typeof createTurnActivityTracer>;
  snapshot:()=>Promise<NoteView[]>;
  acquireModel?:()=>Promise<TextRuntime>;
+ onPreview?:(text:string)=>void;
 };
 
 /** A reader may already have answered the exact current question. Reuse only
@@ -49,7 +50,7 @@ export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependen
 
 // Application execution returns data. The caller owns turn persistence,
 // navigation and explicit review/approval; these methods cannot commit edits.
-export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel}:Dependencies){
+export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel,onPreview}:Dependencies){
  const host={search:(query:string)=>store.search(query),resolve:(query:string)=>snapshot().then(notes=>resolveToolNotes(notes,query)),check};
  const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search')},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:q=>store.search(q,true)}));
  const completion=async<T extends string>(stage:'read-completion'|'search-completion',work:(runtime:TextRuntime)=>Promise<T>,source:Record<string,unknown>={})=>{
@@ -63,7 +64,7 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
   },
   async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[];budgetReason?:AgentBudgetReason}={}){
    let observedInference:AnswerInference|undefined;
-   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,...(request.query!==undefined?{query:request.query}:{}),mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,check,onInference:metrics=>{observedInference={...metrics};request.onInference?.(metrics);}}),value=>({model:value.model,sourceCount:value.sources.length,...('answerBudget' in value&&value.answerBudget?{answerBudget:value.answerBudget}:{}),...(value.status?{status:value.status}:{}),...(value.inference?{inference:value.inference}:{})}),undefined,()=>observedInference?{inference:observedInference}:undefined);
+   const parsed=await trace('knowledge.answer',{model:request.model,question:request.question,...(request.query!==undefined?{query:request.query}:{}),mode:metadata.mode??request.mode,...(request.reply?{execution:'agent-terminal-reply'}:{}),...(request.scope.kind==='attachments'?{inputReadings:request.scope.readings}:{}),...(metadata.toolCalls?.length?{toolCalls:metadata.toolCalls}:{}),...(metadata.budgetReason?{budgetReason:metadata.budgetReason}:{})},()=>groundedAnswer({store,engine,acquireModel},{...request,onPreview:request.onPreview??onPreview,check,onInference:metrics=>{observedInference={...metrics};request.onInference?.(metrics);}}),value=>({model:value.model,sourceCount:value.sources.length,...('answerBudget' in value&&value.answerBudget?{answerBudget:value.answerBudget}:{}),...(value.status?{status:value.status}:{}),...(value.inference?{inference:value.inference}:{})}),undefined,()=>observedInference?{inference:observedInference}:undefined);
    check();const {inference:_inference,...answer}=parsed;return {kind:'answer' as const,...answer};
   },
   async schedule(context:DialogueContext){
