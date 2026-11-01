@@ -7530,3 +7530,10 @@ Focused DecisionClient/model execution20/20; decision execution/routing/resolved
 
 Decision lifecycle integration follow-up — 2026-11-01
 Connected production DecisionClient and createModelExecutionManager with controlled Worker replies. Classification is held pending explicitly to verify busy rejection, then its retirement permits Text acquisition without a redundant unload; subsequent Decision acquisition reloads. Model execution13/13 and full prototype1718/1718 passed. This does not establish physical-device or real Decision model performance. Existing current-prototype-tests.log reused; no browser/profile/model created. CI41316702597 for c552e6a remains separately in progress at recording time.
+
+Public Site275 — 2026-11-01
+CI41316702597 succeeded at c552e6a6d021a720572339b3866992a0447bc6c9. Follow-up test commit0b21425 pushed separately.
+Current-source rebuild d90b81baebc851b5/163 assets, product8/8 pass. Earlier d0dfe2ad5353b4fa build superseded before publication.
+Site source380b6c6aae8d1b3a5733f1ae426a3941cb1c79ba; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_725a3bccb46881918a43b892c2f83280; deployment appgdep_6ae7500273c88191a4bf44bb3827b859 succeeded.
+Archive sha256:d5be18ce05cd52f2ebc339f04f4f0d8239631efda9ff8fe9c4e5a351cbc4c66b, 84449280 bytes/193 files.
+Existing IAB2/tab1 Update adopted index-B8RbomAb.js, retained conversation/input-file v1 and returned Offline. Screenshot current-public-update.png overwritten. This is update adoption, not new public inference or physical-device acceptance.

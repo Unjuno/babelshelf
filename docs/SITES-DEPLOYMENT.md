@@ -1,3 +1,7 @@
+# Public v275 — live Decision residency (2026-11-01)
+
+Build `d90b81baebc851b5`, entry `index-B8RbomAb.js`; code c552e6a passed complete CI41316702597. Site source `380b6c6aae8d1b3a5733f1ae426a3941cb1c79ba`; deployment `appgdep_6ae7500273c88191a4bf44bb3827b859` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle with dialogue and input-file state retained, then returned Offline. No real-model or physical-device speedup is established. Previous entries are historical.
+
 # Public v274 — inference acquisition and evidence-read reuse (2026-11-01)
 
 Build `aee507b9537b143e`, entry `index-qiMBeED6.js`; complete CI41315315703 passed at `c1e7d5155117408a22007d6355c619bb6b86abd5`. Site source `bd1bee0a1adab3b13be244251530e8d7fbd1498b`; deployment `appgdep_6ae74c41d02081919956393465699392` succeeded. Public audience preserved. Existing sidebar Update adopted the exact bundle, preserved conversation/input-file state and returned Offline. This verifies update adoption, not physical-device inference or a measured GPU speedup. Previous sections are historical.
