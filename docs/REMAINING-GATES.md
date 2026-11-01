@@ -2,7 +2,7 @@
 
 Public v297: application e2b879d/build d022e5c3d748015a/index-mANsJy0c.js. CI41350643949 passed all stages. Deployment appgdep_6ae7adbef9b8819199ed30f367a8c482 succeeded; existing sidebar Refresh adopted the exact entry, retained conversation and QA-LFM3-source-check input reference, and returned to app Offline. Shared native reply guidance and full cached-input accounting are deployed. Actual post-change latency/prose quality and physical-device performance remain unverified.
 
-Local follow-up 2e081d4: consecutive identical planner-fit checks are reused within one preparation only. Context19, conversation/planner222, root check and build06ed16be77948f25 pass; not deployed. Real-model latency benefit remains unmeasured.
+Saved v298 (not deployed), source ca946fd2462a6f010fc6e490889df75cf74f6274, awaits CI41352040901 on a0c4962. Local follow-up 2e081d4: consecutive identical planner-fit checks are reused within one preparation only. Context19, conversation/planner222, root check and build06ed16be77948f25 pass; not deployed. Real-model latency benefit remains unmeasured.
 
 Prior public v296 sidebar LFM3 QAD Q4_0 sample completed memory.sources → memory.read → native answer → original-v1 citation → approved exact save. One QA note retained; original model selection restored. Three model calls383.3s; 1408 cached tokens on calls2/3, runtime reports25/25 GPU layers. Slow input processing and verbose internal IDs in the reply remain defects; this is not search-discovery or cross-device acceptance. See the dated LFM3 provenance entry in TEST-RESULTS.txt.
 

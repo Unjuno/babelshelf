@@ -7811,3 +7811,6 @@ prepareTurnContext now reuses only the immediately preceding identical serialize
 
 2026-11-02 — planner-fit boundary checks
 Additional controlled coverage confirms cancellation during an awaited fit prevents context publication/history save, and changed candidates are re-evaluated through compaction with originals retained. Context preparation19/19 passed. Current-status document now places old releases under the historical heading rather than mixing them into current status. No additional runtime changes or claimed speedup.
+
+2026-11-02 — v298 saved pending CI
+Application a0c49626869a43382d5a05bcf25648c52320c889/build06ed16be77948f25. App acceptance8/8 passed; delivery gzip/identity/method/offline-shell checks passed. Stage retained current and previous builds and pruned27 old generated assets. Site source ca946fd2462a6f010fc6e490889df75cf74f6274 pushed and saved as appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_de1e4c71bdfc8191906d48b825118324 (v298), not deployed. Archive sha256 a1d5de573de5bf3e15d0129256944dbe0a5512c4968cd3d76a195244bfd6f2c9,84469760bytes,193files; reused qa-retained/current-site.tar.gz. CI41352040901 live; wait for its result before deploying this saved version. Public remainsv297.
