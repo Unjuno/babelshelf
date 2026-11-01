@@ -1,3 +1,4 @@
+import {observeInference,type InferenceMeasurements} from './inference-measurements.ts';
 import {newNoteSourceRef} from './note-creation.ts';
 import {createResolvedActions,answerCurrentVisionInput} from './resolved-actions.ts';
 import {makeDialogueCopyReview,type DialogueCopyReview} from './dialogue-copy.ts';
@@ -272,7 +273,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     if(request.action==='capture'){request.historyIndex=original.turnIndex;request.historyPart=original.speaker as 'user'|'assistant';captureSource=makeDialogueCopyReview(prior,selection);}
     inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,selectedOriginal:{speaker:original.speaker==='assistant'?'assistant':'user',text:original.quote}};
     await finishTurn(id,{readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},status:'Reading earlier message'});
-    if(request.action==='recall'||request.action==='transform'){const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(inference,text,original,checkSend),value=>value,value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined);checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:result.toolCalls?.some(call=>call.name==='text.replace')?[]:original.refs});return result.status?{kind:'failed',reason:'text-operation'}:{kind:'answered'};}request.action='recall';}
+    if(request.action==='recall'||request.action==='transform'){const inspection:InferenceMeasurements={measuredModelCalls:0};const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(observeInference(inference,inspection),text,original,checkSend),value=>({...value,inference:{...inspection}}),value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined,()=>({inference:{...inspection}}));checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:result.toolCalls?.some(call=>call.name==='text.replace')?[]:original.refs});return result.status?{kind:'failed',reason:'text-operation'}:{kind:'answered'};}request.action='recall';}
     if(request.action==='capture')request.body=original.quote;else request.action='chat';
    }
    // A native reply may cite an exact search range even after a longer read.

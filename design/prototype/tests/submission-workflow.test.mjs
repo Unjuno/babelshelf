@@ -1,3 +1,4 @@
+import {summarizeTurnWork} from '../src/turn-work-summary.ts';
 import {originalNote} from '../src/original-assets.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -841,6 +842,7 @@ test('regenerated dialogue answers do not inherit unread references from the pre
  assert.equal(await c.run(run=>executeSubmission({text:'Explain the previous answer.',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
  const turn=f.current().turns.at(-1);
  assert.equal(turn.answer,'I cannot verify the original.');assert.deepEqual(turn.refs,[]);
+ const inspection=turn.activity.find(a=>a.tool==='text.inspect');assert.equal(inspection.output.inference.measuredModelCalls,1);assert.ok(inspection.output.inference.generationWallMs>=0);assert.equal(summarizeTurnWork(turn.activity).measuredModelCalls,calls);
  assert.deepEqual(f.current().turns[0],prior);assert.equal(f.reviews.length,0);
 });
 
@@ -853,4 +855,12 @@ test('literal replacement drops old factual citations while lossless line format
   assert.equal(await c.run(run=>executeSubmission({text:'Please adjust the previous answer.',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
   const turn=f.current().turns.at(-1);assert.equal(turn.answer,replacement?'Bring tea':'- [ ] Bring water');assert.deepEqual(turn.refs,replacement?[]:refs);assert.deepEqual(f.current().turns[0],prior);assert.equal(turn.readTurn.turnId,'answer');
  }
+});
+
+test('failed original-text classification retains inference work without publishing an answer',async()=>{
+ const f=fixture(),c=createSubmissionController();await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'answer',user:'Question',answer:'Original answer'}],currentResult:{turnId:'answer'}});
+ let calls=0;f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:++calls===1?'true':'invalid classifier output',outputTokens:3,metrics:{runtimePromptTokens:100}})};
+ // Explicit current-summary selection goes directly to inspection, without a planner call.
+ assert.equal(await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run)),'failed');
+ const turn=f.current().turns.at(-1),inspection=turn.activity.find(a=>a.tool==='text.inspect');assert.equal(inspection.status,'failed');assert.equal(inspection.output.inference.measuredModelCalls,1);assert.equal(inspection.output.inference.promptTokens,100);assert.equal(inspection.output.inference.outputTokens,3);assert.equal(summarizeTurnWork(turn.activity).measuredModelCalls,1);assert.equal(turn.answer,undefined);assert.equal(f.reviews.length,0);
 });

@@ -31,7 +31,7 @@ function isAgentTool(tool:string){
 export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummary|null{
  let measuredModelCalls=0,promptTokens:number|undefined,outputTokens:number|undefined,tokenCountMs:number|undefined,generationMs:number|undefined,measuredToolCalls=0,toolElapsedMs:number|undefined;
  for(const activity of activities){
-  if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer'||activity.tool==='dialogue.compact'||activity.tool==='schedule.propose'||activity.tool==='memory.propose_correction')&&activity.status!=='running'){
+  if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer'||activity.tool==='dialogue.compact'||activity.tool==='text.inspect'||activity.tool==='schedule.propose'||activity.tool==='memory.propose_correction')&&activity.status!=='running'){
    const inference=record(record(activity.output)?.inference);
    if(!inference)continue;
    // Successful activity does not prove that a model call happened: some
