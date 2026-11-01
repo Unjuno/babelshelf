@@ -1,3 +1,7 @@
+# Public v280 — model template compatibility (2026-11-02 JST)
+
+Build `06ff65f17c5d3bd0`, entry `index-CGFW8Qsy.js`; complete CI41323093767 passed at app/test checkpoint `0f78a11`. Application code `8325f8a` combines consecutive leading system messages consistently for counting and generation and preserves the selected answer budget in protocol recovery. Site source `e6ee935948cb73efa0e6e8277c63756e09842a4c`; deployment `appgdep_6ae761919b9c8191a42e83fd9d997d57` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle and retained conversation/input-file v1; returned Offline. Actual model outcome is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
+
 # Public v279 — evidence packing and source freshness (2026-11-02 JST)
 
 Build `9d9e744be5885155`, entry `index-BdGjcEBK.js`; app633a89b passed complete CI41321353608 in8m12s. Site source `541aaf743b65249f65c000778cd509169f11f55b`; deployment `appgdep_6ae75c8abf1081918182dfb0e83b9f98` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle, retained conversation and input-file v1, then returned Offline. This verifies delivery/adoption, not actual inference performance. Saved v278 was superseded before publication. Previous entries are historical.

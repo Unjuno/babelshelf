@@ -7,8 +7,14 @@ export type TextBackendRegistration={id:string;modelIds:readonly string[];planne
 type Registered=TextBackendRegistration&{instance:TextBackend|null};
 // Some chat templates accept only one initial system message. Preserve the
 // ordered preference/policy text in both counting and generation, without
-// moving any later message or changing the stored conversation.
-function templateMessages(messages:any[]){
+// changing stored conversation. WebML requires all application system blocks
+// at the beginning; other backends retain their execution-feedback prefix.
+function templateMessages(messages:any[],initialSystemOnly=false){
+ if(initialSystemOnly){
+  const system=messages.filter(message=>message?.role==='system');
+  if(system.length&&system.every(message=>typeof message.content==='string'&&Object.keys(message).every(key=>key==='role'||key==='content')))return [{role:'system',content:system.map(message=>message.content).join('\n\n')},...messages.filter(message=>message?.role!=='system')];
+ }
+
  let count=0;
  while(count<messages.length&&messages[count]?.role==='system'&&typeof messages[count].content==='string'&&Object.keys(messages[count]).every(key=>key==='role'||key==='content'))count++;
  return count<2?messages:[{role:'system',content:messages.slice(0,count).map(message=>message.content).join('\n\n')},...messages.slice(count)];
@@ -73,7 +79,7 @@ export class TextEngineRouter{
  async call(cmd:string,args:any={},events?:any):Promise<any>{
   if(cmd==='status')return this.status(args.model);
   if(cmd==='configure'){const selected=this.selectedRegistrations(args.statusModel,args.models),epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of selected){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}
-  if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');const counted={...args,messages:templateMessages(args.messages)};return this.active.call(cmd,this.active===this.webml&&this.nativeStructuredOutput?this.nativeArgs(counted):counted,events);}
+  if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');const counted={...args,messages:templateMessages(args.messages,this.active===this.webml)};return this.active.call(cmd,this.active===this.webml&&this.nativeStructuredOutput?this.nativeArgs(counted):counted,events);}
   if(cmd==='prepare'||cmd==='verify'){if(this.cleanupFailure)throw this.cleanupFailure;try{return await this.backend(args.model).call(cmd,args,events);}catch(error){if((error as {cleanupUnconfirmed?:boolean})?.cleanupUnconfirmed===true)this.cleanupFailure=error as Error;throw error;}}
   throw Error('Unknown text operation');
  }
@@ -87,7 +93,7 @@ export class TextEngineRouter{
  private nativeArgs(args:any){const {responseTool:_ignored,...rest}=args;return {...rest,...nativeOutputRequest(args.messages,args.format)};}
  generate(messages:any[],events?:any,maxTokens=256,format?:EngineGenerationFormat){
   if(!this.active?.loaded)return Promise.reject(Error('Model not loaded'));
-  const args={messages:templateMessages(messages),maxTokens,...(format?{format}:{})},native=this.active===this.webml&&this.nativeStructuredOutput;
+  const args={messages:templateMessages(messages,this.active===this.webml),maxTokens,...(format?{format}:{})},native=this.active===this.webml&&this.nativeStructuredOutput;
   return this.active.call('generate',native?this.nativeArgs(args):args,events).catch(error=>{
    if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
   });

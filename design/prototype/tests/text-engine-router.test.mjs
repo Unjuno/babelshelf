@@ -19,12 +19,12 @@ test('count and generation share one leading system block without mutating guida
  for(const native of [false,true]){
   const f=setup(native),seen=[];await f.router.load('4B');
   f.webml.call=async(cmd,args)=>{seen.push({cmd,args});assert.ok(args.messages.slice(1).every(message=>message.role!=='system'),'template accepts system only at beginning');return {prompt_tokens:42,text:'done'};};
-  const messages=planDialogueMessages('What is saved?',{summary:'earlier context',recent:[],refs:[],turnCount:1},[],{allowedTools:[],history:[],userGuidance:'Prefer Japanese replies.'});
+  const messages=planDialogueMessages('What is saved?',{summary:'earlier context',recent:[],refs:[],turnCount:1},[],{allowedTools:[],history:[],queryRejected:true,userGuidance:'Prefer Japanese replies.'});
   const original=structuredClone(messages);
   await f.router.call('count',{messages});await f.router.generate(messages,undefined,256);
   assert.deepEqual(seen[0].args.messages,seen[1].args.messages);
-  assert.equal(seen[0].args.messages[0].content,original[0].content+'\n\n'+original[1].content);
-  assert.deepEqual(seen[0].args.messages.slice(1),original.slice(2));assert.deepEqual(messages,original);
+  assert.equal(seen[0].args.messages[0].content,original.filter(message=>message.role==='system').map(message=>message.content).join('\n\n'));
+  assert.deepEqual(seen[0].args.messages.slice(1),original.filter(message=>message.role!=='system'));assert.deepEqual(messages,original);
  }
 });
 test('a failed resident cannot be unloaded or switched until cleanup is confirmed',async()=>{
