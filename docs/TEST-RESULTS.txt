@@ -7512,3 +7512,6 @@ Removed caller-side eager ensureText before resolved search. The resolved action
 
 2026-11-01 — Pinned-file evidence snapshot reuse
 Grounded answers now share one initial Knowledge snapshot for working-file evidence and source validation, removing a duplicate all-record read. Final delivery still reads current records and validates pinned revision and citation bytes. A terminal-file regression asserts exactly two snapshots (initial and delivery), unchanged answer/source bytes, no inference regeneration, and rejection when the second snapshot has a new source revision. Conversation/grounded dialogue214/214 and TypeScript pass. This reduces one full-store read on the scoped path; no measured device latency claim.
+
+2026-11-01 — Acquisition checkpoint CI and snapshot regression
+Exact08d069bde90b578b3cc11786d031afe726a6e729 completed CI41314416879 successfully in9m33s, including all browser/offline/installed-PWA stages. This includes acquisition and deferred-search changes, not the subsequent snapshot optimization. Snapshot commit5edc035 separately passed local prototype1715/1715, TypeScript, build aee507b9537b143e/163assets and product8/8. Physical-device and real-model latency gates remain open. Superseded generated deployment archive30362534bytes removed after inspecting its contents; currentv273 archive retained, no model or knowledge data removed.
