@@ -40,6 +40,26 @@ test('legacy query failure gets one audited model-directed repair without copyin
  assert.deepEqual(receipts.filter(r=>r.status!=='running').map(r=>r.status),['failed','succeeded']);
 });
 
+test('invalid legacy target gets one audited repair without replaying rejected content',async()=>{
+ const {value,calls}=input(['{"action":"answer","query":"items","target":"PRIVATE_INVALID_TARGET"}','{"action":"answer","query":"items","target":"file"}'],{question:'What items are in this file?',context:context({noteId:'opened',revision:1})});
+ const prompts=[],receipts=[],generate=value.engine.generate;
+ value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
+ value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.final.target,'file');assert.equal(prompts.length,2);assert.deepEqual(calls,[]);
+ assert.equal(prompts[0][0].content,prompts[1][0].content);
+ assert.match(JSON.stringify(prompts[1]),/Previous target was invalid; nothing executed/);
+ assert.doesNotMatch(JSON.stringify(prompts[1]),/PRIVATE_INVALID_TARGET/);
+ assert.deepEqual(receipts.filter(r=>r.status!=='running').map(r=>r.status),['failed','succeeded']);
+});
+
+test('target repair cannot loop or create an unavailable file scope',async()=>{
+ const {value,calls}=input(['{"action":"answer","query":"items","target":"bad"}','{"action":"answer","query":"items","target":"file"}']);
+ let generated=0;const generate=value.engine.generate;value.engine.generate=async(...args)=>{generated++;return generate(...args);};
+ await assert.rejects(coordinateAgentTurn(value),error=>error instanceof PlannerOutputError&&error.diagnostic.reason==='file scope');
+ assert.equal(generated,2);assert.deepEqual(calls,[]);
+});
+
 test('legacy query repair is bounded and cannot bypass stop or persistence failure',async()=>{
  for(const failure of ['repeat','stop','storage']){
   let generated=0,stopped=false;

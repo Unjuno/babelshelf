@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local follow-up: bounded invalid-target repair implemented; prototype1757/app8/build1c7b0f4a0ed4eb16/check pass. Actual-model replay and publication pending; no GPU speedup claimed.
+
 Public v292: application55a01c6/buildcb22d1dcafe01db7/index-DMpPX897.js; CI41340082053 all stages passed. Deploymentappgdep_6ae7906d79dc8191ae6598694cd850ea succeeded. Sidebar Update verified exact entry, preserved history, returned appOffline. Sourcea412e3cb72369bbf06826a8a8920498a50492949.
 
 Actual replay now passes preflight but fails model target validation: turn d8c427f8-a9b5-497a-870c-a29b45e01fef, Bonsai4B/context2048. Compaction3calls/887input/194output/49.382s; planner1882input/14output/max166/45.523s, TTFT44.036s,cached0. Invalid target, no tool execution, answer or save. Tool profile retained3calls with source details enabled. This is not provenance acceptance or a demonstrated speed gain. Fixed protocol leaves too little headroom; inspect target-contract clarity and recovery without bypassing validation.
