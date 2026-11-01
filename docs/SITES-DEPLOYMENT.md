@@ -1,3 +1,7 @@
+# Public v273 — runtime ownership, native preview timing and saved-material scope (2026-11-01)
+
+Build `5f0d165f57588d35`, entry `index-Bh-2D-TL.js`; verified code `b9a2e82` passed complete CI41312571454. Site source `159265271ad08a2a36be125bb7e433dff3270739`; deployment `appgdep_6ae745b9e03c8191a8236c9cb731d287` succeeded. Existing public audience retained. Sidebar Update adopted the exact bundle and returned Offline with previous conversation and model selection visible. This is publication/update verification, not new public model inference or physical-device acceptance. Full immutable version/archive details are in TEST-RESULTS.txt, “Public Site273 update adoption”. Older entries below are historical.
+
 # Public v218 — foreground schedule fairness (2026-10-27)
 
 App 39cfcc3 on codex/ui-design-handoff delivers build 21da013a02aed19e /135 verified assets, entry index-Bh8iTPOU.js. Site source 102f776e0bff68f785516cd1d0307d89b69f02e4; saved appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_904792a162e8819194a4b33363caff5f, deployment appgdep_6adffc8ece5881918d7fd8fdce3174e8 succeeded 2026-10-27T01:21:36.189821+00:00. Native tar sha256:cdd0a996f335d8785e1e4ba41979e18bd9b83f22d84aa4a6cf19c74f5854e68e, 57210880 bytes/160 files. Public audience retained; v217 assets retained. Delivery gzip/identity, method and offline-shell checks passed.
