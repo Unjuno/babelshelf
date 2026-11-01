@@ -1,3 +1,4 @@
+import {preferHighPerformanceAdapterRequests} from './webgpu-preference.js';
 import {nativeResponseTools,nativeResponseText} from './native-response.js';
 import {withLocalModels,verifyLocalModelFile} from './local-model-manifest.js';
 import {hashLocalModel} from './local-models.js';
@@ -6,6 +7,8 @@ import {createStreamingSHA256,streamingSHA256Backend} from './streaming-sha256.j
 import {fileResponse} from './ranges.js';
 import {createRuntimeModuleCache} from './runtime-module.js';
 import {createPinnedFileSnapshots} from './pinned-file-snapshots.js';
+// Apply to the runtime's own requests, not only the separate diagnostic probe.
+if(globalThis.navigator?.gpu)preferHighPerformanceAdapterRequests(globalThis.navigator.gpu);
 const networkFetch=globalThis.fetch.bind(globalThis);
 // Inference never has a network fallback, even when update permission is ON.
 globalThis.fetch=()=>Promise.reject(Error('Network disabled for inference'));

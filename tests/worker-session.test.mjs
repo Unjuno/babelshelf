@@ -152,3 +152,17 @@ test('worker reuses exact preflight count once and invalidates after generation,
  await run('count',{...args,messages:[{role:'user',content:'x'.repeat(262145)}]});
  await run('count',{...args,messages:[{role:'user',content:'x'.repeat(262145)}]});assert.equal(calls,7,'oversized inputs are not retained');
 });
+
+test('worker configures runtime-owned adapter requests before loading inference',async()=>{
+ const {preferHighPerformanceAdapterRequests}=await import('../dist/webgpu-preference.js');
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const calls=[],gpu={requestAdapter:async function(options){assert.equal(this,gpu);calls.push(options);return null;}};
+ const context=vm.createContext({preferHighPerformanceAdapterRequests,navigator:{gpu},createPinnedFileSnapshots,fetch:()=>{throw Error('No network');},postMessage(){},console});
+ vm.runInContext(source,context);
+ assert.equal(await gpu.requestAdapter(),null);
+ assert.equal(calls[0].powerPreference,'high-performance');
+ const explicit={powerPreference:'low-power',forceFallbackAdapter:true};
+ await gpu.requestAdapter(explicit);
+ assert.deepEqual(calls[1],explicit,'runtime explicit choice must survive');
+ assert.notEqual(calls[1],explicit,'caller options must not be mutated');
+});

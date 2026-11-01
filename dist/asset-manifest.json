@@ -123,8 +123,8 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 15221,
-      "sha256": "ca13fcf0f5c0793e93799f5851427913d087c7d6016971e914729ccc5318afaf"
+      "bytes": 15471,
+      "sha256": "877e190224b940e42ae921f2a09ad149994e88aac32993912b018c2b60fcc3e1"
     },
     {
       "path": "./native-answer-preview.js",
@@ -189,12 +189,17 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "59d9dcc96759685669e34221fa54b058966b000e596abeebdf624c58825d467c"
+      "sha256": "b1e8b3efe96c5abf8f9f5759f0a614c6cb464db846eee2bceb3cec3029996111"
     },
     {
       "path": "./ui.js",
       "bytes": 363,
       "sha256": "fdd47f5e92436a425f016aeed0ceb904bbb7957d4a15ad70a3d897e1a9d05aae"
+    },
+    {
+      "path": "./webgpu-preference.js",
+      "bytes": 710,
+      "sha256": "9dffa8441ee2adb3156869aa07d0c46ed8e9859a7a1a5c481e007098fbee7b80"
     }
   ]
 }
