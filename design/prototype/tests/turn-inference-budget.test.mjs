@@ -60,3 +60,14 @@ test('late streaming previews are suppressed while a timed-out runtime settles',
   assert.deepEqual(previews,['early']);
  }
 });
+
+
+test('a delayed deadline timer still classifies a late runtime rejection by elapsed time',async()=>{
+ for(const elapsed of [999,1001]){
+  let time=0,cleared=0;const failure=Error('Runtime failed');
+  const budget=createTurnInferenceBudget({maxGenerationTokens:null,maxGenerationMs:1000,now:()=>time,timers:{set(){return 1;},clear(){cleared++;}}});
+  const wrapped=budget.wrap(engine(async()=>{time=elapsed;throw failure;}));
+  await assert.rejects(wrapped.generate([],32),error=>elapsed>1000?error instanceof TurnInferenceBudgetError&&error.cause==='time':error===failure);
+  assert.equal(budget.generationMs,elapsed);assert.equal(budget.generatedTokens,32);assert.equal(cleared,1);
+ }
+});

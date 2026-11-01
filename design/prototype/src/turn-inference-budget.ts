@@ -51,7 +51,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
      // A failed attempt still consumed compute. If token usage was not returned,
      // reserve the requested allowance so a retry cannot evade the cap.
      if(!tokensRecorded)generatedTokens+=remaining;
-     if(expired)throw new TurnInferenceBudgetError('time');
+     if(expired||maxGenerationMs!==null&&generationMs>maxGenerationMs)throw new TurnInferenceBudgetError('time');
      throw error;
     }finally{if(timer!==undefined){timers.clear(timer);timer=undefined;}}
     };
