@@ -1,3 +1,7 @@
+# Public v281 — WebML execution feedback compatibility (2026-11-02 JST)
+
+Build `5f70fe584d1e43ae`, entry `index-Dx_IaVF3.js`; complete CI41324494187 passed at `ace89ed797ff76439708e372898214f78f7e7783`. Site source `c0702695c0ae14b89f4646afbe9d90cdca632433`; deployment `appgdep_6ae7657f5fa48191a97ef224c0ead68a` succeeded. Public audience retained. WebML now places plain application system blocks at the beginning consistently for count/generation; other engines retain late execution feedback. Actual sidebar outcome is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
+
 # Public v280 — model template compatibility (2026-11-02 JST)
 
 Build `06ff65f17c5d3bd0`, entry `index-CGFW8Qsy.js`; complete CI41323093767 passed at app/test checkpoint `0f78a11`. Application code `8325f8a` combines consecutive leading system messages consistently for counting and generation and preserves the selected answer budget in protocol recovery. Site source `e6ee935948cb73efa0e6e8277c63756e09842a4c`; deployment `appgdep_6ae761919b9c8191a42e83fd9d997d57` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle and retained conversation/input-file v1; returned Offline. Actual model outcome is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
