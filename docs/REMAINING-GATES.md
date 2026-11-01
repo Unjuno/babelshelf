@@ -1,12 +1,10 @@
 ## Current status · 2026-11-02
 
-Local candidate: compact model-facing action catalog preserves every purpose, target and tool-ID restriction in48 scoped roundtrips. Prototype1755/app8/build/check pass (cb22d1dcafe01db7). Actual tokenizer fit and model-choice verification remain pending; not deployed.
+Public v292: application55a01c6/buildcb22d1dcafe01db7/index-DMpPX897.js; CI41340082053 all stages passed. Deploymentappgdep_6ae7906d79dc8191ae6598694cd850ea succeeded. Sidebar Update verified exact entry, preserved history, returned appOffline. Sourcea412e3cb72369bbf06826a8a8920498a50492949.
 
-Public v291: applicationb7887ab, build5093633fab1819f5/index-CYuwP8g9.js. CI41338757975 passed every stage, including the corrected default-tool UI test. Sites deployment appgdep_6ae78ccbb51c8191b534100959ec3d74 succeeded. Sidebar Update loaded the exact entry, retained history and returned app Offline. Source0ef85cc83adee10b55a8b58a37705b18d31165a5. This is delivery verification, not performance or device acceptance.
+Actual replay now passes preflight but fails model target validation: turn d8c427f8-a9b5-497a-870c-a29b45e01fef, Bonsai4B/context2048. Compaction3calls/887input/194output/49.382s; planner1882input/14output/max166/45.523s, TTFT44.036s,cached0. Invalid target, no tool execution, answer or save. Tool profile retained3calls with source details enabled. This is not provenance acceptance or a demonstrated speed gain. Fixed protocol leaves too little headroom; inspect target-contract clarity and recovery without bypassing validation.
 
 Changes: fresh Standard/Source first include memory.sources; stored profiles remain unchanged. JSON-planner guidance is shorter without removing schemas, validators or budgets. Prototype1754/app8/build/check passed. Existing sidebar profile has search/read/calculator/source details and three-call limit (only Source details was enabled through UI for testing).
-
-Actual-model gate: the same provenance request still fails preflight on v291. Activity records zero model calls, lastCountPromptTokens1890, contextTokens2048, countMs19.835. The 158 remaining tokens fall below the planner's160-token minimum. Do not lower that reserve just to pass: tool observations also need usable room. Compact the fixed protocol further while preserving schemas and source boundaries, then verify actual navigation and answer. No answer/save occurred; existing data preserved. Screenshot reused qa-retained/current-model-check.png.
 
 Performance evidence: latest completed v289 saved-material replay used cached Bonsai4B, three calls2249prompt/79output,101.3s aggregate generation; final630prompt/38output,19.077s generation,15.266sTTFT,3.810sdecode,cached0; search45ms. It cited a saved answer, not the primary original. Model/session reuse exists; repeated loading or GPU bottleneck is not established. Investigate planner/prefill overhead without changing trusted-message semantics merely for cache hits.
 
