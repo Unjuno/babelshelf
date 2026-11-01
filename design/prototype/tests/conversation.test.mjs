@@ -2273,3 +2273,16 @@ test('summary rewrite completion reserve respects the exact input window and mod
   assert.equal(calls,1);assert.equal(result.compaction.summary,'Original.');assert.deepEqual(prior,before);
  }
 });
+
+
+test('optional recalled excerpts fit the consumer without rewriting original dialogue or summaries',async()=>{
+ const {boundedDialogueContext}=await import('../src/conversation.ts');
+ const prior={...emptyDialogue(),turns:[{id:'archive',user:'The amber lighthouse is on the coast.',answer:'Amber lighthouse noted.'}],compaction:{through:1,summary:'Coastal preferences.'}},before=structuredClone(prior);
+ const runtime={...engine(),count:async()=>({prompt_tokens:10}),generate:async()=>{throw Error('Unnecessary compaction');}};
+ const baseline=await boundedDialogueContext(prior,runtime,'amber lighthouse');assert.ok(baseline.recalled.length);
+ const fits=async context=>!context.recalled?.length;
+ const compact=await compactDialogue(prior,runtime,'amber lighthouse',()=>{},fits);assert.equal(compact,prior);
+ const fitted=await boundedDialogueContext(compact,runtime,'amber lighthouse',fits);
+ assert.deepEqual(fitted.recalled,[]);assert.equal(fitted.summary,prior.compaction.summary);assert.deepEqual(fitted.recent,baseline.recent);assert.deepEqual(prior,before);
+ await assert.rejects(boundedDialogueContext(prior,runtime,'amber lighthouse',async()=>{throw Error('Stopped');}),/Stopped/);
+});

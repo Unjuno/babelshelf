@@ -142,7 +142,7 @@ export function resolveDialogueTarget(state:Dialogue,target:DialogueTarget){
  if(target.target!=='history'||target.historyIndex==null||!target.historyPart)throw Error('Invalid dialogue target');
  return readDialogueTurn(state,target.historyIndex,target.historyPart);
 }
-export async function boundedDialogueContext(state:Dialogue,engine:ChatEngine,question:string){
+export async function boundedDialogueContext(state:Dialogue,engine:ChatEngine,question:string,fitsConsumer?:(context:DialogueContext)=>Promise<boolean>){
  engine=engine.pin?.()??engine;
  const context=dialogueContext(state,question),budget=Math.min(240,Math.floor(engine.manifest.contextTokens*.12));let recalled=context.recalled??[];
  while(recalled.length&&(await engine.count([{role:'user',content:JSON.stringify(recalled)}])).prompt_tokens>budget){
@@ -150,6 +150,12 @@ export async function boundedDialogueContext(state:Dialogue,engine:ChatEngine,qu
   if(r.quote.length<=24){recalled=recalled.filter((_,i)=>i!==largest);continue;}
   const excerpt=focusExcerpt(r.quote,question,Math.floor(r.quote.length/2));recalled=recalled.map((v,i)=>i===largest?{...r,quote:excerpt.quote,start:r.start+excerpt.start,end:r.start+excerpt.end}:v);
  }
+ // Retrieved archive excerpts are optional augmentation, not the active
+ // conversation. Fit them to the actual consumer before recompressing history.
+ // Originals remain available through history reads; retain exact ranges.
+ // Keep retrieval and its adjacent corrections together; dropping just the
+ // last correction could leave an obsolete statement looking current.
+ if(recalled.length&&fitsConsumer&&!await fitsConsumer({...context,recalled}))recalled=[];
  return {...context,recalled};
 }
 // Project at the model boundary: runtime read receipts also contain refs for persistence.
@@ -216,7 +222,7 @@ export async function compactDialogue(state:Dialogue,engine:ChatEngine,question:
   return historyCount<=budget&&total+512<=engine.manifest.contextTokens;
  };
  for(let iterations=0;iterations<=state.turns.length;iterations++){
-  const context=await boundedDialogueContext(working,engine,question);
+  const context=await boundedDialogueContext(working,engine,question,contextFits);
   if(await contextFits(context))return working;
   const from=working.compaction?.through??0,remaining=state.turns.length-from;
   if(!remaining){
@@ -237,7 +243,7 @@ export async function compactDialogue(state:Dialogue,engine:ChatEngine,question:
    if(result.stopped)throw Error('Stopped');
    const summary=acceptedCompactionSummary(result);
    const candidate={...working,revision:working.revision+1,compaction:{through:from,summary}};
-   const reduced=await boundedDialogueContext(candidate,engine,question);
+   const reduced=await boundedDialogueContext(candidate,engine,question,contextFits);
    if(await contextFits(reduced))return candidate;
    throw Error('Conversation summary exceeds model context · use a larger context');
   }

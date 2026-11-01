@@ -175,3 +175,9 @@ test('explicit saved filenames start fresh retrieval without old generated compa
  assert.equal(independentSavedKnowledgeContext(questions[0],true),null,'current attachments still keep their mixed-input scope');
  assert.deepEqual(prior,before);
 });
+
+test('prepared context does not reinsert optional archive retrieval after exact consumer fitting',async()=>{
+ const prior={schema:1,revision:1,turns:[{id:'old',user:'Amber lighthouse is north.',answer:'Noted.'},{id:'correction',user:'Actually south.'}],compaction:{through:2,summary:'Amber lighthouse is south.'}},before=structuredClone(prior);
+ const context=await prepareTurnContext({prior,engine:{...fakeEngine(),count:async()=>({prompt_tokens:10}),generate:async()=>{throw Error('Must not compact');}},model:'test',question:'Amber lighthouse',fitsPlanner:async value=>!value.recalled?.length,check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue:async()=>{throw Error('Must not save');},trace:async(_tool,_input,work)=>work()});
+ assert.deepEqual(context.recalled,[]);assert.equal(context.summary,prior.compaction.summary);assert.deepEqual(prior,before);
+});

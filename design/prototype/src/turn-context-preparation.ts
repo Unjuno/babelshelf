@@ -60,7 +60,7 @@ export async function prepareTurnContext(input:{
  const prepared=await input.trace('dialogue.compact',{model:input.model,priorTurns:input.prior.turns.length,through:input.prior.compaction?.through??0},async()=>{
   const fitsPlanner=input.fitsPlanner?(context:DialogueContext)=>input.fitsPlanner!(context,engine):undefined;
   const compact=await compactDialogue(input.prior,engine,input.question,()=>{input.check();input.setProgress('Compacting…');},fitsPlanner);
-  return {compact,context:await boundedDialogueContext(compact,engine,input.question)};
+  return {compact,context:await boundedDialogueContext(compact,engine,input.question,fitsPlanner)};
  },value=>({compaction:value.compact.compaction?{through:value.compact.compaction.through,summaryCharacters:value.compact.compaction.summary.length}:null,inference:inferenceReceipt(usage)}),undefined,()=>({inference:inferenceReceipt(usage)}));
  input.check();
  const current=input.currentDialogue();
