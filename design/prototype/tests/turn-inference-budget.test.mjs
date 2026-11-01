@@ -47,3 +47,16 @@ test('an unconfigured profile stays unlimited and records elapsed generation tim
 test('invalid profile generation budgets are rejected before wrapping an engine',()=>{
  for(const options of [{maxGenerationTokens:255,maxGenerationMs:null},{maxGenerationTokens:null,maxGenerationMs:999},{maxGenerationTokens:131073,maxGenerationMs:null}])assert.throws(()=>createTurnInferenceBudget(options),/Invalid generation budget/);
 });
+
+
+test('late streaming previews are suppressed while a timed-out runtime settles',async()=>{
+ for(const fireTimer of [false,true]){
+  let time=0,expire,emit,finish;const previews=[];
+  const wrapped=createTurnInferenceBudget({maxGenerationTokens:null,maxGenerationMs:1000,now:()=>time,timers:{set(callback){expire=callback;return 1;},clear(){}}}).wrap(engine((_m,_n,_f,preview)=>{emit=preview;return new Promise(resolve=>{finish=resolve;});},{stop(){}}));
+  const pending=wrapped.generate([],32,undefined,value=>previews.push(value));
+  emit('early');time=1001;if(fireTimer)expire();emit('late');
+  finish({text:'late final',outputTokens:2});
+  await assert.rejects(pending,TurnInferenceBudgetError);
+  assert.deepEqual(previews,['early']);
+ }
+});

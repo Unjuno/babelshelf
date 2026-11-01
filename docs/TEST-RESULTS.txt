@@ -7248,3 +7248,16 @@ static checks, product build 925705222165d1c5 and app acceptance 8/8 passed.
 Native-tool regression now expects count+generate rather than count+count+generate,
 while preserving exact tool schema equality, duplicate-call and context rejection.
 No real-model speedup, iPhone/Android/macOS performance or GPU gain is claimed.
+
+2026-11-01 — Deadline evidence correction and preview boundary.
+Reopened the same local sidebar stopped-turn Activity successfully using its
+visible accessibility control; no browser errors were recorded. The earlier
+unopened-dialog observation is not a reproduced application defect. Its receipt
+shows Select action failed (not final-answer generation), maxGenerationMs 1000,
+1761 prompt tokens and generationWallMs 3521.535. A budget requests cancellation;
+this is not proof that GPU/runtime settlement completes at the exact deadline.
+The shared budget wrapper now suppresses previews after expiry, including when
+the timer callback itself is delayed; late final results remain rejected.
+Controlled regression/submission checks 78/78, TypeScript, product build
+6643e90b3792f346 and app acceptance 8/8 passed. New preview guard has not yet
+been accepted on a physical device or live-model run. Existing data retained.

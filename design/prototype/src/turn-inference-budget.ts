@@ -42,7 +42,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
     expired=false;let elapsedRecorded=false,tokensRecorded=false;
     if(remainingMs!==undefined)timer=timers.set(()=>{expired=true;try{(target as TextEngine&{stop?:()=>void}).stop?.();}catch{/* The generation rejection below remains authoritative. */}},remainingMs);
     try{
-     const result=await target.generate(messages,remaining,format,onPreview);
+     const result=await target.generate(messages,remaining,format,onPreview?preview=>{if(!expired&&(remainingMs===undefined||now()-started<=remainingMs))onPreview(preview);}:undefined);
      generationMs+=Math.max(0,now()-started);elapsedRecorded=true;
      const used=result.outputTokens??remaining;if(!Number.isSafeInteger(used)||used<0)throw Error('Invalid generated token count');generatedTokens+=used;tokensRecorded=true;
      checkCompleted();return result;
