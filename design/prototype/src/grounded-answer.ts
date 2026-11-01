@@ -236,6 +236,9 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   hits=[...firstRequired,...remaining];
  }
  for(const hit of hits){
+  // Repeated tool reads can return a smaller range already supplied verbatim.
+  // Retain distinct revisions, coverage and partial overlaps; do not rewrite refs.
+  if(evidence.some(prior=>prior.noteId===hit.noteId&&prior.revision===hit.revision&&prior.title===hit.title&&prior.coverage===hit.coverage&&prior.start<=hit.start&&prior.end>=hit.end&&prior.quote.slice(hit.start-prior.start,hit.end-prior.start)===hit.quote))continue;
   if(evidence.length>=MAX_CONTEXT_SOURCE_REFS)break;
   const candidate={...hit,label:'S'+(evidence.length+1)},trial=[...evidence,candidate];
   const proposed=input(trial),trialFormat=answerFormat(trial.length),count=await engine.count(proposed,trialFormat);check();

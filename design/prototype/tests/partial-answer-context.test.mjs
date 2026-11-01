@@ -54,3 +54,15 @@ test('terminal answer keeps the explicit one-sentence contract without intent re
  const engine={manifest:{models:[],runtime:{}},generate:async()=>{throw Error('No regeneration');}};
  await assert.rejects(groundedAnswer({store:{all:async()=>[note],search:async()=>[]},engine},{model:'test',question:'この入力ファイルを一文で要約してください。',mode:'answer',scope:{kind:'file',file:{noteId:note.id,revision:1}},toolEvidence:{used:true,refs:[ref],memoryUsed:true},reply:{status:'answered',answer:ref.quote,sources:[ref]}}),/One sentence requested/);
 });
+
+
+test('answer packing omits fully covered excerpts without merging distinct evidence',async()=>{
+ const note=createNote({path:'Notes/overlap.md',body:'Alpha. Beta. Gamma.'}),other=createNote({path:'Notes/other.md',body:'Alpha. Beta. Gamma.'});
+ const ref=(start,end,extra={})=>({noteId:note.id,revision:1,start,end,quote:note.revisions[0].body.slice(start,end),title:'Notes/overlap.md',...extra});
+ const whole=ref(0,12),inside=ref(7,12),overlap=ref(7,18),distinct=ref(7,12,{noteId:other.id,title:'Notes/other.md'}),coverage=ref(0,6,{coverage:'Audio only'});
+ let supplied;const refs=[whole,inside,overlap,distinct,coverage],before=structuredClone(refs);
+ const engine={loaded:'test',assets:{},manifest:{contextTokens:8192,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{supplied=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]).evidence;return {text:JSON.stringify({status:'answered',answer:'Alpha.',sources:['S1']})};}};
+ const result=await groundedAnswer({store:{all:async()=>[note,other],search:async()=>[]},engine},{model:'test',question:'Explain the source.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true}});
+ assert.equal(supplied.length,4);assert.deepEqual(supplied.map(x=>[x.start,x.end,x.title,x.coverage]),[whole,distinct,overlap,coverage].map(x=>[x.start,x.end,x.title,x.coverage]));
+ assert.equal(result.sources[0].noteId,note.id);assert.equal(result.sources[0].start,0);assert.equal(result.sources[0].end,12);assert.equal(result.sources[0].quote,whole.quote);assert.deepEqual(refs,before);
+});
