@@ -54,7 +54,7 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
  const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search')},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:q=>store.search(q,true)}));
  const completion=async<T extends string>(stage:'read-completion'|'search-completion',work:(runtime:TextRuntime)=>Promise<T>,source:Record<string,unknown>={})=>{
   const inference:InferenceMeasurements={measuredModelCalls:0};
-  return trace('dialogue.plan',{stage,model,question,...source},()=>work(observeInference(engine,inference)),value=>({completion:value,inference:{...inference}}),undefined,()=>({inference:{...inference}}));
+  return trace('dialogue.plan',{stage,model,question,...source},async()=>{check();const runtime=acquireModel?await acquireModel():engine;check();return work(observeInference(runtime,inference));},value=>({completion:value,inference:{...inference}}),undefined,()=>({inference:{...inference}}));
  };
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
@@ -68,7 +68,7 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
   },
   async schedule(context:DialogueContext){
    const inference:InferenceMeasurements={measuredModelCalls:0};
-   const proposal=await trace('schedule.propose',{model,instruction:question},()=>proposeTask(observeInference(engine,inference),question,context,check),value=>({...value,reviewRequired:!!value.task,inference:{...inference}}),undefined,()=>({inference:{...inference}}));check();
+   const proposal=await trace('schedule.propose',{model,instruction:question},async()=>{check();const runtime=acquireModel?await acquireModel():engine;check();return proposeTask(observeInference(runtime,inference),question,context,check);},value=>({...value,reviewRequired:!!value.task,inference:{...inference}}),undefined,()=>({inference:{...inference}}));check();
    return proposal.question?{kind:'clarify' as const,question:proposal.question}:{kind:'schedule' as const,task:proposal.task!};
   },
   async correction(query:string,selectedFile?:Parameters<typeof proposeCorrection>[2]){

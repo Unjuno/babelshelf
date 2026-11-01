@@ -196,3 +196,24 @@ test('schedule and correction proposals retain inference accounting without comm
   assert.deepEqual(note,before);
  }
 });
+
+
+test('completion and schedule acquire the text runtime instead of the inactive planning engine',async()=>{
+ const {engine}=fixture();let acquired=0,generated=0;
+ const runtime={...engine,generate:async()=>{generated++;return {text:'{"completion":"answer"}'};}};
+ const {actions}=fixture({acquireModel:async()=>{acquired++;return runtime;}});
+ assert.equal(await actions.completeRead({noteId:'meeting',revision:1}),'answer');
+ runtime.generate=async()=>{generated++;return {text:'{"action":"clarify","question":"What time?"}'};};
+ assert.equal((await actions.schedule(context)).kind,'clarify');
+ assert.equal(acquired,2);assert.equal(generated,2);
+});
+
+test('Stop during runtime acquisition prevents completion and schedule generation',async()=>{
+ for(const action of ['completeRead','schedule']){
+  let stopped=false,generated=0;const {engine}=fixture();
+  engine.generate=async()=>{generated++;throw Error('Unexpected generation');};
+  const {actions}=fixture({check:()=>{if(stopped)throw Error('Stopped');},acquireModel:async()=>{stopped=true;return engine;}});
+  await assert.rejects(action==='completeRead'?actions.completeRead({noteId:'meeting',revision:1}):actions.schedule(context),/Stopped/);
+  assert.equal(generated,0);
+ }
+});
