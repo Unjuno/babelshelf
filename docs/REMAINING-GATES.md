@@ -1,5 +1,9 @@
 ## Current status · 2026-11-02
 
+Local follow-up: shortened redundant JSON-planner instructions without removing schemas or validation; prototype1754/app8/build/check pass (5093633fab1819f5). CI41338323310 failed an obsolete fresh-default toggle expectation; updated UI test verifies both off/on persistence and awaits CI. Public context-fit remains unverified.
+
+Public v290 follow-up: enabling Source details in the existing profile causes planner preflight to report Assistant setup exceeds context limit. No answer/save occurred. Investigate prompt/schema overhead under the selected context before claiming provenance navigation works. Existing three-call limit and data retained.
+
 New local change: fresh Standard and Source first profiles include memory.sources; existing selections remain unchanged and legacy Standard updates still require the existing explicit review. Prototype1754/app8/build/check passed (build77bc45a665e20321). Not deployed. Public v290 provenance attempt exposed the existing three-call profile without memory.sources and was stopped after one failed planner call; this is not a completed provenance test.
 
 Public v290 now contains application025607d: build913f7ca47a41241a/index-G8GwnnhC.js. Same-worker reload and all backend callback retirement regressions passed (prototype1753/app8/build/check); CI41336618465 passed all stages. Sidebar Update adopted the exact entry with retained history and returned appOffline. This verifies delivery, not new model throughput or physical-device acceptance.

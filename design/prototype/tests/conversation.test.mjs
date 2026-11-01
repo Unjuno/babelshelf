@@ -1250,7 +1250,7 @@ test('an empty exact memory read directs topic lookup to memory.search without t
  const allowedTools=[{id:'memory.read',effect:'read',network:'none',usage:'Read an exact saved record.'},{id:'memory.search',effect:'read',network:'none',usage:'Search saved records by topic or clues.'}];
  const initial=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[]});
  assert.match(initial.filter(message=>message.role==='system').map(message=>message.content).join(' '),/memory\.search.*topics?.*memory\.read.*exact ID.*path.*filename/i);
- assert.match(initial.filter(message=>message.role==='system').map(message=>message.content).join(' '),/A read selector must be an exact ID, path or filename.*never invent one/i);
+ assert.match(initial.filter(message=>message.role==='system').map(message=>message.content).join(' '),/memory\.read requires an exact ID\/path\/filename from the user or tool results; never invent selectors/i);
  const emptyRead=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'meeting'},result:[]}]});
  assert.match(emptyRead.filter(message=>message.role==='system').map(message=>message.content).join(' '),/empty memory\.read result.*topic.*memory\.search/i);
  const matchedRead=planDialogueMessages('When is the meeting?',context,[],{allowedTools,history:[{tool:'memory.read',arguments:{query:'Notes\/meeting.md'},result:[{path:'Notes/meeting.md'}]}]});
