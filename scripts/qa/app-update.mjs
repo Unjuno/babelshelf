@@ -32,7 +32,7 @@ function generation(number){
 }
 
 test('one explicit refresh installs, activates and reopens a verified generation without losing local data',async()=>{
- const versions=[generation(1),generation(2),generation(3)];
+ const versions=[generation(1),generation(2),generation(3),generation(4)];
  let current=0,corrupt=false,delayPayload=false;
  const requests=[];
  const server=createServer((request,response)=>{
@@ -83,10 +83,16 @@ test('one explicit refresh installs, activates and reopens a verified generation
   assert.equal(await page.evaluate(()=>window.activeBuild()),versions[1].build);
   assert.equal(await page.locator('#version').textContent(),versions[1].build);
   corrupt=false;
+  // Stage generation 3 without applying it, then publish generation 4.
+  // One refresh must not stop at the already-waiting generation.
+  await page.evaluate(async()=>{await (await navigator.serviceWorker.getRegistration()).update();});
+  await page.waitForFunction(async()=> (await navigator.serviceWorker.getRegistration())?.waiting?.state==='installed');
+  assert.equal(await page.evaluate(()=>window.activeBuild()),versions[1].build);
+  current=3;
   assert.equal(await page.evaluate(()=>window.update()),'Updated');
-  assert.equal(await page.evaluate(()=>window.activeBuild()),versions[2].build);
+  assert.equal(await page.evaluate(()=>window.activeBuild()),versions[3].build);
   await context.setOffline(true);await page.reload();
-  assert.equal(await page.locator('#version').textContent(),versions[2].build);
+  assert.equal(await page.locator('#version').textContent(),versions[3].build);
   const retained=await page.evaluate(async()=>{
    const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('update-fixture');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
    const record=await new Promise((resolve,reject)=>{const r=db.transaction('records').objectStore('records').get('fixture');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();
