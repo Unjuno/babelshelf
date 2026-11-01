@@ -130,6 +130,12 @@ test('answers cannot add a location ranking absent from cited excerpts',()=>{
  assert.throws(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is closer than Midorikawa Park.',[{quote:'Aoba Library is 2 km away.'},{quote:'Office C is 5 km away.'}]),/location (?:comparison|evidence)/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is closer than Midorikawa Park.',[{quote:'Aoba Library is 2 km from home and Midorikawa Park is 5 km from home.'}]));
  assert.throws(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is closer than Midorikawa Park.',[{quote:'Aoba Library is 5 km from home and Midorikawa Park is 2 km from home.'}]),/location (?:comparison|evidence)/i);
+ // A comma can mean either a thousands separator or a decimal separator.
+ // Do not turn 1,234 km into 1.234 km and accept a possibly reversed ranking.
+ assert.throws(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Aoba Library is closer than Midorikawa Park.',[{quote:'Aoba Library is 1,234 km from home and Midorikawa Park is 5 km from home.'}]),/location (?:comparison|evidence)/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare the saved locations Aoba Library and Midorikawa Park.','Midorikawa Park is closer than Aoba Library.',[{quote:'Aoba Library is 1,234 km from home and Midorikawa Park is 5 km from home.'}]));
+ assert.throws(()=>checkAnswerConsistency('二つの場所を比較してください。','青葉図書館の方が緑川公園より近いです。',[{quote:'青葉図書館まで1,234 km、緑川公園まで5 kmです。'}]),/location (?:comparison|evidence)/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('二つの場所を比較してください。','緑川公園の方が青葉図書館より近いです。',[{quote:'青葉図書館まで1,234 km、緑川公園まで5 kmです。'}]));
  assert.throws(()=>checkAnswerConsistency('Compare the saved locations Aoba Park and Library.','Aoba Park is closer than Library.',[{quote:'Park is 2 km away and Library is 5 km away.'}]),/location (?:comparison|evidence)/i);
  assert.throws(()=>checkAnswerConsistency('Compare the saved locations New Aoba Park and Library.','New Aoba Park is closer than Library.',[{quote:'Aoba Park is 2 km away and Library is 5 km away.'}]),/location (?:comparison|evidence)/i);
  assert.throws(()=>checkAnswerConsistency('Compare the saved locations New Aoba Park and Library.','New Aoba Park is closer than Library.',[{quote:'Aoba Park is closer than Library.'}]),/location (?:comparison|evidence)/i);

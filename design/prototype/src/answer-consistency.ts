@@ -119,9 +119,10 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   }
  }
  const placeKey=(value:string)=>value.normalize('NFKC').replace(/^[\s,，、:：]+|[\s,，、:：]+$/gu,'').replace(/\s+/gu,' ').toLocaleLowerCase();
- const distancePattern='([0-9]+(?:[.,][0-9]+)?)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';
+ const distancePattern='((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]+)?|[0-9]+,[0-9]+)\\s*(km|kilomet(?:er|re)s?|mi|miles?|meters?|metres?|m|キロメートル|キロ|メートル)(?![A-Za-z])';
  const distanceInMeters=(amount:string,unit:string)=>{
-  const value=Number(amount.replace(',','.')),normalized=unit.toLocaleLowerCase();
+  const numeric=/^[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?$/u.test(amount)?amount.replace(/,/gu,''):amount.replace(',','.');
+  const value=Number(numeric),normalized=unit.toLocaleLowerCase();
   if(!Number.isFinite(value)||value<=0)return null;
   if(/^(?:km|kilomet|キロ)/u.test(normalized))return value*1000;
   if(/^(?:mi|mile)/u.test(normalized))return value*1609.344;
@@ -135,7 +136,10 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   };
   // Only bind distances that are explicitly attached to a named place. A
   // pair of numbers somewhere in the citations is not comparison evidence.
-  for(const clause of text.split(/[,;，；、。\n]|\band\b/giu)){
+  // Preserve commas between digits because they can be thousands separators
+  // (for example, "1,234 km"). Commas used as prose separators still split
+  // clauses; the distance parser then distinguishes grouped and decimal forms.
+  for(const clause of text.split(/(?<!\d)[,，]|[,，](?!\d)|[;；、。\n]|\band\b/giu)){
    const japanese=new RegExp(`([\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{N}A-Za-z・ー]{2,40}?)(?:まで|は|が|から)\\s*(?:約|およそ)?${distancePattern}`,'giu');
    for(const match of clause.matchAll(japanese))add(match[1],match[2],match[3]);
    const english=new RegExp(`([\\p{L}\\p{N}][\\p{L}\\p{N}'’ -]{1,48}?)\\s+(?:is\\s+)?(?:about\\s+)?${distancePattern}`,'giu');
