@@ -39,7 +39,9 @@ export async function prepareLegacyStandardReview(records:PreferenceRecord[]){
  const currentDefault=parsePreference('harness',factory.body) as unknown as HarnessPreferences;
  const standard=current.profiles.find(item=>item.id==='standard'),nextStandard=currentDefault.profiles.find(item=>item.id==='standard');
  if(!standard||!nextStandard)throw Error('Standard profile unavailable');
- const profiles=legacy.profiles.map((item:any)=>item.id==='standard'?structuredClone(nextStandard):structuredClone(item));
+ // Use the parsed projection, not the raw schema-1 objects, so additive current
+ // fields are present while the original stored bytes remain untouched.
+ const profiles=current.profiles.map(item=>item.id==='standard'?structuredClone(nextStandard):structuredClone(item));
  return prepareCorrection(target,'Review legacy Standard defaults',JSON.stringify({action:'patch',changes:{profiles}}),records);
 }
 

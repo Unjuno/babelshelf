@@ -55,6 +55,15 @@ test('a selected device clock reaches the final answer through the submission fl
  const planReceipt=f.current().turns.at(-1).activity.find(item=>item.tool==='dialogue.plan'&&item.input?.execution);assert.equal(planReceipt.input.execution.modelSettingsRevision,12);assert.equal(planReceipt.input.execution.harnessSettingsRevision,8);
 });
 
+test('one configured generation-token budget is shared across Send planning and answer phases',async()=>{
+ const f=fixture(),c=createSubmissionController(),pkg={definition:clock.definition,entry:'Tools/time.now/tool.ts',sources:[{path:'Tools/time.now/SKILL.md',body:'Read the device clock.'},{path:'Tools/time.now/tool.ts',body:'Trusted local clock.'}],run:clock.run},maxTokens=[];
+ f.services.builtinToolPackages=[pkg];f.services.builtinToolRegistry=createToolRegistry([pkg]);f.services.activeHarnessProfile={...f.services.activeHarnessProfile,enabledTools:['time.now'],maxToolCalls:null,maxResultChars:8000,maxGenerationTokens:256,maxGenerationMs:null};
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async(_messages,limit)=>{maxTokens.push(limit);if(maxTokens.length===1)return {text:JSON.stringify({action:'tool',query:'time.now',body:'{}'}),outputTokens:200};return {text:JSON.stringify({action:'answer',query:'What time is it?',target:'knowledge'}),outputTokens:56};},load:async()=>{throw Error('Already loaded');}};
+ f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ const outcome=await c.run(run=>executeSubmission({text:'What time is it?',attachments:[]},f.services,f.view,run));
+ assert.deepEqual(maxTokens,[256,56],JSON.stringify({outcome,phase:c.state.phase,error:c.state.error,turn:f.current().turns.at(-1)}));assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);assert.equal(f.current().turns.at(-1).status,'Generation token budget reached');
+});
+
 test('an unspecified saved-note search asks for a topic without acquiring a model or reading Memory',async()=>{
  const f=fixture(),c=createSubmissionController();
  f.services.knowledge={all:async()=>{throw Error('Unexpected read');},search:async()=>{throw Error('Unexpected search');}};

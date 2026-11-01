@@ -34,7 +34,7 @@ export function activityBoundedToolBudget(recordedEvents:number,configured:numbe
 }
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Activity={schema:1;id:string;tool:ActivityTool;input:Json;startedAt:string;status:'running'|'succeeded'|'failed'|'stopped';finishedAt?:string;output?:Json;error?:{code:string;message:string}};
-const codes=['stopped','source_changed','context_limit','result_too_large','not_prepared','invalid_model_output','not_found','operation_failed','planner_protocol','agent_protocol','invalid_tool_input','tool_execution','model_runtime','persistence_failure'];
+const codes=['stopped','source_changed','context_limit','generation_budget_exhausted','result_too_large','not_prepared','invalid_model_output','not_found','operation_failed','planner_protocol','agent_protocol','invalid_tool_input','tool_execution','model_runtime','persistence_failure'];
 const validTool=(tool:unknown):tool is ActivityTool=>typeof tool==='string'&&(activityTools.includes(tool as typeof activityTools[number])||/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool));
 function payload(value:unknown):Json{
  const walk=(v:any,depth:number,seen:Set<any>):void=>{if(depth>20)throw Error('Activity payload depth limit');if(v===null||typeof v==='string'||typeof v==='boolean')return;if(typeof v==='number'&&Number.isFinite(v))return;if(!v||typeof v!=='object'||!Array.isArray(v)&&Object.getPrototypeOf(v)!==Object.prototype&&Object.getPrototypeOf(v)!==null||seen.has(v))throw Error('Activity payload must be portable JSON');const next=new Set([...seen,v]);for(const item of Object.values(v))walk(item,depth+1,next);};

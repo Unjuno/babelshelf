@@ -161,7 +161,7 @@ test('custom profile approval refuses tool source changes in another tab and can
  await page.getByRole('button',{name:'Edit',exact:true}).click();
  const editor=page.getByRole('textbox',{name:'Markdown content'}),original=await editor.inputValue();
  const value=JSON.parse(original.match(/```json\n([\s\S]+)\n```/)![1]);
- value.profiles.push({id:'custom-lookup',label:'Custom lookup',enabledTools:['user.my-tool'],maxToolCalls:1,maxResultChars:1000});
+ value.profiles.push({id:'custom-lookup',label:'Custom lookup',enabledTools:['user.my-tool'],maxToolCalls:1,maxResultChars:1000,maxGenerationTokens:null,maxGenerationMs:null});
  await editor.fill('# Harness\n\n```json\n'+JSON.stringify(value,null,2)+'\n```\n');
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(editor).toHaveCount(0);

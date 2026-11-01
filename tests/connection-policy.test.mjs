@@ -22,12 +22,12 @@ test('network authority is read from the current canonical record on every call,
 });
 
 test('current versioned connection records and legacy records share the same fail-closed network authority',async()=>{
- const {formatPreference}=await import('../design/prototype/src/preference-records.ts');
- const current=note(true);current.revisions[0].body=formatPreference('connection',{downloads:true,diagnosticLogs:false});
+ const {formatPreference,initialPreferenceNotes,readPreference}=await import('../design/prototype/src/preference-records.ts');
+ const defaults=readPreference('connection',initialPreferenceNotes),current=note(true);current.revisions[0].body=formatPreference('connection',{...defaults,downloads:true,diagnosticLogs:false});
  assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),true);
- current.revisions[0].body=formatPreference('connection',{downloads:false,diagnosticLogs:false});
+ current.revisions[0].body=formatPreference('connection',{...defaults,downloads:false,diagnosticLogs:false});
  assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
- for(const schemaVersion of [0,3,'1',null]){
+ for(const schemaVersion of [0,4,'1',null]){
   current.revisions[0].body='# Connection\n\n```json\n'+JSON.stringify({schemaVersion,downloads:true,diagnosticLogs:false})+'\n```\n';
   assert.equal(await readAppNetworkAccess(database(()=>current).indexedDB),false);
  }

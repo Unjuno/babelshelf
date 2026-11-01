@@ -30,6 +30,7 @@ import {PENDING_CORRECTION_STATE} from './pending-correction.ts';
 import {agentCorrectionTarget} from './agent-correction-target.ts';
 import {discoverCorrectionTarget,type CorrectionTargetOption} from './saved-correction-target.ts';
 import {projectNote,type NoteView} from './knowledge-store.ts';
+import {createTurnInferenceBudget} from './turn-inference-budget.ts';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {localRequest} from '../../../dist/requests.js';
 import type {builtinToolPackages,builtinToolRegistry} from './tool-package-records.ts';
@@ -99,8 +100,9 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
  const models=createModelExecutionManager({text:bonsai,decision,ensureRuntime:ensureProductRuntime});
  const {text}=input,items=input.attachments.map(a=>({...a})),id=run.id,checkSend=run.check;
  const snapshot=captureTurnExecutionSnapshot({turnId:id,textModel:serviceModel,textManifest:bonsai.manifest,decisionModel:serviceDecisionModel,decisionIdentity:decision.identity,speechModel:serviceSpeechModel,ocrModel:serviceOcrModel,visionModel:serviceVisionModel,settingsRevisions:services.settingsRevisions,profile:serviceHarnessProfile,replyStyle:serviceHarnessPreferences.replyStyle,userGuidance:serviceHarnessPreferences.userGuidance,attachments:items.map(({id,kind,status,asset,reading})=>({id,kind,status,...(asset?{asset}:{}),...(reading?{reading}:{})}))});
+ const inferenceBudget=createTurnInferenceBudget({maxGenerationTokens:snapshot.harness.maxGenerationTokens,maxGenerationMs:snapshot.harness.maxGenerationMs});
  const model=snapshot.models.text.id,decisionModel=snapshot.models.decision.id,ocrModel=snapshot.models.ocr,speechModel=snapshot.models.speech,visionModel=snapshot.models.vision,harnessPreferences={replyStyle:snapshot.response.style,userGuidance:snapshot.response.userGuidance};
- const activeHarnessProfile={...serviceHarnessProfile,enabledTools:[...snapshot.harness.enabledTools],maxToolCalls:snapshot.harness.maxToolCalls,maxResultChars:snapshot.harness.maxResultChars};
+ const activeHarnessProfile={...serviceHarnessProfile,enabledTools:[...snapshot.harness.enabledTools],maxToolCalls:snapshot.harness.maxToolCalls,maxResultChars:snapshot.harness.maxResultChars,maxGenerationTokens:snapshot.harness.maxGenerationTokens,maxGenerationMs:snapshot.harness.maxGenerationMs};
  const setChatProgress=(value:string)=>run.progress(value);
  let inference:TextRuntime=bonsai,prior=currentDialogue(),activityFailureRecorded=false;
  let deferredContext:(()=>Promise<DialogueContext>)|undefined;
@@ -111,7 +113,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
   const trace=createTurnActivityTracer({check:checkSend,readActivities,persistActivities:activity=>finishTurn(id,{activity}),...(pagingAvailable?{persistActivity:async activity=>{const paged=await persistTurnActivity({turnId:id,readActivities,readStored:storedDialogue,persistInline:items=>finishTurn(id,{activity:items}),persistPaged:(turnId,item,expected)=>knowledge.recordTurnActivity(turnId,item,expected)},activity);if(paged)try{view.activityChanged?.(id);}catch{/* Presentation must not change the committed receipt. */}}}:{}),onFailureRecorded:()=>{activityFailureRecorded=true;},diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
    const ensureText=async()=>{
     if(bonsai.loaded!==model)run.progress('Loading model…','planning');
-    inference=await models.text(model,checkSend,work=>trace('model.load',{model},work));
+    inference=inferenceBudget.wrap(await models.text(model,checkSend,work=>trace('model.load',{model},work))) as TextRuntime;
     run.progress('','planning');
    };
   const prepareContext=(fitsPlanner?:(candidate:DialogueContext,engine?:ChatEngine)=>Promise<boolean>)=>prepareTurnContext({prior,engine:inference,model,question:text,currentInputs:items.length>0,check:checkSend,setProgress:setChatProgress,currentDialogue:()=>currentDialogue(),saveDialogue,trace,fitsPlanner});

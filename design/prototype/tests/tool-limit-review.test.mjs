@@ -24,6 +24,7 @@ test('a legacy limit is changed only by an explicitly approved, version-checked 
 test('only the untouched schema-1 Standard default gets an explicit profile migration proposal',async()=>{
  const seed=initialPreferenceNotes.find(note=>note.id==='settings-harness'),value=parsePreference('harness',seed.body);
  value.schemaVersion=1;
+ for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
  value.profiles=value.profiles.map(profile=>profile.id==='standard'?{...profile,enabledTools:['memory.search','memory.read','math.calculate'],maxToolCalls:3}:profile.id==='source-first'?{...profile,enabledTools:['memory.search','memory.read'],maxToolCalls:2}:profile);
  const legacyBody='# Harness\n\n```json\n'+JSON.stringify(value,null,2)+'\n```\n';
  const note={...createNote({path:seed.path,body:legacyBody}),id:seed.id,ui:{managed:true,protected:false}};
@@ -33,7 +34,7 @@ test('only the untouched schema-1 Standard default gets an explicit profile migr
  const proposed=parsePreference('harness',proposal.after),standard=proposed.profiles.find(profile=>profile.id==='standard');
  assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);
  assert.equal(standard.maxToolCalls,null);
- assert.deepEqual(proposed.profiles.find(profile=>profile.id==='source-first'),value.profiles.find(profile=>profile.id==='source-first'));
+ assert.deepEqual(proposed.profiles.find(profile=>profile.id==='source-first'),parsePreference('harness',initialPreferenceNotes.find(item=>item.id==='settings-harness').body).profiles.find(profile=>profile.id==='source-first'));
  assert.equal(proposed.profiles.find(profile=>profile.id==='conversation').maxToolCalls,0);
  const applied=applyCorrection([note],proposal),saved=parsePreference('harness',latest(applied.note).body);
  assert.deepEqual(saved.profiles.find(profile=>profile.id==='standard').enabledTools,standard.enabledTools);
@@ -44,7 +45,7 @@ test('only the untouched schema-1 Standard default gets an explicit profile migr
  custom.profiles.find(profile=>profile.id==='standard').enabledTools.push('time.now');
  const customizedNote=reviseNote(customized,{body:latest(customized).body.replace(/```json\n([\s\S]+)\n```/,()=> '```json\n'+JSON.stringify(custom,null,2)+'\n```')},1);
  assert.equal(hasLegacyStandardDefault(customizedNote),false);
- const currentSchema=structuredClone(note),current=JSON.parse(latest(currentSchema).body.match(/```json\n([\s\S]+)\n```/)[1]);current.schemaVersion=2;
+ const currentSchema=structuredClone(note),current=JSON.parse(latest(currentSchema).body.match(/```json\n([\s\S]+)\n```/)[1]);current.schemaVersion=3;
  const currentSchemaNote=reviseNote(currentSchema,{body:latest(currentSchema).body.replace(/```json\n([\s\S]+)\n```/,()=> '```json\n'+JSON.stringify(current,null,2)+'\n```')},1);
  assert.equal(hasLegacyStandardDefault(currentSchemaNote),false);
 });

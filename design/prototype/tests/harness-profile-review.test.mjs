@@ -9,7 +9,7 @@ import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 
 function fixture(custom=false){
  const seed=initialPreferenceNotes.find(n=>n.id==='settings-harness'),value=parsePreference('harness',seed.body);
- if(custom)value.profiles.push({id:'lookup',label:'Lookup',enabledTools:['user.lookup'],maxToolCalls:1,maxResultChars:1000});
+ if(custom)value.profiles.push({id:'lookup',label:'Lookup',enabledTools:['user.lookup'],maxToolCalls:1,maxResultChars:1000,maxGenerationTokens:null,maxGenerationMs:null});
  const harness={...createNote({path:seed.path,body:formatPreference('harness',value)}),id:seed.id,ui:{managed:true,protected:false}};
  const files=custom?createCustomToolPackageFiles({id:'user.lookup',title:'Lookup',instructions:'Read local notes.',code:'({input})=>({query:input.query})',capabilities:['memory.read']}).map(file=>createNote(file)):[];
  return {harness,files,records:[harness,...files]};
@@ -77,7 +77,7 @@ test('chat discovers a new inert tool before adding it to a reviewed profile',as
  const broken=createNote({path:'Tools/user.broken/SKILL.md',body:'invalid'});
  const privateNote=createNote({path:'Notes/private.md',body:'PRIVATE_NOTE_SENTINEL'});
  const records=[harness,...files,broken,privateNote];let payload;
- const engine={manifest:{contextTokens:4096},count:async messages=>{payload=JSON.parse(messages[1].content);return {prompt_tokens:500};},generate:async()=>({text:JSON.stringify({action:'patch',changes:{profiles:[...settings.profiles,{id:'lookup',label:'Lookup',enabledTools:['user.lookup'],maxToolCalls:1,maxResultChars:1000}],activeProfileId:'lookup'}})})};
+ const engine={manifest:{contextTokens:4096},count:async messages=>{payload=JSON.parse(messages[1].content);return {prompt_tokens:500};},generate:async()=>({text:JSON.stringify({action:'patch',changes:{profiles:[...settings.profiles,{id:'lookup',label:'Lookup',enabledTools:['user.lookup'],maxToolCalls:1,maxResultChars:1000,maxGenerationTokens:null,maxGenerationMs:null}],activeProfileId:'lookup'}})})};
  const proposal=await proposeCorrection(engine,'Add the Lookup tool to a new profile and use it',harness,()=>{},records);
  assert.deepEqual(payload.customTools,[{id:'user.lookup',title:'Lookup',capabilities:['memory.read']}]);
  assert.deepEqual(payload.unavailableCustomTools,['user.broken']);

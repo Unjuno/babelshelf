@@ -4,6 +4,7 @@ import {OCR_LANGUAGES,type OcrLanguage} from './ocr-assets.ts';
 import speechLanguages from './speech-languages.json' with {type:'json'};
 import {settings} from './app-settings.ts';
 import {MAX_AGENT_RESULT_CHARS,MAX_CONFIGURED_AGENT_TOOLS,SAFE_AGENT_TOOL_IDS} from './agent-loop.ts';
+import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
 import {validateAppearancePalette,validateAppearancePaletteRegistry,type NamedAppearancePalette} from './appearance-palette.ts';
 import {REPLY_STYLES,type ReplyStyle} from './reply-style.ts';
 import {validateHarnessGuidance} from './harness-guidance.ts';
@@ -16,10 +17,10 @@ export type CustomVisionModel={id:string;label:string;role:'vision';engine:'tran
 export type ModelSetSelection={textModel:string;decisionModel:string;transcriptionModel:string;ocrModel:string;visionModel:string};
 export type UserModelSet={id:string;label:string;detail:string;models:ModelSetSelection};
 export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';bytes:number;sha256:string};
-export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number};
+export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number;maxGenerationTokens?:number|null;maxGenerationMs?:number|null};
 export type HarnessPreferences={replyStyle:ReplyStyle;userGuidance:string;activeProfileId:string;profiles:HarnessProfile[]};
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
-export const PREFERENCE_SCHEMA_VERSION=2 as const;
+export const PREFERENCE_SCHEMA_VERSION=3 as const;
 export class UnsupportedPreferenceSchemaError extends Error{
  readonly group:PreferenceGroup;readonly version:number;
  constructor(group:PreferenceGroup,version:number){super('Settings use a newer format · update the app');this.name='UnsupportedPreferenceSchemaError';this.group=group;this.version=version;}
@@ -29,9 +30,9 @@ const defaults={
  appearance:{schemaVersion:PREFERENCE_SCHEMA_VERSION,theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[],paletteRegistry:[] as NamedAppearancePalette[],activePaletteId:''},
  connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false},
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
-  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS},
-  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read'],maxToolCalls:null,maxResultChars:6000},
-  {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS},
+  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
+  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:null,maxGenerationMs:null},
+  {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
  ] as HarnessProfile[]},
 };
 export type Preferences=typeof defaults;
@@ -47,9 +48,8 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  const schemaVersion=value.schemaVersion===undefined?0:value.schemaVersion;
  if(!Number.isSafeInteger(schemaVersion)||schemaVersion<0)throw Error('Invalid settings schema version');
  if(schemaVersion>PREFERENCE_SCHEMA_VERSION)throw new UnsupportedPreferenceSchemaError(group,schemaVersion);
- // The settings schema has remained v1 while additive fields were introduced.
- // Project only known missing fields for both unstamped and v1 records; never
- // rewrite the stored body during a read or guess over a present invalid value.
+ // Project only known missing fields from older schemas; never rewrite the
+ // stored body during a read or guess over a present invalid value.
  if(group==='models'){
   if(!('textLibrary' in value))value.textLibrary=value.textModel?[value.textModel]:[];
   if(!('decisionLibrary' in value))value.decisionLibrary=value.decisionModel?[value.decisionModel]:[];
@@ -81,6 +81,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
  if(group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
  if(group==='harness'&&!('userGuidance' in value))value.userGuidance='';
+ if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles))for(const profile of value.profiles){if(profile&&typeof profile==='object'){if(!('maxGenerationTokens' in profile))profile.maxGenerationTokens=null;if(!('maxGenerationMs' in profile))profile.maxGenerationMs=null;}}
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
  // Profile defaults may evolve only while reading an older settings schema.
  // Current-schema values are explicit user settings, even when they happen
@@ -127,11 +128,11 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   if(typeof harness.replyStyle!=='string'||!REPLY_STYLES.includes(harness.replyStyle as ReplyStyle)||!validateHarnessGuidance(harness.userGuidance)||typeof harness.activeProfileId!=='string'||!Array.isArray(harness.profiles)||!harness.profiles.length||harness.profiles.length>12)throw Error('Invalid harness profile registry or user guidance');
   const ids=new Set<string>();
   for(const profile of harness.profiles){
-   if(!profile||typeof profile!=='object'||Array.isArray(profile)||Object.keys(profile).sort().join('|')!=='enabledTools|id|label|maxResultChars|maxToolCalls')throw Error('Invalid harness profile fields');
+   if(!profile||typeof profile!=='object'||Array.isArray(profile)||Object.keys(profile).sort().join('|')!=='enabledTools|id|label|maxGenerationMs|maxGenerationTokens|maxResultChars|maxToolCalls')throw Error('Invalid harness profile fields');
    if(typeof profile.id!=='string'||!/^[a-z][a-z0-9-]{0,31}$/.test(profile.id)||ids.has(profile.id)||typeof profile.label!=='string'||!profile.label.trim()||profile.label.length>48)throw Error('Invalid harness profile identity');
    ids.add(profile.id);
    if(!Array.isArray(profile.enabledTools)||profile.enabledTools.length>MAX_CONFIGURED_AGENT_TOOLS||new Set(profile.enabledTools).size!==profile.enabledTools.length||profile.enabledTools.some(id=>typeof id!=='string'||(!SAFE_AGENT_TOOL_IDS.includes(id as typeof SAFE_AGENT_TOOL_IDS[number])&&!/^user\.[a-z][a-z0-9-]{0,47}$/.test(id))))throw Error('Unsupported harness tool');
-   if(profile.maxToolCalls!==null&&(!Number.isSafeInteger(profile.maxToolCalls)||profile.maxToolCalls<0)||!Number.isSafeInteger(profile.maxResultChars)||profile.maxResultChars<256||profile.maxResultChars>MAX_AGENT_RESULT_CHARS||!profile.enabledTools.length&&profile.maxToolCalls!==0)throw Error('Harness profile budget is invalid');
+   if(profile.maxToolCalls!==null&&(!Number.isSafeInteger(profile.maxToolCalls)||profile.maxToolCalls<0)||!Number.isSafeInteger(profile.maxResultChars)||profile.maxResultChars<256||profile.maxResultChars>MAX_AGENT_RESULT_CHARS||profile.maxGenerationTokens===undefined||profile.maxGenerationTokens!==null&&(!Number.isSafeInteger(profile.maxGenerationTokens)||typeof profile.maxGenerationTokens!=='number'||profile.maxGenerationTokens<256||profile.maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||profile.maxGenerationMs===undefined||profile.maxGenerationMs!==null&&(!Number.isSafeInteger(profile.maxGenerationMs)||typeof profile.maxGenerationMs!=='number'||profile.maxGenerationMs<1_000||profile.maxGenerationMs>MAX_TURN_GENERATION_MS)||!profile.enabledTools.length&&profile.maxToolCalls!==0)throw Error('Harness profile budget is invalid');
   }
   if(!ids.has(harness.activeProfileId))throw Error('Active harness profile is unavailable');
  }
@@ -139,7 +140,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
 }
 
 export const initialPreferenceNotes:PreferenceRecord[]=[
- {id:'settings-readme',path:'Settings/README.md',body:'# Settings\n\nThese files are local Memory records shared with the Settings screen. They keep revision history; restore and Undo add revisions instead of erasing earlier values.\n\n- `Settings/models.md` — registered models, selected roles, and named model sets. Save current choices as a set or edit the validated customSets list. Import and inspect model files in Settings; a declaration does not mean the model is prepared or runnable.\n- `Settings/appearance.md` — theme, background, local fonts and named color palettes. Add or edit palettes in this file; choose a saved palette in Settings. Add fonts through Settings so their bytes and hash are checked.\n- `Settings/connection.md` — asset download policy and diagnostic logging. Offline inference and personal data stay on this device.\n- `Settings/harness.md` — reply style, bounded user-defined system-prompt extension and agent profiles. App-owned system rules remain later and authoritative. A profile may optionally set a per-turn tool-call limit; the default is no fixed call-count cap.\n- `Tools/user.<id>/SKILL.md` + `tool.js` — local tool packages. Saving a package adds it to the active profile; its local code can run on a later matching chat request.\n\nEdit a supported value here or ask chat to propose a change. Review Before and After, then save explicitly. Invalid changes are not applied. New setting types need an app schema, validator and consumer; adding a Markdown file alone does not make it active. Memory definitions cannot grant network, write, delete or other app capabilities. Do not store credentials here.',version:1,history:[],protected:true},
+ {id:'settings-readme',path:'Settings/README.md',body:'# Settings\n\nThese files are local Memory records shared with the Settings screen. They keep revision history; restore and Undo add revisions instead of erasing earlier values.\n\n- `Settings/models.md` — registered models, selected roles, and named model sets. Save current choices as a set or edit the validated customSets list. Import and inspect model files in Settings; a declaration does not mean the model is prepared or runnable.\n- `Settings/appearance.md` — theme, background, local fonts and named color palettes. Add or edit palettes in this file; choose a saved palette in Settings. Add fonts through Settings so their bytes and hash are checked.\n- `Settings/connection.md` — asset download policy and diagnostic logging. Offline inference and personal data stay on this device.\n- `Settings/harness.md` — reply style, bounded user-defined system-prompt extension and agent profiles. App-owned system rules remain later and authoritative. A profile may optionally set per-turn tool-call, generated-token and generation-time limits; each defaults to no profile limit. Token/time limits cover every text generation in one Send. The model remains free to use enabled read-only tools until context, storage, cancellation or an explicitly configured budget ends the turn.\n- `Tools/user.<id>/SKILL.md` + `tool.js` — local tool packages. Saving a package adds it to the active profile; its local code can run on a later matching chat request.\n\nEdit a supported value here or ask chat to propose a change. Review Before and After, then save explicitly. Invalid changes are not applied. New setting types need an app schema, validator and consumer; adding a Markdown file alone does not make it active. Memory definitions cannot grant network, write, delete or other app capabilities. Do not store credentials here.',version:1,history:[],protected:true},
  ...(['models','appearance','connection','harness'] as const).map(group=>({id:'settings-'+group,path:preferencePath(group),body:formatPreference(group,defaults[group]),version:1,history:[],managed:true})),
 ];
 

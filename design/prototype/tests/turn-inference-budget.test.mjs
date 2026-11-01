@@ -1,0 +1,49 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createTurnInferenceBudget,TurnInferenceBudgetError} from '../src/turn-inference-budget.ts';
+
+function engine(generate,extras={}){return {manifest:{contextTokens:8192},count:async()=>({prompt_tokens:0}),generate,...extras};}
+
+test('one output-token budget is shared across pinned planning and final-answer engine views',async()=>{
+ const calls=[],base=engine(async(_messages,maxTokens)=>{calls.push(maxTokens);return {text:'ok',outputTokens:maxTokens};},{pin(){return engine(this.generate);}});
+ const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null}),pinned=budget.wrap(base),first=await pinned.generate([],200);
+ assert.equal(first.text,'ok');assert.equal(budget.generatedTokens,200);
+ const second=await pinned.pin().generate([],100);assert.equal(second.outputTokens,56);assert.equal(budget.generatedTokens,256);
+ await assert.rejects(pinned.generate([],1),error=>error instanceof TurnInferenceBudgetError&&error.cause==='tokens');
+ assert.deepEqual(calls,[200,56]);
+});
+
+test('an unreported token count reserves the requested allowance so retries cannot evade the cap',async()=>{
+ const requested=[],wrapped=createTurnInferenceBudget({maxGenerationTokens:700,maxGenerationMs:null}).wrap(engine(async(_messages,maxTokens)=>{requested.push(maxTokens);return {text:'ok'};}));
+ await wrapped.generate([],300);await wrapped.generate([],300);await wrapped.generate([],100);
+ assert.deepEqual(requested,[300,300,100]);
+ await assert.rejects(wrapped.generate([],1),error=>error instanceof TurnInferenceBudgetError&&error.cause==='tokens');
+});
+
+test('a completed generation exactly at the configured ceiling is returned and the next one is refused',async()=>{
+ const wrapped=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null}).wrap(engine(async()=>({text:'complete',outputTokens:256})));
+ assert.equal((await wrapped.generate([],256)).text,'complete');
+ await assert.rejects(wrapped.generate([],1),error=>error instanceof TurnInferenceBudgetError&&error.cause==='tokens');
+});
+
+test('elapsed-time expiry stops in-flight inference and reports the budget boundary',async()=>{
+ let expire,stopCount=0,rejectGeneration;
+ const timers={set(callback){expire=callback;return 1;},clear(){}};
+ const base=engine(()=>new Promise((_,reject)=>{rejectGeneration=reject;}),{stop(){stopCount++;rejectGeneration?.(Error('Stopped'));}});
+ const wrapped=createTurnInferenceBudget({maxGenerationTokens:null,maxGenerationMs:1000,timers}).wrap(base),pending=wrapped.generate([],256);
+ await new Promise(resolve=>setImmediate(resolve));expire();
+ await assert.rejects(pending,error=>error instanceof TurnInferenceBudgetError&&error.cause==='time');
+ assert.equal(stopCount,1);
+});
+
+test('an unconfigured profile stays unlimited and records elapsed generation time',async()=>{
+ let now=0;
+ const budget=createTurnInferenceBudget({maxGenerationTokens:null,maxGenerationMs:null,now:()=>now});
+ const wrapped=budget.wrap(engine(async()=>{now+=50;return {text:'ok',outputTokens:7};}));
+ await wrapped.generate([],32);await wrapped.generate([],32);
+ assert.equal(budget.generatedTokens,14);assert.equal(budget.generationMs,100);
+});
+
+test('invalid profile generation budgets are rejected before wrapping an engine',()=>{
+ for(const options of [{maxGenerationTokens:255,maxGenerationMs:null},{maxGenerationTokens:null,maxGenerationMs:999},{maxGenerationTokens:131073,maxGenerationMs:null}])assert.throws(()=>createTurnInferenceBudget(options),/Invalid generation budget/);
+});

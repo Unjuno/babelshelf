@@ -1,5 +1,6 @@
 import type {ReplyStyle} from './reply-style.ts';
 import type {HarnessProfile} from './preference-records.ts';
+import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
 
 export type TurnExecutionSnapshot=Readonly<{
  schema:1;
@@ -12,7 +13,7 @@ export type TurnExecutionSnapshot=Readonly<{
   vision:string;
  }>;
  settingsRevisions:Readonly<{models:number|null;harness:number|null}>;
- harness:Readonly<{profileId:string;enabledTools:readonly string[];maxToolCalls:number|null;maxResultChars:number}>;
+ harness:Readonly<{profileId:string;enabledTools:readonly string[];maxToolCalls:number|null;maxResultChars:number;maxGenerationTokens:number|null;maxGenerationMs:number|null}>;
  response:Readonly<{style:ReplyStyle;userGuidance:string}>;
  attachments:readonly Readonly<{id:string;kind:string;status:string;asset?:Readonly<{id:string;revision:1;sha256:string}>;reading?:Readonly<{kind:string;noteId:string;revision:number}>}>[];
 }>;
@@ -40,7 +41,7 @@ export function captureTurnExecutionSnapshot(input:{
   attachments:readonly {id:string;kind:string;status:string;asset?:{id:string;revision:1;sha256:string};reading?:{kind:string;noteId:string;revision:number}}[];
 }):TurnExecutionSnapshot{
  if(typeof input.turnId!=='string'||!input.turnId||input.turnId.length>128)throw Error('Invalid turn identity');
- if(!input.profile||!Array.isArray(input.profile.enabledTools)||(input.profile.maxToolCalls!==null&&!Number.isSafeInteger(input.profile.maxToolCalls))||!Number.isSafeInteger(input.profile.maxResultChars))throw Error('Invalid active harness profile');
+ if(!input.profile||!Array.isArray(input.profile.enabledTools)||(input.profile.maxToolCalls!==null&&!Number.isSafeInteger(input.profile.maxToolCalls))||!Number.isSafeInteger(input.profile.maxResultChars)||input.profile.maxGenerationTokens!=null&&(!Number.isSafeInteger(input.profile.maxGenerationTokens)||input.profile.maxGenerationTokens<256||input.profile.maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||input.profile.maxGenerationMs!=null&&(!Number.isSafeInteger(input.profile.maxGenerationMs)||input.profile.maxGenerationMs<1_000||input.profile.maxGenerationMs>MAX_TURN_GENERATION_MS))throw Error('Invalid active harness profile');
  const settingsRevisions=input.settingsRevisions??{models:null,harness:null};
  if(['models','harness'].some(group=>{const revision=settingsRevisions[group as 'models'|'harness'];return revision!==null&&(!Number.isSafeInteger(revision)||revision<1);}))throw Error('Invalid settings revision');
  const attachments=input.attachments.map(item=>{
@@ -56,7 +57,7 @@ export function captureTurnExecutionSnapshot(input:{
    speech:input.speechModel,ocr:input.ocrModel,vision:input.visionModel,
   }),
   settingsRevisions:Object.freeze({...settingsRevisions}),
-  harness:Object.freeze({profileId:input.profile.id,enabledTools:Object.freeze([...input.profile.enabledTools]),maxToolCalls:input.profile.maxToolCalls,maxResultChars:input.profile.maxResultChars}),
+  harness:Object.freeze({profileId:input.profile.id,enabledTools:Object.freeze([...input.profile.enabledTools]),maxToolCalls:input.profile.maxToolCalls,maxResultChars:input.profile.maxResultChars,maxGenerationTokens:input.profile.maxGenerationTokens??null,maxGenerationMs:input.profile.maxGenerationMs??null}),
   response:Object.freeze({style:input.replyStyle,userGuidance:input.userGuidance}),
   attachments:Object.freeze(attachments),
  });
@@ -64,5 +65,5 @@ export function captureTurnExecutionSnapshot(input:{
 
 /** Safe-to-record identity: excludes the prompt, guidance, filenames and source text. */
 export function turnExecutionReceipt(snapshot:TurnExecutionSnapshot){
- return Object.freeze({turnId:snapshot.turnId,textModel:snapshot.models.text.id,textRevision:snapshot.models.text.revision,textRuntimeRevision:snapshot.models.text.runtimeRevision,decisionModel:snapshot.models.decision.id,decisionRevision:snapshot.models.decision.revision,modelSettingsRevision:snapshot.settingsRevisions.models,harnessSettingsRevision:snapshot.settingsRevisions.harness,harnessProfileId:snapshot.harness.profileId,configuredToolIds:Object.freeze([...snapshot.harness.enabledTools]),attachmentCount:snapshot.attachments.length});
+ return Object.freeze({turnId:snapshot.turnId,textModel:snapshot.models.text.id,textRevision:snapshot.models.text.revision,textRuntimeRevision:snapshot.models.text.runtimeRevision,decisionModel:snapshot.models.decision.id,decisionRevision:snapshot.models.decision.revision,modelSettingsRevision:snapshot.settingsRevisions.models,harnessSettingsRevision:snapshot.settingsRevisions.harness,harnessProfileId:snapshot.harness.profileId,configuredToolIds:Object.freeze([...snapshot.harness.enabledTools]),maxGenerationTokens:snapshot.harness.maxGenerationTokens,maxGenerationMs:snapshot.harness.maxGenerationMs,attachmentCount:snapshot.attachments.length});
 }
