@@ -1,3 +1,16 @@
+2026-11-01 — Activity model-call accounting and clean-checkout CI.
+The Activity rollup counts model calls only from receipts that explicitly report
+`measuredModelCalls`. A successful plan receipt or token-count/timing metadata
+alone does not prove that a model generation occurred. Prompt/output/timing and
+registered-tool totals remain separate measured fields. Local Windows checks:
+root 250/250, prototype 1,665/1,665, `npm run check`, production build
+(`2f01916be6bd2376`, 163 verified assets), app acceptance 8/8, and review-store/
+Activity browser acceptance 6/6. GitHub Actions Local PWA quality run
+`41263749120` passed every clean-checkout workflow stage in 11m25s on commit
+`f20623bca3db9d852031cb033d54888d2ae27b6a`. PC/CI does not establish physical-
+device inference or performance. Cumulative per-turn compute-budget enforcement
+remains unimplemented.
+
 2026-11-01 — Title-bound comparative water claims.
 Grounded answers that compare two cited notes now reject a wrong “more/less” claim
 when both exact cited titles are present and each cited source contains one unique
