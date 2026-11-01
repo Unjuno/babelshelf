@@ -1,3 +1,7 @@
+# Public v283 — prose streaming and generation budget (2026-11-02 JST)
+
+Build `6eeb45f414830f1d`, entry `index-BokLdPEt.js`, application `ac1a6aec044b388425f3c64a164e6975407c1aee`. Site source `3b9ce8d43b5fde4981616a23260f08d69b95fc2b`; deployment `appgdep_6ae76dc917d08191bfc00590919da9ac` succeeded. Public audience retained. Local prototype1735/product8/build/delivery checks passed; CI41328153600 was still running at publication. Existing sidebar Update adopted the exact entry and retained dialogue/input-file v1 before the conversation-stream check. Actual model evidence is recorded separately in TEST-RESULTS.txt. Previous entries are historical.
+
 # Public v282 — separate evidence and request (2026-11-02 JST)
 
 Build `e9b502c70a25b449`, entry `index-BC_B3b6b.js`; complete CI41326118763 passed at `a1bd300ec2e603ae846c7b89700ff46447599808`. Site source `df28548e2e731bb2d69b1a8a3a28369c0951b8b7`; deployment `appgdep_6ae76a4ca9848191a71a613fb84dbeb3` succeeded. Public audience retained. The grounded prompt separates reference data from the final user request. Actual sidebar outcome is recorded in TEST-RESULTS.txt; publication alone does not establish improved model compliance. Previous entries are historical.

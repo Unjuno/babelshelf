@@ -1,6 +1,8 @@
 ## Current status · 2026-11-02
 
-Current full-CI checkpoint: a1bd300ec2e603ae846c7b89700ff46447599808 on codex/ui-design-handoff; CI41326118763 passed. Public Site282 serves builde9b502c70a25b449/index-BC_B3b6b.js. Existing sidebar adopted it, retained dialogue/input-file v1, and returned Offline.
+Current application checkpoint: ac1a6aec044b388425f3c64a164e6975407c1aee on codex/ui-design-handoff; CI41328153600 still running at this observation. Last complete green CI remains41326118763 at a1bd300. Public Site283 serves build6eeb45f414830f1d/index-BokLdPEt.js; existing sidebar Update adopted it, retained data and returned Offline.
+
+New concrete priority: v283 ordinary-prose streaming verification could not reach answering. A short standalone story request with130 prior turns (compaction through51), cached Bonsai4B/context2048, spent191.412s on5 compaction model calls then failed with "Input exceeds context limit · shorten the message"; last counted prompt1665. Draft was restored and no answer/note saved. Diagnose history-summary/planner-fit budget handling before repeating this request. Do not shorten the request, clear history or claim streaming acceptance to bypass this failure.
 
 Actual Bonsai4B replay completed Context, action selection, read, answer, exact-v1 source preview and unchanged save review. Separating evidence and the final user request did not fix the excluded-detail failure: the answer still included the meeting location. Save review was cancelled; no new note created. Aggregate generation93.1s across2 calls; final answer17.698s. Input counts differed from the prior run, so this is not a controlled speedup. Stop further tuning of this fixture; model compliance, task latency and grounded continuation remain open. No physical iPhone/Android/macOS acceptance or measured GPU improvement is established. Dated metrics are in TEST-RESULTS.txt.
 
