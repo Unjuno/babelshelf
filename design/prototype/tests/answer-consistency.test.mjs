@@ -173,3 +173,15 @@ test('answers cannot add a location ranking absent from cited excerpts',()=>{
  assert.doesNotThrow(()=>checkAnswerConsistency('二つの場所を比較してください。','緑川公園より青葉図書館の方が近くありません。',[{quote:'青葉図書館まで5 km、緑川公園まで2 kmです。'}]));
  assert.doesNotThrow(()=>checkAnswerConsistency('「より近い」とはどういう意味ですか？','「より近い」とは、距離が短いことを表します。',[]));
 });
+
+ test('comparison validates stated values without requiring every retrieved source in the answer',()=>{
+ const evidence=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
+  {noteId:'gamma',title:'Gamma reserve',quote:'Gamma reserve contains 40 litres of water.'},
+ ];
+ const question='Compare Alpha reserve and Beta reserve.';
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alpha reserve contains 17 litres; Beta reserve contains 29 litres.',evidence));
+ assert.throws(()=>checkAnswerConsistency(question,'Alpha reserve contains 29 litres; Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity|not bound/);
+ assert.throws(()=>checkAnswerConsistency(question,'Alpha reserve contains 17 litres; the other reserve contains 29 litres.',evidence),/not bound/);
+});

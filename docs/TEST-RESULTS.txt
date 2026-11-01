@@ -7201,3 +7201,6 @@ passed on Windows PC. The preceding product commit 3b904e2 passed complete
 clean-checkout CI run 41284116395 in 10m0s. This follow-up is not a live-model
 or phone verification.
 
+
+2026-11-01 — comparison subset regression (Node, no browser/model run)
+Reproduced a correct two-note comparison being rejected when retrieved evidence also contained a third note. Changed the narrow volume binding guard to require coverage of stated values rather than every retrieved note. Swapped and unbound values remain rejected. Focused answer-consistency/conversation tests: 212 passed. Root npm run check and git diff --check passed. Prototype has no check script; the attempted prefixed command failed before the root check was run. Sidebar transport remains unavailable; this is not real-model acceptance.

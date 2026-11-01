@@ -96,15 +96,16 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   // comparison merely because both numbers occur somewhere in the citations.
   const distinctNamedVolumes=new Set([...titleCandidates.values()].flatMap(candidates=>candidates.length===1&&new Set(candidates[0].values).size===1?candidates[0].values:[]));
   if(comparisonQuestion&&titleCandidates.size>1&&distinctNamedVolumes.size>1&&new Set(answerVolumes).size>1){
-   const clauseBindings=new Set<string>();
+   const boundVolumes:number[]=[];
    for(const clause of sentenceMatches.map(sentence=>sentence.text)){
     const spans=titleSpans(clause),measures=volumeMeasures(clause);
     if(spans.length!==1||!spans[0].candidate||!measures.length)continue;
     const candidate=spans[0].candidate,uniqueValue=[...new Set(candidate.values)];
-    if(uniqueValue.length===1&&measures.every(measure=>sameVolume(measure.value,uniqueValue[0])))clauseBindings.add(candidate.noteId);
+    if(uniqueValue.length===1&&measures.every(measure=>sameVolume(measure.value,uniqueValue[0])))boundVolumes.push(uniqueValue[0]);
    }
-   const comparisonSources=[...titleCandidates.values()].filter(candidates=>candidates.length===1&&new Set(candidates[0].values).size===1).map(candidates=>candidates[0]);
-   if(comparisonSources.length>1&&comparisonSources.some(source=>!clauseBindings.has(source.noteId)))throw Error('Comparison values are not bound to their source notes · try again');
+   // Retrieval may include additional notes. Require bindings for the values
+   // actually stated, not an exhaustive summary of every retrieved source.
+   if(answerVolumes.some(value=>!boundVolumes.some(bound=>sameVolume(value,bound))))throw Error('Comparison values are not bound to their source notes · try again');
   }
   for(const sentence of sentenceMatches){
    const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
