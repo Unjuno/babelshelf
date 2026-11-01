@@ -72,6 +72,28 @@ test('a comparison can bind answer quantities to cited note titles even when the
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 17 litres, while Beta reserve contains 29 litres.',evidence));
 });
 
+test('explicit title-bound water comparisons must agree with unique cited amounts',()=>{
+ const evidence=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
+ ];
+ const question='Compare the water volumes in Alpha reserve and Beta reserve.';
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alpha reserve contains less water than Beta reserve.',evidence));
+ assert.throws(()=>checkAnswerConsistency(question,'Beta reserve contains less water than Alpha reserve.',evidence),/comparison conflicts/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'Beta reserve contains more water than Alpha reserve.',evidence));
+ const japanese=[
+  {noteId:'aoba',title:'青葉備蓄',quote:'青葉備蓄の飲料水は17リットルです。'},
+  {noteId:'midorikawa',title:'緑川備蓄',quote:'緑川備蓄の飲料水は29リットルです。'},
+ ];
+ assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','緑川備蓄の方が青葉備蓄より多いです。',japanese));
+ assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄の方が緑川備蓄より多いです。',japanese),/comparison conflicts/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','緑川備蓄より青葉備蓄の方が少ないです。',japanese));
+ // Do not guess when either source has multiple distinct cited amounts.
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alpha reserve contains more water than Beta reserve.',[
+  evidence[0],{...evidence[1],quote:'Beta reserve contains 29 litres and later 31 litres of water.'},
+ ]));
+});
+
 test('direct English quote requests reject an exact but unrelated heading',()=>{
  const question='From this file, quote the sentence that states the water-cache amount?';
  assert.throws(()=>checkAnswerConsistency(question,'# Temporary evaluation fixture'),/does not match/);

@@ -1,3 +1,15 @@
+2026-11-01 — Title-bound comparative water claims.
+Grounded answers that compare two cited notes now reject a wrong “more/less” claim
+when both exact cited titles are present and each cited source contains one unique
+water volume. English and Japanese forms are covered, including reversed title
+order. Multiple distinct values in one note remain ambiguous and are not guessed;
+this is not general semantic entailment. Focused consistency/conversation tests
+passed 207/207; full prototype suite passed 1,662/1,662, root tests 250/250,
+`npm run check`, product build (163 verified assets) and product acceptance 8/8
+passed on Windows PC. The production bundle contains the new check. The existing
+large-chunk advisory and runtime redistribution review remain open. No model or
+device behavior is established by these checks.
+
 2026-11-01 — Accurate description of the default agent work boundary.
 The Assistant profile no longer says “Activity storage limit applies” when there
 is no configured call-count limit. Production activity paging does not impose a

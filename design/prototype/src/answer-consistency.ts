@@ -72,9 +72,42 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    const escaped=candidates[0].title.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
    const expression=new RegExp(escaped,'giu');
    return [...text.matchAll(expression)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length,key,candidate:candidates[0]}]);
-  });
+  }).sort((left,right)=>left.start-right.start);
   for(const sentence of sentenceMatches){
    const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
+   // Exact cited titles can also anchor a non-numeric comparative claim. Only
+   // enforce it when both notes have one unambiguous cited water volume and the
+   // answer uses a small, explicit comparison form. General paraphrases remain
+   // outside this lexical check.
+   if(spans.length===2&&spans[0].candidate.noteId!==spans[1].candidate.noteId){
+    const [first,second]=spans;
+    const uniqueVolume=(candidate:typeof first.candidate)=>{
+     const values=[...new Set(candidate.values)];
+     return values.length===1?values[0]:undefined;
+    };
+    const firstVolume=uniqueVolume(first.candidate),secondVolume=uniqueVolume(second.candidate);
+    if(firstVolume!==undefined&&secondVolume!==undefined&&first.end<=second.start){
+     const between=sentence.text.slice(first.end,second.start).toLocaleLowerCase();
+     const english=between.match(/\b(more|greater|higher|larger|less|fewer|lower|smaller)\b.{0,36}\b(?:water|liquid|amount|volume|quantity)\b.{0,16}\bthan\b/iu);
+     let assertedFirstGreater:boolean|undefined;
+     if(english){
+      const saysMore=/^(?:more|greater|higher|larger)$/iu.test(english[1]);
+      assertedFirstGreater=saysMore;
+     }else{
+      const afterSecond=sentence.text.slice(second.end);
+      const firstThenSecond=/の方が\s*$/u.test(between)&&/^より/u.test(afterSecond);
+      const secondThenFirst=/より.{0,32}の方が\s*$/u.test(between);
+      const endsGreater=/(?:多い|多く|上回る|大きい)/u.test(afterSecond);
+      const endsLess=/(?:少ない|少なく|下回る|小さい)/u.test(afterSecond);
+      if(endsGreater&&(firstThenSecond||secondThenFirst))assertedFirstGreater=firstThenSecond;
+      else if(endsLess&&(firstThenSecond||secondThenFirst))assertedFirstGreater=!firstThenSecond;
+     }
+     if(assertedFirstGreater!==undefined){
+      const actualFirstGreater=firstVolume>secondVolume;
+      if(actualFirstGreater!==assertedFirstGreater)throw Error('Answer quantity comparison conflicts with cited quantities · try again');
+     }
+    }
+   }
    // Multiple titles in one sentence need a stronger parser than nearest-word
    // distance: the next title can be closer to a value that belongs to the
    // previous one. Bind only one unambiguous cited title per clause.
