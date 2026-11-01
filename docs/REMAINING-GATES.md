@@ -1,6 +1,6 @@
 ## Current status · 2026-11-02
 
-Latest code is 025607d on codex/ui-design-handoff; public remains v289. Same-worker reloads and all backend generation callbacks now retire stale results/events while preserving resident reuse. PC prototype1753/app8/build/check passed; CI41336618465 is still running (Tool, MCP, help and Markdown acceptance observed), not yet a success claim.
+Public v290 now contains application025607d: build913f7ca47a41241a/index-G8GwnnhC.js. Same-worker reload and all backend callback retirement regressions passed (prototype1753/app8/build/check); CI41336618465 passed all stages. Sidebar Update adopted the exact entry with retained history and returned appOffline. This verifies delivery, not new model throughput or physical-device acceptance.
 
 Latest public v289 unpinned saved-material replay completed search → Japanese answer → matching saved-answer v1 citation → unchanged save review (cancelled, no duplicate note). Cached Bonsai4B: load26.593s; three model calls2249prompt/79output,101.3s aggregate generation; final630prompt/38output,19.077s generation,15.266sTTFT,3.810sdecode,cached0. Search45ms. This supports investigating planner/prefill overhead before speculative kernel changes; it does not prove a GPU bottleneck or primary-original provenance. Detailed evidence remains in TEST-RESULTS.txt. Model/session reuse already exists; repeated model loading is not established as the cause.
 
