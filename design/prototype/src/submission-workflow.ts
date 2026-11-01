@@ -311,7 +311,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     workingFile=result.workingFile;request={...request,action:result.action,target:'file',query:result.query};
    }
    if(request?.action==='search'){
-    if(resolution.source!=='explicit')await ensureText();
+    // The resolved action acquires text only when passage results need inference.
     const result=await actions().search(request.query,{complete:resolution.source!=='explicit'});checkSend();
     if(result.kind==='search'){
      // Legacy single-action planners may return `search` even when the user

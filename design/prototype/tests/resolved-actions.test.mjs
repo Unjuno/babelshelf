@@ -103,7 +103,7 @@ test('model-selected search resolves the full requested outcome before ending at
 test('an empty or navigation-only search does not start an answer or reinterpret file metadata as evidence',async()=>{
  const {engine}=fixture();let generated=0;engine.generate=async()=>{generated++;throw Error('Unexpected classification');};
  for(const results of [[],[{kind:'file',noteId:'binary',revision:1,path:'Files/video.mp4'}]]){
-  const {actions}=fixture({engine,store:{search:async()=>results}});
+  const {actions}=fixture({engine,store:{search:async()=>results},acquireModel:async()=>{throw Error('Unexpected model acquisition for non-passage results');}});
   assert.equal((await actions.search('video',{complete:true})).kind,'search');
  }
  assert.equal(generated,0);
