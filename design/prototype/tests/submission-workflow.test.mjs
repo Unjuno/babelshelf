@@ -787,3 +787,24 @@ test('scoping a resolved summary to the input file does not invoke another class
  const turn=f.current().turns.at(-1);assert.equal(turn.activity.some(a=>a.input?.stage==='read-completion'),false);
  assert.equal(turn.answer,'集合は午前10時。');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.refs[0].revision,1);assert.equal(f.reviews.length,0);
 });
+
+test('native current-file reply is accepted without read-completion inference or answer regeneration',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/current.md',body:'集合は午前10時。持ち物は青いノート。'}),records=[note],before=structuredClone(records);
+ await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
+ let calls=0;
+ f.services.model='test';f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),load:async()=>{throw Error('Already resident');},generate:async(messages,_budget,format)=>{
+  calls++;assert.equal(format.type,'native-tool-plan','must not reclassify or regenerate the terminal answer');
+  const read=messages.find(message=>message.role==='tool'&&message.name==='memory.read');
+  return {text:JSON.stringify(read?{action:'answer',query:'meeting',target:'knowledge',reply:{status:'answered',answer:'午前10時に青いノートを持参して集合します。',sources:[JSON.parse(read.content)[0].source]}}:{action:'tool',query:'memory.read',body:JSON.stringify({query:note.id})}),finishReason:'stop'};
+ }};
+ f.services.knowledge={all:async()=>records,getState:async()=>undefined,search:async()=>{throw Error('No search needed');},views:async()=>records.map(projectNote)};
+ f.services.refreshSnapshot=async()=>records.map(projectNote);
+ f.services.builtinToolPackages=[{definition:readDefinition,entry:'Tools/memory.read/tool.ts',sources:[{path:'Tools/memory.read/SKILL.md',body:'Read saved notes.'},{path:'Tools/memory.read/tool.ts',body:'Trusted read.'}],run:readRun}];
+ f.services.builtinToolRegistry=createToolRegistry(f.services.builtinToolPackages);f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['memory.read'],maxToolCalls:null,maxResultChars:8000};
+ const outcome=await c.run(run=>executeSubmission({text:'この入力ファイルを一文で要約してください。',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));assert.equal(calls,2);
+ const turn=f.current().turns.at(-1);assert.equal(turn.answer,'午前10時に青いノートを持参して集合します。');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.refs[0].revision,1);
+ assert.equal(turn.activity.some(item=>item.input?.stage==='read-completion'),false);assert.deepEqual(records,before);assert.equal(f.reviews.length,0);
+ const saved=await c.run(run=>executeSubmission({text:'今の回答をメモに保存して',attachments:[]},f.services,f.view,run));
+ assert.equal(saved,'awaitingApproval',JSON.stringify(c.state));assert.equal(calls,2,'saving must reuse the terminal answer');assert.equal(f.reviews.length,1);assert.equal(f.reviews[0].body,turn.answer);assert.deepEqual(f.reviews[0].source.source.refs,turn.refs);assert.deepEqual(records,before);
+});
