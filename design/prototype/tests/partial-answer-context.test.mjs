@@ -32,3 +32,17 @@ test('required evidence reduces answer space explicitly without losing source id
   else assert.equal(result.answerBudget,undefined);
  }
 });
+
+
+test('copy review exposes capacity pressure without claiming partial coverage',async()=>{
+ const {dialogueCopyHasLimitedSpace,dialogueCopyIsPartial}=await import('../src/dialogue-copy.ts');
+ const source={turnId:'t',turnIndex:0,speaker:'assistant'};
+ const receipt={tool:'knowledge.answer',status:'succeeded',output:{answerBudget:{requestedTokens:1024,allocatedTokens:348,reason:'required-evidence'}}};
+ const state={turns:[{id:'t',user:'Explain',answer:'Alpha.',status:'Review new note',activity:[receipt]}]};
+ assert.equal(dialogueCopyHasLimitedSpace(state,source),true);
+ assert.equal(dialogueCopyIsPartial(state,source),false);
+ assert.equal(dialogueCopyHasLimitedSpace(state,{...source,speaker:'user'}),false);
+ assert.equal(dialogueCopyHasLimitedSpace(state,{...source,turnId:'other'}),false);
+ receipt.output.answerBudget.allocatedTokens=-1;assert.equal(dialogueCopyHasLimitedSpace(state,source),false);
+ receipt.output.answerBudget.allocatedTokens=348;receipt.status='failed';assert.equal(dialogueCopyHasLimitedSpace(state,source),false);
+});

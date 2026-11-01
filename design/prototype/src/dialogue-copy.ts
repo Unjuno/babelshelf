@@ -39,6 +39,14 @@ export function dialogueCopyIsPartial(state:Dialogue,source:{turnId:string;turnI
  const turn=state.turns[source.turnIndex];if(source.speaker!=='assistant'||turn?.id!==source.turnId)return false;
  const status=dialogueTurnStatus(turn);return status==='Partial · incomplete inspection'||status==='Source excerpt · partial answer';
 }
+/** Display-only execution context; never changes copy coverage or saved text. */
+export function dialogueCopyHasLimitedSpace(state:Dialogue,source:{turnId:string;turnIndex:number;speaker:string}){
+ const turn=state.turns[source.turnIndex];if(source.speaker!=='assistant'||turn?.id!==source.turnId)return false;
+ const receipt=turn.activity?.slice().reverse().find(item=>item.tool==='knowledge.answer'&&item.status==='succeeded');
+ const output=receipt?.output;if(!output||typeof output!=='object'||Array.isArray(output))return false;
+ const budget=output.answerBudget;if(!budget||typeof budget!=='object'||Array.isArray(budget))return false;
+ return budget.reason==='required-evidence'&&typeof budget.requestedTokens==='number'&&Number.isSafeInteger(budget.requestedTokens)&&typeof budget.allocatedTokens==='number'&&Number.isSafeInteger(budget.allocatedTokens)&&budget.allocatedTokens>0&&budget.allocatedTokens<budget.requestedTokens;
+}
 export function assertDialogueCopySource(state:Dialogue|undefined,source:{turnId:string;turnIndex:number;speaker:string;quote:string;refs:SourceRef[]},expectedCoverage?:'partial'|'complete'){
  if(!state||state.turns[source.turnIndex]?.id!==source.turnId)throw changed();
  let original;try{original=readDialogueTurn(state,source.turnIndex,source.speaker);}catch{throw changed();}
