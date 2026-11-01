@@ -30,8 +30,8 @@ const defaults={
  appearance:{schemaVersion:PREFERENCE_SCHEMA_VERSION,theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[],paletteRegistry:[] as NamedAppearancePalette[],activePaletteId:''},
  connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false},
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
-  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
-  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:null,maxGenerationMs:null},
+  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
+  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read','memory.sources'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:null,maxGenerationMs:null},
   {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
  ] as HarnessProfile[]},
 };

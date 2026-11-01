@@ -46,7 +46,7 @@ test('saving a custom skill adds it to the active profile in the same revisioned
  const after=addToolToActiveProfile([harness],'user.lookup'),updated=after.find(note=>note.id==='settings-harness');
  assert.deepEqual(harness,before);
  const value=parsePreference('harness',updated.body);
- assert.deepEqual(value.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now','user.lookup']);
+ assert.deepEqual(value.profiles[0].enabledTools,['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now','user.lookup']);
  assert.equal(updated.version,2);assert.equal(updated.history.length,1);
  assert.equal(value.activeProfileId,'standard');
  assert.throws(()=>addToolToActiveProfile(after,'user.lookup'),/already exists/);

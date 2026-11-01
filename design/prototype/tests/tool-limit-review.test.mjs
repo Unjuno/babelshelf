@@ -32,9 +32,9 @@ test('only the untouched schema-1 Standard default gets an explicit profile migr
  const before=structuredClone(note),proposal=await prepareLegacyStandardReview([note]);
  assert.deepEqual(note,before);
  const proposed=parsePreference('harness',proposal.after),standard=proposed.profiles.find(profile=>profile.id==='standard');
- assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);
+ assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now']);
  assert.equal(standard.maxToolCalls,null);
- assert.deepEqual(proposed.profiles.find(profile=>profile.id==='source-first'),parsePreference('harness',initialPreferenceNotes.find(item=>item.id==='settings-harness').body).profiles.find(profile=>profile.id==='source-first'));
+ assert.deepEqual(proposed.profiles.find(profile=>profile.id==='source-first'),parsePreference('harness',legacyBody).profiles.find(profile=>profile.id==='source-first'));
  assert.equal(proposed.profiles.find(profile=>profile.id==='conversation').maxToolCalls,0);
  const applied=applyCorrection([note],proposal),saved=parsePreference('harness',latest(applied.note).body);
  assert.deepEqual(saved.profiles.find(profile=>profile.id==='standard').enabledTools,standard.enabledTools);

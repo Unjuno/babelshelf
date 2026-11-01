@@ -121,7 +121,7 @@ test('harness profiles live in versioned Memory settings and only reduce registe
  const records=structuredClone(initialPreferenceNotes),before=readPreference('harness',records);
  assert.equal(before.activeProfileId,'standard');
  assert.deepEqual(before.profiles.map(profile=>profile.id),['standard','source-first','conversation']);
- const standard=before.profiles[0];assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.equal(standard.maxToolCalls,null);assert.equal(standard.maxResultChars,8000);
+ const standard=before.profiles[0];assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now']);assert.equal(standard.maxToolCalls,null);assert.equal(standard.maxResultChars,8000);
  const changed=updatePreference('harness',records,value=>({...value,activeProfileId:'source-first',profiles:value.profiles.map(profile=>profile.id==='source-first'?{...profile,enabledTools:['memory.search'],maxToolCalls:1,maxResultChars:1200}:profile)}));
  const saved=readPreference('harness',changed),record=changed.find(note=>note.id==='settings-harness');
  assert.equal(saved.activeProfileId,'source-first');assert.deepEqual(saved.profiles.find(profile=>profile.id==='source-first').enabledTools,['memory.search']);
@@ -145,8 +145,9 @@ test('existing standard profile keeps its tool selection after a new tool is add
 });
 
 test('source details can be explicitly enabled while preserving other profile selections',()=>{
- const records=structuredClone(initialPreferenceNotes),before=readPreference('harness',records),old=records.find(note=>note.id==='settings-harness');
- assert.equal(before.profiles[0].enabledTools.includes('memory.sources'),false);
+ const records=structuredClone(initialPreferenceNotes),old=records.find(note=>note.id==='settings-harness');
+ const legacy=readPreference('harness',records);legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');old.body=formatPreference('harness',legacy);
+ const before=readPreference('harness',records);assert.equal(before.profiles[0].enabledTools.includes('memory.sources'),false);
  const updated=updatePreference('harness',records,value=>setBuiltinToolEnabled(value,'standard','memory.sources',true)),after=readPreference('harness',updated),saved=updated.find(note=>note.id==='settings-harness');
  assert.deepEqual(after.profiles[0].enabledTools,[...before.profiles[0].enabledTools,'memory.sources']);assert.deepEqual(after.profiles.slice(1),before.profiles.slice(1));assert.equal(saved.version,old.version+1);assert.equal(saved.history.at(-1),old.body);
 });
@@ -163,7 +164,7 @@ test('harness config rejects unknown tools, invalid budgets and non-read-only ca
 
 test('legacy untouched built-in tools and caps migrate additively without changing custom limits',()=>{
  const current=structuredClone(initialPreferenceNotes),record=current.find(note=>note.id==='settings-harness');
- const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
+ const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].enabledTools=['memory.search','memory.list','memory.read'];legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
  record.body=formatPreference('harness',legacy).replace('"schemaVersion": 3','"schemaVersion": 1');const parsed=parsePreference('harness',record.body);
  assert.equal(parsed.schemaVersion,3);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
  legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 3','"schemaVersion": 1');
@@ -351,4 +352,11 @@ test('schema-2 explicit tools and old-default call caps survive schema-3 project
  const updated=updatePreference('harness',records,current=>({...current,replyStyle:'detailed'}));
  const saved=updated.find(note=>note.id===record.id);assert.equal(saved.history.at(-1),record.body);
  assert.equal(readPreference('harness',updated).profiles[0].maxToolCalls,8);assert.equal(readPreference('harness',updated).profiles[1].maxToolCalls,2);
+});
+
+
+test('fresh knowledge profiles can navigate source provenance without enabling tools for conversation',()=>{
+ const value=readPreference('harness',initialPreferenceNotes);
+ for(const id of ['standard','source-first'])assert.ok(value.profiles.find(p=>p.id===id).enabledTools.includes('memory.sources'));
+ assert.deepEqual(value.profiles.find(p=>p.id==='conversation').enabledTools,[]);
 });

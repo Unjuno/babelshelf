@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+New local change: fresh Standard and Source first profiles include memory.sources; existing selections remain unchanged and legacy Standard updates still require the existing explicit review. Prototype1754/app8/build/check passed (build77bc45a665e20321). Not deployed. Public v290 provenance attempt exposed the existing three-call profile without memory.sources and was stopped after one failed planner call; this is not a completed provenance test.
+
 Public v290 now contains application025607d: build913f7ca47a41241a/index-G8GwnnhC.js. Same-worker reload and all backend callback retirement regressions passed (prototype1753/app8/build/check); CI41336618465 passed all stages. Sidebar Update adopted the exact entry with retained history and returned appOffline. This verifies delivery, not new model throughput or physical-device acceptance.
 
 Latest public v289 unpinned saved-material replay completed search → Japanese answer → matching saved-answer v1 citation → unchanged save review (cancelled, no duplicate note). Cached Bonsai4B: load26.593s; three model calls2249prompt/79output,101.3s aggregate generation; final630prompt/38output,19.077s generation,15.266sTTFT,3.810sdecode,cached0. Search45ms. This supports investigating planner/prefill overhead before speculative kernel changes; it does not prove a GPU bottleneck or primary-original provenance. Detailed evidence remains in TEST-RESULTS.txt. Model/session reuse already exists; repeated model loading is not established as the cause.
