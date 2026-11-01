@@ -3,6 +3,11 @@ name: Local PWA quality
 on:
   push:
     branches: [codex/ui-design-handoff]
+    # Evidence-only updates must not cancel an in-flight code verification.
+    # Keep PR checks unfiltered; SKILL.md and other packaged Markdown still run.
+    paths-ignore:
+      - docs/REMAINING-GATES.md
+      - docs/TEST-RESULTS.txt
   pull_request:
     branches: [codex/ui-design-handoff]
   workflow_dispatch:
