@@ -59,6 +59,16 @@ test('named notes in a multi-source comparison keep each explicitly labelled qua
  assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄は17リットル、緑川備蓄は29リットルです。',japanese));
 });
 
+test('overlapping cited titles bind a quantity to the longer matching title',()=>{
+ const evidence=[
+  {noteId:'alpha',title:'Alpha',quote:'Alpha contains 17 litres of water.'},
+  {noteId:'alphabet',title:'Alphabet reserve',quote:'Alphabet reserve contains 29 litres of water.'},
+ ];
+ const question='How much water is in Alphabet reserve?';
+ assert.throws(()=>checkAnswerConsistency(question,'Alphabet reserve contains 17 litres.',evidence),/conflicts with cited quantity/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alphabet reserve contains 29 litres.',evidence));
+});
+
 test('a comparison can bind answer quantities to cited note titles even when the prompt does not name them',()=>{
  const evidence=[
   {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},

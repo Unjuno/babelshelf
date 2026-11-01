@@ -40,12 +40,32 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   });
  };
  if(volumeQuestion){
+  const titleCandidates=new Map<string,{noteId:string;title:string;values:number[]}[]>();
+  for(const source of sourceRows){
+   if(!source.noteId||!source.title?.trim())continue;
+   const title=source.title.normalize('NFKC').trim(),key=title.toLocaleLowerCase();
+   const candidates=titleCandidates.get(key)??[];
+   let candidate=candidates.find(item=>item.noteId===source.noteId);
+   if(!candidate){candidate={noteId:source.noteId,title,values:[]};candidates.push(candidate);titleCandidates.set(key,candidates);}
+   candidate.values.push(...volumeMeasures(source.quote!,true).map(item=>item.value));
+  }
+  const titleSpans=(text:string)=>{
+   const matches=[...titleCandidates.entries()].flatMap(([key,candidates])=>{
+    const title=candidates[0].title,escaped=title.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
+    const expression=new RegExp(escaped,'giu'),candidate=candidates.length===1?candidates[0]:undefined;
+    return [...text.matchAll(expression)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length,key,candidate}]);
+   });
+   // If one title is a substring of another, retain the longest matching title
+   // at that location. Keeping the short match would make the source binding
+   // ambiguous (for example, “Alpha” inside “Alphabet reserve”).
+   return matches.filter(span=>!matches.some(other=>other!==span&&other.start<=span.start&&other.end>=span.end&&other.end-other.start>span.end-span.start)).sort((left,right)=>left.start-right.start||right.end-left.end);
+  };
   // When the user names exactly one cited note, compare against that note's
   // measurements. A matching number in another cited note must not mask a
   // value accidentally assigned to the requested note. Multiple named notes
   // intentionally keep the general comparison behavior below.
   const normalizedQuestion=q.toLocaleLowerCase();
-  const namedNoteIds=new Set(sourceRows.flatMap(item=>typeof item.noteId==='string'&&typeof item.title==='string'&&item.title.trim()&&normalizedQuestion.includes(item.title.normalize('NFKC').trim().toLocaleLowerCase())?[item.noteId]:[]));
+  const namedNoteIds=new Set(titleSpans(normalizedQuestion).flatMap(span=>span.candidate?[span.candidate.noteId]:[]));
   const quantitySources=namedNoteIds.size===1?sourceRows.filter(item=>item.noteId&&namedNoteIds.has(item.noteId)):sourceRows;
   const citedVolumes=quantitySources.flatMap(item=>volumeMeasures(item.quote!,true)),answerMeasures=volumeMeasures(a),answerVolumes=answerMeasures.map(item=>item.value);
   const sameVolume=(value:number,cited:number)=>Math.abs(value-cited)<=Math.max(1e-9,Math.abs(cited)*1e-9);
@@ -57,31 +77,16 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   // The generated answer may introduce exact titles while comparing files
   // that the user referred to generically, so bind against all cited titles,
   // not only titles repeated in the question.
-  const titleCandidates=new Map<string,{noteId:string;title:string;values:number[]}[]>();
-  for(const source of sourceRows){
-   if(!source.noteId||!source.title?.trim())continue;
-   const title=source.title.normalize('NFKC').trim(),key=title.toLocaleLowerCase();
-   const candidates=titleCandidates.get(key)??[];
-   let candidate=candidates.find(item=>item.noteId===source.noteId);
-   if(!candidate){candidate={noteId:source.noteId,title,values:[]};candidates.push(candidate);titleCandidates.set(key,candidates);}
-   candidate.values.push(...volumeMeasures(source.quote!,true).map(item=>item.value));
-  }
   const sentenceMatches=[...a.matchAll(/[^.!?。！？;；、\n]+/gu)].flatMap(match=>match.index===undefined?[]:[{text:match[0],start:match.index}]);
-  const titleSpans=(text:string)=>[...titleCandidates.entries()].flatMap(([key,candidates])=>{
-   if(candidates.length!==1)return[];
-   const escaped=candidates[0].title.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
-   const expression=new RegExp(escaped,'giu');
-   return [...text.matchAll(expression)].flatMap(match=>match.index===undefined?[]:[{start:match.index,end:match.index+match[0].length,key,candidate:candidates[0]}]);
-  }).sort((left,right)=>left.start-right.start);
   for(const sentence of sentenceMatches){
    const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
+   const [first,second]=spans;
    // Exact cited titles can also anchor a non-numeric comparative claim. Only
    // enforce it when both notes have one unambiguous cited water volume and the
    // answer uses a small, explicit comparison form. General paraphrases remain
    // outside this lexical check.
-   if(spans.length===2&&spans[0].candidate.noteId!==spans[1].candidate.noteId){
-    const [first,second]=spans;
-    const uniqueVolume=(candidate:typeof first.candidate)=>{
+   if(spans.length===2&&first.candidate&&second.candidate&&first.candidate.noteId!==second.candidate.noteId){
+    const uniqueVolume=(candidate:NonNullable<typeof first.candidate>)=>{
      const values=[...new Set(candidate.values)];
      return values.length===1?values[0]:undefined;
     };
@@ -111,7 +116,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    // Multiple titles in one sentence need a stronger parser than nearest-word
    // distance: the next title can be closer to a value that belongs to the
    // previous one. Bind only one unambiguous cited title per clause.
-   if(spans.length!==1)continue;
+   if(spans.length!==1||!spans[0].candidate)continue;
    for(const measure of measures){
     const {candidate}=spans[0];
     if(candidate.values.length&&!candidate.values.some(value=>sameVolume(measure.value,value)))throw Error('Answer quantity conflicts with cited quantity · try again');
