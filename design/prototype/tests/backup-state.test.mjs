@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createNote,makeBackup,withdrawNote} from '../../../dist/core.js';
+import {createNote,digest,makeBackup,withdrawNote} from '../../../dist/core.js';
 import {emptyDialogue,appendTurn,completeTurn,currentDialogueResult} from '../src/conversation.ts';
 import {prepareCorrection,applyCorrection} from '../src/note-corrections.ts';
 import {formatTask,taskDefinition,createTaskNote,claimTaskRun,finishTaskRun} from '../src/task-records.ts';
@@ -77,6 +77,10 @@ test('state backup retains exact originals, compaction, recovery metadata and co
 });
 test('legacy note-only brainpacks remain readable and explicitly distinguish missing auxiliary state',async()=>{
  const state=snapshot(),pack=await makeBackup(state.notes),parsed=await parseStateBackup(JSON.stringify(pack));assert.equal(parsed.schema,1);assert.deepEqual(parsed.notes,state.notes);assert.equal(parsed.settings,undefined);
+});
+test('legacy note-only brainpacks cannot smuggle unvalidated auxiliary state through schema 1',async()=>{
+ const pack=await makeBackup(snapshot().notes);pack.payload.settings=[{key:'ui-v1-connection',value:{downloads:true}}];pack.sha256=await digest(JSON.stringify(pack.payload));
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(pack)),/legacy backup contains unsupported state/i);
 });
 test('historical dialogue citations remain portable after the original is withdrawn',async()=>{
  const state=snapshot(),n=state.notes[0];state.settings[0].value.turns[0].refs=[{noteId:n.id,revision:1,start:0,end:1,quote:'水'}];state.notes=[withdrawNote(n,1)];

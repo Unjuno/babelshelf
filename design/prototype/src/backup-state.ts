@@ -85,7 +85,13 @@ export async function makeStateBackup(state:StateSnapshot){validateState(state);
 export function makeRecoverySnapshot(state:StateSnapshot){jsonOnly(state);entries(state.settings);entries(state.runs);if(!Array.isArray(state.notes))throw Error('Invalid recovery data');const encoded=encodeBackupValue(state),payload={schema:1,createdAt:new Date().toISOString(),...encoded.data,undefinedPaths:encoded.undefinedPaths,excluded:[...excluded]};const pack={format:'babelshelf-unverified-recovery',sha256:stateHash(payload),payload};backupBytes(pack,()=>{});return pack;}
 export async function parseStateBackup(text:string):Promise<StatePayload>{
  checkBackupText(text);const pack=JSON.parse(text);
- if(pack.payload?.schema===1){const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;}
+ if(pack.payload?.schema===1){
+  // Historical schema 1 was note-only (`makeBackup`). Do not let a payload
+  // with extra settings/runs bypass schema-2 validation through the legacy
+  // parser, even if its checksum is internally consistent.
+  if(!pack.payload||Object.keys(pack.payload).sort().join('|')!=='createdAt|notes|schema'||typeof pack.payload.createdAt!=='string')throw Error('Backup verification failed · legacy backup contains unsupported state');
+  const legacy=await parseBackup(text);if(legacy.notes.some((n:any)=>n.originalAsset||n.mediaSource||n.transcription||n.pdfText||n.ocrText))throw Error('Originals require state backup');return legacy;
+ }
  if(pack.format!=='mobile-local-brainpack'||pack.payload?.schema!==2||pack.sha256!==stateHash(pack.payload)||typeof pack.payload.createdAt!=='string'||!equal(pack.payload.excluded,excluded))throw Error('Backup verification failed');
  // JSON.parse owns this graph; restoring optional values cannot mutate caller data.
  const payload=pack.payload,paths=payload.undefinedPaths;
