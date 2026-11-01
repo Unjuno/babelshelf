@@ -7,8 +7,9 @@ const explicitSavedFilename=/(?:\b(?:saved|stored)\s+|(?:保存した|保存済�
 // having to prepend "saved". URLs and OS drive paths are not Memory selectors.
 // This only scopes working context; lookup still verifies that a file exists.
 const explicitMemoryPath=/(?:^|[\s"'「『“(=])\/?(?:[\p{L}\p{M}\p{N}_.-]+[/\\])+[\p{L}\p{M}\p{N}_.-]+\.(?:md|markdown|txt|pdf|docx?|rtf)\b/iu;
+const explicitJapaneseSavedKnowledge=/(?:保存した|保存済み|保存して(?:ある|いる)|保存され(?:た|ている)).{0,40}(?:メモ|ノート|ファイル|文書|記録|資料)/u;
 export function namesSavedKnowledge(text:string){
- return explicitSavedFilename.test(text)||/\b(?:saved|stored|my)\s+(?:(?:[\p{L}\p{N}-]+)\s+){0,8}(?:notes?|files?|documents?|records?)\b/iu.test(text)
+ return explicitJapaneseSavedKnowledge.test(text)||explicitSavedFilename.test(text)||/\b(?:saved|stored|my)\s+(?:(?:[\p{L}\p{N}-]+)\s+){0,8}(?:notes?|files?|documents?|records?)\b/iu.test(text)
   ||/(?:保存した|保存済み|自分の|私の).{0,40}(?:メモ|ノート|ファイル|文書|記録)/u.test(text);
 }
 
@@ -104,10 +105,10 @@ export function decisionMayRouteRequest(enabled:boolean,ready:boolean,text:strin
 }
 
 export function namesExplicitSavedKnowledge(text:string){
- return explicitSavedFilename.test(text)||explicitMemoryPath.test(text)||/\b(?:saved|stored)\s+(?:(?:[\p{L}\p{N}-]+)\s+){0,8}(?:notes?|files?|documents?|records?)\b/iu.test(text)
+ return explicitJapaneseSavedKnowledge.test(text)||explicitSavedFilename.test(text)||explicitMemoryPath.test(text)||/\b(?:saved|stored)\s+(?:(?:[\p{L}\p{N}-]+)\s+){0,8}(?:notes?|files?|documents?|records?)\b/iu.test(text)
   ||/\b(?:search|find|look\s+(?:for|up)|retrieve|read|open)\s+(?:in\s+)?memory\b/iu.test(text)
   ||/\b(?:in|from)\s+memory\b/iu.test(text)
-  ||/(?:保存した|保存済み).{0,40}(?:メモ|ノート|ファイル|文書|記録)/u.test(text);
+  ||explicitJapaneseSavedKnowledge.test(text);
 }
 
 export function namedJapaneseSavedSubject(text:string){

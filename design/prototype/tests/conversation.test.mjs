@@ -2155,3 +2155,16 @@ test('legacy planner keeps changing call allowance outside its stable protocol',
  assert.match(next.at(-3).content,/Tool attempts and results/);
  assert.deepEqual(first.at(-1),next.at(-1));
 });
+
+test('independent Japanese saved-material questions do not inherit a long unrelated conversation',async()=>{
+ const {independentSavedKnowledgeContext}=await import('../src/dialogue-planner.ts');
+ const context={summary:'old task',recent:[{id:'old',user:'Old task',answer:'Old claim'}],refs:[],turnCount:130,currentFile:{noteId:'unrelated',revision:1}};
+ const before=structuredClone(context);
+ for(const question of ['保存してある資料で、青いノートを持っていく予定の集合時刻を教えてください。','保存している文書から予算を調べて。','保存された資料を比較して。','保存されているメモを探して。']){
+  assert.deepEqual(independentSavedKnowledgeContext(question),{summary:'',recent:[],refs:[],turnCount:0});
+  assert.doesNotMatch(JSON.stringify(planDialogueMessages(question,context,[],undefined,true)),/old task|Old claim|unrelated/);
+  assert.equal(independentSavedKnowledgeContext(question,true),null);
+ }
+ for(const question of ['さっきの回答と保存してある資料を比較して。','このファイルと保存してある資料を比較して。','資料を保存してほしい。'])assert.equal(independentSavedKnowledgeContext(question),null);
+ assert.deepEqual(context,before);
+});
