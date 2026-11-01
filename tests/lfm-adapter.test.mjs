@@ -94,7 +94,7 @@ test('a WebGPU load cleanup failure is marked unconfirmed and cannot authorize C
  const {Lfm3Adapter}=await import('../dist/lfm-adapter.js');const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');
  try{Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{async requestAdapter(){return {};}}}});class Runtime{setCompat(){}async loadModel(){throw Error('controlled GPU load failure');}getChatTemplate(){return 'unused'}async exit(){throw Error('controlled cleanup failure');}}
   const lfm3Model={...model,contextTokens:8192},adapter=new Lfm3Adapter({Wllama:Runtime,paths:{default:'/lfm3.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[lfm3Model]});
-  await assert.rejects(adapter.load(file,lfm3Model.id,{backend:'webgpu'}),error=>error.code==='webgpu_load_failed'&&error.cleanupUnconfirmed===true);assert.equal(adapter.runtime,null);assert.equal(adapter.loaded,null);
+  await assert.rejects(adapter.load(file,lfm3Model.id,{backend:'webgpu'}),error=>error.code==='webgpu_load_failed'&&error.cleanupUnconfirmed===true);assert.ok(adapter.runtime instanceof Runtime);assert.equal(adapter.loaded,null);await assert.rejects(adapter.load(file,lfm3Model.id,{backend:'webgpu'}),/Unload model first/);
  }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
 });
 test('Qwen3 uses a separate fixed architecture and identical nonthinking count/generation options',async()=>{
@@ -237,4 +237,20 @@ test('native final arguments are previewed before the stream completes, without 
  assert.equal(result.toolCalls[0].arguments.reply.answer,'日本語');assert.deepEqual(seen,['日','日本語']);
  assert.equal(result.firstContentMs,40,'first visible answer preview owns TTFT, not private reasoning or stream completion');
  assert.equal(result.totalMs,80);
+});
+
+test('unload retains runtime ownership until teardown succeeds and prevents overlapping allocations',async()=>{
+ const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[]});
+ let rejectExit,exits=0;const runtime={exit(){exits++;return new Promise((_resolve,reject)=>{rejectExit=reject;});}};
+ adapter.runtime=runtime;adapter.loaded='local';adapter.promptCacheReady=true;
+ const pending=adapter.unload();
+ assert.equal(adapter.loaded,null);assert.equal(adapter.promptCacheReady,false);
+ assert.equal(adapter.runtime,runtime);
+ await assert.rejects(adapter.load({},'local',{backend:'cpu'}),/Unload model first/);
+ await assert.rejects(adapter.unload(),/Stop active operation first/);
+ rejectExit(Error('teardown failed'));await assert.rejects(pending,/teardown failed/);
+ assert.equal(adapter.runtime,runtime,'failed cleanup must not lose the owning handle');
+ await assert.rejects(adapter.load({},'local',{backend:'cpu'}),/Unload model first/);
+ runtime.exit=async()=>{exits++;};await adapter.unload();
+ assert.equal(exits,2);assert.equal(adapter.runtime,null);assert.equal(adapter.busy,false);
 });

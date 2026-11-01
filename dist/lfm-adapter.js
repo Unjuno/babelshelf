@@ -43,7 +43,7 @@ export class PreparedGgufAdapter {
    const requestedThreads=inferenceThreadCount();this.onProgress('Loading model');try{await runtime.loadModel([file],{n_ctx:model.contextTokens,n_threads:requestedThreads,n_gpu_layers:backend==='cpu'?0:99999,n_parallel:1,n_batch:128,n_ubatch:128,cache_idle_slots:false,n_cache_reuse:0,...(this.architecture==='lfm3'?{n_ctx_checkpoints:8,checkpoint_min_step:512,swa_full:this.reusePrompt}:{}),warmup:false,seed:0,...(this.architecture==='qwen3'?{reasoning:false,cache_type_k:'q8_0',cache_type_v:'q8_0'}:{})});}catch(cause){if(backend==='webgpu'){const error=Error('WebGPU model load failed');error.code='webgpu_load_failed';error.cause=cause;throw error;}throw cause;}check();
    const template=runtime.getChatTemplate();if(typeof template!=='string'||!template.trim())throw Error('GGUF chat template missing');const context=runtime.getLoadedContextInfo();if(context.metadata?.['general.architecture']!==this.architecture)throw Error('Unexpected GGUF architecture');if(context.n_ctx!==model.contextTokens)throw Error('Runtime context does not match selected model context');
    this.loaded=id;this.info={model:id,backend,actualGpuLayers:gpuLayerObservation?.loaded??null,totalModelLayers:gpuLayerObservation?.total??null,gpuLayerEvidence:gpuLayerObservation?'runtime-offload-log':backend==='cpu'?'cpu-route-requested':'unobserved',requestedThreads,activeThreads:runtime.useMultiThread===true?runtime.nbThreads:1,loadMs:this.clock()-loadStart,runtimeLoadMs:this.clock()-start,verificationMs:start-loadStart,context,template,workerResources:{compat:runtime.getWorkerResources().compat,wasmPath:runtime.getWorkerResources().wasmPath},runtimeVersion:this.Wllama.getLibllamaVersion()};return this.info;
-  }catch(error){let cleanupUnconfirmed=false;try{await runtime?.exit();}catch{cleanupUnconfirmed=true;}this.runtime=null;this.loaded=null;if(signal?.aborted||epoch!==this.epoch)throw Error('Stopped');if(cleanupUnconfirmed){const failure=Error(backend==='webgpu'?'WebGPU runtime cleanup failed':'Runtime cleanup failed');failure.cleanupUnconfirmed=true;failure.code=backend==='webgpu'?'webgpu_load_failed':'runtime_cleanup_failed';failure.cause=error;throw failure;}throw error;}finally{this.busy=false;}
+  }catch(error){let cleanupUnconfirmed=false;try{await runtime?.exit();}catch{cleanupUnconfirmed=true;}this.runtime=cleanupUnconfirmed?runtime:null;this.loaded=null;this.info=null;if(signal?.aborted||epoch!==this.epoch)throw Error('Stopped');if(cleanupUnconfirmed){const failure=Error(backend==='webgpu'?'WebGPU runtime cleanup failed':'Runtime cleanup failed');failure.cleanupUnconfirmed=true;failure.code=backend==='webgpu'?'webgpu_load_failed':'runtime_cleanup_failed';failure.cause=error;throw failure;}throw error;}finally{this.busy=false;}
  }
  get supportsExactCount(){return typeof this.runtime?.countChatTokens==='function';}
   async count(messages,{signal,json=true,tools}={}){
@@ -101,7 +101,15 @@ export class PreparedGgufAdapter {
   }catch(error){this.promptCacheReady=false;const stopped=signal?.aborted||epoch!==this.epoch||controller.signal.aborted&&error?.code!=='repeated_output';controller.abort();if(stopped)throw Error('Stopped');throw error;}finally{signal?.removeEventListener('abort',stop);if(this.controller===controller)this.controller=null;this.busy=false;}
  }
  abort(){this.epoch++;this.promptCacheReady=false;this.controller?.abort();}
- async unload(){if(this.busy)throw Error('Stop active operation first');const runtime=this.runtime;this.promptCacheReady=false;this.runtime=null;this.loaded=null;this.info=null;if(runtime)await runtime.exit();}
+ async unload(){
+  if(this.busy)throw Error('Stop active operation first');
+  this.busy=true;this.promptCacheReady=false;this.loaded=null;this.info=null;
+  // Keep ownership until exit succeeds. Otherwise a failed or pending GPU
+  // teardown could be followed by a second allocation in the same adapter.
+  const runtime=this.runtime;
+  try{if(runtime)await runtime.exit();this.runtime=null;}
+  finally{this.busy=false;}
+ }
 }
 export class LfmAdapter extends PreparedGgufAdapter {
  constructor(options){super({...options,architecture:'lfm2'});}
