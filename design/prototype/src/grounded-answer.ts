@@ -385,6 +385,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   try{checkAnswerConsistency(question,parsed.answer,parsed.sources);}catch(error){
    if(error instanceof Error&&error.message==='Answer does not match question · try again'&&workingFile)throw Error('Could not answer from the selected excerpts');
    if(!(error instanceof Error))throw error;
+   const fresh=await store.all();check();
+   if(!validateGroundingRefs(fresh,evidence).ok)throw Error('Source changed · retry');
    // One bounded semantic repair keeps the same selected evidence and citation
    // protocol. A second failed check still aborts this answer before the
    // caller can present it as verified or offer it for saving.

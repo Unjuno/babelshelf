@@ -845,6 +845,16 @@ test('grounded answers cannot change an explicitly requested water amount while 
  assert.equal(calls,2,'a second contradictory draft fails closed');
 });
 
+test('consistency repair refuses a source changed during the first generation',async()=>{
+ let note=createNote({body:'The reserve contains 17 litres of water.'});
+ const body=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:body.length,quote:body};let calls=0;
+ const store={all:async()=>[note],search:async()=>[ref]};
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>{calls++;note=reviseNote(note,{body:'The reserve contains 19 litres of water.'},1);return {text:JSON.stringify({answer:'18 litres.',sources:['S1']})};}};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the reserve?',query:'water',mode:'answer',scope:{kind:'knowledge'}}),/Source changed/);
+ assert.equal(calls,1,'stale evidence must not trigger another generation');
+ assert.equal(note.revisions.length,2);
+});
+
 test('a named-note quantity cannot borrow a matching value from another cited note',async()=>{
  const alpha=createNote({title:'Alpha reserve',path:'Notes/Alpha reserve.md',body:'Alpha reserve contains 17 litres of water.'}),beta=createNote({title:'Beta reserve',path:'Notes/Beta reserve.md',body:'Beta reserve contains 29 litres of water.'});
  const ref=note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body,title:note.revisions[0].title}),refs=[ref(alpha),ref(beta)],store={all:async()=>[alpha,beta],search:async()=>refs};let answer='Alpha reserve contains 29 litres.';

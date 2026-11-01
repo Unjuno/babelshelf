@@ -7187,3 +7187,11 @@ Returned the app connection preference to Offline; this is not Airplane Mode.
 2026-11-01: Citation consistency follow-up: reproduced an English comma-linked two-note comparison where title-bound water values could be swapped without rejection. The guard now treats prose commas as clause boundaries while preserving punctuation inside exact cited titles (including `.md`) and numeric groups/decimals. Added low-level and groundedAnswer regressions for swapped/correct values and grouped thousands. Focused answer-consistency tests passed 11/11; root tests 250/250; full prototype tests 1,667/1,667; `npm run check` passed (39 shell hashes); production app build passed (163 verified assets; chunk-size advisory remains); product acceptance 8/8 passed; `git diff --check` passed. This is a lexical consistency guard, not semantic entailment, live-model, or device evidence. No model assets, Memory records, or QA profile data were modified.
 
 2026-11-01: Code commit 8fd0a85b854d75db9d489d0501bc72ee223fc35 passed clean-checkout GitHub Actions Local PWA quality run **41275427965** in 10m20s: https://github.com/Unjuno/babelshelf/actions/runs/41275427965. All stages passed, including core/build/acceptance, storage/offline calculations, tools/MCP/Markdown, device settings, editorial/iOS handoff, and app-update/offline/installed-PWA acceptance. This validates the code commit in CI, not physical-device/live-model behavior.
+2026-11-01 — Consistency retry source preflight.
+Before retrying a contradictory draft, groundedAnswer revalidates all selected
+source revisions. A controlled source edit during first generation now aborts
+before another model call. Conversation tests passed 199/199 and static checks
+passed on Windows PC. The preceding product commit 3b904e2 passed complete
+clean-checkout CI run 41284116395 in 10m0s. This follow-up is not a live-model
+or phone verification.
+
