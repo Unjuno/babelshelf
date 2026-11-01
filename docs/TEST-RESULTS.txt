@@ -1,3 +1,12 @@
+2026-11-01 — LFM3 preflight disclosure and complete clean-checkout CI.
+The LFM3 route now reports that CPU/WASM fallback may be tried when WebGPU is
+unavailable; other WebGPU routes do not imply this fallback. Focused device
+checks passed 5/5, agent budget/coordinator/work-summary checks passed 116/116,
+and settings migration/citation checks passed 51/51 on Windows PC. The exact
+code commit `bda8818dc4cc2aef8883da432d9731ad0f12a339` passed GitHub Actions
+Local PWA quality run `41278120850`. This validates the repository workflow,
+not actual LFM3 generation or fallback on a physical device.
+
 2026-11-01 — LFM3 device preflight fallback disclosure.
 The read-only text device check now reports that CPU/WASM fallback may be
 tried for registered LFM3 routes when WebGPU is unavailable. Other WebGPU routes
