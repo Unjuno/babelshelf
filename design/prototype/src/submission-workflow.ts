@@ -263,7 +263,6 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     await finishTurn(id,{status:'Review correction · '+proposal.path+' · v'+proposal.expected.revisions.at(-1).version});checkSend();await view.reviewCorrection(proposal,id);return {kind:'awaitingApproval'};
    }
    let captureSource:DialogueCopyReview|null=null;
-   let selectedDialogueSources:NonNullable<DialogueTurn['refs']>|undefined;
    if(request&&(request.target==='current'||request.historyIndex!=null)&&['recall','capture','transform'].includes(request.action)){
     // Keep the original selector stable when the resolved index is added to
     // the mutable request below. A current-result selector cannot also carry
@@ -274,7 +273,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,selectedOriginal:{speaker:original.speaker==='assistant'?'assistant':'user',text:original.quote}};
     await finishTurn(id,{readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},status:'Reading earlier message'});
     if(request.action==='recall'||request.action==='transform'){const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(inference,text,original,checkSend),value=>value,value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined);checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:original.refs});return result.status?{kind:'failed',reason:'text-operation'}:{kind:'answered'};}request.action='recall';}
-    if(request.action==='capture')request.body=original.quote;else{request.action='chat';selectedDialogueSources=structuredClone(original.refs);}
+    if(request.action==='capture')request.body=original.quote;else request.action='chat';
    }
    // A native reply may cite an exact search range even after a longer read.
    // Preserve the observed ranges; only legacy generation reselects evidence.
@@ -328,7 +327,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources,metadataGuards);
      return {kind:'needsInput',reason:'insufficient-evidence'};
     }
-    const guard=!selectedDialogueSources&&parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:selectedDialogueSources??parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':'answerBudget' in parsed&&parsed.answerBudget?'Limited answer space':request.action==='summary'?'Summary · selected excerpts':undefined},guard,metadataGuards);return {kind:'answered'};}
+    const guard=parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':'answerBudget' in parsed&&parsed.answerBudget?'Limited answer space':request.action==='summary'?'Summary · selected excerpts':undefined},guard,metadataGuards);return {kind:'answered'};}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
    return items.length?(sent.every(a=>a.reading||a.voice||a.status==='Text available')?{kind:'imported'}:{kind:'partial',reason:'unread-input'}):{kind:'needsPreparation',reason:'model-unavailable'};
   }catch(e){try{recordUnclassifiedTurnFailure(diagnostics,connectionPreferences.diagnosticLogs,activityFailureRecorded,e);}catch{/* Diagnostics must never change the operation result. */}recoverDraft();try{if(currentDialogue().turns.some(t=>t.id===id))await finishTurn(id,{status:searchScopeFailure((e as Error).message,text,!!prior.currentFile,items.length>0)});else view.toast((e as Error).message);}catch(failure){view.failure((failure as Error).message);view.toast((failure as Error).message);}throw e;}

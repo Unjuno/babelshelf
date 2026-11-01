@@ -343,13 +343,13 @@ test('current-answer rewrite loads once, reads the exact assistant text and neve
  assert.match(c.state.error,/Current result unavailable/);assert.equal(prompts.length,0);
 });
 
-test('current-answer formatting reads only the exact answer and preserves its source references without Memory search or compaction',async()=>{
+test('model-regenerated current-answer formatting keeps dialogue attribution without claiming unread Memory citations',async()=>{
  const f=fixture(),c=createSubmissionController(),answer='青いノート',ref={noteId:'trip',revision:2,start:0,end:5,quote:answer},old={id:'packing-answer',user:'旅程の持ち物は？',answer,refs:[ref]};let calls=0;
  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'irrelevant',user:'UNRELATED HISTORY',answer:'Other topic'},old],currentResult:{turnId:old.id}});
  f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async messages=>{assert.doesNotMatch(JSON.stringify(messages),/UNRELATED HISTORY/);return {prompt_tokens:100};},generate:async messages=>{calls++;assert.match(JSON.stringify(messages),/青いノート/);return {text:calls===1?'{"action":"read"}':'- [ ] 青いノート',finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
  f.services.knowledge={all:async()=>{throw Error('Must not reread unrelated Memory');},search:async()=>{throw Error('Must not search');}};
  assert.equal(await c.run(run=>executeSubmission({text:'今の回答をチェックリストにして。',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
- const turn=f.current().turns.at(-1);assert.equal(calls,2);assert.equal(turn.answer,'- [ ] 青いノート');assert.deepEqual(turn.refs,[ref]);assert.equal(turn.readTurn.turnId,old.id);assert.deepEqual(f.current().turns[1],old);assert.equal(turn.activity.some(a=>a.tool==='dialogue.plan'||a.tool==='dialogue.compact'),false);
+ const turn=f.current().turns.at(-1);assert.equal(calls,2);assert.equal(turn.answer,'- [ ] 青いノート');assert.deepEqual(turn.refs,[]);assert.equal(turn.readTurn.turnId,old.id);assert.deepEqual(f.current().turns[1],old);assert.equal(turn.activity.some(a=>a.tool==='dialogue.plan'||a.tool==='dialogue.compact'),false);
 });
 
 test('an explicitly bound file question never counts or compacts unrelated dialogue before answering',async()=>{
@@ -829,4 +829,17 @@ test('ordinary prose Send publishes transient previews and clears them on comple
   else{assert.equal(outcome,'completed',c.state.error);assert.equal(f.current().turns.at(-1).answer,'A short story.');}
   assert.equal(f.reviews.length,0);
  }
+});
+
+// Recalling an answer supplies its words, not fresh inspection of its citations.
+test('regenerated dialogue answers do not inherit unread references from the previous answer',async()=>{
+ const f=fixture(),c=createSubmissionController(),refs=[{noteId:'source',revision:2,start:0,end:5,quote:'proof'}];
+ const prior={id:'answer',user:'Question',answer:'Original answer',refs};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[prior],currentResult:{turnId:'answer'}});
+ let calls=0;f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:++calls===1?'{"action":"recall","target":"current","query":"previous answer"}':calls===2?'{"action":"read"}':'I cannot verify the original.',finishReason:'stop'})};
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxResultChars:8000};
+ assert.equal(await c.run(run=>executeSubmission({text:'Explain the previous answer.',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ const turn=f.current().turns.at(-1);
+ assert.equal(turn.answer,'I cannot verify the original.');assert.deepEqual(turn.refs,[]);
+ assert.deepEqual(f.current().turns[0],prior);assert.equal(f.reviews.length,0);
 });

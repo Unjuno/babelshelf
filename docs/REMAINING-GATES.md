@@ -1,5 +1,7 @@
 ## Current status · 2026-11-02
 
+Local follow-up: regenerated dialogue answers no longer inherit unread references from an earlier answer. The selected dialogue turn stays attributed via readTurn; exact-copy saving retains original references. Prototype1758/app8/build7bb213cbf8b6a147/check pass. Public remainsv294 pending CI/delivery and real-model acceptance.
+
 Public v294: application60a15d2/build98e853bd7470f99a/index-Cmkr6sV6.js; CI41343063954 all stages passed. Source11d104dac54377d280eb7ba0c040d9702d0aa696; deploymentappgdep_6ae798bcdfd88191aa7a6024211d0524 succeeded. Sidebar Update verified exact entry, retained history and returned appOffline. Compact standard guides and exact protected-guide migration are deployed; prototype1757/app8/build/check pass.
 
 Actual v294 replay completed without context error but did not follow original provenance: selected recall/current, not memory.sources. Planner1797prompt/20output/82.777s, TTFT80.677s, decode9.057tok/s,cached0. Total2calls2116prompt25output91.0s. Final reply says original could not be verified; UI source opens earlier saved answer v1, not primary original. Exact final text and one source reached save review; cancelled without creating a QA note. Compared with v2931881prompt this run used84 fewer planner tokens, but history differs and latency worsened: no controlled speed gain or provenance acceptance. Investigate planning/context overhead and actual runtime execution before claiming GPU optimization.
