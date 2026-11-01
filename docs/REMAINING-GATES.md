@@ -1,13 +1,14 @@
 ## Current status · 2026-11-02
 
-Application3ef90d2 is public in Site286: build a28f3f5459d4261e/index-B_V3pUXb.js. Existing sidebar updated without data deletion; CI41331392062 passed all stages.
+Application 6bf8fe9 is public in Site 287: build 4d72faea1076cff2 / index-CmzM1_EI.js. Existing sidebar updated without data deletion and returned to app Offline (not OS network isolation).
 
-The repeated short-story context failure is recovered in this actual-model replay: cached Bonsai4B/context2048,133 prior turns/through51,4 compaction calls advanced through132 with130-character summary. Final3-paragraph answer and unchanged save review succeeded (cancelled, no duplicate note). Aggregate generation253.8s across6calls remains too slow; context alone179.577s. Final answer30.677s,TTFT10.023s,205output tokens. No intermediate text was observed during Generating, so streaming remains unaccepted. Do not repeat the compaction fixture; The preview mismatch is now repaired locally: WebML text deltas translate to cumulative answer-preview only for prose; stop/error/end retire callbacks. Router43/43, prototype1745/1745 and app8/8 pass, build4d72faea1076cff2. Deploy and verify actual preview delivery and subsequent-turn reuse next. This is one Windows sidebar sample, not physical-device acceptance.
+Actual cached Bonsai 4B / context 2048 completed the observatory story: 4 model calls, 2,694 observed prompt tokens, 378 output tokens, 108.6 s aggregate generation. Final answer: 307 prompt / 231 output tokens, TTFT 7.933 s, decode 23.837 s, generation 31.771 s. Unchanged final text reached save review; cancelled to avoid a duplicate QA note.
 
+A subsequent desert-library story visibly streamed from “The sun” to a growing paragraph while Generating and Stop remained available. Stop removed partial output, restored the request draft and controls, and offered no partial-answer save. This verifies real WebML prose preview and cancellation on this Windows sidebar. Error/late-event paths have controlled regression coverage, not a newly induced live GPU failure. Current-run citation and committed-save persistence were not retested. Prototype 1745/1745, app 8/8 and production build passed; CI 41332393009 is tracked in TEST-RESULTS.txt.
 
-Prior saved-material replay reached answer, exact-v1 citation and unchanged save review, but failed the excluded-detail instruction. No physical iPhone/Android/macOS acceptance or measured GPU speedup is established. Keep model throughput separate from multi-call orchestration latency. Next priorities are bounded/useful history compaction, real-model task quality and latency, grounded continuation, physical offline restart, quota recovery and runtime redistribution provenance. Do not repeat single-fixture prompt tuning.
+Latency remains inadequate: repeated context/planning calls dominate this sample. No intervention-based GPU speedup or physical iPhone/Android/macOS acceptance is established. Prior grounded-answer instruction-following failures remain open. Next work should reduce avoidable orchestration/compaction work, then measure runtime optimizations separately from task latency. Preserve existing data and do not repeat fixture-specific prompt tuning.
 
-Use the dated TEST-RESULTS.txt receipts. This is not release-complete.
+This is not release-complete. Use dated receipts below for historical evidence.
 
 ## Earlier checkpoints (historical; not the current status)
 
