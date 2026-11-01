@@ -76,10 +76,15 @@ test('a comparison can bind answer quantities to cited note titles even when the
  ];
  assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 29 litres; Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 17 litres; Beta reserve contains 29 litres.',evidence));
- // A comma-linked sentence with multiple titles is ambiguous to this narrow
- // lexical guard; do not reject a correct answer by assigning the next title
- // to the previous amount based only on character distance.
+ assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 29 litres, while Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 17 litres, while Beta reserve contains 29 litres.',evidence));
+ // Separating prose commas must not split grouped numeric values.
+ const grouped=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 1,000 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 2,000 litres of water.'},
+ ];
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 1,000 litres, while Beta reserve contains 2,000 litres.',grouped));
+ assert.throws(()=>checkAnswerConsistency('Compare the water volumes in the cited reserves.','Alpha reserve contains 2,000 litres, while Beta reserve contains 1,000 litres.',grouped),/conflicts with cited quantity/i);
 });
 
 test('explicit title-bound water comparisons must agree with unique cited amounts',()=>{

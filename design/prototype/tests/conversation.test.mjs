@@ -1470,6 +1470,17 @@ test('a read and another search hit both reach the cited comparison answer',asyn
  assert.deepEqual(result.sources.map(source=>source.noteId),[a.id,b.id]);
 });
 
+test('grounded comparison rejects reversed title-bound volumes separated by an English comma',async()=>{
+ const a=createNote({title:'Alpha reserve',path:'Notes/Alpha-reserve.md',body:'Alpha reserve contains 17 litres of water.'}),b=createNote({title:'Beta reserve',path:'Notes/Beta-reserve.md',body:'Beta reserve contains 29 litres of water.'});
+ const refs=[a,b].map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body,title:note.revisions[0].title}));let calls=0,reverse=true;
+ const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async()=>{calls++;return {text:JSON.stringify({answer:reverse?'Alpha reserve contains 29 litres, while Beta reserve contains 17 litres.':'Alpha reserve contains 17 litres, while Beta reserve contains 29 litres.',sources:['S1','S2']})};}};
+ const request={model:'test',question:'Compare the water volumes in the cited reserves.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true}};
+ await assert.rejects(groundedAnswer({store:{all:async()=>[a,b],search:async()=>[]},engine:runtime},request),/conflicts with cited quantity/i);
+ assert.equal(calls,1,'a rejected claim is not silently regenerated or rewritten');
+ reverse=false;const accepted=await groundedAnswer({store:{all:async()=>[a,b],search:async()=>[]},engine:runtime},request);
+ assert.match(accepted.answer,/Alpha reserve contains 17 litres, while Beta reserve contains 29 litres/);assert.deepEqual(accepted.sources.map(source=>source.noteId),[a.id,b.id]);assert.equal(calls,2);
+});
+
 test('citation repair binds multiple source labels to exact host-held revisions and ranges',async()=>{
  const a=createNote({path:'Notes/monday.md',body:'Monday reserve: 3 litres.'}),b=createNote({path:'Notes/tuesday.md',body:'Tuesday reserve: 7 litres.'});
  const excerpt=(note,start,end)=>({noteId:note.id,revision:1,start,end,quote:note.revisions[0].body.slice(start,end),title:note.path});

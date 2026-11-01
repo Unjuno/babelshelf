@@ -77,7 +77,17 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   // The generated answer may introduce exact titles while comparing files
   // that the user referred to generically, so bind against all cited titles,
   // not only titles repeated in the question.
-  const sentenceMatches=[...a.matchAll(/[^.!?。！？;；、\n]+/gu)].flatMap(match=>match.index===undefined?[]:[{text:match[0],start:match.index}]);
+  const answerClauses=(text:string)=>{
+   const protectedTitles=titleSpans(text),clauses:string[]=[];let start=0;
+   for(const match of text.matchAll(/[,，.!?。！？;；、\n]/gu)){
+    if(match.index===undefined)continue;
+    const index=match.index,separator=match[0],insideTitle=protectedTitles.some(span=>span.start<=index&&index<span.end),numericSeparator=(separator===','||separator==='，'||separator==='.')&&/\d/u.test(text[index-1]??'')&&/\d/u.test(text[index+1]??'');
+    if(insideTitle||numericSeparator)continue;
+    clauses.push(text.slice(start,index));start=index+separator.length;
+   }
+   clauses.push(text.slice(start));return clauses.map(value=>value.trim()).filter(Boolean);
+  };
+  const sentenceMatches=answerClauses(a).map(text=>({text,start:0}));
   for(const sentence of sentenceMatches){
    const spans=titleSpans(sentence.text),measures=volumeMeasures(sentence.text);
    const [first,second]=spans;
@@ -113,9 +123,10 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
      }
     }
    }
-   // Multiple titles in one sentence need a stronger parser than nearest-word
+   // Multiple titles in one clause need a stronger parser than nearest-word
    // distance: the next title can be closer to a value that belongs to the
-   // previous one. Bind only one unambiguous cited title per clause.
+   // previous one. Prose commas delimit clauses above, while grouped numeric
+   // commas remain intact. Bind only one unambiguous cited title per clause.
    if(spans.length!==1||!spans[0].candidate)continue;
    for(const measure of measures){
     const {candidate}=spans[0];
