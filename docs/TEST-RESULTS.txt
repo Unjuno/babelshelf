@@ -7644,3 +7644,8 @@ CI follow-up: full clean-checkout workflow41329161708 at fe42c1b completed succe
 
 2026-11-02 — Summary rewrite target versus hard completion cap
 Following public v284 length-terminated rewrite, separated the half-length writing target from the generation cap. Exact remaining window and model output cap bound the single rewrite; existing EOS/stop, consumer-fit and original-retention checks remain. Conversation216/216, full prototype1740/1740, production build e225e08bb30685ab (163 verified assets), app8/8 and diff check passed on Windows PC. Includes148-token residual-window and96-token model-cap regressions. Deterministic tests do not prove actual-model success or GPU speed. Not yet publicly deployed or replayed.
+
+2026-11-02 JST — Public v285 actual-model replay (context still fails)
+Existing sidebar adopted index-DNCAi47s.js/build e225e08bb30685ab, app Offline, cached Bonsai4B,132 prior turns/through51, same short story request. Context started02:16:29 JST. Six model calls,5086 prompt tokens,786 output tokens,330.615ms counting,206306.045ms generation,lastCountPromptTokens1930/context2048. Terminal Conversation summary exceeds model context. The rewrite no longer ended with the truncated-summary error; exact consumer fit still failed. No answer/streaming/citation/save acceptance. Do not repeat the fixture; inspect fixed planner protocol/tool and history budget components next. Originals preserved, screenshot reused current-model-check.png.
+
+CI41330331452 at e194827 completed success; actual-model context failure remains unresolved.
