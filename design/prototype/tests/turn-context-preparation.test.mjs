@@ -19,6 +19,18 @@ function fakeEngine(contextTokens=2048){
  };
 }
 
+test('setup overflow records actual last count and capacity without generating or changing history',async()=>{
+ const prior={schema:1,revision:1,turns:[],compaction:null},before=structuredClone(prior),activities=[];
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');
+ const trace=createTurnActivityTracer({check(){},readActivities:()=>activities,persistActivities:async next=>activities.splice(0,activities.length,...next),onFailureRecorded(){},diagnosticsEnabled:false,writeDiagnostic(){}});
+ const runtime={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:2300}),generate(){throw Error('Must not generate');}};
+ await assert.rejects(()=>prepareTurnContext({prior,engine:runtime,model:'test',question:'PRIVATE QUESTION',fitsPlanner:async(_context,engine)=>(await engine.count([{role:'user',content:'PRIVATE PROMPT'}])).prompt_tokens+160<=engine.manifest.contextTokens,check(){},setProgress(){},currentDialogue:()=>prior,saveDialogue(){throw Error('Must not save');},trace}),/Assistant setup exceeds/);
+ assert.equal(activities[0].output.inference.lastCountPromptTokens,2300);
+ assert.equal(activities[0].output.inference.contextTokens,2048);
+ assert.equal(activities[0].output.inference.measuredModelCalls,0);
+ assert.doesNotMatch(JSON.stringify(activities),/PRIVATE/);assert.deepEqual(prior,before);
+});
+
 test('context preparation saves changed compaction onto the latest dialogue revision',async()=>{
  const prior={schema:1,revision:3,turns:Array.from({length:8},(_,index)=>({id:`t${index}`,user:`Question ${index} ${'detail '.repeat(35)}`,answer:`Answer ${index} ${'preserved '.repeat(25)}`})),compaction:null};
  const latest={...prior,revision:4,turns:[...prior.turns,{id:'newer',user:'Already committed after pinned context',status:'saved'}]};

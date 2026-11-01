@@ -2,7 +2,7 @@ import {boundedDialogueContext,compactDialogue,independentSavedKnowledgeContext,
 import type {ActivityTool} from './harness-activity.ts';
 
 type Trace=<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(value:T)=>unknown,failureOf?:(value:T)=>unknown,failureProject?:(error:unknown)=>unknown)=>Promise<T>;
-type ContextInference={measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number};
+type ContextInference={measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number;lastCountPromptTokens?:number;contextTokens?:number};
 function addMeasurement(total:number|undefined,value:unknown,integer=false){
  if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>Number.MAX_SAFE_INTEGER||integer&&!Number.isSafeInteger(value))return total;
  const next=(total??0)+value;return Number.isFinite(next)&&next<=Number.MAX_SAFE_INTEGER?next:total;
@@ -12,7 +12,16 @@ function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatE
  return new Proxy(engine,{get(target,property){
   if(property==='pin')return ()=>observeContextInference(target.pin?.()??target,usage);
   if(property==='count')return async(...args:Parameters<ChatEngine['count']>)=>{
-   const started=performance.now();try{return await target.count(...args);}finally{usage.countMs=addMeasurement(usage.countMs,performance.now()-started);}
+   const started=performance.now();try{
+    const result=await target.count(...args);
+    // Record the last fit candidate, not a sum of mutually exclusive prompts.
+    // A failed/invalid count must not leave an earlier candidate looking current.
+    delete usage.lastCountPromptTokens;delete usage.contextTokens;
+    if(Number.isSafeInteger(result.prompt_tokens)&&result.prompt_tokens>=0)usage.lastCountPromptTokens=result.prompt_tokens;
+    if(Number.isSafeInteger(target.manifest.contextTokens)&&target.manifest.contextTokens>0)usage.contextTokens=target.manifest.contextTokens;
+    return result;
+   }catch(error){delete usage.lastCountPromptTokens;delete usage.contextTokens;throw error;}
+   finally{usage.countMs=addMeasurement(usage.countMs,performance.now()-started);}
   };
   if(property==='generate')return async(...args:Parameters<ChatEngine['generate']>)=>{
    const started=performance.now();usage.measuredModelCalls++;
@@ -27,7 +36,7 @@ function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatE
  }});
 }
 function inferenceReceipt(usage:ContextInference){
- return {measuredModelCalls:usage.measuredModelCalls,...(usage.promptTokens!==undefined?{promptTokens:usage.promptTokens}:{}),...(usage.outputTokens!==undefined?{outputTokens:usage.outputTokens}:{}),...(usage.countMs!==undefined?{countMs:usage.countMs}:{}),...(usage.generationWallMs!==undefined?{generationWallMs:usage.generationWallMs}:{})};
+ return {measuredModelCalls:usage.measuredModelCalls,...(usage.lastCountPromptTokens!==undefined?{lastCountPromptTokens:usage.lastCountPromptTokens}:{}),...(usage.contextTokens!==undefined?{contextTokens:usage.contextTokens}:{}),...(usage.promptTokens!==undefined?{promptTokens:usage.promptTokens}:{}),...(usage.outputTokens!==undefined?{outputTokens:usage.outputTokens}:{}),...(usage.countMs!==undefined?{countMs:usage.countMs}:{}),...(usage.generationWallMs!==undefined?{generationWallMs:usage.generationWallMs}:{})};
 }
 
 /** Prepare one planner context from a pinned dialogue, persisting only a changed compaction. */

@@ -7325,3 +7325,11 @@ A runtime rejection after measured generation time exceeds the configured Send b
 
 2026-11-01 — Public v267
 App c2e54dd, build 0c4f04ae9c743cd1. Existing Sites checkout synchronized before staging; preserved immediate predecessor assets and pruned 35 obsolete generated assets. Delivery gzip/identity, method and offline-shell checks passed. Packaged tar independently verified all 163 current build hashes. Site source 293b030c858a49caab1aaaa85adf64d9ab263ace; v267 saved as appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_bc6bb889b2d08191a2fb23fbe180358e. Deployment appgdep_6ae713cfbf248191ad08867289130ed2 succeeded 2026-11-01T10:26:40.080879+00:00. Public audience preserved. HTTPS babelshelf.com/build.json returned matching build. Archive SHA256 bf5a2920d4f497a0a1963d8bd03cfc44e6ff3b85f641acc4b7ac1ea606144418, 86599680 bytes, 201 files including retained predecessor. No model weights or user data included. Public sidebar adoption and public live inference remain unverified for this release.
+
+2026-11-01: public v267 adoption and planner setup failure
+- Existing sidebar tab updated from old public bundle to index-uHEv5LIk.js, matching build 0c4f04ae9c743cd1. Existing Inbox/Answer-2026-10-31.md v1 and saved source remained present; no storage reset/model download.
+- Offline application mode, selected retained Bonsai 4B. A question requesting only the synthetic note's item failed before generation: Assistant setup exceeds context limit. Activity: priorTurns 123, through 51, measuredModelCalls 0, countMs 18.545. This is not an offline-network or physical-device acceptance run.
+- Code inspection: base Bonsai context is 2048 tokens; JSON planner serializes full tool usage guides plus routing instructions. Exact failing token total was not recorded, so no numerical attribution or fix acceptance is claimed.
+- Context receipts now record lastCountPromptTokens and the counting engine's contextTokens, separately from generated prompt totals. Failed counts clear stale candidate measurements; no source/prompt text is added.
+- Focused context tests 14/14, TypeScript noEmit, build 8b1202bd0dcce35a (163 assets), product artifact checks 8/8 passed. Diagnostic change is not yet deployed; setup failure remains open.
+- Remote CI 41297605912 for a06946253b92b0994a23cf815a874fd9eedec31d completed successfully.
