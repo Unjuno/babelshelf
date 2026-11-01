@@ -123,8 +123,8 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 15181,
-      "sha256": "f83d063dacf2d800becda262a842f8dfe6cc469923e2ca57ff8712a57a1f8c22"
+      "bytes": 15221,
+      "sha256": "ca13fcf0f5c0793e93799f5851427913d087c7d6016971e914729ccc5318afaf"
     },
     {
       "path": "./native-answer-preview.js",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "9e8bd2a54fb0f04c7de426948a7cfcc413830b0bfcb3b8496220bd7a28b9b1d6"
+      "sha256": "59d9dcc96759685669e34221fa54b058966b000e596abeebdf624c58825d467c"
     },
     {
       "path": "./ui.js",

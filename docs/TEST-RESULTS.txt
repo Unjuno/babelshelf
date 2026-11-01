@@ -7261,3 +7261,13 @@ the timer callback itself is delayed; late final results remain rejected.
 Controlled regression/submission checks 78/78, TypeScript, product build
 6643e90b3792f346 and app acceptance 8/8 passed. New preview guard has not yet
 been accepted on a physical device or live-model run. Existing data retained.
+
+2026-11-01 — Retain runtime phase measurements in answer receipts.
+Answer receipts now sum reported runtimePrefillMs, runtimeDecodeMs and
+runtimeCachedTokens across completed calls; absent/invalid values remain absent.
+The WebML worker forwards reported prefill_ms without estimating it from TTFT.
+This makes detailed Activity useful for separating input processing and decode;
+these fields are runtime reports, not GPU hardware proof or measured speedup.
+Focused Worker/conversation/resolved-action checks 223/223, TypeScript, static
+checks, product build fb71ce760d33036c and app acceptance 8/8 passed. Live-model
+acceptance of the new measurements and cross-device performance remain open.

@@ -36,7 +36,7 @@ test('cleanup failures release both session and model ownership and allow an exp
 test('explicit diagnostic reset isolates a generation and reports runtime completion metadata',async()=>{
  const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
  const events=[];let resets=0;
- const stream={async *[Symbol.asyncIterator](){yield {type:'text',text:'actual worker fixture'};},result:Promise.resolve({finish_reason:'stop',usage:{prompt_tokens:12,cached_tokens:0,completion_tokens:3},timings:{ttft_ms:1,decode_ms:5,tokens_per_second:400}})};
+ const stream={async *[Symbol.asyncIterator](){yield {type:'text',text:'actual worker fixture'};},result:Promise.resolve({finish_reason:'stop',usage:{prompt_tokens:12,cached_tokens:0,completion_tokens:3},timings:{ttft_ms:1,prefill_ms:2,decode_ms:5,tokens_per_second:400}})};
  const context=vm.createContext({createStreamingSHA256,streamingSHA256Backend,createPinnedFileSnapshots,fetch:()=>{},postMessage:m=>events.push(m),AbortController,DOMException,performance,console});
  vm.runInContext(source+'\nglobalThis.setTestSession=(s)=>{session=s;model={contextLength:2048};};',context);
  context.setTestSession({reset:()=>{resets++;},count_tokens:()=>({prompt_tokens:12}),generate:()=>stream});
