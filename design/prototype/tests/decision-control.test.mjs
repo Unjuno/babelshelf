@@ -43,3 +43,16 @@ test('malformed current worker messages reject the request instead of leaving th
   await assert.rejects(request,/Decision runtime failed/);assert.equal(c.working,false);assert.equal(f.workers[0].terminated,true);c.dispose();
  }
 });
+
+test('resident state is synchronous across load, unload, classify and stale worker replies',async()=>{
+ const f=factory(),c=new DecisionClient(()=>f.create(),()=>{});
+ const reply=value=>{const w=f.workers.at(-1);w.onmessage({data:{id:w.messages.at(-1).id,value}});};
+ assert.equal(c.loaded,false);
+ let job=c.call('load');reply({loaded:true});await job;assert.equal(c.loaded,true);
+ job=c.call('unload');reply({loaded:false});await job;assert.equal(c.loaded,false);
+ job=c.call('load');reply({loaded:true});await job;assert.equal(c.loaded,true);
+ job=c.call('classify');reply({answer:'yes'});await job;assert.equal(c.loaded,false);
+ const old=f.workers[0];job=c.call('status');old.reply({loaded:true});assert.equal(c.loaded,false);reply({loaded:false});await job;
+ job=c.call('load');reply({loaded:true});await job;c.stop();assert.equal(c.loaded,false);
+ c.dispose();
+});

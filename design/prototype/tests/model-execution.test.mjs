@@ -41,3 +41,10 @@ test('automatic model acquisition retains bounded load evidence for the activity
  assert.deepEqual(receipt,{loaded:'t',metrics:{runtimeLoadMs:23,totalLoadMs:31,executionBackend:'webgpu'}});
  let reloads=0;await f.manager.text('t',()=>{},async work=>{reloads++;return work();});assert.equal(reloads,0);
 });
+
+test('Decision rejects a successful load receipt when no model is actually resident',async()=>{
+ const f=setup();f.decision.loaded=false;
+ f.decision.load=async()=>({loaded:true});
+ await assert.rejects(f.manager.decision(()=>{}),/Decision model did not load/);
+ assert.equal(f.decision.loaded,false);
+});

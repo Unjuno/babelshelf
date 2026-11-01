@@ -44,7 +44,7 @@ export function createModelExecutionManager<D extends Decision>(ports:{text:Text
    check();if(!ports.decision.enabled||!ports.decision.ready)throw new ModelPreparationRequired('decision-files','Decision model not prepared · Settings');
    if(!ports.decision.loaded){await ports.ensureRuntime('decision',false);check();if(!ports.decision.enabled||!ports.decision.ready)throw new ModelPreparationRequired('decision-files','Decision model not prepared · Settings');}
    await releaseIdleInference([ports.text],check);check();
-   if(!ports.decision.loaded)await load(async()=>{check();const result=await ports.decision.load();check();if(!result||typeof result!=='object'||(result as {loaded?:unknown}).loaded!==true)throw Error('Decision model did not load');return result;});
+   if(!ports.decision.loaded)await load(async()=>{check();const result=await ports.decision.load();check();if(!result||typeof result!=='object'||(result as {loaded?:unknown}).loaded!==true||!ports.decision.loaded)throw Error('Decision model did not load');return result;});
    check();return ports.decision;
   },
   releaseForReader:(check:()=>void)=>releaseIdleInference([ports.text,ports.decision],check),
