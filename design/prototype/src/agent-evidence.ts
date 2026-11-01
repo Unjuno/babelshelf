@@ -313,7 +313,7 @@ export function agentEvidenceFromCalls(calls:readonly AgentToolResult[],hostObse
 /** Prefer reads while retaining search ranges that the reads did not cover. */
 export function agentAnswerEvidenceFromCalls(calls:readonly AgentToolResult[],hostObservedRefs:readonly SourceRef[]=[],allowPartial=false):SourceRef[]{
  const reads=collectAgentEvidence(calls.filter(call=>call.tool==='memory.read'));
- const searches=collectAgentEvidence(calls.filter(call=>call.tool==='memory.search')).filter(ref=>!reads.some(read=>read.noteId===ref.noteId&&read.revision===ref.revision&&read.start<=ref.start&&read.end>=ref.end));
+ const searches=collectAgentEvidence(calls.filter(call=>call.tool==='memory.search')).filter(ref=>!reads.some(read=>read.noteId===ref.noteId&&read.revision===ref.revision&&read.start<=ref.start&&read.end>=ref.end&&read.quote.slice(ref.start-read.start,ref.end-read.start)===ref.quote));
  // A partial read of the start must not displace a query match elsewhere in
  // that same revision when the answer budget can fit only one excerpt.
  const all=[...reads.flatMap(read=>[...searches.filter(ref=>ref.noteId===read.noteId&&ref.revision===read.revision),read]),...searches,...hostObservedRefs.filter(validSourceRef)];

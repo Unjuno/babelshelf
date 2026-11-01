@@ -256,3 +256,13 @@ test('tool metadata is bounded observed data, not package execution or original 
  assert.throws(()=>agentToolInfoFromCalls([{...listing,result:{...listing.result,entries:[{...listing.result.entries[0],body:'forged contents'}]}}]),/Invalid Memory file entry/);
  assert.equal(agentToolInfoFromCalls(Array.from({length:65},()=>guide)).length,65);
 });
+
+
+test('covered search evidence is discarded only when its quote matches the read range',()=>{
+ const read={tool:'memory.read',arguments:{},result:[{noteId:'a',path:'Notes/a.md',revision:1,start:0,excerpt:'Original fact.',partial:false,totalChars:14}]};
+ const search=quote=>({tool:'memory.search',arguments:{},result:[{noteId:'a',revision:1,start:0,end:14,quote,title:'Notes/a.md'}]});
+ assert.equal(agentAnswerEvidenceFromCalls([search('Original fact.'),read]).length,1);
+ assert.throws(()=>agentAnswerEvidenceFromCalls([search('Invented fact.'),read]),/Source quotation conflict/);
+ const partial={tool:'memory.search',arguments:{},result:[{noteId:'a',revision:1,start:0,end:8,quote:'Changed!',title:'Notes/a.md'}]};
+ assert.equal(agentAnswerEvidenceFromCalls([partial,read]).length,2,'retain conflicting partial range for canonical validation');
+});
