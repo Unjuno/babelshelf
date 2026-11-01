@@ -111,10 +111,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
   const readActivities=()=>{const turn=currentDialogue().turns.find(t=>t.id===id);return turn?turn.activity??[]:undefined;};
   const pagingAvailable=typeof knowledge.recordTurnActivity==='function';
   const trace=createTurnActivityTracer({check:checkSend,readActivities,persistActivities:activity=>finishTurn(id,{activity}),...(pagingAvailable?{persistActivity:async activity=>{const paged=await persistTurnActivity({turnId:id,readActivities,readStored:storedDialogue,persistInline:items=>finishTurn(id,{activity:items}),persistPaged:(turnId,item,expected)=>knowledge.recordTurnActivity(turnId,item,expected)},activity);if(paged)try{view.activityChanged?.(id);}catch{/* Presentation must not change the committed receipt. */}}}:{}),onFailureRecorded:()=>{activityFailureRecorded=true;},diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
-   const ensureText=async()=>{
-    if(bonsai.loaded!==model)run.progress('Loading model…','planning');
+   const ensureText=async(resumeStage:'planning'|'generating'='planning')=>{
+    if(bonsai.loaded!==model)run.progress('Loading model…',resumeStage);
     inference=inferenceBudget.wrap(await models.text(model,checkSend,work=>trace('model.load',{model},work))) as TextRuntime;
-    run.progress('','planning');
+    run.progress('',resumeStage);
    };
   const prepareContext=(fitsPlanner?:(candidate:DialogueContext,engine?:ChatEngine)=>Promise<boolean>)=>prepareTurnContext({prior,engine:inference,model,question:text,currentInputs:items.length>0,check:checkSend,setProgress:setChatProgress,currentDialogue:()=>currentDialogue(),saveDialogue,trace,fitsPlanner});
   const reviewedCalculation=async():Promise<SubmissionOutcome>=>{
@@ -221,7 +221,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
     const scoped=scopeResolvedTurnRequest({request,question:text,literal:!!literalRequest,literalAction:literalRequest?.action,inputs:inputReadings,currentFile:sourceFile??prior.currentFile});
     request=scoped.request;inputReadings=scoped.inputs;const fileBinding=scoped.fileBinding;
-   const actions=()=>createResolvedActions({store:knowledge,engine:inference,model,question:text,check:checkSend,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText();return inference;}});
+   const actions=()=>createResolvedActions({store:knowledge,engine:inference,model,question:text,check:checkSend,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;}});
    let selectedFile:any;let workingFile=request?.target==='file'?(sourceFile??prior.currentFile):undefined;
    if(request?.target==='file'){
     if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;
