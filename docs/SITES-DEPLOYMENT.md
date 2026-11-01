@@ -1,6 +1,7 @@
 # Public v279 — evidence packing and source freshness (2026-11-02 JST)
 
 Build `9d9e744be5885155`, entry `index-BdGjcEBK.js`; app633a89b passed complete CI41321353608 in8m12s. Site source `541aaf743b65249f65c000778cd509169f11f55b`; deployment `appgdep_6ae75c8abf1081918182dfb0e83b9f98` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle, retained conversation and input-file v1, then returned Offline. This verifies delivery/adoption, not actual inference performance. Saved v278 was superseded before publication. Previous entries are historical.
+
 # Public v277 — isolated Worker communication failure (2026-11-02 JST)
 
 Build `fbd03eca57ef9cf3`, entry `index-DCzMAMR-.js`; app3c223e2 passed complete CI41319218387 in10m45s. Site source `5910c7cf199bc2892db197eaefcb8e4220b02382`; deployment `appgdep_6ae7577a437881918f1a546bf1d34af3` succeeded. Public audience retained. Existing sidebar Update adopted the exact bundle, retained conversation and input-file v1, then returned Offline. This checks delivery/adoption, not actual inference failure or device performance. Previous entries are historical.
@@ -865,4 +866,3 @@ The Online/Offline pill sits higher in the chat header and names the next state;
 Site-source commit `31fd0e03bd7d586736ac3e8544a9122f8e17731c` packages app build `76913ce02dccb567` /129 verified assets. Saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_4dc17e6104a881919ce5005829c63d8d` deployed successfully as `appgdep_6ad99d23d4cc8191b04555672db17a6a`. The public build manifest returned 66 install-time assets whose byte counts and SHA-256 hashes were verified against the live URLs from the PC.
 
 One supplied device report was from v145 with `standalone:false`, so it came from a browser tab and did not represent a Home Screen app launch. v148 adds an explicit warning and Home Screen guidance. On the existing Codex sidebar PC tab, Refresh app returned “Update verification failed” and Developer still showed the v147 active worker. Public asset verification passed; adoption of v148 by that existing client is unresolved and must not be represented as successful. No storage was cleared. No additional physical iPhone run has been performed.
-
