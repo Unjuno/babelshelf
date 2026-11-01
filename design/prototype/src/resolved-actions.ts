@@ -64,16 +64,19 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
    check();const {inference:_inference,...answer}=parsed;return {kind:'answer' as const,...answer};
   },
   async schedule(context:DialogueContext){
-   const proposal=await trace('schedule.propose',{model,instruction:question},()=>proposeTask(engine,question,context,check),value=>({...value,reviewRequired:!!value.task}));check();
+   const inference:InferenceMeasurements={measuredModelCalls:0};
+   const proposal=await trace('schedule.propose',{model,instruction:question},()=>proposeTask(observeInference(engine,inference),question,context,check),value=>({...value,reviewRequired:!!value.task,inference:{...inference}}),undefined,()=>({inference:{...inference}}));check();
    return proposal.question?{kind:'clarify' as const,question:proposal.question}:{kind:'schedule' as const,task:proposal.task!};
   },
   async correction(query:string,selectedFile?:Parameters<typeof proposeCorrection>[2]){
    let source:'literal'|'model'='literal';
+   const inference:InferenceMeasurements={measuredModelCalls:0};
+   const measured=()=>inference.measuredModelCalls||inference.countMs!==undefined?{inference:{...inference}}:{};
    const proposal=await trace('memory.propose_correction',{model,question,query},async()=>{
     const records=await store.all(),target=structuredClone(selectedFile??resolveCorrectionTarget(records,query));check();
     const literal=literalCorrectionProposal(target,question);if(literal)return literal;
-    source='model';const runtime=acquireModel?await acquireModel():engine;check();return proposeCorrection(runtime,question,target,check,records);
-   },value=>({id:value.id,path:value.path,revision:value.expected.revisions.at(-1).version,before:value.before,after:value.after,operation:value.operation,source}));
+    source='model';const runtime=acquireModel?await acquireModel():engine;check();return proposeCorrection(observeInference(runtime,inference),question,target,check,records);
+   },value=>({id:value.id,path:value.path,revision:value.expected.revisions.at(-1).version,before:value.before,after:value.after,operation:value.operation,source,...measured()}),undefined,measured);
    check();return {kind:'correction' as const,proposal};
   },
   async search(query:string,options:{complete?:boolean}={}){

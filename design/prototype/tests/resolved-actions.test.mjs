@@ -174,3 +174,25 @@ test('read completion is measured while literal open performs no classifier infe
  await actions.read('meeting',{explicitSavedOpen:false,literalRead:true});
  assert.equal(receipts.some(row=>row.tool==='dialogue.plan'),false);
 });
+
+test('schedule and correction proposals retain inference accounting without committing knowledge',async()=>{
+ const {createNote}=await import('../../../dist/core.js');
+ const note=createNote({path:'Notes/meeting.md',body:'Water 3L'}),before=structuredClone(note);
+ for(const kind of ['schedule','correction'])for(const failed of [false,true]){
+  const receipts=[];
+  const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+  const {engine}=fixture();engine.generate=async()=>{
+   if(failed)throw Error('PRIVATE_PROPOSAL_FAILURE');
+   return {text:JSON.stringify(kind==='schedule'?{action:'clarify',question:'What time?'}:{action:'replace',find:'3L',with:'4L'}),outputTokens:12,metrics:{runtimePromptTokens:100}};
+  };
+  const {actions}=fixture({engine,trace,question:'Please correct the amount.',store:{all:async()=>[note]}});
+  const run=()=>kind==='schedule'?actions.schedule(context):actions.correction('meeting',note);
+  if(failed)await assert.rejects(run(),/PRIVATE_PROPOSAL_FAILURE/);else await run();
+  const receipt=receipts.at(-1);
+  assert.equal(receipt.output.inference.measuredModelCalls,1);
+  assert.ok(receipt.output.inference.generationWallMs>=0);
+  assert.equal(summarizeTurnWork(receipts).measuredModelCalls,1);
+  assert.doesNotMatch(JSON.stringify(receipt.output),/PRIVATE_PROPOSAL_FAILURE/);
+  assert.deepEqual(note,before);
+ }
+});
