@@ -169,7 +169,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   checkRepeatedOutput(parsed.answer);
   if(parsed.status!=='insufficient_evidence'){
    checkAnswerConsistency(question,parsed.answer,parsed.sources);
-   if(mode==='summary'&&requestsOneSentence(question)&&/[。！？!?]\s*\S|\.\s+\S/u.test(parsed.answer))throw Error('One sentence requested · try again');
+   if(requestsOneSentence(question)&&/[。！？!?]\s*\S|\.\s+\S/u.test(parsed.answer))throw Error('One sentence requested · try again');
    if(mode==='summary'&&summaryRepeatsRequest(question,parsed.answer,parsed.sources))throw Error('Summary repeated the request · try again');
   }
   const fresh=await store.all();check();
@@ -339,7 +339,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  }
  // Keep the user's explicit one-sentence format. A retry still uses the same
  // evidence and must pass the usual citation parser; never splice sentences.
- const wantsOneSentence=mode==='summary'&&parsed.status!=='insufficient_evidence'&&requestsOneSentence(question);
+ const wantsOneSentence=mode!=='chat'&&parsed.status!=='insufficient_evidence'&&requestsOneSentence(question);
  const hasMultipleSentences=(text:string)=>/[。！？!?]\s*\S|\.\s+\S/u.test(text.trim());
  if(wantsOneSentence&&hasMultipleSentences(parsed.answer)){
   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:(summaryLabelBinding?singleLabelSystem:message.content)+' The user explicitly requested exactly one sentence. Produce one sentence, with no second sentence or list. Keep the original source citation exact.'}:message);

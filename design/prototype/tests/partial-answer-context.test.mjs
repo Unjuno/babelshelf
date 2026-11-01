@@ -46,3 +46,11 @@ test('copy review exposes capacity pressure without claiming partial coverage',a
  receipt.output.answerBudget.allocatedTokens=-1;assert.equal(dialogueCopyHasLimitedSpace(state,source),false);
  receipt.output.answerBudget.allocatedTokens=348;receipt.status='failed';assert.equal(dialogueCopyHasLimitedSpace(state,source),false);
 });
+
+
+test('terminal answer keeps the explicit one-sentence contract without intent reclassification',async()=>{
+ const note=createNote({path:'Notes/meeting.md',body:'集合は午前10時。持ち物は水。'});
+ const ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
+ const engine={manifest:{models:[],runtime:{}},generate:async()=>{throw Error('No regeneration');}};
+ await assert.rejects(groundedAnswer({store:{all:async()=>[note],search:async()=>[]},engine},{model:'test',question:'この入力ファイルを一文で要約してください。',mode:'answer',scope:{kind:'file',file:{noteId:note.id,revision:1}},toolEvidence:{used:true,refs:[ref],memoryUsed:true},reply:{status:'answered',answer:ref.quote,sources:[ref]}}),/One sentence requested/);
+});

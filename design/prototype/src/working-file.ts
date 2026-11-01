@@ -68,9 +68,9 @@ export function bindExplicitCurrentFileQuestion<T extends {action:string;query:s
  if(currentInputs||!pin||!['answer','summary','search','read'].includes(request.action))return request;
  if(request.target==='knowledge'&&(namesExplicitSavedKnowledge(question)||namesSavedKnowledge(question)||namedSavedSubject(question)))return request;
  if(!requestNamesWorkingFile(question)||requestNamesEarlierDialogue(question))return request;
- // An already explicit read-only intent needs no second model classification.
+ // Scoping the evidence must not erase an already resolved answer/summary intent.
  // Bind its query to the human request rather than model-supplied context text.
- const action=request.target==='file'&&['answer','summary'].includes(request.action)?request.action:'read';
+ const action=['answer','summary'].includes(request.action)?request.action:'read';
  return {...request,action,target:'file',query:question};
 }
 export function createFileFocusQueue(read:()=>Dialogue,write:(state:Dialogue,remove?:WorkingFile)=>Promise<void>){

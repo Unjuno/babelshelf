@@ -773,3 +773,17 @@ test('bound-file read completion uses the measured application action before ans
  assert.ok(completion,JSON.stringify(turn));assert.equal(completion.output.completion,'summary');assert.equal(completion.output.inference.measuredModelCalls,1);assert.equal(completion.output.inference.outputTokens,8);
  assert.equal(turn.answer,'集合は午前10時。');assert.equal(turn.refs[0].noteId,note.id);assert.equal(f.reviews.length,0);
 });
+
+test('scoping a resolved summary to the input file does not invoke another classifier',async()=>{
+ const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/meeting.md',body:'集合は午前10時。'}),records=[note];
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxResultChars:8000};
+ await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
+ let calls=0;
+ const responses=[JSON.stringify({action:'summary',target:'knowledge',query:'meeting'}),JSON.stringify({status:'answered',answer:'集合は午前10時。',sources:['S1']})];
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;assert.ok(responses.length,'unexpected extra model call');return {text:responses.shift(),finishReason:'stop',outputTokens:8};},load:async()=>{throw Error('Already resident');}};
+ f.services.knowledge={all:async()=>records,search:async()=>{throw Error('Pinned file must not broaden into search');}};
+ const result=await c.run(run=>executeSubmission({text:'この入力ファイルを一文で要約してください。',attachments:[]},f.services,f.view,run));
+ assert.equal(result,'completed',JSON.stringify(c.state));assert.equal(calls,2);
+ const turn=f.current().turns.at(-1);assert.equal(turn.activity.some(a=>a.input?.stage==='read-completion'),false);
+ assert.equal(turn.answer,'集合は午前10時。');assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.refs[0].revision,1);assert.equal(f.reviews.length,0);
+});
