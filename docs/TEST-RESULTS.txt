@@ -7770,3 +7770,4 @@ CI 41346945732 failed in model-catalog-contrast before contrast measurement: Inp
 
 2026-11-02 — v296 deployment
 CI 41347653011 succeeded on 8f03f3f, including the settings UI group with one worker and all subsequent gates. This does not prove focus contention was the earlier failure cause. Saved v296 deployed successfully as appgdep_6ae7a534c64c81918f024f0eea6da9c2 at 2026-11-01T20:46:59.705992+00:00. Build d44a00bdc3bc531f, entry index-D5Q4vgV3.js, source 1c05000363fa16965207ef6696aa5a9ff4fce2f0. Public audience unchanged. Sidebar Update started; adoption and actual-model behavior pending.
+Sidebar adopted v296 entry index-D5Q4vgV3.js through Update; retained history, restored app Offline. Started the same provenance request using prepared 4B. Load receipt: verification 6008.945ms, import 51.125ms, runtime load 21472.370ms, total 27535.045ms; runtimeModuleReused=false. Planning remains running; no completed answer or citation acceptance yet.
