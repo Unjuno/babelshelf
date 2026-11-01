@@ -1,3 +1,4 @@
+import {observeInference,type InferenceMeasurements} from './inference-measurements.ts';
 import {groundedAnswer,type AnswerInference,type GroundedAnswerRequest} from './grounded-answer.ts';
 import type {KnowledgeStore,NoteView} from './knowledge-store.ts';
 import type {TextRuntime} from './text-inference.ts';
@@ -51,6 +52,10 @@ export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependen
 export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel}:Dependencies){
  const host={search:(query:string)=>store.search(query),resolve:(query:string)=>snapshot().then(notes=>resolveToolNotes(notes,query)),check};
  const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search')},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:q=>store.search(q,true)}));
+ const completion=async<T extends string>(stage:'read-completion'|'search-completion',work:(runtime:TextRuntime)=>Promise<T>,source:Record<string,unknown>={})=>{
+  const inference:InferenceMeasurements={measuredModelCalls:0};
+  return trace('dialogue.plan',{stage,model,question,...source},()=>work(observeInference(engine,inference)),value=>({completion:value,inference:{...inference}}),undefined,()=>({inference:{...inference}}));
+ };
  const searchResult=(results:MemorySearchResult[])=>({kind:'search' as const,results:results.filter(isMemoryPassageResult),files:results.filter((result):result is Extract<MemorySearchResult,{kind:'file'}>=>result.kind==='file'),status:results.length?'Found · '+results.length:'No matching notes'});
  return {
   async answer(request:GroundedAnswerRequest,metadata:{mode?:'capture';toolCalls?:string[];budgetReason?:AgentBudgetReason}={}){
@@ -74,8 +79,8 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
   async search(query:string,options:{complete?:boolean}={}){
    const result=await searchMemoryWithQuestionFallback(query,question,search);check();
    if(options.complete&&result.results.some(isMemoryPassageResult)){
-    const completion=await trace('dialogue.plan',{stage:'search-completion',model,question},()=>resolveSearchCompletion(engine,question,check));check();
-    if(completion!=='search')return {kind:'continue' as const,action:completion,query:result.query};
+    const outcome=await completion('search-completion',runtime=>resolveSearchCompletion(runtime,question,check));check();
+    if(outcome!=='search')return {kind:'continue' as const,action:outcome,query:result.query};
    }
    return searchResult(result.results);
   },
@@ -87,8 +92,8 @@ export function createResolvedActions({store,engine,model,question,check,trace,s
    }
    const found=await trace('memory.read',{query,...await builtinToolRegistry.identity('memory.read')},()=>runBuiltinTool(builtinToolRegistry,'memory.read',{query,length:10_000_000},host),value=>value.map(n=>({id:n.id,path:n.path,version:n.version,excerpt:n.body.slice(0,700)})));
    if(found.length===1){
-    const note=found[0],completion=options.literalRead?'open':await trace('dialogue.plan',{stage:'read-completion',model,question,noteId:note.id,revision:note.version},()=>resolveReadCompletion(engine,question,check));check();
-    const resolution=resolveReadIntent(question,completion,{noteId:note.id,path:note.path,revision:note.version,body:note.body});
+    const note=found[0],outcome=options.literalRead?'open':await completion('read-completion',runtime=>resolveReadCompletion(runtime,question,check),{noteId:note.id,revision:note.version});check();
+    const resolution=resolveReadIntent(question,outcome,{noteId:note.id,path:note.path,revision:note.version,body:note.body});
     if(resolution.kind==='continue')return resolution;
     return {kind:'open' as const,noteId:note.id,path:resolution.path,status:resolution.status,refs:resolution.refs};
    }

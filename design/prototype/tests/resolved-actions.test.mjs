@@ -137,3 +137,40 @@ test('Application rejects malformed external scopes before reading Memory or loa
  await assert.rejects(actions.answer({model:'test',question:'Read this.',mode:'answer',scope:{kind:'file',file:{noteId:'x',revision:1},readings:[]}}),/Conflicting input scopes/);
  await assert.rejects(actions.answer({model:'test',question:'Read this.',mode:'answer',scope:{kind:'attachments',readings:[]}}),/Conflicting input scopes/);
 });
+
+test('completion classification receipts include successful, failed and stopped inference without raw output',async()=>{
+ const hit={noteId:'meeting',revision:3,start:0,end:6,quote:'北口で集合。',title:'Notes/meeting.md',score:1};
+ for(const mode of ['success','invalid','stopped','runtime-error']){
+  const receipts=[];
+  const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+  const {engine}=fixture();
+  engine.generate=async()=>{
+   if(mode==='runtime-error')throw Error('PRIVATE_RUNTIME_MARKER');
+   return {text:mode==='invalid'?'PRIVATE_OUTPUT_MARKER':'{"completion":"summary"}',stopped:mode==='stopped',outputTokens:6,metrics:{runtimePromptTokens:91}};
+  };
+  const {actions}=fixture({engine,trace,store:{search:async()=>[hit]}});
+  if(mode==='success')assert.equal((await actions.search('meeting',{complete:true})).action,'summary');
+  else await assert.rejects(actions.search('meeting',{complete:true}));
+  const receipt=receipts.findLast(row=>row.tool==='dialogue.plan');
+  assert.equal(receipt.output.inference.measuredModelCalls,1);
+  assert.ok(receipt.output.inference.generationWallMs>=0);
+  assert.ok(receipt.output.inference.countMs>=0);
+  if(mode!=='runtime-error')assert.equal(receipt.output.inference.outputTokens,6);
+  assert.doesNotMatch(JSON.stringify(receipt.output),/PRIVATE_OUTPUT_MARKER|PRIVATE_RUNTIME_MARKER/);
+  assert.equal(summarizeTurnWork(receipts).measuredModelCalls,1);
+ }
+});
+
+test('read completion is measured while literal open performs no classifier inference',async()=>{
+ const receipts=[];
+ const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+ const {engine}=fixture();engine.generate=async()=>({text:'{"completion":"summary"}',outputTokens:5});
+ const registry={identity:async()=>({}),run:()=>[{id:'meeting',path:'Notes/meeting.md',version:1,body:'Saved content.'}]};
+ const {actions}=fixture({engine,trace,registry});
+ await actions.read('meeting',{explicitSavedOpen:false,literalRead:false});
+ assert.equal(summarizeTurnWork(receipts).measuredModelCalls,1);
+ assert.equal(receipts.findLast(row=>row.tool==='dialogue.plan').output.completion,'summary');
+ receipts.length=0;
+ await actions.read('meeting',{explicitSavedOpen:false,literalRead:true});
+ assert.equal(receipts.some(row=>row.tool==='dialogue.plan'),false);
+});
