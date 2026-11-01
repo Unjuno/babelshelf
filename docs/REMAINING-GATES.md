@@ -37,7 +37,7 @@ Product commit `21b7901055cb54587d69895b6e037d6077978320` passed GitHub Actions 
 
 Earlier source commit `1e2314b77f5842fe2c13008a2f4aefc191d82767` passed complete clean-checkout CI run **41202048972**, attempt 2, in 10m31s. Attempt 1 hit one timeout while a Settings menu item detached during navigation; the same focused settings test passed five consecutive PC runs, then the complete CI rerun passed every stage. This is a transient UI-test race signal, not evidence that the timeout can never recur.
 
-Latest QA cleanup commit `873f5a75292ca5b0d54830cf4ad7fb5efebbebde` passed complete clean-checkout CI run **41205041282** in 10m37s, including the installed-PWA acceptance stage. This covers the QA registration-cleanup change; it does not prove the historical source of shortcuts the user already removed.
+Latest QA cleanup commit `873f5a75292ca5b0d54830cf4ad7fb5efebbebde` passed complete clean-checkout CI run **41205041282** in 10m37s, including the installed-PWA acceptance stage. The user confirms the removed Desktop `Memory` shortcuts were created during this BabelShelf work; the exact individual QA run cannot be attributed from the deleted links. The current cleanup unregisters a QA-installed PWA after an install attempt and removes only links that point to the active or specifically named QA profiles, preserving unrelated Chrome profiles and their data. The focused path-ownership regression passes 6/6; no BabelShelf shortcut is currently present on the Desktop.
 
 Follow-up commit `0e29059f33a632b4fc9cd14f0f189d5dd9aba264` passed complete clean-checkout CI run **41205898103** in 10m45s. This validates the QA cleanup CI record and the current code state; the docs-only correction below is separate.
 
