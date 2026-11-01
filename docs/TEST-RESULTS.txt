@@ -7387,3 +7387,10 @@ Added regressions for source-label repair with guidance and verbatim recovery wi
 - build:app passed (TypeScript included), build dec4561f020695fe; test:app 8/8; git diff --check passed.
 - This is deterministic contract evidence, not real-model quality or device-performance evidence. Public v270 does not yet contain this fix.
 - Follow-up required checks: protected mobile runtime 28/28 unchanged; memory path/navigation tests 9/9 pass. Submission workflow passes original text as question and retrieval query separately; the observed real-model exclusion failure is not resolved by this repair.
+
+2026-11-01 sidebar real-model summary on build dec4561f020695fe (8a5126c)
+- Reattached existing IAB tab after resetting stale automation binding; no external browser or profile created. Navigated same tab to existing localhost4184, used Online > Update > Offline. DOM module index-BWfJTOeJ.js matches local build. Existing history and pinned Inbox/QA-agent-current.md v1 retained.
+- Request: この入力ファイルを一文で要約してください。 Existing source: 検証用の架空メモ。集合は午前10時。持ち物は青いノート。
+- FAIL: response in English refused summary because the source was a placeholder/dummy memo, despite containing summarizable facts; UI reported Not enough evidence and no source citation. Do not treat this as successful summary/citation/save acceptance. Did not save the failed answer or modify original notes.
+- Visible Activity: 2 recorded agent model calls, 1935 observed prompt tokens, 89 generated tokens, counting27ms, generation93.9s, one tool call10ms. No adapter placement or speedup inferred. This run does not establish that any repaired branch ran.
+- App Offline only; no OS/network isolation or physical-device acceptance. Screenshots reused workspace qa-retained/current-sidebar-metrics.jpg and current-sidebar-generating.jpg.
