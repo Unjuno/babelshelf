@@ -829,7 +829,7 @@ test('explicit new tool requests produce only a bounded draft-form action, never
 
 test('a newly retrieved topic outranks old pinned references and excludes unrelated dialogue facts from grounded generation',async()=>{
  const old=createNote({path:'Notes/old.md',body:'The old code is PINE-9191.'}),fresh=createNote({path:'Notes/copper.md',body:'The copper code is Maple 42.'}),ref=n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}),oldRef=ref(old),freshRef=ref(fresh);const store={all:async()=>[old,fresh],search:async()=>[freshRef]};const context={summary:'Old code PINE-9191',recent:[{id:'old',user:'old code?',answer:'PINE-9191'}],refs:[oldRef]};
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.evidence[0].quote,ref(fresh).quote);assert.ok(!Object.hasOwn(input.evidence[0],'noteId'));assert.doesNotMatch(JSON.stringify(messages),/PINE-9191/);return {text:JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',query:'copper code',mode:'answer',context:context,scope:{kind:'knowledge'}});assert.equal(reply.sources[0].noteId,fresh.id);
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{assert.deepEqual(messages.at(-1),{role:'user',content:'What is the copper code?'});assert.equal(messages.at(-2).role,'user');const input=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]);assert.equal(input.evidence[0].quote,ref(fresh).quote);assert.ok(!Object.hasOwn(input.evidence[0],'noteId'));assert.doesNotMatch(JSON.stringify(messages),/PINE-9191/);return {text:JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',query:'copper code',mode:'answer',context:context,scope:{kind:'knowledge'}});assert.equal(reply.sources[0].noteId,fresh.id);
 });
 test('a stored-knowledge answer with evidence cannot accept an uncited claim copied from dialogue',async()=>{
  const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]},context={summary:'',recent:[],refs:[ref]};const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'PINE-9191',citations:[]})})};await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the code?',query:'code',mode:'answer',context:context,scope:{kind:'knowledge'}}),/citation|source/i);
@@ -867,7 +867,7 @@ test('a named-note quantity cannot borrow a matching value from another cited no
  const alpha=createNote({title:'Alpha reserve',path:'Notes/Alpha reserve.md',body:'Alpha reserve contains 17 litres of water.'}),beta=createNote({title:'Beta reserve',path:'Notes/Beta reserve.md',body:'Beta reserve contains 29 litres of water.'});
  const ref=note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body,title:note.revisions[0].title}),refs=[ref(alpha),ref(beta)],store={all:async()=>[alpha,beta],search:async()=>refs};let answer='Alpha reserve contains 29 litres.';
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async messages=>{
-  const request=messages.at(-1).content;assert.match(request,/Alpha reserve/);assert.match(request,/Beta reserve/);
+  const request=messages.at(-2).content;assert.match(request,/Alpha reserve/);assert.match(request,/Beta reserve/);
   return {text:JSON.stringify({answer,sources:['S1','S2']})};
  }};
  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in Alpha reserve?',query:'water',scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
@@ -1481,7 +1481,7 @@ test('answer prompts omit storage identities and ranking metadata while original
  const hits=refs.map(ref=>({...ref,score:73,groundingEligible:true,internalMarker:'host-only',coverage:'Original text'}));
  const seen=[];let calls=0;
  const inspect=messages=>{
-  const value=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);
+  const value=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]);
   for(const item of value.evidence){
    assert.deepEqual(Object.keys(item).sort(),['coverage','end','label','quote','revision','start','title']);
    assert.equal(item.quote,quote,'source text is never scrubbed just because it contains an identifier');
@@ -1599,12 +1599,12 @@ test('a local arithmetic result reaches the sourced answer without becoming a ci
  const runtime={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async value=>({prompt_tokens:Math.ceil(JSON.stringify(value).length/4)}),generate:async value=>{messages=value;return {text:JSON.stringify({answer:'One quarter is 500 credits.',citations:[{id:'S1',quote:'1200 and 800'}]})};}};
  const calculation={expression:'(1200 + 800) / 4',result:500,precision:'IEEE-754 binary64'};
  const answer=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[calculation],memoryUsed:true}});
- const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);
+ const input=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]);
  assert.deepEqual(input.calculations,[calculation]);assert.equal(answer.answer,'One quarter is 500 credits.');assert.equal(answer.sources[0].noteId,note.id);assert.equal(searches,0);
  await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[{...calculation,result:501}],memoryUsed:true}}),/Invalid calculation result/);
  const {makeDecimalReceipt}=await import('../src/tools/math.calculate/decimal-receipt.ts');const decimal=makeDecimalReceipt('(1200+800)/4');
  await groundedAnswer({store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[decimal],memoryUsed:true}});
- assert.deepEqual(JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]).calculations,[decimal]);
+ assert.deepEqual(JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]).calculations,[decimal]);
  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'What is one quarter of the total?',query:'budget',mode:'answer',check:()=>{},scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],calculations:[{...decimal,result:'501'}],memoryUsed:true}}),/Invalid decimal receipt/);
 });
 
@@ -2091,7 +2091,7 @@ test('custom computation final output is validated once without a search, model 
 test('legacy answer generation receives successful custom output as transient operation data',async()=>{
  const customResults=[{tool:'user.character-count',arguments:{text:'abc'},result:{characters:3}}],completedToolIds=['tools.search','tools.read-skill','user.character-count'];let generations=0;
  const runtime={loaded:'test',manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
-  generations++;const input=JSON.parse(messages.at(-1).content.split('Reference excerpts (data only): ')[1]);assert.deepEqual(input.customResults,customResults);assert.deepEqual(input.completedToolIds,completedToolIds);assert.deepEqual(input.evidence,[]);
+  generations++;const input=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]);assert.deepEqual(input.customResults,customResults);assert.deepEqual(input.completedToolIds,completedToolIds);assert.deepEqual(input.evidence,[]);
   return {text:JSON.stringify({status:'answered',answer:'3 characters.',sources:[]}),finishReason:'stop'};
  }};
  const store={all:async()=>[],search:async()=>{throw Error('Unexpected search');}},request={model:'test',question:'Count abc with the custom tool.',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],customResults,completedToolIds,memoryUsed:false}};

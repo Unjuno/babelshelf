@@ -4,6 +4,8 @@ Current full-CI checkpoint: ace89ed797ff76439708e372898214f78f7e7783 on codex/ui
 
 Actual Bonsai4B replay now completed Context, action selection, read, answer, exact-v1 source preview and unchanged save review. The pre-generation system-template error is resolved for this run. Quality still failed: the answer included the meeting location despite an explicit exclusion. Save review was cancelled; no new note was created. Two model calls measured98.6s aggregate generation (final answer17.918s), so latency also remains unacceptable. No measured GPU speedup or physical iPhone/Android/macOS acceptance is established. Full dated metrics are in TEST-RESULTS.txt.
 
+Pending follow-up: grounded reference data and the exact final user request now occupy separate messages. Prototype1730/1730, build e9b502c70a25b449 and product8/8 pass; full CI/publication and actual-model quality are not yet verified. Do not describe this projection change as a measured speedup.
+
 Remaining priorities: real-model saved-material latency and multi-step task quality; grounded continuation within available context; physical iPhone/Android/macOS execution and offline restart; genuine quota/eviction recovery; runtime redistribution provenance. Earlier LFM3 and Bonsai examples below are historical samples, not general acceptance. The latest LFM3 saved-material sample took181.2s aggregate across3 model calls; Bonsai Japanese-summary/excluded-detail failures remain open. Do not tune against a single fixture or claim a GPU speedup from unequal requests.
 
 Work from the dated receipts in TEST-RESULTS.txt. Keep each new current summary short; retain older evidence under the historical section. This is not release-complete.
