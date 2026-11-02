@@ -14,7 +14,7 @@ const networkFetch=globalThis.fetch.bind(globalThis);
 const localRuntime=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;return localRuntime.has(new URL(url,location.href).href)?networkFetch(input,options):Promise.reject(Error('Network disabled for decisions'));};
 env.allowRemoteModels=false;env.allowLocalModels=false;
-ort.env.wasm.wasmPaths={wasm:wasmURL,mjs:mjsURL};ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;ort.env.logLevel='error';
+ort.env.wasm.wasmPaths={wasm:wasmURL,mjs:mjsURL};ort.env.wasm.proxy=false;ort.env.logLevel='error';
 let controller:AbortController|undefined,busy=false,session:ort.InferenceSession|null=null,tok:PreTrainedTokenizer|null=null,config:any,device:'webgpu'|'wasm'='wasm',activeModel:ReturnType<typeof decisionModelDescriptor>|undefined;
 const check=()=>{if(controller?.signal.aborted)throw Error('Stopped');};
 const i64=(values:number[],dims:number[])=>new ort.Tensor('int64',BigInt64Array.from(values,BigInt),dims);
