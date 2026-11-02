@@ -100,6 +100,22 @@ test('a native final answer that exposes internal source labels gets one content
  assert.match(prompts[2].at(-1).content,/internal source label.*answer prose/i);
 });
 
+test('a native final answer that exposes tool syntax gets one user-facing repair before completion',async()=>{
+ const action=(tool,args)=>JSON.stringify({action:'tool',query:tool,body:JSON.stringify(args)});
+ const {value,calls}=input([
+  action('memory.search',{query:'meeting'}),
+  JSON.stringify({action:'answer',reply:{status:'answered',answer:'The note ID is meeting-1. memory.read(query="meeting-1") returned sourceReferences[0].',sources:['S1']}}),
+  JSON.stringify({action:'answer',reply:{status:'answered',answer:'The saved note says the meeting is Monday at 10.',sources:['S1']}}),
+ ],{question:'Search the saved meeting note and tell me when it is.',search:async()=>[{noteId:'meeting-1',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.',title:'Notes/meeting.md'}]});
+ value.engine.plannerProtocol='native-tool-calls';
+ const prompts=[],generate=value.engine.generate;
+ value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
+ const result=await coordinateAgentTurn(value);
+ assert.equal(prompts.length,3);assert.equal(result.final.reply.answer,'The saved note says the meeting is Monday at 10.');
+ assert.deepEqual(result.calls.map(call=>call.tool),['memory.search']);
+ assert.match(prompts[2].at(-1).content,/internal implementation details.*omit tool calls/i);
+});
+
 test('an invalid history selector gets one audited replan without guessing an original or executing a tool',async()=>{
  const {value,calls}=input([
   '{"action":"recall","target":"history","query":"その集合の持ち物は何？"}',

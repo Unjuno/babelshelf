@@ -13,7 +13,7 @@ test('tool projections keep exact bounded excerpts and canonical source identity
  assert.throws(()=>projectAgentToolResult('mcp.fetch',[]),/not available/);
 });
 
-test('terminal answers reject internal citation labels in prose but preserve requested or literal source text',()=>{
+test('terminal answers reject internal citation labels and implementation details but preserve requested or literal source text',()=>{
  const evidence=[{label:'S1',noteId:'note-1',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.'}];
  assert.throws(()=>bindSourceLabelAnswer({status:'answered',answer:'S1 says the meeting is Monday at 10.',sources:['S1']},evidence),/internal source label/i);
  assert.throws(()=>bindSourceLabelAnswer({status:'answered',answer:'The meeting is Monday at 10. See S1.',sources:['S1']},evidence),/internal source label/i);
@@ -21,6 +21,12 @@ test('terminal answers reject internal citation labels in prose but preserve req
  assert.equal(bindSourceLabelAnswer({status:'answered',answer:'This passage literally says S1 is the meeting code.',sources:['S1']},[{...evidence[0],end:51,quote:'This passage literally says S1 is the meeting code.'}]).answer,'This passage literally says S1 is the meeting code.');
  assert.equal(bindSourceLabelAnswer({status:'answered',answer:'S1 is a source identifier.',sources:['S1']},evidence,{userText:'Explain what S1 means'}).answer,'S1 is a source identifier.');
  assert.equal(bindSourceLabelAnswer({status:'answered',answer:'S10 is a different code.',sources:['S1']},evidence).answer,'S10 is a different code.');
+ assert.throws(()=>bindSourceLabelAnswer({status:'answered',answer:'出典ノート ID は 21562477-eab6-4e79-abf7-4662e52298b2 です。memory.read(query="2372af46-49ba-4e64-a365-4cafd14c3ee5") から取得しました。',sources:['S1']},evidence,{userText:'出典をたどって、元資料を確認してください。'}),/implementation details/i);
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:'memory.read はローカルノートを取得するツールです。',sources:['S1']},evidence,{userText:'memory.read APIについて教えて'}).answer,'memory.read はローカルノートを取得するツールです。','explicit technical questions may discuss implementation vocabulary');
+ assert.throws(()=>bindSourceLabelAnswer({status:'answered',answer:'memory.read(query="meeting") returned sourceReferences[0].',sources:['S1']},evidence,{userText:'Use a tool to check the meeting time.'}),/implementation details/i,'mentioning tool use as a task does not request internal syntax');
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:'memory.read returns the matching local note.',sources:['S1']},evidence,{userText:'Explain how memory.read works.'}).answer,'memory.read returns the matching local note.','an explicit implementation question may use internal names');
+ const literal={...evidence[0],quote:'The document literally contains memory.read(query="meeting").',end:'The document literally contains memory.read(query="meeting").'.length};
+ assert.equal(bindSourceLabelAnswer({status:'answered',answer:literal.quote,sources:['S1']},[literal]).answer,literal.quote,'literal source text remains quotable');
 });
 
 test('ambiguous host source labels cannot silently cite the wrong original',()=>{

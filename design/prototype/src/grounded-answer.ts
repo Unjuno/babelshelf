@@ -11,7 +11,7 @@ import {historyMessages,parseChatAnswer,type DialogueContext,type SourceRef} fro
 import {groundingQuery,audioOnlySuffix} from './current-input-scope.ts';
 import type {GenerationFormat,GenerationResult} from './text-inference.ts';
 import type {AgentCalculation} from './agent-evidence.ts';
-import {checkedCalculation,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindEvidenceLabels,bindSourceLabelAnswer,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer} from './agent-evidence.ts';
+import {checkedCalculation,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindEvidenceLabels,bindSourceLabelAnswer,hasInternalImplementationLeak,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer} from './agent-evidence.ts';
 import {validateClockReading,type ClockReading} from './tools/time.now/tool.ts';
 import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONTEXT_SOURCE_REFS,MAX_PLANNER_AGENT_TOOLS} from './agent-limits.ts';
 import {builtinToolIds} from './tools/builtin-tools.ts';
@@ -280,7 +280,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  if(!dialogueOnly&&!evidence.length&&!operationalEvidence)throw Error(hits.length?'Context limit':'No matching notes');
  type ParsedAnswer={answer:string;sources:any[];status?:'insufficient_evidence'};
  const bindLabels=(labels:unknown)=>bindEvidenceLabels(labels,evidence);
- const parseLabelBindings=(text:string):ParsedAnswer=>bindSourceLabelAnswer(JSON.parse(text),evidence,{userText:question});
+ const validateUserFacingAnswer=(answer:ParsedAnswer):ParsedAnswer=>{if(hasInternalImplementationLeak(answer.answer,question,answer.sources))throw new InternalImplementationLeakError();return answer;};
+ const parseLabelBindings=(text:string):ParsedAnswer=>validateUserFacingAnswer(bindSourceLabelAnswer(JSON.parse(text),evidence,{userText:question}));
  const parse=(text:string):ParsedAnswer=>{
   const value=JSON.parse(text);
   if(value&&Object.hasOwn(value,'sources'))return parseLabelBindings(text);
@@ -288,10 +289,10 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   // never infer a source label from a paraphrased or missing quotation.
   if(value?.status==='insufficient_evidence'){
    const parsed=parseAnswer(text,evidence);
-   return {answer:parsed.answer,sources:[],status:'insufficient_evidence'};
+   return validateUserFacingAnswer({answer:parsed.answer,sources:[],status:'insufficient_evidence'});
   }
-  if(answerContext||operationalEvidence&&!evidence.length)return parseChatAnswer(text,evidence);
-  const parsed=parseAnswer(text,evidence);return {answer:parsed.answer,sources:parsed.refs};
+  if(answerContext||operationalEvidence&&!evidence.length)return validateUserFacingAnswer(parseChatAnswer(text,evidence));
+  const parsed=parseAnswer(text,evidence);return validateUserFacingAnswer({answer:parsed.answer,sources:parsed.refs});
  };
  const parseSingleLabelSummary=parseLabelBindings;
  // A citation repair changes the serialization request, not the task contract.
@@ -299,7 +300,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const sourceLabelSystem=messages[answerSystemIndex].content+' Labels identify original excerpts; return each supporting label once in sources. Do not copy or rewrite quotations in metadata.';
  const singleLabelSystem=sourceLabelSystem;
  let summaryLabelBinding=false;
- const recoverableSourceShape=(error:unknown)=>error instanceof InternalSourceLabelLeakError||error instanceof Error&&['Invalid answer or sources','Citation mismatch'].includes(error.message);
+ const recoverableSourceShape=(error:unknown)=>error instanceof InternalSourceLabelLeakError||error instanceof InternalImplementationLeakError||error instanceof Error&&['Invalid answer or sources','Citation mismatch'].includes(error.message);
  const oneSourceRevision=evidence.length>0&&evidence.every(ref=>ref.noteId===evidence[0].noteId&&ref.revision===evidence[0].revision);
  const singleSourceRecovery=mode==='answer'&&!inputReadings.length&&oneSourceRevision;
  const singleInputRecovery=mode==='answer'&&inputReadings.length===1&&oneSourceRevision;
@@ -349,8 +350,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
  try{parsed=parse(generated.text);}catch(error){
   const fileLabelRetry=!!workingFile&&mode==='answer'&&evidence.length===1&&!calculations.length&&!clockReadings.length;
-  const labelLeak=error instanceof InternalSourceLabelLeakError;
-  const citationMismatch=evidence.length>0&&(labelLeak||recoverableSourceShape(error)&&(!canRecover(error)||fileLabelRetry));
+  const labelLeak=error instanceof InternalSourceLabelLeakError,implementationLeak=error instanceof InternalImplementationLeakError;
+  const citationMismatch=labelLeak||implementationLeak||evidence.length>0&&recoverableSourceShape(error)&&(!canRecover(error)||fileLabelRetry);
   if(!(error instanceof SyntaxError)&&!citationMismatch){
    if(canRecover(error))parsed=await exactSingleSourceFallback(error);
    else throw error;
@@ -359,8 +360,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   // A multi-source model may paraphrase an otherwise valid citation. Ask it
   // to correct that output; never drop the invalid citation or guess its span.
   if(citationMismatch){const fresh=await store.all();check();if(!validateGroundingRefs(fresh,evidence).ok)throw Error('Source changed · retry');}
-  const labelOnly=citationMismatch&&!calculations.length&&!clockReadings.length&&(labelLeak||evidence.length>1||(mode==='summary'||fileLabelRetry)&&evidence.length===1);
-   const instruction=labelLeak?` The previous answer exposed an internal source label such as S1 in user-facing answer prose. Remove routing labels from the answer completely; put supporting labels only in the JSON sources field because the application renders citations separately. Preserve the answer's facts, requested language, and level of detail.`:' The previous response did not match the required answer and source format. Answer the original question again. Return each supporting evidence label exactly once in sources; the host will bind those labels to the original file, revision, and excerpt. Do not copy quotation text. Cite only excerpts that support your answer.';
+  const labelOnly=citationMismatch&&!calculations.length&&!clockReadings.length&&(labelLeak||implementationLeak||evidence.length>1||(mode==='summary'||fileLabelRetry)&&evidence.length===1);
+   const instruction=labelLeak?` The previous answer exposed an internal source label such as S1 in user-facing answer prose. Remove routing labels from the answer completely; put supporting labels only in the JSON sources field because the application renders citations separately. Preserve the answer's facts, requested language, and level of detail.`:implementationLeak?' The previous answer exposed internal implementation details in user-facing prose. Rewrite it naturally for the user, omitting tool calls, record identifiers and protocol fields unless the user explicitly requested them. Preserve supported facts, requested language and level of detail; keep source labels only in the JSON sources field.':' The previous response did not match the required answer and source format. Answer the original question again. Return each supporting evidence label exactly once in sources; the host will bind those labels to the original file, revision, and excerpt. Do not copy quotation text. Cite only excerpts that support your answer.';
   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:(labelOnly?sourceLabelSystem:message.content)+instruction}:message);
   if((await checkedAnswerCount(engine,retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error(citationMismatch?'Context limit · citation retry':'Invalid model JSON · retry');check();
   generated=await engine.generate(retry,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');

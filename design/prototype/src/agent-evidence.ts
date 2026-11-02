@@ -18,6 +18,20 @@ export type LabelledSource=SourceRef&{label:string};
 export class InternalSourceLabelLeakError extends Error {
  constructor(){super('Answer contains an internal source label');this.name='InternalSourceLabelLeakError';}
 }
+export class InternalImplementationLeakError extends Error {
+ constructor(){super('Answer exposes internal implementation details');this.name='InternalImplementationLeakError';}
+}
+const internalAnswerPatterns=[/\bmemory\.(?:read|search|sources|list)\s*(?:\(|\b)/giu,/\bsourceReferences?\s*\[\s*\d+\s*\]/giu,/\b(?:noteId|sourceId|runtimeRevision)\s*[:=]/giu,/\bpartial\s*:\s*(?:true|false)\b/giu,/\b(?:revision|レビジョン)\s*[:=]?\s*\d+\b/giu,/(?<![\w-])[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\w-])/giu];
+function asksAboutImplementation(userText:string){return /\b(?:(?:how (?:does|do|is|are)\b.{0,60}\b(?:work|implemented|structured))|(?:explain|describe|document)\b.{0,50}\b(?:tools?|apis?|schemas?|json fields?|identifiers?|record ids?|source ids?|note ids?|revisions?)|(?:explain|describe)\s+how\s+[\w.-]+\s+works|(?:what (?:is|does)\b.{0,50}\b(?:memory\.(?:read|search|sources|list)|api|schema|field|identifier|record id|source id|note id|revision))|(?:memory\.(?:read|search|sources|list)|api|schema|json fields?|identifiers?|record ids?|source ids?|note ids?|revisions?)\b.{0,24}\b(?:mean|means|work|works|implemented|structured|specification))|(?:ツール|API|スキーマ|JSONフィールド|識別子|レコードID|出典ID|ノートID|リビジョン|内部仕様).{0,30}(?:仕様|意味|構造|実装|とは|について|教えて|説明|何)/iu.test(userText);}
+/** Detect protocol-shaped implementation details, while preserving explicitly requested technical content or literal source text. */
+export function hasInternalImplementationLeak(answer:string,userText:string,sources:readonly SourceRef[]=[]){
+ if(asksAboutImplementation(userText))return false;
+ for(const pattern of internalAnswerPatterns){
+  pattern.lastIndex=0;
+  for(const match of answer.matchAll(pattern))if(!sources.some(source=>source.quote.includes(match[0])))return true;
+ }
+ return false;
+}
 function mentionsLabel(text:string,label:string){
  const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
  return new RegExp(`(?:^|[^A-Za-z0-9_])${escaped}(?=$|[^A-Za-z0-9_])`,'i').test(text);
@@ -44,6 +58,7 @@ export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSour
   const literalInCitedSource=sources.some(source=>source.noteId===ref.noteId&&source.revision===ref.revision&&source.start===ref.start&&source.end===ref.end&&mentionsLabel(source.quote,ref.label));
   if(!explicitlyNamed&&!literalInCitedSource)throw new InternalSourceLabelLeakError();
  }
+ if(hasInternalImplementationLeak(value.answer,options.userText??'',sources))throw new InternalImplementationLeakError();
  if(value.status==='insufficient_evidence'){
   if(sources.length)throw Error('Insufficient evidence cannot carry citations');
   return {answer:value.answer.trim(),sources:[],status:'insufficient_evidence'};

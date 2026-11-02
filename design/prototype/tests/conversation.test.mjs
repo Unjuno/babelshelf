@@ -1556,6 +1556,20 @@ test('grounded answer repairs one leaked source label without changing facts or 
  assert.match(seen[1][0].content,/previous answer exposed an internal source label/i);
 });
 
+test('grounded answer repairs exposed tool syntax and record identifiers without losing the original citation',async()=>{
+ const note=createNote({path:'Inbox/QA-draft-v179.md',body:'集合場所は北口。持ち物は青いノート。'}),quote=note.revisions[0].body;
+ const ref={noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path};let generations=0,seen=[];
+ const engine={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
+  seen.push(messages);generations++;
+  return {text:JSON.stringify(generations===1?{answer:`出典ノート ID は ${note.id}（レビジョン1）で、パスは ${note.path}。memory.read(query="${note.id}") で完全に取得しました。sourceReferences[0] から導きました。`,sources:['S1']}:{answer:'元資料を確認できました。集合場所は北口で、持ち物は青いノートです。',sources:['S1']})};
+ }};
+ const question='保存した集合場所と持ち物のメモについて、元資料をたどって確認し、日本語で答えてください。';
+ const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine},{model:'test',question,mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],memoryUsed:true}});
+ assert.equal(generations,2);assert.equal(result.answer,'元資料を確認できました。集合場所は北口で、持ち物は青いノートです。');
+ assert.deepEqual(result.sources.map(({noteId,revision,start,end,quote})=>({noteId,revision,start,end,quote})),[{noteId:ref.noteId,revision:ref.revision,start:ref.start,end:ref.end,quote:ref.quote}]);assert.equal(result.recovery,'citation-retry');
+ assert.match(seen[1][0].content,/previous answer exposed internal implementation details/i);
+});
+
 test('multi-source capture repairs one malformed source shape without weakening exact reference validation',async()=>{
  const notes=[createNote({path:'Notes/a.md',body:'北口に17リットル。'}),createNote({path:'Notes/b.md',body:'西口に9リットル。'})];
  const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));
