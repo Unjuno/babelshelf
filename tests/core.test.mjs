@@ -158,6 +158,17 @@ test('new grounded references require an eligible source chain while historical 
  assert.equal(core.validateGroundingRefs([original,parent],[]).ok,true);
 });
 
+test('new grounded citations and imported generated notes reject cited text absent from the exact source range',async()=>{
+ const original=core.createNote({body:'The access code is 4826.'}),base={noteId:original.id,revision:1,start:0,end:original.revisions[0].body.length,quote:original.revisions[0].body};
+ assert.equal(core.validateGroundingRefs([original],[{...base,citedQuote:'access code is 4826'}]).ok,true);
+ for(const citedQuote of ['', 'access code is 1111', 4826, null]){
+  const ref={...base,citedQuote};assert.equal(core.validateGroundingRefs([original],[ref]).ok,false,String(citedQuote));
+  assert.equal(core.validateRefs([original],[ref]).ok,true,'historical range validation remains backward-compatible');
+ }
+ const corrupted=core.createNote({title:'Imported answer',body:'The code is 4826.',kind:'generated',sources:[{...base,citedQuote:'1111'}]}),pack=await core.makeBackup([original,corrupted]);
+ await assert.rejects(()=>core.parseBackup(JSON.stringify(pack)),/source reference/i);
+});
+
 test('stored-note discovery finds reviewed unsourced and stale generated files without making them grounding evidence',()=>{
  const source=core.createNote({title:'Original',body:'The marker is CEDAR-2491.'});const ref=core.searchNotes([source],'CEDAR-2491')[0];
  const generated=core.createNote({title:'Saved summary',body:'CEDAR-2491 saved summary',kind:'generated',sources:[ref]}),calculation=core.createNote({title:'Calculation99',body:'(1200 + 800) / 4 = 500',kind:'generated',sources:[]});

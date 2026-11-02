@@ -55,6 +55,9 @@ function validateRefsWithMap(map,refs,{currentOnly=false}={}){
   if(!n||n.state!=='active'||!mediaAvailable(n,map)||!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote||(currentOnly&&latest(n).version!==r.revision))errors.push(r.noteId??'unknown');
  }return {ok:errors.length===0,errors};
 }
+function validCitedQuote(ref){
+ return ref?.citedQuote===undefined||typeof ref.citedQuote==='string'&&ref.citedQuote.length>0&&typeof ref.quote==='string'&&ref.quote.includes(ref.citedQuote);
+}
 export function validateRefs(notes,refs,options={}){return validateRefsWithMap(new Map(notes.map(n=>[n.id,n])),refs,options);}
 function eligible(n,map,memo=new Map()){
  // Traverse iteratively so a long chain of generated notes cannot exhaust the
@@ -88,6 +91,12 @@ export function searchableNoteIds(notes){
 // Admission for NEW grounded data. Historical citation display keeps validateRefs semantics.
 export function validateGroundingRefs(notes,refs){
  const map=new Map(notes.map(n=>[n.id,n])),checked=validateRefsWithMap(map,refs,{currentOnly:true}),errors=new Set(checked.errors),memo=new Map();
+ // `citedQuote` is presentation metadata, but it is persisted with generated
+ // notes and may come from an imported backup. Validate it at the same trust
+ // boundary as the canonical range so corrupt metadata cannot imply text that
+ // was never present in the cited passage. Historical display still uses
+ // validateRefs and keeps its existing compatibility behavior.
+ for(const ref of refs)if(!validCitedQuote(ref))errors.add(ref.noteId??'unknown');
  for(const ref of refs){const note=map.get(ref.noteId);if(note&&!eligible(note,map,memo))errors.add(ref.noteId);}
  return {ok:errors.size===0,errors:[...errors]};
 }
@@ -191,7 +200,7 @@ export function checkNotes(notes){
   for(const [i,v]of n.revisions.entries())if(!v||v.version!==i+1||typeof v.title!=='string'||typeof v.body!=='string'||v.body.length>10000000||typeof v.at!=='string')throw Error('Invalid revision');
  }
  for(const n of notes)for(const v of n.revisions)if(v.path!==undefined)normalizePath(v.path);assertPaths(notes);
- for(const n of notes)for(const r of n.sources){const v=notes.find(n=>n.id===r.noteId)?.revisions.find(v=>v.version===r.revision);if(!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote)throw Error('Invalid source reference');}
+ for(const n of notes)for(const r of n.sources){const v=notes.find(n=>n.id===r.noteId)?.revisions.find(v=>v.version===r.revision);if(!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote||!validCitedQuote(r))throw Error('Invalid source reference');}
  return true;
 }
 export async function parseBackup(text){
