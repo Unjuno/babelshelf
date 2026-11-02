@@ -83,8 +83,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 16926,
-      "sha256": "54e100c1348471607b3381b9a5a0d73b5648b432f6aeaf3c7fdf8dec059b17e5"
+      "bytes": 17030,
+      "sha256": "28149d34c6bd3941161b6129fa9fd14f6d9b52b9475da50060088508e6a14aa2"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "8c6f4af1976cf0f280cd4c4e03c6a99cbf61bc2a0997b38de8a9be0af915358c"
+      "sha256": "ac96398147df45b1f5f92507e1a30aa3888d35c807182f7051a43e7915f03209"
     },
     {
       "path": "./ui.js",
@@ -200,6 +200,11 @@
       "path": "./webgpu-preference.js",
       "bytes": 710,
       "sha256": "9dffa8441ee2adb3156869aa07d0c46ed8e9859a7a1a5c481e007098fbee7b80"
+    },
+    {
+      "path": "./webgpu-preflight.js",
+      "bytes": 1537,
+      "sha256": "097eb55f213efedc692008bc9c8131f8a81bdefb19aea4d663f3dfb932594f1e"
     }
   ]
 }
