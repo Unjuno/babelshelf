@@ -7831,3 +7831,5 @@ Native planner supplied exact recalled dialogue twice: historyMessages and metad
 
 2026-11-02 Pending v299 release
 App aafbab99acf503760d19c4dbf266d2f7f9d2babe/build4bd8618bf8a800b7. Sites source ebc625f0b14968fc4e7fac93344be2f0b4d1ad97; saved version appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_65b6438555ac8191bd5233ef8b8ec3f2 (299), not deployed. Reused current-site.tar.gz sha25661afa31bb1b20e88f18d90cd88df5e0ff911b5d256af2184fcbf62f0ca416561,84469760bytes,193files. Stage retained current+previous and pruned24 older assets; gzip/identity/method/offline-shell delivery checks PASS. CI41354281084 running; preceding41354080403 cancelled after newer code push. Preserve public audience; wait exact current CI before deploying saved299.
+
+2026-11-02 v299 public adoption: CI41354281084 completed success. Sites deployment appgdep_6ae7d3215f848191a8f2cf5898472c99 succeeded with public audience. Existing sidebar Refresh adopted index-CA6cinwZ.js matching build4bd8618bf8a800b7; visible dialogue retained; connection restored Offline. No current-build real-model generation or physical offline restart tested.
