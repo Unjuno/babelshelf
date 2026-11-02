@@ -8,6 +8,7 @@ import {settingsPatchResult} from '../src/settings-corrections.ts';
 import {settings} from '../src/app-settings.ts';
 import {deletionContents} from '../src/memory-trash.ts';
 import {setBuiltinToolEnabled} from '../src/builtin-tool-preferences.ts';
+import {runReadOnlyAgentLoop} from '../src/agent-loop.ts';
 
 function legacyPreference(group,value){return formatPreference(group,value).replace('  "schemaVersion": 3,\n','');}
 
@@ -169,6 +170,19 @@ test('legacy untouched built-in tools and caps migrate additively without changi
  assert.equal(parsed.schemaVersion,3);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
  legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 3','"schemaVersion": 1');
  assert.equal(parsePreference('harness',record.body).profiles[0].maxToolCalls,4);
+});
+test('schema-1 custom profile names preserve call caps that match the old built-in defaults',async()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),legacy=parsePreference('harness',record.body);
+ legacy.schemaVersion=1;
+ legacy.profiles[0]={...legacy.profiles[0],label:'My bounded assistant',enabledTools:['math.calculate','memory.read','memory.search','memory.list','time.now'],maxToolCalls:8};
+ legacy.profiles[1]={...legacy.profiles[1],label:'Two-source review',enabledTools:['memory.search','memory.read'],maxToolCalls:2};
+ record.body=formatPreference('harness',legacy).replace('"schemaVersion": 3','"schemaVersion": 1');
+ const stored=record.body,projected=parsePreference('harness',record.body);
+ assert.equal(projected.profiles[0].maxToolCalls,8);assert.deepEqual(projected.profiles[0].enabledTools,['math.calculate','memory.read','memory.search','memory.list','time.now']);
+ assert.equal(projected.profiles[1].maxToolCalls,2);assert.deepEqual(projected.profiles[1].enabledTools,['memory.search','memory.read']);
+ assert.equal(record.body,stored);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
+ const result=await runReadOnlyAgentLoop({allowedTools:[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}],maxToolCalls:projected.profiles[1].maxToolCalls,plan:async history=>({kind:'tool',tool:history.length?'memory.read':'memory.search',arguments:{query:String(history.length)}}),execute:async()=>[],onBudgetExhausted:()=>({partial:true}),check:()=>{}});
+ assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'tool-limit');assert.equal(result.calls.length,2);
 });
 test('schema-2 harness profiles gain unlimited generation budgets in memory without rewriting stored bytes',()=>{
  const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),value=parsePreference('harness',record.body);
