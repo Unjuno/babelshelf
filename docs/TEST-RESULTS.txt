@@ -7928,3 +7928,7 @@ fallback to WASM. Focused Decision tests passed 18/18, the full prototype suite
 passed 1,794/1,794, `npm run check` passed, and `npm run build:app` passed with
 163 verified shell assets. No inference speedup or physical-platform timing
 was measured; matched Windows, iPhone, Android and Mac comparisons remain open.
+
+2026-11-02 — Avoid duplicate WebGPU model preflight and release Vision tensors on failure.
+The LFM3 orchestration layer now marks a completed backend preflight so the prepared adapter does not repeat the same browser request before model load; direct adapter loads still perform their own check. An integration test composes the actual orchestrator and adapter with a controlled Wllama runtime and confirms a single availability request. Vision inference now uses the shared tensor-resource owner, which attempts every release and preserves the original inference/decode failure. A bundled-worker fixture covers success, generation failure, decode failure, and cleanup failure.
+Focused LFM adapter/runtime tests passed 80/80; Vision and tensor-resource tests passed 6/6. Full root tests passed 256/256; prototype tests passed 1,807/1,807; product acceptance passed 8/8. `npm run check`, `npm run build:app`, and `git diff --check` passed. Clean-checkout GitHub Actions [41409497959](https://github.com/Unjuno/babelshelf/actions/runs/41409497959) passed all stages in 9m52s. No generation-speed, real GPU-memory recovery, physical-platform, or deployment claim follows.
