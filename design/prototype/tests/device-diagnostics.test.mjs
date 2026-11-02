@@ -164,7 +164,7 @@ test('device report captures only bounded WebGPU features and selected numeric l
  const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{options=value;return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'};}}});
  assert.deepEqual(options,{powerPreference:'high-performance'});
  assert.deepEqual(report.webgpu,{available:true,fallbackAdapter:false,features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
- assert.equal(Object.hasOwn(report.webgpu,'vendor'),false);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');
+ assert.equal(Object.hasOwn(report.webgpu,'vendor'),false);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/performance preference requested/);
 });
 
 test('saved device report retains bounded runtime performance counters and rejects raw payloads',async()=>{

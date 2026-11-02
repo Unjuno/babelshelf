@@ -249,7 +249,7 @@ export async function runDeviceDiagnostics(env:DiagnosticEnvironment={}):Promise
  const gpu=env.gpu===undefined?(globalThis.navigator as Navigator&{gpu?:NonNullable<DiagnosticEnvironment['gpu']>}|undefined)?.gpu:env.gpu;
  let webgpu=emptyWebGpuDiagnostic();
  if(!gpu)add('webgpu','not-run','WebGPU API unavailable; CPU/WASM may still be supported');
- else {webgpu=await inspectWebGpuAdapter(gpu);add('webgpu',webgpu.available?'pass':'warning',webgpu.available?'Adapter available; limits recorded; model execution and memory fit not tested':'Adapter unavailable or timed out');}
+ else {webgpu=await inspectWebGpuAdapter(gpu);add('webgpu',webgpu.available?'pass':'warning',webgpu.available?'Adapter available; performance preference requested; limits recorded; model execution and memory fit not tested':'Adapter unavailable or timed out');}
  if(!env.selectedModel)add('selected-model','not-run','No text model selected');
  else if(!env.modelFilesPresent)add('selected-model','warning',`${env.selectedModel}: model files not verified`);
  else add('selected-model',env.modelLoaded?'pass':'warning',`${env.selectedModel}: files verified${env.modelLoaded?' and model loaded':' ; generation not tested'}`);

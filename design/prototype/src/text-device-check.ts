@@ -8,7 +8,7 @@ export type TextDeviceCheck={modelId:string;modelBytes:number|null;availableByte
 
 export function describeTextDeviceCheck(check:TextDeviceCheck):string {
  const storage=check.storage==='below-file-size'?'Reported storage below model file size':check.storage==='estimate-covers-file'?'Storage estimate covers model file':check.storage==='already-present'?'Model files already present':'Storage estimate unavailable';
- const runtime=check.backend==='webgpu'?(check.webgpu==='available'?'WebGPU adapter detected':check.webgpu==='unavailable'?'WebGPU adapter unavailable':'WebGPU check inconclusive'):'CPU/WASM path';
+ const runtime=check.backend==='webgpu'?(check.webgpu==='available'?'WebGPU available · performance preference requested':check.webgpu==='unavailable'?'WebGPU adapter unavailable':'WebGPU check inconclusive'):'CPU/WASM path';
  const fallback=check.fallbackBackend==='cpu-wasm'?' · CPU/WASM fallback may be tried':'';
  return `${storage} · ${runtime}${fallback} · Loading and generation untested`;
 }
