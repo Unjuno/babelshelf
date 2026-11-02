@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {createNote} from '../../../dist/core.js';import {builtinToolUpdates} from '../src/builtin-updates.ts';import {builtinToolNotes,legacyToolBodies,previousToolBodies,knownToolBodies} from '../src/tool-definitions.ts';
+import {CUSTOM_TOOL_CAPABILITIES} from '../src/custom-tool-types.ts';
 const legacy=()=>{const seed=builtinToolNotes.find(n=>n.id==='builtin-tools-README'),n=createNote({path:seed.path,body:legacyToolBodies[seed.id]});return {...n,id:seed.id,ui:{protected:true,managed:false},legacyMetadata:{keep:'原文'}};};
 test('recognized protected builtin documentation appends a revision retaining every old byte and unrelated field',()=>{const n=legacy(),before=structuredClone(n),updates=builtinToolUpdates([n],builtinToolNotes);assert.equal(updates.length,1);const u=updates[0];assert.deepEqual(n,before);assert.equal(u.id,n.id);assert.deepEqual(u.revisions[0],n.revisions[0]);assert.equal(u.revisions[1].body,builtinToolNotes.find(s=>s.id===n.id).body);assert.equal(u.revisions[1].version,2);assert.deepEqual(u.legacyMetadata,n.legacyMetadata);assert.deepEqual(u.ui,n.ui);assert.equal(builtinToolUpdates([u],builtinToolNotes).length,0);});
 test('unknown, modified, moved, withdrawn, unprotected, managed, imported and historical user variants stay untouched',()=>{const n=legacy(),cases=[{...n,id:'user-note'},{...n,ui:{protected:false}},{...n,ui:{protected:true,managed:true}},{...n,state:'withdrawn'},{...n,aliases:['custom']},{...n,importedFrom:{name:'import.md'}},{...n,originalAsset:{id:'asset'}},{...n,revisions:[{...n.revisions[0],body:n.revisions[0].body+'\nUser change'}]},{...n,revisions:[{...n.revisions[0],path:'Notes/README.md'}]},{...n,revisions:[n.revisions[0],{...n.revisions[0],version:2}]}];for(const c of cases){const before=structuredClone(c);assert.deepEqual(builtinToolUpdates([c],builtinToolNotes),[]);assert.deepEqual(c,before);}assert.deepEqual(builtinToolUpdates([n],[]),[]);});
@@ -21,6 +22,8 @@ test('current reviewed Memory settings and user tool packages are described with
  assert.match(body,/diagnosticLogs/);assert.match(body,/never changes downloads, network mode/i);
  assert.match(readme,/Tools\/user\.<id>/i);assert.match(readme,/QuickJS/i);assert.match(readme,/explicitly enabled in a profile/i);assert.match(readme,/network.*write/i);
  assert.match(readme,/sanitized local diagnostic logging/i);assert.match(readme,/remain user-controlled/i);
+ for(const capability of CUSTOM_TOOL_CAPABILITIES)assert.ok(readme.includes(capability),`current Tools guide must describe registered custom capability ${capability}`);
+ assert.match(readme,/no network, direct Memory-write or permission-grant capability/i);
 });
 
 test('exact previous current tool documentation upgrades by appending one revision',()=>{
