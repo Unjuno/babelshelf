@@ -19,3 +19,19 @@ test('explicitly excluded English meeting locations are checked without blocking
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'Bring a blue notebook.',evidence));
  assert.doesNotThrow(()=>checkAnswerConsistency('Where is the meeting location?','The meeting location is North gate.',evidence));
 });
+
+test('generic excluded location details are checked only when the user explicitly excludes them',()=>{
+ const english='List only the supplies. Exclude the location.';
+ const englishEvidence=[{quote:'Supplies: a blue notebook. Location: North gate.'}];
+ assert.throws(()=>checkAnswerConsistency(english,'Bring a blue notebook. Meet at North gate.',englishEvidence),/excluded detail/i);
+ assert.throws(()=>checkAnswerConsistency(english,'Bring a blue notebook. Location: North gate.',englishEvidence),/excluded detail/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency(english,'Bring a blue notebook.',englishEvidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency('Where is the location?','The location is North gate.',englishEvidence));
+
+ const japanese='持ち物だけ教えてください。場所は書かないでください。';
+ const japaneseEvidence=[{quote:'持ち物：青いノート。場所：北口。'}];
+ assert.throws(()=>checkAnswerConsistency(japanese,'青いノートを持っていってください。北口で集合します。',japaneseEvidence),/excluded detail/i);
+ assert.throws(()=>checkAnswerConsistency(japanese,'青いノートを持っていってください。場所は北口です。',japaneseEvidence),/excluded detail/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency(japanese,'青いノートを持っていってください。',japaneseEvidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency('場所はどこですか？','場所は北口です。',japaneseEvidence));
+});

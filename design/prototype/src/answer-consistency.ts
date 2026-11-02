@@ -3,14 +3,16 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  const q=question.normalize('NFKC'),a=answer.normalize('NFKC').trim();
  // Respect a small set of explicit "leave this out" instructions. This is a
  // lexical scope guard, not a general-purpose interpretation of user intent.
- const excludedMeetingPlace=/(?:集合場所|待ち合わせ場所|会場|meeting\s+(?:place|location|venue)|venue|address).{0,24}(?:含めない|書かない|省(?:いて|く)|除外|触れない|不要|いらない|do\s+not\s+include|don't\s+include|omit|exclude|leave\s+out|skip|not\s+include)|(?:含めない|書かない|省(?:いて|く)|除外|触れない|不要|いらない|do\s+not\s+include|don't\s+include|omit|exclude|leave\s+out|skip|not\s+include).{0,24}(?:集合場所|待ち合わせ場所|会場|meeting\s+(?:place|location|venue)|venue|address)/iu.test(q);
+ const placeTerm='(?:集合場所|待ち合わせ場所|会場|場所|meeting\\s+(?:place|location|venue)|location|place|venue|address)';
+ const exclusionTerm="(?:含めない|書かない|省(?:いて|く)|除外|触れない|不要|いらない|do\\s+not\\s+include|don't\\s+include|omit|exclud(?:e|ing)|leave\\s+out|skip|not\\s+include)";
+ const excludedMeetingPlace=new RegExp(`${placeTerm}.{0,24}${exclusionTerm}|${exclusionTerm}.{0,24}${placeTerm}`,'iu').test(q);
  if(excludedMeetingPlace){
-  const placeLabels=/(?:集合場所|待ち合わせ場所|会場|meeting\s+(?:place|location|venue)|venue|address)/iu;
+  const placeLabels=new RegExp(placeTerm,'iu');
   if(placeLabels.test(a))throw Error('Answer includes an explicitly excluded detail · try again');
   const sourceRowsForPlace=(sourceEvidence??[]).filter(item=>typeof item?.quote==='string').map(item=>item.quote!.normalize('NFKC'));
   const placeValues=sourceRowsForPlace.flatMap(source=>{
    const values:string[]=[];
-   const patterns=[/(?:集合場所|待ち合わせ場所|会場|住所)\s*(?:は|が|:|：)\s*([^。.!！?？,，;；\n]{1,48})/gu,/(?:meeting\s+(?:place|location|venue)|venue|address)\s*[:：]\s*([^.!?;\n]{1,48})/giu];
+   const patterns=[/(?:集合場所|待ち合わせ場所|会場|住所|場所)\s*(?:は|が|:|：)\s*([^。.!！?？,，;；\n]{1,48})/gu,/(?:meeting\s+(?:place|location|venue)|location|place|venue|address)\s*(?:(?:is|was)\s+|[:：])\s*([^.!?;\n]{1,48})/giu];
    for(const pattern of patterns)for(const match of source.matchAll(pattern))if(match[1])values.push(match[1].trim().replace(/(?:です|でした|となります|になります)[。.!！?？]?$/u,'').trim());
    return values;
   }).filter(value=>value.length>1);
