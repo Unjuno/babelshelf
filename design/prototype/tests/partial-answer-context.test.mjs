@@ -63,7 +63,8 @@ test('answer packing omits fully covered excerpts without merging distinct evide
  let supplied;const refs=[whole,inside,overlap,distinct,coverage],before=structuredClone(refs);
  const engine={loaded:'test',assets:{},manifest:{contextTokens:8192,models:[{id:'test',revision:'r1'}],runtime:{revision:'engine1'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{supplied=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]).evidence;return {text:JSON.stringify({status:'answered',answer:'Alpha.',sources:['S1']})};}};
  const result=await groundedAnswer({store:{all:async()=>[note,other],search:async()=>[]},engine},{model:'test',question:'Explain the source.',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true}});
- assert.equal(supplied.length,4);assert.deepEqual(supplied.map(x=>[x.start,x.end,x.title,x.coverage]),[whole,distinct,overlap,coverage].map(x=>[x.start,x.end,x.title,x.coverage]));
+	assert.equal(supplied.length,4);assert.deepEqual(supplied.map(x=>[x.title,x.quote,x.coverage]),[whole,distinct,overlap,coverage].map(x=>[x.title,x.quote,x.coverage]));
+	for(const item of supplied)assert.equal(Object.hasOwn(item,'start')||Object.hasOwn(item,'end'),false,'citation offsets remain host-only');
  assert.equal(result.sources[0].noteId,note.id);assert.equal(result.sources[0].start,0);assert.equal(result.sources[0].end,12);assert.equal(result.sources[0].quote,whole.quote);assert.deepEqual(refs,before);
 });
 
