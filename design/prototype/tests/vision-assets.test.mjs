@@ -6,7 +6,7 @@ import {visionAsset,visionManifest,verifyVisionBytes,verifyVisionStream,visionRu
 
 test('vision runtime requests a high-performance WebGPU adapter before its first ONNX session',()=>{
  const worker=fs.readFileSync(new URL('../src/vision-worker.ts',import.meta.url),'utf8');
- assert.match(worker,/env\.backends\.onnx\.webgpu\)env\.backends\.onnx\.webgpu\.powerPreference='high-performance'/);
+ assert.match(worker,/configureLocalTransformerRuntime\(env,wasmURL,mjsURL\)/);
  assert.match(worker,/requestAdapter\(\{powerPreference:'high-performance'\}\)/);
  assert.doesNotMatch(worker,/powerPreference:'low-power'/);
 });
