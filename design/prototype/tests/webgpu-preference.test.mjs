@@ -23,6 +23,28 @@ test('a rejected high-performance request retries once without the preference',a
  assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
 });
 
+test('installing the runtime preference twice does not nest adapter retries',async()=>{
+ const calls=[],gpu={requestAdapter:async function(options){assert.equal(this,gpu);calls.push(options);return null;}};
+ assert.equal(preferHighPerformanceAdapterRequests(gpu),true);const installed=gpu.requestAdapter;
+ assert.equal(preferHighPerformanceAdapterRequests(gpu),true);assert.equal(gpu.requestAdapter,installed);
+ assert.equal(await gpu.requestAdapter(),null);
+ assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
+});
+
+test('a capability probe unwraps the runtime preference and performs at most one default retry',async()=>{
+ const calls=[],gpu={requestAdapter:async function(options){assert.equal(this,gpu);calls.push(options);return calls.length===1?null:null;}};
+ preferHighPerformanceAdapterRequests(gpu);
+ assert.equal(await requestAdapterWithFallback(gpu),null);
+ assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
+});
+
+test('Stop during a wrapped capability probe prevents the default retry',async()=>{
+ let resolvePreferred;const calls=[],controller=new AbortController(),gpu={requestAdapter:options=>{calls.push(options);return new Promise(resolve=>{resolvePreferred=resolve;});}};
+ preferHighPerformanceAdapterRequests(gpu);
+ const pending=requestAdapterWithFallback(gpu,undefined,controller.signal);await Promise.resolve();controller.abort();resolvePreferred(null);
+ await assert.rejects(pending,/Stopped/);assert.deepEqual(calls,[{powerPreference:'high-performance'}]);
+});
+
 test('Stop after a pending preferred request prevents the compatibility retry',async()=>{
  let resolvePreferred;const calls=[],controller=new AbortController(),gpu={requestAdapter:options=>{calls.push(options);return new Promise(resolve=>{resolvePreferred=resolve;});}};
  const pending=requestAdapterWithFallback(gpu,undefined,controller.signal);await Promise.resolve();controller.abort();resolvePreferred(null);
