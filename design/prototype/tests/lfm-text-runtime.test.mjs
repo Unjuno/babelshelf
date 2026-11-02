@@ -96,6 +96,15 @@ test('a validated custom LFM2 record becomes a hash-pinned local-only model on t
  const m=describeLfmText([custom],custom.id).models.at(-1);assert.equal(m.id,custom.id);assert.equal(m.file.sha256,sha);assert.equal(m.engine,'wllama-cpu-count');assert.equal(m.contextTokens,4096);assert.equal(m.runtime.revision,describeLfmText().runtime.revision);assert.equal(m.url,undefined);
 });
 function fixture(){const calls=[],file=new Blob(['weights']),adapter={loaded:null,supportsExactCount:true,maxReplyTokens:768,async load(_f,id,{backend}){calls.push(['load',backend]);this.loaded=id;},async unload(){calls.push(['unload']);this.loaded=null;},abort(){calls.push(['stop']);},async count(){calls.push(['count']);return 20;},async generate(_m,o){calls.push(['generate',o]);return {text:o.jsonSchema?'{ "action" : "chat" , "query" : "" }':'{"answer":"valid"}'};}};const manifest={contextTokens:2048,runtime:{revision:'fixed-count-runtime'},models:[{id:'local',revision:'weights-sha',contextTokens:2048,file:{name:'local.gguf',bytes:file.size}}]},runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>file,readAssets:()=>({local:{filesPresent:true}})});return {runtime,adapter,calls,manifest};}
+test('runtime reports the selected WASM resource variant, preserves it while warm, and clears it on unload',async()=>{
+ const f=fixture();f.adapter.load=async(_file,id)=>{f.adapter.loaded=id;f.adapter.info={workerResources:{compat:true}};return {};};
+ assert.equal((await f.runtime.load('local')).runtimeVariant,'compatibility');
+ assert.equal((await f.runtime.load('local')).runtimeVariant,'compatibility','warm load reports resident runtime mode');
+ await f.runtime.unload();f.adapter.load=async(_file,id)=>{f.adapter.loaded=id;f.adapter.info={workerResources:{compat:false}};return {};};
+ assert.equal((await f.runtime.load('local')).runtimeVariant,'standard');
+ await f.runtime.unload();f.adapter.load=async(_file,id)=>{f.adapter.loaded=id;f.adapter.info={};return {};};
+ assert.equal('runtimeVariant' in await f.runtime.load('local'),false,'unknown mode is omitted instead of inferred');
+});
 
 test('LFM3 load returns bounded stage timings from the adapter without runtime metadata',async()=>{
  const f=fixture();f.adapter.load=async(_file,id)=>{f.adapter.loaded=id;return {verificationMs:121,runtimeLoadMs:38219,loadMs:38340,template:'PRIVATE-TEMPLATE',context:{private:'metadata'}};};

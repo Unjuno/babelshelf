@@ -4,7 +4,7 @@ export type GenerationFormat=StructuredFormat|'prose';
 export type NativeToolDefinition={type:'function';function:{name:string;description:string;parameters:Record<string,unknown>}};
 export type NativeToolPlanFormat={type:'native-tool-plan';tools:NativeToolDefinition[]};
 export type EngineGenerationFormat=GenerationFormat|NativeToolPlanFormat;
-export type RuntimeLoadMetrics={verificationMs?:number;importMs?:number;runtimeLoadMs?:number;totalLoadMs?:number;runtimeModuleReused?:boolean;executionBackend?:'webgpu'|'cpu-wasm'};
+export type RuntimeLoadMetrics={verificationMs?:number;importMs?:number;runtimeLoadMs?:number;totalLoadMs?:number;runtimeModuleReused?:boolean;executionBackend?:'webgpu'|'cpu-wasm';runtimeVariant?:'standard'|'compatibility'};
 /** Optional worker-reported load phases only; never adapter identity or raw output. */
 export function safeRuntimeLoadMetrics(value:unknown):RuntimeLoadMetrics|undefined{
  if(!value||typeof value!=='object'||Array.isArray(value))return;
@@ -12,6 +12,7 @@ export function safeRuntimeLoadMetrics(value:unknown):RuntimeLoadMetrics|undefin
  for(const key of ['verificationMs','importMs','runtimeLoadMs','totalLoadMs'] as const){const n=source[key];if(typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=Number.MAX_SAFE_INTEGER)result[key]=n;}
  if(typeof source.runtimeModuleReused==='boolean')result.runtimeModuleReused=source.runtimeModuleReused;
  if(source.executionBackend==='webgpu'||source.executionBackend==='cpu-wasm')result.executionBackend=source.executionBackend;
+ if(source.runtimeVariant==='standard'||source.runtimeVariant==='compatibility')result.runtimeVariant=source.runtimeVariant;
  return Object.keys(result).length?result:undefined;
 }
 export type RuntimeGenerationMetrics={countMs?:number;visibleTextTtftMs?:number;generationMs?:number;outputTokens?:number;generationTokensPerSecond?:number;runtimeTtftMs?:number;runtimePrefillMs?:number;runtimeDecodeMs?:number;runtimeDecodeTokensPerSecond?:number;runtimePromptTokens?:number;runtimeCachedTokens?:number;requestedThreads?:number;runtimeThreads?:number;runtimeObservedGpuLayers?:number;runtimeObservedGpuTotalLayers?:number;decodePipelineDepth?:number;memoryBefore?:Record<string,number>;memoryAfter?:Record<string,number>};
