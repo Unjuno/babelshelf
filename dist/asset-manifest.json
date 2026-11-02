@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "e19870e6808990d33064da23a946dedcc32a0628932a14b8c3e4fda24f946bd1"
+      "sha256": "2ddee96ee5699408e0ae5d72e731a7316a151615480bf51f858d6ae2268045a5"
     },
     {
       "path": "./ui.js",
@@ -203,8 +203,8 @@
     },
     {
       "path": "./webgpu-preflight.js",
-      "bytes": 1597,
-      "sha256": "a81da71ede98f8ccb295d1ba781011e98afd2172c13f75afbf5902b61edfcceb"
+      "bytes": 1739,
+      "sha256": "b4b844e961ee9e1a495e20e09774f3231f12323efd681e34729c9fbee5ff4a6d"
     }
   ]
 }

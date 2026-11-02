@@ -9,18 +9,18 @@ export async function requestHighPerformanceAdapter(gpu,{timeoutMs=8000,signal}=
  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>30000)throw Error('Invalid WebGPU check timeout');
  if(!gpu||typeof gpu.requestAdapter!=='function')throw unavailable('WebGPU unavailable');
  if(signal?.aborted)throw Error('Stopped');
- const timeout=Symbol('timeout'),stopped=Symbol('stopped');let timer,abort;
+ const timeout=Symbol('timeout'),stopped=Symbol('stopped'),requestController=new AbortController();let timer,abort;
  try{
   const outcomes=[
-   Promise.resolve().then(()=>requestAdapterWithFallback(gpu,undefined,signal)).then(adapter=>({kind:'adapter',adapter}),error=>({kind:'error',error})),
-   new Promise(resolve=>{timer=setTimeout(()=>resolve({kind:timeout}),timeoutMs);}),
+   Promise.resolve().then(()=>requestAdapterWithFallback(gpu,undefined,requestController.signal)).then(adapter=>({kind:'adapter',adapter}),error=>({kind:'error',error})),
+   new Promise(resolve=>{timer=setTimeout(()=>{requestController.abort();resolve({kind:timeout});},timeoutMs);}),
   ];
-  if(signal)outcomes.push(new Promise(resolve=>{abort=()=>resolve({kind:stopped});signal.addEventListener('abort',abort,{once:true});}));
+  if(signal)outcomes.push(new Promise(resolve=>{abort=()=>{requestController.abort();resolve({kind:stopped});};signal.addEventListener('abort',abort,{once:true});}));
   const result=await Promise.race(outcomes);
   if(result.kind===timeout)throw unavailable('WebGPU check timed out · retry');
   if(result.kind===stopped||signal?.aborted)throw Error('Stopped');
   if(result.kind==='error')throw unavailable('WebGPU check failed · retry',result.error);
   if(!result.adapter)throw unavailable('WebGPU unavailable');
   return result.adapter;
- }finally{if(timer)clearTimeout(timer);if(abort)signal.removeEventListener('abort',abort);}
+ }finally{requestController.abort();if(timer)clearTimeout(timer);if(abort)signal.removeEventListener('abort',abort);}
 }

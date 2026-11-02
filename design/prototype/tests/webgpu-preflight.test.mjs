@@ -15,6 +15,15 @@ test('WebGPU preflight retries default adapter selection when high-performance r
  assert.equal(adapter,'default-adapter');assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
 });
 
+test('timed-out preferred adapter checks do not retry after a late null response',async()=>{
+ let finishPreferred;const calls=[];
+ const gpu={requestAdapter:options=>{calls.push(options);return calls.length===1?new Promise(resolve=>{finishPreferred=resolve;}):Promise.resolve('default-adapter');}};
+ await assert.rejects(requestHighPerformanceAdapter(gpu,{timeoutMs:10}),error=>error.code==='webgpu_unavailable'&&/timed out/.test(error.message));
+ finishPreferred(null);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(calls,[{powerPreference:'high-performance'}]);
+});
+
 test('missing, rejected, and timed-out adapter checks use the fallback error code',async()=>{
  for(const [gpu,timeoutMs,message] of [
   [undefined,10,/WebGPU unavailable/],
