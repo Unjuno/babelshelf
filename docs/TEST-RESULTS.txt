@@ -7912,6 +7912,8 @@ otherwise Developer reports “Not confirmed”. Explicit CPU/WASM and verified
 evidence retained on warm model reuse are covered. Focused adapter/runtime
 tests passed 77/77, Developer diagnostics UI passed 25/25, `npm run check`
 passed, `git diff --check` passed, and `npm run build:app` built 163 verified
-shell assets. This is truthful diagnostics, not a performance improvement.
+shell assets. Clean-checkout GitHub Actions run
+[41399403153](https://github.com/Unjuno/babelshelf/actions/runs/41399403153)
+passed every stage in 11m59s. This is truthful diagnostics, not a performance improvement.
 No real model timing was collected on Windows, iPhone, Android or Mac in this
 run; matched speed, memory, fit and sustained-load comparisons remain open.
