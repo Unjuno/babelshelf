@@ -44,7 +44,8 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
   // failed first install.
   const handoff=[...observed].find(candidate=>candidate.state==='activated'||candidate.state==='activating'||candidate.state==='installed');
   const active=registration.active;
-  publish(active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff||active?.state==='activating'?'Installing':worker?.state==='redundant'||active?.state==='redundant'?'Preparation failed':'Checking');
+  const failedInstall=[...observed].some(candidate=>candidate.state==='redundant');
+  publish(active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff||active?.state==='activating'?'Installing':worker?.state==='redundant'||active?.state==='redundant'||failedInstall?'Preparation failed':'Checking');
  };
  registration.addEventListener('updatefound',refresh);refresh();return()=>{stopped=true;registration.removeEventListener('updatefound',refresh);for(const worker of observed)worker.removeEventListener('statechange',refresh);};
 }

@@ -103,6 +103,11 @@ test('Offline requires controller acknowledgement and never claims enforcement f
  assert.equal(await enforceOfflineNetwork(null),false);
 });
 test('failed first app installation is visible and never becomes Installed',()=>{const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;const states=[];const stop=observeOfflineRegistration(registration,s=>states.push(s));worker.set('redundant');assert.deepEqual(states,['Installing','Preparation failed']);stop();});
+test('a failed install remains visible after the browser clears registration.installing',()=>{
+ const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;const states=[],stop=observeOfflineRegistration(registration,s=>states.push(s));
+ registration.installing=null;worker.set('redundant');
+ assert.deepEqual(states,['Installing','Preparation failed']);stop();
+});
 test('a registration with no published worker stays pending until the first install appears',()=>{
  const registration=new EventTarget(),states=[],stop=observeOfflineRegistration(registration,s=>states.push(s));
  assert.deepEqual(states,['Checking']);
