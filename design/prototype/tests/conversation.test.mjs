@@ -882,6 +882,19 @@ test('explicitly excluded details get one grounded repair and cannot become a na
  await assert.rejects(groundedAnswer({store,engine:runtime},{...request,toolEvidence:terminal,reply:{status:'answered',answer:'持ち物は青いノートです。集合場所は北口です。',sources:[ref]}}),/explicitly excluded detail/i);
 });
 
+test('generic Japanese location exclusions survive grounded correction and reject native answers',async()=>{
+ const question='持ち物だけ教えてください。場所は書かないでください。';
+ const note=createNote({path:'Inbox/meeting.md',body:'持ち物：青いノート。場所：北口。'}),quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote},store={all:async()=>[note],search:async()=>[ref]};
+ let calls=0;const prompts=[],runtime={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},generate:async messages=>{prompts.push(messages);calls++;return {text:JSON.stringify({status:'answered',answer:calls===1?'青いノートを持っていってください。北口で集合します。':'青いノートを持っていってください。',sources:['S1']})};}};
+ const request={model:'4B',question,mode:'answer',scope:{kind:'knowledge'}},repaired=await groundedAnswer({store,engine:runtime},request);
+ assert.equal(calls,2);assert.equal(repaired.answer,'青いノートを持っていってください。');assert.deepEqual(repaired.sources,[ref]);
+ assert.match(prompts[1][0].content,/failed a deterministic source-consistency check/i);
+ calls=0;runtime.generate=async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'青いノートを持っていってください。場所は北口です。',sources:['S1']})};};
+ await assert.rejects(groundedAnswer({store,engine:runtime},request),/explicitly excluded detail/i);assert.equal(calls,2);
+ const terminal={used:true,refs:[ref],memoryUsed:true};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{...request,toolEvidence:terminal,reply:{status:'answered',answer:'青いノートを持っていってください。北口で集合します。',sources:[ref]}}),/explicitly excluded detail/i);
+});
+
 test('consistency repair refuses a source changed during the first generation',async()=>{
  let note=createNote({body:'The reserve contains 17 litres of water.'});
  const body=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:body.length,quote:body};let calls=0;
