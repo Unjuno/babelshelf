@@ -36,7 +36,7 @@ test('an untouched schema-1 Standard default is modernized only after full befor
   const {KnowledgeStore}=await import('/src/knowledge-store.ts');const store=new KnowledgeStore();
   try{const db=await store.open();await new Promise<void>((resolve,reject)=>{
    const tx=db.transaction(['notes'],'readwrite'),notes=tx.objectStore('notes'),request=notes.get('settings-harness');
-   request.onsuccess=()=>{const record=request.result,revision=record.revisions.at(-1),match=revision.body.match(/```json\n([\s\S]+)\n```/),value=JSON.parse(match[1]);value.schemaVersion=1;value.profiles=value.profiles.map((profile:any)=>profile.id==='standard'?{...profile,enabledTools:['memory.search','memory.read','math.calculate'],maxToolCalls:3}:profile.id==='source-first'?{...profile,enabledTools:['memory.search','memory.read'],maxToolCalls:2}:profile);revision.body=revision.body.replace(match[1],JSON.stringify(value,null,2));record.body=revision.body;notes.put(record);};
+   request.onsuccess=()=>{const record=request.result,revision=record.revisions.at(-1),match=revision.body.match(/```json\n([\s\S]+)\n```/),value=JSON.parse(match[1]);value.schemaVersion=1;value.profiles=value.profiles.map((profile:any)=>{const {maxGenerationTokens,maxGenerationMs,...legacy}=profile;return profile.id==='standard'?{...legacy,enabledTools:['memory.search','memory.read','math.calculate'],maxToolCalls:3}:profile.id==='source-first'?{...legacy,enabledTools:['memory.search','memory.read'],maxToolCalls:2}:legacy;});revision.body=revision.body.replace(match[1],JSON.stringify(value,null,2));record.body=revision.body;notes.put(record);};
    tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error??Error('Fixture failed'));
   });}finally{store.close();}
  });
