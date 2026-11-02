@@ -1,3 +1,18 @@
+2026-11-02 — First service-worker registration race during offline-shell preparation.
+An isolated PC Chrome Q8 product-flow report stopped before model discovery or
+download: its app-shell status was `Preparation failed`, with no external
+requests or responses. `observeOfflineRegistration()` treated the brief state
+after `register()` resolves but before `installing` is published as a failed
+installation. It now remains `Checking` until a worker appears or a real error
+occurs. A regression covers the empty-registration → `updatefound` → activated
+worker sequence, including `prepareOfflineAppShell()`. Focused offline-shell
+tests passed 26/26; `npm run check` and the production build passed (163
+verified shell assets). Commit `5b93514` passed complete clean-checkout GitHub
+Actions run [41373012895](https://github.com/Unjuno/babelshelf/actions/runs/41373012895)
+in 10m26s. This fixes the observed prerequisite failure, but the Q8 model flow
+was not rerun after the fix; model download, generation, citation and save remain
+unverified for that attempted flow. No public deployment or phone test occurred.
+
 2026-11-01 — Multi-source citation binding and bounded answer correction.
 Numeric comparisons across titled sources now need each value bound to the
 exact source title in its own sentence/clause. Ambiguous unlabeled lists are
