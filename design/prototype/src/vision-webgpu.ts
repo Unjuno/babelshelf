@@ -1,3 +1,5 @@
+import {requestAdapterWithFallback} from './webgpu-preference.ts';
+
 type VisionGpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown|null>};
 
 /** Check this model's required browser capability before acquiring large assets.
@@ -10,7 +12,7 @@ export async function requireVisionWebGPU(gpu:VisionGpuPort|null|undefined,timeo
  let timer:ReturnType<typeof setTimeout>|undefined,abort:()=>void=()=>{};
  try{
   const timeout=Symbol('timeout'),stopped=Symbol('stopped');
-  const adapter=await Promise.race([gpu.requestAdapter({powerPreference:'high-performance'}),new Promise<typeof timeout>(resolve=>{timer=setTimeout(()=>resolve(timeout),timeoutMs);}),...(signal?[new Promise<typeof stopped>(resolve=>{abort=()=>resolve(stopped);signal.addEventListener('abort',abort,{once:true});})]:[])]);
+  const adapter=await Promise.race([requestAdapterWithFallback(gpu,undefined,signal),new Promise<typeof timeout>(resolve=>{timer=setTimeout(()=>resolve(timeout),timeoutMs);}),...(signal?[new Promise<typeof stopped>(resolve=>{abort=()=>resolve(stopped);signal.addEventListener('abort',abort,{once:true});})]:[])]);
   if(adapter===stopped)throw Error('Stopped');
   if(adapter===timeout)throw Error('WebGPU check timed out · retry');
   if(!adapter)throw Error('No compatible WebGPU adapter is available · this image model needs WebGPU');

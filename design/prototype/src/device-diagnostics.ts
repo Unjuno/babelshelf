@@ -1,5 +1,6 @@
 import type {DeviceTestMode} from './device-model-test.ts';
 import {safeRuntimeMetrics,safeRuntimeLoadMetrics,type RuntimeLoadMetrics,type RuntimeGenerationMetrics} from './text-inference.ts';
+import {requestAdapterWithFallback} from './webgpu-preference.ts';
 export type DiagnosticCheck={id:string;status:'pass'|'fail'|'warning'|'not-run';detail:string};
 export type ModelGenerationDiagnostic={status:'pass'|'fail'|'not-run'|'stopped'|'interrupted';testMode?:DeviceTestMode;quantization?:string;workload?:'ready-v1'|'prose-128-v1'|'prose-128-v2';inputTokens?:number;maxOutputTokens?:number;loadState?:'already-loaded'|'loaded-for-test'|'not-loaded';failureStage?:'load'|'runtime-setup'|'model-load'|'count'|'generation'|'output-validation'|'unload';model:string;modelRevision:string;runtimeRevision:string;loadDurationMs?:number;loadMetrics?:RuntimeLoadMetrics;durationMs?:number;outputTokens?:number;tokensPerSecond?:number;answerCharacters?:number;failureType?:string;runtimeMetrics?:RuntimeGenerationMetrics};
 export type SelectedModelDiagnostic={id:string;revision:string;engine?:string;backend?:'webgpu'|'cpu-wasm';runtimeRevision:string;contextTokens?:number;filesPresent:boolean;loaded:boolean};
@@ -196,7 +197,7 @@ async function boundedCacheKeys(cache:Pick<CacheStorage,'keys'>,timeoutMs=5000):
 async function inspectWebGpuAdapter(gpu:NonNullable<DiagnosticEnvironment['gpu']>):Promise<WebGpuDiagnostic>{
  let timer:ReturnType<typeof setTimeout>|undefined;
  try{
-  const adapter=await Promise.race([gpu.requestAdapter({powerPreference:'high-performance'}),new Promise<null>(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]) as {features?:Iterable<unknown>;limits?:Record<string,unknown>;isFallbackAdapter?:unknown}|null;
+  const adapter=await Promise.race([requestAdapterWithFallback(gpu),new Promise<null>(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]) as {features?:Iterable<unknown>;limits?:Record<string,unknown>;isFallbackAdapter?:unknown}|null;
   if(!adapter)return emptyWebGpuDiagnostic();
   const features=[...new Set(Array.from(adapter.features??[]).filter((feature):feature is string=>typeof feature==='string'&&/^[a-z0-9-]{1,64}$/.test(feature)))].sort().slice(0,64),limits:WebGpuDiagnostic['limits']={};
   for(const name of WEBGPU_DIAGNOSTIC_LIMIT_NAMES){const value=adapter.limits?.[name];if(typeof value==='number'&&Number.isSafeInteger(value)&&value>0)limits[name]=value;}
@@ -250,7 +251,7 @@ export async function runDeviceDiagnostics(env:DiagnosticEnvironment={}):Promise
  const gpu=env.gpu===undefined?(globalThis.navigator as Navigator&{gpu?:NonNullable<DiagnosticEnvironment['gpu']>}|undefined)?.gpu:env.gpu;
  let webgpu=emptyWebGpuDiagnostic();
  if(!gpu)add('webgpu','not-run','WebGPU API unavailable; CPU/WASM may still be supported');
- else {webgpu=await inspectWebGpuAdapter(gpu);add('webgpu',webgpu.available?'pass':'warning',webgpu.available?'Adapter available; performance preference requested; limits recorded; model execution and memory fit not tested':'Adapter unavailable or timed out');}
+ else {webgpu=await inspectWebGpuAdapter(gpu);add('webgpu',webgpu.available?'pass':'warning',webgpu.available?'Adapter available; high-performance preference tried with default-selection fallback; limits recorded; model execution and memory fit not tested':'Adapter unavailable or timed out');}
  if(!env.selectedModel)add('selected-model','not-run','No text model selected');
  else if(!env.modelFilesPresent)add('selected-model','warning',`${env.selectedModel}: model files not verified`);
  else add('selected-model',env.modelLoaded?'pass':'warning',`${env.selectedModel}: files verified${env.modelLoaded?' and model loaded':' ; generation not tested'}`);

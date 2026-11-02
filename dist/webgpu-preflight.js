@@ -1,3 +1,5 @@
+import {requestAdapterWithFallback} from './webgpu-preference.js';
+
 function unavailable(message,cause){
  const error=Error(message);error.code='webgpu_unavailable';if(cause!==undefined)error.cause=cause;return error;
 }
@@ -10,7 +12,7 @@ export async function requestHighPerformanceAdapter(gpu,{timeoutMs=8000,signal}=
  const timeout=Symbol('timeout'),stopped=Symbol('stopped');let timer,abort;
  try{
   const outcomes=[
-   Promise.resolve().then(()=>gpu.requestAdapter({powerPreference:'high-performance'})).then(adapter=>({kind:'adapter',adapter}),error=>({kind:'error',error})),
+   Promise.resolve().then(()=>requestAdapterWithFallback(gpu,undefined,signal)).then(adapter=>({kind:'adapter',adapter}),error=>({kind:'error',error})),
    new Promise(resolve=>{timer=setTimeout(()=>resolve({kind:timeout}),timeoutMs);}),
   ];
   if(signal)outcomes.push(new Promise(resolve=>{abort=()=>resolve({kind:stopped});signal.addEventListener('abort',abort,{once:true});}));

@@ -1,3 +1,5 @@
+import {requestAdapterWithFallback} from './webgpu-preference.ts';
+
 type DecisionGpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown|null>};
 export type DecisionGpuProbe='available'|'unavailable'|'timed-out';
 
@@ -10,7 +12,7 @@ export async function probeDecisionWebGPU(gpu:DecisionGpuPort|null|undefined,tim
  try{
   const timeout=Symbol('timeout'),stopped=Symbol('stopped');
   const result=await Promise.race([
-   Promise.resolve().then(()=>gpu.requestAdapter({powerPreference:'high-performance'})).then(adapter=>adapter?'available' as const:'unavailable' as const,()=> 'unavailable' as const),
+   Promise.resolve().then(()=>requestAdapterWithFallback(gpu,undefined,signal)).then(adapter=>adapter?'available' as const:'unavailable' as const,()=> 'unavailable' as const),
    new Promise<typeof timeout>(resolve=>{timer=setTimeout(()=>resolve(timeout),timeoutMs);}),
    ...(signal?[new Promise<typeof stopped>(resolve=>{abort=()=>resolve(stopped);signal.addEventListener('abort',abort,{once:true});})]:[]),
   ]);

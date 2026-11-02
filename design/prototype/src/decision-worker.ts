@@ -8,10 +8,12 @@ import type {CustomDecisionModel} from './preference-records';
 import {DecisionContextError,encodeDecision,decisionAnswer,validateDecisionQuestion,type DecisionQuestion} from './decision';
 import {createDecisionSession} from './decision-execution';
 import {probeDecisionWebGPU} from './decision-webgpu';
+import {preferHighPerformanceAdapterRequests} from './webgpu-preference.ts';
 // Apply before session creation; ONNX Runtime passes this preference to
 // requestAdapter. It does not prove which adapter or execution path is used.
 ort.env.webgpu.powerPreference='high-performance';
 const networkFetch=globalThis.fetch.bind(globalThis);
+preferHighPerformanceAdapterRequests((globalThis.navigator as Navigator&{gpu?:{requestAdapter:(options?:{powerPreference?:'high-performance'|'low-power'})=>Promise<unknown>}}|undefined)?.gpu);
 const localRuntime=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{const url=typeof input==='string'?input:input instanceof URL?input.href:input.url;return localRuntime.has(new URL(url,location.href).href)?networkFetch(input,options):Promise.reject(Error('Network disabled for decisions'));};
 env.allowRemoteModels=false;env.allowLocalModels=false;

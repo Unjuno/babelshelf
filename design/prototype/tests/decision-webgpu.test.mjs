@@ -8,6 +8,11 @@ test('Decision GPU probe requests a high-performance adapter but reports only av
  assert.equal(await probeDecisionWebGPU({requestAdapter:()=>{throw Error('GPU service stopped');}}),'unavailable');
 });
 
+test('Decision GPU probe retries default browser adapter selection after a null preferred result',async()=>{
+ const calls=[];assert.equal(await probeDecisionWebGPU({requestAdapter:async options=>{calls.push(options);return calls.length===1?null:{};}}),'available');
+ assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
+});
+
 test('Decision GPU probe times out and lets its caller continue to WASM',async()=>{
  assert.equal(await probeDecisionWebGPU({requestAdapter:()=>new Promise(()=>{})},5),'timed-out');
 });

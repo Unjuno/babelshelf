@@ -200,14 +200,14 @@ test('automatic backend reports both routes when CPU/WASM preflight fails after 
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}})});
  await assert.rejects(runtime.load('local'),error=>error.code==='backend_fallback_failed'&&error.cause===cpuFailure&&error.gpuFailure?.cause===gpuFailure&&error.message==='WebGPU model load failed · CPU/WASM retry failed');assert.deepEqual(f.calls,[['preflight','webgpu'],['unload'],['load-attempt','webgpu'],['unload'],['preflight','cpu']]);
 });
-test('GGUF adapter requests high-performance WebGPU and rejects absence before inspecting or hashing the file',async()=>{
- const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');let fileSizeReads=0,runtimeConstructions=0,adapterOptions;
- Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{requestAdapter:async options=>{adapterOptions=options;return null;}}}});
+test('GGUF adapter tries preferred and default WebGPU selection, then rejects absence before hashing the file',async()=>{
+ const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');let fileSizeReads=0,runtimeConstructions=0;const adapterOptions=[];
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{requestAdapter:async options=>{adapterOptions.push(options);return null;}}}});
  try{
   const adapter=new PreparedGgufAdapter({Wllama:class{constructor(){runtimeConstructions++;}},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[{id:'local',contextTokens:2048,file:{bytes:1,sha256:'a'.repeat(64)}}],architecture:'lfm3'});
   const file={get size(){fileSizeReads++;return 1;}};
   await assert.rejects(adapter.load(file,'local',{backend:'webgpu'}),/WebGPU unavailable/);
-  assert.deepEqual(adapterOptions,{powerPreference:'high-performance'});assert.equal(fileSizeReads,0);assert.equal(runtimeConstructions,0);
+  assert.deepEqual(adapterOptions,[{powerPreference:'high-performance'},{}]);assert.equal(fileSizeReads,0);assert.equal(runtimeConstructions,0);
  }finally{if(original)Object.defineProperty(globalThis,'navigator',original);else delete globalThis.navigator;}
 });
 test('prepared text bridge pins CPU and sends an app-generated schema for constrained planner output',async()=>{const f=fixture();await f.runtime.load('local');assert.equal(f.runtime.manifest.contextTokens,2048);assert.deepEqual(f.calls[1],['load','cpu']);const bound=f.runtime.pin();assert.equal((await bound.count([])).prompt_tokens,20);const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}};assert.equal((await bound.generate([],768,format)).text,'{ "action" : "chat" , "query" : "" }');assert.equal(f.calls.at(-1)[0],'generate');assert.deepEqual(f.calls.at(-1)[1].jsonSchema.type,'object');assert.ok(f.calls.at(-1)[1].jsonSchema.anyOf.length>0);f.adapter.count=async()=>2040;await assert.rejects(f.runtime.generate([{role:'user',content:'different'}],16),/context limit/);assert.equal(f.calls.filter(c=>c[0]==='generate').length,1);f.manifest.runtime.revision='forged';assert.equal(f.runtime.manifest.runtime.revision,'fixed-count-runtime');await f.runtime.unload();await assert.rejects(bound.count([]),/Stopped/);assert.equal(f.runtime.loaded,'');});

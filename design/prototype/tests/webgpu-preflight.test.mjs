@@ -9,6 +9,12 @@ test('WebGPU preflight requests the high-performance adapter',async()=>{
  assert.deepEqual(options,{powerPreference:'high-performance'});
 });
 
+test('WebGPU preflight retries default adapter selection when high-performance returns null',async()=>{
+ const calls=[];
+ const adapter=await requestHighPerformanceAdapter({requestAdapter:async options=>{calls.push(options);return calls.length===1?null:'default-adapter';}});
+ assert.equal(adapter,'default-adapter');assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
+});
+
 test('missing, rejected, and timed-out adapter checks use the fallback error code',async()=>{
  for(const [gpu,timeoutMs,message] of [
   [undefined,10,/WebGPU unavailable/],

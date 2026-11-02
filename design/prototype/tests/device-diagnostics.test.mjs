@@ -174,11 +174,17 @@ test('device report includes only a bounded configured context limit for the sel
 });
 
 test('device report captures only bounded WebGPU features and selected numeric limits',async()=>{
- let options;
- const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{options=value;return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'};}}});
- assert.deepEqual(options,{powerPreference:'high-performance'});
+ const requests=[];
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{requests.push(value);return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'};}}});
+ assert.deepEqual(requests,[{powerPreference:'high-performance'}]);
  assert.deepEqual(report.webgpu,{available:true,fallbackAdapter:false,features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
- assert.equal(Object.hasOwn(report.webgpu,'vendor'),false);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/performance preference requested/);
+ assert.equal(Object.hasOwn(report.webgpu,'vendor'),false);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/high-performance preference tried with default-selection fallback/);
+});
+
+test('device report checks the browser default adapter if the preferred adapter is unavailable',async()=>{
+ const requests=[],report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async options=>{requests.push(options);return requests.length===1?null:{features:[],limits:{},isFallbackAdapter:true};}}});
+ assert.deepEqual(requests,[{powerPreference:'high-performance'},{}]);
+ assert.equal(report.webgpu.available,true);assert.equal(report.webgpu.fallbackAdapter,true);
 });
 
 test('saved device report retains bounded runtime performance counters and rejects raw payloads',async()=>{

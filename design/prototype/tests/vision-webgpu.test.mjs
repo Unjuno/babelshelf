@@ -8,6 +8,11 @@ test('image model capability preflight requests the high-performance adapter',as
  assert.deepEqual(options,{powerPreference:'high-performance'});
 });
 
+test('image model capability preflight retries the browser default adapter when preferred selection is null',async()=>{
+ const calls=[];await requireVisionWebGPU({requestAdapter:async options=>{calls.push(options);return calls.length===1?null:{};}});
+ assert.deepEqual(calls,[{powerPreference:'high-performance'},{}]);
+});
+
 test('image model capability preflight explains browsers without WebGPU or a compatible adapter',async()=>{
  await assert.rejects(requireVisionWebGPU(undefined),/not available.*needs WebGPU/i);
  await assert.rejects(requireVisionWebGPU({requestAdapter:async()=>null}),/No compatible WebGPU adapter.*needs WebGPU/i);
