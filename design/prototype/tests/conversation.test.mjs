@@ -1484,7 +1484,8 @@ test('answer prompts omit storage identities and ranking metadata while original
  const inspect=messages=>{
   const value=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]);
   for(const item of value.evidence){
-   assert.deepEqual(Object.keys(item).sort(),['coverage','end','label','quote','revision','start','title']);
+   assert.deepEqual(Object.keys(item).sort(),['coverage','label','quote','title']);
+   for(const key of ['noteId','revision','start','end','score','groundingEligible','internalMarker'])assert.equal(Object.hasOwn(item,key),false,`${key} remains host-only`);
    assert.equal(item.quote,quote,'source text is never scrubbed just because it contains an identifier');
   }
   for(const note of notes)assert.ok(!JSON.stringify(messages).includes(note.id));
