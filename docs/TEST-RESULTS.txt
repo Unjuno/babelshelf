@@ -7917,3 +7917,14 @@ shell assets. Clean-checkout GitHub Actions run
 passed every stage in 11m59s. This is truthful diagnostics, not a performance improvement.
 No real model timing was collected on Windows, iPhone, Android or Mac in this
 run; matched speed, memory, fit and sustained-load comparisons remain open.
+
+2026-11-02 — Bounded/cancellable Decision WebGPU availability preflight.
+The Decision worker's adapter request could remain pending indefinitely and
+delay its local WASM fallback. It now requests a high-performance adapter with
+an eight-second bound; a missing/rejected/timed-out probe continues on WASM,
+and Stop aborts the wait. A successful adapter probe remains only a capability
+hint; actual ONNX session creation is still validated separately and can
+fallback to WASM. Focused Decision tests passed 18/18, the full prototype suite
+passed 1,794/1,794, `npm run check` passed, and `npm run build:app` passed with
+163 verified shell assets. No inference speedup or physical-platform timing
+was measured; matched Windows, iPhone, Android and Mac comparisons remain open.
