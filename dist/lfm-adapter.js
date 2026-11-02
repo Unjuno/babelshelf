@@ -56,7 +56,7 @@ export class PreparedGgufAdapter {
  }
  async generate(messages,{signal,maxTokens=256,onContent=()=>{},onAnswerPreview=()=>{},json=true,jsonSchema,tools}={}){
   if(this.busy||!this.runtime||!this.loaded)throw Error('Model not ready');if(!Number.isInteger(maxTokens)||maxTokens<1||maxTokens>this.maxReplyTokens)throw Error('Output budget exceeded');if(!validChatMessages(messages,this.architecture))throw Error('Invalid messages');if(tools!==undefined&&!validNativeTools(tools,this.architecture))throw Error('Invalid native tools');if(tools&&json)throw Error('Native tools cannot use constrained JSON mode');
-  signal?.throwIfAborted();this.busy=true;const runtime=this.runtime,epoch=this.epoch,controller=new AbortController();this.controller=controller;const stop=()=>controller.abort();signal?.addEventListener('abort',stop,{once:true});const check=()=>{if(signal?.aborted||controller.signal.aborted||epoch!==this.epoch)throw Error('Stopped');};const start=this.clock();let first=null,text='',reasoning='',usage=null,timings=null,finishReason=null;
+  signal?.throwIfAborted();this.busy=true;const runtime=this.runtime,epoch=this.epoch,controller=new AbortController();this.controller=controller;const stop=()=>controller.abort();signal?.addEventListener('abort',stop,{once:true});const check=()=>{if(signal?.aborted||controller.signal.aborted||epoch!==this.epoch)throw Error('Stopped');};const start=this.clock();let firstContent=null,firstAnswerPreview=null,text='',reasoning='',usage=null,timings=null,finishReason=null;
   // Only a completed operation in this same runtime may seed reuse. Native
   // token-prefix/checkpoint validation owns compatibility; never cache answers.
   const cachePrompt=this.reusePrompt&&this.promptCacheReady;this.promptCacheReady=false;
@@ -71,7 +71,7 @@ export class PreparedGgufAdapter {
     }
     if(typeof choice?.finish_reason==='string'&&choice.finish_reason.length<=64)finishReason=choice.finish_reason;
     if(typeof content==='string'&&content.length){
-     if(first===null&&content.trim())first=this.clock();
+     if(firstContent===null&&content.trim())firstContent=this.clock();
      text+=content;checkStreamRepetition(text,content,messages,controller);onContent(content);
     }
     if(Array.isArray(delta?.tool_calls))for(const part of delta.tool_calls){
@@ -94,11 +94,11 @@ export class PreparedGgufAdapter {
      }
     }
     const preview=nativeAnswerPreview(calls);
-    if(preview!==lastAnswerPreview){if(first===null&&preview.trim())first=this.clock();lastAnswerPreview=preview;onAnswerPreview(preview);}
+    if(preview!==lastAnswerPreview){if(firstAnswerPreview===null&&preview.trim())firstAnswerPreview=this.clock();lastAnswerPreview=preview;onAnswerPreview(preview);}
     if(chunk.usage)usage=chunk.usage;
     if(chunk.timings)timings=chunk.timings;
    }
-  check();this.promptCacheReady=this.reusePrompt;const totalMs=this.clock()-start;const inputTokens=usage?.prompt_tokens??(Number.isSafeInteger(timings?.prompt_n)&&Number.isSafeInteger(timings?.cache_n)?timings.prompt_n+timings.cache_n:timings?.prompt_n??null),outputTokens=usage?.completion_tokens??timings?.predicted_n??null;const toolCalls=[...calls.entries()].sort((a,b)=>a[0]-b[0]).map(([,call])=>{if(!call.name||!call.arguments)throw Error('Incomplete native tool call');let args;try{args=JSON.parse(call.arguments);}catch{throw Error('Invalid native tool arguments');}if(!args||typeof args!=='object'||Array.isArray(args)||Object.getPrototypeOf(args)!==Object.prototype)throw Error('Native tool arguments must be an object');return {id:call.id,name:call.name,arguments:args};});return {text,...(finishReason?{finishReason}:{}), ...(toolCalls.length?{toolCalls,...(reasoning?{assistantContent:'<think>'+reasoning+'</think>'+text}:{})}:{}),firstContentMs:first===null?null:first-start,totalMs,inputTokens,outputTokens,tokenCountSource:usage?'usage':timings?'runtime-timings':null,usage,timings,tokensPerSecond:outputTokens!==null&&totalMs>0?outputTokens/(totalMs/1000):null};
+  check();this.promptCacheReady=this.reusePrompt;const totalMs=this.clock()-start;const inputTokens=usage?.prompt_tokens??(Number.isSafeInteger(timings?.prompt_n)&&Number.isSafeInteger(timings?.cache_n)?timings.prompt_n+timings.cache_n:timings?.prompt_n??null),outputTokens=usage?.completion_tokens??timings?.predicted_n??null;const toolCalls=[...calls.entries()].sort((a,b)=>a[0]-b[0]).map(([,call])=>{if(!call.name||!call.arguments)throw Error('Incomplete native tool call');let args;try{args=JSON.parse(call.arguments);}catch{throw Error('Invalid native tool arguments');}if(!args||typeof args!=='object'||Array.isArray(args)||Object.getPrototypeOf(args)!==Object.prototype)throw Error('Native tool arguments must be an object');return {id:call.id,name:call.name,arguments:args};});const firstVisible=toolCalls.length?firstAnswerPreview:firstContent;return {text,...(finishReason?{finishReason}:{}), ...(toolCalls.length?{toolCalls,...(reasoning?{assistantContent:'<think>'+reasoning+'</think>'+text}:{})}:{}),firstContentMs:firstVisible===null?null:firstVisible-start,totalMs,inputTokens,outputTokens,tokenCountSource:usage?'usage':timings?'runtime-timings':null,usage,timings,tokensPerSecond:outputTokens!==null&&totalMs>0?outputTokens/(totalMs/1000):null};
   }catch(error){this.promptCacheReady=false;const stopped=signal?.aborted||epoch!==this.epoch||controller.signal.aborted&&error?.code!=='repeated_output';controller.abort();if(stopped)throw Error('Stopped');throw error;}finally{signal?.removeEventListener('abort',stop);if(this.controller===controller)this.controller=null;this.busy=false;}
  }
  abort(){this.epoch++;this.promptCacheReady=false;this.controller?.abort();this.preflightController?.abort();}

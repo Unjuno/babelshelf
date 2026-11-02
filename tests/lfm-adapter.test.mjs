@@ -242,6 +242,9 @@ test('native final arguments are previewed before the stream completes, without 
   yield {choices:[{delta:{reasoning_content:'private reasoning'}}]};
   yield {choices:[{delta:{reasoning_content:'more reasoning'}}]};
   assert.deepEqual(seen,[],'non-answer tokens must not trigger view updates');
+  now=110;
+  yield {choices:[{delta:{content:'hidden tool preface'}}]};
+  assert.deepEqual(seen,[],'native-call preface is not a visible answer');
   now=140;
   yield {choices:[{delta:{tool_calls:[{index:0,function:{name:'finish_answer',arguments:'{"reply":{"answer":"日'}}]}}]};
   assert.equal(seen.at(-1),'日');
@@ -250,8 +253,21 @@ test('native final arguments are previewed before the stream completes, without 
  })()};
  const result=await adapter.generate([{role:'user',content:'test'}],{json:false,tools:[{type:'function',function:{name:'finish_answer',parameters:{type:'object'}}}],maxTokens:32,onAnswerPreview:text=>seen.push(text)});
  assert.equal(result.toolCalls[0].arguments.reply.answer,'日本語');assert.deepEqual(seen,['日','日本語']);
- assert.equal(result.firstContentMs,40,'first visible answer preview owns TTFT, not private reasoning or stream completion');
+ assert.equal(result.firstContentMs,40,'first visible answer preview owns TTFT, not private reasoning, tool preface or stream completion');
  assert.equal(result.totalMs,80);
+});
+
+test('hidden native tool preface has no visible-text TTFT when no final-answer preview exists',async()=>{
+ let now=100;
+ const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[],clock:()=>now});
+ adapter.loaded='local';adapter.runtime={createChatCompletion:async()=> (async function*(){
+  now=110;yield {choices:[{delta:{content:'hidden tool preface'}}]};
+  now=140;yield {choices:[{delta:{tool_calls:[{index:0,id:'search-1',function:{name:'memory.search',arguments:'{"query":"notes"}'}}]}}]};
+  yield {choices:[{delta:{},finish_reason:'tool_calls'}]};
+ })()};
+ const result=await adapter.generate([{role:'user',content:'Find notes'}],{json:false,tools:[{type:'function',function:{name:'memory.search',parameters:{type:'object'}}}],maxTokens:32});
+ assert.equal(result.toolCalls[0].arguments.query,'notes');
+ assert.equal(result.firstContentMs,null,'an internal preface is not a visible answer');
 });
 
 test('unload retains runtime ownership until teardown succeeds and prevents overlapping allocations',async()=>{
