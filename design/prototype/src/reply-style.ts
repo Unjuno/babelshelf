@@ -4,6 +4,8 @@ export type ReplyStyle=typeof REPLY_STYLES[number];
 /** One language contract for both agent completion and separate answer generation.
  * Tool guides, application labels and source languages do not choose the reply language. */
 export const answerLanguageInstruction='Write in the explicitly requested output language(s), otherwise in the language of the latest user request. English interface labels and tool guides do not change that language. Preserve original quotations and proper names exactly; do not add unrequested translations or guessed romanizations.';
+/** Keep implementation vocabulary out of ordinary user-facing answers. */
+export const userFacingAnswerInstruction='Use natural wording for the user. Do not expose internal tool names, record IDs, schema fields or diagnostic labels unless the user asks about them.';
 
 const guidance:Record<ReplyStyle,string>={
  balanced:'Use a clear, proportionate answer.',

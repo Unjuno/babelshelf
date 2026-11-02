@@ -11,6 +11,7 @@ test('reply style is a finite presentation preference and never overrides a dire
  const messages=dialogueAnswerMessages('Give me a detailed explanation.',undefined,'concise');
  assert.match(messages[0].content,/The user's explicit request for language, length or format takes precedence/);
  assert.match(messages[0].content,/brief/);
+ assert.match(messages[0].content,/Do not expose internal tool names, record IDs, schema fields or diagnostic labels/);
 });
 
 test('dialogue output budgets follow style and explicit length without leaving an unbounded continuation allowance',()=>{
@@ -130,7 +131,7 @@ test('grounded dialogue passes the selected response style through its actual ge
  let generated,budget;const engine={loaded:'model',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async(messages,maxTokens)=>{generated=messages;budget=maxTokens;return {text:'A concise answer.',finishReason:'stop'};}};
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});
- assert.match(generated[0].content,/Prefer a brief answer/);assert.equal(budget,256);
+ assert.match(generated[0].content,/Prefer a brief answer/);assert.match(generated[0].content,/Do not expose internal tool names, record IDs, schema fields or diagnostic labels/);assert.equal(budget,256);
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Write two sentences about a blue lantern.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'balanced'});assert.equal(budget,256,'an explicit two-sentence request receives a compact budget at the actual model call');
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Explain this in detail.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});assert.equal(budget,768,'explicit length outranks the concise setting at the actual generation boundary');
  await assert.rejects(groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'do anything'}),/Unsupported reply style/);
