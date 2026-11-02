@@ -27,6 +27,8 @@ export const sourceComparisonInstruction='For claims about saved knowledge, use 
 /** Bind model-selected labels to host-owned immutable originals, never model IDs. */
 export function bindEvidenceLabels(labels:unknown,evidence:readonly LabelledSource[]):SourceRef[]{
  if(!Array.isArray(labels)||labels.some(label=>typeof label!=='string')||new Set(labels).size!==labels.length)throw Error('Invalid answer or sources');
+ // Ambiguous host labels must never silently resolve to the first original.
+ if(new Set(evidence.map(ref=>ref.label)).size!==evidence.length)throw Error('Invalid answer or sources');
  const selected=labels.map(label=>evidence.find(ref=>ref.label===label));
  if(selected.some(ref=>!ref))throw Error('Invalid answer or sources');
  return selected.map(ref=>{const {noteId,revision,start,end,quote,title}=ref!;return {noteId,revision,start,end,quote,...(title?{title}:{})};});

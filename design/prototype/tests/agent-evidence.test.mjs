@@ -23,6 +23,12 @@ test('terminal answers reject internal citation labels in prose but preserve req
  assert.equal(bindSourceLabelAnswer({status:'answered',answer:'S10 is a different code.',sources:['S1']},evidence).answer,'S10 is a different code.');
 });
 
+test('ambiguous host source labels cannot silently cite the wrong original',()=>{
+ const first={label:'S1',noteId:'first',revision:1,start:0,end:5,quote:'first'},second={...first,noteId:'second',quote:'other'};
+ assert.throws(()=>bindSourceLabelAnswer({answer:'A claim',sources:['S1']},[first,second]),/Invalid answer or sources/);
+ assert.equal(bindSourceLabelAnswer({answer:'A claim',sources:['S1']},[first]).sources[0].noteId,'first');
+});
+
 test('search projection tells the agent when a stored passage is not current grounding evidence',()=>{
  const stale={noteId:'derived',revision:1,start:0,end:10,quote:'Old answer',title:'Notes/derived.md',score:1,groundingEligible:false};
  const result=projectAgentToolResult('memory.search',[stale]);
