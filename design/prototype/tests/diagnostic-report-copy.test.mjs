@@ -20,11 +20,16 @@ test('copies the report through the clipboard when available',async()=>{
 });
 
 test('creates a paste-ready Codex handoff that preserves evidence limits and excludes answer text',()=>{
- const report={schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[{id:'offline-cold-reopen',status:'pass'}],modelGeneration:{status:'pass',model:'small',modelRevision:'model-r1',runtimeRevision:'runtime-r1',outputTokens:4,runtimeMetrics:{visibleTextTtftMs:240,runtimeDecodeTokensPerSecond:8.5,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:28,memoryAfter:{gpuBytes:2048}}}};
+ const report={schema:1,createdAt:'2026-10-21T00:00:00.000Z',platform:'iPhone',userAgent:'Mozilla/5.0 (iPhone)',checks:[{id:'offline-cold-reopen',status:'pass'}],modelGeneration:{status:'pass',model:'small',modelRevision:'model-r1',runtimeRevision:'runtime-r1',outputTokens:4,runtimeMetrics:{visibleTextTtftMs:240,runtimeDecodeTokensPerSecond:8.5,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:28,memoryAfter:{gpuBytes:2048}}}};
  const handoff=formatDiagnosticHandoff(JSON.stringify(report));
- assert.match(handoff,/implement any code fix that can be made from the report/);assert.match(handoff,/run the relevant PC regression checks/);assert.match(handoff,/Do not ask for another device run unless a specific fix requires iOS-only verification/);assert.match(handoff,/complete PC preflight, then request one targeted rerun/);assert.match(handoff,/Do not infer that Airplane Mode or force-close occurred/);assert.match(handoff,/```json/);assert.match(handoff,/"outputTokens": 4/);assert.match(handoff,/"runtimeDecodeTokensPerSecond": 8\.5/);assert.match(handoff,/"runtimeObservedGpuLayers": 24/);assert.match(handoff,/"runtimeObservedGpuTotalLayers": 28/);assert.match(handoff,/"gpuBytes": 2048/);assert.doesNotMatch(handoff,/generated answer text[^\n]*SECRET/);
+ assert.match(handoff,/implement any code fix that can be made from the report/);assert.match(handoff,/run the relevant local regression checks/);assert.match(handoff,/Request another device run only when a specific fix needs platform validation/);assert.match(handoff,/complete local preflight first/);assert.match(handoff,/Do not infer that Airplane Mode or force-close occurred unless explicitly recorded/);assert.doesNotMatch(handoff,/iOS compatibility|iOS-only|PC preflight/);assert.match(handoff,/```json/);assert.match(handoff,/"outputTokens": 4/);assert.match(handoff,/"runtimeDecodeTokensPerSecond": 8\.5/);assert.match(handoff,/"runtimeObservedGpuLayers": 24/);assert.match(handoff,/"runtimeObservedGpuTotalLayers": 28/);assert.match(handoff,/"gpuBytes": 2048/);assert.doesNotMatch(handoff,/generated answer text[^\n]*SECRET/);
  assert.throws(()=>formatDiagnosticHandoff('not-json'),/Invalid device test report/);
  assert.throws(()=>formatDiagnosticHandoff('{"schema":2,"checks":[]}'),/Invalid device test report/);
+});
+
+test('keeps a Windows speed-sample handoff platform-neutral',()=>{
+ const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,platform:'Win32',userAgent:'Windows NT',checks:[],modelGeneration:{status:'pass',model:'lfm3',modelRevision:'model-r1',runtimeRevision:'runtime-r1',testMode:'performance',outputTokens:96}}));
+ assert.match(handoff,/one device run, not proof of general platform compatibility/);assert.match(handoff,/"platform": "Win32"/);assert.match(handoff,/"testMode": "performance"/);assert.match(handoff,/Do not infer that network disconnection or force-close occurred/);assert.doesNotMatch(handoff,/iPhone|iOS|Airplane Mode/);
 });
 
 test('marks every copied diagnostic field as untrusted data rather than instructions',()=>{
