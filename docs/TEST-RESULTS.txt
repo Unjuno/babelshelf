@@ -7864,3 +7864,9 @@ App aafbab99acf503760d19c4dbf266d2f7f9d2babe/build4bd8618bf8a800b7. Sites source
 - A recent LFM3 UX replay showed internal tool/record vocabulary leaking into user-facing prose. Added a shared final-answer instruction for both ordinary dialogue and evidence-grounded responses to avoid internal tool names, record IDs, schema fields and diagnostic labels unless the user asks about them.
 - `node --test design/prototype/tests/reply-style.test.mjs`: 18/18 passed. `npm run test:prototype`: 1,769/1,769 passed. `npm run check`: PASS. `npm run build:app`: PASS, build `819e6820d01c57fd`, 163 verified assets. `npm run test:app`: 8/8 passed. `git diff --check`: PASS.
 - This is prompt guidance, not an output sanitizer; actual model compliance and any latency effect remain unverified. No knowledge or user data changed.
+
+2026-11-02 — Include tool capabilities in the immutable audit fingerprint
+- Review found that the registered package SHA covered id/version, entry and sorted source files, but omitted the frozen effect, network contract and input schema. A tool contract could therefore change without changing the receipt fingerprint.
+- Added a regression for schema, effect and network changes. It failed before the implementation change because the SHA remained identical. The registry now hashes the complete frozen definition together with entry and source files; source ordering remains immaterial and post-registration source mutation still cannot change identity.
+- `node --test design/prototype/tests/tool-packages.test.mjs`: 24/24 passed. `npm run test:prototype`: 1,772/1,772 passed. `npm run check`: PASS. `git diff --check`: PASS.
+- This is audit/provenance correctness, not GPU or inference-speed improvement. Runtime routing stays capability-driven; no matched new model benchmark was run. Windows/iPhone/Android/macOS device performance and sustained GPU behavior remain unverified.

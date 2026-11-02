@@ -29,7 +29,7 @@ export function createToolRegistry(packages:ToolPackage[]){
  }
  const get=(id:string)=>{const pkg=registry.get(id);if(!pkg)throw Error('Tool not registered');return pkg;};
  async function identity(id:string):Promise<PackageIdentity>{
-  const pkg=get(id),text=JSON.stringify({id:pkg.definition.id,version:pkg.definition.version,entry:pkg.entry,sources:[...pkg.sources].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)});
+  const pkg=get(id),text=JSON.stringify({definition:pkg.definition,entry:pkg.entry,sources:[...pkg.sources].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)});
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return {package:pkg.definition.id,packageVersion:pkg.definition.version,packageSha256:[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join(''),entry:pkg.entry};
  }

@@ -106,6 +106,13 @@ test('registry dispatches only trusted registrations and fingerprints immutable 
  await assert.rejects(registry.run('external.run',{},host),/not registered/);await assert.rejects(registry.identity('external.run'),/not registered/);
  const reordered=declaration();reordered.sources.reverse();assert.deepEqual(await createToolRegistry([reordered]).identity('memory.search'),identity);
 });
+test('audit fingerprint changes when the registered tool contract changes',async()=>{
+ const base=await createToolRegistry([declaration()]).identity('memory.search');
+ const changedSchema=declaration();changedSchema.definition.inputSchema={type:'object',required:['query'],properties:{query:{type:'string'}},additionalProperties:false};
+ const changedEffect=declaration();changedEffect.definition.effect='review';
+ const changedNetwork=declaration();changedNetwork.definition.effect='external';changedNetwork.definition.network='explicit-online';
+ for(const changed of [changedSchema,changedEffect,changedNetwork])assert.notEqual((await createToolRegistry([changed]).identity('memory.search')).packageSha256,base.packageSha256);
+});
 test('registry refuses invalid authority, duplicate IDs, missing code/skill and unsafe source paths',()=>{
  const mutations=[p=>p.definition.network='https',p=>p.definition.effect='unsafe',p=>p.definition.version=0,p=>p.definition.id='../../run',p=>p.run=null,p=>p.entry='Tools/other/tool.ts',p=>p.sources.pop(),p=>p.sources[0].path='Tools/../SKILL.md',p=>p.sources.push({...p.sources[0]})];
  for(const mutate of mutations){const pkg=declaration();mutate(pkg);assert.throws(()=>createToolRegistry([pkg]),/Invalid|unavailable/);}
