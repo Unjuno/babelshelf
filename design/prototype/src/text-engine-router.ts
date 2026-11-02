@@ -56,6 +56,8 @@ export class TextEngineRouter{
  get manifest(){const id=this.loaded??'',selected=this.registration(id)?.describe(id),baseModel=this.base.models?.find((model:any)=>model.id===id),runtimeOutputLimit=this.active?.manifest?.maxOutputTokens;return {...this.base,...(selected?{contextTokens:selected.contextTokens,runtime:selected.runtime,maxOutputTokens:selected.maxOutputTokens??runtimeOutputLimit??this.base.maxOutputTokens}:baseModel?{contextTokens:baseModel.contextTokens??this.base.contextTokens,maxOutputTokens:baseModel.maxReplyTokens??runtimeOutputLimit??this.base.maxOutputTokens}:{}),models:[...this.base.models.map((model:any)=>({...model,runtime:this.base.runtime})),...this.registrations.filter(r=>r.modelIds.length).flatMap(r=>{const described=r.describe(r.modelIds.includes(id)?id:r.modelIds[0]);return described.models.map(model=>({...model,runtime:described.runtime}));})]};}
  set manifest(value:any){if(value.models?.some((m:any)=>this.registration(m.id)))throw Error('Text model belongs to a registered engine');this.base=value;this.webml.manifest=value;}
  get loaded(){return this.active?.loaded??null;}
+ /** Runtime-confirmed execution path for the currently resident model. */
+ get executionBackend(){return this.residentLoadMetrics?.executionBackend;}
  private instance(r:Registered){if(r.instance?.failed&&this.active!==r.instance)r.instance=null;return r.instance??=r.create();}
  private backend(id:string){const r=this.registration(id);if(r)return this.instance(r);if(!this.base.models?.some((m:any)=>m.id===id))throw Error('Unknown text model');return this.webml;}
  private check(epoch:number){if(epoch!==this.epoch)throw Error('Stopped');}

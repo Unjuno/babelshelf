@@ -7,6 +7,13 @@ test('custom records without assets offer local import and never network Prepare
 test('verification and load are separate and preparation respects explicit network setting',()=>{
  const state={selected:true,custom:false,present:false,loaded:false,busy:false,downloads:false};assert.equal(textModelControls(state).prepare,false);assert.equal(textModelControls(state).setup,true);assert.equal(textModelControls({...state,downloads:true}).prepare,true);assert.equal(textModelControls({...state,downloads:true}).setup,false);assert.equal(textModelControls({...state,present:true}).load,true);assert.equal(textModelControls({...state,present:true}).setup,false);assert.equal(textModelControls({...state,present:true,loaded:true}).status,'Loaded');assert.equal(textModelControls({...state,selected:false}).importFiles,false);assert.equal(textModelControls({...state,present:true,busy:true}).load,false);
 });
+test('loaded status reports the runtime-confirmed path without claiming an unverified GPU',()=>{
+ const base={selected:true,custom:false,present:true,loaded:true,busy:false,downloads:false};
+ assert.equal(textModelControls({...base,loadedStatus:'Loaded · GPU active'}).status,'Loaded · GPU active');
+ assert.equal(textModelControls({...base,loadedStatus:'Loaded · GPU unconfirmed'}).status,'Loaded · GPU unconfirmed');
+ assert.equal(textModelControls({...base,loadedStatus:'Loaded · CPU/WASM'}).status,'Loaded · CPU/WASM');
+ assert.equal(textModelControls(base).status,'Loaded');
+});
 
 test('ONNX asset presence is not labelled fresh verification or loaded inference',()=>{
  assert.equal(textModelControls({selected:true,custom:false,present:true,presenceOnly:true,loaded:false,busy:false,downloads:false}).status,'Files present');

@@ -334,7 +334,7 @@ test('same model and runtime identity reuse the resident backend and its verifie
  const backend={manifest:{},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){calls.push('load');this.loaded=id;return {executionBackend:'webgpu'};},async unload(){calls.push('unload');this.loaded=null;},abort(){this.loaded=null;}};
  const describe=()=>({contextTokens:context,runtime:{revision:'runtime'},models:[{id:'lfm3-fixture',revision:'model'}]});
  const router=new TextEngineRouter(f.webml,()=>{throw Error('unused');},[{id:'lfm3',modelIds:['lfm3-fixture'],describe,create:()=>backend}]);
- await router.load('lfm3-fixture');assert.deepEqual(await router.load('lfm3-fixture'),{model:'lfm3-fixture',reused:true,executionBackend:'webgpu'});assert.deepEqual(calls,['load']);
+ await router.load('lfm3-fixture');assert.equal(router.executionBackend,'webgpu');assert.deepEqual(await router.load('lfm3-fixture'),{model:'lfm3-fixture',reused:true,executionBackend:'webgpu'});assert.deepEqual(calls,['load']);await router.unload();assert.equal(router.executionBackend,undefined);
  context=16384;await router.load('lfm3-fixture');assert.deepEqual(calls,['load','unload','load']);
 });
 
