@@ -145,6 +145,17 @@ test('device report captures bounded WASM threading prerequisites without claimi
  const forged=JSON.stringify({...report,wasmThreads:{...report.wasmThreads,prerequisitesReady:false}});assert.throws(()=>writeSavedDeviceTestReport(storage,forged),/Invalid/);
 });
 
+test('device report captures browser hardware hints used to interpret cross-platform speed samples',async()=>{
+ const storage=memoryStorage(),base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage,indexedDB:null,gpu:null};
+ const report=await runDeviceDiagnostics({...base,hardwareConcurrency:8,deviceMemoryGiB:5.7});
+ assert.deepEqual(report.hardware,{logicalProcessors:8,memoryGiBEstimate:5.75});
+ assert.match(report.scope.join(' '),/do not prove physical core topology, available memory, runtime utilization, or model fit/);
+ const serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ const memoryOnly=await runDeviceDiagnostics({...base,hardwareConcurrency:4,deviceMemoryGiB:0});assert.deepEqual(memoryOnly.hardware,{logicalProcessors:4});
+ for(const hardware of [{logicalProcessors:0},{logicalProcessors:257},{logicalProcessors:2.5},{logicalProcessors:2,memoryGiBEstimate:Infinity}])assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,hardware})),/Invalid/);
+ const unavailable=await runDeviceDiagnostics({...base,hardwareConcurrency:0,deviceMemoryGiB:8});assert.equal(Object.hasOwn(unavailable,'hardware'),false);
+});
+
 test('device diagnostics warns when cross-tab model coordination is unavailable',async()=>{
  const base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null};
  const supported=await runDeviceDiagnostics({...base,inferenceLocks:true});

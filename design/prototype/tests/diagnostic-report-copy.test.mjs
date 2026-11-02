@@ -49,6 +49,15 @@ test('handoff preserves the bounded configured context limit and disclaims memor
  assert.doesNotMatch(invalid,/"contextTokens"/);
 });
 
+test('handoff preserves browser hardware hints without treating them as hardware facts',()=>{
+ const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,checks:[],hardware:{logicalProcessors:8,memoryGiBEstimate:5.75,raw:'PRIVATE_HARDWARE'}}));
+ assert.match(handoff,/browser-reported logical processor count and a coarse memory estimate/);
+ assert.match(handoff,/nor GPU limits prove selected-runtime use or model fit/);
+ const json=JSON.parse(handoff.match(/```json\n([\s\S]*?)\n```/)?.[1]??'{}');
+ assert.deepEqual(json.hardware,{logicalProcessors:8,memoryGiBEstimate:5.75});assert.doesNotMatch(handoff,/PRIVATE_HARDWARE/);
+ const malformed=formatDiagnosticHandoff(JSON.stringify({schema:1,checks:[],hardware:{logicalProcessors:999}}));assert.doesNotMatch(malformed,/"logicalProcessors"/);
+});
+
 test('handoff excludes unknown fields at every level so corrupted local reports cannot add private payloads',()=>{
  const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[{id:'offline-cold-reopen',status:'warning',detail:'offline not verified',prompt:'PRIVATE_CHECK_PROMPT'}],prompt:'PRIVATE_PROMPT',notes:'PRIVATE_NOTES',modelGeneration:{status:'pass',model:'small',modelRevision:'r1',runtimeRevision:'runtime-r1',outputTokens:3,answerText:'PRIVATE_MODEL_OUTPUT',runtimeMetrics:{runtimeDecodeTokensPerSecond:8,memoryAfter:{gpuBytes:1000,privateLabel:'PRIVATE_METRIC_LABEL'},raw:'PRIVATE_RUNTIME'}}}));
  assert.doesNotMatch(handoff,/PRIVATE_(?:CHECK_PROMPT|PROMPT|NOTES|MODEL_OUTPUT|METRIC_LABEL|RUNTIME)/);

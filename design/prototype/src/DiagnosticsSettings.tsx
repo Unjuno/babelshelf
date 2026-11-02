@@ -26,7 +26,7 @@ type Props={
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
  const {testMode,onTestModeChange,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
- let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportContextTokens:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
+ let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportContextTokens:number|undefined,reportLogicalProcessors:number|undefined,reportMemoryEstimate:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
   performanceSample=generation?.testMode==='performance'||generation?.workload==='prose-128-v1'||generation?.workload==='prose-128-v2';
   if(typeof report?.createdAt==='string'&&Number.isFinite(Date.parse(report.createdAt)))reportAt=new Date(report.createdAt).toISOString();
@@ -34,6 +34,8 @@ export function DiagnosticsSettings(props:Props){
   if(typeof report?.platform==='string'&&typeof report?.userAgent==='string')reportEnvironment=describeDiagnosticEnvironment(report.platform.slice(0,128),report.userAgent.slice(0,512));
   if(report?.selectedModel?.backend==='webgpu'||report?.selectedModel?.backend==='cpu-wasm')reportBackend=report.selectedModel.backend;
   if(Number.isSafeInteger(report?.selectedModel?.contextTokens)&&report.selectedModel.contextTokens>=1&&report.selectedModel.contextTokens<=262144)reportContextTokens=report.selectedModel.contextTokens;
+  if(Number.isSafeInteger(report?.hardware?.logicalProcessors)&&report.hardware.logicalProcessors>=1&&report.hardware.logicalProcessors<=256)reportLogicalProcessors=report.hardware.logicalProcessors;
+  if(typeof report?.hardware?.memoryGiBEstimate==='number'&&Number.isFinite(report.hardware.memoryGiBEstimate)&&report.hardware.memoryGiBEstimate>=0.25&&report.hardware.memoryGiBEstimate<=1024)reportMemoryEstimate=report.hardware.memoryGiBEstimate;
   if(typeof generation?.quantization==='string')reportQuantization=generation.quantization.slice(0,100);
   else if(typeof report?.selectedModel?.quantization==='string')reportQuantization=report.selectedModel.quantization.slice(0,100);
   if(typeof generation?.model==='string')reportModel=generation.model.slice(0,120);
@@ -70,6 +72,8 @@ export function DiagnosticsSettings(props:Props){
      {reportBackend&&<div className="capability-row"><span>Backend route · configured</span><span>{reportBackend==='webgpu'?'WebGPU':'CPU · WASM'}</span></div>}
      {generation.loadMetrics?.runtimeVariant&&<div className="capability-row"><span>WASM resources · runtime</span><span>{generation.loadMetrics.runtimeVariant==='compatibility'?'Compatibility':'Standard'}</span></div>}
      {performanceSample&&reportBackend==='webgpu'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers!=='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>Not reported</span></div>}
+     {typeof reportLogicalProcessors==='number'&&<div className="capability-row"><span>Logical processors · browser</span><span>{reportLogicalProcessors}</span></div>}
+     {typeof reportMemoryEstimate==='number'&&<div className="capability-row"><span>Memory estimate · browser</span><span>{reportMemoryEstimate.toLocaleString('en',{maximumFractionDigits:2})} GiB</span></div>}
      {threadInfo&&<div className="capability-row"><span>Threads · runtime</span><span>{threadInfo}</span></div>}
      {typeof generation.runtimeMetrics?.runtimePrefillMs==='number'&&<div className="capability-row"><span>Prompt processing · runtime</span><span>{(generation.runtimeMetrics.runtimePrefillMs/1000).toFixed(2)} s</span></div>}
      {typeof generation.inputTokens==='number'&&<div className="capability-row"><span>Input</span><span>{generation.inputTokens} tokens</span></div>}
