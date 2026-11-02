@@ -52,7 +52,14 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
 export async function initializeOfflineShell(container:ServiceWorkerContainer|undefined,allowRegister=false){
  const current=++initialization;stopObserving?.();stopObserving=null;
  if(!container){report('Unavailable');return;}report('Checking');
- try{const existing=await container.getRegistration();if(current!==initialization)return;const registration=existing??(allowRegister?await container.register('./sw.js'):undefined);if(current!==initialization)return;if(!registration){report('Not prepared');return;}stopObserving=observeOfflineRegistration(registration,report);}catch{if(current===initialization)report('Preparation failed');}
+ try{const existing=await container.getRegistration();if(current!==initialization)return;
+  // A failed first install leaves a registration but no usable worker. A later
+  // explicit Prepare action must ask the browser to retry that exact app shell;
+  // merely observing the same redundant registration would fail immediately.
+  const failedFirstInstall=!!existing&&!existing.active&&!existing.installing&&!existing.waiting;
+  const registration=allowRegister&&(!existing||failedFirstInstall)?await container.register('./sw.js'):existing;
+  if(current!==initialization)return;if(!registration){report('Not prepared');return;}stopObserving=observeOfflineRegistration(registration,report);
+ }catch{if(current===initialization)report('Preparation failed');}
 }
 /** Explicitly prepare the app shell while connected, without changing model-download mode. */
 export async function prepareOfflineAppShell(container:ServiceWorkerContainer|undefined,online:boolean,timeoutMs=120000):Promise<void>{

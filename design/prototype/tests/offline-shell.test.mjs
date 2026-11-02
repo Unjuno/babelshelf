@@ -74,6 +74,24 @@ test('offline shell registration failure returns promptly instead of waiting for
  assert.equal(offlineShellStatus(),'Preparation failed');
 });
 
+test('explicit app preparation retries a failed first registration without replacing a working worker',async()=>{
+ const container=new EventTarget();container.controller=null;let registrations=0;
+ const registration=new EventTarget();registration.active=null;registration.installing=null;registration.waiting=null;
+ container.getRegistration=async()=>registration;
+ container.register=async path=>{
+  assert.equal(path,'./sw.js');registrations++;
+  const worker=new Worker('installing');registration.installing=worker;registration.dispatchEvent(new Event('updatefound'));
+  setTimeout(()=>{registration.installing=null;registration.active=worker;worker.set('activated');container.controller=worker;container.dispatchEvent(new Event('controllerchange'));},0);
+  return registration;
+ };
+ await prepareOfflineAppShell(container,true,1000);
+ assert.equal(registrations,1);assert.equal(offlineShellStatus(),'Installed');assert.equal(container.controller,registration.active);
+
+ const healthy=new EventTarget();healthy.active=new Worker('activated');let healthyRegistrations=0;
+ await initializeOfflineShell({getRegistration:async()=>healthy,register:async()=>{healthyRegistrations++;return healthy;}},true);
+ assert.equal(healthyRegistrations,0,'an active worker is not replaced during an app-shell check');
+});
+
 test('Refresh returns a retryable error when the browser update check never settles',async()=>{
  let release,activations=0;const worker=new Worker('installed');worker.postMessage=()=>activations++;
  const registration={waiting:null,update:()=>new Promise(resolve=>{release=resolve;})};
