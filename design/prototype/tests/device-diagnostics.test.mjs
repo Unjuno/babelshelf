@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,describeDiagnosticEnvironment,formatDeviceDiagnosticReport,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
+import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,describeDiagnosticEnvironment,formatDeviceDiagnosticReport,inspectWebGpuAdapter,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
 
 test('diagnostic environment uses bounded platform and browser labels without trusting raw strings',()=>{
  assert.equal(describeDiagnosticEnvironment('iPhone','Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1'),'iPhone · Safari 26.6.1');
@@ -195,7 +195,7 @@ test('device report captures only bounded WebGPU features and selected numeric l
  const requests=[];
  const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{requests.push(value);return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,info:{vendor:'Intel',architecture:'Gen-12LP',device:'PRIVATE_DEVICE_NAME'}};}}});
  assert.deepEqual(requests,[{powerPreference:'high-performance'}]);
- assert.deepEqual(report.webgpu,{available:true,fallbackAdapter:false,vendor:'intel',architecture:'gen-12lp',features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
+ assert.deepEqual(report.webgpu,{available:true,probeStatus:'available',fallbackAdapter:false,vendor:'intel',architecture:'gen-12lp',features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
  assert.doesNotMatch(JSON.stringify(report),/PRIVATE_DEVICE_NAME/);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/high-performance preference tried with default-selection fallback/);
  const storage=memoryStorage(),serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
  assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,webgpu:{...report.webgpu,vendor:'private-adapter-vendor'}})),/Invalid/);
@@ -206,6 +206,32 @@ test('device report checks the browser default adapter if the preferred adapter 
  const requests=[],report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async options=>{requests.push(options);return requests.length===1?null:{features:[],limits:{},isFallbackAdapter:true};}}});
  assert.deepEqual(requests,[{powerPreference:'high-performance'},{}]);
  assert.equal(report.webgpu.available,true);assert.equal(report.webgpu.fallbackAdapter,true);
+});
+
+test('a timed-out WebGPU diagnostic reports unknown and does not retry the default adapter late',async()=>{
+ let finishPreferred;const requests=[],gpu={requestAdapter:options=>{requests.push(options);return new Promise(resolve=>{finishPreferred=resolve;});}};
+ const result=await inspectWebGpuAdapter(gpu,10);
+ assert.deepEqual(result,{available:false,probeStatus:'timed-out',fallbackAdapter:null,features:[],limits:{}});
+ finishPreferred(null);await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(requests,[{powerPreference:'high-performance'}]);
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:()=>new Promise(()=>{})},webgpuProbeTimeoutMs:10});
+ assert.equal(report.checks.find(check=>check.id==='webgpu').detail,'WebGPU adapter check timed out · availability unknown · retry');
+ assert.equal(report.webgpu.probeStatus,'timed-out');
+});
+
+test('WebGPU diagnostics distinguish a confirmed missing adapter from probe errors and read old reports',async()=>{
+ const base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null};
+ const absent=await runDeviceDiagnostics({...base,gpu:{requestAdapter:async()=>null}});
+ assert.equal(absent.webgpu.probeStatus,'unavailable');
+ assert.equal(absent.checks.find(check=>check.id==='webgpu').detail,'No WebGPU adapter available; CPU/WASM may still be supported');
+ const failed=await runDeviceDiagnostics({...base,gpu:{requestAdapter:async()=>{throw Error('private GPU failure');}},webgpuProbeTimeoutMs:10});
+ assert.equal(failed.webgpu.probeStatus,'failed');
+ assert.equal(failed.checks.find(check=>check.id==='webgpu').detail,'WebGPU adapter check failed · availability unknown · retry');
+ assert.doesNotMatch(JSON.stringify(failed),/private GPU failure/);
+ const legacy={schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[],webgpu:{available:false,fallbackAdapter:null,features:[],limits:{}}};
+ const storage=memoryStorage();writeSavedDeviceTestReport(storage,JSON.stringify(legacy));
+ assert.equal(readSavedDeviceTestReport(storage),JSON.stringify(legacy),'previous schema-1 reports without probeStatus remain readable');
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...legacy,webgpu:{...legacy.webgpu,probeStatus:'adapter-was-used'}})),/Invalid/);
 });
 
 test('saved device report retains bounded runtime performance counters and rejects raw payloads',async()=>{

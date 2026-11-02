@@ -1,12 +1,13 @@
 import type {DeviceTestMode} from './device-model-test.ts';
 import {safeRuntimeMetrics,safeRuntimeLoadMetrics,type RuntimeLoadMetrics,type RuntimeGenerationMetrics} from './text-inference.ts';
-import {requestAdapterWithFallback} from './webgpu-preference.ts';
+// @ts-expect-error Shared worker adapter preflight.
+import {requestHighPerformanceAdapter} from '../../../dist/webgpu-preflight.js';
 export type DiagnosticCheck={id:string;status:'pass'|'fail'|'warning'|'not-run';detail:string};
 export type ModelGenerationDiagnostic={status:'pass'|'fail'|'not-run'|'stopped'|'interrupted';testMode?:DeviceTestMode;quantization?:string;workload?:'ready-v1'|'prose-128-v1'|'prose-128-v2';inputTokens?:number;maxOutputTokens?:number;loadState?:'already-loaded'|'loaded-for-test'|'not-loaded';failureStage?:'load'|'runtime-setup'|'model-load'|'count'|'generation'|'output-validation'|'unload';model:string;modelRevision:string;runtimeRevision:string;loadDurationMs?:number;loadMetrics?:RuntimeLoadMetrics;durationMs?:number;outputTokens?:number;tokensPerSecond?:number;answerCharacters?:number;failureType?:string;runtimeMetrics?:RuntimeGenerationMetrics};
 export type SelectedModelDiagnostic={id:string;revision:string;engine?:string;backend?:'webgpu'|'cpu-wasm';runtimeRevision:string;contextTokens?:number;quantization?:string;filesPresent:boolean;loaded:boolean};
 export const WEBGPU_DIAGNOSTIC_LIMIT_NAMES=['maxBufferSize','maxStorageBufferBindingSize','maxComputeWorkgroupStorageSize','maxComputeInvocationsPerWorkgroup','maxComputeWorkgroupSizeX','maxComputeWorkgroupSizeY','maxComputeWorkgroupSizeZ','maxComputeWorkgroupsPerDimension','minStorageBufferOffsetAlignment'] as const;
 export type WebGpuVendor='amd'|'apple'|'arm'|'google'|'intel'|'mediatek'|'microsoft'|'nvidia'|'qualcomm'|'samsung'|'other';
-export type WebGpuDiagnostic={available:boolean;fallbackAdapter:boolean|null;vendor?:WebGpuVendor;architecture?:string;features:string[];limits:Partial<Record<typeof WEBGPU_DIAGNOSTIC_LIMIT_NAMES[number],number>>};
+export type WebGpuDiagnostic={available:boolean;probeStatus?:'available'|'unavailable'|'failed'|'timed-out';fallbackAdapter:boolean|null;vendor?:WebGpuVendor;architecture?:string;features:string[];limits:Partial<Record<typeof WEBGPU_DIAGNOSTIC_LIMIT_NAMES[number],number>>};
 export type WasmThreadDiagnostic={crossOriginIsolated:boolean;sharedArrayBuffer:boolean;sharedWasmMemory:boolean;prerequisitesReady:boolean};
 export type HardwareDiagnostic={logicalProcessors:number;memoryGiBEstimate?:number};
 export type DeviceDiagnosticReport={schema:1;createdAt:string;appBuild:string;bundle:string;platform:string;userAgent:string;standalone:boolean;connectionMode:'offline'|'online';onlineSignal:boolean;checks:DiagnosticCheck[];webgpu:WebGpuDiagnostic;wasmThreads:WasmThreadDiagnostic;hardware?:HardwareDiagnostic;manualSteps:string[];selectedModel?:SelectedModelDiagnostic;offlineRestart?:{startedAt:string;previousBuild:string;returnObserved:true;baseline:OfflineRestartMarker['baseline']};modelGeneration?:ModelGenerationDiagnostic;scope:string[]};
@@ -48,7 +49,7 @@ const emptyWebGpuDiagnostic=():WebGpuDiagnostic=>({available:false,fallbackAdapt
 const validWebGpuDiagnostic=(value:unknown):value is WebGpuDiagnostic=>{
  if(!value||typeof value!=='object'||Array.isArray(value))return false;
  const item=value as Record<string,unknown>,limits=item.limits,vendors:readonly string[]=['amd','apple','arm','google','intel','mediatek','microsoft','nvidia','qualcomm','samsung','other'];
- return typeof item.available==='boolean'&&(item.fallbackAdapter===null||typeof item.fallbackAdapter==='boolean')&&(item.vendor===undefined||vendors.includes(String(item.vendor)))&&(item.architecture===undefined||typeof item.architecture==='string'&&/^[a-z0-9]+(?:[._-][a-z0-9]+){0,5}$/.test(item.architecture)&&item.architecture.length<=48)&&Array.isArray(item.features)&&item.features.length<=64&&item.features.every(feature=>typeof feature==='string'&&/^[a-z0-9-]{1,64}$/.test(feature))&&!!limits&&typeof limits==='object'&&!Array.isArray(limits)&&Object.keys(limits).every(key=>(WEBGPU_DIAGNOSTIC_LIMIT_NAMES as readonly string[]).includes(key)&&Number.isSafeInteger((limits as Record<string,unknown>)[key])&&Number((limits as Record<string,unknown>)[key])>0);
+ return typeof item.available==='boolean'&&(item.probeStatus===undefined||['available','unavailable','failed','timed-out'].includes(String(item.probeStatus)))&&(item.fallbackAdapter===null||typeof item.fallbackAdapter==='boolean')&&(item.vendor===undefined||vendors.includes(String(item.vendor)))&&(item.architecture===undefined||typeof item.architecture==='string'&&/^[a-z0-9]+(?:[._-][a-z0-9]+){0,5}$/.test(item.architecture)&&item.architecture.length<=48)&&Array.isArray(item.features)&&item.features.length<=64&&item.features.every(feature=>typeof feature==='string'&&/^[a-z0-9-]{1,64}$/.test(feature))&&!!limits&&typeof limits==='object'&&!Array.isArray(limits)&&Object.keys(limits).every(key=>(WEBGPU_DIAGNOSTIC_LIMIT_NAMES as readonly string[]).includes(key)&&Number.isSafeInteger((limits as Record<string,unknown>)[key])&&Number((limits as Record<string,unknown>)[key])>0);
 };
 const validWasmThreadsDiagnostic=(value:unknown):value is WasmThreadDiagnostic=>!!value&&typeof value==='object'&&!Array.isArray(value)&&typeof (value as WasmThreadDiagnostic).crossOriginIsolated==='boolean'&&typeof (value as WasmThreadDiagnostic).sharedArrayBuffer==='boolean'&&typeof (value as WasmThreadDiagnostic).sharedWasmMemory==='boolean'&&typeof (value as WasmThreadDiagnostic).prerequisitesReady==='boolean'&&(value as WasmThreadDiagnostic).prerequisitesReady===((value as WasmThreadDiagnostic).crossOriginIsolated&&(value as WasmThreadDiagnostic).sharedArrayBuffer&&(value as WasmThreadDiagnostic).sharedWasmMemory);
 function validHardwareDiagnostic(value:unknown):value is HardwareDiagnostic{
@@ -138,6 +139,7 @@ type DiagnosticEnvironment={
  indexedDB?:Pick<IDBFactory,'open'|'deleteDatabase'>|null;
  opfs?:{getDirectory:()=>Promise<Pick<FileSystemDirectoryHandle,'getFileHandle'|'removeEntry'>>}|null;
  gpu?:{requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>}|null;
+ webgpuProbeTimeoutMs?:number;
  crossOriginIsolated?:boolean;
  sharedArrayBuffer?:boolean;
  sharedWasmMemory?:boolean;
@@ -214,11 +216,16 @@ async function boundedCacheKeys(cache:Pick<CacheStorage,'keys'>,timeoutMs=5000):
  finally{if(timer!==undefined)clearTimeout(timer);}
 }
 
-async function inspectWebGpuAdapter(gpu:NonNullable<DiagnosticEnvironment['gpu']>):Promise<WebGpuDiagnostic>{
- let timer:ReturnType<typeof setTimeout>|undefined;
+export async function inspectWebGpuAdapter(gpu:NonNullable<DiagnosticEnvironment['gpu']>,timeoutMs=8000):Promise<WebGpuDiagnostic>{
+ let adapter:{features?:Iterable<unknown>;limits?:Record<string,unknown>;isFallbackAdapter?:unknown;info?:{vendor?:unknown;architecture?:unknown}}|null;
+ try{adapter=await requestHighPerformanceAdapter(gpu,{timeoutMs}) as typeof adapter;}
+ catch(error){
+  const code=(error as {code?:unknown}|null)?.code;
+  const probeStatus=code==='webgpu_unavailable'?'unavailable':code==='webgpu_check_timeout'?'timed-out':'failed';
+  return {...emptyWebGpuDiagnostic(),probeStatus};
+ }
  try{
-  const adapter=await Promise.race([requestAdapterWithFallback(gpu),new Promise<null>(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]) as {features?:Iterable<unknown>;limits?:Record<string,unknown>;isFallbackAdapter?:unknown;info?:{vendor?:unknown;architecture?:unknown}}|null;
-  if(!adapter)return emptyWebGpuDiagnostic();
+  if(!adapter)return {...emptyWebGpuDiagnostic(),probeStatus:'unavailable'};
   const features=[...new Set(Array.from(adapter.features??[]).filter((feature):feature is string=>typeof feature==='string'&&/^[a-z0-9-]{1,64}$/.test(feature)))].sort().slice(0,64),limits:WebGpuDiagnostic['limits']={};
   for(const name of WEBGPU_DIAGNOSTIC_LIMIT_NAMES){const value=adapter.limits?.[name];if(typeof value==='number'&&Number.isSafeInteger(value)&&value>0)limits[name]=value;}
   // GPUAdapterInfo is a separate browser capability hint, not proof of the
@@ -229,8 +236,8 @@ async function inspectWebGpuAdapter(gpu:NonNullable<DiagnosticEnvironment['gpu']
   const vendor=rawVendor?(vendorAliases[rawVendor]??'other'):undefined;
   const rawArchitecture=typeof adapter.info?.architecture==='string'?adapter.info.architecture.trim().toLowerCase():'';
   const architecture=/^[a-z0-9]+(?:[._-][a-z0-9]+){0,5}$/.test(rawArchitecture)&&rawArchitecture.length<=48?rawArchitecture:undefined;
-  return {available:true,fallbackAdapter:typeof adapter.isFallbackAdapter==='boolean'?adapter.isFallbackAdapter:null,...(vendor?{vendor}:{}),...(architecture?{architecture}:{}),features,limits};
- }catch{return emptyWebGpuDiagnostic();}finally{if(timer)clearTimeout(timer);}
+  return {available:true,probeStatus:'available',fallbackAdapter:typeof adapter.isFallbackAdapter==='boolean'?adapter.isFallbackAdapter:null,...(vendor?{vendor}:{}),...(architecture?{architecture}:{}),features,limits};
+ }catch{return {...emptyWebGpuDiagnostic(),probeStatus:'failed'};}
 }
 
 /** Runs bounded, local-only environment checks. Model generation is handled separately by the UI flow. */
@@ -279,7 +286,13 @@ export async function runDeviceDiagnostics(env:DiagnosticEnvironment={}):Promise
  const gpu=env.gpu===undefined?(globalThis.navigator as Navigator&{gpu?:NonNullable<DiagnosticEnvironment['gpu']>}|undefined)?.gpu:env.gpu;
  let webgpu=emptyWebGpuDiagnostic();
  if(!gpu)add('webgpu','not-run','WebGPU API unavailable; CPU/WASM may still be supported');
- else {webgpu=await inspectWebGpuAdapter(gpu);add('webgpu',webgpu.available?'pass':'warning',webgpu.available?'Adapter available; high-performance preference tried with default-selection fallback; limits recorded; model execution and memory fit not tested':'Adapter unavailable or timed out');}
+ else {
+  const probeTimeout=env.webgpuProbeTimeoutMs??8000;
+  if(!Number.isSafeInteger(probeTimeout)||probeTimeout<1||probeTimeout>30000)throw Error('Invalid WebGPU diagnostic timeout');
+  webgpu=await inspectWebGpuAdapter(gpu,probeTimeout);
+  const detail=webgpu.probeStatus==='available'?'Adapter available; high-performance preference tried with default-selection fallback; limits recorded; model execution and memory fit not tested':webgpu.probeStatus==='unavailable'?'No WebGPU adapter available; CPU/WASM may still be supported':webgpu.probeStatus==='timed-out'?'WebGPU adapter check timed out · availability unknown · retry':'WebGPU adapter check failed · availability unknown · retry';
+  add('webgpu',webgpu.available?'pass':'warning',detail);
+ }
  if(!env.selectedModel)add('selected-model','not-run','No text model selected');
  else if(!env.modelFilesPresent)add('selected-model','warning',`${env.selectedModel}: model files not verified`);
  else add('selected-model',env.modelLoaded?'pass':'warning',`${env.selectedModel}: files verified${env.modelLoaded?' and model loaded':' ; generation not tested'}`);
