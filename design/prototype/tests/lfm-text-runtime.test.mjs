@@ -161,9 +161,15 @@ test('backend preflight is forwarded to the prepared adapter so the GPU adapter 
  await runtime.load('local');assert.deepEqual(preflights,['webgpu']);assert.deepEqual(f.adapter.lastLoadOptions,{preflighted:true});
  await runtime.unload();
 });
-test('a requested WebGPU route stays unconfirmed when offload is zero, missing, or inconsistent',async()=>{
+test('automatic WebGPU routing falls back only when runtime logs explicitly report zero offloaded layers',async()=>{
+ const f=fixture(),preflights=[];f.adapter.preflightBackend=async backend=>{preflights.push(backend);f.calls.push(['preflight',backend]);};
+ const originalLoad=f.adapter.load.bind(f.adapter);
+ f.adapter.load=async(file,id,options)=>{if(options.backend==='webgpu'){f.adapter.loaded=id;f.adapter.info={gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:0,totalModelLayers:25};return {};}return originalLoad(file,id,options);};
+ const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>f.file,readAssets:()=>({local:{filesPresent:true}})});
+ const result=await runtime.load('local');assert.equal(result.executionBackend,'cpu-wasm');assert.equal(result.gpuFallbackReason,'webgpu-model-load-failed');assert.deepEqual(preflights,['webgpu','cpu']);assert.ok(f.calls.some(call=>call[0]==='unload'));await runtime.unload();
+});
+test('a requested WebGPU route stays unconfirmed when offload is missing or inconsistent',async()=>{
  for(const info of [
-  {gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:0,totalModelLayers:25},
   {gpuLayerEvidence:'unobserved',actualGpuLayers:null,totalModelLayers:null},
   {gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:26,totalModelLayers:25},
  ]){

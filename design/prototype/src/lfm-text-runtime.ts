@@ -65,7 +65,16 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
     catch(error){if((error as {code?:unknown}|null)?.code!=='webgpu_unavailable')throw error;effectiveBackend='cpu';gpuFallbackReason='webgpu-unavailable';(onProgress??adapter.onProgress)?.('WebGPU unavailable · Using CPU/WASM');if(adapter.preflightBackend){await adapter.preflightBackend('cpu');backendPreflighted=true;}}
    }else{effectiveBackend=backend;if(adapter.preflightBackend){await adapter.preflightBackend(effectiveBackend);backendPreflighted=true;}}
    check();const file=await readFile(id);check();if(file.size!==model.file.bytes)throw Error('Model integrity mismatch');await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;check();const immutableFile=typeof File!=='undefined'&&file instanceof File?file:new File([file],model.file.name);let rawMetrics:unknown;
-   try{rawMetrics=await adapter.load(immutableFile,id,{backend:effectiveBackend,...(backendPreflighted?{preflighted:true}:{})});}
+   try{
+    rawMetrics=await adapter.load(immutableFile,id,{backend:effectiveBackend,...(backendPreflighted?{preflighted:true}:{})});
+    // A successful adapter/device request is not proof that this model uses
+    // the GPU. When the pinned runtime explicitly logs zero layers offloaded,
+    // stop treating the WebGPU route as viable and use the normal CPU fallback.
+    // Missing or inconsistent logs remain unconfirmed; they are not guessed.
+    if(effectiveBackend==='webgpu'&&adapter.info?.gpuLayerEvidence==='runtime-offload-log'&&adapter.info.actualGpuLayers===0){
+     const error=Error('WebGPU offloaded no model layers');Object.assign(error,{code:'webgpu_load_failed'});throw error;
+    }
+   }
    catch(error){
     const failure=error as {code?:unknown;cleanupUnconfirmed?:unknown}|null,code=failure?.code;
     if(backend!=='auto'||effectiveBackend!=='webgpu'||failure?.cleanupUnconfirmed===true||code!=='webgpu_unavailable'&&code!=='webgpu_load_failed')throw error;
