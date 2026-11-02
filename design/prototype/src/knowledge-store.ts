@@ -1,6 +1,7 @@
 import {sourceReferenceForView,noteSourceMetadata,isSourceMetadataGuard,type SavedSourceRef} from './note-provenance.ts';
 import {GroundingConflictError} from './grounding-conflict.ts';
 import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorrection,PENDING_CORRECTION_KEY,type PendingCorrection} from './pending-correction.ts';
+import {PendingNoteReviewConflictError,validatePendingNoteReview,pendingNoteReviewView,PENDING_NOTE_REVIEW_KEY,type PendingNoteReview} from './pending-note-review.ts';
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
@@ -243,6 +244,37 @@ export class KnowledgeStore {
    const cleanup=()=>signal?.removeEventListener('abort',abort);
    const commit=()=>{if(--left)return;try{if(signal?.aborted)throw Error('Stopped');applyCorrection(rows.result,pending.proposal);if(prior.result!==undefined){const existing=validatePendingCorrection(prior.result);if(!equal(existing.proposal,pending.proposal)||existing.turnId!==turnId)throw Error('Review pending changes first');result=existing;}else settings.put(pending,PENDING_CORRECTION_KEY);}catch(e){error=e;tx.abort();}};prior.onsuccess=commit;rows.onsuccess=commit;
    tx.oncomplete=()=>{cleanup();resolve(result);};tx.onabort=tx.onerror=()=>{cleanup();reject(stopped?Error('Stopped'):error??tx.error??Error('Could not save review'));};
+  });
+ }
+ async stageNoteReview(value:PendingNoteReview):Promise<PendingNoteReview>{
+  const pending=validatePendingNoteReview(value),db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let result=pending,error:unknown;
+   q.onsuccess=()=>{try{if(q.result!==undefined){const existing=validatePendingNoteReview(q.result);if(!equal(existing,pending))throw Error('Review pending note first');result=existing;}else settings.put(pending,PENDING_NOTE_REVIEW_KEY);}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not save note review'));
+  });
+ }
+ async updateNoteReview(expected:unknown,next:PendingNoteReview):Promise<PendingNoteReview>{
+  expected=structuredClone(expected);next=validatePendingNoteReview(next);const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
+   q.onsuccess=()=>{try{if(!equal(q.result,expected))throw new PendingNoteReviewConflictError();const prior=validatePendingNoteReview(q.result);if(prior.note.id!==next.note.id||prior.turnId!==next.turnId)throw new PendingNoteReviewConflictError();settings.put(next,PENDING_NOTE_REVIEW_KEY);}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(next);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not update note review'));
+  });
+ }
+ async discardNoteReview(expected:unknown){
+  expected=structuredClone(expected);const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
+   q.onsuccess=()=>{if(!equal(q.result,expected)){error=new PendingNoteReviewConflictError();tx.abort();return;}settings.delete(PENDING_NOTE_REVIEW_KEY);};
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not discard note review'));
+  });
+ }
+ async saveReviewedNote(expected:unknown,review:PendingNoteReview){
+  expected=structuredClone(expected);review=validatePendingNoteReview(review);const db=await this.open();return new Promise<NoteView>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),saved=settings.get(PENDING_NOTE_REVIEW_KEY),folders=settings.get('ui-v1-folders'),dialogue=settings.get('ui-v1-dialogue');let remaining=4,error:unknown,result:NoteView;
+   const commit=()=>{if(--remaining)return;try{
+    if(!equal(saved.result,expected)||!equal(saved.result,review))throw new PendingNoteReviewConflictError();
+    const view=pendingNoteReviewView(review),existing=rows.result.find((note:Canonical)=>note.id===view.id);
+    if(existing){result=projectNote(existing);if(!equal(result,view))throw Error('Note ID conflict · reopen review');}
+    else{const updated=applyKnowledgeChanges(rows.result,[],[view],dialogue.result);assertFolderNamespace(updated,folders.result??[]);const created=updated.find((note:Canonical)=>note.id===view.id);if(!created)throw Error('Could not create note');notes.add(created);result=projectNote(created);}
+    settings.delete(PENDING_NOTE_REVIEW_KEY);
+   }catch(e){error=e;tx.abort();}};
+   rows.onsuccess=commit;saved.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not save reviewed note'));
   });
  }
  async discardCorrection(expected:unknown){
