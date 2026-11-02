@@ -7877,6 +7877,7 @@ Follow-up: added a regression showing equivalent schemas with different object-k
 - If the first service-worker install failed but the browser retained its empty registration, the next explicit “Prepare offline app” action observed that dead registration and immediately failed again. Explicit preparation now retries registration only when there is no usable active/installing/waiting worker; healthy registrations are not replaced.
 - `node --test design/prototype/tests/offline-shell.test.mjs design/prototype/tests/offline-shell-waiting.test.mjs`: 28/28. `npm run check`: PASS. `npm --prefix design/prototype run test:runtime -- tests/settings-home.spec.ts --workers=1`: 11/11. `npm run build:app`: PASS, build `d94bf37c6d9544c5`, 163 verified assets. `git diff --check`: PASS.
 - This improves recovery UX for offline setup. Browser tests do not prove an iPhone/Android cold offline launch. No GPU speedup is claimed; matched platform model measurements remain open.
+- Clean-checkout GitHub Actions [41387632055](https://github.com/Unjuno/babelshelf/actions/runs/41387632055) passed all stages, including tool/MCP, device/settings, iOS handoff, and offline/installed-PWA acceptance for commit `5108eb7`.
 
 2026-11-02 — Adaptive D1 ONNX CPU fallback threads
 - Removed the D1 worker's explicit `ort.env.wasm.numThreads=1`; the pinned ONNX Runtime chooses its own safe policy based on shared-WASM availability and browser concurrency. WebGPU remains the preferred route; this affects only CPU/WASM fallback.
