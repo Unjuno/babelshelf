@@ -1,6 +1,6 @@
-# Durable correction review
+# Durable review state
 
-Scope: ordinary note, managed settings, typed schedule and custom-tool-source correction proposals. New-note capture and new schedule creation are separate forms and are not made durable by this contract. Agent-proposed capture opens the existing New file editor as an in-memory draft; only its explicit Save commits the note. A reload before Save can discard that draft, so this is not crash-resumable review state.
+This document covers two separate local review records: correction proposals (`ui-v1-pending-correction`) and new-note drafts (`ui-v1-pending-note-review`). They are inert review data, not authorization. New schedule creation remains a separate form and is not covered here. Agent-proposed note capture is stored as a bounded pending draft while the New file editor is open or closed; only explicit Save commits it. See [new-note review storage](#new-note-review-storage) for that record's distinct transaction and recovery contract.
 
 ## Storage and authority
 
@@ -25,3 +25,9 @@ Dialogue completion is acknowledged after the knowledge transaction. Failure to 
 Built Chromium and Windows WebKit cover reopen-without-approval, Save, Cancel, changed settings and replacement by another tab. An isolated production IndexedDB test covers reopen/backup, competing proposal refusal, stale-target refusal, duplicate Save and an intentionally aborted approval after queued writes. Node cases cover settings/schedule/custom-tool dependencies/generated-source snapshots and conflicting backup restore.
 
 One actual prepared Bonsai2 4B local-sidebar correction on intermediate06bfae0ca4b35c48 changed a synthetic note's 北口 to南口. Escape/reload/resume retainedv1 until explicit Save createdv2; History keptv1, and Undo appendedv3. Final78571b1e36c3e0d6 adds stricter snapshot/source validation, typed pending-record conflict handling and staging cancellation, with fresh built-flow and transaction regressions. Publicv180 sidebar independently verified profile-review dismissal/reload/resume/Cancel with original Standard settings unchanged and appOffline; see SITES-DEPLOYMENT.md. This is not broad model quality, physical iOS/Android, OS force-close or all review-type recovery acceptance.
+
+## New-note review storage
+
+New-note proposals use a separate `ui-v1-pending-note-review` settings record, validated as bounded schema-1 inert data. It preserves the originating turn ID, note identity/path/body, source references, and optional dialogue-copy reference. Draft edits compare-and-swap the exact pending snapshot. Save validates the same snapshot and creates the note while deleting the pending record in one IndexedDB transaction; a conflicting note ID/path or aborted transaction leaves the existing note state and pending proposal intact. Discard compare-and-deletes only the reviewed snapshot. Backup/restore retains the draft as pending review and never auto-approves it. This path does not itself create a correction-history receipt because it creates a new note rather than revising one; the originating dialogue turn is acknowledged after the canonical note save.
+
+The separate `pending-note-review.ts` and `KnowledgeStore` implementation have controlled validation, reopen/edit/discard/save and backup/restore tests. The 2026-11-03 Windows run passed 12 targeted note-review/creation checks, the full 1,826-case prototype suite, static checking, and the 165-asset production build. This is not physical-device interruption/storage evidence, real storage-quota evidence, or proof of live-model capture quality. See the matching entry in [REMAINING-GATES.md](REMAINING-GATES.md).
