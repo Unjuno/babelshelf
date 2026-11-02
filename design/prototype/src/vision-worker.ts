@@ -5,6 +5,7 @@ import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.
 import {configureLocalTransformerRuntime} from './transformers-runtime';
 import {visionManifest,visionReady,visionRuntimeResponse} from './vision-assets';
 import {customVisionModelDescriptor,customVisionReady,customVisionRuntimeResponse,readCustomVisionFile,validateCustomVisionModel} from './custom-vision-assets.ts';
+import {requireVisionWebGPU} from './vision-webgpu.ts';
 import type {CustomVisionModel} from './preference-records.ts';
 import type {VisionModelIdentity} from './vision-model-identity.ts';
 import {validateVisionOutput} from './vision-output.ts';
@@ -20,16 +21,10 @@ const progressText=(value:any)=>typeof value==='string'?value:value?.status==='p
 const ready=()=>activeCustomModel?customVisionReady(activeCustomModel):visionReady();
 const localRuntimeResponse=(path:string)=>activeCustomModel&&String(path).includes('/vision-model/'+activeCustomModel.id+'/')?customVisionRuntimeResponse(String(path),[activeCustomModel],(asset,custom)=>readCustomVisionFile(custom,asset,new AbortController().signal)):visionRuntimeResponse(String(path));
 env.customCache={match:async(path:any)=>localRuntimeResponse(String(path)),put:async()=>{throw Error('Use explicit vision preparation');}};
-async function requireWebGpu(){
- if(!('gpu' in self.navigator))throw Error('WebGPU unavailable in this browser');
- const adapter=await (self.navigator as any).gpu.requestAdapter({powerPreference:'high-performance'});
- if(!adapter)throw Error('WebGPU adapter unavailable');
- return adapter;
-}
 async function load(progress:(value:string)=>void){
  if(model&&processor)return;
  if(!await ready())throw Error('Vision model not prepared');
- await requireWebGpu();progress('Loading local vision model');
+ await requireVisionWebGPU((self.navigator as Navigator&{gpu?:{requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown|null>}}).gpu);progress('Loading local vision model');
  const options={revision:activeIdentity.revision,local_files_only:true,progress_callback:(value:any)=>progress(progressText(value))};
  processor=await AutoProcessor.from_pretrained(activeModelId,options);
  model=await AutoModelForImageTextToText.from_pretrained(activeModelId,{...options,device:'webgpu',dtype:visionDtype});

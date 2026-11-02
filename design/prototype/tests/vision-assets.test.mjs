@@ -4,11 +4,13 @@ import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import {visionAsset,visionManifest,verifyVisionBytes,verifyVisionStream,visionRuntimeResponse,visionReady,prepareVision} from '../src/vision-assets.ts';
 
-test('vision runtime requests a high-performance WebGPU adapter before its first ONNX session',()=>{
+test('vision runtime shares a bounded high-performance WebGPU check before its first ONNX session',()=>{
  const worker=fs.readFileSync(new URL('../src/vision-worker.ts',import.meta.url),'utf8');
+ const app=fs.readFileSync(new URL('../src/Prototype.tsx',import.meta.url),'utf8');
  assert.match(worker,/configureLocalTransformerRuntime\(env,wasmURL,mjsURL\)/);
- assert.match(worker,/requestAdapter\(\{powerPreference:'high-performance'\}\)/);
+ assert.match(worker,/requireVisionWebGPU\(/);
  assert.doesNotMatch(worker,/powerPreference:'low-power'/);
+ assert.match(app,/if\(role==='vision'\)await requireVisionWebGPU\([\s\S]*?controller\.signal\);await prepareProductRuntimeAssets/,'preparation must check and allow Stop before acquiring runtime assets');
 });
 
 test('vision runtime resolves only its immutable revision-pinned manifest files',()=>{

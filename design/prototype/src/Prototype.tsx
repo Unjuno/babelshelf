@@ -31,6 +31,7 @@ import type {FileResult} from './file-discovery';
 import {normalizeSearchText} from '../../../dist/core.js';
 import {readDeviceStorage,requestStorageProtection,storageBytes,type DeviceStorage} from './device-storage';
 import {videoCapabilityStatus,processorAssetControls} from './local-capabilities';
+import {requireVisionWebGPU} from './vision-webgpu';
 import {selectedTextFileGuidance,selectedDecisionFileGuidance,mediaReadingStatus} from './model-file-guidance';
 import {canAddModel,modelCatalogStatus,textModelChoiceHint} from './model-catalog-status'; import {checkTextDevice,describeTextDeviceCheck,type TextDeviceCheck} from './text-device-check';
 import {speechReady as preparedSpeech} from './speech-assets';
@@ -685,7 +686,7 @@ export default function Prototype() {
  function operationMarks(items?:TextToolReceipt[]){return Array.isArray(items)?items.map((item,j)=><button className="source-inline" key={j} aria-label={'View operation '+(j+1)} onClick={()=>{keyboard.hide();setOperation(item);setSheet('operation');}}><DotsThree size={18}/></button>):null;}
  function operationOriginal(){const turn=dialogue.current.turns.find(t=>t.id===operation?.target.turnId);return operation?.target.speaker==='assistant'?turn?.answer:turn?.user;}
  function selectedTextRuntimeRole(id:string){const entry=(bonsai.manifest.models as any[]).find(item=>item.id===id);return runtimeRoleForModelEngine(entry?.engine);}
- async function ensureProductRuntime(role:ProductRuntimeRole,acquire:boolean,onProgress?:(progress:ProductRuntimeProgress)=>void){try{if(acquire){const controller=new AbortController();runtimeAssetAbort.current=controller;try{await prepareProductRuntimeAssets(role,{signal:controller.signal,onProgress});}finally{if(runtimeAssetAbort.current===controller)runtimeAssetAbort.current=null;}}else await verifyProductRuntimeAssets(role,{onProgress});setRuntimeAssetsReady(current=>({...current,[role]:true}));}catch(error){setRuntimeAssetsReady(current=>({...current,[role]:false}));throw error;}}
+ async function ensureProductRuntime(role:ProductRuntimeRole,acquire:boolean,onProgress?:(progress:ProductRuntimeProgress)=>void){try{if(acquire){const controller=new AbortController();runtimeAssetAbort.current=controller;try{if(role==='vision')await requireVisionWebGPU((globalThis.navigator as Navigator&{gpu?:{requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown|null>}}|undefined)?.gpu,8000,controller.signal);await prepareProductRuntimeAssets(role,{signal:controller.signal,onProgress});}finally{if(runtimeAssetAbort.current===controller)runtimeAssetAbort.current=null;}}else await verifyProductRuntimeAssets(role,{onProgress});setRuntimeAssetsReady(current=>({...current,[role]:true}));}catch(error){setRuntimeAssetsReady(current=>({...current,[role]:false}));throw error;}}
  async function loadSelectedTextModel(selectedModel:string|undefined,check:()=>void=()=>{}){return modelExecution.loadText(selectedModel,check,{allowNetwork:downloads});}
  async function manageAssets(tool:AssetTool,files?:File[],verifyOnly=false,runtimeRole?:ProductRuntimeRole){
   if(bonsai.busy||speech.busy||ocr.busy||decision.busy||vision.busy||ocrLock.current||pdfLock.current||sendLock.current||taskController.busy||speechDecodeLock.current||recorder.current||microphoneGate.current.pending)return toast('Model busy');
