@@ -1561,7 +1561,7 @@ test('grounded answer repairs exposed tool syntax and record identifiers without
  const ref={noteId:note.id,revision:1,start:0,end:quote.length,quote,title:note.path};let generations=0,seen=[];
  const engine={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},count:async()=>({prompt_tokens:300}),generate:async messages=>{
   seen.push(messages);generations++;
-  return {text:JSON.stringify(generations===1?{answer:`出典ノート ID は ${note.id}（レビジョン1）で、パスは ${note.path}。memory.read(query="${note.id}") で完全に取得しました。sourceReferences[0] から導きました。`,sources:['S1']}:{answer:'元資料を確認できました。集合場所は北口で、持ち物は青いノートです。',sources:['S1']})};
+  return {text:JSON.stringify(generations===1?{answer:`出典ノート ID は ${note.id}（レビジョン1）で、パスは ${note.path}。memory.read(query="${note.id}") で完全に取得しました。sourceReferences[0] から導きました。<|tool_call|>{"name":"lookup","arguments":{"query":"meeting"}}`,sources:['S1']}:{answer:'元資料を確認できました。集合場所は北口で、持ち物は青いノートです。',sources:['S1']})};
  }};
  const question='保存した集合場所と持ち物のメモについて、元資料をたどって確認し、日本語で答えてください。';
  const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine},{model:'test',question,mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],memoryUsed:true}});

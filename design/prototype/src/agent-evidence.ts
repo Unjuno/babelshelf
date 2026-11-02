@@ -21,14 +21,23 @@ export class InternalSourceLabelLeakError extends Error {
 export class InternalImplementationLeakError extends Error {
  constructor(){super('Answer exposes internal implementation details');this.name='InternalImplementationLeakError';}
 }
-const internalAnswerPatterns=[/\bmemory\.(?:read|search|sources|list)\s*(?:\(|\b)/giu,/\bsourceReferences?\s*\[\s*\d+\s*\]/giu,/\b(?:noteId|sourceId|runtimeRevision)\s*[:=]/giu,/\bpartial\s*:\s*(?:true|false)\b/giu,/\b(?:revision|レビジョン)\s*[:=]?\s*\d+\b/giu,/(?<![\w-])[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\w-])/giu];
+const internalAnswerPatterns=[/\bmemory\.(?:read|search|sources|list)\s*(?:\(|\b)/giu,/\bsourceReferences?\s*\[\s*\d+\s*\]/giu,/\b(?:noteId|sourceId|runtimeRevision)\s*[:=]/giu,/\bpartial\s*:\s*(?:true|false)\b/giu,/\b(?:revision|レビジョン)\s*[:=]?\s*\d+\b/giu,/(?<![\w-])[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\w-])/giu,/<\|(?:tool_call|tool_result|function_call|function_result)(?:\||\b)/giu,/(?:^|\n)\s*(?:tool[_ -]?calls?|function[_ -]?calls?)\s*[:=]/giu,/\bto=(?:memory|user)\.[a-z][\w.-]*/giu,/\b(?:arguments|recipient)\s*[:=]\s*(?:\{|\[|to=)/giu,/\b(?:Inbox|Notes|Schedule|Notifications|Attachments|Tools|Settings)\/[^\s"'<>]*\.md\b/giu];
 function asksAboutImplementation(userText:string){return /\b(?:(?:how (?:does|do|is|are)\b.{0,60}\b(?:work|implemented|structured))|(?:explain|describe|document)\b.{0,50}\b(?:tools?|apis?|schemas?|json fields?|identifiers?|record ids?|source ids?|note ids?|revisions?)|(?:explain|describe)\s+how\s+[\w.-]+\s+works|(?:what (?:is|does)\b.{0,50}\b(?:memory\.(?:read|search|sources|list)|api|schema|field|identifier|record id|source id|note id|revision))|(?:memory\.(?:read|search|sources|list)|api|schema|json fields?|identifiers?|record ids?|source ids?|note ids?|revisions?)\b.{0,24}\b(?:mean|means|work|works|implemented|structured|specification))|(?:ツール|API|スキーマ|JSONフィールド|識別子|レコードID|出典ID|ノートID|リビジョン|内部仕様).{0,30}(?:仕様|意味|構造|実装|とは|について|教えて|説明|何)/iu.test(userText);}
 /** Detect protocol-shaped implementation details, while preserving explicitly requested technical content or literal source text. */
 export function hasInternalImplementationLeak(answer:string,userText:string,sources:readonly SourceRef[]=[]){
  if(asksAboutImplementation(userText))return false;
  for(const pattern of internalAnswerPatterns){
   pattern.lastIndex=0;
-  for(const match of answer.matchAll(pattern))if(!sources.some(source=>source.quote.includes(match[0])))return true;
+  for(const match of answer.matchAll(pattern)){
+   if(sources.some(source=>source.quote.includes(match[0])))continue;
+   // A filename explicitly supplied in the user's request is task content;
+   // only the unrequested private folder prefix is implementation leakage.
+   if(pattern===internalAnswerPatterns.at(-1)){
+    const filename=match[0].split(/[\\/]/u).at(-1)??match[0],escaped=filename.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    if(new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`,'iu').test(userText))continue;
+   }
+   return true;
+  }
  }
  return false;
 }
