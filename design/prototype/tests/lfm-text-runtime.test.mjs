@@ -193,6 +193,13 @@ test('automatic backend does not mask WebGPU setup errors or attempt a CPU retry
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async id=>{reads.push(id);return f.file;},readAssets:()=>({local:{filesPresent:true}})});
  await assert.rejects(runtime.load('local'),/WebGPU initialization failed/);assert.deepEqual(f.calls,[['preflight','webgpu']]);assert.deepEqual(reads,[]);
 });
+test('automatic backend preserves retryable WebGPU probe failures instead of silently selecting CPU/WASM',async()=>{
+ for(const [code,message] of [['webgpu_check_timeout','WebGPU check timed out · retry'],['webgpu_check_failed','WebGPU check failed · retry']]){
+  const f=fixture(),reads=[];f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);if(backend==='webgpu'){const error=Error(message);error.code=code;throw error;}};
+  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async id=>{reads.push(id);return f.file;},readAssets:()=>({local:{filesPresent:true}})});
+  await assert.rejects(runtime.load('local'),error=>error.code===code&&error.message===message);assert.deepEqual(f.calls,[['preflight','webgpu']]);assert.deepEqual(reads,[]);assert.equal(runtime.loaded,'');
+ }
+});
 test('automatic backend retries CPU when WebGPU disappears between preflight and adapter load',async()=>{
  const f=fixture(),progress=[];f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);};f.adapter.load=async(_file,id,{backend})=>{f.calls.push(['load-attempt',backend]);if(backend==='webgpu'){const error=Error('WebGPU unavailable');error.code='webgpu_unavailable';throw error;}f.adapter.loaded=id;};
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}}),onProgress:value=>progress.push(value)});

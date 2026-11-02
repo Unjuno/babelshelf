@@ -19,21 +19,21 @@ test('timed-out preferred adapter checks do not retry after a late null or rejec
  for(const lateOutcome of ['null','rejection']){
   let finishPreferred;const calls=[];
   const gpu={requestAdapter:options=>{calls.push(options);return calls.length===1?new Promise((resolve,reject)=>{finishPreferred=lateOutcome==='null'?resolve:()=>reject(Error('late GPU failure'));}):Promise.resolve('default-adapter');}};
-  await assert.rejects(requestHighPerformanceAdapter(gpu,{timeoutMs:20}),error=>error.code==='webgpu_unavailable'&&/timed out/.test(error.message));
+  await assert.rejects(requestHighPerformanceAdapter(gpu,{timeoutMs:20}),error=>error.code==='webgpu_check_timeout'&&/timed out/.test(error.message));
   finishPreferred(null);
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(calls,[{powerPreference:'high-performance'}]);
  }
 });
 
-test('missing, rejected, and timed-out adapter checks use the fallback error code',async()=>{
- for(const [gpu,timeoutMs,message] of [
-  [undefined,10,/WebGPU unavailable/],
-  [{requestAdapter:async()=>null},10,/WebGPU unavailable/],
-  [{requestAdapter:async()=>{throw Error('GPU process closed');}},10,/WebGPU check failed/],
-  [{requestAdapter:()=>new Promise(()=>{})},5,/WebGPU check timed out/],
+test('only a missing or null adapter is classified as definitively unavailable',async()=>{
+ for(const [gpu,timeoutMs,code,message] of [
+  [undefined,10,'webgpu_unavailable',/WebGPU unavailable/],
+  [{requestAdapter:async()=>null},10,'webgpu_unavailable',/WebGPU unavailable/],
+  [{requestAdapter:async()=>{throw Error('GPU process closed');}},10,'webgpu_check_failed',/WebGPU check failed/],
+  [{requestAdapter:()=>new Promise(()=>{})},5,'webgpu_check_timeout',/WebGPU check timed out/],
  ]){
-  await assert.rejects(requestHighPerformanceAdapter(gpu,{timeoutMs}),error=>error.code==='webgpu_unavailable'&&message.test(error.message));
+  await assert.rejects(requestHighPerformanceAdapter(gpu,{timeoutMs}),error=>error.code===code&&message.test(error.message));
  }
 });
 
