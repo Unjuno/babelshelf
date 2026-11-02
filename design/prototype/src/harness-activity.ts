@@ -87,11 +87,12 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
  // A final persistence failure must not run the tool again or invent a tool failure.
  try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
 }
-export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
+export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;onStepCompleted?:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
  return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined){
   return recordOperation(tool,input,async()=>{ports.check();const result=await work();ports.check();return result;},async activity=>{
    if(ports.persistActivity)await ports.persistActivity(activity);
    else{const previous=ports.readActivities();if(!previous)throw Error('Input unavailable');await ports.persistActivities(updateActivity(previous,activity));}
+   if(activity.status==='succeeded')try{ports.onStepCompleted?.();}catch{/* Progress display cannot change a committed activity result. */}
    if(activity.status==='failed'||activity.status==='stopped'){
     ports.onFailureRecorded();if(ports.diagnosticsEnabled)try{ports.writeDiagnostic({tool:activity.tool,status:activity.status,code:activity.error?.code??activity.status,message:activity.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}
    }

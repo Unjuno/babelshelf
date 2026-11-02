@@ -46,6 +46,14 @@ test('state is observable without React and stale progress cannot change the nex
  await c.run(async run=>{stale.progress('Old');assert.equal(c.state.progress,'');run.progress('New','generating');assert.equal(c.state.stage,'generating');});
  assert.equal(c.state.phase,'completed');assert.ok(seen.includes('awaitingApproval'));unsubscribe();
 });
+test('completed activity progress is monotonic, coalesced, and isolated to its submission',async()=>{
+ const c=createSubmissionController(),seen=[];let stale;
+ c.subscribe(s=>seen.push(s.completedSteps));
+ await c.run(async run=>{stale=run;for(let i=0;i<6;i++)run.stepCompleted();assert.equal(c.state.completedSteps,6);});
+ assert.equal(c.state.completedSteps,6);assert.ok(seen.includes(1));assert.ok(seen.includes(5));
+ await c.run(async run=>{stale.stepCompleted();assert.equal(c.state.completedSteps,0);run.stepCompleted();});
+ assert.equal(c.state.completedSteps,1);
+});
 test('failure releases ownership and Stop after completion has no effect',async()=>{
  const c=createSubmissionController();assert.equal(await c.run(async()=>{throw Error('Storage conflict');}),'failed');
  assert.equal(c.state.error,'Storage conflict');assert.equal(c.stop(),false);

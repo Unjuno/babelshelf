@@ -285,7 +285,8 @@ export default function Prototype() {
  useEffect(()=>{textDeviceEpoch.current++;setTextDeviceCheck(null);setTextDeviceChecking(false);},[model]);  const selectedCustomDecision=modelPreferences.customDecisionModels.find(m=>m.id===decisionModel);
  const decision=useDecision(decisionModel,modelPreferences.customDecisionModels);
  const modelExecution=createModelExecutionManager({text:bonsai,decision,ensureRuntime:ensureProductRuntime});
- const submissionStatus=chatProgress||(sending?submissionStageLabel(submissionState.stage):'')||(decision.busy&&!!assetAction?decision.progress:bonsai.busy?bonsai.progress:'');
+ const submissionStatusBase=chatProgress||(sending?submissionStageLabel(submissionState.stage):'')||(decision.busy&&!!assetAction?decision.progress:bonsai.busy?bonsai.progress:'');
+ const submissionStatus=submissionState.completedSteps>0&&sending?`${submissionStatusBase||'Working…'} · ${submissionState.completedSteps} ${submissionState.completedSteps===1?'step':'steps'}`:submissionStatusBase;
  const selectedCustomSpeech=modelPreferences.customSpeechModels.find(m=>m.id===speechModel),speechSupported=!!getSpeechManifest(speechModel)||!!selectedCustomSpeech,speech=useSpeech(speechModel,modelPreferences.customSpeechModels,check=>modelExecution.releaseForReader(check));
  const vision=useVision(visionModel,modelPreferences.customVisionModels,check=>modelExecution.releaseForReader(check));
  const [visionPreparationError,setVisionPreparationError]=useState('');
