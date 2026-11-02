@@ -7872,3 +7872,8 @@ App aafbab99acf503760d19c4dbf266d2f7f9d2babe/build4bd8618bf8a800b7. Sites source
 - This is audit/provenance correctness, not GPU or inference-speed improvement. Runtime routing stays capability-driven; no matched new model benchmark was run. Windows/iPhone/Android/macOS device performance and sustained GPU behavior remain unverified.
 
 Follow-up: added a regression showing equivalent schemas with different object-key insertion order produced different audit SHAs. The serializer now canonicalizes object keys recursively, retains array order, and rejects cycles/non-JSON number values; the equivalent contracts fingerprint identically while changed schema/effect/network still change the SHA. Tool-package tests: 25/25; full prototype: 1,773/1,773; `npm run check`: PASS. No model/device performance claim.
+
+2026-11-02 — Adaptive D1 ONNX CPU fallback threads
+- Removed the D1 worker's explicit `ort.env.wasm.numThreads=1`; the pinned ONNX Runtime chooses its own safe policy based on shared-WASM availability and browser concurrency. WebGPU remains the preferred route; this affects only CPU/WASM fallback.
+- Regression-first `node --test tests/decision-assets.test.mjs`: 9/9. `npm run test:prototype`: 1,775/1,775. `npm run check`: PASS. `npm run build:app`: PASS, shell `855f67c729095aad`, 163 verified assets. Clean-checkout GitHub Actions [41384082884](https://github.com/Unjuno/babelshelf/actions/runs/41384082884) passed all workflow stages.
+- This confirms configuration and clean-checkout acceptance, not a speedup. No physical-device measurement was run. Windows/iPhone/Android/macOS matched latency, memory and sustained stability remain open. Existing uncommitted QA/model artifacts were preserved.
