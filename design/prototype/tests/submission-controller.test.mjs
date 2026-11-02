@@ -12,6 +12,17 @@ test('transient answer is cleared on stop, failure and completion and stale runs
  await c.run(async run=>{run.preview('Done');});assert.equal(c.state.preview,'');
 });
 
+test('stream previews coalesce to one paint and pending text is discarded on stop or completion',async()=>{
+ const frames=new Map();let next=0,cancelled=0;
+ const c=createSubmissionController({previewScheduler:{schedule:flush=>{const id=++next;frames.set(id,flush);return id;},cancel:id=>{cancelled++;frames.delete(id);}}});
+ const entered=deferred(),exit=deferred();let runRef;
+ const work=c.run(async run=>{runRef=run;run.preview('a');run.preview('ab');run.preview('abc');assert.equal(frames.size,1);assert.equal(c.state.preview,'');entered.resolve();await exit.promise;run.check();});
+ await entered.promise;const flush=frames.values().next().value;frames.clear();flush();assert.equal(c.state.preview,'abc');
+ runRef.preview('latest');assert.equal(frames.size,1);assert.equal(c.stop(),true);assert.equal(frames.size,0);assert.equal(c.state.preview,'');assert.ok(cancelled>0);
+ exit.resolve();assert.equal(await work,'cancelled');assert.equal(c.state.preview,'');
+ await c.run(async run=>{run.preview('never paint completed work');});assert.equal(c.state.preview,'');assert.equal(frames.size,0);
+});
+
 test('every silent submission stage has a short visible fallback label',()=>{
  assert.equal(submissionStageLabel('saving'),'Saving…');
  assert.equal(submissionStageLabel('reading'),'Reading…');
