@@ -95,7 +95,7 @@ test('a validated custom LFM2 record becomes a hash-pinned local-only model on t
  const sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2 fine tune',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes:149081056,name:'My model',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};
  const m=describeLfmText([custom],custom.id).models.at(-1);assert.equal(m.id,custom.id);assert.equal(m.file.sha256,sha);assert.equal(m.engine,'wllama-cpu-count');assert.equal(m.contextTokens,4096);assert.equal(m.runtime.revision,describeLfmText().runtime.revision);assert.equal(m.url,undefined);
 });
-function fixture(){const calls=[],file=new Blob(['weights']),adapter={loaded:null,supportsExactCount:true,maxReplyTokens:768,async load(_f,id,{backend}){calls.push(['load',backend]);this.loaded=id;},async unload(){calls.push(['unload']);this.loaded=null;},abort(){calls.push(['stop']);},async count(){calls.push(['count']);return 20;},async generate(_m,o){calls.push(['generate',o]);return {text:o.jsonSchema?'{ "action" : "chat" , "query" : "" }':'{"answer":"valid"}'};}};const manifest={contextTokens:2048,runtime:{revision:'fixed-count-runtime'},models:[{id:'local',revision:'weights-sha',contextTokens:2048,file:{name:'local.gguf',bytes:file.size}}]},runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>file,readAssets:()=>({local:{filesPresent:true}})});return {runtime,adapter,calls,manifest};}
+function fixture(){const calls=[],file=new Blob(['weights']),adapter={loaded:null,supportsExactCount:true,maxReplyTokens:768,async load(_f,id,{backend,...options}){calls.push(['load',backend]);this.lastLoadOptions=options;this.loaded=id;},async unload(){calls.push(['unload']);this.loaded=null;},abort(){calls.push(['stop']);},async count(){calls.push(['count']);return 20;},async generate(_m,o){calls.push(['generate',o]);return {text:o.jsonSchema?'{ "action" : "chat" , "query" : "" }':'{"answer":"valid"}'};}};const manifest={contextTokens:2048,runtime:{revision:'fixed-count-runtime'},models:[{id:'local',revision:'weights-sha',contextTokens:2048,file:{name:'local.gguf',bytes:file.size}}]},runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>file,readAssets:()=>({local:{filesPresent:true}})});return {runtime,adapter,calls,manifest,file};}
 test('runtime reports the selected WASM resource variant, preserves it while warm, and clears it on unload',async()=>{
  const f=fixture();f.adapter.load=async(_file,id)=>{f.adapter.loaded=id;f.adapter.info={workerResources:{compat:true}};return {};};
  assert.equal((await f.runtime.load('local')).runtimeVariant,'compatibility');
@@ -155,6 +155,12 @@ test('WebGPU execution is reported only when a runtime log confirms GPU layer of
  const f=fixture();f.adapter.info={gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:24,totalModelLayers:25};const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}})});
  assert.equal((await runtime.load('local')).executionBackend,'webgpu');assert.equal((await runtime.load('local')).executionBackend,'webgpu');await runtime.unload();
 });
+test('backend preflight is forwarded to the prepared adapter so the GPU adapter is not requested twice',async()=>{
+ const f=fixture(),preflights=[];f.adapter.preflightBackend=async backend=>{preflights.push(backend);};
+ const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>f.file,readAssets:()=>({local:{filesPresent:true}})});
+ await runtime.load('local');assert.deepEqual(preflights,['webgpu']);assert.deepEqual(f.adapter.lastLoadOptions,{preflighted:true});
+ await runtime.unload();
+});
 test('a requested WebGPU route stays unconfirmed when offload is zero, missing, or inconsistent',async()=>{
  for(const info of [
   {gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:0,totalModelLayers:25},
@@ -174,6 +180,7 @@ test('automatic backend uses CPU WASM only when WebGPU is definitively unavailab
  const f=fixture(),reads=[];f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);if(backend==='webgpu'){const error=Error('WebGPU unavailable');error.code='webgpu_unavailable';throw error;}};
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async id=>{reads.push(id);return new Blob(['weights']);},readAssets:()=>({local:{filesPresent:true}})});
  const metrics=await runtime.load('local');assert.deepEqual(f.calls,[['preflight','webgpu'],['preflight','cpu'],['unload'],['load','cpu']]);assert.deepEqual(reads,['local']);assert.equal(metrics.executionBackend,'cpu-wasm');
+ assert.deepEqual(f.adapter.lastLoadOptions,{preflighted:true});
 });
 test('automatic backend does not mask WebGPU setup errors or attempt a CPU retry',async()=>{
  const f=fixture(),reads=[];f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);if(backend==='webgpu')throw Error('WebGPU initialization failed');};

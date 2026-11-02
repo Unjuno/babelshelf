@@ -5,7 +5,7 @@ import {nativeFinalActionBinding} from './native-output-format.ts';
 // @ts-expect-error Shared native-tool transport bound is JavaScript.
 import {MAX_NATIVE_TOOL_CALLS,MAX_NATIVE_TOOL_DEFINITIONS} from '../../../dist/lfm-adapter.js';
 
-type Adapter={readonly loaded?:string|null;readonly nativeToolCalls?:boolean;readonly info?:{requestedThreads?:number;activeThreads?:number;actualGpuLayers?:number|null;totalModelLayers?:number|null;gpuLayerEvidence?:'cpu-route-requested'|'runtime-offload-log'|'unobserved';workerResources?:{compat?:boolean}}|null;readonly supportsExactCount:boolean;readonly maxReplyTokens:number;preflightBackend?:(backend:'cpu'|'webgpu')=>Promise<void>|void;load:(file:File,id:string,options:{backend:'cpu'|'webgpu'})=>Promise<unknown>;unload:()=>Promise<void>;abort:()=>void;onProgress?:(value:string)=>void;count:(messages:any[],options:{json:boolean;tools?:NativeToolPlanFormat['tools']})=>Promise<number>;generate:(messages:any[],options:{json:boolean;maxTokens:number;onAnswerPreview?:(text:string)=>void;jsonSchema?:Record<string,unknown>;tools?:NativeToolPlanFormat['tools']})=>Promise<{text:string;assistantContent?:string;finishReason?:string;toolCalls?:{id?:string;name:string;arguments:Record<string,unknown>}[];inputTokens?:number|null;outputTokens?:number;firstContentMs?:number|null;totalMs?:number;tokensPerSecond?:number|null;timings?:{prompt_ms?:number;predicted_ms?:number;predicted_per_second?:number;prompt_n?:number;cache_n?:number}|null}>};
+type Adapter={readonly loaded?:string|null;readonly nativeToolCalls?:boolean;readonly info?:{requestedThreads?:number;activeThreads?:number;actualGpuLayers?:number|null;totalModelLayers?:number|null;gpuLayerEvidence?:'cpu-route-requested'|'runtime-offload-log'|'unobserved';workerResources?:{compat?:boolean}}|null;readonly supportsExactCount:boolean;readonly maxReplyTokens:number;preflightBackend?:(backend:'cpu'|'webgpu')=>Promise<void>|void;load:(file:File,id:string,options:{backend:'cpu'|'webgpu';preflighted?:boolean})=>Promise<unknown>;unload:()=>Promise<void>;abort:()=>void;onProgress?:(value:string)=>void;count:(messages:any[],options:{json:boolean;tools?:NativeToolPlanFormat['tools']})=>Promise<number>;generate:(messages:any[],options:{json:boolean;maxTokens:number;onAnswerPreview?:(text:string)=>void;jsonSchema?:Record<string,unknown>;tools?:NativeToolPlanFormat['tools']})=>Promise<{text:string;assistantContent?:string;finishReason?:string;toolCalls?:{id?:string;name:string;arguments:Record<string,unknown>}[];inputTokens?:number|null;outputTokens?:number;firstContentMs?:number|null;totalMs?:number;tokensPerSecond?:number|null;timings?:{prompt_ms?:number;predicted_ms?:number;predicted_per_second?:number;prompt_n?:number;cache_n?:number}|null}>};
 type Manifest={contextTokens:number;runtime:{revision:string};models:{id:string;revision:string;engine?:string;contextTokens:number;file:{name:string;bytes:number}}[]};
 function observedExecutionBackend(requested:'cpu'|'webgpu',info:Adapter['info']):'cpu-wasm'|'webgpu'|undefined{
  if(requested==='cpu')return 'cpu-wasm';
@@ -59,19 +59,19 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
    // manifest. Avoid rereading and rehashing a multi-gigabyte OPFS file, then
    // tearing down the live GPU/CPU session on repeated turns.
    if(adapter.loaded===id){check();if(!adapter.supportsExactCount)throw Error('Exact pre-generation token count unavailable');return { ...(loadedExecutionBackend?{executionBackend:loadedExecutionBackend}:{}),...(loadedRuntimeVariant?{runtimeVariant:loadedRuntimeVariant}:{}) };}
-   const totalStarted=performance.now();let effectiveBackend:'cpu'|'webgpu';
+   const totalStarted=performance.now();let effectiveBackend:'cpu'|'webgpu',backendPreflighted=false;
    if(backend==='auto'){
-    try{await adapter.preflightBackend?.('webgpu');effectiveBackend='webgpu';}
-    catch(error){if((error as {code?:unknown}|null)?.code!=='webgpu_unavailable')throw error;effectiveBackend='cpu';(onProgress??adapter.onProgress)?.('WebGPU unavailable · Using CPU/WASM');await adapter.preflightBackend?.('cpu');}
-   }else{effectiveBackend=backend;await adapter.preflightBackend?.(effectiveBackend);}
+    try{if(adapter.preflightBackend){await adapter.preflightBackend('webgpu');backendPreflighted=true;}effectiveBackend='webgpu';}
+    catch(error){if((error as {code?:unknown}|null)?.code!=='webgpu_unavailable')throw error;effectiveBackend='cpu';(onProgress??adapter.onProgress)?.('WebGPU unavailable · Using CPU/WASM');if(adapter.preflightBackend){await adapter.preflightBackend('cpu');backendPreflighted=true;}}
+   }else{effectiveBackend=backend;if(adapter.preflightBackend){await adapter.preflightBackend(effectiveBackend);backendPreflighted=true;}}
    check();const file=await readFile(id);check();if(file.size!==model.file.bytes)throw Error('Model integrity mismatch');await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;check();const immutableFile=typeof File!=='undefined'&&file instanceof File?file:new File([file],model.file.name);let rawMetrics:unknown;
-   try{rawMetrics=await adapter.load(immutableFile,id,{backend:effectiveBackend});}
+   try{rawMetrics=await adapter.load(immutableFile,id,{backend:effectiveBackend,...(backendPreflighted?{preflighted:true}:{})});}
    catch(error){
     const failure=error as {code?:unknown;cleanupUnconfirmed?:unknown}|null,code=failure?.code;
     if(backend!=='auto'||effectiveBackend!=='webgpu'||failure?.cleanupUnconfirmed===true||code!=='webgpu_unavailable'&&code!=='webgpu_load_failed')throw error;
     check();await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;check();effectiveBackend='cpu';
     (onProgress??adapter.onProgress)?.(code==='webgpu_load_failed'?'WebGPU load failed · Trying CPU/WASM':'WebGPU unavailable · Using CPU/WASM');
-    try{await adapter.preflightBackend?.('cpu');check();rawMetrics=await adapter.load(immutableFile,id,{backend:'cpu'});}
+    try{backendPreflighted=false;if(adapter.preflightBackend){await adapter.preflightBackend('cpu');backendPreflighted=true;}check();rawMetrics=await adapter.load(immutableFile,id,{backend:'cpu',...(backendPreflighted?{preflighted:true}:{})});}
     catch(cpuError){check();const combined=Error(`${code==='webgpu_load_failed'?'WebGPU model load failed':'WebGPU unavailable'} · CPU/WASM retry failed`);Object.assign(combined,{cause:cpuError,gpuFailure:error,code:'backend_fallback_failed',...(cpuError&&typeof cpuError==='object'&&(cpuError as {cleanupUnconfirmed?:unknown}).cleanupUnconfirmed===true?{cleanupUnconfirmed:true}:{})});throw combined;}
    }
    check();if(!adapter.supportsExactCount){await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;throw Error('Exact pre-generation token count unavailable');}
