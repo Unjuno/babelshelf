@@ -1,6 +1,22 @@
 /** Reject an obvious type mismatch without claiming to verify semantic entailment. */
 export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=[]){
  const q=question.normalize('NFKC'),a=answer.normalize('NFKC').trim();
+ // Respect a small set of explicit "leave this out" instructions. This is a
+ // lexical scope guard, not a general-purpose interpretation of user intent.
+ const excludedMeetingPlace=/(?:集合場所|待ち合わせ場所|会場|meeting\s+(?:place|location|venue)|venue|address).{0,24}(?:含めない|書かない|省(?:いて|く)|除外|触れない|不要|いらない|do\s+not\s+include|don't\s+include|omit|exclude|leave\s+out|skip|not\s+include)|(?:含めない|書かない|省(?:いて|く)|除外|触れない|不要|いらない|do\s+not\s+include|don't\s+include|omit|exclude|leave\s+out|skip|not\s+include).{0,24}(?:集合場所|待ち合わせ場所|会場|meeting\s+(?:place|location|venue)|venue|address)/iu.test(q);
+ if(excludedMeetingPlace){
+  const placeLabels=/(?:集合場所|待ち合わせ場所|会場|meeting\s+(?:place|location|venue)|venue|address)/iu;
+  if(placeLabels.test(a))throw Error('Answer includes an explicitly excluded detail · try again');
+  const sourceRowsForPlace=(sourceEvidence??[]).filter(item=>typeof item?.quote==='string').map(item=>item.quote!.normalize('NFKC'));
+  const placeValues=sourceRowsForPlace.flatMap(source=>{
+   const values:string[]=[];
+   const patterns=[/(?:集合場所|待ち合わせ場所|会場|住所)\s*(?:は|が|:|：)\s*([^。.!！?？,，;；\n]{1,48})/gu,/(?:meeting\s+(?:place|location|venue)|venue|address)\s*[:：]\s*([^.!?;\n]{1,48})/giu];
+   for(const pattern of patterns)for(const match of source.matchAll(pattern))if(match[1])values.push(match[1].trim().replace(/(?:です|でした|となります|になります)[。.!！?？]?$/u,'').trim());
+   return values;
+  }).filter(value=>value.length>1);
+  const normalizedAnswer=a.toLocaleLowerCase().replace(/[「」『』“”"'’]/gu,'');
+  if(placeValues.some(value=>normalizedAnswer.includes(value.toLocaleLowerCase().replace(/[「」『』“”"'’]/gu,''))))throw Error('Answer includes an explicitly excluded detail · try again');
+ }
  // This is a narrow contradiction guard, not general semantic entailment. A
  // live model run compared two locations even though neither excerpt contained
  // a distance or a proximity relation. Permit the claim only when the source

@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · enforce an explicitly excluded meeting location
+
+A Windows Chrome Bonsai 4B run repeated a cited meeting location after the user asked for supplies only; this was reproduced on two public builds. The shared answer-consistency boundary now rejects meeting-location labels and exact location values extracted from explicitly labeled source lines when Japanese or English prompts explicitly exclude that detail. Regressions cover direct labels, copied place values, a paraphrased “meet at” form, allowed answers, and a positive location question without an exclusion. Root tests passed 257/257; prototype tests 1,834/1,834; `npm run check`; production app build (165 verified assets); app acceptance 8/8; `git diff --check`. This is a narrow lexical scope guard, not semantic entailment: indirect aliases, implicit exclusions and unsupported claims in general remain open. No model download, stored-data mutation, deployment or live-model rerun was performed.
+
 ### 2026-11-03 · clarify the scope of Assistant generation budgets
 
 Assistant settings previously labelled the optional limits `Generated tokens` and `Generation time`, although the implementation wraps only the Text model's generation calls. The separate Decision classifier, model acquisition/loading, token counting and registered tool work are outside this budget. Settings and before/after profile review now say `Text model tokens` / `Text model time` and state that scope explicitly. A focused Settings browser regression checks both the profile and review surfaces. This clarifies the existing contract; it does not add a task wall-time, Decision-model or tool-execution budget.
