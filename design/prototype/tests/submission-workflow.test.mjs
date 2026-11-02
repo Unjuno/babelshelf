@@ -53,6 +53,7 @@ test('a selected device clock reaches the final answer through the submission fl
  f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
  assert.equal(await c.run(run=>executeSubmission({text:'What time is it?',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
  assert.match(seen.at(-1),/device-clock/);assert.equal(f.current().turns.at(-1).answer,'Device time noted.');assert.deepEqual(f.current().turns.at(-1).refs,[]);
+ assert.equal(c.state.completedSteps,f.current().turns.at(-1).activity.filter(item=>item.status==='succeeded').length);
  const planReceipt=f.current().turns.at(-1).activity.find(item=>item.tool==='dialogue.plan'&&item.input?.execution);assert.equal(planReceipt.input.execution.modelSettingsRevision,12);assert.equal(planReceipt.input.execution.harnessSettingsRevision,8);
 });
 
