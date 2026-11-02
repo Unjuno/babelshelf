@@ -26,12 +26,14 @@ type Props={
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
  const {testMode,onTestModeChange,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
- let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportContextTokens:number|undefined;let generation:ModelGenerationDiagnostic|undefined;
+ let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportContextTokens:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
   if(typeof report?.createdAt==='string'&&Number.isFinite(Date.parse(report.createdAt)))reportAt=new Date(report.createdAt).toISOString();
   if(typeof report?.appBuild==='string')reportBuild=report.appBuild.slice(0,40);
   if(report?.selectedModel?.backend==='webgpu'||report?.selectedModel?.backend==='cpu-wasm')reportBackend=report.selectedModel.backend;
   if(Number.isSafeInteger(report?.selectedModel?.contextTokens)&&report.selectedModel.contextTokens>=1&&report.selectedModel.contextTokens<=262144)reportContextTokens=report.selectedModel.contextTokens;
+  if(typeof generation?.quantization==='string')reportQuantization=generation.quantization.slice(0,100);
+  else if(typeof report?.selectedModel?.quantization==='string')reportQuantization=report.selectedModel.quantization.slice(0,100);
   if(typeof generation?.model==='string')reportModel=generation.model.slice(0,120);
   else if(typeof report?.selectedModel?.id==='string')reportModel=report.selectedModel.id.slice(0,120);
   if(generation)modelStatus=generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.failureType==='incomplete-output'?'Incomplete output':generation.failureType==='empty-output'?'No output':generation.status==='fail'&&generation.failureStage?`Failed · ${generation.failureStage}`:({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run';
@@ -59,6 +61,7 @@ export function DiagnosticsSettings(props:Props){
     {typeof generation.tokensPerSecond==='number'&&<div className="capability-row"><span>Generation speed</span><span>{generation.tokensPerSecond.toFixed(2)} tokens/s</span></div>}
     {typeof generation.runtimeMetrics?.runtimeDecodeTokensPerSecond==='number'&&<div className="capability-row"><span>Decode speed</span><span>{generation.runtimeMetrics.runtimeDecodeTokensPerSecond.toFixed(2)} tokens/s</span></div>}
     <details className="device-test-steps"><summary>Technical details</summary>
+     {reportQuantization&&<div className="capability-row"><span>Quantization</span><span>{reportQuantization}</span></div>}
      {reportBackend&&<div className="capability-row"><span>Backend route · configured</span><span>{reportBackend==='webgpu'?'WebGPU':'CPU · WASM'}</span></div>}
      {generation.loadMetrics?.runtimeVariant&&<div className="capability-row"><span>WASM resources · runtime</span><span>{generation.loadMetrics.runtimeVariant==='compatibility'?'Compatibility':'Standard'}</span></div>}
      {typeof generation.runtimeMetrics?.runtimeObservedGpuLayers==='number'&&typeof generation.runtimeMetrics?.runtimeObservedGpuTotalLayers==='number'?<div className="capability-row"><span>GPU layers · runtime log</span><span>{generation.runtimeMetrics.runtimeObservedGpuLayers}/{generation.runtimeMetrics.runtimeObservedGpuTotalLayers}</span></div>:reportBackend==='webgpu'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>Not reported</span></div>}

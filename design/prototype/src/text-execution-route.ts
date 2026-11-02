@@ -44,5 +44,12 @@ export function textExecutionQuantization(id:string,customModels:readonly Custom
  if(custom)return ('GGUF tensor types: '+custom.inspection.tensorTypes.join(',')).slice(0,100);
  const model=baseManifest.models.find(model=>model.id===id)??getLfmTextManifest(id)??getLfm3TextManifest(id)??getQwen3TextManifest(id)??getOnnxTextManifest(id);
  const value=(model as {format?:unknown;dtype?:unknown}|undefined)?.format??(model as {dtype?:unknown}|undefined)?.dtype;
- return typeof value==='string'?value.slice(0,100):undefined;
+ if(typeof value==='string'&&value)return value.slice(0,100);
+ // Some app-owned GGUF manifests encode the quantization in their pinned
+ // filename rather than a separate format field (notably LFM3 Q4_0 and Q8_0).
+ // Read only the registered descriptor; never infer a custom model format
+ // from its user-controlled filename or ID.
+ const fileName=(model as {file?:{name?:unknown}}|undefined)?.file?.name;
+ if(typeof fileName!=='string')return;
+ return /(?:^|[-_.])(Q[0-9]+(?:_[A-Z0-9]+)*)(?=\.|[-_]|$)/i.exec(fileName)?.[1]?.toUpperCase();
 }

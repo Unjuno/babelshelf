@@ -62,8 +62,8 @@ function projectWebGpu(value:unknown):Record<string,unknown>|undefined{
  return {available:source.available,fallbackAdapter:source.fallbackAdapter,features,limits:safeLimits};
 }
 function projectSelectedModel(value:unknown):Record<string,unknown>|undefined{
- const selected=pickFields(value,['id','revision','engine','backend','runtimeRevision','contextTokens','filesPresent','loaded']);
- if(!selected||typeof selected.id!=='string'||typeof selected.revision!=='string'||typeof selected.runtimeRevision!=='string'||typeof selected.filesPresent!=='boolean'||typeof selected.loaded!=='boolean'||selected.backend!==undefined&&!['webgpu','cpu-wasm'].includes(String(selected.backend))||selected.engine!==undefined&&!/^[a-z0-9][a-z0-9._-]{0,79}$/.test(String(selected.engine))||selected.contextTokens!==undefined&&(!Number.isSafeInteger(selected.contextTokens)||Number(selected.contextTokens)<1||Number(selected.contextTokens)>262144))return;
+ const selected=pickFields(value,['id','revision','engine','backend','runtimeRevision','contextTokens','quantization','filesPresent','loaded']);
+ if(!selected||typeof selected.id!=='string'||typeof selected.revision!=='string'||typeof selected.runtimeRevision!=='string'||typeof selected.filesPresent!=='boolean'||typeof selected.loaded!=='boolean'||selected.backend!==undefined&&!['webgpu','cpu-wasm'].includes(String(selected.backend))||selected.engine!==undefined&&!/^[a-z0-9][a-z0-9._-]{0,79}$/.test(String(selected.engine))||selected.contextTokens!==undefined&&(!Number.isSafeInteger(selected.contextTokens)||Number(selected.contextTokens)<1||Number(selected.contextTokens)>262144)||selected.quantization!==undefined&&(typeof selected.quantization!=='string'||selected.quantization.length>100))return;
  return selected;
 }
 function projectDiagnosticReport(report:Record<string,unknown>):Record<string,unknown>{

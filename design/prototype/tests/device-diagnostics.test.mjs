@@ -275,6 +275,12 @@ test('bounded CPU runtime thread and prompt counters survive saved performance r
  writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics.runtimeThreads,4);
 });
 
+test('selected-model quantization survives the local device report and rejects oversized values',async()=>{
+ const storage=memoryStorage(),report=await runDeviceDiagnostics({selectedModel:'lfm3-1.7b-q8-0',selectedModelQuantization:'Q8_0',modelFilesPresent:true,storage,indexedDB:null,cacheStorage:null,gpu:null});
+ assert.equal(report.selectedModel.quantization,'Q8_0');writeSavedDeviceTestReport(storage,formatDeviceDiagnosticReport(report));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).selectedModel.quantization,'Q8_0');
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,selectedModel:{...report.selectedModel,quantization:'x'.repeat(101)}})),/Invalid/);
+});
+
 test('model test failures preserve a bounded failure stage without storing exception text',()=>{
  const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[]};
  const value={...base,modelGeneration:{status:'fail',model:'local',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',loadState:'not-loaded',failureStage:'load',failureType:'Error'}};
