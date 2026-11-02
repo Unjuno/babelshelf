@@ -66,6 +66,11 @@ test('performance displays runtime GPU layer counts when present',async({page})=
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('WebGPU · configured',{exact:true})).toBeVisible();await expect(page.getByText('Executed backend',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU · runtime',{exact:true})).toBeVisible();await expect(page.getByText('GPU layers · runtime log',{exact:true})).toBeVisible();await expect(page.getByText('24/28',{exact:true})).toBeVisible();await expect(page.getByText('Not reported',{exact:true})).toHaveCount(0);
 });
 
+test('performance shows requested and runtime-reported thread counts separately',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'lfm3',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'lfm3',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'webgpu'},runtimeMetrics:{requestedThreads:4,runtimeThreads:3}}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('Threads · runtime',{exact:true})).toBeVisible();await expect(page.getByText('4 requested · 3 reported',{exact:true})).toBeVisible();
+});
+
 test('Settings keeps common choices visible and groups advanced actions under More',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
