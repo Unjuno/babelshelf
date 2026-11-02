@@ -33,7 +33,7 @@ export function DiagnosticsSettings(props:Props){
   if(report?.selectedModel?.backend==='webgpu'||report?.selectedModel?.backend==='cpu-wasm')reportBackend=report.selectedModel.backend;
   if(typeof generation?.model==='string')reportModel=generation.model.slice(0,120);
   else if(typeof report?.selectedModel?.id==='string')reportModel=report.selectedModel.id.slice(0,120);
-  if(generation)modelStatus=generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.status==='fail'&&generation.failureStage?`Failed · ${generation.failureStage}`:({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run';
+  if(generation)modelStatus=generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.failureType==='incomplete-output'?'Incomplete output':generation.failureType==='empty-output'?'No output':generation.status==='fail'&&generation.failureStage?`Failed · ${generation.failureStage}`:({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run';
  }catch{/* A broken local report must not break Settings. */}
  if(deviceTestRunning||deviceModelTesting)modelStatus='Testing…';
  return <>

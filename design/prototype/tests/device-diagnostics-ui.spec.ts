@@ -48,6 +48,13 @@ test('saved timing results identify their model, time and build independently of
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
 });
 
+test('an incomplete timing response is explained in plain language',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],modelGeneration:{status:'fail',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',failureStage:'output-validation',failureType:'incomplete-output'}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await expect(page.getByText('4B · Incomplete output',{exact:true})).toBeVisible();
+ await expect(page.getByText('Failed · output-validation',{exact:true})).toHaveCount(0);
+});
+
 test('performance distinguishes configured route, selected runtime backend, and unreported runtime GPU offload',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'cpu-wasm'},runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34}}})));
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
