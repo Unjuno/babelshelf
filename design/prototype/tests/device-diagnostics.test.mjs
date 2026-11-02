@@ -274,7 +274,7 @@ test('saved device report accepts the prior schema and rejects malformed WebGPU 
 test('load phase counters survive local reports and malformed or private fields refuse storage',()=>{
  const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt'}};
  for(const loadMetrics of [{verificationMs:-1},{importMs:'private'},{runtimeLoadMs:Infinity},{device:'PRIVATE'},{runtimeVariant:'untrusted'}])assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,loadMetrics}})),/Invalid/);
- const value={...base,modelGeneration:{...base.modelGeneration,loadMetrics:{verificationMs:12,importMs:0,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:false,executionBackend:'webgpu',runtimeVariant:'compatibility'}}};writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.deepEqual(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.loadMetrics,value.modelGeneration.loadMetrics);
+ const value={...base,modelGeneration:{...base.modelGeneration,loadMetrics:{verificationMs:12,importMs:0,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:false,executionBackend:'cpu-wasm',runtimeVariant:'compatibility',gpuFallbackReason:'webgpu-unavailable'}}};writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.deepEqual(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.loadMetrics,value.modelGeneration.loadMetrics);
 });
 
 test('bounded CPU runtime thread and prompt counters survive saved performance reports',()=>{

@@ -4,7 +4,7 @@ export type GenerationFormat=StructuredFormat|'prose';
 export type NativeToolDefinition={type:'function';function:{name:string;description:string;parameters:Record<string,unknown>}};
 export type NativeToolPlanFormat={type:'native-tool-plan';tools:NativeToolDefinition[]};
 export type EngineGenerationFormat=GenerationFormat|NativeToolPlanFormat;
-export type RuntimeLoadMetrics={verificationMs?:number;importMs?:number;runtimeLoadMs?:number;totalLoadMs?:number;runtimeModuleReused?:boolean;executionBackend?:'webgpu'|'cpu-wasm';runtimeVariant?:'standard'|'compatibility'};
+export type RuntimeLoadMetrics={verificationMs?:number;importMs?:number;runtimeLoadMs?:number;totalLoadMs?:number;runtimeModuleReused?:boolean;executionBackend?:'webgpu'|'cpu-wasm';runtimeVariant?:'standard'|'compatibility';gpuFallbackReason?:'webgpu-unavailable'|'webgpu-model-load-failed'};
 /** Optional worker-reported load phases only; never adapter identity or raw output. */
 export function safeRuntimeLoadMetrics(value:unknown):RuntimeLoadMetrics|undefined{
  if(!value||typeof value!=='object'||Array.isArray(value))return;
@@ -13,6 +13,7 @@ export function safeRuntimeLoadMetrics(value:unknown):RuntimeLoadMetrics|undefin
  if(typeof source.runtimeModuleReused==='boolean')result.runtimeModuleReused=source.runtimeModuleReused;
  if(source.executionBackend==='webgpu'||source.executionBackend==='cpu-wasm')result.executionBackend=source.executionBackend;
  if(source.runtimeVariant==='standard'||source.runtimeVariant==='compatibility')result.runtimeVariant=source.runtimeVariant;
+ if(source.gpuFallbackReason==='webgpu-unavailable'||source.gpuFallbackReason==='webgpu-model-load-failed')result.gpuFallbackReason=source.gpuFallbackReason;
  return Object.keys(result).length?result:undefined;
 }
 export type RuntimeGenerationMetrics={countMs?:number;visibleTextTtftMs?:number;generationMs?:number;outputTokens?:number;generationTokensPerSecond?:number;runtimeTtftMs?:number;runtimePrefillMs?:number;runtimeDecodeMs?:number;runtimeDecodeTokensPerSecond?:number;runtimePromptTokens?:number;runtimeCachedTokens?:number;requestedThreads?:number;runtimeThreads?:number;runtimeObservedGpuLayers?:number;runtimeObservedGpuTotalLayers?:number;decodePipelineDepth?:number;memoryBefore?:Record<string,number>;memoryAfter?:Record<string,number>};
