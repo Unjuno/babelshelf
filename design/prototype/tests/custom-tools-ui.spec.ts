@@ -296,13 +296,27 @@ test('a custom tool is stored and added to the active profile in one save withou
  await expect(page.getByRole('alert')).toContainText('Tool folder already exists');
 });
 
-test('importing a validated local tool pair makes it available without executing it immediately',async({page})=>{
+test('tool import requires review, cancellation is inert and confirmation enables the package',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Import SKILL.md + tool.js'}).click();
  const skill='---\n{"id":"user.imported","version":1,"title":"Imported lookup","inputSchema":{"type":"object","required":["query"],"additionalProperties":false,"properties":{"query":{"type":"string","minLength":1,"maxLength":80}}},"capabilities":["memory.search"]}\n---\n\nSearch local notes.\n';
- await page.getByLabel('Custom tool source files').setInputFiles([{name:'SKILL.md',mimeType:'text/markdown',buffer:Buffer.from(skill)},{name:'tool.js',mimeType:'text/javascript',buffer:Buffer.from('({input,capabilities})=>capabilities.memorySearch(input.query)')}]);
- await expect(page.getByRole('heading',{name:'Review changes',exact:true})).toHaveCount(0);
- await expect.poll(()=>page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const {parsePreference}=await import('/src/preference-records.ts');const store=new KnowledgeStore();try{return parsePreference('harness',(await store.all()).find((note:any)=>note.id==='settings-harness').revisions.at(-1).body).profiles.find((profile:any)=>profile.id==='standard').enabledTools;}finally{store.close();}})).toContain('user.imported');
- await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Tools');await page.getByRole('button',{name:'Open tool files'}).click();
- await page.getByRole('button',{name:'Open user.imported'}).click();await expect(page.getByRole('button',{name:'Open SKILL.md'})).toBeVisible();await expect(page.getByRole('button',{name:'Open tool.js'})).toBeVisible();
+ const selectFiles=()=>page.getByLabel('Custom tool source files').setInputFiles([{name:'SKILL.md',mimeType:'text/markdown',buffer:Buffer.from(skill)},{name:'tool.js',mimeType:'text/javascript',buffer:Buffer.from('({input,capabilities})=>capabilities.memorySearch(input.query)')}]);
+ const storedState=()=>page.evaluate(async()=>{const {KnowledgeStore}=await import('/src/knowledge-store.ts');const {parsePreference}=await import('/src/preference-records.ts');const store=new KnowledgeStore();try{const notes=await store.all(),settings=notes.find((note:any)=>note.id==='settings-harness'),profile=settings?parsePreference('harness',settings.revisions.at(-1).body).profiles.find((item:any)=>item.id==='standard'):null;return {enabledTools:profile?.enabledTools??[],paths:notes.map((note:any)=>note.revisions.at(-1).path).filter((path:string)=>path.startsWith('Tools/user.imported/')).sort()};}finally{store.close();}});
+ await selectFiles();
+ const review=page.getByLabel('Tool import review');
+ await expect(review.getByRole('heading',{name:'Review tool import',exact:true})).toBeVisible();
+ await expect(page.getByText('Imported lookup · user.imported',{exact:true})).toBeVisible();
+ await expect(page.getByText('Local access · memory.search',{exact:true})).toBeVisible();
+ await expect(page.getByText('It does not run the tool now.',{exact:false})).toHaveCount(1);
+ await expect(page.getByText('({input,capabilities})=>capabilities.memorySearch(input.query)',{exact:true})).toBeHidden();
+ const beforeCancel=await storedState();expect(beforeCancel.enabledTools).not.toContain('user.imported');expect(beforeCancel.paths).toEqual([]);
+ await page.getByRole('button',{name:'Cancel import',exact:true}).click();
+ await expect(page.getByLabel('Tool import review')).toHaveCount(0);
+ expect(await storedState()).toEqual(beforeCancel);
+ await page.getByRole('button',{name:'Import SKILL.md + tool.js'}).click();await selectFiles();
+ await page.getByLabel('Tool import review').locator('summary').filter({hasText:'tool.js'}).click();
+ await expect(page.getByText('({input,capabilities})=>capabilities.memorySearch(input.query)',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Save and enable',exact:true}).click();
+ await expect(page.getByLabel('Tool import review')).toHaveCount(0);
+ const afterSave=await storedState();expect(afterSave.enabledTools).toContain('user.imported');expect(afterSave.paths).toEqual(['Tools/user.imported/SKILL.md','Tools/user.imported/tool.js'].sort());
 });
