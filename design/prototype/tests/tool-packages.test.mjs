@@ -113,6 +113,11 @@ test('audit fingerprint changes when the registered tool contract changes',async
  const changedNetwork=declaration();changedNetwork.definition.effect='external';changedNetwork.definition.network='explicit-online';
  for(const changed of [changedSchema,changedEffect,changedNetwork])assert.notEqual((await createToolRegistry([changed]).identity('memory.search')).packageSha256,base.packageSha256);
 });
+test('equivalent tool contracts have the same audit fingerprint regardless of JSON object key order',async()=>{
+ const first=declaration();first.definition.inputSchema={type:'object',properties:{query:{type:'string',maxLength:2000}},required:['query'],additionalProperties:false};
+ const second=declaration();second.definition.inputSchema={additionalProperties:false,required:['query'],properties:{query:{maxLength:2000,type:'string'}},type:'object'};
+ assert.equal((await createToolRegistry([second]).identity('memory.search')).packageSha256,(await createToolRegistry([first]).identity('memory.search')).packageSha256);
+});
 test('registry refuses invalid authority, duplicate IDs, missing code/skill and unsafe source paths',()=>{
  const mutations=[p=>p.definition.network='https',p=>p.definition.effect='unsafe',p=>p.definition.version=0,p=>p.definition.id='../../run',p=>p.run=null,p=>p.entry='Tools/other/tool.ts',p=>p.sources.pop(),p=>p.sources[0].path='Tools/../SKILL.md',p=>p.sources.push({...p.sources[0]})];
  for(const mutate of mutations){const pkg=declaration();mutate(pkg);assert.throws(()=>createToolRegistry([pkg]),/Invalid|unavailable/);}

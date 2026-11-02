@@ -15,6 +15,22 @@ function freezeContract<T>(value:T,seen=new WeakSet<object>()):T{
  }
  return value;
 }
+function stableJson(value:unknown,ancestors=new WeakSet<object>()):string{
+ if(value===null||typeof value!=='object'){
+  if(typeof value==='number'&&!Number.isFinite(value))throw Error('Invalid tool contract JSON');
+  const encoded=JSON.stringify(value);
+  if(encoded===undefined)throw Error('Invalid tool contract JSON');
+  return encoded;
+ }
+ if(ancestors.has(value))throw Error('Invalid tool contract JSON');
+ ancestors.add(value);
+ try{
+  if(Array.isArray(value))return '['+Array.from({length:value.length},(_,index)=>index in value?(value[index]===undefined?'null':stableJson(value[index],ancestors)):'null').join(',')+']';
+  const record=value as Record<string,unknown>;
+  if(Object.getPrototypeOf(record)!==Object.prototype&&Object.getPrototypeOf(record)!==null)throw Error('Invalid tool contract JSON');
+  return '{'+Object.keys(record).filter(key=>record[key]!==undefined).sort().map(key=>JSON.stringify(key)+':'+stableJson(record[key],ancestors)).join(',')+'}';
+ }finally{ancestors.delete(value);}
+}
 export function createToolRegistry(packages:ToolPackage[]){
  const registry=new Map<string,ToolPackage>();
  for(const candidate of packages){
@@ -29,7 +45,7 @@ export function createToolRegistry(packages:ToolPackage[]){
  }
  const get=(id:string)=>{const pkg=registry.get(id);if(!pkg)throw Error('Tool not registered');return pkg;};
  async function identity(id:string):Promise<PackageIdentity>{
-  const pkg=get(id),text=JSON.stringify({definition:pkg.definition,entry:pkg.entry,sources:[...pkg.sources].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)});
+  const pkg=get(id),text=stableJson({definition:pkg.definition,entry:pkg.entry,sources:[...pkg.sources].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)});
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return {package:pkg.definition.id,packageVersion:pkg.definition.version,packageSha256:[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join(''),entry:pkg.entry};
  }
