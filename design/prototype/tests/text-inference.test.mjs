@@ -2,8 +2,8 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {createTextInference} from '../src/text-inference.ts';
 
 test('model loading returns only bounded phase timings and drops runtime identity payloads',async()=>{
- const p=fixture(),e=createTextInference(()=>p);p.load=async()=>({verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true,runtimeVariant:'compatibility',gpuFallbackReason:'webgpu-model-load-failed',device:'PRIVATE-ADAPTER',prompt:'PRIVATE-PROMPT'});
- assert.deepEqual(await e.load('local'),{verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true,runtimeVariant:'compatibility',gpuFallbackReason:'webgpu-model-load-failed'});
+ const p=fixture(),e=createTextInference(()=>p);p.load=async()=>({verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true,runtimeVariant:'compatibility',gpuFallbackReason:'webgpu-no-layers-offloaded',device:'PRIVATE-ADAPTER',prompt:'PRIVATE-PROMPT'});
+ assert.deepEqual(await e.load('local'),{verificationMs:12,importMs:3,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:true,runtimeVariant:'compatibility',gpuFallbackReason:'webgpu-no-layers-offloaded'});
  p.load=async()=>({verificationMs:-1,importMs:Infinity,runtimeLoadMs:'PRIVATE',totalLoadMs:NaN,runtimeModuleReused:'true'});assert.equal(await e.load('local'),undefined);
  p.load=async()=>{};assert.equal(await e.load('local'),undefined);
 });

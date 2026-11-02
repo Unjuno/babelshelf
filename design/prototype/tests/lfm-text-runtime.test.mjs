@@ -166,7 +166,7 @@ test('automatic WebGPU routing falls back only when runtime logs explicitly repo
  const originalLoad=f.adapter.load.bind(f.adapter);
  f.adapter.load=async(file,id,options)=>{if(options.backend==='webgpu'){f.adapter.loaded=id;f.adapter.info={gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:0,totalModelLayers:25};return {};}return originalLoad(file,id,options);};
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>f.file,readAssets:()=>({local:{filesPresent:true}})});
- const result=await runtime.load('local');assert.equal(result.executionBackend,'cpu-wasm');assert.equal(result.gpuFallbackReason,'webgpu-model-load-failed');assert.deepEqual(preflights,['webgpu','cpu']);assert.ok(f.calls.some(call=>call[0]==='unload'));await runtime.unload();
+ const result=await runtime.load('local');assert.equal(result.executionBackend,'cpu-wasm');assert.equal(result.gpuFallbackReason,'webgpu-no-layers-offloaded');assert.deepEqual(preflights,['webgpu','cpu']);assert.ok(f.calls.some(call=>call[0]==='unload'));await runtime.unload();
 });
 test('a requested WebGPU route stays unconfirmed when offload is missing or inconsistent',async()=>{
  for(const info of [

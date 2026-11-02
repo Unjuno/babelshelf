@@ -120,10 +120,10 @@ for(const executionBackend of ['webgpu','cpu-wasm','unknown',undefined])test('pr
  const manifest={contextTokens:2048,runtime:{revision:'runtime'},models:[{id:'local',revision:'model'}]};
  const store={async status(){return {filesPresent:true};},async verify(){},async prepare(){}};
  let loads=0;
- const client={manifest,loaded:null,worker:{terminate(){}},async init(){},async load(id){loads++;this.loaded=id;return {executionBackend,gpuFallbackReason:'webgpu-model-load-failed',privateRuntimeDetail:'omit'};},async unload(){this.loaded=null;},async call(){},abort(){}};
+ const client={manifest,loaded:null,worker:{terminate(){}},async init(){},async load(id){loads++;this.loaded=id;return {executionBackend,gpuFallbackReason:'webgpu-no-layers-offloaded',privateRuntimeDetail:'omit'};},async unload(){this.loaded=null;},async call(){},abort(){}};
  const base={...client,manifest:{contextTokens:2048,runtime:{revision:'base'},models:[]}};
  const router=new TextEngineRouter(base,()=>{throw Error('unused');},[{id:'local-engine',modelIds:['local'],describe:()=>manifest,create:()=>createPreparedTextBackend({manifest,stores:new Map([['local',store]]),createClient:()=>client})}]);
  const expected=['webgpu','cpu-wasm'].includes(executionBackend)?executionBackend:undefined;
- const loaded=await router.load('local');assert.equal(loaded.executionBackend,expected);assert.equal(loaded.gpuFallbackReason,'webgpu-model-load-failed');assert.equal(loaded.privateRuntimeDetail,undefined);
- const reused=await router.load('local');assert.equal(reused.reused,true);assert.equal(reused.executionBackend,expected);assert.equal(reused.gpuFallbackReason,'webgpu-model-load-failed');assert.equal(loads,1);
+ const loaded=await router.load('local');assert.equal(loaded.executionBackend,expected);assert.equal(loaded.gpuFallbackReason,'webgpu-no-layers-offloaded');assert.equal(loaded.privateRuntimeDetail,undefined);
+ const reused=await router.load('local');assert.equal(reused.reused,true);assert.equal(reused.executionBackend,expected);assert.equal(reused.gpuFallbackReason,'webgpu-no-layers-offloaded');assert.equal(loads,1);
 });

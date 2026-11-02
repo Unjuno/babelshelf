@@ -51,7 +51,7 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
  const standardContexts=[2048,4096,8192,16384,32768],lfm3Contexts=[...standardContexts,65536,131072,262144],supports=(engine:string|undefined,size:number)=>(engine==='wllama-lfm3'?lfm3Contexts:standardContexts).includes(size);
  const topContextSupported=supports(undefined,fixed.contextTokens)||fixed.models.some(m=>m.engine==='wllama-lfm3'&&m.contextTokens===fixed.contextTokens);
  if(!topContextSupported||!fixed.runtime.revision||!fixed.models.length||new Set(fixed.models.map(m=>m.id)).size!==fixed.models.length||fixed.models.some(m=>!m.id||!m.revision||!supports(m.engine,m.contextTokens)||!m.file.name||!Number.isSafeInteger(m.file.bytes)||m.file.bytes<1)||!Number.isSafeInteger(adapter.maxReplyTokens)||adapter.maxReplyTokens<1||adapter.maxReplyTokens>3072)throw Error('Invalid LFM text runtime manifest');
- let epoch=0,busy=false,loadedExecutionBackend:'cpu-wasm'|'webgpu'|undefined,loadedRuntimeVariant:'standard'|'compatibility'|undefined,loadedGpuFallbackReason:'webgpu-unavailable'|'webgpu-model-load-failed'|undefined;
+ let epoch=0,busy=false,loadedExecutionBackend:'cpu-wasm'|'webgpu'|undefined,loadedRuntimeVariant:'standard'|'compatibility'|undefined,loadedGpuFallbackReason:'webgpu-unavailable'|'webgpu-model-load-failed'|'webgpu-no-layers-offloaded'|undefined;
  async function operation<T>(work:(check:()=>void)=>Promise<T>):Promise<T>{if(busy)throw Error('Model busy');busy=true;const own=epoch,check=()=>{if(own!==epoch)throw Error('Stopped');};try{const result=await work(check);check();return result;}finally{busy=false;}}
  const raw:TextRuntime={get plannerProtocol(){return adapter.nativeToolCalls?'native-tool-calls':'json';},get manifest(){const selected=fixed.models.find(m=>m.id===(adapter.loaded??''));return {...structuredClone(fixed),contextTokens:selected?.contextTokens??fixed.contextTokens,maxOutputTokens:adapter.maxReplyTokens};},get loaded(){return adapter.loaded??'';},get assets(){return readAssets();},
   async load(id){const model=fixed.models.find(m=>m.id===id);if(!model)throw Error('Unknown LFM model');return operation(async check=>{
@@ -59,7 +59,7 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
    // manifest. Avoid rereading and rehashing a multi-gigabyte OPFS file, then
    // tearing down the live GPU/CPU session on repeated turns.
    if(adapter.loaded===id){check();if(!adapter.supportsExactCount)throw Error('Exact pre-generation token count unavailable');return { ...(loadedExecutionBackend?{executionBackend:loadedExecutionBackend}:{}),...(loadedRuntimeVariant?{runtimeVariant:loadedRuntimeVariant}:{}),...(loadedGpuFallbackReason?{gpuFallbackReason:loadedGpuFallbackReason}:{}) };}
-   const totalStarted=performance.now();let effectiveBackend:'cpu'|'webgpu',backendPreflighted=false,gpuFallbackReason:'webgpu-unavailable'|'webgpu-model-load-failed'|undefined;
+   const totalStarted=performance.now();let effectiveBackend:'cpu'|'webgpu',backendPreflighted=false,gpuFallbackReason:'webgpu-unavailable'|'webgpu-model-load-failed'|'webgpu-no-layers-offloaded'|undefined;
    if(backend==='auto'){
     try{if(adapter.preflightBackend){await adapter.preflightBackend('webgpu');backendPreflighted=true;}effectiveBackend='webgpu';}
     catch(error){if((error as {code?:unknown}|null)?.code!=='webgpu_unavailable')throw error;effectiveBackend='cpu';gpuFallbackReason='webgpu-unavailable';(onProgress??adapter.onProgress)?.('WebGPU unavailable · Using CPU/WASM');if(adapter.preflightBackend){await adapter.preflightBackend('cpu');backendPreflighted=true;}}
@@ -72,16 +72,16 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
     // stop treating the WebGPU route as viable and use the normal CPU fallback.
     // Missing or inconsistent logs remain unconfirmed; they are not guessed.
     if(effectiveBackend==='webgpu'&&adapter.info?.gpuLayerEvidence==='runtime-offload-log'&&adapter.info.actualGpuLayers===0){
-     const error=Error('WebGPU offloaded no model layers');Object.assign(error,{code:'webgpu_load_failed'});throw error;
+     const error=Error('WebGPU offloaded no model layers');Object.assign(error,{code:'webgpu_no_layers_offloaded'});throw error;
     }
    }
    catch(error){
     const failure=error as {code?:unknown;cleanupUnconfirmed?:unknown}|null,code=failure?.code;
-    if(backend!=='auto'||effectiveBackend!=='webgpu'||failure?.cleanupUnconfirmed===true||code!=='webgpu_unavailable'&&code!=='webgpu_load_failed')throw error;
-    check();await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;loadedGpuFallbackReason=undefined;check();effectiveBackend='cpu';gpuFallbackReason=code==='webgpu_load_failed'?'webgpu-model-load-failed':'webgpu-unavailable';
-    (onProgress??adapter.onProgress)?.(code==='webgpu_load_failed'?'WebGPU load failed · Trying CPU/WASM':'WebGPU unavailable · Using CPU/WASM');
+    if(backend!=='auto'||effectiveBackend!=='webgpu'||failure?.cleanupUnconfirmed===true||code!=='webgpu_unavailable'&&code!=='webgpu_load_failed'&&code!=='webgpu_no_layers_offloaded')throw error;
+    check();await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;loadedGpuFallbackReason=undefined;check();effectiveBackend='cpu';gpuFallbackReason=code==='webgpu_no_layers_offloaded'?'webgpu-no-layers-offloaded':code==='webgpu_load_failed'?'webgpu-model-load-failed':'webgpu-unavailable';
+    (onProgress??adapter.onProgress)?.(code==='webgpu_no_layers_offloaded'?'GPU cannot run model layers · Using CPU/WASM':code==='webgpu_load_failed'?'WebGPU load failed · Trying CPU/WASM':'WebGPU unavailable · Using CPU/WASM');
     try{backendPreflighted=false;if(adapter.preflightBackend){await adapter.preflightBackend('cpu');backendPreflighted=true;}check();rawMetrics=await adapter.load(immutableFile,id,{backend:'cpu',...(backendPreflighted?{preflighted:true}:{})});}
-    catch(cpuError){check();const combined=Error(`${code==='webgpu_load_failed'?'WebGPU model load failed':'WebGPU unavailable'} · CPU/WASM retry failed`);Object.assign(combined,{cause:cpuError,gpuFailure:error,code:'backend_fallback_failed',...(cpuError&&typeof cpuError==='object'&&(cpuError as {cleanupUnconfirmed?:unknown}).cleanupUnconfirmed===true?{cleanupUnconfirmed:true}:{})});throw combined;}
+    catch(cpuError){check();const combined=Error(`${code==='webgpu_no_layers_offloaded'?'GPU could not run model layers':code==='webgpu_load_failed'?'WebGPU model load failed':'WebGPU unavailable'} · CPU/WASM retry failed`);Object.assign(combined,{cause:cpuError,gpuFailure:error,code:'backend_fallback_failed',...(cpuError&&typeof cpuError==='object'&&(cpuError as {cleanupUnconfirmed?:unknown}).cleanupUnconfirmed===true?{cleanupUnconfirmed:true}:{})});throw combined;}
    }
    check();if(!adapter.supportsExactCount){await adapter.unload();loadedExecutionBackend=undefined;loadedRuntimeVariant=undefined;throw Error('Exact pre-generation token count unavailable');}
    const source=rawMetrics&&typeof rawMetrics==='object'?rawMetrics as Record<string,unknown>:{};
