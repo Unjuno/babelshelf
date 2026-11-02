@@ -7,6 +7,8 @@ import type {env} from '@huggingface/transformers';
 export function configureLocalTransformerRuntime(runtime:typeof env,wasm:string,mjs:string){
  runtime.useWasmCache=false;
  runtime.backends.onnx.wasm!.wasmPaths={wasm,mjs};
- runtime.backends.onnx.wasm!.numThreads=1;
+ // Leave numThreads unset so the pinned ONNX Runtime can use its built-in
+ // capability policy: one thread without cross-origin isolation, otherwise
+ // up to four based on reported logical cores. Do not infer this from OS names.
  runtime.backends.onnx.wasm!.proxy=false;
 }
