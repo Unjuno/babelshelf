@@ -39,7 +39,7 @@ function projectModelGeneration(value:unknown):Record<string,unknown>|undefined{
  const source=objectRecord(value);if(!source)return;
  if(!['pass','fail','not-run','stopped','interrupted'].includes(String(generation.status)))return;
  if(!['model','modelRevision','runtimeRevision'].every(key=>typeof generation[key]==='string'))return;
- for(const [key,allowed] of Object.entries({testMode:['quick','performance'],workload:['ready-v1','prose-128-v1'],loadState:['already-loaded','loaded-for-test','not-loaded'],failureStage:['load','runtime-setup','model-load','count','generation','output-validation','unload']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
+ for(const [key,allowed] of Object.entries({testMode:['quick','performance'],workload:['ready-v1','prose-128-v1','prose-128-v2'],loadState:['already-loaded','loaded-for-test','not-loaded'],failureStage:['load','runtime-setup','model-load','count','generation','output-validation','unload']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
  const metrics=projectMetrics(source.runtimeMetrics);if(metrics)generation.runtimeMetrics=metrics;
  const loadMetrics=safeRuntimeLoadMetrics(source.loadMetrics);if(loadMetrics)generation.loadMetrics=loadMetrics;
  return generation;

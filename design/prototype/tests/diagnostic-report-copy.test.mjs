@@ -81,6 +81,6 @@ test('reports when neither clipboard copy path is available',async()=>{
 });
 
 test('performance metadata survives the private handoff but reply text and unknown memory fields do not',()=>{
- const value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'fail',model:'m',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',workload:'prose-128-v1',inputTokens:42,maxOutputTokens:128,loadState:'not-loaded',failureStage:'load',failureType:'Error',rawReply:'PRIVATE-ANSWER',runtimeMetrics:{memoryAfter:{liveBytes:123,peakBytes:456,privateNote:'PRIVATE-ANSWER'}}}};
- const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/prose-128-v1/);assert.match(text,/"inputTokens": 42/);assert.match(text,/"loadState": "not-loaded"/);assert.match(text,/"failureStage": "load"/);assert.match(text,/"liveBytes": 123/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
+ const value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'fail',model:'m',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',workload:'prose-128-v2',inputTokens:42,maxOutputTokens:128,loadState:'not-loaded',failureStage:'load',failureType:'Error',rawReply:'PRIVATE-ANSWER',runtimeMetrics:{memoryAfter:{liveBytes:123,peakBytes:456,privateNote:'PRIVATE-ANSWER'}}}};
+ const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/prose-128-v2/);assert.match(text,/"inputTokens": 42/);assert.match(text,/"loadState": "not-loaded"/);assert.match(text,/"failureStage": "load"/);assert.match(text,/"liveBytes": 123/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
 });
