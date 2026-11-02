@@ -39,7 +39,7 @@ test('saved timing results identify their model, time and build independently of
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();
  await expect(page.locator('time[datetime="2026-10-20T01:02:03.000Z"]')).toBeVisible();
- await expect(page.getByText('4B · Passed',{exact:true})).toBeVisible();
+ await expect(page.getByText('4B · Sample complete',{exact:true})).toBeVisible();
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
  await page.locator('.device-test-steps > summary').filter({hasText:'Test options'}).click();
  await page.getByRole('button',{name:'Quick',exact:true}).click();
