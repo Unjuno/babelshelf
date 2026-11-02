@@ -5,7 +5,11 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // lexical scope guard, not a general-purpose interpretation of user intent.
  const placeTerm='(?:集合場所|待ち合わせ場所|会場|場所|meeting\\s+(?:place|location|venue)|location|place|venue|address)';
  const exclusionTerm="(?:含めない|書かない|省(?:いて|く)|除外|触れない|不要|いらない|do\\s+not\\s+include|don't\\s+include|omit|exclud(?:e|ing)|leave\\s+out|skip|not\\s+include)";
- const excludedMeetingPlace=new RegExp(`${placeTerm}.{0,24}${exclusionTerm}|${exclusionTerm}.{0,24}${placeTerm}`,'iu').test(q);
+ const negatedEnglishExclusion="(?:do\\s+not|don't|does\\s+not|doesn't|never)(?:\\s+want)?\\s+(?:to\\s+)?(?:exclude|omit|leave\\s+out|skip)";
+ const negatedJapaneseExclusion='(?:除外|省略|省(?:く|いて|か)|抜(?:く|いて|か))(?:する)?(?:必要(?:は|が)?(?:ありません|ない)|しない(?:でください)?|しません|ないでください|ず)';
+ const nonExclusion=new RegExp(`${negatedEnglishExclusion}.{0,24}${placeTerm}|${placeTerm}.{0,16}${negatedJapaneseExclusion}`,'giu');
+ const exclusionPrompt=q.replace(nonExclusion,' ');
+ const excludedMeetingPlace=new RegExp(`${placeTerm}.{0,24}${exclusionTerm}|${exclusionTerm}.{0,24}${placeTerm}`,'iu').test(exclusionPrompt);
  if(excludedMeetingPlace){
   const placeLabels=new RegExp(placeTerm,'iu');
   if(placeLabels.test(a))throw Error('Answer includes an explicitly excluded detail · try again');

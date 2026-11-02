@@ -35,3 +35,11 @@ test('generic excluded location details are checked only when the user explicitl
  assert.doesNotThrow(()=>checkAnswerConsistency(japanese,'青いノートを持っていってください。',japaneseEvidence));
  assert.doesNotThrow(()=>checkAnswerConsistency('場所はどこですか？','場所は北口です。',japaneseEvidence));
 });
+
+test('negated exclusion wording does not hide a location the user wants included',()=>{
+ const evidence=[{quote:'Supplies: a blue notebook. Location: North gate.'}];
+ assert.doesNotThrow(()=>checkAnswerConsistency("List the supplies and don't exclude the location.",'Bring a blue notebook and meet at North gate.',evidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency('List the supplies and do not omit the location.','Bring a blue notebook and meet at North gate.',evidence));
+ assert.doesNotThrow(()=>checkAnswerConsistency('持ち物と場所を教えてください。場所は除外しないでください。','青いノートを持って北口で集合してください。',[{quote:'持ち物：青いノート。場所：北口。'}]));
+ assert.doesNotThrow(()=>checkAnswerConsistency('持ち物と場所を教えてください。場所を除外する必要はありません。','青いノートを持って北口で集合してください。',[{quote:'持ち物：青いノート。場所：北口。'}]));
+});
