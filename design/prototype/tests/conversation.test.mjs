@@ -1108,6 +1108,18 @@ test('an exact saved note ID scopes retrieval and citation to that record',async
  assert.equal(result.sources[0].quote,target.revisions[0].body);
 });
 
+test('an exact UUID or canonical saved path keeps its resolved note as the grounding scope',async()=>{
+ const target=createNote({path:'Inbox/Field notes/emergency-water.md',body:'Emergency water reserve is 8 litres.'});
+ const decoy=createNote({path:'Inbox/emergency-water-copy.md',body:'Emergency water reserve is 80 litres.'});
+ const notes=[target,decoy],runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:'{"answer":"8 litres","sources":["S1"]}'})};
+ for(const selector of [target.id,'Inbox/Field notes/emergency-water.md']){
+  const question=`In my saved note ${selector}, exactly how many litres is the emergency water reserve?`;
+  const route=explicitSavedKnowledgeQuestion(question);assert.ok(route,selector);
+  const result=await groundedAnswer({store:{all:async()=>notes,search:async query=>searchNotes(notes,query)},engine:runtime},{model:'4B',question,query:route.query,scope:{kind:'knowledge'}});
+  assert.equal(result.answer,'8 litres',selector);assert.equal(result.sources.length,1,selector);assert.equal(result.sources[0].noteId,target.id,selector);
+ }
+});
+
 
 test('one request cannot plan on one revision and answer on its replacement',async()=>{
  const {createTextInference}=await import('../src/text-inference.ts');

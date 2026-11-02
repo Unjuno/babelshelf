@@ -4,6 +4,8 @@ import {checkAnswerConsistency} from './answer-consistency.ts';
 // This adapter can read evidence and generate prose. It has no write/delete tools.
 // @ts-expect-error Shared baseline core is JavaScript.
 import {parseAnswer,searchNotes,validateGroundingRefs} from '../../../dist/core.js';
+// @ts-expect-error The shared canonical path resolver is JavaScript.
+import {notePath} from '../../../dist/files.js';
 import type {KnowledgeStore} from './knowledge-store';
 import type {TextRuntime} from './text-inference';
 import {readingEvidence,type CurrentInputRef} from './input-readings.ts';
@@ -101,7 +103,7 @@ function exactNamedSavedNote(records:any[],subject:string){
  const fold=(value:string)=>value.normalize('NFKC').trim().toLocaleLowerCase();
  const wanted=fold(subject),matches=records.filter(note=>{
   if(note?.state!=='active')return false;
-  const path=typeof note.path==='string'?note.path:'';
+  const path=notePath(note);
   const filename=path.split(/[\\/]/u).at(-1)??'';
   const stem=filename.replace(/\.(?:md|markdown|txt)$/iu,'');
   const title=typeof note.revisions?.at(-1)?.title==='string'?note.revisions.at(-1).title:'';
@@ -168,7 +170,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  if(request.reply===undefined&&toolEvidence?.used&&toolEvidence.memoryUsed&&!calculationOnlyScope&&!hits.length&&mode!=='chat'&&!inputReadings.length){if(workingFile)hits=workingFileEvidence(pinnedRecords!,workingFile,question);else hits=await store.search(question);}
  if(toolEvidence?.used&&!calculationOnlyScope&&!hits.length&&!inputReadings.length&&!workingFile&&!operationalEvidence&&request.reply?.status!=='insufficient_evidence')throw Error('No matching notes');
  const pinned=(workingFile||toolEvidence?.used||mode==='chat'?[]:context?.refs??[]).filter(ref=>validateGroundingRefs(records,[ref]).ok);check();
- if(namedSubject){const matching=new Set(records.filter((n:any)=>{const current=n.revisions?.at(-1);return [current?.path,current?.title,current?.body,...(n.aliases??[])].some(value=>typeof value==='string'&&matchesNamedSource(value,namedSubject,!!englishSubject));}).map((n:any)=>n.id));hits=hits.filter((ref:any)=>matching.has(ref.noteId));}
+ if(namedSubject){const matching=exactNamed?new Set([exactNamed.id]):new Set(records.filter((n:any)=>{const current=n.revisions?.at(-1);return [current?.path,current?.title,current?.body,...(n.aliases??[])].some(value=>typeof value==='string'&&matchesNamedSource(value,namedSubject,!!englishSubject));}).map((n:any)=>n.id));hits=hits.filter((ref:any)=>matching.has(ref.noteId));}
  // A changed search result is not an empty search. Never replace it with an
  // unrelated historical source after another tab edits/withdraws the result.
  if(!validateGroundingRefs(records,hits).ok)throw Error('Source changed · retry');

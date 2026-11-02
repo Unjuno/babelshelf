@@ -85,7 +85,9 @@ test('a named saved-note ID reaches grounded answer and exact citation through S
  f.services.refreshSnapshot=async()=>records.map(projectNote);
  const question=`In my saved note ${mark}, exactly how many litres is the emergency water reserve?`;
  assert.equal(await c.run(run=>executeSubmission({text:question,attachments:[]},f.services,f.view,run)),'completed',c.state.error);
- assert.deepEqual(queries,[mark]);
+ // Exact canonical note selectors resolve from the already-read record set;
+ // the selected note is then searched alone instead of repeating fuzzy search.
+ assert.deepEqual(queries,[]);
  const turn=f.current().turns.at(-1);
  assert.equal(turn.answer,'24 litres');
  assert.equal(turn.refs.length,1);
