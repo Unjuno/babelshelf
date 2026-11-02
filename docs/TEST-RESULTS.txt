@@ -7884,6 +7884,7 @@ Follow-up: added a regression showing equivalent schemas with different object-k
 - `node --test design/prototype/tests/transformers-runtime.test.mjs design/prototype/tests/onnx-execution-options.test.mjs`: 2/2. `npm run check`: PASS. `npm run build:app`: PASS, shell `73dc23beff66222e`, 163 verified assets. `git diff --check`: PASS.
 - This is a browser preference request only. Browser-selected adapter/backend and measured latency are not inferred; no GPU speed gain is claimed. The supported-runtime path and WebGPU-vs-WASM comparison still need real runs on each target platform.
 - First clean CI run `41388917887` correctly failed an existing Vision source test that required the preference assignment to stay inline in `vision-worker.ts`. The test now checks the shared runtime call and Vision's adapter preflight instead of that implementation location. Local verification: the focused runtime/Vision tests (10/10), full prototype suite (1,776/1,776), root suite (254/254), static check and production build pass; a fresh clean-checkout run is required for acceptance.
+- Clean-checkout GitHub Actions [41389185820](https://github.com/Unjuno/babelshelf/actions/runs/41389185820) passed every stage for the correction commit `01b5978`.
 
 2026-11-02 — Adaptive D1 ONNX CPU fallback threads
 - Removed the D1 worker's explicit `ort.env.wasm.numThreads=1`; the pinned ONNX Runtime chooses its own safe policy based on shared-WASM availability and browser concurrency. WebGPU remains the preferred route; this affects only CPU/WASM fallback.
