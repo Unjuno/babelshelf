@@ -2,7 +2,7 @@
 
 ### 2026-11-03 · allocate more answer room to analytical requests
 
-Balanced replies now reserve up to 1,536 output tokens for explicit analysis, comparison, review, assessment, and equivalent Japanese requests; generation remains streamed in 768-token segments and can continue only within the total allowance. Direct short requests still receive 256 tokens, explicit long requests up to 3,072, and every budget remains bounded by the selected model's output cap and the remaining context. Focused reply-style tests cover the actual generation/continuation boundary. This changes available capacity, not answer quality; real-model response quality and device-specific latency remain unverified.
+Balanced replies now reserve up to 1,536 output tokens for explicit analysis, comparison, review, assessment, and equivalent Japanese requests; generation remains streamed in 768-token segments and can continue only within the total allowance. Direct short requests still receive 256 tokens, explicit long requests up to 3,072, and every budget remains bounded by the selected model's output cap and the remaining context. Focused reply-style tests passed 18/18; the prototype suite passed 1,826/1,826, `npm run check`, the 165-asset production build and app acceptance 8/8 passed locally. Clean-checkout GitHub Actions [41485398609](https://github.com/Unjuno/babelshelf/actions/runs/41485398609) passed every workflow stage. This changes available capacity, not answer quality; real-model response quality and device-specific latency remain unverified.
 
 ### 2026-11-03 · keep reviewed note proposals resumable without applying them
 
