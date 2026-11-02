@@ -80,6 +80,15 @@ test('speech inference releases its worker before delivering the transcript and 
  const next=client.call('transcribe');assert.equal(workers.length,2);old.onmessage({data:{id:workers[1].messages.at(-1).id,value:{text:'stale'}}});workers[1].onmessage({data:{id:workers[1].messages.at(-1).id,value:{text:'New transcript'}}});assert.deepEqual(await next,{text:'New transcript'});assert.equal(workers[1].terminated,true);
 });
 
+test('speech status and preparation use the lightweight asset worker; inference starts only on transcription',async()=>{
+ const inference=[],assets=[];
+ const client=new SpeechClient(()=>{const w=new WorkerFixture();inference.push(w);return w;},()=>{},undefined,undefined,()=>{const w=new WorkerFixture();assets.push(w);return w;});
+ const status=client.call('status',{model:'whisper-tiny'});assert.equal(inference.length,0);assert.equal(assets.length,1);assert.equal(assets[0].messages[0].type,'status');
+ assets[0].onmessage({data:{id:assets[0].messages[0].id,value:false}});assert.equal(await status,false);
+ const prepare=client.call('prepare',{model:'whisper-tiny',allowNetwork:false});assert.equal(assets.length,1);assets[0].onmessage({data:{id:assets[0].messages.at(-1).id,value:true}});assert.equal(await prepare,true);assert.equal(inference.length,0);
+ const transcribe=client.call('transcribe',{model:'whisper-tiny'});assert.equal(assets[0].terminated,true);assert.equal(inference.length,1);inference[0].onmessage({data:{id:inference[0].messages[0].id,value:{text:'local transcript'}}});assert.deepEqual(await transcribe,{text:'local transcript'});assert.equal(inference[0].terminated,true);
+});
+
 test('failed transcription releases its worker without replay and ignores late progress',async()=>{
  const workers=[],updates=[],client=new SpeechClient(()=>{const w=new WorkerFixture();workers.push(w);return w;},(busy,progress)=>updates.push({busy,progress}));
  const first=client.call('transcribe');const old=workers[0];old.onmessage({data:{id:old.messages.at(-1).id,error:'Decode failed'}});await assert.rejects(first,/Decode failed/);assert.equal(old.terminated,true);assert.equal(workers.length,1);

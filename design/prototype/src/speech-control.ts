@@ -1,7 +1,7 @@
 import {ReaderOperationClient} from './reader-operation-client.ts';
 import type {InferenceLease} from './inference-lease.ts';
 export class SpeechClient extends ReaderOperationClient {
- constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void,before?:(check:()=>void)=>Promise<void>,acquire?:()=>Promise<InferenceLease>){super('Speech','transcribe',factory,update,before,acquire);}
+ constructor(factory:()=>any,update:(busy:boolean,progress?:string)=>void,before?:(check:()=>void)=>Promise<void>,acquire?:()=>Promise<InferenceLease>,assetFactory?:()=>any){super('Speech','transcribe',factory,update,before,acquire,assetFactory);}
 }
 export class MicrophoneGate {
  private epoch=0;pending=false;

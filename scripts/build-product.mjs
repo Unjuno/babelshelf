@@ -16,7 +16,7 @@ function optionalRoles(file){
  const name=path.basename(file);
  if(name.startsWith('custom-tool-worker-')||name.startsWith('emscripten-module-'))return ['custom-tools'];
  if(name.startsWith('decision-worker-'))return ['decision'];
- if(name.startsWith('speech-worker-'))return ['speech'];
+ if(name.startsWith('speech-worker-')||name.startsWith('speech-assets-worker-'))return ['speech'];
  if(name.startsWith('vision-worker-'))return ['vision'];
  if(name.startsWith('onnx-text-worker-'))return ['text-onnx'];
  if(name.startsWith('lfm3-text-worker-')||name.startsWith('lfm3-')&&name.endsWith('.wasm'))return ['text-lfm3'];
