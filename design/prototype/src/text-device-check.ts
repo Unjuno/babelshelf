@@ -7,10 +7,10 @@ type GpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-perfo
 export type TextDeviceCheck={modelId:string;modelBytes:number|null;availableBytes:number|null;storage:'already-present'|'below-file-size'|'estimate-covers-file'|'unknown';backend:'webgpu'|'cpu-wasm';fallbackBackend?:'cpu-wasm';webgpu:'available'|'unavailable'|'unknown'|'not-needed'};
 
 export function describeTextDeviceCheck(check:TextDeviceCheck):string {
- const storage=check.storage==='below-file-size'?'Reported storage below model file size':check.storage==='estimate-covers-file'?'Storage estimate covers model file':check.storage==='already-present'?'Model files already present':'Storage estimate unavailable';
- const runtime=check.backend==='webgpu'?(check.webgpu==='available'?'WebGPU available · performance preference requested':check.webgpu==='unavailable'?'WebGPU adapter unavailable':'WebGPU check inconclusive'):'CPU/WASM path';
- const fallback=check.fallbackBackend==='cpu-wasm'?' · CPU/WASM fallback may be tried':'';
- return `${storage} · ${runtime}${fallback} · Loading and generation untested`;
+ const storage=check.storage==='below-file-size'?'Storage estimate is below model file size':check.storage==='estimate-covers-file'?'Storage estimate covers model file':check.storage==='already-present'?'Model files already present':'Storage estimate unavailable';
+ const runtime=check.backend==='webgpu'?(check.webgpu==='available'?'GPU found · model fit not checked':check.webgpu==='unavailable'?'GPU unavailable':'GPU check incomplete'):'CPU path';
+ const fallback=check.fallbackBackend==='cpu-wasm'?' · CPU fallback may be tried':'';
+ return `${storage} · ${runtime}${fallback} · Model load not tested`;
 }
 
 // A user-initiated, read-only preflight. Quota is not physical free space and

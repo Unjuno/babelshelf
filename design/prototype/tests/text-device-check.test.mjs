@@ -10,7 +10,7 @@ test('a large WebGPU model reports only observed adapter and quota evidence',asy
  const check=await checkTextDevice('9B',[],false,{storage:storage(500_000_000),gpu:{requestAdapter:async value=>{options=value;return{};}}});
  assert.deepEqual(options,{powerPreference:'high-performance'});
  assert.equal(check.backend,'webgpu');assert.equal(check.webgpu,'available');assert.equal(check.storage,'below-file-size');assert.ok(check.modelBytes>check.availableBytes);
- assert.match(describeTextDeviceCheck(check),/Reported storage below model file size.*performance preference requested.*Loading and generation untested/);
+ assert.match(describeTextDeviceCheck(check),/Storage estimate is below model file size.*GPU found · model fit not checked.*Model load not tested/);
  const missing=await checkTextDevice('9B',[],false,{storage:storage(3_000_000_000),gpu:{requestAdapter:async()=>null}});
  assert.equal(missing.webgpu,'unavailable');assert.equal(missing.storage,'estimate-covers-file');
 });
@@ -19,7 +19,7 @@ test('the LFM3 preflight discloses its CPU/WASM fallback without applying it to 
  const gpuUnavailable={requestAdapter:async()=>null};
  const lfm3=await checkTextDevice('lfm3-1.7b-qad-q4-0',[],false,{storage:storage(4_000_000_000),gpu:gpuUnavailable});
  assert.equal(lfm3.backend,'webgpu');assert.equal(lfm3.fallbackBackend,'cpu-wasm');assert.equal(lfm3.webgpu,'unavailable');
- assert.match(describeTextDeviceCheck(lfm3),/WebGPU adapter unavailable · CPU\/WASM fallback may be tried/);
+ assert.match(describeTextDeviceCheck(lfm3),/GPU unavailable · CPU fallback may be tried/);
  const other=await checkTextDevice('4B',[],false,{storage:storage(4_000_000_000),gpu:gpuUnavailable});
  assert.equal(other.backend,'webgpu');assert.equal(other.fallbackBackend,undefined);
  assert.doesNotMatch(describeTextDeviceCheck(other),/CPU\/WASM fallback/);

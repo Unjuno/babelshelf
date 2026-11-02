@@ -49,11 +49,11 @@ export function textModelChoiceHint(id:string,customModels:readonly CustomLocalM
  const size=bytes>=1e9?(bytes/1e9).toFixed(2)+' GB':Math.round(bytes/1e6)+' MB';
  const custom=customModels.find(model=>model.id===id);
  if(custom){
-  if(custom.engine==='wllama-lfm3')return size+' · Configured route: WebGPU first · CPU fallback if unavailable · execution not tested';
-  const route=textExecutionRoute(id,customModels),execution=route?.backend==='webgpu'?'Configured route: WebGPU':route?.backend==='cpu-wasm'?'Configured route: CPU WASM':'Runtime unavailable';
-  return size+' · '+execution+' · execution not tested';
+  if(custom.engine==='wllama-lfm3')return size+' · GPU preferred · CPU fallback · not tested on this device';
+  const route=textExecutionRoute(id,customModels),execution=route?.backend==='webgpu'?'GPU path':route?.backend==='cpu-wasm'?'CPU path':'Runtime unavailable';
+  return size+' · '+execution+' · not tested on this device';
  }
- if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-q8-0')return size+' · Configured route: WebGPU first · CPU fallback if unavailable · device execution not tested';
+ if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-q8-0')return size+' · GPU preferred · CPU fallback · not tested on this device';
  if(id==='9B')return size+' · experimental · PC prose unstable';
  if(id==='lfm25-230m-qad-q4-0'||id==='lfm25-350m-qad-q4-0')return size+' · experimental · diagnostic generation only';
  return size+' · model files';
