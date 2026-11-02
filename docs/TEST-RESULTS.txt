@@ -8010,3 +8010,18 @@ and iOS handoff, Chromium/WebKit, and offline/installed-PWA acceptance. This
 is a diagnostic correction only; no runtime speedup, live-model quality, or
 physical-device performance is claimed. Commit `f3ca743` is on
 `codex/ui-design-handoff`.
+
+2026-11-03 (JST) — Preserve user-named legacy harness budgets during migration.
+Schema-1 migration matched the old built-in `standard` and `source-first`
+tool sets and caps, but two residual rules omitted the canonical profile-label
+check. A user-renamed profile could therefore lose its 8-call or 2-call limit
+on read, before any settings save. Migration now clears those limits only for
+the exact built-in labels. Regression tests cover both renamed profiles,
+unchanged stored bytes/version/history, and the actual two-call agent-loop
+stop. The regression failed before the fix (`null !== 8`) and passed after.
+Preference tests passed 40/40; root tests 257/257; prototype tests 1,828/1,828;
+`npm run check`; production build with 165 verified assets; app acceptance
+8/8; and `git diff --check`. Clean-checkout GitHub Actions
+[41494897209](https://github.com/Unjuno/babelshelf/actions/runs/41494897209)
+passed all stages in 10m43s. Commit `7ae9aae` is on
+`codex/ui-design-handoff`.
