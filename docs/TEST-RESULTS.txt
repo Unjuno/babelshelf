@@ -7879,6 +7879,11 @@ Follow-up: added a regression showing equivalent schemas with different object-k
 - This improves recovery UX for offline setup. Browser tests do not prove an iPhone/Android cold offline launch. No GPU speedup is claimed; matched platform model measurements remain open.
 - Clean-checkout GitHub Actions [41387632055](https://github.com/Unjuno/babelshelf/actions/runs/41387632055) passed all stages, including tool/MCP, device/settings, iOS handoff, and offline/installed-PWA acceptance for commit `5108eb7`.
 
+2026-11-02 — Request high-performance WebGPU for shared Transformers.js workers
+- Code review found that the shared Transformers.js setup configured WASM locally but did not set the browser's WebGPU adapter preference. Its WebGPU text profile therefore lacked the high-performance preference already used by Vision and Decision. The shared runtime now requests `high-performance` when the provider is available; the duplicated Vision assignment was removed.
+- `node --test design/prototype/tests/transformers-runtime.test.mjs design/prototype/tests/onnx-execution-options.test.mjs`: 2/2. `npm run check`: PASS. `npm run build:app`: PASS, shell `73dc23beff66222e`, 163 verified assets. `git diff --check`: PASS.
+- This is a browser preference request only. Browser-selected adapter/backend and measured latency are not inferred; no GPU speed gain is claimed. The supported-runtime path and WebGPU-vs-WASM comparison still need real runs on each target platform.
+
 2026-11-02 — Adaptive D1 ONNX CPU fallback threads
 - Removed the D1 worker's explicit `ort.env.wasm.numThreads=1`; the pinned ONNX Runtime chooses its own safe policy based on shared-WASM availability and browser concurrency. WebGPU remains the preferred route; this affects only CPU/WASM fallback.
 - Regression-first `node --test tests/decision-assets.test.mjs`: 9/9. `npm run test:prototype`: 1,775/1,775. `npm run check`: PASS. `npm run build:app`: PASS, shell `855f67c729095aad`, 163 verified assets. Clean-checkout GitHub Actions [41384082884](https://github.com/Unjuno/babelshelf/actions/runs/41384082884) passed all workflow stages.

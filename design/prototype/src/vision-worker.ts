@@ -12,9 +12,6 @@ import {validateVisionOutput} from './vision-output.ts';
 env.allowRemoteModels=false;env.allowLocalModels=true;env.localModelPath='/vision-model/';
 env.useBrowserCache=false;env.useFSCache=false;env.useCustomCache=true;
 configureLocalTransformerRuntime(env,wasmURL,mjsURL);
-// Configure ONNX Runtime before the first WebGPU session. This is an adapter
-// preference only; the browser may ignore it or choose an integrated GPU.
-if(env.backends.onnx.webgpu)env.backends.onnx.webgpu.powerPreference='high-performance';
 
 let processor:any=null,model:any=null,busy=false;
 let activeModelId='lfm25-vl-450m',activeIdentity:VisionModelIdentity={model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime},activeCustomModel:CustomVisionModel|undefined;

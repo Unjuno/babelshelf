@@ -6,6 +6,10 @@ import type {env} from '@huggingface/transformers';
 // The app Service Worker owns the verified, bundled runtime URLs instead.
 export function configureLocalTransformerRuntime(runtime:typeof env,wasm:string,mjs:string){
  runtime.useWasmCache=false;
+ // Ask WebGPU-capable browsers for their high-performance adapter across all
+ // Transformers.js workers. This is only a preference; the browser/runtime
+ // may choose another adapter or fall back to WASM.
+ if(runtime.backends.onnx.webgpu)runtime.backends.onnx.webgpu.powerPreference='high-performance';
  runtime.backends.onnx.wasm!.wasmPaths={wasm,mjs};
  // Leave numThreads unset so the pinned ONNX Runtime can use its built-in
  // capability policy: one thread without cross-origin isolation, otherwise
