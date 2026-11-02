@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,formatDeviceDiagnosticReport,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
+import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,describeDiagnosticEnvironment,formatDeviceDiagnosticReport,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
+
+test('diagnostic environment uses bounded platform and browser labels without trusting raw strings',()=>{
+ assert.equal(describeDiagnosticEnvironment('iPhone','Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1'),'iPhone · Safari 26.6.1');
+ assert.equal(describeDiagnosticEnvironment('Win32','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0'),'Windows · Edge 156.0.0.0');
+ assert.equal(describeDiagnosticEnvironment('Linux armv8l','Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/137.0.0.0 Mobile Safari/537.36'),'Android · Chrome 137.0.0.0');
+ assert.equal(describeDiagnosticEnvironment('<script>','<script>alert(1)</script>'),'Device unknown · Browser unknown');
+});
 
 function memoryStorage(){const values=new Map();return {values,getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};}
 

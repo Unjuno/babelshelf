@@ -8,6 +8,16 @@ export const WEBGPU_DIAGNOSTIC_LIMIT_NAMES=['maxBufferSize','maxStorageBufferBin
 export type WebGpuDiagnostic={available:boolean;fallbackAdapter:boolean|null;features:string[];limits:Partial<Record<typeof WEBGPU_DIAGNOSTIC_LIMIT_NAMES[number],number>>};
 export type WasmThreadDiagnostic={crossOriginIsolated:boolean;sharedArrayBuffer:boolean;sharedWasmMemory:boolean;prerequisitesReady:boolean};
 export type DeviceDiagnosticReport={schema:1;createdAt:string;appBuild:string;bundle:string;platform:string;userAgent:string;standalone:boolean;connectionMode:'offline'|'online';onlineSignal:boolean;checks:DiagnosticCheck[];webgpu:WebGpuDiagnostic;wasmThreads:WasmThreadDiagnostic;manualSteps:string[];selectedModel?:SelectedModelDiagnostic;offlineRestart?:{startedAt:string;previousBuild:string;returnObserved:true;baseline:OfflineRestartMarker['baseline']};modelGeneration?:ModelGenerationDiagnostic;scope:string[]};
+
+/** Short, bounded labels for comparing local device runs. These are browser claims, not verified hardware identity. */
+export function describeDiagnosticEnvironment(platform:string,userAgent:string):string{
+ const ua=userAgent.slice(0,512),lower=ua.toLowerCase();
+ const device=/ipad|macintosh/.test(lower)&&/mobile/.test(lower)?'iPad':/iphone|ipod/.test(lower)?'iPhone':/android/.test(lower)?'Android':/windows/.test(lower)?'Windows':/macintosh|mac os x/.test(lower)?'Mac':/linux/.test(lower)?'Linux':/win/i.test(platform)?'Windows':/mac|iphone|ipad/i.test(platform)?'Apple device':/linux/i.test(platform)?'Linux':'Device unknown';
+ const browserMatch:readonly [RegExp,string][]=[[/edga\//i,'Edge'],[/edgios\//i,'Edge'],[/edg\//i,'Edge'],[/opr\//i,'Opera'],[/crios\//i,'Chrome'],[/chrome\//i,'Chrome'],[/fxios\//i,'Firefox'],[/firefox\//i,'Firefox'],[/version\//i,'Safari'],[/safari\//i,'Safari']];
+ let browser='Browser unknown';
+ for(const [pattern,name] of browserMatch){const match=ua.match(pattern);if(match){const version=ua.slice(match.index!+match[0].length).match(/^[\d.]+/)?.[0];browser=version?`${name} ${version}`:name;break;}}
+ return `${device} · ${browser}`;
+}
 export type OfflineRestartMarker={schema:1;startedAt:string;appBuild:string;returnAttempted?:boolean;modelTestRequested?:boolean;modelTestModel?:string;modelTestMode?:DeviceTestMode;baseline:{checkedAt:string;appBuild:string;standalone:boolean;onlineSignal:boolean;checks:DiagnosticCheck[];modelGeneration?:ModelGenerationDiagnostic}};
 export function canRunSelectedModelDiagnostic(input:{modelSelected:boolean;filesPresent:boolean;busy:boolean;otherModelLoaded:boolean}){return input.modelSelected&&input.filesPresent&&!input.busy&&!input.otherModelLoaded;}
 /** A model smoke test passes only when the selected model returns the exact expected JSON shape and value. */

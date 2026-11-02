@@ -1,6 +1,6 @@
 import type {DeviceTestMode} from './device-model-test';
 import type {DiagnosticLog} from './diagnostic-logs';
-import type {OfflineRestartMarker,ModelGenerationDiagnostic} from './device-diagnostics';
+import {describeDiagnosticEnvironment,type OfflineRestartMarker,type ModelGenerationDiagnostic} from './device-diagnostics';
 
 type Props={
  testMode:DeviceTestMode;onTestModeChange:(mode:DeviceTestMode)=>void;
@@ -26,10 +26,11 @@ type Props={
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
  const {testMode,onTestModeChange,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
- let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportContextTokens:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined;
+ let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportContextTokens:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
   if(typeof report?.createdAt==='string'&&Number.isFinite(Date.parse(report.createdAt)))reportAt=new Date(report.createdAt).toISOString();
   if(typeof report?.appBuild==='string')reportBuild=report.appBuild.slice(0,40);
+  if(typeof report?.platform==='string'&&typeof report?.userAgent==='string')reportEnvironment=describeDiagnosticEnvironment(report.platform.slice(0,128),report.userAgent.slice(0,512));
   if(report?.selectedModel?.backend==='webgpu'||report?.selectedModel?.backend==='cpu-wasm')reportBackend=report.selectedModel.backend;
   if(Number.isSafeInteger(report?.selectedModel?.contextTokens)&&report.selectedModel.contextTokens>=1&&report.selectedModel.contextTokens<=262144)reportContextTokens=report.selectedModel.contextTokens;
   if(typeof generation?.quantization==='string')reportQuantization=generation.quantization.slice(0,100);
@@ -51,6 +52,7 @@ export function DiagnosticsSettings(props:Props){
    {!deviceTestRunning&&!deviceModelTesting&&deviceTestReport&&<>
     <div className="capability-row"><span>Last test{generation?.testMode==='performance'?' · Performance':generation?.testMode==='quick'?' · Quick':''}</span>{reportAt&&<time dateTime={reportAt}>{new Date(reportAt).toLocaleString()}</time>}</div>
     {reportBuild&&<div className="capability-row"><span>Test build</span><span>{reportBuild}</span></div>}
+    {reportEnvironment&&<div className="capability-row"><span>Test environment</span><span>{reportEnvironment}</span></div>}
    </>}
    {modelStatus&&<div className="capability-row"><span>Model</span><span>{!deviceTestRunning&&!deviceModelTesting&&reportModel?reportModel+' · ':''}{modelStatus}</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation?.loadMetrics?.executionBackend&&<div className="capability-row"><span>Executed backend</span><span>{generation.loadMetrics.executionBackend==='webgpu'?'WebGPU · runtime':'CPU · runtime'}</span></div>}
