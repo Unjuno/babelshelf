@@ -410,7 +410,7 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  const replyAction=['answer','summary'].includes(value.action)||value.action==='capture'&&value.target===undefined&&value.historyIndex==null;
  if(Object.hasOwn(value,'reply')||replySources.length&&replyAction){
   if(!replyAction||scope.inputs)invalid('terminal reply scope');
-  if(['length','max_tokens','max_new_tokens'].includes(generated.finishReason??'')||!['stop','eos_token'].includes(generated.finishReason??'')&&generated.outputTokens!==undefined&&generated.outputTokens>=maxOutputTokens)invalid('terminal reply incomplete','Response exceeded model output limit');
+  if(['length','max_tokens','max_new_tokens'].includes(generated.finishReason??'')||!['stop','eos_token'].includes(generated.finishReason??'')&&generated.outputTokens!==undefined&&generated.outputTokens>=(generated.outputTokenLimit??maxOutputTokens))invalid('terminal reply incomplete','Response exceeded model output limit');
   let parsedReply:SourceLabelAnswer;
   try{parsedReply=bindSourceLabelAnswer(value.reply,replySources,{userText:question});}catch(error){invalid(error instanceof InternalSourceLabelLeakError?'terminal answer source-label leak':error instanceof InternalImplementationLeakError?'terminal answer implementation leak':'terminal reply sources','Invalid answer or sources');}
   const originalNote=!replySources.length&&value.action==='capture'&&!agent?.history.length;

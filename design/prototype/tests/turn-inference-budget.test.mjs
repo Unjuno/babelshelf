@@ -8,7 +8,7 @@ test('one output-token budget is shared across pinned planning and final-answer 
  const calls=[],base=engine(async(_messages,maxTokens)=>{calls.push(maxTokens);return {text:'ok',outputTokens:maxTokens};},{pin(){return engine(this.generate);}});
  const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null}),pinned=budget.wrap(base),first=await pinned.generate([],200);
  assert.equal(first.text,'ok');assert.equal(budget.generatedTokens,200);
- const second=await pinned.pin().generate([],100);assert.equal(second.outputTokens,56);assert.equal(budget.generatedTokens,256);
+ const second=await pinned.pin().generate([],100);assert.equal(second.outputTokens,56);assert.equal(second.outputTokenLimit,56);assert.equal(budget.generatedTokens,256);
  await assert.rejects(pinned.generate([],1),error=>error instanceof TurnInferenceBudgetError&&error.cause==='tokens');
  assert.deepEqual(calls,[200,56]);
 });

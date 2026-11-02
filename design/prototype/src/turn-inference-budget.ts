@@ -48,7 +48,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
      const result=await target.generate(messages,remaining,format,onPreview?preview=>{if(!expired&&(remainingMs===undefined||now()-started<=remainingMs))onPreview(preview);}:undefined);
      generationMs+=Math.max(0,now()-started);elapsedRecorded=true;
      const used=result.outputTokens??remaining;if(!Number.isSafeInteger(used)||used<0)throw Error('Invalid generated token count');generatedTokens+=used;tokensRecorded=true;
-     checkCompleted();return result;
+     checkCompleted();return {...result,outputTokenLimit:remaining};
     }catch(error){
      if(!elapsedRecorded)generationMs+=Math.max(0,now()-started);
      // A failed attempt still consumed compute. If token usage was not returned,

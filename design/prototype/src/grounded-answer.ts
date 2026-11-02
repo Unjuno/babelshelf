@@ -34,7 +34,7 @@ async function checkedAnswerCount(engine:TextRuntime,...args:Parameters<TextRunt
 function outputLimited(result:GenerationResult,budget:number){
  if(['length','max_tokens','max_new_tokens'].includes(result.finishReason??''))return true;
  if(['stop','eos_token'].includes(result.finishReason??''))return false;
- return result.outputTokens!==undefined&&result.outputTokens>=budget;
+ return result.outputTokens!==undefined&&result.outputTokens>=(result.outputTokenLimit??budget);
 }
 function checkRepeatedOutput(text:string){
  // A real 9B run filled its budget with one punctuation character. Continuing

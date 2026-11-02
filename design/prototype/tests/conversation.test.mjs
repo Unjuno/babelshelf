@@ -192,6 +192,7 @@ test('planner serialization keeps retained dialogue before changing selectors wi
 });
 import * as conversation from '../src/conversation.ts';
 import {groundedAnswer,dialogueAnswerMessages} from '../src/grounded-answer.ts';
+import {createTurnInferenceBudget} from '../src/turn-inference-budget.ts';
 import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
 import {createNote,reviseNote,searchNotes} from '../../../dist/core.js';
 import {explicitSavedKnowledgeQuestion,resolveTurnRoute} from '../src/turn-router.ts';
@@ -564,6 +565,22 @@ test('a token-limited dialogue reply continues within a fixed bound, then fails 
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Only the beginning',finishReason:'length'};}};
  await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/output limit/);assert.equal(calls,3);
+});
+test('a dialogue reply cut to the remaining turn budget is rejected when the runtime omits finishReason',async()=>{
+ const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
+ const base={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,maxTokens)=>({text:'The unfinished answer continues with',outputTokens:maxTokens})};
+ const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null}),e=budget.wrap(base);
+ await e.generate([],200);
+ await assert.rejects(groundedAnswer({store,engine:e},{model:'4B',question:'Briefly explain rain.',query:'',mode:'chat',context,scope:{kind:'conversation'}}),/output limit/);
+ assert.equal(budget.generatedTokens,256);
+});
+test('a native terminal reply cut to the remaining turn budget is rejected when finishReason is absent',async()=>{
+ const context={summary:'',recent:[],refs:[],turnCount:0},body=JSON.stringify({action:'answer',reply:{status:'answered',answer:'The partial answer.',sources:[]}});
+ const base={plannerProtocol:'native-tool-calls',manifest:{contextTokens:8192,maxOutputTokens:3072},count:async()=>({prompt_tokens:300}),generate:async(_messages,maxTokens)=>({text:body,outputTokens:maxTokens})};
+ const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null}),e=budget.wrap(base);
+ await e.generate([],200);
+ await assert.rejects(planDialogue(e,'Explain briefly.',context,[],{allowedTools:[],history:[]}),/output limit/);
+ assert.equal(budget.generatedTokens,256);
 });
 test('a punctuation-only model collapse fails after one generation instead of repeating continuations',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
