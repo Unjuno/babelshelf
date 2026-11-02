@@ -7995,3 +7995,18 @@ passed all stages, including WebKit handoff and offline/installed-PWA
 acceptance. This verifies exact note selection and host-bound citation ranges,
 not semantic entailment or live-model citation quality. Commit `f4ee624` is on
 `codex/ui-design-handoff`.
+2026-11-03 (JST) — Measure visible-answer TTFT after native tool calls.
+The LFM adapter no longer reports the timestamp of hidden ordinary content as
+the first visible answer token when a native tool call precedes the final
+answer preview. Tool-only native turns have no visible-answer TTFT. The
+regression first reproduced the old 10 ms measurement against a 40 ms visible
+answer, then passed after the split timestamps were introduced. Focused LFM
+adapter tests passed 41/41; root tests 257/257; prototype tests 1,827/1,827;
+`npm run check`; production build with 165 verified assets; app acceptance
+8/8; and `git diff --check`. Clean-checkout GitHub Actions
+[41492239936](https://github.com/Unjuno/babelshelf/actions/runs/41492239936)
+passed all stages in 9m47s, including device/inference/settings, editorial
+and iOS handoff, Chromium/WebKit, and offline/installed-PWA acceptance. This
+is a diagnostic correction only; no runtime speedup, live-model quality, or
+physical-device performance is claimed. Commit `f3ca743` is on
+`codex/ui-design-handoff`.

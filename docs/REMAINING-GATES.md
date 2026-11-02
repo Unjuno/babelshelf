@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · report visible-answer TTFT for native tool turns
+
+Commit `f3ca743` separates hidden ordinary content from the first native answer preview. When a generation contains native tool calls, the Developer report now measures TTFT to the visible answer preview; a tool-only turn reports no visible-answer TTFT instead of counting hidden preface content. Focused LFM adapter tests passed 41/41, root tests 257/257, prototype tests 1,827/1,827, `npm run check`, the 165-asset production build and app acceptance 8/8. Clean-checkout GitHub Actions [41492239936](https://github.com/Unjuno/babelshelf/actions/runs/41492239936) passed every stage, including Chromium/WebKit, iOS handoff and installed-offline acceptance. This corrects a diagnostic metric; it does not change model execution or demonstrate an inference-speed improvement. Real-model semantic quality and matched Windows/macOS/iPhone/Android performance remain unverified.
+
 ### 2026-11-03 · resolve exact saved-note citations by canonical identity
 
 Commit `f4ee624` fixes an exact-note lookup that resolved a UUID/path, then discarded that record during a second fuzzy-match filter. Canonical paths now come from the latest saved revision, and an explicit exact match scopes the cited answer to that record. A regression covers a UUID and full path alongside a near-match decoy. Local conversation tests passed 224/224, prototype tests 1,827/1,827, `npm run check`, the 165-asset production build and app acceptance 8/8. Clean-checkout GitHub Actions [41489380684](https://github.com/Unjuno/babelshelf/actions/runs/41489380684) passed all stages, including WebKit handoff and offline/installed-PWA acceptance. This verifies exact host-side note resolution and quotation provenance; semantic entailment and live-model citation quality remain open.
