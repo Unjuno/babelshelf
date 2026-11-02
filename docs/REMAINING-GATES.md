@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · allocate more answer room to analytical requests
+
+Balanced replies now reserve up to 1,536 output tokens for explicit analysis, comparison, review, assessment, and equivalent Japanese requests; generation remains streamed in 768-token segments and can continue only within the total allowance. Direct short requests still receive 256 tokens, explicit long requests up to 3,072, and every budget remains bounded by the selected model's output cap and the remaining context. Focused reply-style tests cover the actual generation/continuation boundary. This changes available capacity, not answer quality; real-model response quality and device-specific latency remain unverified.
+
 ### 2026-11-03 · keep reviewed note proposals resumable without applying them
 
 Commit `259cd26` stores a bounded pending note proposal as inert local review data, restores it after reload, and preserves exact source/version details for the approval screen. Editing the draft does not touch canonical notes; approval revalidates the frozen target and uses compare-and-swap with the existing atomic save/delete boundary. Explicit discard removes only that pending proposal, and backups preserve it as inert data. Focused note-review checks passed 12/12; the full prototype suite passed 1,826/1,826; `npm run check`, the production build and app acceptance 8/8 passed. Clean-checkout GitHub Actions [41478977545](https://github.com/Unjuno/babelshelf/actions/runs/41478977545) passed all stages, including WebKit, offline and installed-PWA acceptance. This closes review-draft interruption on the tested PC/browser path; it does not prove physical-device storage survival, broad live-model correction quality or iOS/Android behavior.

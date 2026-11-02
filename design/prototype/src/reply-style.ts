@@ -13,6 +13,7 @@ const guidance:Record<ReplyStyle,string>={
  detailed:'Give more explanation and useful context when the request allows it.',
 };
 const explicitLongRequest=/(?:\bin detail\b|\bdetailed\b|\bcomprehensive\b|\bthorough\b|\bstep[- ]by[- ]step\b|\blong[- ]form\b|\bwrite (?:me )?a story\b|\b(?:\d+|two|three|four|five|several) paragraphs?\b|詳しく|詳細に|詳細な|網羅的|徹底的|段階的に|長文|物語|\d+段落)/u;
+const analyticalRequest=/(?:\b(?:analy[sz](?:e|es|ed|ing)|analysis|evaluat(?:e|es|ed|ing|ion)|review|compare|comparison|assess|pros and cons|trade[- ]offs?|implications)\b|分析|比較|比べ|評価|レビュー|検討|考察|長所と短所|利点と欠点|トレードオフ)/iu;
 const additionalStage=/(?:\bthen\b|\bafterwards\b|\bfollowed by\b|その後|そのあと|続けて|その上で)/iu;
 
 /** Fixed presentation guidance only; no free-form setting can alter harness policy. */
@@ -28,10 +29,12 @@ export function dialogueOutputLimits(style:unknown,question:string,availableToke
  const text=question.toLocaleLowerCase();
  const explicitShort=/(?:\bbriefly\b|\bshort answer\b|\bone sentence\b|\b(?:exactly\s+)?two sentences?\b|\b(?:one|two)[- ]sentence\b|\bconcise(?:ly)?\b|\btldr\b|簡潔に|短く|一言で|一文で|二文で|2文で|要点だけ)/u.test(text);
  const explicitLong=explicitLongRequest.test(text);
+ const analytical=analyticalRequest.test(text);
  let total:number,segment:number;
  if(explicitLong&&explicitShort&&additionalStage.test(text)){total=3072;segment=768;}
  else if(explicitShort){total=256;segment=256;}
  else if(explicitLong){total=3072;segment=768;}
+ else if(analytical){total=1536;segment=768;}
  else if(style==='concise'){total=256;segment=256;}
  else if(style==='detailed'){total=1536;segment=768;}
  else {total=768;segment=512;}

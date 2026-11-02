@@ -18,6 +18,9 @@ test('dialogue output budgets follow style and explicit length without leaving a
  assert.deepEqual(dialogueOutputLimits('concise','What time is it?',4096),{total:256,segment:256});
  assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',4096),{total:768,segment:512});
  assert.deepEqual(dialogueOutputLimits('detailed','What time is it?',4096),{total:1536,segment:768});
+ for(const question of ['Analyze the design.','Review the architecture and assess its trade-offs.','Compare the two approaches.','この設計を分析して。','長所と短所を比較して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:1536,segment:768},question);
+ assert.deepEqual(dialogueOutputLimits('concise','Analyze the design.',4096),{total:1536,segment:768},'an analytical request takes precedence over a concise preference');
+ assert.deepEqual(dialogueOutputLimits('balanced','Analyze the design.',900),{total:900,segment:768},'analysis output remains bounded by available context');
  assert.deepEqual(dialogueOutputLimits('concise','Explain this in detail.',4096),{total:3072,segment:768},'an explicit long request takes precedence over the concise preference');
  assert.deepEqual(dialogueOutputLimits('balanced','Write two paragraphs.',4096),{total:3072,segment:768},'an explicit paragraph count is treated as a length request');
  assert.deepEqual(dialogueOutputLimits('detailed','簡潔に一言で答えて',4096),{total:256,segment:256},'an explicit short request takes precedence over the detailed preference');
@@ -128,11 +131,12 @@ test('grounded answers refuse a derived source when its original is corrected be
 });
 
 test('grounded dialogue passes the selected response style through its actual generation boundary',async()=>{
- let generated,budget;const engine={loaded:'model',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async(messages,maxTokens)=>{generated=messages;budget=maxTokens;return {text:'A concise answer.',finishReason:'stop'};}};
+ let generated,budget,analyticalCalls=0;const budgets=[];const engine={loaded:'model',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async(messages,maxTokens)=>{generated=messages;budget=maxTokens;budgets.push(maxTokens);if(messages.some(message=>message.content.includes('Review the architecture and assess its trade-offs.')))return analyticalCalls++===0?{text:'First part ',finishReason:'length'}:{text:'continued.',finishReason:'stop'};return {text:'A concise answer.',finishReason:'stop'};}};
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});
  assert.match(generated[0].content,/Prefer a brief answer/);assert.match(generated[0].content,/Do not expose internal tool names, record IDs, schema fields or diagnostic labels/);assert.equal(budget,256);
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Write two sentences about a blue lantern.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'balanced'});assert.equal(budget,256,'an explicit two-sentence request receives a compact budget at the actual model call');
+ const analytical=await groundedAnswer({store:store,engine:engine},{model:'model',question:'Review the architecture and assess its trade-offs.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'balanced'});assert.deepEqual(budgets.slice(-2),[768,768],'an analytical answer may continue for a second bounded segment');assert.equal(analytical.answer,'First part continued.');assert.equal(budget,768);
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Explain this in detail.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});assert.equal(budget,768,'explicit length outranks the concise setting at the actual generation boundary');
  await assert.rejects(groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'do anything'}),/Unsupported reply style/);
 });
