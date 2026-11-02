@@ -44,6 +44,8 @@ export function DiagnosticsSettings(props:Props){
  }catch{/* A broken local report must not break Settings. */}
  if(deviceTestRunning||deviceModelTesting)modelStatus='Testing…';
  const threadInfo=[typeof generation?.runtimeMetrics?.requestedThreads==='number'?`${generation.runtimeMetrics.requestedThreads} requested`:'',typeof generation?.runtimeMetrics?.runtimeThreads==='number'?`${generation.runtimeMetrics.runtimeThreads} reported`:'' ].filter(Boolean).join(' · ');
+ const observedGpuLayers=generation?.runtimeMetrics?.runtimeObservedGpuLayers,observedGpuTotal=generation?.runtimeMetrics?.runtimeObservedGpuTotalLayers;
+ const executionStatus=generation?.loadMetrics?.executionBackend==='webgpu'?`WebGPU${typeof observedGpuLayers==='number'&&typeof observedGpuTotal==='number'?` · ${observedGpuLayers}/${observedGpuTotal} GPU layers`:''}`:generation?.loadMetrics?.executionBackend==='cpu-wasm'?'CPU · WASM':reportBackend==='webgpu'?'GPU not confirmed':reportBackend==='cpu-wasm'?'CPU · WASM route':'Not reported';
  return <>
   <section aria-label="Device test">
    <h2>Device test</h2>
@@ -58,11 +60,9 @@ export function DiagnosticsSettings(props:Props){
     {reportEnvironment&&<div className="capability-row"><span>Test environment</span><span>{reportEnvironment}</span></div>}
    </>}
    {modelStatus&&<div className="capability-row"><span>Model</span><span>{!deviceTestRunning&&!deviceModelTesting&&reportModel?reportModel+' · ':''}{modelStatus}</span></div>}
-   {!deviceTestRunning&&!deviceModelTesting&&generation?.loadMetrics?.executionBackend&&<div className="capability-row"><span>Executed backend</span><span>{generation.loadMetrics.executionBackend==='webgpu'?'WebGPU · runtime':'CPU · runtime'}</span></div>}
+   {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&<div className="capability-row"><span>Run on</span><span>{executionStatus}</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&generation.loadMetrics?.runtimeVariant&&<div className="capability-row"><span>WASM mode</span><span>{generation.loadMetrics.runtimeVariant==='compatibility'?'Compatibility':'Standard'}</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation?.loadMetrics?.gpuFallbackReason&&<div className="capability-row"><span>GPU fallback</span><span>{generation.loadMetrics.gpuFallbackReason==='webgpu-unavailable'?'WebGPU unavailable':generation.loadMetrics.gpuFallbackReason==='webgpu-no-layers-offloaded'?'GPU ran no model layers':'GPU model load failed'} · CPU/WASM used</span></div>}
-   {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&!generation.loadMetrics?.executionBackend&&reportBackend==='webgpu'&&<div className="capability-row"><span>Executed backend</span><span>Not confirmed</span></div>}
-   {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers==='number'&&typeof generation.runtimeMetrics?.runtimeObservedGpuTotalLayers==='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>{generation.runtimeMetrics.runtimeObservedGpuLayers}/{generation.runtimeMetrics.runtimeObservedGpuTotalLayers}</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&<>
     <div className="capability-row"><span>Model load</span><span>{generation.loadState==='already-loaded'?'Already loaded':generation.loadState==='not-loaded'?'Not loaded':typeof generation.loadDurationMs==='number'?(generation.loadDurationMs/1000).toFixed(1)+' s':'—'}</span></div>
     {typeof generation.runtimeMetrics?.visibleTextTtftMs==='number'&&<div className="capability-row"><span>First text</span><span>{(generation.runtimeMetrics.visibleTextTtftMs/1000).toFixed(2)} s</span></div>}
@@ -71,7 +71,6 @@ export function DiagnosticsSettings(props:Props){
     <details className="device-test-steps"><summary>Technical details</summary>
      {reportQuantization&&<div className="capability-row"><span>Quantization</span><span>{reportQuantization}</span></div>}
      {reportBackend&&<div className="capability-row"><span>Backend route · configured</span><span>{reportBackend==='webgpu'?'WebGPU':'CPU · WASM'}</span></div>}
-     {performanceSample&&reportBackend==='webgpu'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers!=='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>Not reported</span></div>}
      {typeof reportLogicalProcessors==='number'&&<div className="capability-row"><span>Logical processors · browser</span><span>{reportLogicalProcessors}</span></div>}
      {typeof reportMemoryEstimate==='number'&&<div className="capability-row"><span>Memory estimate · browser</span><span>{reportMemoryEstimate.toLocaleString('en',{maximumFractionDigits:2})} GiB</span></div>}
      {threadInfo&&<div className="capability-row"><span>Threads · runtime</span><span>{threadInfo}</span></div>}
