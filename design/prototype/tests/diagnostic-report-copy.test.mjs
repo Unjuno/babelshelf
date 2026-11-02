@@ -52,7 +52,7 @@ test('handoff preserves the bounded configured context limit and disclaims memor
 test('handoff preserves browser hardware hints without treating them as hardware facts',()=>{
  const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,checks:[],hardware:{logicalProcessors:8,memoryGiBEstimate:5.75,raw:'PRIVATE_HARDWARE'}}));
  assert.match(handoff,/browser-reported logical processor count and a coarse memory estimate/);
- assert.match(handoff,/nor GPU limits prove selected-runtime use or model fit/);
+ assert.match(handoff,/browser hardware hints, thread prerequisites, and GPU limits do not prove runtime use or model fit/);
  const json=JSON.parse(handoff.match(/```json\n([\s\S]*?)\n```/)?.[1]??'{}');
  assert.deepEqual(json.hardware,{logicalProcessors:8,memoryGiBEstimate:5.75});assert.doesNotMatch(handoff,/PRIVATE_HARDWARE/);
  const malformed=formatDiagnosticHandoff(JSON.stringify({schema:1,checks:[],hardware:{logicalProcessors:999}}));assert.doesNotMatch(malformed,/"logicalProcessors"/);
@@ -66,13 +66,15 @@ test('handoff excludes unknown fields at every level so corrupted local reports 
 });
 
 test('handoff drops malformed and oversized values even when they use an allowed field name',()=>{
- const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,createdAt:'2026-10-21T00:00:00.000Z',appBuild:{instructions:'PRIVATE_OBJECT'},bundle:'x'.repeat(1000),platform:'iOS',userAgent:'agent',standalone:'yes',connectionMode:'offline',onlineSignal:false,checks:[{id:'safe-check',status:'warning',detail:'ok'},{id:{prompt:'PRIVATE_CHECK'},status:'pass',detail:'x'.repeat(500)}],selectedModel:{id:'m',revision:'r1',engine:{prompt:'PRIVATE_ENGINE'},backend:'webgpu',runtimeRevision:'r2',filesPresent:true,loaded:true},webgpu:{available:true,fallbackAdapter:null,features:['shader-f16',{}],limits:{maxBufferSize:1024,maxStorageBufferBindingSize:'PRIVATE_LIMIT'}},wasmThreads:{crossOriginIsolated:true,sharedArrayBuffer:false,sharedWasmMemory:true,prerequisitesReady:true},scope:['bounded scope',{prompt:'PRIVATE_SCOPE'}]}));
+ const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,createdAt:'2026-10-21T00:00:00.000Z',appBuild:{instructions:'PRIVATE_OBJECT'},bundle:'x'.repeat(1000),platform:'iOS',userAgent:'agent',standalone:'yes',connectionMode:'offline',onlineSignal:false,checks:[{id:'safe-check',status:'warning',detail:'ok'},{id:{prompt:'PRIVATE_CHECK'},status:'pass',detail:'x'.repeat(500)}],selectedModel:{id:'m',revision:'r1',engine:{prompt:'PRIVATE_ENGINE'},backend:'webgpu',runtimeRevision:'r2',filesPresent:true,loaded:true},webgpu:{available:true,fallbackAdapter:null,vendor:'intel',architecture:'gen-12lp',device:'PRIVATE_GPU_DEVICE',features:['shader-f16',{}],limits:{maxBufferSize:1024,maxStorageBufferBindingSize:'PRIVATE_LIMIT'}},wasmThreads:{crossOriginIsolated:true,sharedArrayBuffer:false,sharedWasmMemory:true,prerequisitesReady:true},scope:['bounded scope',{prompt:'PRIVATE_SCOPE'}]}));
  const json=JSON.parse(handoff.match(/```json\n([\s\S]*?)\n```/)?.[1]??'{}');
  assert.doesNotMatch(handoff,/PRIVATE_(?:OBJECT|CHECK|ENGINE|LIMIT|SCOPE)/);
+ assert.doesNotMatch(handoff,/PRIVATE_GPU_DEVICE/);
  assert.doesNotMatch(handoff,/x{500}/);
  assert.doesNotMatch(handoff,/x{1000}/);
  assert.match(handoff,/"safe-check"/);
  assert.match(handoff,/"maxBufferSize": 1024/);
+ assert.match(handoff,/"vendor": "intel"/);assert.match(handoff,/"architecture": "gen-12lp"/);
  assert.equal(Object.hasOwn(json,'appBuild'),false);
  assert.equal(Object.hasOwn(json,'standalone'),false);
  assert.equal(json.wasmThreads.prerequisitesReady,false,'derived readiness cannot contradict the recorded prerequisites');

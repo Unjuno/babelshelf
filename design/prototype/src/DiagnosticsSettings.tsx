@@ -26,12 +26,14 @@ type Props={
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
  const {testMode,onTestModeChange,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
- let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportContextTokens:number|undefined,reportLogicalProcessors:number|undefined,reportMemoryEstimate:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
+ let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportGpuHint='',reportContextTokens:number|undefined,reportLogicalProcessors:number|undefined,reportMemoryEstimate:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
   performanceSample=generation?.testMode==='performance'||generation?.workload==='prose-128-v1'||generation?.workload==='prose-128-v2';
   if(typeof report?.createdAt==='string'&&Number.isFinite(Date.parse(report.createdAt)))reportAt=new Date(report.createdAt).toISOString();
   if(typeof report?.appBuild==='string')reportBuild=report.appBuild.slice(0,40);
   if(typeof report?.platform==='string'&&typeof report?.userAgent==='string')reportEnvironment=describeDiagnosticEnvironment(report.platform.slice(0,128),report.userAgent.slice(0,512));
+  const gpuHint=report?.webgpu,vendors=['amd','apple','arm','google','intel','mediatek','microsoft','nvidia','qualcomm','samsung','other'];
+  if(gpuHint?.available){const vendor=typeof gpuHint.vendor==='string'&&vendors.includes(gpuHint.vendor)?gpuHint.vendor:undefined,architecture=typeof gpuHint.architecture==='string'&&gpuHint.architecture.length<=48&&/^[a-z0-9]+(?:[._-][a-z0-9]+){0,5}$/.test(gpuHint.architecture)?gpuHint.architecture:undefined;reportGpuHint=[vendor,architecture].filter(Boolean).join(' · ');}
   if(report?.selectedModel?.backend==='webgpu'||report?.selectedModel?.backend==='cpu-wasm')reportBackend=report.selectedModel.backend;
   if(Number.isSafeInteger(report?.selectedModel?.contextTokens)&&report.selectedModel.contextTokens>=1&&report.selectedModel.contextTokens<=262144)reportContextTokens=report.selectedModel.contextTokens;
   if(Number.isSafeInteger(report?.hardware?.logicalProcessors)&&report.hardware.logicalProcessors>=1&&report.hardware.logicalProcessors<=256)reportLogicalProcessors=report.hardware.logicalProcessors;
@@ -71,6 +73,7 @@ export function DiagnosticsSettings(props:Props){
     <details className="device-test-steps"><summary>Technical details</summary>
      {reportQuantization&&<div className="capability-row"><span>Quantization</span><span>{reportQuantization}</span></div>}
      {reportBackend&&<div className="capability-row"><span>Backend route · configured</span><span>{reportBackend==='webgpu'?'WebGPU':'CPU · WASM'}</span></div>}
+     {reportGpuHint&&<div className="capability-row"><span>GPU hint · browser</span><span>{reportGpuHint}</span></div>}
      {typeof reportLogicalProcessors==='number'&&<div className="capability-row"><span>Logical processors · browser</span><span>{reportLogicalProcessors}</span></div>}
      {typeof reportMemoryEstimate==='number'&&<div className="capability-row"><span>Memory estimate · browser</span><span>{reportMemoryEstimate.toLocaleString('en',{maximumFractionDigits:2})} GiB</span></div>}
      {threadInfo&&<div className="capability-row"><span>Threads · runtime</span><span>{threadInfo}</span></div>}

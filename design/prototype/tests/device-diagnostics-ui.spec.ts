@@ -85,6 +85,12 @@ test('performance shows requested and runtime-reported thread counts separately'
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Threads · runtime',{exact:true})).toBeVisible();await expect(page.getByText('4 requested · 3 reported',{exact:true})).toBeVisible();
 });
 
+test('performance shows a bounded browser GPU hint without calling it the inference adapter',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],webgpu:{available:true,fallbackAdapter:false,vendor:'intel',architecture:'gen-12lp',device:'PRIVATE_DEVICE'},selectedModel:{id:'lfm3',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'lfm3',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'webgpu'},runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:24}}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Technical details',{exact:true}).click();
+ const hint=page.locator('section[aria-label="Device test"] .capability-row:visible').filter({hasText:'GPU hint · browser'});await expect(hint).toContainText('intel · gen-12lp');await expect(hint).not.toContainText('PRIVATE_DEVICE');await expect(page.getByText('WebGPU · 24/24 GPU layers',{exact:true})).toBeVisible();
+});
+
 test('Settings keeps common choices visible and groups advanced actions under More',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();

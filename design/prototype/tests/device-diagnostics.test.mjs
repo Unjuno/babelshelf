@@ -193,10 +193,13 @@ test('device report includes only a bounded configured context limit for the sel
 
 test('device report captures only bounded WebGPU features and selected numeric limits',async()=>{
  const requests=[];
- const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{requests.push(value);return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'};}}});
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{requests.push(value);return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,info:{vendor:'Intel',architecture:'Gen-12LP',device:'PRIVATE_DEVICE_NAME'}};}}});
  assert.deepEqual(requests,[{powerPreference:'high-performance'}]);
- assert.deepEqual(report.webgpu,{available:true,fallbackAdapter:false,features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
- assert.equal(Object.hasOwn(report.webgpu,'vendor'),false);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/high-performance preference tried with default-selection fallback/);
+ assert.deepEqual(report.webgpu,{available:true,fallbackAdapter:false,vendor:'intel',architecture:'gen-12lp',features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
+ assert.doesNotMatch(JSON.stringify(report),/PRIVATE_DEVICE_NAME/);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/high-performance preference tried with default-selection fallback/);
+ const storage=memoryStorage(),serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,webgpu:{...report.webgpu,vendor:'private-adapter-vendor'}})),/Invalid/);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,webgpu:{...report.webgpu,architecture:'PRIVATE DEVICE NAME'}})),/Invalid/);
 });
 
 test('device report checks the browser default adapter if the preferred adapter is unavailable',async()=>{
