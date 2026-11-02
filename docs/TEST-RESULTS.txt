@@ -7981,3 +7981,17 @@ Follow-up: clean-checkout GitHub Actions [41468987575](https://github.com/Unjuno
 The UUID-only internal-detail detector did not catch stable managed record slugs. Final answer validation now checks exact host-bound note IDs (minimum eight characters) with identifier boundaries. An exact ID is allowed when the current user request names it or the cited original literally contains it; prefix/suffix lookalikes remain allowed. Citation binding and saved text are unchanged. Focused `agent-evidence.test.mjs` passed 29/29; full prototype 1,822/1,822; `npm run check`; production app build; app acceptance 8/8; `git diff --check`. This is deterministic response validation, not proof that a live model will follow repair guidance or a speedup. No browser data, model files or Memory records were changed.
 
 Clean-checkout GitHub Actions [41473834084](https://github.com/Unjuno/babelshelf/actions/runs/41473834084) passed every workflow stage on `4e11c00b57b67159a6234dbb06e757b0d43f08ca` in 10m36s, including full quality, device/inference/settings, iOS handoff, and installed-offline acceptance. The CI does not run a live frontier model or physical phone and supplies no performance speedup claim.
+
+2026-11-03 (JST) — Exact saved-note identity and clean-checkout CI.
+An exact UUID/path lookup previously found the intended record but a later
+fuzzy-name filter removed it when the identifier was absent from its text.
+Grounding now keeps an exact resolved target and resolves its path from the
+canonical latest revision. A UUID plus full-path regression includes a similar
+decoy and verifies the answer cites only the requested note. Conversation tests
+passed 224/224; the full prototype suite passed 1,827/1,827; `npm run check`,
+the 165-asset production build and app acceptance 8/8 passed. Clean-checkout
+GitHub Actions [41489380684](https://github.com/Unjuno/babelshelf/actions/runs/41489380684)
+passed all stages, including WebKit handoff and offline/installed-PWA
+acceptance. This verifies exact note selection and host-bound citation ranges,
+not semantic entailment or live-model citation quality. Commit `f4ee624` is on
+`codex/ui-design-handoff`.

@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · resolve exact saved-note citations by canonical identity
+
+Commit `f4ee624` fixes an exact-note lookup that resolved a UUID/path, then discarded that record during a second fuzzy-match filter. Canonical paths now come from the latest saved revision, and an explicit exact match scopes the cited answer to that record. A regression covers a UUID and full path alongside a near-match decoy. Local conversation tests passed 224/224, prototype tests 1,827/1,827, `npm run check`, the 165-asset production build and app acceptance 8/8. Clean-checkout GitHub Actions [41489380684](https://github.com/Unjuno/babelshelf/actions/runs/41489380684) passed all stages, including WebKit handoff and offline/installed-PWA acceptance. This verifies exact host-side note resolution and quotation provenance; semantic entailment and live-model citation quality remain open.
+
 ### 2026-11-03 · allocate more answer room to analytical requests
 
 Balanced replies now reserve up to 1,536 output tokens for explicit analysis, comparison, review, assessment, and equivalent Japanese requests; generation remains streamed in 768-token segments and can continue only within the total allowance. Direct short requests still receive 256 tokens, explicit long requests up to 3,072, and every budget remains bounded by the selected model's output cap and the remaining context. Focused reply-style tests passed 18/18; the prototype suite passed 1,826/1,826, `npm run check`, the 165-asset production build and app acceptance 8/8 passed locally. Clean-checkout GitHub Actions [41485398609](https://github.com/Unjuno/babelshelf/actions/runs/41485398609) passed every workflow stage. This changes available capacity, not answer quality; real-model response quality and device-specific latency remain unverified.
