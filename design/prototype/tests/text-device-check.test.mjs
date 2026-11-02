@@ -15,6 +15,20 @@ test('a large WebGPU model reports only observed adapter and quota evidence',asy
  assert.equal(missing.webgpu,'unavailable');assert.equal(missing.storage,'estimate-covers-file');
 });
 
+test('device preflight retries the browser default adapter when the performance hint returns none',async()=>{
+ const requests=[];
+ const check=await checkTextDevice('4B',[],true,{storage:storage(1_000),gpu:{requestAdapter:async options=>{requests.push(options);return requests.length===1?null:{kind:'default adapter'};}}});
+ assert.deepEqual(requests,[{powerPreference:'high-performance'},{}]);
+ assert.equal(check.webgpu,'available');
+});
+
+test('device preflight uses the browser default adapter when the performance hint rejects',async()=>{
+ const requests=[];
+ const check=await checkTextDevice('4B',[],true,{storage:storage(1_000),gpu:{requestAdapter:async options=>{requests.push(options);if(requests.length===1)throw Error('Unsupported power preference');return {kind:'default adapter'};}}});
+ assert.deepEqual(requests,[{powerPreference:'high-performance'},{}]);
+ assert.equal(check.webgpu,'available');
+});
+
 test('the LFM3 preflight discloses its CPU/WASM fallback without applying it to other WebGPU routes',async()=>{
  const gpuUnavailable={requestAdapter:async()=>null};
  const lfm3=await checkTextDevice('lfm3-1.7b-qad-q4-0',[],false,{storage:storage(4_000_000_000),gpu:gpuUnavailable});

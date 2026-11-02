@@ -1,6 +1,7 @@
 import {readDeviceStorage,type StoragePort} from './device-storage.ts';
 import {textModelFileSize} from './model-catalog-status.ts';
 import {textExecutionRoute} from './text-execution-route.ts';
+import {requestAdapterWithFallback} from './webgpu-preference.ts';
 import type {CustomLocalModel} from './preference-records.ts';
 
 type GpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>};
@@ -31,9 +32,9 @@ export async function checkTextDevice(modelId:string,customModels:readonly Custo
 }
 
 async function adapterStatus(gpu:GpuPort):Promise<'available'|'unavailable'|'unknown'>{
- let timer:ReturnType<typeof setTimeout>|undefined;
+ let timer:ReturnType<typeof setTimeout>|undefined;const controller=new AbortController();
  try{
-  const result=await Promise.race([gpu.requestAdapter({powerPreference:'high-performance'}).then(adapter=>adapter?'available' as const:'unavailable' as const),new Promise<'unknown'>(resolve=>{timer=setTimeout(()=>resolve('unknown'),8000);})]);
+  const result=await Promise.race([requestAdapterWithFallback(gpu,undefined,controller.signal).then((adapter:unknown)=>adapter?'available' as const:'unavailable' as const),new Promise<'unknown'>(resolve=>{timer=setTimeout(()=>{controller.abort();resolve('unknown');},8000);})]);
   return result;
- }catch{return 'unknown';}finally{if(timer)clearTimeout(timer);}
+ }catch{return 'unknown';}finally{controller.abort();if(timer)clearTimeout(timer);}
 }
