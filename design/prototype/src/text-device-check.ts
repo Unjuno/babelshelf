@@ -3,7 +3,7 @@ import {textModelFileSize} from './model-catalog-status.ts';
 import {textExecutionRoute} from './text-execution-route.ts';
 import type {CustomLocalModel} from './preference-records.ts';
 
-type GpuPort={requestAdapter:()=>Promise<unknown>};
+type GpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>};
 export type TextDeviceCheck={modelId:string;modelBytes:number|null;availableBytes:number|null;storage:'already-present'|'below-file-size'|'estimate-covers-file'|'unknown';backend:'webgpu'|'cpu-wasm';fallbackBackend?:'cpu-wasm';webgpu:'available'|'unavailable'|'unknown'|'not-needed'};
 
 export function describeTextDeviceCheck(check:TextDeviceCheck):string {
@@ -33,7 +33,7 @@ export async function checkTextDevice(modelId:string,customModels:readonly Custo
 async function adapterStatus(gpu:GpuPort):Promise<'available'|'unavailable'|'unknown'>{
  let timer:ReturnType<typeof setTimeout>|undefined;
  try{
-  const result=await Promise.race([gpu.requestAdapter().then(adapter=>adapter?'available' as const:'unavailable' as const),new Promise<'unknown'>(resolve=>{timer=setTimeout(()=>resolve('unknown'),8000);})]);
+  const result=await Promise.race([gpu.requestAdapter({powerPreference:'high-performance'}).then(adapter=>adapter?'available' as const:'unavailable' as const),new Promise<'unknown'>(resolve=>{timer=setTimeout(()=>resolve('unknown'),8000);})]);
   return result;
  }catch{return 'unknown';}finally{if(timer)clearTimeout(timer);}
 }

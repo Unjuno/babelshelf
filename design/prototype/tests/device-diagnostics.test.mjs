@@ -160,7 +160,9 @@ test('device report records the registered backend without presenting it as adap
 });
 
 test('device report captures only bounded WebGPU features and selected numeric limits',async()=>{
- const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async()=>({features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'})}});
+ let options;
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{options=value;return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'};}}});
+ assert.deepEqual(options,{powerPreference:'high-performance'});
  assert.deepEqual(report.webgpu,{available:true,fallbackAdapter:false,features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
  assert.equal(Object.hasOwn(report.webgpu,'vendor'),false);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');
 });

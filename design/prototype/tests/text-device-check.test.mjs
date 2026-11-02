@@ -6,7 +6,9 @@ import {textExecutionRoute} from '../src/text-execution-route.ts';
 const storage=(quota,usage=0)=>({estimate:async()=>({quota,usage}),persisted:async()=>false});
 
 test('a large WebGPU model reports only observed adapter and quota evidence',async()=>{
- const check=await checkTextDevice('9B',[],false,{storage:storage(500_000_000),gpu:{requestAdapter:async()=>({})}});
+ let options;
+ const check=await checkTextDevice('9B',[],false,{storage:storage(500_000_000),gpu:{requestAdapter:async value=>{options=value;return{};}}});
+ assert.deepEqual(options,{powerPreference:'high-performance'});
  assert.equal(check.backend,'webgpu');assert.equal(check.webgpu,'available');assert.equal(check.storage,'below-file-size');assert.ok(check.modelBytes>check.availableBytes);
  assert.match(describeTextDeviceCheck(check),/Reported storage below model file size.*WebGPU adapter detected.*Loading and generation untested/);
  const missing=await checkTextDevice('9B',[],false,{storage:storage(3_000_000_000),gpu:{requestAdapter:async()=>null}});

@@ -119,7 +119,7 @@ type DiagnosticEnvironment={
  storage?:Pick<Storage,'setItem'|'getItem'|'removeItem'>|null;
  indexedDB?:Pick<IDBFactory,'open'|'deleteDatabase'>|null;
  opfs?:{getDirectory:()=>Promise<Pick<FileSystemDirectoryHandle,'getFileHandle'|'removeEntry'>>}|null;
- gpu?:{requestAdapter:()=>Promise<unknown>}|null;
+ gpu?:{requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>}|null;
  crossOriginIsolated?:boolean;
  sharedArrayBuffer?:boolean;
  sharedWasmMemory?:boolean;
@@ -195,7 +195,7 @@ async function boundedCacheKeys(cache:Pick<CacheStorage,'keys'>,timeoutMs=5000):
 async function inspectWebGpuAdapter(gpu:NonNullable<DiagnosticEnvironment['gpu']>):Promise<WebGpuDiagnostic>{
  let timer:ReturnType<typeof setTimeout>|undefined;
  try{
-  const adapter=await Promise.race([gpu.requestAdapter(),new Promise<null>(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]) as {features?:Iterable<unknown>;limits?:Record<string,unknown>;isFallbackAdapter?:unknown}|null;
+  const adapter=await Promise.race([gpu.requestAdapter({powerPreference:'high-performance'}),new Promise<null>(resolve=>{timer=setTimeout(()=>resolve(null),8000);})]) as {features?:Iterable<unknown>;limits?:Record<string,unknown>;isFallbackAdapter?:unknown}|null;
   if(!adapter)return emptyWebGpuDiagnostic();
   const features=[...new Set(Array.from(adapter.features??[]).filter((feature):feature is string=>typeof feature==='string'&&/^[a-z0-9-]{1,64}$/.test(feature)))].sort().slice(0,64),limits:WebGpuDiagnostic['limits']={};
   for(const name of WEBGPU_DIAGNOSTIC_LIMIT_NAMES){const value=adapter.limits?.[name];if(typeof value==='number'&&Number.isSafeInteger(value)&&value>0)limits[name]=value;}
