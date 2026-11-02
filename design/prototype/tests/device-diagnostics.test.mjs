@@ -159,6 +159,20 @@ test('device report records the registered backend without presenting it as adap
  assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,selectedModel:{...report.selectedModel,backend:'hardware-inferred'}})),/Invalid/);
 });
 
+test('device report includes only a bounded configured context limit for the selected model',async()=>{
+ const base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null,selectedModel:'lfm3-q4',selectedModelRevision:'model-r1',selectedModelEngine:'wllama-lfm3',selectedModelBackend:'webgpu',runtimeRevision:'runtime-r1'};
+ const valid=await runDeviceDiagnostics({...base,selectedModelContextTokens:8192});
+ assert.equal(valid.selectedModel.contextTokens,8192);
+ assert.match(valid.scope.join(' '),/does not measure allocated memory/);
+ for(const invalid of [0,1.5,262145,NaN]){
+  const report=await runDeviceDiagnostics({...base,selectedModelContextTokens:invalid});
+  assert.equal(Object.hasOwn(report.selectedModel,'contextTokens'),false,`invalid context limit ${String(invalid)} is omitted`);
+ }
+ const storage=memoryStorage(),serialized=formatDeviceDiagnosticReport(valid);
+ writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...valid,selectedModel:{...valid.selectedModel,contextTokens:262145}})),/Invalid/);
+});
+
 test('device report captures only bounded WebGPU features and selected numeric limits',async()=>{
  let options;
  const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{options=value;return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,vendor:'private-adapter-vendor'};}}});

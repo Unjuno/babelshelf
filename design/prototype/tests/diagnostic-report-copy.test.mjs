@@ -40,6 +40,15 @@ test('handoff tells the reviewer the selected model route is configured metadata
  assert.match(handoff,/transformers-causal-webgpu/);
 });
 
+test('handoff preserves the bounded configured context limit and disclaims memory-allocation evidence',()=>{
+ const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,checks:[],selectedModel:{id:'lfm3-q4',revision:'model-r1',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'runtime-r1',contextTokens:8192,filesPresent:true,loaded:false}}));
+ assert.match(handoff,/selected-model configured context limit/);
+ assert.match(handoff,/Context limit does not prove actual memory allocation/);
+ assert.match(handoff,/"contextTokens": 8192/);
+ const invalid=formatDiagnosticHandoff(JSON.stringify({schema:1,checks:[],selectedModel:{id:'lfm3-q4',revision:'model-r1',runtimeRevision:'runtime-r1',contextTokens:262145,filesPresent:true,loaded:false}}));
+ assert.doesNotMatch(invalid,/"contextTokens"/);
+});
+
 test('handoff excludes unknown fields at every level so corrupted local reports cannot add private payloads',()=>{
  const handoff=formatDiagnosticHandoff(JSON.stringify({schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[{id:'offline-cold-reopen',status:'warning',detail:'offline not verified',prompt:'PRIVATE_CHECK_PROMPT'}],prompt:'PRIVATE_PROMPT',notes:'PRIVATE_NOTES',modelGeneration:{status:'pass',model:'small',modelRevision:'r1',runtimeRevision:'runtime-r1',outputTokens:3,answerText:'PRIVATE_MODEL_OUTPUT',runtimeMetrics:{runtimeDecodeTokensPerSecond:8,memoryAfter:{gpuBytes:1000,privateLabel:'PRIVATE_METRIC_LABEL'},raw:'PRIVATE_RUNTIME'}}}));
  assert.doesNotMatch(handoff,/PRIVATE_(?:CHECK_PROMPT|PROMPT|NOTES|MODEL_OUTPUT|METRIC_LABEL|RUNTIME)/);
