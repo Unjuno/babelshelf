@@ -7,6 +7,12 @@ import {MAX_NATIVE_TOOL_CALLS,MAX_NATIVE_TOOL_DEFINITIONS} from '../../../dist/l
 
 type Adapter={readonly loaded?:string|null;readonly nativeToolCalls?:boolean;readonly info?:{requestedThreads?:number;activeThreads?:number;actualGpuLayers?:number|null;totalModelLayers?:number|null;gpuLayerEvidence?:'cpu-route-requested'|'runtime-offload-log'|'unobserved'}|null;readonly supportsExactCount:boolean;readonly maxReplyTokens:number;preflightBackend?:(backend:'cpu'|'webgpu')=>Promise<void>|void;load:(file:File,id:string,options:{backend:'cpu'|'webgpu'})=>Promise<unknown>;unload:()=>Promise<void>;abort:()=>void;onProgress?:(value:string)=>void;count:(messages:any[],options:{json:boolean;tools?:NativeToolPlanFormat['tools']})=>Promise<number>;generate:(messages:any[],options:{json:boolean;maxTokens:number;onAnswerPreview?:(text:string)=>void;jsonSchema?:Record<string,unknown>;tools?:NativeToolPlanFormat['tools']})=>Promise<{text:string;assistantContent?:string;finishReason?:string;toolCalls?:{id?:string;name:string;arguments:Record<string,unknown>}[];inputTokens?:number|null;outputTokens?:number;firstContentMs?:number|null;totalMs?:number;tokensPerSecond?:number|null;timings?:{prompt_ms?:number;predicted_ms?:number;predicted_per_second?:number;prompt_n?:number;cache_n?:number}|null}>};
 type Manifest={contextTokens:number;runtime:{revision:string};models:{id:string;revision:string;engine?:string;contextTokens:number;file:{name:string;bytes:number}}[]};
+function observedExecutionBackend(requested:'cpu'|'webgpu',info:Adapter['info']):'cpu-wasm'|'webgpu'|undefined{
+ if(requested==='cpu')return 'cpu-wasm';
+ const actual=info?.actualGpuLayers,total=info?.totalModelLayers;
+ if(info?.gpuLayerEvidence!=='runtime-offload-log'||typeof actual!=='number'||typeof total!=='number'||!Number.isSafeInteger(actual)||!Number.isSafeInteger(total)||total<1||actual<1||actual>total)return;
+ return 'webgpu';
+}
 function isNativePlanFormat(format:EngineGenerationFormat|undefined):format is NativeToolPlanFormat{return !!format&&typeof format==='object'&&format.type==='native-tool-plan';}
 function validateNativeTools(tools:NativeToolPlanFormat['tools']){if(!Array.isArray(tools)||!tools.length||tools.length>MAX_NATIVE_TOOL_DEFINITIONS||new Set(tools.map(tool=>tool?.function?.name)).size!==tools.length||tools.some(tool=>tool?.type!=='function'||Object.hasOwn(tool,'defer_loading')||!tool.function||typeof tool.function.name!=='string'||!/^[a-z][a-z0-9_.-]{0,63}$/.test(tool.function.name)||typeof tool.function.description!=='string'||!tool.function.description||tool.function.description.length>1000||!tool.function.parameters||typeof tool.function.parameters!=='object'||Array.isArray(tool.function.parameters)))throw Error('Invalid native tool plan');return tools;}
 function normalizeNativeCompletion(output:Awaited<ReturnType<Adapter['generate']>>,tools:NativeToolPlanFormat['tools']):{text:string;assistantContent?:string}{
@@ -45,32 +51,33 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
  const standardContexts=[2048,4096,8192,16384,32768],lfm3Contexts=[...standardContexts,65536,131072,262144],supports=(engine:string|undefined,size:number)=>(engine==='wllama-lfm3'?lfm3Contexts:standardContexts).includes(size);
  const topContextSupported=supports(undefined,fixed.contextTokens)||fixed.models.some(m=>m.engine==='wllama-lfm3'&&m.contextTokens===fixed.contextTokens);
  if(!topContextSupported||!fixed.runtime.revision||!fixed.models.length||new Set(fixed.models.map(m=>m.id)).size!==fixed.models.length||fixed.models.some(m=>!m.id||!m.revision||!supports(m.engine,m.contextTokens)||!m.file.name||!Number.isSafeInteger(m.file.bytes)||m.file.bytes<1)||!Number.isSafeInteger(adapter.maxReplyTokens)||adapter.maxReplyTokens<1||adapter.maxReplyTokens>3072)throw Error('Invalid LFM text runtime manifest');
- let epoch=0,busy=false,loadedBackend:'cpu'|'webgpu'|undefined;
+ let epoch=0,busy=false,loadedExecutionBackend:'cpu-wasm'|'webgpu'|undefined;
  async function operation<T>(work:(check:()=>void)=>Promise<T>):Promise<T>{if(busy)throw Error('Model busy');busy=true;const own=epoch,check=()=>{if(own!==epoch)throw Error('Stopped');};try{const result=await work(check);check();return result;}finally{busy=false;}}
  const raw:TextRuntime={get plannerProtocol(){return adapter.nativeToolCalls?'native-tool-calls':'json';},get manifest(){const selected=fixed.models.find(m=>m.id===(adapter.loaded??''));return {...structuredClone(fixed),contextTokens:selected?.contextTokens??fixed.contextTokens,maxOutputTokens:adapter.maxReplyTokens};},get loaded(){return adapter.loaded??'';},get assets(){return readAssets();},
   async load(id){const model=fixed.models.find(m=>m.id===id);if(!model)throw Error('Unknown LFM model');return operation(async check=>{
    // A resident model is already integrity-checked and pinned to this immutable
    // manifest. Avoid rereading and rehashing a multi-gigabyte OPFS file, then
    // tearing down the live GPU/CPU session on repeated turns.
-   if(adapter.loaded===id){check();if(!adapter.supportsExactCount)throw Error('Exact pre-generation token count unavailable');return loadedBackend?{executionBackend:loadedBackend==='cpu'?'cpu-wasm' as const:'webgpu' as const}:undefined;}
+   if(adapter.loaded===id){check();if(!adapter.supportsExactCount)throw Error('Exact pre-generation token count unavailable');return { ...(loadedExecutionBackend?{executionBackend:loadedExecutionBackend}:{}) };}
    const totalStarted=performance.now();let effectiveBackend:'cpu'|'webgpu';
    if(backend==='auto'){
     try{await adapter.preflightBackend?.('webgpu');effectiveBackend='webgpu';}
     catch(error){if((error as {code?:unknown}|null)?.code!=='webgpu_unavailable')throw error;effectiveBackend='cpu';(onProgress??adapter.onProgress)?.('WebGPU unavailable · Using CPU/WASM');await adapter.preflightBackend?.('cpu');}
    }else{effectiveBackend=backend;await adapter.preflightBackend?.(effectiveBackend);}
-   check();const file=await readFile(id);check();if(file.size!==model.file.bytes)throw Error('Model integrity mismatch');await adapter.unload();loadedBackend=undefined;check();const immutableFile=typeof File!=='undefined'&&file instanceof File?file:new File([file],model.file.name);let rawMetrics:unknown;
+   check();const file=await readFile(id);check();if(file.size!==model.file.bytes)throw Error('Model integrity mismatch');await adapter.unload();loadedExecutionBackend=undefined;check();const immutableFile=typeof File!=='undefined'&&file instanceof File?file:new File([file],model.file.name);let rawMetrics:unknown;
    try{rawMetrics=await adapter.load(immutableFile,id,{backend:effectiveBackend});}
    catch(error){
     const failure=error as {code?:unknown;cleanupUnconfirmed?:unknown}|null,code=failure?.code;
     if(backend!=='auto'||effectiveBackend!=='webgpu'||failure?.cleanupUnconfirmed===true||code!=='webgpu_unavailable'&&code!=='webgpu_load_failed')throw error;
-    check();await adapter.unload();loadedBackend=undefined;check();effectiveBackend='cpu';
+    check();await adapter.unload();loadedExecutionBackend=undefined;check();effectiveBackend='cpu';
     (onProgress??adapter.onProgress)?.(code==='webgpu_load_failed'?'WebGPU load failed · Trying CPU/WASM':'WebGPU unavailable · Using CPU/WASM');
     try{await adapter.preflightBackend?.('cpu');check();rawMetrics=await adapter.load(immutableFile,id,{backend:'cpu'});}
     catch(cpuError){check();const combined=Error(`${code==='webgpu_load_failed'?'WebGPU model load failed':'WebGPU unavailable'} · CPU/WASM retry failed`);Object.assign(combined,{cause:cpuError,gpuFailure:error,code:'backend_fallback_failed',...(cpuError&&typeof cpuError==='object'&&(cpuError as {cleanupUnconfirmed?:unknown}).cleanupUnconfirmed===true?{cleanupUnconfirmed:true}:{})});throw combined;}
    }
-   check();if(!adapter.supportsExactCount){await adapter.unload();loadedBackend=undefined;throw Error('Exact pre-generation token count unavailable');}loadedBackend=effectiveBackend;
+   check();if(!adapter.supportsExactCount){await adapter.unload();loadedExecutionBackend=undefined;throw Error('Exact pre-generation token count unavailable');}
    const source=rawMetrics&&typeof rawMetrics==='object'?rawMetrics as Record<string,unknown>:{};
-   return { ...(typeof source.verificationMs==='number'&&Number.isFinite(source.verificationMs)&&source.verificationMs>=0?{verificationMs:source.verificationMs}:{}), ...(typeof source.runtimeLoadMs==='number'&&Number.isFinite(source.runtimeLoadMs)&&source.runtimeLoadMs>=0?{runtimeLoadMs:source.runtimeLoadMs}:{}), totalLoadMs:Math.max(0,performance.now()-totalStarted),executionBackend:effectiveBackend==='cpu'?'cpu-wasm' as const:'webgpu' as const };
+   loadedExecutionBackend=observedExecutionBackend(effectiveBackend,adapter.info);
+   return { ...(typeof source.verificationMs==='number'&&Number.isFinite(source.verificationMs)&&source.verificationMs>=0?{verificationMs:source.verificationMs}:{}), ...(typeof source.runtimeLoadMs==='number'&&Number.isFinite(source.runtimeLoadMs)&&source.runtimeLoadMs>=0?{runtimeLoadMs:source.runtimeLoadMs}:{}), totalLoadMs:Math.max(0,performance.now()-totalStarted),...(loadedExecutionBackend?{executionBackend:loadedExecutionBackend}:{}) };
   });},
   stop(){epoch++;adapter.abort();},
   count(messages,format){return operation(async check=>{const native=isNativePlanFormat(format),tools=native?validateNativeTools(format.tools):undefined;if(native&&!adapter.nativeToolCalls)throw Error('Native tool calls unsupported by this model runtime');const tokens=await adapter.count(messages,{json:!native&&format!=='prose',...(tools?{tools}:{})});check();return {prompt_tokens:tokens};});},
@@ -85,5 +92,5 @@ export function createLfmTextRuntime({adapter,manifest,readFile,readAssets,backe
   });},
  };
  const inference=createTextInference(()=>raw);
- return {...inference,get manifest(){return raw.manifest;},get plannerProtocol(){return adapter.nativeToolCalls?'native-tool-calls':'json';},get loaded(){return raw.loaded;},get assets(){return raw.assets;},async unload(){if(busy)throw Error('Model busy');inference.stop();return operation(async check=>{await adapter.unload();loadedBackend=undefined;check();});}};
+ return {...inference,get manifest(){return raw.manifest;},get plannerProtocol(){return adapter.nativeToolCalls?'native-tool-calls':'json';},get loaded(){return raw.loaded;},get assets(){return raw.assets;},async unload(){if(busy)throw Error('Model busy');inference.stop();return operation(async check=>{await adapter.unload();loadedExecutionBackend=undefined;check();});}};
 }

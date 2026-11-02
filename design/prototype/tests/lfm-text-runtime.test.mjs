@@ -142,6 +142,20 @@ test('repeated load of the resident LFM model reuses its verified session withou
  const first=await runtime.load('local');assert.equal(first.executionBackend,'cpu-wasm');assert.equal(reads,1);const firstLoadCalls=structuredClone(f.calls);
  const reused=await runtime.load('local');assert.equal(reused.executionBackend,'cpu-wasm');assert.equal(reads,1);assert.deepEqual(f.calls,firstLoadCalls);assert.equal(runtime.loaded,'local');
 });
+test('WebGPU execution is reported only when a runtime log confirms GPU layer offload and the result survives warm reuse',async()=>{
+ const f=fixture();f.adapter.info={gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:24,totalModelLayers:25};const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}})});
+ assert.equal((await runtime.load('local')).executionBackend,'webgpu');assert.equal((await runtime.load('local')).executionBackend,'webgpu');await runtime.unload();
+});
+test('a requested WebGPU route stays unconfirmed when offload is zero, missing, or inconsistent',async()=>{
+ for(const info of [
+  {gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:0,totalModelLayers:25},
+  {gpuLayerEvidence:'unobserved',actualGpuLayers:null,totalModelLayers:null},
+  {gpuLayerEvidence:'runtime-offload-log',actualGpuLayers:26,totalModelLayers:25},
+ ]){
+  const f=fixture();f.adapter.info=info;const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'auto',readFile:async()=>new Blob(['weights']),readAssets:()=>({local:{filesPresent:true}})});
+  const first=await runtime.load('local');assert.equal(first?.executionBackend,undefined);const warm=await runtime.load('local');assert.equal(warm?.executionBackend,undefined);await runtime.unload();
+ }
+});
 test('unavailable execution backend is rejected before opening a prepared model file',async()=>{
  const f=fixture();let reads=0,loads=0;f.adapter.preflightBackend=async backend=>{f.calls.push(['preflight',backend]);throw Error('WebGPU unavailable');};f.adapter.load=async()=>{loads++;f.adapter.loaded='local';};
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,backend:'webgpu',readFile:async()=>{reads++;return f.file;},readAssets:()=>({local:{filesPresent:true}})});

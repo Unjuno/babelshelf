@@ -16,7 +16,7 @@ function checkStreamRepetition(value,added,messages,controller){
 }
 function observedRuntimeLogger(logger,onGpuLayers){
  const target=logger??console;
- return new Proxy(target,{get(object,key){const value=Reflect.get(object,key,object);if(typeof value!=='function')return value;return (...args)=>{if(['log','debug','info','warn'].includes(key))for(const arg of args){if(typeof arg!=='string')continue;const match=/\boffloaded\s+(\d+)\s*\/\s*(\d+)\s+layers\s+to\s+GPU\b/i.exec(arg);if(match){const loaded=Number(match[1]),total=Number(match[2]);if(Number.isSafeInteger(loaded)&&Number.isSafeInteger(total)&&loaded<=total)onGpuLayers(loaded,total);}}return value.apply(object,args);};}});
+ return new Proxy(target,{get(object,key){const value=Reflect.get(object,key,object);if(typeof value!=='function')return value;return (...args)=>{if(['log','debug','info','warn'].includes(key))for(const arg of args){if(typeof arg!=='string')continue;const match=/\bload_tensors:\s+offloaded\s+(\d+)\s*\/\s*(\d+)\s+layers\s+to\s+GPU\b/i.exec(arg);if(match){const loaded=Number(match[1]),total=Number(match[2]);if(Number.isSafeInteger(loaded)&&Number.isSafeInteger(total)&&loaded<=total)onGpuLayers(loaded,total);}}return value.apply(object,args);};}});
 }
 // Pinned Wllama exact-count accepts string content. Its llama.cpp parser does
 // not carry deferred-tool fields into the template; reveal schemas in the app.

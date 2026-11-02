@@ -7904,3 +7904,14 @@ Follow-up — made the D1 test verify the pinned runtime's policy as well as the
 - LFM3's automatic GPU route previously awaited `navigator.gpu.requestAdapter()` without a deadline; a rejected request did not carry the `webgpu_unavailable` code used by the existing CPU fallback. Added a shared bounded adapter request (8 seconds), classified only adapter-acquisition failures as GPU unavailable, and wired adapter Stop to abort the pending check. Stop and model/runtime errors do not trigger CPU fallback.
 - `node --test design/prototype/tests/webgpu-preflight.test.mjs design/prototype/tests/model-catalog-status.test.mjs design/prototype/tests/text-device-check.test.mjs design/prototype/tests/lfm-text-runtime.test.mjs`: 59/59. `npm run test:prototype`: 1,788/1,788. `npm run test:app`: 8/8. `npm run check`: PASS. `npm run build:app`: PASS, shell `f47e1871db4989df`, 163 verified assets. `git diff --check`: PASS.
 - This fixes a cross-browser startup/fallback failure mode; no inference speedup is claimed. It was not exercised against a physical GPU/model. Matching performance, fit and sustained-run evidence for Windows, iPhone, Android and macOS remain open.
+2026-11-02 — GPU execution evidence and cross-platform diagnostic accuracy.
+The LFM adapter now recognizes GPU layer placement only from its pinned
+runtime's `load_tensors: offloaded N/M layers to GPU` line. The runtime records
+WebGPU as executed only when that evidence reports a valid nonzero count;
+otherwise Developer reports “Not confirmed”. Explicit CPU/WASM and verified
+evidence retained on warm model reuse are covered. Focused adapter/runtime
+tests passed 77/77, Developer diagnostics UI passed 25/25, `npm run check`
+passed, `git diff --check` passed, and `npm run build:app` built 163 verified
+shell assets. This is truthful diagnostics, not a performance improvement.
+No real model timing was collected on Windows, iPhone, Android or Mac in this
+run; matched speed, memory, fit and sustained-load comparisons remain open.
