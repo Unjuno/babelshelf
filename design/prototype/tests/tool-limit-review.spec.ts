@@ -52,5 +52,5 @@ test('an untouched schema-1 Standard default is modernized only after full befor
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Review changes'})).toBeHidden();
  await expect(page.getByRole('button',{name:'Review old Standard defaults',exact:true})).toHaveCount(0);
- await expect(page.getByRole('region',{name:'Assistant profile',exact:true}).getByText('No profile limit',{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Assistant profile',exact:true}).getByText('No profile limit',{exact:true}).first()).toBeVisible();
 });
