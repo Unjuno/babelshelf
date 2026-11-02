@@ -40,6 +40,13 @@ test('legacy projection and unchanged save preserve all bytes, IDs, sources and 
  assert.deepEqual(result,[original]);assert.equal(view.id,original.id);assert.match(view.path,/^inbox\//);
 });
 
+test('reviewed generated-note save refuses cited text outside the source excerpt without changing originals',()=>{
+ const source=createNote({path:'Notes/source.md',body:'The access code is 4826.'}),before=structuredClone([source]),sourceView=projectNote(source),excerpt=source.revisions[0].body;
+ const answer={id:'derived-answer',path:'Inbox/answer.md',body:'The access code is 4826.',version:1,history:[],kind:'generated',sources:[{noteId:source.id,revision:1,start:0,end:excerpt.length,quote:excerpt,citedQuote:'access code is 1111'}]};
+ assert.throws(()=>applyKnowledgeChanges([source],[sourceView],[sourceView,answer]),/source reference|review before saving/i);
+ assert.deepEqual([source],before,'rejected review leaves canonical originals untouched');
+});
+
 test('note views retain detached source identities and kind without changing canonical records or edit history',()=>{
  const original=createNote({path:'Notes/original.md',body:'Water and flashlight.'}),ref={noteId:original.id,revision:1,start:0,end:21,quote:'Water and flashlight.',citedQuote:'flashlight'},saved=createNote({path:'Notes/summary.md',body:'Water and flashlight.',kind:'generated',sources:[ref]}),before=structuredClone([original,saved]);
  const view=projectNote(saved);assert.equal(view.kind,'generated');assert.deepEqual(view.sources,[ref]);assert.notEqual(view.sources,saved.sources);
