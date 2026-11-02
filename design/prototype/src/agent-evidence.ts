@@ -26,6 +26,13 @@ function asksAboutImplementation(userText:string){return /\b(?:(?:how (?:does|do
 /** Detect protocol-shaped implementation details, while preserving explicitly requested technical content or literal source text. */
 export function hasInternalImplementationLeak(answer:string,userText:string,sources:readonly SourceRef[]=[]){
  if(asksAboutImplementation(userText))return false;
+ // Store IDs are normally UUIDs, but managed Memory records can use stable
+ // slugs. Detect the exact IDs bound to this answer as well; the generic UUID
+ // pattern below cannot recognize those application-owned identifiers.
+ for(const id of new Set(sources.map(source=>source.noteId).filter(id=>id.length>=8))){
+  const escaped=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),pattern=new RegExp(`(?<![\\p{L}\\p{N}_-])${escaped}(?![\\p{L}\\p{N}_-])`,'iu');
+  if(pattern.test(answer)&&!sources.some(source=>source.quote.includes(id))&&!pattern.test(userText))return true;
+ }
  for(const pattern of internalAnswerPatterns){
   pattern.lastIndex=0;
   for(const match of answer.matchAll(pattern)){
