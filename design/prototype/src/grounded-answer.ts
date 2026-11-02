@@ -17,7 +17,7 @@ import {checkedCalculation,agentCustomResultsFromCalls,agentToolInfoFromCalls,bi
 import {validateClockReading,type ClockReading} from './tools/time.now/tool.ts';
 import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONTEXT_SOURCE_REFS,MAX_PLANNER_AGENT_TOOLS} from './agent-limits.ts';
 import {builtinToolIds} from './tools/builtin-tools.ts';
-import {answerLanguageInstruction,dialogueOutputLimits,firstSentenceOnly,groundedOutputTokens,replyStyleInstruction,requestsOneSentence,userFacingAnswerInstruction,type ReplyStyle} from './reply-style.ts';
+import {answerLanguageInstruction,dialogueOutputLimits,firstSentenceOnly,groundedOutputTokens,hasMultipleSentences,replyStyleInstruction,requestsOneSentence,userFacingAnswerInstruction,type ReplyStyle} from './reply-style.ts';
 import {exactMinutesBefore} from './time-answer.ts';
 import {harnessGuidanceMessage} from './harness-guidance.ts';
 import {namesSavedKnowledge,namedSavedSubject,namedJapaneseSavedSubject,namedEnglishSavedSubject,matchesNamedSource} from './saved-knowledge-reference.ts';
@@ -186,7 +186,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   checkRepeatedOutput(parsed.answer);
   if(parsed.status!=='insufficient_evidence'){
    checkAnswerConsistency(question,parsed.answer,parsed.sources);
-   if(requestsOneSentence(question)&&/[。！？!?]\s*\S|\.\s+\S/u.test(parsed.answer))throw Error('One sentence requested · try again');
+   if(requestsOneSentence(question)&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
    if(mode==='summary'&&summaryRepeatsRequest(question,parsed.answer,parsed.sources))throw Error('Summary repeated the request · try again');
   }
   const fresh=await store.all();check();
@@ -377,7 +377,6 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // Keep the user's explicit one-sentence format. A retry still uses the same
  // evidence and must pass the usual citation parser; never splice sentences.
  const wantsOneSentence=mode!=='chat'&&parsed.status!=='insufficient_evidence'&&requestsOneSentence(question);
- const hasMultipleSentences=(text:string)=>/[。！？!?]\s*\S|\.\s+\S/u.test(text.trim());
  if(wantsOneSentence&&hasMultipleSentences(parsed.answer)){
   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:(summaryLabelBinding?singleLabelSystem:message.content)+' The user explicitly requested exactly one sentence. Produce one sentence, with no second sentence or list. Keep the original source citation exact.'}:message);
   if((await checkedAnswerCount(engine,retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Context limit · summary format retry');check();

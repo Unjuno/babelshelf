@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dialogueOutputLimits,firstSentenceOnly,groundedOutputTokens,replyStyleInstruction,requestsOneSentence} from '../src/reply-style.ts';
+import {dialogueOutputLimits,firstSentenceOnly,groundedOutputTokens,hasMultipleSentences,replyStyleInstruction,requestsOneSentence} from '../src/reply-style.ts';
 import {dialogueAnswerMessages,groundedAnswer} from '../src/grounded-answer.ts';
 
 test('reply style is a finite presentation preference and never overrides a direct request',()=>{
@@ -35,6 +35,9 @@ test('explicit one-sentence requests are recognized across languages and clipped
  for(const question of ['In exactly one sentence, explain this.','Reply in a single sentence.','Use a one-sentence answer.','一文で説明して。','1文で答えて。'])assert.equal(requestsOneSentence(question),true,question);
  for(const question of ['Explain this in detail.','Write two paragraphs.','Summarize the file.'])assert.equal(requestsOneSentence(question),false,question);
  assert.equal(firstSentenceOnly('Dr. Lee keeps the file offline. It can still answer locally.'),'Dr. Lee keeps the file offline.');
+ assert.equal(hasMultipleSentences('Dr. Lee keeps the file offline.'),false);
+ assert.equal(hasMultipleSentences('説明は「記録を確認してください。」'),false);
+ assert.equal(hasMultipleSentences('Dr. Lee keeps the file offline. It can still answer locally.'),true);
  assert.equal(firstSentenceOnly('モデルは端末内で動く。保存データを参照できる。'),'モデルは端末内で動く。');
  assert.equal(firstSentenceOnly('One answer without terminal punctuation'),'One answer without terminal punctuation');
 });

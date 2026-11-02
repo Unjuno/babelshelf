@@ -51,15 +51,22 @@ export function requestsOneSentence(question:string){
  return typeof question==='string'&&!(explicitLongRequest.test(question.toLocaleLowerCase())&&additionalStage.test(question))&&/(?:\b(?:exactly\s+)?one[\s-]+sentence\b|\bsingle\s+sentence\b|(?:一文|1文)(?:で|の|に))/iu.test(question);
 }
 
-/** Keep the user's explicit one-sentence format without another model pass. */
-export function firstSentenceOnly(text:string){
+function sentenceSegments(text:string){
  if(typeof text!=='string')throw Error('Invalid answer text');
  const segments=Array.from(new Intl.Segmenter(undefined,{granularity:'sentence'}).segment(text),part=>part.segment);
- if(!segments.length)return text.trim();
- let first=segments[0];
  // Some ICU builds split at common title/Latin abbreviations despite the
- // sentence granularity. Join the following segment when the first contains
- // only a standard abbreviation or a person initial.
- if(segments[1]&&/^(?:(?:Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|No|Fig|e\.g|i\.e)\.|[A-Z]\.)\s*$/iu.test(first.trim()))first+=segments[1];
- return first.trim();
+ // sentence granularity. Treat the abbreviation plus the following segment as
+ // one sentence for both format validation and first-sentence projection.
+ if(segments[1]&&/^(?:(?:Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|No|Fig|e\.g|i\.e)\.|[A-Z]\.)\s*$/iu.test(segments[0].trim()))segments.splice(0,2,segments[0]+segments[1]);
+ return segments;
+}
+
+/** Keep the user's explicit one-sentence format without another model pass. */
+export function firstSentenceOnly(text:string){
+ return (sentenceSegments(text)[0]??text).trim();
+}
+
+/** Use the same locale-aware boundaries for admission and output projection. */
+export function hasMultipleSentences(text:string){
+ return sentenceSegments(text).filter(segment=>segment.trim().length>0).length>1;
 }

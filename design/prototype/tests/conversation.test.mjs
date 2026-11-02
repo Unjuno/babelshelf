@@ -1120,6 +1120,26 @@ test('an exact UUID or canonical saved path keeps its resolved note as the groun
  }
 });
 
+test('one-sentence validation accepts abbreviations and Japanese closing quotes without changing cited bytes',async()=>{
+ for(const answer of ['Dr. Lee keeps the file offline.','説明は「記録を確認してください。」']){
+  const note=createNote({path:'Inbox/one-sentence.md',body:answer}),quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};let calls=0;
+  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:4096,models:[{id:'4B',revision:'test'}],runtime:{revision:'test'}},generate:async()=>{calls++;return {text:JSON.stringify({answer,sources:['S1']})};}};
+  const question=answer.startsWith('Dr.')?'In exactly one sentence, who keeps the file offline?':'一文で説明は何と書かれていますか？';
+  const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[ref]},engine:runtime},{model:'4B',question,scope:{kind:'knowledge'}});
+  assert.equal(calls,1,answer);assert.equal(result.answer,answer);assert.deepEqual(result.sources,[ref]);
+ }
+});
+
+test('native terminal one-sentence replies accept locale-aware punctuation and remain byte-exact',async()=>{
+ for(const answer of ['Dr. Lee keeps the file offline.','説明は「記録を確認してください。」']){
+  const note=createNote({path:'Inbox/one-sentence.md',body:answer}),quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};
+  const runtime={manifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},generate:async()=>{throw Error('Unexpected generation');}};
+  const question=answer.startsWith('Dr.')?'In exactly one sentence, who keeps the file offline?':'一文で説明は何と書かれていますか？';
+  const result=await groundedAnswer({store:{all:async()=>[note],search:async()=>[]},engine:runtime},{model:'test',question,scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[ref],memoryUsed:true},reply:{answer,sources:[ref]}});
+  assert.equal(result.answer,answer);assert.deepEqual(result.sources,[ref]);
+ }
+});
+
 
 test('one request cannot plan on one revision and answer on its replacement',async()=>{
  const {createTextInference}=await import('../src/text-inference.ts');
