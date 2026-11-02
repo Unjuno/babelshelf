@@ -53,6 +53,21 @@ test('offline app-shell preparation requires a live connection and does not chan
  await prepareOfflineAppShell(container,true);assert.equal(registrations,0);assert.equal(offlineShellStatus(),'Installed');
 });
 
+test('offline app preparation waits through the browser registration-to-installing gap',async()=>{
+ const container=new EventTarget();container.controller=null;
+ const registration=new EventTarget();registration.active=null;registration.installing=null;registration.waiting=null;
+ container.getRegistration=async()=>undefined;
+ container.register=async()=>{
+  setTimeout(()=>{
+   const worker=new Worker('installing');registration.installing=worker;registration.dispatchEvent(new Event('updatefound'));
+   setTimeout(()=>{registration.installing=null;registration.active=worker;worker.set('activated');container.controller=worker;container.dispatchEvent(new Event('controllerchange'));},0);
+  },0);
+  return registration;
+ };
+ await prepareOfflineAppShell(container,true,1000);
+ assert.equal(offlineShellStatus(),'Installed');assert.equal(container.controller,registration.active);
+});
+
 test('offline shell registration failure returns promptly instead of waiting for serviceWorker.ready',async()=>{
  const container={getRegistration:async()=>undefined,register:async()=>{throw Error('registration refused');},ready:new Promise(()=>{})};
  await assert.rejects(prepareOfflineAppShell(container,true,1000),/App preparation failed/);
@@ -88,6 +103,14 @@ test('Offline requires controller acknowledgement and never claims enforcement f
  assert.equal(await enforceOfflineNetwork(null),false);
 });
 test('failed first app installation is visible and never becomes Installed',()=>{const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;const states=[];const stop=observeOfflineRegistration(registration,s=>states.push(s));worker.set('redundant');assert.deepEqual(states,['Installing','Preparation failed']);stop();});
+test('a registration with no published worker stays pending until the first install appears',()=>{
+ const registration=new EventTarget(),states=[],stop=observeOfflineRegistration(registration,s=>states.push(s));
+ assert.deepEqual(states,['Checking']);
+ const worker=new Worker('installing');registration.installing=worker;registration.dispatchEvent(new Event('updatefound'));
+ assert.deepEqual(states,['Checking','Installing']);
+ registration.installing=null;registration.active=worker;worker.set('activated');
+ assert.deepEqual(states,['Checking','Installing','Installed']);stop();
+});
 test('activation and existing usable worker are distinct from model readiness',()=>{const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;const states=[];const stop=observeOfflineRegistration(registration,s=>states.push(s));registration.active=worker;worker.set('activated');assert.deepEqual(states,['Installing','Installed']);stop();});
 test('failed update keeps an existing active app installed and detached observers stay silent',()=>{const worker=new Worker('installing'),registration=new EventTarget();registration.installing=worker;registration.active=new Worker('activated');const states=[];const stop=observeOfflineRegistration(registration,s=>states.push(s));worker.set('redundant');assert.deepEqual(states,['Installed','Installed']);stop();worker.set('activated');assert.equal(states.length,2);});
 test('activation handoff never reports preparation failure while the verified worker activates',()=>{

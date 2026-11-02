@@ -43,7 +43,8 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
   // Keep observing the same new worker instead of treating that handoff as a
   // failed first install.
   const handoff=[...observed].find(candidate=>candidate.state==='activated'||candidate.state==='activating'||candidate.state==='installed');
-  publish(registration.active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff?'Installing':'Preparation failed');
+  const active=registration.active;
+  publish(active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff||active?.state==='activating'?'Installing':worker?.state==='redundant'||active?.state==='redundant'?'Preparation failed':'Checking');
  };
  registration.addEventListener('updatefound',refresh);refresh();return()=>{stopped=true;registration.removeEventListener('updatefound',refresh);for(const worker of observed)worker.removeEventListener('statechange',refresh);};
 }
