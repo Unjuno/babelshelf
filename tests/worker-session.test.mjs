@@ -161,8 +161,9 @@ test('worker configures runtime-owned adapter requests before loading inference'
  vm.runInContext(source,context);
  assert.equal(await gpu.requestAdapter(),null);
  assert.equal(calls[0].powerPreference,'high-performance');
+ assert.deepEqual(calls[1],{},'a null preferred adapter retries the browser default');
  const explicit={powerPreference:'low-power',forceFallbackAdapter:true};
  await gpu.requestAdapter(explicit);
- assert.deepEqual(calls[1],explicit,'runtime explicit choice must survive');
- assert.notEqual(calls[1],explicit,'caller options must not be mutated');
+ assert.deepEqual(calls[2],explicit,'runtime explicit choice must survive');
+ assert.notEqual(calls[2],explicit,'caller options must not be mutated');
 });
