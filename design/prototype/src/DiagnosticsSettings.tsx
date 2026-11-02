@@ -26,8 +26,9 @@ type Props={
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
  const {testMode,onTestModeChange,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
- let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportContextTokens:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined;
+ let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportContextTokens:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
+  performanceSample=generation?.testMode==='performance'||generation?.workload==='prose-128-v1'||generation?.workload==='prose-128-v2';
   if(typeof report?.createdAt==='string'&&Number.isFinite(Date.parse(report.createdAt)))reportAt=new Date(report.createdAt).toISOString();
   if(typeof report?.appBuild==='string')reportBuild=report.appBuild.slice(0,40);
   if(typeof report?.platform==='string'&&typeof report?.userAgent==='string')reportEnvironment=describeDiagnosticEnvironment(report.platform.slice(0,128),report.userAgent.slice(0,512));
@@ -37,7 +38,7 @@ export function DiagnosticsSettings(props:Props){
   else if(typeof report?.selectedModel?.quantization==='string')reportQuantization=report.selectedModel.quantization.slice(0,100);
   if(typeof generation?.model==='string')reportModel=generation.model.slice(0,120);
   else if(typeof report?.selectedModel?.id==='string')reportModel=report.selectedModel.id.slice(0,120);
-  if(generation)modelStatus=generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.failureType==='incomplete-output'?'Incomplete output':generation.failureType==='empty-output'?'No output':generation.status==='fail'&&generation.failureStage?`Failed · ${generation.failureStage}`:generation.status==='pass'&&generation.testMode==='performance'?'Sample complete':({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run';
+  if(generation)modelStatus=generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.failureType==='incomplete-output'?'Incomplete output':generation.failureType==='empty-output'?'No output':generation.status==='fail'&&generation.failureStage?`Failed · ${generation.failureStage}`:generation.status==='pass'&&performanceSample?'Sample complete':({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run';
  }catch{/* A broken local report must not break Settings. */}
  if(deviceTestRunning||deviceModelTesting)modelStatus='Testing…';
  const threadInfo=[typeof generation?.runtimeMetrics?.requestedThreads==='number'?`${generation.runtimeMetrics.requestedThreads} requested`:'',typeof generation?.runtimeMetrics?.runtimeThreads==='number'?`${generation.runtimeMetrics.runtimeThreads} reported`:'' ].filter(Boolean).join(' · ');
@@ -50,15 +51,15 @@ export function DiagnosticsSettings(props:Props){
    {deviceModelTesting&&<button className="quiet-button" onClick={onStopModelTest}>Stop test</button>}
    {offlineRestartMarker&&<div className="device-offline-test"><h3>Restart needed</h3><p role="status">Checks saved · model test after restart</p><ol><li>Turn on Airplane Mode.</li><li>Close BabelShelf.</li><li>Open from the Home Screen.</li></ol><p className="source-revision">Tests continue automatically.</p></div>}
    {!deviceTestRunning&&!deviceModelTesting&&deviceTestReport&&<>
-    <div className="capability-row"><span>Last test{generation?.testMode==='performance'?' · Performance':generation?.testMode==='quick'?' · Quick':''}</span>{reportAt&&<time dateTime={reportAt}>{new Date(reportAt).toLocaleString()}</time>}</div>
+    <div className="capability-row"><span>Last test{performanceSample?' · Performance':generation?.testMode==='quick'?' · Quick':''}</span>{reportAt&&<time dateTime={reportAt}>{new Date(reportAt).toLocaleString()}</time>}</div>
     {reportBuild&&<div className="capability-row"><span>Test build</span><span>{reportBuild}</span></div>}
     {reportEnvironment&&<div className="capability-row"><span>Test environment</span><span>{reportEnvironment}</span></div>}
    </>}
    {modelStatus&&<div className="capability-row"><span>Model</span><span>{!deviceTestRunning&&!deviceModelTesting&&reportModel?reportModel+' · ':''}{modelStatus}</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation?.loadMetrics?.executionBackend&&<div className="capability-row"><span>Executed backend</span><span>{generation.loadMetrics.executionBackend==='webgpu'?'WebGPU · runtime':'CPU · runtime'}</span></div>}
-   {!deviceTestRunning&&!deviceModelTesting&&generation?.testMode==='performance'&&generation.status!=='not-run'&&!generation.loadMetrics?.executionBackend&&reportBackend==='webgpu'&&<div className="capability-row"><span>Executed backend</span><span>Not confirmed</span></div>}
-   {!deviceTestRunning&&!deviceModelTesting&&generation?.testMode==='performance'&&generation.status!=='not-run'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers==='number'&&typeof generation.runtimeMetrics?.runtimeObservedGpuTotalLayers==='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>{generation.runtimeMetrics.runtimeObservedGpuLayers}/{generation.runtimeMetrics.runtimeObservedGpuTotalLayers}</span></div>}
-   {!deviceTestRunning&&!deviceModelTesting&&generation?.testMode==='performance'&&generation.status!=='not-run'&&<>
+   {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&!generation.loadMetrics?.executionBackend&&reportBackend==='webgpu'&&<div className="capability-row"><span>Executed backend</span><span>Not confirmed</span></div>}
+   {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers==='number'&&typeof generation.runtimeMetrics?.runtimeObservedGpuTotalLayers==='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>{generation.runtimeMetrics.runtimeObservedGpuLayers}/{generation.runtimeMetrics.runtimeObservedGpuTotalLayers}</span></div>}
+   {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&<>
     <div className="capability-row"><span>Model load</span><span>{generation.loadState==='already-loaded'?'Already loaded':generation.loadState==='not-loaded'?'Not loaded':typeof generation.loadDurationMs==='number'?(generation.loadDurationMs/1000).toFixed(1)+' s':'—'}</span></div>
     {typeof generation.runtimeMetrics?.visibleTextTtftMs==='number'&&<div className="capability-row"><span>First text</span><span>{(generation.runtimeMetrics.visibleTextTtftMs/1000).toFixed(2)} s</span></div>}
     {typeof generation.tokensPerSecond==='number'&&<div className="capability-row"><span>Overall speed</span><span>{generation.tokensPerSecond.toFixed(2)} tokens/s</span></div>}
@@ -67,7 +68,7 @@ export function DiagnosticsSettings(props:Props){
      {reportQuantization&&<div className="capability-row"><span>Quantization</span><span>{reportQuantization}</span></div>}
      {reportBackend&&<div className="capability-row"><span>Backend route · configured</span><span>{reportBackend==='webgpu'?'WebGPU':'CPU · WASM'}</span></div>}
      {generation.loadMetrics?.runtimeVariant&&<div className="capability-row"><span>WASM resources · runtime</span><span>{generation.loadMetrics.runtimeVariant==='compatibility'?'Compatibility':'Standard'}</span></div>}
-     {generation.testMode==='performance'&&reportBackend==='webgpu'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers!=='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>Not reported</span></div>}
+     {performanceSample&&reportBackend==='webgpu'&&typeof generation.runtimeMetrics?.runtimeObservedGpuLayers!=='number'&&<div className="capability-row"><span>GPU layers · runtime log</span><span>Not reported</span></div>}
      {threadInfo&&<div className="capability-row"><span>Threads · runtime</span><span>{threadInfo}</span></div>}
      {typeof generation.runtimeMetrics?.runtimePrefillMs==='number'&&<div className="capability-row"><span>Prompt processing · runtime</span><span>{(generation.runtimeMetrics.runtimePrefillMs/1000).toFixed(2)} s</span></div>}
      {typeof generation.inputTokens==='number'&&<div className="capability-row"><span>Input</span><span>{generation.inputTokens} tokens</span></div>}

@@ -48,6 +48,12 @@ test('saved timing results identify their model, time and build independently of
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
 });
 
+test('legacy timing reports use their workload when testMode is absent',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'legacy-build',checks:[],selectedModel:{id:'4B',revision:'m',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',workload:'prose-128-v1',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:96,tokensPerSecond:6.5}})));
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();await expect(page.getByText('4B · Sample complete',{exact:true})).toBeVisible();await expect(page.getByText('Overall speed',{exact:true})).toBeVisible();await expect(page.getByText('6.50 tokens/s',{exact:true})).toBeVisible();
+});
+
 test('an incomplete timing response is explained in plain language',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],modelGeneration:{status:'fail',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',failureStage:'output-validation',failureType:'incomplete-output'}})));
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
