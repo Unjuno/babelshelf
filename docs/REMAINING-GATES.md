@@ -1,5 +1,22 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · let planner replies use model/context output capacity
+
+The final planner generation had hidden product ceilings: 2,048 tokens for the
+JSON planner path and 3,072 tokens when a native-tool model omitted a separate
+output limit. Those were generation maxima, not a guarantee that every reply
+would be that long, but they could stop an otherwise continuing answer while
+model context remained. Final planner output now uses the remaining selected
+context up to the registered model output limit, then applies the existing
+reply-style policy. The smaller 2,048-token planning reserve remains only in
+preflight/history-compaction decisions, where it protects room for tool
+planning without forcing history to be discarded to reserve the entire reply
+window. Conversation tests passed 233/233, grounded-answer/reply-style and
+planner-evidence tests passed 21/21, static checks passed, and the production
+shell built with 165 verified assets; app acceptance passed 8/8. This removes a
+harness-side cap; it does not guarantee the model will produce longer answers
+or prove quality on every runtime.
+
 ### Live deployment provenance check
 
 The supplied iPhone failure report is from public app build

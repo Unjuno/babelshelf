@@ -81,6 +81,14 @@ export function plannerOutputTokenBudget(promptTokens:number,contextTokens:numbe
  const available=contextTokens-promptTokens;
  return available<MIN_PLANNER_OUTPUT_TOKENS?0:Math.min(available,maxOutputTokens,MAX_PLANNER_OUTPUT_TOKENS,Math.ceil(contextTokens/4));
 }
+/** Final planner replies may use the model's full remaining context; the
+ * smaller plannerOutputTokenBudget above is only preflight/compaction headroom. */
+export function plannerResponseTokenBudget(promptTokens:number,contextTokens:number,maxOutputTokens?:number){
+ if(!Number.isSafeInteger(promptTokens)||promptTokens<0||!Number.isSafeInteger(contextTokens)||contextTokens<1)return 0;
+ if(maxOutputTokens!==undefined&&(!Number.isSafeInteger(maxOutputTokens)||maxOutputTokens<1))return 0;
+ const available=contextTokens-promptTokens;
+ return available<MIN_PLANNER_OUTPUT_TOKENS?0:Math.min(available,maxOutputTokens??available);
+}
 type NonToolAction=Exclude<typeof HARNESS_ACTIONS[number]['id'],'tool'>;
 export type DialoguePlan={action:'tool';tool:string;arguments:Record<string,unknown>;assistantContent?:string}|{action:'tool_batch';calls:{tool:string;arguments:Record<string,unknown>}[];assistantContent?:string}|{action:NonToolAction;query:string;body?:string;target?:'current'|'history'|'file'|'path'|'knowledge'|'inputs';historyIndex?:number|null;historyPart?:'user'|'assistant';reply?:SourceLabelAnswer};
 // Labels describe only text actually included in this model prompt. Omitted or
@@ -362,8 +370,9 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  const outputBudget=()=>{
   const available=engine.manifest.contextTokens-promptTokens;
   if(!Number.isSafeInteger(promptTokens)||promptTokens<0||available<MIN_PLANNER_OUTPUT_TOKENS)return 0;
-  if(engine.plannerProtocol==='native-tool-calls')return Math.min(engine.manifest.maxOutputTokens??3072,available);
-  return replySources.length||operationalEvidence?Math.min(engine.manifest.maxOutputTokens??3072,groundedOutputTokens(agent?.replyStyle??'balanced',question,available)):plannerOutputTokenBudget(promptTokens,engine.manifest.contextTokens,engine.manifest.maxOutputTokens);
+  const responseLimit=plannerResponseTokenBudget(promptTokens,engine.manifest.contextTokens,engine.manifest.maxOutputTokens);
+  if(engine.plannerProtocol==='native-tool-calls')return responseLimit;
+  return Math.min(responseLimit,groundedOutputTokens(agent?.replyStyle??'balanced',question,responseLimit));
  };
  await countPrompt(messages);let maxOutputTokens=outputBudget();
  if(!maxOutputTokens){

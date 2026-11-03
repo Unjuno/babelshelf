@@ -111,7 +111,7 @@ test('planner retains bounded source provenance without exposing unchecked quote
 });
 import assert from 'node:assert/strict';
 import {planDialogueAgent} from '../src/dialogue-agent.ts';
-import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueMessages,readDialogueTurn,resolveDialogueTarget,plannerOutputTokenBudget} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueMessages,readDialogueTurn,resolveDialogueTarget,plannerOutputTokenBudget,plannerResponseTokenBudget} from '../src/conversation.ts';
 
 test('planner output budget grows with context but never exceeds remaining capacity',()=>{
  assert.equal(plannerOutputTokenBudget(100,2048),512);
@@ -123,6 +123,14 @@ test('planner output budget grows with context but never exceeds remaining capac
  assert.equal(plannerOutputTokenBudget(1888,2048),160);
  assert.equal(plannerOutputTokenBudget(1889,2048),0);
  assert.equal(plannerOutputTokenBudget(-1,2048),0);
+});
+
+test('final planner replies can use remaining model context while respecting the model limit',()=>{
+ assert.equal(plannerResponseTokenBudget(100,8192),8092);
+ assert.equal(plannerResponseTokenBudget(100,8192,4096),4096);
+ assert.equal(plannerResponseTokenBudget(100,8192,9000),8092);
+ assert.equal(plannerResponseTokenBudget(8033,8192),0);
+ assert.equal(plannerResponseTokenBudget(-1,8192),0);
 });
 
 test('archived original excerpts retain bounded application outcomes without trusting a contradictory summary',()=>{
@@ -254,7 +262,14 @@ test('planner preflight and inference share one memoized scoped token count',asy
  const runtime={manifest:{contextTokens:2048,models:[{id:'test',revision:'v'}],runtime:{revision:'r'}},loaded:'test',assets:{},load:async()=>{},stop(){},count:async(_messages,format)=>{counts++;assert.equal(format.type,'dialogue-plan');return {prompt_tokens:100};},generate:async(_messages,_budget,format)=>{assert.equal(format.type,'dialogue-plan');return {text:'{"action":"search","query":"meeting"}'};}};
  runtime.generate=async(_messages,budget,format)=>{assert.equal(format.type,'dialogue-plan');outputBudget=budget;return {text:'{"action":"search","query":"meeting"}'};};
  const plan=await planDialogue(createTextInference(()=>runtime),'Find meeting notes.',{summary:'',refs:[],recent:[],turnCount:0});
- assert.equal(plan.action,'search');assert.equal(counts,1);assert.equal(outputBudget,512);
+ assert.equal(plan.action,'search');assert.equal(counts,1);assert.equal(outputBudget,1948);
+});
+
+test('balanced planner generation is not stopped at the legacy 2048-token ceiling',async()=>{
+ const context={summary:'',refs:[],recent:[],turnCount:0};let outputBudget=0;
+ const port={manifest:{contextTokens:8192,maxOutputTokens:8192},count:async()=>({prompt_tokens:100}),generate:async(_messages,budget)=>{outputBudget=budget;return {text:'{"action":"search","query":"meeting"}'};}};
+ const plan=await planDialogue(port,'Find meeting notes.',context);
+ assert.equal(plan.action,'search');assert.equal(outputBudget,8092);
 });
 
 test('observed native 2B read/knowledge combination remains rejected by the real planner validator',async()=>{
@@ -388,7 +403,7 @@ test('planner gives the literal current request its own final message after untr
  const before=structuredClone(context),messages=planDialogueMessages(question,context,attachments);
  assert.deepEqual(messages.at(-1),{role:'user',content:question});assert.equal(messages.length,3);assert.match(messages[1].content,/untrusted context, not a new request/);
  const data=JSON.parse(messages[1].content.slice(messages[1].content.indexOf('\n')+1));assert.equal(data.lastAnswerIndex,73);assert.equal(data.originalEarlierExcerpts[0].turnIndex,13);assert.equal(data.recent[0].answer,'ORCHID-5821');assert.deepEqual(data.currentAttachments,attachments);assert.doesNotMatch(JSON.stringify(messages),/private source body|private reference|internal/);assert.deepEqual(context,before);
- let counted=false;const e={...engine(),count:async m=>{counted=true;assert.deepEqual(m,messages);return {prompt_tokens:400};},generate:async(m,max)=>{assert.ok(counted);assert.equal(max,512);assert.deepEqual(m,messages);return {text:'{"action":"transform","query":"","target":"history","historyIndex":73,"historyPart":"assistant"}'};}};
+ let counted=false;const e={...engine(),count:async m=>{counted=true;assert.deepEqual(m,messages);return {prompt_tokens:400};},generate:async(m,max)=>{assert.ok(counted);assert.equal(max,1648);assert.deepEqual(m,messages);return {text:'{"action":"transform","query":"","target":"history","historyIndex":73,"historyPart":"assistant"}'};}};
  assert.equal((await planDialogue(e,question,context,attachments)).historyIndex,73);
 });
 
