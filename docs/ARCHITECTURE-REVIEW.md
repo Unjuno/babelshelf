@@ -1,5 +1,9 @@
 # Architecture review and target — 2026-10-28
 
+## Long-answer allowance · 2026-11-04
+
+LFM3's former 3,072-token `maxReplyTokens` was an application guard, not a measured model limit. The app now sets the selected model's output allowance to its configured context size (8K–262K), and the worker adapter can accept that configured ceiling. Exact prompt counting still enforces `promptTokens + outputTokens <= contextTokens`; profile limits remain user-selected and per-Send. LFM2/Qwen retain their separate 768-token runtime ceiling. This change permits longer answers when the model/context allow them; it does not force every answer to be long or prove long-form quality, memory fit, or speed on any device.
+
 Scope: current local application after the Send boundary, shared model acquisition and one-button device-test changes. This is a code/design review, not proof of all model/device combinations. Accepted UI, canonical knowledge and history remain invariants.
 
 ## Remaining answer/evidence budget boundary · 2026-11-01

@@ -40,6 +40,6 @@ self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  },id=>(byId.get(id) as any)?.file.sha256??'',id=>(byId.get(id) as any)?.file.bytes??0);
  const assets:Record<string,{filesPresent:boolean}>={};
  for(const model of manifest.models){let present=false;try{present=(await readFile(model.id)).size===model.file.bytes;}catch{/* missing is not ready */}assets[model.id]={filesPresent:present};}
- const adapter=new Lfm3Adapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:3072,reusePrompt:true,onProgress:progress});
+ const adapter=new Lfm3Adapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:Math.max(...manifest.models.map((model:any)=>model.contextTokens)),reusePrompt:true,onProgress:progress});
  return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets,backend:textBackendPolicy(),onProgress:progress});
 },message=>self.postMessage(message),owned.dispose);

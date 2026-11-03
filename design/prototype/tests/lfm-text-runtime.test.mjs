@@ -73,14 +73,16 @@ test('the shipped LFM3 manifest and adapter output ceiling initialize together',
  const {describeLfm3Text}=await import('../src/lfm3-text-manifest.ts');const manifest=describeLfm3Text();
  const adapter={supportsExactCount:true,maxReplyTokens:manifest.maxOutputTokens};
  const runtime=createLfmTextRuntime({adapter,manifest,readFile:async()=>new Blob(),readAssets:()=>({})});
- assert.equal(runtime.manifest.maxOutputTokens,3072);
+ assert.equal(runtime.manifest.maxOutputTokens,8192);
 });
 test('pinned LFM3 context is explicitly selectable while custom model context stays tied to inspection',async()=>{
  const {describeLfm3Text}=await import('../src/lfm3-text-manifest.ts'),sha='a'.repeat(64),custom={id:'local-'+sha,label:'Local LFM3',role:'text',engine:'wllama-lfm3',revision:'sha256:'+sha,file:{bytes:1000,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes:1000,name:'Local LFM3',architecture:'lfm3',contextLength:8192,tokenizer:'gpt2',chatTemplate:true,tokenCount:128000,tensorCount:1,tensorTypes:[0],tensorExtentsChecked:true,dataOffset:512}};
  assert.equal(describeLfm3Text([], 'lfm3-1.7b-qad-q4-0', 16384).contextTokens,16384);
+ assert.equal(describeLfm3Text([], 'lfm3-1.7b-qad-q4-0', 16384).maxOutputTokens,16384);
  assert.equal(describeLfm3Text([], 'lfm3-1.7b-q8-0', 32768).contextTokens,32768);
  assert.equal(describeLfm3Text([], 'lfm3-1.7b-q8-0', 262144).contextTokens,262144);
  assert.equal(describeLfm3Text([custom],custom.id,32768).contextTokens,4096);
+ assert.equal(describeLfm3Text([custom],custom.id,32768).maxOutputTokens,4096);
  assert.throws(()=>describeLfm3Text([], '', 524288),/context window/);
 });
 test('LFM2.5 230M and 350M are distinct pinned text choices on the same local runtime',()=>{
@@ -139,12 +141,13 @@ test('runtime accepts a larger LFM3 base context for the built-in model',()=>{
  const runtime=createLfmTextRuntime({adapter:f.adapter,manifest,readFile:async()=>f.file,readAssets:()=>({local:{filesPresent:true}})});
  assert.equal(runtime.manifest.contextTokens,8192);
 });
-test('runtime advertises its actual LFM3 output ceiling and accepts detailed bounded generations',async()=>{
- const f=fixture();f.adapter.maxReplyTokens=2048;f.manifest.models[0].contextTokens=8192;f.manifest.contextTokens=8192;
- await f.runtime.load('local');assert.equal(f.runtime.manifest.maxOutputTokens,2048);
+test('runtime advertises the selected LFM3 context as its output ceiling and accepts longer generations',async()=>{
+ const f=fixture();f.adapter.maxReplyTokens=16384;f.manifest.models[0].contextTokens=16384;f.manifest.models[0].maxReplyTokens=16384;f.manifest.contextTokens=16384;f.runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,readFile:async()=>f.file,readAssets:()=>({local:{filesPresent:true}})});
+ await f.runtime.load('local');assert.equal(f.runtime.manifest.maxOutputTokens,16384);
  f.adapter.generate=async(_messages,options)=>{f.calls.push(['large-output',options]);return {text:'bounded answer',outputTokens:1500};};
- const result=await f.runtime.generate([{role:'user',content:'Explain thoroughly'}],1536,'prose');assert.equal(result.text,'bounded answer');assert.equal(f.calls.at(-1)[1].maxTokens,1536);
- await assert.rejects(f.runtime.generate([{role:'user',content:'too large'}],2049,'prose'),/context limit/);await f.runtime.unload();
+ const result=await f.runtime.generate([{role:'user',content:'Explain thoroughly'}],12000,'prose');assert.equal(result.text,'bounded answer');assert.equal(f.calls.at(-1)[1].maxTokens,12000);
+ f.adapter.count=async()=>5000;
+ await assert.rejects(f.runtime.generate([{role:'user',content:'too large'}],12000,'prose'),/context limit/);await f.runtime.unload();
 });
 test('repeated load of the resident LFM model reuses its verified session without rereading OPFS or unloading',async()=>{
  const f=fixture();let reads=0;const runtime=createLfmTextRuntime({adapter:f.adapter,manifest:f.manifest,readFile:async()=>{reads++;return new Blob(['weights']);},readAssets:()=>({local:{filesPresent:true}})});
