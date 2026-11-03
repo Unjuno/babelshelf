@@ -109,7 +109,7 @@ export function DiagnosticsSettings(props:Props){
      {typeof generation.warmTokensPerSecond==='number'&&<div className="capability-row"><span>Warm speed</span><span>{generation.warmTokensPerSecond.toFixed(2)} tokens/s</span></div>}
     </>}
     <div className="capability-row"><span>Model load</span><span>{generation.loadState==='already-loaded'?'Already loaded':generation.loadState==='not-loaded'?'Not loaded':typeof generation.loadDurationMs==='number'?(generation.loadDurationMs/1000).toFixed(1)+' s':'—'}</span></div>
-    {typeof generation.runtimeMetrics?.visibleTextTtftMs==='number'&&<div className="capability-row"><span>First text</span><span>{(generation.runtimeMetrics.visibleTextTtftMs/1000).toFixed(2)} s</span></div>}
+    {typeof generation.runtimeMetrics?.visibleTextTtftMs==='number'&&<div className="capability-row"><span>Runtime · first text</span><span>{(generation.runtimeMetrics.visibleTextTtftMs/1000).toFixed(2)} s</span></div>}
     {typeof generation.tokensPerSecond==='number'&&<div className="capability-row"><span>Overall speed</span><span>{generation.tokensPerSecond.toFixed(2)} tokens/s</span></div>}
     {typeof generation.runtimeMetrics?.runtimeDecodeTokensPerSecond==='number'&&<div className="capability-row"><span>Decode speed</span><span>{generation.runtimeMetrics.runtimeDecodeTokensPerSecond.toFixed(2)} tokens/s</span></div>}
     <details className="device-test-steps"><summary>Technical details</summary>

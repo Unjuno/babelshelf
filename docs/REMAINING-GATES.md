@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · distinguish end-to-end and runtime first-text timings
+
+The Full cycle result can report both elapsed time from Run to first text (including app checks, preparation and loading) and the inference runtime's `visibleTextTtftMs`. The latter was labeled only `First text`, which obscured that these are different intervals. It is now labeled `Runtime · first text`; a browser regression proves a 12 s end-to-end value and 0.84 s runtime value remain distinct. Developer diagnostic UI passed 31/31, `npm run check` passed, production packaging verified 165 assets (shell `b5094f783a4ad13b`), and app acceptance passed 8/8. These remain one-run measurements, not sustained speed or cross-device evidence.
+
 ### 2026-11-03 · report decision work separately from text generation
 
 Activity summaries previously labeled measured Text-model generation calls as `Agent model calls` and omitted the completed Decision classifier's receipt interval. The summary now counts completed Decision checks separately and shows their measured receipt time; labels distinguish Text generation from decision work, and the panel says these are recorded phases rather than total turn time. The summary unit suite passed 8/8, Activity browser suite 2/2, `npm run check`, production build verified 165 assets (shell `b001af3ee0141b1b`), and app acceptance passed 8/8. Build, component tests, and receipt timing do not measure unrecorded orchestration or real model latency. Existing data and model assets were not changed.

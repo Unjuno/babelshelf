@@ -1,3 +1,12 @@
+2026-11-03 — Full cycle timings identify the measurement boundary.
+The elapsed time from Run to first text includes app checks, asset preparation
+and model loading; `Runtime · first text` reports the inference adapter's
+visibleTextTtftMs separately. A Developer browser fixture with deliberately
+distinct intervals (12 s and 0.84 s) confirms the UI does not conflate them.
+Developer diagnostic UI passed 31/31, `npm run check` passed, the product
+build verified 165 assets (shell `b5094f783a4ad13b`), and app acceptance passed
+8/8. This labels the timing boundaries; it does not measure sustained speed.
+
 2026-11-03 — Activity summaries separate Decision checks from Text generation.
 Completed `decision.classify` receipts now appear as separate checks with their
 receipt interval; Text generation call counts are no longer labeled as all
