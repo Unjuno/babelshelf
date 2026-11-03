@@ -8313,3 +8313,15 @@ This narrows one water-volume comparison failure only; it is not general
 semantic entailment and does not establish live-model correction quality.
 No Memory data or model assets were read, changed, or deleted.
 Clean-checkout GitHub Actions [41722580328](https://github.com/Unjuno/babelshelf/actions/runs/41722580328) passed all stages for commit `5633daa523694f89d909ef514b6aff1bd8e2e608`.
+2026-11-04: A native tool-call batch longer than the user-selected remaining
+call budget used to reject the entire batch before executing anything. The
+loop now executes only the allowed prefix, records omitted calls as `tool_limit`
+with no result, propagates budget exhaustion to the response boundary, and
+instructs the planner not to claim or retry an unexecuted call. Default profiles
+remain unlimited. Replaced the all-or-nothing regression with a prefix-execution
+case and added prompt guidance coverage. The focused agent-loop, coordinator,
+conversation, inference-budget and submission suites passed 425/425; TypeScript,
+`npm run check`, and `git diff --check` passed. Commit `2194fc0` was pushed to
+`codex/ui-design-handoff`; clean-checkout GitHub Actions
+[41727447976](https://github.com/Unjuno/babelshelf/actions/runs/41727447976) was
+still running when recorded. No model or Memory data was loaded or modified.

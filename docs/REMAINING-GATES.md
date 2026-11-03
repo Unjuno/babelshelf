@@ -1,4 +1,18 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · use remaining finite tool budget for native batches
+
+A native batch longer than a user-selected finite per-turn budget previously
+failed before executing any member, even when unused call slots remained. The
+agent now runs only the allowed prefix, records each omitted member as
+`tool_limit`, and carries the exhausted-budget state into answer grounding.
+The planner is explicitly told that omitted calls never ran and have no
+evidence. The default profile remains unlimited. Focused loop/coordinator/
+conversation/submission suites passed 425/425, TypeScript and static checks
+passed, and commit `2194fc0` is pushed. Clean-checkout CI is still running at
+[41727447976](https://github.com/Unjuno/babelshelf/actions/runs/41727447976).
+This verifies the finite-batch accounting contract, not model compliance with
+the resulting partial-evidence instruction.
+
 ### 2026-11-04 · bind numeric values in mixed-title comparison clauses
 
 A reproduced water-comparison gap let a second clause assign the cited values
