@@ -2,6 +2,7 @@ import {readDeviceStorage,type StoragePort} from './device-storage.ts';
 import {textModelFileSize} from './model-catalog-status.ts';
 import {textExecutionRoute} from './text-execution-route.ts';
 import {requestAdapterWithFallback} from './webgpu-preference.ts';
+import {textBackendPolicy} from './text-device-policy.ts';
 import type {CustomLocalModel} from './preference-records.ts';
 
 type GpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>};
@@ -16,7 +17,7 @@ export function describeTextDeviceCheck(check:TextDeviceCheck):string {
 
 // A user-initiated, read-only preflight. Quota is not physical free space and
 // an adapter is not proof of enough GPU memory, model loading or generation.
-export async function checkTextDevice(modelId:string,customModels:readonly CustomLocalModel[]=[],filesPresent=false,ports:{storage?:StoragePort;gpu?:GpuPort}={}):Promise<TextDeviceCheck>{
+export async function checkTextDevice(modelId:string,customModels:readonly CustomLocalModel[]=[],filesPresent=false,ports:{storage?:StoragePort;gpu?:GpuPort;device?:Parameters<typeof textBackendPolicy>[0]}={}):Promise<TextDeviceCheck>{
  const route=textExecutionRoute(modelId,customModels);if(!route)throw Error('Selected text engine route unavailable');
  const modelBytes=textModelFileSize(modelId,customModels);
  if(modelBytes===null)throw Error('Selected model size unavailable');
@@ -28,7 +29,8 @@ export async function checkTextDevice(modelId:string,customModels:readonly Custo
  ]);
  const availableBytes=space.available;
  const storage=filesPresent?'already-present':availableBytes===null?'unknown':availableBytes<modelBytes?'below-file-size':'estimate-covers-file';
- return {modelId,modelBytes,availableBytes,storage,backend,...(route.fallbackBackend?{fallbackBackend:route.fallbackBackend}:{}),webgpu};
+ const fallbackAllowed=route.fallbackBackend==='cpu-wasm'&&textBackendPolicy(ports.device)==='auto';
+ return {modelId,modelBytes,availableBytes,storage,backend,...(fallbackAllowed?{fallbackBackend:'cpu-wasm' as const}:{}),webgpu};
 }
 
 async function adapterStatus(gpu:GpuPort):Promise<'available'|'unavailable'|'unknown'>{

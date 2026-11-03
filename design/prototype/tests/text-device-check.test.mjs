@@ -39,6 +39,17 @@ test('the LFM3 preflight discloses its CPU/WASM fallback without applying it to 
  assert.doesNotMatch(describeTextDeviceCheck(other),/CPU\/WASM fallback/);
 });
 
+test('mobile LFM3 preflight does not advertise a CPU fallback that execution policy forbids',async()=>{
+ const gpuUnavailable={requestAdapter:async()=>null};
+ for(const userAgent of ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Mobile Safari/605.1','Mozilla/5.0 (Linux; Android 15) Mobile Safari/605.1']){
+  const check=await checkTextDevice('lfm3-1.7b-qad-q4-0',[],false,{storage:storage(4_000_000_000),gpu:gpuUnavailable,device:{userAgent}});
+  assert.equal(check.backend,'webgpu');assert.equal(check.fallbackBackend,undefined);assert.equal(check.webgpu,'unavailable');
+  assert.doesNotMatch(describeTextDeviceCheck(check),/CPU fallback may be tried/);
+ }
+ const ipad=await checkTextDevice('lfm3-1.7b-qad-q4-0',[],false,{storage:storage(4_000_000_000),gpu:gpuUnavailable,device:{userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1',maxTouchPoints:5}});
+ assert.equal(ipad.fallbackBackend,undefined);
+});
+
 test('CPU/WASM models do not probe WebGPU and existing files do not need a second free copy',async()=>{
  let probed=false;
  const check=await checkTextDevice('lfm25-230m-qad-q4-0',[],true,{storage:storage(100,90),gpu:{requestAdapter:async()=>{probed=true;return null;}}});
