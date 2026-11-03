@@ -10,7 +10,10 @@ step in 41 seconds. Split the same Playwright 1.61.1 operation into named
 `install-deps` and `install` steps so the next run identifies which phase
 varies. Browser versions, Chromium/WebKit coverage and acceptance commands are
 unchanged; no retries, cache or timeout relaxation was added. The verification
-run for this workflow-only change is pending.
+run [41731098851](https://github.com/Unjuno/babelshelf/actions/runs/41731098851)
+has reported 27s for system dependencies and 14s for browser downloads; the
+remaining acceptance stages are still running. This is one split-run sample,
+not evidence that the earlier APT delay cannot recur.
 
 ### 2026-11-04 · use remaining finite tool budget for native batches
 

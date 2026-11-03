@@ -8333,4 +8333,7 @@ CI into separately named system-dependency and pinned-browser installation
 steps to expose which phase varies. Playwright version, browser versions,
 browser coverage and acceptance commands are unchanged. No cache, retries or
 timeouts were added. The workflow-only change requires a fresh clean-checkout
-CI run.
+CI run. Its split run [41731098851](https://github.com/Unjuno/babelshelf/actions/runs/41731098851)
+reported 27s for system dependencies and 14s for pinned browsers; downstream
+acceptance was still running at this entry. One run does not establish that the
+previous APT delay cannot recur.
