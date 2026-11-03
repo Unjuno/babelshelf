@@ -48,6 +48,12 @@ test('runtime acquisition failure retains the measured partial payload byte coun
  const channel=fakeChannel(),worker=fakeWorker(channel,(_message,_transfer,state)=>queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'failed',error:'Runtime verification failed',downloadedBytes:37}})));
  await assert.rejects(prepareProductRuntimeAssets('pdf',{worker,operationId:'partial-op-01',makeChannel:()=>channel.channel}),error=>error.message==='Runtime verification failed'&&error.downloadedBytes===37);
 });
+test('runtime failure replies retain only a validated stable diagnostic code',async()=>{
+ const channel=fakeChannel(),worker=fakeWorker(channel,(_message,_transfer,state)=>queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'failed',error:'Network unavailable',code:'runtime-network-error',downloadedBytes:12}})));
+ await assert.rejects(prepareProductRuntimeAssets('text-lfm3',{worker,operationId:'coded-failure-01',makeChannel:()=>channel.channel}),error=>error.message==='Network unavailable'&&error.code==='runtime-network-error'&&error.downloadedBytes===12);
+ const invalidChannel=fakeChannel(),invalidWorker=fakeWorker(invalidChannel,(_message,_transfer,state)=>queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'failed',error:'private raw detail',code:'untrusted-code'}})));
+ await assert.rejects(prepareProductRuntimeAssets('text-lfm3',{worker:invalidWorker,operationId:'coded-failure-02',makeChannel:()=>invalidChannel.channel}),/Invalid app runtime response/);
+});
 
 test('load-time runtime verification can use the active app service worker without custom options',async()=>{
  const original=globalThis.navigator,channel=fakeChannel();

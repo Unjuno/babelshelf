@@ -2,6 +2,24 @@ import type {GenerationFormat,GenerationResult} from './text-inference.ts';
 import {parseDeviceModelSmokeAnswer} from './device-diagnostics.ts';
 export type DeviceModelTestMode='quick'|'performance'|'full-cycle';
 export type DeviceTestMode='app'|'offline-readiness'|'storage-health'|'runtime-support'|'model-readiness'|DeviceModelTestMode;
+export type DeviceModelTestFailureStage='runtime-setup'|'model-preparation'|'model-load'|'count'|'generation'|'warm-generation'|'output-validation'|'unload';
+const knownFailureCodes=new Set(['stopped','incomplete-output','empty-output','model-files-not-ready','restart-pending','return-attempt-interrupted','another-model-loaded','model-test-not-run','no-model-selected','selected-model-changed','downloads-off','offline-signal','runtime-unavailable','runtime-messaging-unavailable','runtime-invalid-response','runtime-timeout','runtime-assets-unavailable','runtime-not-prepared','runtime-http-error','runtime-network-error','runtime-integrity-error','runtime-storage-error','runtime-setup-error']);
+/** Keep device reports useful without retaining raw exception text or user data. */
+export function deviceModelTestFailureType(error:unknown,stage:DeviceModelTestFailureStage){
+ const value=error&&typeof error==='object'?error as {code?:unknown;message?:unknown;name?:unknown}:{};
+ if(typeof value.code==='string'&&knownFailureCodes.has(value.code))return value.code;
+ const message=typeof value.message==='string'?value.message:'';
+ if(message==='Runtime not prepared · switch Online to prepare')return 'runtime-not-prepared';
+ if(message==='Runtime check timed out · retry')return 'runtime-timeout';
+ if(message==='App runtime unavailable · reopen the installed app')return 'runtime-unavailable';
+ if(message==='App runtime messaging unavailable'||message==='Could not start app runtime preparation')return 'runtime-messaging-unavailable';
+ if(message==='Invalid app runtime response')return 'runtime-invalid-response';
+ if(message==='Runtime assets unavailable for this feature')return 'runtime-assets-unavailable';
+ if(message==='Downloads are off')return 'downloads-off';
+ if(message==='Stopped')return 'stopped';
+ if(stage==='runtime-setup'&&value.name==='TypeError')return 'runtime-network-error';
+ return `${stage}-error`;
+}
 export class DeviceModelTestError extends Error{
  readonly code:'stopped'|'incomplete-output'|'empty-output';
  constructor(code:'stopped'|'incomplete-output'|'empty-output',message:string){super(message);this.name='DeviceModelTestError';this.code=code;}

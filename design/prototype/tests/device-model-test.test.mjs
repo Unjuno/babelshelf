@@ -1,5 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {deviceModelTestProfile,deviceWarmModelTestProfile,validateDeviceModelTest} from '../src/device-model-test.ts';
+import {deviceModelTestProfile,deviceWarmModelTestProfile,deviceModelTestFailureType,validateDeviceModelTest} from '../src/device-model-test.ts';
 test('performance uses a bounded fixed local workload and excludes knowledge and conversation',()=>{const p=deviceModelTestProfile('performance');assert.equal(p.maxTokens,128);assert.equal(p.format,'prose');assert.equal(p.workload,'prose-128-v2');assert.equal(p.messages.length,2);assert.match(p.messages[1].content,/sorting/);});
 test('full cycle uses the same bounded primary task and a separate shorter warm task',()=>{const p=deviceModelTestProfile('full-cycle'),warm=deviceWarmModelTestProfile();assert.equal(p.maxTokens,128);assert.equal(p.workload,'prose-128-v2');assert.equal(warm.maxTokens,64);assert.equal(warm.workload,'warm-64-v1');assert.notDeepEqual(p.messages,warm.messages);});
 test('Quick still validates exact READY; performance requires a complete generation and reports actionable failure codes',()=>{assert.equal(validateDeviceModelTest('quick',{text:'{"answer":"READY"}'}),5);assert.throws(()=>validateDeviceModelTest('quick',{text:'other'}));assert.equal(validateDeviceModelTest('performance',{text:'A bounded sample.',finishReason:'stop'}),17);assert.throws(()=>validateDeviceModelTest('performance',{text:'A truncated sample.',finishReason:'length'}),error=>error.code==='incomplete-output'&&/output limit/.test(error.message));assert.throws(()=>validateDeviceModelTest('performance',{text:'',stopped:false}),error=>error.code==='empty-output');assert.throws(()=>validateDeviceModelTest('performance',{text:'partial',stopped:true}),error=>error.code==='stopped');});
+test('device failure reports use safe actionable codes and never preserve raw exception detail',()=>{
+ assert.equal(deviceModelTestFailureType(Object.assign(Error('Runtime check timed out · retry'),{code:'runtime-timeout'}),'runtime-setup'),'runtime-timeout');
+ assert.equal(deviceModelTestFailureType(Error('Runtime not prepared · switch Online to prepare'),'runtime-setup'),'runtime-not-prepared');
+ assert.equal(deviceModelTestFailureType(TypeError('https://private.example/path?token=secret'),'runtime-setup'),'runtime-network-error');
+ assert.equal(deviceModelTestFailureType(Error('PRIVATE_PROMPT_AND_DATA'),'runtime-setup'),'runtime-setup-error');
+ assert.equal(deviceModelTestFailureType(Object.assign(Error('PRIVATE'),{code:'untrusted-code'}),'model-load'),'model-load-error');
+});

@@ -7,6 +7,7 @@ const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1'
 const hfGrants=new Map(),productAssetJobs=new Map();let shellRepair=null;
 const networkRequests=new Set();let networkEpoch=0;
 const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
+function productAssetFailureCode(error){const message=error instanceof Error?error.message:'',name=error&&typeof error==='object'&&typeof error.name==='string'?error.name:'';if(message==='Stopped')return 'stopped';if(message==='Runtime not prepared · switch Online to prepare')return 'runtime-not-prepared';if(message==='Downloads are off')return 'downloads-off';if(message==='App runtime HTTP request failed')return 'runtime-http-error';if(message==='App asset verification failed')return 'runtime-integrity-error';if(message==='App asset storage verification failed'||name==='QuotaExceededError')return 'runtime-storage-error';if(error instanceof TypeError)return 'runtime-network-error';return 'runtime-setup-error';}
 function isolatedResponse(response){
  const headers=new Headers(response.headers);
  headers.set('Cross-Origin-Opener-Policy','same-origin');
@@ -202,7 +203,7 @@ self.addEventListener('message',event=>{
   const reply=value=>{try{port?.postMessage(value);}catch{}};
   let valid=false;try{valid=source?.type==='window'&&!!source.id&&new URL(source.url).origin===self.location.origin&&typeof role==='string'&&role.length<=64&&typeof operationId==='string'&&/^[A-Za-z0-9_-]{8,80}$/.test(operationId)&&typeof acquire==='boolean'&&!productAssetJobs.has(operationId);}catch{}
   const selected=valid?FILES.filter(file=>Array.isArray(file.roles)&&file.roles.includes(role)):[];
-  if(!selected.length){reply({status:'failed',error:valid?'Runtime assets unavailable for this feature':'Invalid app asset request'});return;}
+  if(!selected.length){reply({status:'failed',error:valid?'Runtime assets unavailable for this feature':'Invalid app asset request',code:valid?'runtime-assets-unavailable':'invalid-request'});return;}
   const job={clientId:source.id,stopped:false,controllers:new Set()};productAssetJobs.set(operationId,job);
   const work=(async()=>{
    const pool=await caches.open(SHARED),epoch=networkEpoch;let bytes=0,downloadedBytes=0;
@@ -219,7 +220,7 @@ self.addEventListener('message',event=>{
      networkSource=true;networkRead=0;
      response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
      if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
-     if(!response.ok||!await verified(response,file,onBytes))throw Error('App asset verification failed');
+     if(!response.ok)throw Error('App runtime HTTP request failed');if(!await verified(response,file,onBytes))throw Error('App asset verification failed');
      if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
      await pool.put(key,response);if(!await verified(await pool.match(key),file))throw Error('App asset storage verification failed');
      if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
@@ -227,7 +228,7 @@ self.addEventListener('message',event=>{
      bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});
    }
    reply({status:'prepared',role,assets:selected.length,bytes,downloadedBytes});
-   }catch(error){reply({status:'failed',error:error instanceof Error?error.message:'App runtime preparation failed',downloadedBytes});}
+   }catch(error){reply({status:'failed',error:error instanceof Error?error.message:'App runtime preparation failed',code:productAssetFailureCode(error),downloadedBytes});}
   })().finally(()=>productAssetJobs.delete(operationId));
   event.waitUntil?.(work);return;
  }

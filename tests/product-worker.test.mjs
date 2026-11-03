@@ -141,7 +141,7 @@ test('runtime preparation reports actual incoming bytes before the file complete
  await work;assert.equal(replies.at(-1).status,'prepared');assert.equal(replies.at(-1).bytes,7);assert.equal(replies.at(-1).downloadedBytes,7);
 });
 test('runtime preparation failure reports the partial verified-stream transfer size',async()=>{
- const file={...pinned('./assets/speech-ABCDEFGH.wasm','GOOD'),roles:['speech']},h=await harness('BAD',{files:[file]});const result=await prepareRole(h,'speech');assert.equal(result.status,'failed');assert.equal(result.downloadedBytes,3);assert.match(result.error,/verification/i);
+ const file={...pinned('./assets/speech-ABCDEFGH.wasm','GOOD'),roles:['speech']},h=await harness('BAD',{files:[file]});const result=await prepareRole(h,'speech');assert.equal(result.status,'failed');assert.equal(result.downloadedBytes,3);assert.equal(result.code,'runtime-integrity-error');assert.match(result.error,/verification/i);
 });
 test('stopping a streaming runtime download does not commit its completed bytes',async()=>{
  let resume;const gate=new Promise(resolve=>{resume=resolve;}),file={...pinned('./assets/speech-ABCDEFGH.wasm','RUNTIME'),roles:['speech']};
@@ -149,7 +149,7 @@ test('stopping a streaming runtime download does not commit its completed bytes'
  const source={type:'window',id:'tab-a',url:origin+'/'},replies=[];let work,first;const gotProgress=new Promise(resolve=>{first=resolve;});
  h.handlers.message({source,data:{type:'prepare-product-assets',role:'speech',operationId:'stream-op-0002',acquire:true},ports:[{postMessage:value=>{replies.push(value);if(value.status==='progress'&&value.completed===0)first();}}],waitUntil:value=>work=value});
  let timer;try{await Promise.race([gotProgress,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No partial progress')),2000);})]);h.handlers.message({source,data:{type:'cancel-product-assets',operationId:'stream-op-0002'}});}finally{clearTimeout(timer);resume();}
- await work;assert.equal(replies.at(-1).status,'failed');assert.match(replies.at(-1).error,/Stopped/);
+ await work;assert.equal(replies.at(-1).status,'failed');assert.equal(replies.at(-1).code,'stopped');assert.match(replies.at(-1).error,/Stopped/);
  assert.equal(h.caches.entries.get('babelshelf-product-assets-v1').has(origin+'/.babelshelf-app-assets/'+file.sha256),false);
 });
 
@@ -218,14 +218,14 @@ test('feature runtime assets are not installed until their exact feature is expl
 });
 test('feature preparation fails closed for unknown roles, unauthorized contexts, corrupt bytes and disabled downloads',async()=>{
  const files=[pinned('./index.html','INDEX'),{...pinned('./assets/ort-RUNTIM12.wasm','RUNTIME'),roles:['speech']}],body=url=>String(url).endsWith('index.html')?'INDEX':'CORRUPT',h=await harness(body,{files});await install(h);
- assert.equal((await prepareRole(h,'unknown')).status,'failed');assert.deepEqual(h.network,[origin+'/index.html']);
- let unauthorized;h.handlers.message({source:{id:'foreign',url:'https://evil.example/',type:'window'},data:{type:'prepare-product-assets',role:'speech'},ports:[{postMessage:value=>{unauthorized=value;}}],waitUntil(){}});assert.equal(unauthorized.status,'failed');assert.deepEqual(h.network,[origin+'/index.html']);
- const corrupt=await prepareRole(h,'speech');assert.equal(corrupt.status,'failed');assert.match(corrupt.error,/verification/);assert.equal((await h.request('/assets/ort-RUNTIME12.wasm')).status,503);
+ const unknown=await prepareRole(h,'unknown');assert.equal(unknown.status,'failed');assert.equal(unknown.code,'runtime-assets-unavailable');assert.deepEqual(h.network,[origin+'/index.html']);
+ let unauthorized;h.handlers.message({source:{id:'foreign',url:'https://evil.example/',type:'window'},data:{type:'prepare-product-assets',role:'speech'},ports:[{postMessage:value=>{unauthorized=value;}}],waitUntil(){}});assert.equal(unauthorized.status,'failed');assert.equal(unauthorized.code,'invalid-request');assert.deepEqual(h.network,[origin+'/index.html']);
+ const corrupt=await prepareRole(h,'speech');assert.equal(corrupt.status,'failed');assert.equal(corrupt.code,'runtime-integrity-error');assert.match(corrupt.error,/verification/);assert.equal((await h.request('/assets/ort-RUNTIME12.wasm')).status,503);
 });
 test('cached feature runtimes remain usable offline; missing pieces are never acquired after Offline',async()=>{
  const files=[pinned('./index.html','INDEX'),{...pinned('./assets/ort-RUNTIM12.wasm','RUNTIME'),roles:['speech']},{...pinned('./assets/ort-MISSIN12.wasm','MISSING'),roles:['speech']}],body=url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('RUNTIM')?'RUNTIME':'MISSING',connection=connectionDatabase(true),h=await harness(body,{files,connection});await install(h);
  const partial=await prepareRole(h,'speech');assert.equal(partial.status,'prepared');connection.set(false);const pool=h.caches.entries.get('babelshelf-product-assets-v1');pool.delete(origin+'/.babelshelf-app-assets/'+files[2].sha256);
- assert.equal(await(await h.request('/assets/ort-RUNTIM12.wasm')).text(),'RUNTIME');const failed=await prepareRole(h,'speech');assert.equal(failed.status,'failed');assert.match(failed.error,/Downloads are off/);assert.deepEqual(h.network,[origin+'/index.html',origin+'/assets/ort-RUNTIM12.wasm',origin+'/assets/ort-MISSIN12.wasm']);
+ assert.equal(await(await h.request('/assets/ort-RUNTIM12.wasm')).text(),'RUNTIME');const failed=await prepareRole(h,'speech');assert.equal(failed.status,'failed');assert.equal(failed.code,'downloads-off');assert.match(failed.error,/Downloads are off/);assert.deepEqual(h.network,[origin+'/index.html',origin+'/assets/ort-RUNTIM12.wasm',origin+'/assets/ort-MISSIN12.wasm']);
 });
 test('PDF update caches changed shell code and reuses verified optional worker offline',async()=>{
  const connection=connectionDatabase(true),caches=storage();
