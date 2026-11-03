@@ -5,11 +5,11 @@ function notRun(report:DeviceDiagnosticReport,failureType:string,testMode:Device
 /** Performance runs here on every surface. Quick in an installed PWA defers
  * the model run to its claimed restart continuation; browser runs never arm it. */
 export async function startDeviceTestSuite(ports:Ports,mode:DeviceTestMode='quick'){
- if(mode!=='app'&&mode!=='quick'&&mode!=='performance'&&mode!=='full-cycle')throw Error('Unknown device test mode');
+ if(mode!=='app'&&mode!=='model-readiness'&&mode!=='quick'&&mode!=='performance'&&mode!=='full-cycle')throw Error('Unknown device test mode');
  let report=await ports.collect();report=structuredClone(report);report.deviceTestMode=mode;
- if(mode==='app'){
-  report.scope.push('App and storage checks only. No model is loaded, prepared, downloaded, or run. Cache presence does not prove offline cold launch.');
-  report.manualSteps=['Review the app, storage and runtime check results.','Copy report for Codex to share the results.'];
+ if(mode==='app'||mode==='model-readiness'){
+  report.scope.push(mode==='model-readiness'?'Model readiness checks use the selected model metadata, local file-presence signal and browser runtime prerequisites. No model is loaded, verified by generation, prepared, or downloaded.':'App and storage checks only. No model is loaded, prepared, downloaded, or run. Cache presence does not prove offline cold launch.');
+  report.manualSteps=[mode==='model-readiness'?'Review the selected model, file and runtime readiness signals.':'Review the app, storage and runtime check results.','Copy report for Codex to share the results.'];
   await ports.save(report);return {report,marker:null};
  }
  if(report.standalone&&mode==='quick'){
