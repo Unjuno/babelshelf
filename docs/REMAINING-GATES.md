@@ -7,8 +7,10 @@ large runtime asset does not appear stuck at `0/1`. Local TypeScript/build and
 static check passed; Developer UI browser coverage passed 33/33, and the full
 prototype suite passed 1,864/1,864. The provided iPhone run still failed before
 model files, load, or generation; it reported no runtime transfer count. No
-device-specific cause is established. This PC regression does not verify the
-download on iPhone; the old report does not warrant asking for a rerun yet.
+device-specific cause is established. Clean-checkout CI
+[41679044952](https://github.com/Unjuno/babelshelf/actions/runs/41679044952)
+passed every stage on `27f72ba`. This PC regression does not verify the download
+on iPhone; the old report does not warrant asking for a rerun yet.
 
 ### 2026-11-04 · revalidate the proposal-to-approval boundary
 
