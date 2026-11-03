@@ -32,16 +32,15 @@ export function dialogueOutputLimits(style:unknown,question:string,availableToke
  const explicitLong=explicitLongRequest.test(text);
  const analytical=analyticalRequest.test(text);
  let total:number,segment:number;
- if(explicitLong&&explicitShort&&additionalStage.test(text)){total=4096;segment=1024;}
+ if(explicitLong&&explicitShort&&additionalStage.test(text)){total=availableTokens;segment=Math.min(1024,total);}
  else if(explicitShort){total=256;segment=256;}
- else if(explicitLong){total=4096;segment=1024;}
- else if(analytical){total=3072;segment=768;}
+ else if(explicitLong){total=availableTokens;segment=Math.min(1024,total);}
+ else if(analytical||style==='detailed'){total=availableTokens;segment=Math.min(1024,total);}
  else if(style==='concise'){total=256;segment=256;}
- else if(style==='detailed'){total=3072;segment=768;}
- // The ordinary style should not impose a short-answer ceiling. Use the
- // current LFM runtime's full reply allowance by default; the selected engine
- // and remaining context still provide the hard upper bounds.
- else {total=3072;segment=768;}
+ // Ordinary and detailed answers are not capped by a product-wide token
+ // preset. The runtime's model limit and the prompt's remaining context are
+ // authoritative; segmented continuation keeps streaming responsive.
+ else {total=availableTokens;segment=Math.min(1024,total);}
  total=Math.min(total,availableTokens);
  return {total,segment:Math.min(segment,total)};
 }

@@ -57,7 +57,7 @@ function cleanReasoningMarkup(text:string){
 }
 async function continueDialogue(engine:TextRuntime,messages:{role:string;content:string}[],initial:GenerationResult,segmentBudget:number,totalBudget:number,check:()=>void,onPreview?:(text:string)=>void){
  checkRepeatedOutput(initial.text);const parts=[initial.text];let result=initial,currentBudget=segmentBudget,spent=Math.min(totalBudget,segmentBudget);
- for(let segment=1;outputLimited(result,currentBudget)&&spent<totalBudget&&segment<4;segment++){
+ while(outputLimited(result,currentBudget)&&spent<totalBudget){
   let previous=parts.join(''),continuation:{role:string;content:string}[]=[],available=0;
   for(let trim=0;trim<8;trim++){
    continuation=[...messages,{role:'assistant',content:previous},{role:'user',content:'Continue the preceding answer exactly where it ends. Do not repeat earlier text. Finish the original requested format and length. Return only the continuation.'}];
@@ -67,7 +67,7 @@ async function continueDialogue(engine:TextRuntime,messages:{role:string;content
    previous=Array.from(previous).slice(Math.ceil(Array.from(previous).length/2)).join('');
   }
   if(available<128)throw Error('Response exceeded model context limit');
-  const budget=Math.min(768,engine.manifest.maxOutputTokens??768,available,totalBudget-spent);result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
+  const budget=Math.min(768,engine.manifest.maxOutputTokens??768,available,totalBudget-spent);if(budget<1)throw Error('Response exceeded model context limit');result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
   if(!result.text.trim())throw Error('Empty model continuation');
   const previousSegment=parts.at(-1)!.trim(),nextSegment=result.text.trim();
   if(previousSegment.length>=32&&nextSegment===previousSegment)throw Error('Model continuation repeated · retry');
@@ -246,8 +246,14 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const outputLimits=mode==='chat'?dialogueOutputLimits(replyStyle,question,availableOutputTokens):undefined;
  const modelOutputLimit=engine.manifest.maxOutputTokens??availableOutputTokens;
  if(!Number.isSafeInteger(modelOutputLimit)||modelOutputLimit<1)throw Error('Invalid model output limit');
- let replyTokens=Math.min(outputLimits?.segment??groundedOutputTokens(replyStyle,question,availableOutputTokens),modelOutputLimit,availableOutputTokens);
- const requestedReplyTokens=replyTokens;
+ const requestedReplyTokens=Math.min(outputLimits?.total??groundedOutputTokens(replyStyle,question,availableOutputTokens),modelOutputLimit,availableOutputTokens);
+ let replyTokens=Math.min(outputLimits?.segment??Math.min(256,requestedReplyTokens),modelOutputLimit,availableOutputTokens);
+ const retryBudget=async(retryMessages:{role:string;content:string}[],retryFormat:GenerationFormat,failure:string)=>{
+  const tokens=(await checkedAnswerCount(engine,retryMessages,retryFormat)).prompt_tokens;check();
+  const available=engine.manifest.contextTokens-tokens,budget=Math.min(replyTokens,available);
+  if(budget<128)throw Error(failure);
+  return budget;
+ };
  // Reserve one excerpt per required source before additional excerpts compete
  // for context; retain the original order within each group.
  if(toolEvidence?.used||inputReadings.length){
@@ -266,10 +272,10 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const candidate={...hit,label:'S'+(evidence.length+1)},trial=[...evidence,candidate];
   const proposed=input(trial),trialFormat=answerFormat(trial.length),count=await checkedAnswerCount(engine,proposed,trialFormat);check();
   if(count.prompt_tokens+replyTokens>engine.manifest.contextTokens){
-   const covered=evidence.some(item=>item.noteId===hit.noteId&&item.revision===hit.revision);
-   const required=!evidence.length||!covered&&(toolEvidence?.used&&toolEvidence.refs.some(ref=>ref.noteId===hit.noteId&&ref.revision===hit.revision)||inputReadings.some(ref=>ref.noteId===hit.noteId));
    const remaining=engine.manifest.contextTokens-count.prompt_tokens;
-   if(!required||remaining<256)continue;
+   if(remaining<256)continue;
+   // Reserve only a modest answer minimum while selecting evidence. Once the
+   // source set is stable, allocate the largest response that still fits.
    replyTokens=Math.min(replyTokens,remaining);
   }
   evidence.push(candidate);messages=proposed;format=trialFormat;
@@ -279,6 +285,9 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // still be reduced to the excerpts that fit.
  if(toolEvidence?.used&&toolEvidence.refs.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId&&hit.revision===ref.revision))&&!(toolEvidence.budgetExhausted&&evidence.length))throw Error('Context limit · fewer sources');
  if(inputReadings.some(ref=>!evidence.some(hit=>hit.noteId===ref.noteId)))throw Error('Context limit · fewer attachments');
+ const finalPromptTokens=evidence.length?(await checkedAnswerCount(engine,messages,format)).prompt_tokens:initialTokens;check();
+ replyTokens=Math.min(mode==='chat'?replyTokens:requestedReplyTokens,engine.manifest.contextTokens-finalPromptTokens);
+ if(replyTokens<1)throw Error('Answer context limit · narrow the request and retry');
  if(!dialogueOnly&&!evidence.length&&!operationalEvidence)throw Error(hits.length?'Context limit':'No matching notes');
  type ParsedAnswer={answer:string;sources:any[];status?:'insufficient_evidence'};
  const bindLabels=(labels:unknown)=>bindEvidenceLabels(labels,evidence);
@@ -319,14 +328,14 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const directQuote=/\b(?:quote|copy|extract)\b/iu.test(question);
   const fallbackInstruction=directQuote?' This is a direct quote request: select the complete sentence that states the requested fact. Do not return a title, heading, filename, or another sentence that does not address the requested fact.':' Answer the last user question.';
   const fallback=messages.map((message,index)=>index===answerSystemIndex?{...message,content:'Use only the supplied original excerpts and checked calculations. Do not invent facts or paraphrase. If an excerpt answers the question, return only a JSON object with one nonempty answer string that is an exact, contiguous substring of one supplied excerpt. If no excerpt answers it, return only {"status":"insufficient_evidence","answer":"explain the missing detail in the user language"}.'+fallbackInstruction}:message);
+  const fallbackFormat={type:'dialogue-answer',allowInsufficientEvidence:true} as const;
   // A protocol repair must not silently replace the user's answer budget with
   // a short-output preset. The same context and per-Send limits still apply.
-  const budget=replyTokens;
+  const budget=await retryBudget(fallback,fallbackFormat,'Invalid model JSON · retry');
   // A schema that accepts only {answer} would force an excerpt even when the
   // prompt explicitly permits insufficient evidence. Count and decode the
   // same bounded contract; tool-code generation keeps its strict answer-only form.
-  const fallbackFormat={type:'dialogue-answer',allowInsufficientEvidence:true} as const;
-  if((await checkedAnswerCount(engine,fallback,fallbackFormat)).prompt_tokens+budget>engine.manifest.contextTokens)throw Error('Invalid model JSON · retry');check();
+  check();
   const safe=await engine.generate(fallback,budget,fallbackFormat);check();if(safe.stopped)throw Error('Stopped');checkRepeatedOutput(safe.text);if(outputLimited(safe,budget))throw Error('Response exceeded model output limit');
   let value:unknown;try{value=JSON.parse(safe.text);}catch{throw Error('Invalid model JSON · retry');}
   if(value&&typeof value==='object'&&!Array.isArray(value)&&(value as any).status==='insufficient_evidence'&&typeof (value as any).answer==='string'&&(value as any).answer.trim()&&Object.keys(value).every(key=>key==='status'||key==='answer'))return {answer:(value as {answer:string}).answer.trim(),sources:[],status:'insufficient_evidence' as const};
@@ -365,8 +374,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const labelOnly=citationMismatch&&!calculations.length&&!clockReadings.length&&(labelLeak||implementationLeak||evidence.length>1||(mode==='summary'||fileLabelRetry)&&evidence.length===1);
    const instruction=labelLeak?` The previous answer exposed an internal source label such as S1 in user-facing answer prose. Remove routing labels from the answer completely; put supporting labels only in the JSON sources field because the application renders citations separately. Preserve the answer's facts, requested language, and level of detail.`:implementationLeak?' The previous answer exposed internal implementation details in user-facing prose. Rewrite it naturally for the user, omitting tool calls, record identifiers and protocol fields unless the user explicitly requested them. Preserve supported facts, requested language and level of detail; keep source labels only in the JSON sources field.':' The previous response did not match the required answer and source format. Answer the original question again. Return each supporting evidence label exactly once in sources; the host will bind those labels to the original file, revision, and excerpt. Do not copy quotation text. Cite only excerpts that support your answer.';
   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:(labelOnly?sourceLabelSystem:message.content)+instruction}:message);
-  if((await checkedAnswerCount(engine,retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error(citationMismatch?'Context limit · citation retry':'Invalid model JSON · retry');check();
-  generated=await engine.generate(retry,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
+  const retryTokens=await retryBudget(retry,format,citationMismatch?'Context limit · citation retry':'Invalid model JSON · retry');
+  generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
   try{if(labelOnly){parsed=parseLabelBindings(generated.text);summaryLabelBinding=true;}else parsed=parse(generated.text);if(citationMismatch)recovery='citation-retry';}catch(retryError){
    if(canRecover(retryError)||retryError instanceof SyntaxError&&(singleSourceRecovery||singleInputRecovery))parsed=await exactSingleSourceFallback(retryError);
    else throw retryError;
@@ -379,8 +388,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  const wantsOneSentence=mode!=='chat'&&parsed.status!=='insufficient_evidence'&&requestsOneSentence(question);
  if(wantsOneSentence&&hasMultipleSentences(parsed.answer)){
   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:(summaryLabelBinding?singleLabelSystem:message.content)+' The user explicitly requested exactly one sentence. Produce one sentence, with no second sentence or list. Keep the original source citation exact.'}:message);
-  if((await checkedAnswerCount(engine,retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Context limit · summary format retry');check();
-  const revised=await engine.generate(retry,replyTokens,format);check();if(revised.stopped)throw Error('Stopped');checkRepeatedOutput(revised.text);if(outputLimited(revised,replyTokens))throw Error('Response exceeded model output limit');
+  const retryTokens=await retryBudget(retry,format,'Context limit · summary format retry');
+  const revised=await engine.generate(retry,retryTokens,format);check();if(revised.stopped)throw Error('Stopped');checkRepeatedOutput(revised.text);if(outputLimited(revised,retryTokens))throw Error('Response exceeded model output limit');
   parsed=summaryLabelBinding?parseSingleLabelSummary(revised.text):parse(revised.text);if(hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');if(!summaryLabelBinding)recovery=undefined;
  }
  // A valid source label does not make an echoed instruction a summary.
@@ -391,8 +400,8 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   // but present the excerpt separately so small models do not summarize it.
   if(evidence.length!==1||calculations.length)throw Error('Summary repeated the request · try again');
   const retry=[...(guidance?[guidance]:[]),{role:'system',content:singleLabelSystem+' Summarize the excerpt, not the request. Do not repeat the request.'+(wantsOneSentence?' Write exactly one sentence.':'')},{role:'user',content:JSON.stringify({request:question,excerpt:evidence[0].quote,label:evidence[0].label})}];
-  if((await checkedAnswerCount(engine,retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Context limit · summary retry');check();
-  const revised=await engine.generate(retry,replyTokens,format);check();if(revised.stopped)throw Error('Stopped');checkRepeatedOutput(revised.text);if(outputLimited(revised,replyTokens))throw Error('Response exceeded model output limit');
+  const retryTokens=await retryBudget(retry,format,'Context limit · summary retry');
+  const revised=await engine.generate(retry,retryTokens,format);check();if(revised.stopped)throw Error('Stopped');checkRepeatedOutput(revised.text);if(outputLimited(revised,retryTokens))throw Error('Response exceeded model output limit');
   parsed=parseSingleLabelSummary(revised.text);recovery='citation-retry';
   if(echoedRequest())throw Error('Summary repeated the request · try again');
   if(wantsOneSentence&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
