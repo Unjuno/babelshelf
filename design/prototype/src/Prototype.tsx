@@ -656,9 +656,12 @@ export default function Prototype() {
   clearHold();skipClick.current=false;markTarget(null);
   // Mouse/trackpad clicks use a persistent menu; only touch/pen owns a hold gesture.
   if(e.pointerType!=='touch'&&e.pointerType!=='pen'){press.current=null;return;}
-  press.current={id:e.pointerId,x:e.clientX,y:e.clientY,held:false,moved:false};
+  const gesture={id:e.pointerId,x:e.clientX,y:e.clientY,held:false,moved:false};
+  press.current=gesture;
   e.currentTarget.setPointerCapture(e.pointerId);
-  holdTimer.current=setTimeout(()=>{if(press.current){press.current.held=true;showNav();}},80);
+  // Bind the timer to this exact gesture. A timeout already queued when a
+  // pointer is cancelled must never turn the next pointer's press into a hold.
+  holdTimer.current=setTimeout(()=>{if(press.current!==gesture)return;gesture.held=true;showNav();},80);
  }
  function slideHold(e:PointerEvent<HTMLButtonElement>){
   const p=press.current;if(!p||p.id!==e.pointerId)return;

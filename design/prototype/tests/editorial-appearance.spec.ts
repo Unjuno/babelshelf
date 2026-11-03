@@ -335,6 +335,40 @@ test('touch hold, slide and release selects the destination on the arc',async({p
  await cdp.detach();
 });
 
+test('a cancelled hold timer cannot take over the next touch gesture',async({page,context})=>{
+ await page.addInitScript(()=>{
+  const nativeSetTimeout=window.setTimeout.bind(window),nativeClearTimeout=window.clearTimeout.bind(window);
+  const queued:Array<()=>void>=[];let nextId=900000;
+  (window as Window&{__queuedHoldTimers?:Array<()=>void>;__captureHoldTimers?:boolean}).__queuedHoldTimers=queued;
+  window.setTimeout=((handler:TimerHandler,timeout?:number,...args:unknown[])=>{
+   if((window as Window&{__captureHoldTimers?:boolean}).__captureHoldTimers&&timeout===80&&typeof handler==='function'){
+    queued.push(()=>handler());return nextId++ as unknown as number;
+   }
+   return nativeSetTimeout(handler,timeout,...args);
+  }) as typeof window.setTimeout;
+  window.clearTimeout=((id:number)=>{if(id<900000)nativeClearTimeout(id);}) as typeof window.clearTimeout;
+ });
+ await page.setViewportSize({width:390,height:844});await page.goto('/');
+ await page.evaluate(()=>{(window as Window&{__captureHoldTimers?:boolean}).__captureHoldTimers=true;});
+ const input=page.getByRole('button',{name:'Input',exact:true}),inputBox=await input.boundingBox();expect(inputBox).not.toBeNull();
+ const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,configuration:'mobile'});
+ const touch=(box:{x:number;y:number;width:number;height:number})=>({x:box.x+box.width/2,y:box.y+box.height/2,id:1});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(inputBox!)]});
+ await expect.poll(()=>page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[]).length)).toBe(1);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(input).toHaveAttribute('aria-expanded','false');
+ const nextBox=await input.boundingBox();expect(nextBox).not.toBeNull();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(nextBox!)]});
+ await expect.poll(()=>page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[]).length)).toBe(2);
+ const staleTimerState=await page.evaluate(()=>{const timers=(window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[];const before=document.querySelector('.chat-home')?.getAttribute('aria-expanded');timers[0]();return{before,after:document.querySelector('.chat-home')?.getAttribute('aria-expanded')};});
+ expect(staleTimerState).toEqual({before:'false',after:'false'});
+ await page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[])[1]());
+ await expect(input).toHaveAttribute('aria-expanded','true');
+ const destination=page.getByRole('menuitem',{name:'Schedule',exact:true}),destinationBox=await destination.boundingBox();expect(destinationBox).not.toBeNull();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(destinationBox!)]});await expect(page.locator('.arc-choice')).toHaveText('Schedule');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.getByRole('heading',{name:'Schedule',exact:true})).toBeVisible();
+ await cdp.detach();
+});
+
 test('long dialogue initially shows recent turns and can reveal earlier turns without losing them',async({page})=>{
  await page.goto('/');
  await expect(page.getByRole('textbox',{name:'Message'})).toBeVisible();
