@@ -335,15 +335,15 @@ test('touch hold, slide and release selects the destination on the arc',async({p
  await cdp.detach();
 });
 
-test('repeated touch navigation ignores delayed zero-detail compatibility clicks',async({page,context})=>{
+test('repeated touch navigation ignores delayed compatibility clicks without consuming later activations',async({page,context})=>{
  await page.addInitScript(()=>{
-  // Reproduce a touch compatibility click delivered after pointerup with
-  // detail=0; it must not reopen the navigation after a selected route change.
+  // Reproduce a delayed touch compatibility click after pointerup. It must not
+  // reopen navigation after route changes or poison the next touch activation.
   let dispatchingDelayedClick=false;
   document.addEventListener('click',event=>{if(!dispatchingDelayedClick)event.stopImmediatePropagation();},true);
   document.addEventListener('pointerup',event=>{
    const button=(event.target as HTMLElement|null)?.closest('.chat-home');
-   if(button)setTimeout(()=>{dispatchingDelayedClick=true;button.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}));dispatchingDelayedClick=false;},300);
+   if(button){const {clientX,clientY}=event as PointerEvent;setTimeout(()=>{dispatchingDelayedClick=true;button.dispatchEvent(new PointerEvent('click',{bubbles:true,detail:1,pointerType:'touch',pointerId:1,clientX,clientY}));dispatchingDelayedClick=false;},300);}
   });
  });
  await page.setViewportSize({width:390,height:844});await page.goto('/');

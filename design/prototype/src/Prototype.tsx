@@ -644,24 +644,26 @@ export default function Prototype() {
  const files=useRef<HTMLInputElement>(null), mediaFiles=useRef<HTMLInputElement>(null), cameraFiles=useRef<HTMLInputElement>(null), toolPackageImport=useRef<HTMLInputElement>(null), noticeTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const [navOpen,setNavOpen]=useState(false),[navTarget,setNavTarget]=useState<Page|null>(null);
  const home=useRef<HTMLButtonElement>(null),navButtons=useRef<Partial<Record<Page,HTMLButtonElement|null>>>({});
- const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),skipClick=useRef(0),skipClickTimer=useRef<ReturnType<typeof setTimeout>|null>(null),targetRef=useRef<Page|null>(null);
+ const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),gestureClick=useRef<{x:number;y:number;until:number}|null>(null),skipClickTimer=useRef<ReturnType<typeof setTimeout>|null>(null),targetRef=useRef<Page|null>(null);
  const press=useRef<{id:number;x:number;y:number;held:boolean;moved:boolean}|null>(null);
  function clearHold(){if(holdTimer.current){clearTimeout(holdTimer.current);holdTimer.current=null;}}
- function clearGestureClickSuppression(){skipClick.current=0;if(skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}}
- function suppressGestureClick(){
+ function clearGestureClickSuppression(){gestureClick.current=null;if(skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}}
+ function suppressGestureClick(x:number,y:number){
   if(skipClickTimer.current)clearTimeout(skipClickTimer.current);
-  skipClick.current++;
-  // Some touch browsers dispatch a compatibility click several hundred
-  // milliseconds after pointerup. Count pending clicks so a late click from an
-  // earlier gesture cannot cancel the next gesture; keyboard navigation clears
-  // the guard explicitly, and the timer bounds how long it can remain active.
-  skipClickTimer.current=setTimeout(()=>{skipClick.current=0;skipClickTimer.current=null;},750);
+  const suppression={x,y,until:Date.now()+750};gestureClick.current=suppression;
+  // Ignore only a compatibility click at the completed touch/pen gesture's
+  // location. A counter can accumulate when pointercancel produces no click,
+  // then consume a later, intentional activation after several repetitions.
+  skipClickTimer.current=setTimeout(()=>{if(gestureClick.current===suppression)gestureClick.current=null;skipClickTimer.current=null;},750);
  }
- function consumeGestureClick(){
-  if(!skipClick.current)return false;
-  skipClick.current--;
-  if(!skipClick.current&&skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}
-  return true;
+ function consumeGestureClick(event:React.MouseEvent<HTMLButtonElement>){
+  const suppression=gestureClick.current;if(!suppression||Date.now()>suppression.until)return false;
+  const native=event.nativeEvent as unknown as PointerEvent;
+  if(native.pointerType==='mouse')return false;
+  if(native.pointerType==='touch'||native.pointerType==='pen')return true;
+  // Older engines may expose touch compatibility clicks as MouseEvent. Keep
+  // keyboard activation (detail=0) and clicks elsewhere fully functional.
+  return event.detail>0&&Math.hypot(event.clientX-suppression.x,event.clientY-suppression.y)<32;
  }
  function markTarget(next:Page|null){targetRef.current=next;setNavTarget(next);}
  function closeNav(){clearHold();press.current=null;setNavOpen(false);markTarget(null);}
@@ -693,16 +695,16 @@ export default function Prototype() {
  function finishHold(e:PointerEvent<HTMLButtonElement>){
   const p=press.current;if(!p||p.id!==e.pointerId)return;
   slideHold(e);
-  clearHold();press.current=null;suppressGestureClick();
+  clearHold();press.current=null;suppressGestureClick(e.clientX,e.clientY);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   if(p.held){const next=targetRef.current;if(next){closeNav();navigate(next);}else markTarget(null);}
   else if(!p.moved){closeNav();navigate('input');}
  }
- function cancelHold(){suppressGestureClick();closeNav();}
+ function cancelHold(e?:PointerEvent<HTMLButtonElement>){const p=press.current;suppressGestureClick(e?.clientX??p?.x??0,e?.clientY??p?.y??0);closeNav();}
  useEffect(()=>{const cancel=()=>closeNav();window.addEventListener('blur',cancel);return()=>window.removeEventListener('blur',cancel);},[]);
  function navKeys(e:KeyboardEvent<HTMLElement>){
-  if(skipClick.current)clearGestureClickSuppression();
-  if(e.key==='Escape'){e.preventDefault();if(press.current)suppressGestureClick();closeNav();home.current?.focus();return;}
+  if(gestureClick.current)clearGestureClickSuppression();
+  if(e.key==='Escape'){e.preventDefault();if(press.current)suppressGestureClick(press.current.x,press.current.y);closeNav();home.current?.focus();return;}
   if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft','Home','End'].includes(e.key)){
    e.preventDefault();showNav();const currentIndex=tabs.slice(1).findIndex(t=>navButtons.current[t.id]===document.activeElement);
    const index=e.key==='Home'?0:e.key==='End'?3:(currentIndex+(e.key==='ArrowUp'||e.key==='ArrowLeft'?-1:1)+4)%4;
@@ -1347,7 +1349,7 @@ export default function Prototype() {
   <nav aria-label="Main navigation" onKeyDown={navKeys} onBlur={e=>{if(!press.current&&!e.currentTarget.contains(e.relatedTarget))closeNav();}}>
    {navOpen&&<div className="nav-scrim" onPointerDown={()=>closeNav()} aria-hidden="true"/>}
    <button ref={home} className={'chat-home'+(page==='input'?' selected':'')+(navOpen?' menu-open':'')} aria-label="Input" aria-haspopup="menu" aria-expanded={navOpen} aria-controls={navOpen?'arc-navigation':undefined} aria-current={page==='input'?'page':undefined} onPointerDown={beginHold} onPointerMove={slideHold} onPointerUp={finishHold} onPointerCancel={cancelHold} onLostPointerCapture={()=>{if(press.current)cancelHold();}} onContextMenu={e=>e.preventDefault()}
-    aria-description="Click: open or close navigation. Touch: hold for 80 milliseconds, slide to a destination, then release. Release without a destination to open the menu." onClick={e=>{if(consumeGestureClick())return;if(navOpen){closeNav();navigate('input');}else{showNav();if(e.detail===0)requestAnimationFrame(()=>navButtons.current.memory?.focus());}}}><ChatCircle size={32} weight={page==='input'?'fill':'regular'}/>{notifications.some(n=>!n.read)&&<span className="unread-badge" aria-label="Unread notifications">{notifications.filter(n=>!n.read).length}</span>}</button>
+    aria-description="Click: open or close navigation. Touch: hold for 80 milliseconds, slide to a destination, then release. Release without a destination to open the menu." onClick={e=>{if(consumeGestureClick(e))return;if(navOpen){closeNav();navigate('input');}else{showNav();if(e.detail===0)requestAnimationFrame(()=>navButtons.current.memory?.focus());}}}><ChatCircle size={32} weight={page==='input'?'fill':'regular'}/>{notifications.some(n=>!n.read)&&<span className="unread-badge" aria-label="Unread notifications">{notifications.filter(n=>!n.read).length}</span>}</button>
    {navOpen&&<><div className="glass-nav"><svg className="nav-curve" viewBox="0 0 146 146" aria-hidden="true"><path className="curve-edge" d="M101.86 14.98 A75 75 0 0 1 14.98 101.86"/><path className="curve-surface" d="M101.86 14.98 A75 75 0 0 1 14.98 101.86"/></svg><div className="nav-items" id="arc-navigation" role="menu" aria-label="Go to">{tabs.slice(1).map(t=><button ref={el=>{navButtons.current[t.id]=el;}} key={t.id} role="menuitem" aria-label={t.label} aria-current={page===t.id?'page':undefined} className={(page===t.id?'selected ':'')+(navTarget===t.id?'gesture-selected':'')} onFocus={()=>markTarget(t.id)} onPointerMove={e=>{if(!press.current&&(e.movementX||e.movementY))markTarget(t.id);}} onClick={()=>{closeNav();navigate(t.id);}}>{t.id==='notifications'&&notifications.some(n=>!n.read)&&<span className="arc-unread-dot"/>}<t.icon size={23} weight={page===t.id||navTarget===t.id?'fill':'regular'}/></button>)}</div></div>{navTarget&&<div className="arc-choice" role="status">{tabs.find(t=>t.id===navTarget)?.label}</div>}</>}
 
   </nav>
