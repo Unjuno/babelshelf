@@ -209,14 +209,14 @@ self.addEventListener('message',event=>{
    try{
    for(let index=0;index<selected.length;index++){
     if(job.stopped)throw Error('Stopped');
-    const file=selected[index],key=poolKey(file),saved=await pool.match(key);let networkSource=false;const onBytes=read=>{if(networkSource)downloadedBytes+=read;if(!job.stopped&&epoch===networkEpoch)reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+read});};
+    const file=selected[index],key=poolKey(file),saved=await pool.match(key);let networkSource=false,networkRead=0;const onBytes=read=>{if(networkSource){downloadedBytes+=Math.max(0,read-networkRead);networkRead=read;}if(!job.stopped&&epoch===networkEpoch)reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+read});};
     if(saved&&await verified(saved,file,onBytes)){if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});continue;}
     if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
     if(!acquire)throw Error('Runtime not prepared · switch Online to prepare');
     if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)throw Error('Downloads are off');
     const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);let response;
     try{
-     networkSource=true;
+     networkSource=true;networkRead=0;
      response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
      if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
      if(!response.ok||!await verified(response,file,onBytes))throw Error('App asset verification failed');
