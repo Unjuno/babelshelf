@@ -41,12 +41,16 @@ test('media statuses separate sampled video model preparation from audio and ori
 
 test('text choices expose pinned download size without claiming device readiness',()=>{
  const small=textModelFileSize('2B'),standard=textModelFileSize('4B'),large=textModelFileSize('9B');
+ const desktop={userAgent:'Windows NT 10.0; Win64; x64',maxTouchPoints:0},iphone={userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Mobile',maxTouchPoints:5},ipad={userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X)',maxTouchPoints:5};
  assert.ok(small>0&&small<standard&&standard<large);
  assert.match(textModelChoiceHint('9B'),/2\.00 GB · experimental · PC prose unstable/);
  assert.match(textModelChoiceHint('4B'),/MB · model files/);
  assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0'),/1\.05 GB · GPU preferred · CPU fallback · not tested on this device/);
+ for(const device of [iphone,ipad])assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0',[],device),/GPU route required on mobile · not tested on this device/);
+ assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0',[],desktop),/GPU preferred · CPU fallback · not tested on this device/);
  assert.equal(textModelFileSize('lfm3-1.7b-q8-0'),1846238496);
  assert.match(textModelChoiceHint('lfm3-1.7b-q8-0'),/1\.85 GB · GPU preferred · CPU fallback · not tested on this device/);
+ assert.match(textModelChoiceHint('lfm3-1.7b-q8-0',[],iphone),/GPU route required on mobile · not tested on this device/);
  assert.equal(textModelFileSize('unknown'),null);
 });
 test('custom model choices disclose their app-owned adapter class and untested generation',()=>{
@@ -58,6 +62,7 @@ test('custom model choices disclose their app-owned adapter class and untested g
  assert.match(textModelChoiceHint(lfm.id,[lfm]),/2\.31 GB · CPU path · not tested on this device/);
  assert.match(textModelChoiceHint(qwen35.id,[qwen35]),/2\.31 GB · GPU path · not tested on this device/);
  assert.match(textModelChoiceHint(lfm3.id,[lfm3]),/2\.31 GB · GPU preferred · CPU fallback · not tested on this device/);
+ assert.match(textModelChoiceHint(lfm3.id,[lfm3],{userAgent:'Android 16; Mobile',maxTouchPoints:5}),/2\.31 GB · GPU route required on mobile · not tested on this device/);
 });
 test('the standard add list contains at least three prepared-path text choices and hides disconnected candidates',()=>{
  const available=settings.models.text.filter(model=>canAddModel('text',model.value));

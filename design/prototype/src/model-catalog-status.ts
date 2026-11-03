@@ -2,6 +2,7 @@ import {capabilityState,type LocalCapability} from './local-capabilities.ts';
 import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel,CustomVisionModel} from './preference-records.ts';
 import {textAssetInput} from './asset-activity.ts';
 import {textExecutionRoute} from './text-execution-route.ts';
+import {textBackendPolicy} from './text-device-policy.ts';
 
 export type ModelRole='text'|'decision'|'speech'|'ocr'|'vision';
 const roleCapability:Record<ModelRole,LocalCapability>={
@@ -43,17 +44,18 @@ export function textModelFileSize(id:string,customModels:readonly CustomLocalMod
   return null;
  }catch{return null;}
 }
-export function textModelChoiceHint(id:string,customModels:readonly CustomLocalModel[]=[]):string{
+export function textModelChoiceHint(id:string,customModels:readonly CustomLocalModel[]=[],device?:Parameters<typeof textBackendPolicy>[0]):string{
  const bytes=textModelFileSize(id,customModels);
  if(bytes===null)return 'Size unavailable';
  const size=bytes>=1e9?(bytes/1e9).toFixed(2)+' GB':Math.round(bytes/1e6)+' MB';
+ const lfm3BackendHint=textBackendPolicy(device)==='auto'?'GPU preferred · CPU fallback':'GPU route required on mobile';
  const custom=customModels.find(model=>model.id===id);
  if(custom){
-  if(custom.engine==='wllama-lfm3')return size+' · GPU preferred · CPU fallback · not tested on this device';
+  if(custom.engine==='wllama-lfm3')return size+' · '+lfm3BackendHint+' · not tested on this device';
   const route=textExecutionRoute(id,customModels),execution=route?.backend==='webgpu'?'GPU path':route?.backend==='cpu-wasm'?'CPU path':'Runtime unavailable';
   return size+' · '+execution+' · not tested on this device';
  }
- if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-q8-0')return size+' · GPU preferred · CPU fallback · not tested on this device';
+ if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-q8-0')return size+' · '+lfm3BackendHint+' · not tested on this device';
  if(id==='9B')return size+' · experimental · PC prose unstable';
  if(id==='lfm25-230m-qad-q4-0'||id==='lfm25-350m-qad-q4-0')return size+' · experimental · diagnostic generation only';
  return size+' · model files';
