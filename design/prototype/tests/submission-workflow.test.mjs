@@ -663,7 +663,7 @@ test('a repeated continuation keeps the input available for retry without saving
  const f=fixture(),c=createSubmissionController(),restored=[],question='私が直前に言った挨拶は何ですか？';let calls=0;
  const previous={id:'answer',user:'こんにちは',answer:'こんにちは！'};
  await f.services.saveDialogue({...emptyDialogue(),turns:[previous],currentResult:{turnId:'answer'}});
- f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'A repeated model response with more than thirty-two characters.',finishReason:++calls===1?'length':'stop'})};
+ f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:2048,maxOutputTokens:768,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'A repeated model response with more than thirty-two characters.',finishReason:++calls===1?'length':'stop'})};
  f.view.restore=value=>restored.push(value);
  assert.equal(await c.run(run=>executeSubmission({text:question,attachments:[]},f.services,f.view,run)),'failed');
  assert.match(f.current().turns.at(-1).status,/continuation repeated/i);

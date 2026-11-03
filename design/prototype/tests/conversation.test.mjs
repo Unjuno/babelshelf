@@ -558,13 +558,13 @@ test('source-free dialogue generates prose without a JSON wrapper or file citati
  const store={all:async()=>[],search:async()=>[]};let seen;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{seen={messages,budget,format};return {text:'A blue lantern lit the road.\n\nThe traveler kept walking.',finishReason:'stop',outputTokens:18};}};
  const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write two paragraphs.',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});
-  assert.match(seen.messages[0].content,/plain text/);assert.equal(seen.format,'prose');assert.equal(seen.budget,1024);
+  assert.match(seen.messages[0].content,/plain text/);assert.equal(seen.format,'prose');assert.ok(seen.budget>1024,'an uncapped runtime may use more than the former first-segment cap');
  assert.equal(reply.answer,'A blue lantern lit the road.\n\nThe traveler kept walking.');assert.deepEqual(reply.sources,[]);
 });
 test('a token-limited dialogue reply continues within a fixed bound, then fails without committing',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Only the beginning',finishReason:'length'};}};
-  await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/output limit/);assert.equal(calls,2,'continuation stops when the remaining model context cannot fit another bounded segment');
+  await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/output limit/);assert.equal(calls,1,'an uncapped runtime gets the complete context allowance in one call; incomplete output fails closed');
 });
 test('a dialogue reply cut to the remaining turn budget is rejected when the runtime omits finishReason',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
@@ -591,18 +591,18 @@ test('a punctuation-only model collapse fails after one generation instead of re
 test('a continuation that repeats the entire previous segment is not presented as a completed answer',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const paragraph='A long paragraph describing the emergency water supplies and their location.';
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:paragraph,finishReason:++calls===1?'length':'stop'})};
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,maxOutputTokens:768,models:[],runtime:{}},generate:async()=>({text:paragraph,finishReason:++calls===1?'length':'stop'})};
  await assert.rejects(groundedAnswer({store,engine:e},{model:'4B',question:'Write a detailed answer.',mode:'chat',context,scope:{kind:'conversation'}}),/continuation repeated/i);
  assert.equal(calls,2);
 });
 test('a capped prose segment continues from its prior text without adding citations or tools',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{calls++;assert.equal(format,'prose');if(calls===1)return {text:'The lantern glowed. ',finishReason:'length'};assert.match(messages.at(-2).content,/lantern glowed/);assert.match(messages.at(-1).content,/Continue/);return {text:'Then dawn came.',finishReason:'stop'};}};
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,maxOutputTokens:768,models:[],runtime:{}},generate:async(messages,budget,format)=>{calls++;assert.equal(format,'prose');if(calls===1)return {text:'The lantern glowed. ',finishReason:'length'};assert.match(messages.at(-2).content,/lantern glowed/);assert.match(messages.at(-1).content,/Continue/);return {text:'Then dawn came.',finishReason:'stop'};}};
  const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}});assert.equal(reply.answer,'The lantern glowed. Then dawn came.');assert.deepEqual(reply.sources,[]);assert.equal(calls,2);
 });
 test('a second continuation sees all earlier answer segments when they fit the context',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async(messages)=>{
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,maxOutputTokens:768,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async(messages)=>{
   calls++;if(calls===1)return {text:'First fact. ',finishReason:'length'};
   if(calls===2)return {text:'Second fact. ',finishReason:'length'};
   assert.equal(messages.at(-2).content,'First fact. Second fact. ');return {text:'Conclusion.',finishReason:'stop'};
@@ -2306,7 +2306,7 @@ test('pinned-file terminal answers share the initial snapshot but revalidate bef
 
 test('prose streams before generation settles and continuation previews retain the earlier answer',async()=>{
  const store={all:async()=>[],search:async()=>[]},previews=[];let calls=0,emit,finish;
- const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async(_messages,_budget,format,onPreview)=>{
+ const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:4096,maxOutputTokens:768,models:[],runtime:{}},count:async()=>({prompt_tokens:100}),generate:async(_messages,_budget,format,onPreview)=>{
   assert.equal(format,'prose');calls++;
   if(calls===1){onPreview('<thi');onPreview('<think>private reasoning</think>The lantern');return {text:'The lantern glowed. ',finishReason:'length'};}
   emit=onPreview;return new Promise(resolve=>{finish=resolve;});
@@ -2414,7 +2414,7 @@ test('invalid initial and continuation token counts never reach generation with 
  const store={all:async()=>[],search:async()=>[]};
  for(const invalid of [NaN,Infinity,-1,0.5])for(const atContinuation of [false,true]){
   let calls=0;
-  const runtime={...engine(4096),loaded:'custom',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:atContinuation&&calls===0?100:invalid}),generate:async()=>{calls++;return {text:'Beginning. ',finishReason:'length'};}};
+  const runtime={...engine(4096),loaded:'custom',assets:{},manifest:{contextTokens:4096,maxOutputTokens:768,models:[],runtime:{}},count:async()=>({prompt_tokens:atContinuation&&calls===0?100:invalid}),generate:async()=>{calls++;return {text:'Beginning. ',finishReason:'length'};}};
   await assert.rejects(groundedAnswer({store,engine:runtime},{model:'custom',question:'Write a detailed story.',mode:'chat',scope:{kind:'conversation'}}),/Invalid token count/);
   assert.equal(calls,atContinuation?1:0);
  }

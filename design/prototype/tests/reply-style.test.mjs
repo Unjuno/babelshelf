@@ -16,13 +16,13 @@ test('reply style is a finite presentation preference and never overrides a dire
 
 test('dialogue output budgets allow complete answers by default and obey explicit length within available context',()=>{
  assert.deepEqual(dialogueOutputLimits('concise','What time is it?',4096),{total:256,segment:256});
- assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',8192),{total:8192,segment:1024},'ordinary replies can continue up to remaining context in responsive segments');
- assert.deepEqual(dialogueOutputLimits('detailed','What time is it?',8192),{total:8192,segment:1024});
- for(const question of ['Analyze the design.','Review the architecture and assess its trade-offs.','Compare the two approaches.','この設計を分析して。','長所と短所を比較して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,8192),{total:8192,segment:1024},question);
- assert.deepEqual(dialogueOutputLimits('concise','Analyze the design.',4096),{total:4096,segment:1024},'an analytical request takes precedence over a concise preference');
+ assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',8192),{total:8192,segment:8192},'ordinary replies may request the full remaining context; the runtime applies its model-specific cap');
+ assert.deepEqual(dialogueOutputLimits('detailed','What time is it?',8192),{total:8192,segment:8192});
+ for(const question of ['Analyze the design.','Review the architecture and assess its trade-offs.','Compare the two approaches.','この設計を分析して。','長所と短所を比較して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,8192),{total:8192,segment:8192},question);
+ assert.deepEqual(dialogueOutputLimits('concise','Analyze the design.',4096),{total:4096,segment:4096},'an analytical request takes precedence over a concise preference');
  assert.deepEqual(dialogueOutputLimits('balanced','Analyze the design.',900),{total:900,segment:900},'analysis output remains bounded by available context');
- assert.deepEqual(dialogueOutputLimits('concise','Explain this in detail.',8192),{total:8192,segment:1024},'an explicit long request takes precedence over the concise preference');
- assert.deepEqual(dialogueOutputLimits('balanced','Write two paragraphs.',8192),{total:8192,segment:1024},'an explicit paragraph count is treated as a length request');
+ assert.deepEqual(dialogueOutputLimits('concise','Explain this in detail.',8192),{total:8192,segment:8192},'an explicit long request takes precedence over the concise preference');
+ assert.deepEqual(dialogueOutputLimits('balanced','Write two paragraphs.',8192),{total:8192,segment:8192},'an explicit paragraph count is treated as a length request');
  assert.deepEqual(dialogueOutputLimits('detailed','簡潔に一言で答えて',4096),{total:256,segment:256},'an explicit short request takes precedence over the detailed preference');
  for(const question of ['Write two sentences about a blue lantern.','Write exactly two sentences.','Use a two-sentence answer.','二文で答えて。','2文で説明して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:256,segment:256},question);
  assert.deepEqual(dialogueOutputLimits('detailed','Explain this in detail.',600),{total:600,segment:600},'available context remains the hard upper bound');
@@ -44,7 +44,7 @@ test('explicit one-sentence requests are recognized across languages and clipped
 
 test('a short introduction followed by detail is not clipped to one sentence',async()=>{
  for(const question of ['一文で要約し、その後詳しく説明して。','Summarize in one sentence, then explain in detail.']){
-  assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:4096,segment:1024});
+  assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:4096,segment:4096});
   assert.equal(requestsOneSentence(question),false);
   const engine={loaded:'test',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async()=>({text:'Summary. Detailed explanation.'})};
   const result=await groundedAnswer({store:{all:async()=>[],search:async()=>[]},engine},{model:'test',question,mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});

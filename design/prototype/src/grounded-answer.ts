@@ -67,7 +67,7 @@ async function continueDialogue(engine:TextRuntime,messages:{role:string;content
    previous=Array.from(previous).slice(Math.ceil(Array.from(previous).length/2)).join('');
   }
   if(available<128)throw Error('Response exceeded model context limit');
-  const budget=Math.min(768,engine.manifest.maxOutputTokens??768,available,totalBudget-spent);if(budget<1)throw Error('Response exceeded model context limit');result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
+  const budget=Math.min(engine.manifest.maxOutputTokens??available,available,totalBudget-spent);if(budget<1)throw Error('Response exceeded model context limit');result=await engine.generate(continuation,budget,'prose',onPreview?text=>onPreview(parts.join('')+text):undefined);currentBudget=budget;check();if(result.stopped)throw Error('Stopped');checkRepeatedOutput(result.text);
   if(!result.text.trim())throw Error('Empty model continuation');
   const previousSegment=parts.at(-1)!.trim(),nextSegment=result.text.trim();
   if(previousSegment.length>=32&&nextSegment===previousSegment)throw Error('Model continuation repeated · retry');

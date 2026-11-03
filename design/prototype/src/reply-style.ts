@@ -32,15 +32,16 @@ export function dialogueOutputLimits(style:unknown,question:string,availableToke
  const explicitLong=explicitLongRequest.test(text);
  const analytical=analyticalRequest.test(text);
  let total:number,segment:number;
- if(explicitLong&&explicitShort&&additionalStage.test(text)){total=availableTokens;segment=Math.min(1024,total);}
+ if(explicitLong&&explicitShort&&additionalStage.test(text)){total=availableTokens;segment=total;}
  else if(explicitShort){total=256;segment=256;}
- else if(explicitLong){total=availableTokens;segment=Math.min(1024,total);}
- else if(analytical||style==='detailed'){total=availableTokens;segment=Math.min(1024,total);}
+ else if(explicitLong){total=availableTokens;segment=total;}
+ else if(analytical||style==='detailed'){total=availableTokens;segment=total;}
  else if(style==='concise'){total=256;segment=256;}
  // Ordinary and detailed answers are not capped by a product-wide token
  // preset. The runtime's model limit and the prompt's remaining context are
- // authoritative; segmented continuation keeps streaming responsive.
- else {total=availableTokens;segment=Math.min(1024,total);}
+ // authoritative. If the runtime reports a shorter output cap, generation can
+ // continue within the remaining context and the per-Send inference budget.
+ else {total=availableTokens;segment=total;}
  total=Math.min(total,availableTokens);
  return {total,segment:Math.min(segment,total)};
 }
