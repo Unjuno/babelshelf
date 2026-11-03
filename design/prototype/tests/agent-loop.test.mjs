@@ -83,9 +83,12 @@ test('native tool batches are bounded by the live turn budget, not a fixed eight
  assert.equal(executions,9);assert.equal(result.calls.length,9);assert.equal(result.attempts.at(-1).arguments.query,'query-8');
 });
 
-test('agent loop rejects an over-budget batch before executing any member',async()=>{
- let executions=0;const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,maxToolCalls:1,plan:async()=>({kind:'tools',calls:[{kind:'tool',tool:'memory.search',arguments:{query:'a'}},{kind:'tool',tool:'memory.search',arguments:{query:'b'}}]}),execute:async()=>{executions++;return [];},onBudgetExhausted:()=>({partial:true}),check:()=>{}});
- assert.equal(result.final.partial,true);assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'tool-limit');assert.equal(executions,0);
+test('a finite call budget executes the allowed batch prefix and labels the omitted calls',async()=>{
+ let executions=0,seen;
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,maxToolCalls:1,plan:async history=>{if(!history.length)return {kind:'tools',calls:[{kind:'tool',tool:'memory.search',arguments:{query:'a'}},{kind:'tool',tool:'memory.search',arguments:{query:'b'}}]};seen=structuredClone(history);return {kind:'final',value:'answer from the first result'};},execute:async call=>{executions++;return [{query:call.arguments.query}];},check:()=>{}});
+ assert.equal(result.final,'answer from the first result');assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'tool-limit');assert.equal(executions,1);
+ assert.deepEqual(result.calls.map(call=>call.arguments.query),['a']);assert.deepEqual(seen.map(item=>item.error?.code??'success'),['success','tool_limit']);
+ assert.equal(result.attempts[0].batchId,result.attempts[1].batchId);
 });
 
 test('a final plan exits without invoking a tool',async()=>{

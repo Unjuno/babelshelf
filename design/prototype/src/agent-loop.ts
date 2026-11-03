@@ -14,7 +14,7 @@ export type AgentToolCall={kind:'tool';tool:string;arguments:Record<string,unkno
 export type AgentToolBatch={kind:'tools';calls:AgentToolCall[];assistantContent?:string};
 export type AgentPlan<Final> = AgentToolCall|AgentToolBatch|{kind:'final';value:Final};
 export type AgentToolResult={tool:string;arguments:Record<string,unknown>;result:unknown;batchId?:string;assistantContent?:string};
-export type AgentToolAttempt=AgentToolResult&{error?:{code:'invalid_tool_input'|'tool_execution'|'search_snapshot_changed'|'result_too_large'|'no_progress_loop'|'batch_not_executed'}};
+export type AgentToolAttempt=AgentToolResult&{error?:{code:'invalid_tool_input'|'tool_execution'|'search_snapshot_changed'|'result_too_large'|'no_progress_loop'|'batch_not_executed'|'tool_limit'}};
 export class AgentSearchSnapshotChangedError extends Error {constructor(){super('Search changed · restart');this.name='AgentSearchSnapshotChangedError';}}
 
 /** Only the trusted pre-execution schema check may issue this recoverable error. */
@@ -111,7 +111,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  if(!Array.isArray(input.allowedTools)||new Set(input.allowedTools.map(tool=>tool.id)).size!==input.allowedTools.length||input.allowedTools.some(tool=>!tool||typeof tool.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(tool.id)||tool.effect!=='read'||tool.network!=='none'))throw new AgentProtocolError('Invalid agent tool allowlist');
  const maxToolCalls=input.maxToolCalls??null,maxResultChars=input.maxResultChars??MAX_AGENT_RESULT_CHARS;
  if(maxToolCalls!==null&&(!Number.isSafeInteger(maxToolCalls)||maxToolCalls<0)||!Number.isSafeInteger(maxResultChars)||maxResultChars<256||maxResultChars>MAX_AGENT_RESULT_CHARS)throw new AgentProtocolError('Invalid agent profile budget');
- const allowed=new Set(input.allowedTools.map(tool=>tool.id)),history:AgentToolAttempt[]=[];
+ const allowed=new Set(input.allowedTools.map(tool=>tool.id)),history:AgentToolAttempt[]=[];let budgetExhausted=false,budgetCause:'tool-limit'|undefined;
  for(;;){
   input.check();
   // A planner must not be able to change evidence from an earlier step.
@@ -127,7 +127,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   if(!validRecord(plan)||typeof plan.kind!=='string')throw new AgentProtocolError('Invalid agent plan');
   if(plan.kind==='final'){
    if(!exactKeys(plan,['kind','value']))throw new AgentProtocolError('Invalid agent final plan');
-   return {final:plan.value as Final,calls:usableHistory(history).filter(item=>!item.error),attempts:history};
+   return {final:plan.value as Final,calls:usableHistory(history).filter(item=>!item.error),attempts:history,...(budgetExhausted?{budgetExhausted:true,budgetCause}: {})};
   }
   let calls:AgentToolCall[];
   const contentIsValid=(value:unknown)=>value===undefined||typeof value==='string'&&value.length<=32768;
@@ -136,14 +136,21 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   else if(plan.kind==='tools'&&toolKeys(plan).join(',')==='calls,kind'&&contentIsValid(plan.assistantContent)&&Array.isArray(plan.calls)&&plan.calls.length>=2&&plan.calls.every(call=>validRecord(call)&&exactKeys(call,['kind','tool','arguments'])&&call.kind==='tool'&&typeof call.tool==='string'&&allowed.has(call.tool)&&validRecord(call.arguments)))calls=plan.calls.map(call=>({...call,...(plan.assistantContent?{assistantContent:plan.assistantContent}:{})}));
   else throw new AgentProtocolError('Tool is not registered or call is invalid');
   if(calls.some(call=>call.kind!=='tool'||typeof call.tool!=='string'||!allowed.has(call.tool)||!validRecord(call.arguments)||!contentIsValid(call.assistantContent)))throw new AgentProtocolError('Tool is not registered or call is invalid');
+  const plannedCalls=calls;let overBudgetCalls:AgentToolCall[]=[];
   if(maxToolCalls!==null&&history.length+calls.length>maxToolCalls){
-   if(input.onBudgetExhausted){
-    const final=await input.onBudgetExhausted(structuredClone(usableHistory(history)));input.check();
-    return {final,calls:usableHistory(history).filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'tool-limit'};
+   const remaining=maxToolCalls-history.length;
+   if(remaining<=0){
+    if(input.onBudgetExhausted){
+     const final=await input.onBudgetExhausted(structuredClone(usableHistory(history)));input.check();
+     return {final,calls:usableHistory(history).filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'tool-limit'};
+    }
+    throw new AgentProtocolError('Agent tool call limit reached');
    }
-   throw new AgentProtocolError('Agent tool call limit reached');
+   // Calls in a native batch are independent, sequential proposals. Use the
+   // remaining user-authorized slots and return the rest as explicit skips.
+   overBudgetCalls=calls.slice(remaining);calls=calls.slice(0,remaining);budgetExhausted=true;budgetCause='tool-limit';
   }
-  const batchId=calls.length>1?`batch-${history.length+1}`:undefined;
+  const batchId=plannedCalls.length>1?`batch-${history.length+1}`:undefined;
   let abortedBatchAt:number|undefined;
   for(let callIndex=0;callIndex<calls.length;callIndex++){
    const proposed=calls[callIndex];
@@ -196,5 +203,6 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   // stops it partway through, return one explicit non-execution result for each
   // remaining call so native tool-call/result history stays well-formed.
   if(abortedBatchAt!==undefined)for(const proposed of calls.slice(abortedBatchAt+1))history.push({tool:proposed.tool,arguments:structuredClone(proposed.arguments),result:null,error:{code:'batch_not_executed'},...(proposed.assistantContent?{assistantContent:proposed.assistantContent}:{}),...(batchId?{batchId}:{})});
+  for(const proposed of overBudgetCalls)history.push({tool:proposed.tool,arguments:structuredClone(proposed.arguments),result:null,error:{code:'tool_limit'},...(proposed.assistantContent?{assistantContent:proposed.assistantContent}:{}),...(batchId?{batchId}:{})});
  }
 }
