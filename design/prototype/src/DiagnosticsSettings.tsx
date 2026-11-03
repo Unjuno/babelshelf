@@ -118,6 +118,7 @@ export function DiagnosticsSettings(props:Props){
      {typeof generation.expectedModelBytes==='number'&&<div className="capability-row"><span>Model size · pinned</span><span>{(generation.expectedModelBytes/1024**2).toFixed(1)} MB</span></div>}
      {typeof generation.downloadedBytes==='number'&&<div className="capability-row"><span>Model downloaded</span><span>{(generation.downloadedBytes/1024**2).toFixed(1)} MB</span></div>}
      {typeof generation.runtimeDownloadedBytes==='number'&&<div className="capability-row"><span>Runtime downloaded</span><span>{(generation.runtimeDownloadedBytes/1024**2).toFixed(1)} MB</span></div>}
+     {typeof generation.runtimeBytesRead==='number'&&<div className="capability-row"><span>Runtime bytes read</span><span>{(generation.runtimeBytesRead/1024**2).toFixed(1)} MB · includes cache</span></div>}
      {typeof generation.runtimePreparationDurationMs==='number'&&<div className="capability-row"><span>Runtime check / setup</span><span>{(generation.runtimePreparationDurationMs/1000).toFixed(1)} s</span></div>}
      {typeof generation.modelStartToFirstTextMs==='number'&&<div className="capability-row"><span>Run → first text</span><span>{(generation.modelStartToFirstTextMs/1000).toFixed(1)} s</span></div>}
      {typeof generation.warmTokensPerSecond==='number'&&<div className="capability-row"><span>Warm speed</span><span>{generation.warmTokensPerSecond.toFixed(2)} tokens/s</span></div>}

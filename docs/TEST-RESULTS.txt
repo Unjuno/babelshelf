@@ -1,3 +1,11 @@
+2026-11-04 — Retain runtime read-progress measurement after a failed device run.
+An iPhone Full cycle report showed a 1,764,321 ms runtime-setup failure before
+model preparation or generation, with no specific exception cause. Added bounded
+`runtimeBytesRead` to the Full-cycle report and Developer summary separately
+from `runtimeDownloadedBytes`. Read bytes can include cache and partial streams;
+they do not imply integrity success. Local validation, report-copy and UI checks
+are pending; no device rerun or model acquisition occurred.
+
 2026-11-04 — Make long runtime preparation visibly progress within a single asset.
 An iPhone Full cycle report showed runtime setup lasting 1,764,321 ms before a
 generic failure; the report did not say how many runtime bytes arrived. Full

@@ -1,4 +1,16 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · retain runtime read progress in failed device reports
+
+The supplied iPhone report stopped during runtime setup after 1,764,321 ms,
+before model-file preparation or generation. It came from Safari, not the
+installed Home Screen app, and gives no specific exception cause. Full-cycle
+reports now retain runtime bytes read separately from network bytes downloaded,
+and Developer shows that distinction after a run. Read bytes can include cache
+and partial streams; they do not imply integrity success. Local regressions and
+clean-checkout CI are pending for this follow-up. Request one installed-PWA
+rerun only after its build is available, to capture this field and confirm the
+long-prepare progress UI. No device cause or model compatibility is inferred.
+
 ### 2026-11-04 · show byte movement during long runtime preparation
 
 The Full cycle Developer view already shows its active step and elapsed time.

@@ -339,6 +339,12 @@ test('model test failures preserve a bounded failure stage without storing excep
  assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...value.modelGeneration,failureStage:'PRIVATE_PROMPT'}})),/Invalid/);
 });
 
+test('full-cycle report preserves bounded runtime bytes read separately from network download bytes',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'fail',model:'local',modelRevision:'r',runtimeRevision:'rt',testMode:'full-cycle',failureStage:'runtime-setup',failureType:'runtime-network-error',runtimeBytesRead:73400320,runtimeDownloadedBytes:67108864}};
+ writeSavedDeviceTestReport(storage,JSON.stringify(base));const saved=JSON.parse(readSavedDeviceTestReport(storage));assert.equal(saved.modelGeneration.runtimeBytesRead,73400320);assert.equal(saved.modelGeneration.runtimeDownloadedBytes,67108864);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,runtimeBytesRead:-1}})),/Invalid/);
+});
+
 test('unrelated and historical cache buckets cannot pass the current-build cache check',async()=>{
  const env={appBuild:'0123456789abcdef',storage:memoryStorage(),indexedDB:null,gpu:null};
  const check=async(build,keys)=>(await runDeviceDiagnostics({...env,appBuild:build,cacheStorage:{keys:async()=>keys}})).checks.find(item=>item.id==='offline-cache');
