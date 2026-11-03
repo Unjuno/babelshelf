@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · add focused Developer diagnostics and consistent overviews
+
+Developer test options now include Offline readiness, Storage health and Runtime support alongside App & storage, Model readiness and the three model tests. Each option explains its checks before running; saved results show the same scope with ready/review counts. Result areas were split into 13 clearer categories, including separate secure-context, service-worker and installed-launch signals. All diagnostics remain local and do not load a model; offline launch, actual GPU execution and model fit are still stated as unproven where appropriate. The focused unit group passed 68/68, Developer UI passed 32/32, `npm run check` passed, and the product build verified 165 assets (shell `35aedf1d8372164b`). Physical-device validation remains open.
+
 ### 2026-11-03 · distinguish end-to-end and runtime first-text timings
 
 The Full cycle result can report both elapsed time from Run to first text (including app checks, preparation and loading) and the inference runtime's `visibleTextTtftMs`. The latter was labeled only `First text`, which obscured that these are different intervals. It is now labeled `Runtime · first text`; a browser regression proves a 12 s end-to-end value and 0.84 s runtime value remain distinct. Developer diagnostic UI passed 31/31, `npm run check` passed, production packaging verified 165 assets (shell `b5094f783a4ad13b`), and app acceptance passed 8/8. These remain one-run measurements, not sustained speed or cross-device evidence.

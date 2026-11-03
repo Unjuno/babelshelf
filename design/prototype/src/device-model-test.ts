@@ -1,7 +1,7 @@
 import type {GenerationFormat,GenerationResult} from './text-inference.ts';
 import {parseDeviceModelSmokeAnswer} from './device-diagnostics.ts';
 export type DeviceModelTestMode='quick'|'performance'|'full-cycle';
-export type DeviceTestMode='app'|'model-readiness'|DeviceModelTestMode;
+export type DeviceTestMode='app'|'offline-readiness'|'storage-health'|'runtime-support'|'model-readiness'|DeviceModelTestMode;
 export class DeviceModelTestError extends Error{
  readonly code:'stopped'|'incomplete-output'|'empty-output';
  constructor(code:'stopped'|'incomplete-output'|'empty-output',message:string){super(message);this.name='DeviceModelTestError';this.code=code;}

@@ -57,18 +57,27 @@ test('every test type has a visible overview and App & storage runs without a mo
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByRole('region',{name:'Quick overview'})).toContainText('one short reply');
  await page.getByText('Test options · Quick',{exact:true}).click();
- for(const mode of ['App & storage','Model readiness','Quick','Performance','Full cycle'])await expect(page.getByRole('button',{name:mode,exact:true})).toBeVisible();
+ for(const mode of ['App & storage','Offline readiness','Storage health','Runtime support','Model readiness','Quick','Performance','Full cycle'])await expect(page.getByRole('button',{name:mode,exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Model readiness',exact:true}).click();await expect(page.getByRole('region',{name:'Model readiness overview'})).toContainText('No model load, generation, or download');
  await page.getByRole('button',{name:'Check model readiness',exact:true}).click();await expect(page.getByRole('region',{name:'Last test overview · Model readiness'})).toBeVisible();
  let readinessReport=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(readinessReport.deviceTestMode).toBe('model-readiness');expect(readinessReport.modelGeneration).toBeUndefined();
- const summaries=page.getByRole('region',{name:'Check results · 11 areas'});await expect(summaries).toBeVisible();for(const area of ['PWA access','Build identity','Offline cache','Browser storage','Memory workflow','Model coordination','WASM runtime','GPU capability','Model files','Model reply','Offline restart'])await expect(summaries.getByText(area,{exact:true})).toBeVisible();
+ const summaries=page.getByRole('region',{name:'Check results · 13 areas'});await expect(summaries).toBeVisible();for(const area of ['Secure context','Service worker','Installed launch','Build identity','Offline cache','Browser storage','Memory workflow','Model coordination','WASM runtime','GPU capability','Model files','Model reply','Offline restart'])await expect(summaries.getByText(area,{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'App & storage',exact:true}).click();
  const overview=page.getByRole('region',{name:'App & storage overview'});await expect(overview).toContainText('No model load or download');
  await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Run app checks',exact:true}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
  const report=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(report.deviceTestMode).toBe('app');expect(report.modelGeneration).toBeUndefined();
  await expect(page.getByRole('region',{name:'Last test overview · App & storage'})).toContainText('No model load or download');
- await expect(page.getByRole('region',{name:'Check results · 11 areas'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Check results · 13 areas'})).toBeVisible();
+});
+
+test('focused Offline, Storage and Runtime diagnostics each show a result overview',async({page})=>{
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · Quick',{exact:true}).click();
+ for(const [label,button,focus] of [['Offline readiness','Check offline readiness','Offline cache'],['Storage health','Check storage','Browser storage'],['Runtime support','Check runtime support','GPU capability']] as const){
+  await page.getByRole('button',{name:label,exact:true}).click();await expect(page.getByRole('region',{name:`${label} overview`})).toContainText(focus);
+  await page.getByRole('button',{name:button,exact:true}).click();const result=page.getByRole('region',{name:`Last test overview · ${label}`});await expect(result).toContainText('areas');await expect(result).toContainText('ready');
+  const report=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(report.deviceTestMode).toBe(label==='Offline readiness'?'offline-readiness':label==='Storage health'?'storage-health':'runtime-support');expect(report.modelGeneration).toBeUndefined();
+ }
 });
 
 test('legacy timing reports use their workload when testMode is absent',async({page})=>{

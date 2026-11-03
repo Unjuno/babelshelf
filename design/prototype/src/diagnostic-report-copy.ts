@@ -75,7 +75,7 @@ function projectSelectedModel(value:unknown):Record<string,unknown>|undefined{
 }
 function projectDiagnosticReport(report:Record<string,unknown>):Record<string,unknown>{
  const result:Record<string,unknown>=pickFields(report,['schema','createdAt','appBuild','bundle','platform','userAgent','standalone','connectionMode','onlineSignal'])??{};
- if(['app','model-readiness','quick','performance','full-cycle'].includes(String(report.deviceTestMode)))result.deviceTestMode=report.deviceTestMode;
+ if(['app','offline-readiness','storage-health','runtime-support','model-readiness','quick','performance','full-cycle'].includes(String(report.deviceTestMode)))result.deviceTestMode=report.deviceTestMode;
  for(const key of ['createdAt','appBuild','bundle','platform','userAgent'])if(result[key]!==undefined&&typeof result[key]!=='string')delete result[key];
  for(const key of ['standalone','onlineSignal'])if(result[key]!==undefined&&typeof result[key]!=='boolean')delete result[key];
  if(typeof result.createdAt!=='string')delete result.createdAt;
