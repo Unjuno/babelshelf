@@ -15,7 +15,7 @@ export function HarnessProfileReview({proposal}:{proposal:CorrectionProposal}){
   <div className="capability-row"><span>Call limit</span><span>{profile.maxToolCalls===null?'No profile limit':profile.maxToolCalls}</span></div>
   <div className="capability-row"><span>Result limit</span><span>{profile.maxResultChars.toLocaleString('en')} chars</span></div>
   <div className="capability-row"><span>Text model tokens</span><span>{profile.maxGenerationTokens==null?'No profile limit':profile.maxGenerationTokens.toLocaleString('en')}</span></div>
-  <div className="capability-row"><span>Text model time</span><span>{profile.maxGenerationMs==null?'No profile limit':`${Math.ceil(profile.maxGenerationMs/1000)} s`}</span></div>
+  <div className="capability-row"><span>Text generation time</span><span>{profile.maxGenerationMs==null?'No profile limit':`${Math.ceil(profile.maxGenerationMs/1000)} s`}</span></div>
  </section>)}<p className="source-revision">Limits cover Text generation only · not Decision, model loading or tools. Read-only tools · no network.</p>
  {proposal.dependencies?.length?<details><summary>Tool files</summary>{proposal.dependencies.map(record=>{const version=record.revisions.at(-1);return <details key={record.id}><summary>{version.path} · v{version.version}</summary><pre className="file-body">{version.body}</pre></details>;})}</details>:null}
  <details><summary>File changes</summary><div className="source-revision">Before</div><pre className="file-body">{before}</pre><div className="source-revision">After</div><pre className="file-body">{after}</pre></details></div>;

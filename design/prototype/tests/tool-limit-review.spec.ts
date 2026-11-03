@@ -15,11 +15,11 @@ test('an existing three-call setting is preserved until the user reviews and app
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByText('More',{exact:true}).click();await page.getByRole('button',{name:'Assistant',exact:true}).click();
  await expect(page.getByText('Tool call limit',{exact:true})).toBeVisible();
- await expect(page.getByText('Text model tokens',{exact:true})).toBeVisible();await expect(page.getByText('Text model time',{exact:true})).toBeVisible();
+ await expect(page.getByText('Text model tokens',{exact:true})).toBeVisible();await expect(page.getByText('Text generation time',{exact:true})).toBeVisible();
  await expect(page.getByText('Limits cover Text generation only · not Decision, model loading or tools.',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Review call limit',exact:true}).click();
  const before=page.getByRole('region',{name:'Profile before'}),after=page.getByRole('region',{name:'Profile after'});
- await expect(before).toContainText('Text model tokens');await expect(before).toContainText('Text model time');
+ await expect(before).toContainText('Text model tokens');await expect(before).toContainText('Text generation time');
  await expect(page.getByText('Limits cover Text generation only · not Decision, model loading or tools. Read-only tools · no network.',{exact:true})).toBeVisible();
  await expect(before).toContainText('3');await expect(after).toContainText('No profile limit');
  await page.getByRole('button',{name:'Save',exact:true}).click();
