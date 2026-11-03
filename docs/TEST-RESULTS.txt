@@ -1,3 +1,15 @@
+2026-11-04 — Make long runtime preparation visibly progress within a single asset.
+An iPhone Full cycle report showed runtime setup lasting 1,764,321 ms before a
+generic failure; the report did not say how many runtime bytes arrived. Full
+cycle already showed its current step and elapsed time, but its live runtime
+label changed only by asset count. It now also displays cumulative transferred
+megabytes while that asset streams. Added unit coverage for byte formatting and
+invalid progress. The product-runtime-assets unit file passed 17/17; the full
+prototype suite passed 1,864/1,864; TypeScript/prototype production build and
+static check passed; Developer device-diagnostics browser tests passed 33/33.
+No runtime/model was downloaded and no device rerun was performed. This is a
+PC UI/regression result, not evidence that iPhone runtime acquisition succeeds.
+
 2026-11-04 — Agent corrections stay proposals until reviewed and atomically saved.
 Rechecked submission/model-execution flows and 144 agent loop, coordinator and
 evidence tests. Browser tests passed 7/7 for a pending correction surviving

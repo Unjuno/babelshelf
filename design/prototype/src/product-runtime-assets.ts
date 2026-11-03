@@ -1,6 +1,12 @@
 export type ProductRuntimeRole='text-onnx'|'text-wllama'|'text-lfm3'|'text-lfm-check'|'decision'|'speech'|'vision'|'ocr'|'pdf'|'custom-tools';
 export type ProductRuntimeProgress={status:'progress';role:ProductRuntimeRole;completed:number;total:number;bytes:number};
 export type ProductRuntimeResult={status:'prepared';role:ProductRuntimeRole;assets:number;bytes:number;downloadedBytes?:number};
+/** Show useful movement while one large runtime asset is still streaming. */
+export function productRuntimeProgressLabel(progress:ProductRuntimeProgress){
+ if(!Number.isSafeInteger(progress.completed)||progress.completed<0||!Number.isSafeInteger(progress.total)||progress.total<1||progress.completed>progress.total||!Number.isSafeInteger(progress.bytes)||progress.bytes<0)throw Error('Invalid runtime progress');
+ const megabytes=Math.floor(progress.bytes/100000)/10;
+ return `Runtime · ${progress.completed}/${progress.total} · ${megabytes.toFixed(1)} MB`;
+}
 export const PRODUCT_RUNTIME_FAILURE_CODES=['invalid-request','runtime-unavailable','runtime-messaging-unavailable','runtime-invalid-response','runtime-timeout','runtime-assets-unavailable','runtime-not-prepared','downloads-off','runtime-http-error','runtime-network-error','runtime-integrity-error','runtime-storage-error','runtime-setup-error','stopped'] as const;
 export type ProductRuntimeFailureCode=typeof PRODUCT_RUNTIME_FAILURE_CODES[number];
 type RuntimeReply=ProductRuntimeProgress|ProductRuntimeResult|{status:'failed';error:string;code?:ProductRuntimeFailureCode;downloadedBytes?:number};

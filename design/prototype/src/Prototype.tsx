@@ -79,7 +79,7 @@ import {HarnessProfileReview,profileToolsLabel} from './HarnessProfileReview';
 import {BuiltinToolSettings} from './BuiltinToolSettings';
 import {setBuiltinToolEnabled} from './builtin-tool-preferences';
 import {copyDiagnosticReport,revealAndSelectDiagnosticReport} from './diagnostic-report-copy';
-import {prepareProductRuntimeAssets,verifyProductRuntimeAssets,productRuntimeAssetInput,runtimeRoleForModelEngine,runtimeRoleForPreparation,prepareTextAssets,type ProductRuntimeRole,type ProductRuntimeProgress,type ProductRuntimeResult} from './product-runtime-assets';
+import {prepareProductRuntimeAssets,verifyProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,runtimeRoleForModelEngine,runtimeRoleForPreparation,prepareTextAssets,type ProductRuntimeRole,type ProductRuntimeProgress,type ProductRuntimeResult} from './product-runtime-assets';
 import {PdfPreview} from './PdfPreview';
 import {isPdf,pdfCitationPage,type PdfText} from './pdf-text';
 import {activityLabel,activityStatus,type Activity} from './harness-activity';
@@ -520,7 +520,7 @@ export default function Prototype() {
     if(Number.isSafeInteger(declared)&&declared>0)expectedModelBytes=declared;
     if(loadedAtStart){setDeviceTestStage('Unloading current model…');await bonsai.unload();}
     const role=selectedTextRuntimeRole(model),runtimeStart=performance.now();
-    if(role){stage='runtime-setup';setDeviceTestStage('Checking runtime…');try{try{await ensureProductRuntime(role,false,undefined,result=>{runtimeDownloadedBytes=result.downloadedBytes;});}catch(error){if(!downloads||!navigator.onLine)throw error;setDeviceTestStage('Preparing runtime…');await ensureProductRuntime(role,true,progress=>setDeviceTestStage(`Runtime · ${progress.completed}/${progress.total}`),result=>{runtimeDownloadedBytes=result.downloadedBytes;});}}finally{runtimePreparationDurationMs=Math.round(performance.now()-runtimeStart);}}
+    if(role){stage='runtime-setup';setDeviceTestStage('Checking runtime…');try{try{await ensureProductRuntime(role,false,undefined,result=>{runtimeDownloadedBytes=result.downloadedBytes;});}catch(error){if(!downloads||!navigator.onLine)throw error;setDeviceTestStage('Preparing runtime…');await ensureProductRuntime(role,true,progress=>setDeviceTestStage(productRuntimeProgressLabel(progress)),result=>{runtimeDownloadedBytes=result.downloadedBytes;});}}finally{runtimePreparationDurationMs=Math.round(performance.now()-runtimeStart);}}
     stage='model-preparation';const preparationStart=performance.now();
     try{
      if(!filesPresentAtStart){
