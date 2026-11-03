@@ -7,9 +7,10 @@ installed Home Screen app, and gives no specific exception cause. Full-cycle
 reports now retain runtime bytes read separately from network bytes downloaded,
 and Developer shows that distinction after a run. Read bytes can include cache
 and partial streams; they do not imply integrity success. Local regressions and
-clean-checkout CI are pending for this follow-up. Request one installed-PWA
-rerun only after its build is available, to capture this field and confirm the
-long-prepare progress UI. No device cause or model compatibility is inferred.
+clean-checkout CI passed; public Site v309 serves app build
+`b483c588fa337fcb`. Request one installed-PWA rerun to capture this field and
+the exact runtime failure category. The old report does not identify the
+device-side cause or establish model compatibility.
 
 ### 2026-11-04 · show byte movement during long runtime preparation
 
