@@ -245,7 +245,7 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
     if(sourceOperands.length!==operands.length||!operands.length)return null;
     if(operands.length===1)return samePlace(sourceOperands[0],operands[0])?!sourceNegated:null;
     if(samePlace(sourceOperands[0],operands[0])&&samePlace(sourceOperands[1],operands[1]))return !sourceNegated;
-    if(samePlace(sourceOperands[0],operands[1])&&samePlace(sourceOperands[1],operands[0]))return sourceNegated;
+    if(samePlace(sourceOperands[0],operands[1])&&samePlace(sourceOperands[1],operands[0]))return sourceNegated?null:false;
     return null;
    };
    // Direct quoted comparison evidence must name the same parsed entities.
