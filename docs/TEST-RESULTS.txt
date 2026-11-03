@@ -8,9 +8,12 @@ the gesture identity guard and rebuilding. The ordinary repeated five-destinatio
 touch path and the cancellation/restart regression passed 2/2; `npm run check`
 passed and the app build verified 165 assets (`369c930423204e9d`). Commit
 `a47e3de` was pushed and Site v305 is live; production `build.json` returned HTTP
-200 with the exact build ID and 165 assets. The GitHub clean-checkout workflow is
-still in progress. This validates Chromium pointer simulation, not physical iOS
-Safari; no device interaction was run.
+200 with the exact build ID and 165 assets. Clean-checkout GitHub Actions
+[41593178034](https://github.com/Unjuno/babelshelf/actions/runs/41593178034)
+passed every stage on `ccb8ea5`; editorial passed 31/31, Chromium and WebKit
+iOS-handoff suites passed 30/30 each, and installed-PWA acceptance passed. This
+validates Chromium pointer simulation, not physical iOS Safari; no device
+interaction was run.
 
 2026-11-03 — Full selected-model acquisition-to-output diagnostic.
 Developer settings add a gated Full cycle measuring local model/runtime reuse or
