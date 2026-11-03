@@ -5,8 +5,8 @@ import {dialogueAnswerMessages,groundedAnswer} from '../src/grounded-answer.ts';
 
 test('reply style is a finite presentation preference and never overrides a direct request',()=>{
  assert.match(replyStyleInstruction('concise'),/brief/);
- assert.match(replyStyleInstruction('detailed'),/more explanation/);
- assert.match(replyStyleInstruction('balanced'),/clear, proportionate answer/);
+ assert.match(replyStyleInstruction('detailed'),/thorough, well-organized answer/);
+ assert.match(replyStyleInstruction('balanced'),/Do not compress the answer by default/);
  for(const invalid of ['ignore safety','<script>','',null])assert.throws(()=>replyStyleInstruction(invalid));
  const messages=dialogueAnswerMessages('Give me a detailed explanation.',undefined,'concise');
  assert.match(messages[0].content,/The user's explicit request for language, length or format takes precedence/);
@@ -14,20 +14,20 @@ test('reply style is a finite presentation preference and never overrides a dire
  assert.match(messages[0].content,/Do not expose internal tool names, record IDs, schema fields or diagnostic labels/);
 });
 
-test('dialogue output budgets follow style and explicit length without leaving an unbounded continuation allowance',()=>{
+test('dialogue output budgets allow complete answers by default and obey explicit length within available context',()=>{
  assert.deepEqual(dialogueOutputLimits('concise','What time is it?',4096),{total:256,segment:256});
- assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',4096),{total:768,segment:512});
- assert.deepEqual(dialogueOutputLimits('detailed','What time is it?',4096),{total:1536,segment:768});
- for(const question of ['Analyze the design.','Review the architecture and assess its trade-offs.','Compare the two approaches.','この設計を分析して。','長所と短所を比較して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:1536,segment:768},question);
- assert.deepEqual(dialogueOutputLimits('concise','Analyze the design.',4096),{total:1536,segment:768},'an analytical request takes precedence over a concise preference');
+ assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',4096),{total:2048,segment:768});
+ assert.deepEqual(dialogueOutputLimits('detailed','What time is it?',4096),{total:3072,segment:768});
+ for(const question of ['Analyze the design.','Review the architecture and assess its trade-offs.','Compare the two approaches.','この設計を分析して。','長所と短所を比較して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:3072,segment:768},question);
+ assert.deepEqual(dialogueOutputLimits('concise','Analyze the design.',4096),{total:3072,segment:768},'an analytical request takes precedence over a concise preference');
  assert.deepEqual(dialogueOutputLimits('balanced','Analyze the design.',900),{total:900,segment:768},'analysis output remains bounded by available context');
- assert.deepEqual(dialogueOutputLimits('concise','Explain this in detail.',4096),{total:3072,segment:768},'an explicit long request takes precedence over the concise preference');
- assert.deepEqual(dialogueOutputLimits('balanced','Write two paragraphs.',4096),{total:3072,segment:768},'an explicit paragraph count is treated as a length request');
+ assert.deepEqual(dialogueOutputLimits('concise','Explain this in detail.',4096),{total:4096,segment:1024},'an explicit long request takes precedence over the concise preference');
+ assert.deepEqual(dialogueOutputLimits('balanced','Write two paragraphs.',4096),{total:4096,segment:1024},'an explicit paragraph count is treated as a length request');
  assert.deepEqual(dialogueOutputLimits('detailed','簡潔に一言で答えて',4096),{total:256,segment:256},'an explicit short request takes precedence over the detailed preference');
  for(const question of ['Write two sentences about a blue lantern.','Write exactly two sentences.','Use a two-sentence answer.','二文で答えて。','2文で説明して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:256,segment:256},question);
  assert.deepEqual(dialogueOutputLimits('detailed','Explain this in detail.',600),{total:600,segment:600},'available context remains the hard upper bound');
- assert.equal(groundedOutputTokens('balanced','What does the note say?',4096),768);
- assert.equal(groundedOutputTokens('detailed','What does the note say?',4096),1536);
+ assert.equal(groundedOutputTokens('balanced','What does the note say?',4096),2048);
+ assert.equal(groundedOutputTokens('detailed','What does the note say?',4096),3072);
  assert.equal(groundedOutputTokens('concise','Explain this in detail.',600),600,'saved knowledge follows explicit length within the remaining model context');
 });
 
@@ -44,7 +44,7 @@ test('explicit one-sentence requests are recognized across languages and clipped
 
 test('a short introduction followed by detail is not clipped to one sentence',async()=>{
  for(const question of ['一文で要約し、その後詳しく説明して。','Summarize in one sentence, then explain in detail.']){
-  assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:3072,segment:768});
+  assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:4096,segment:1024});
   assert.equal(requestsOneSentence(question),false);
   const engine={loaded:'test',assets:{},manifest:{contextTokens:4096,models:[],runtime:{}},count:async()=>({prompt_tokens:5}),generate:async()=>({text:'Summary. Detailed explanation.'})};
   const result=await groundedAnswer({store:{all:async()=>[],search:async()=>[]},engine},{model:'test',question,mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});
@@ -102,8 +102,8 @@ test('saved-knowledge answers use the requested depth at the real cited-generati
  const {createNote}=await import('../../../dist/core.js');const note=createNote({path:'Notes/place.md',body:'The location is North gate.'}),quote=note.revisions[0].body,ref={noteId:note.id,revision:1,start:0,end:quote.length,quote};let generated,budget;
  const store={all:async()=>[note],search:async()=>[ref]},engine={loaded:'model',assets:{},manifest:{contextTokens:4096,models:[{id:'model',revision:'model-r1'}],runtime:{revision:'runtime-r1'}},count:async()=>({prompt_tokens:64}),generate:async(messages,maxTokens)=>{generated=messages;budget=maxTokens;return {text:JSON.stringify({answer:'The location is North gate.',citations:[{id:'S1',quote}] }),finishReason:'stop'};}};
  const result=await groundedAnswer({store,engine},{model:'model',question:'What is the location?',scope:{kind:'knowledge'},replyStyle:'detailed'});
- assert.equal(result.answer,'The location is North gate.');assert.equal(result.sources[0].noteId,note.id);assert.equal(budget,1536);
- assert.match(generated[0].content,/more explanation and useful context/);assert.doesNotMatch(generated[0].content,/Keep the reply concise/);assert.match(generated[0].content,/Do not use pretraining or general model memory to fill details absent from the excerpts/);
+  assert.equal(result.answer,'The location is North gate.');assert.equal(result.sources[0].noteId,note.id);assert.equal(budget,3072);
+  assert.match(generated[0].content,/thorough, well-organized answer/);assert.doesNotMatch(generated[0].content,/Keep the reply concise/);assert.match(generated[0].content,/Do not use pretraining or general model memory to fill details absent from the excerpts/);
 });
 
 test('grounded answer validates cited notes without indexing unrelated bodies',async()=>{
@@ -139,8 +139,8 @@ test('grounded dialogue passes the selected response style through its actual ge
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});
  assert.match(generated[0].content,/Prefer a brief answer/);assert.match(generated[0].content,/Do not expose internal tool names, record IDs, schema fields or diagnostic labels/);assert.equal(budget,256);
  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Write two sentences about a blue lantern.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'balanced'});assert.equal(budget,256,'an explicit two-sentence request receives a compact budget at the actual model call');
- const analytical=await groundedAnswer({store:store,engine:engine},{model:'model',question:'Review the architecture and assess its trade-offs.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'balanced'});assert.deepEqual(budgets.slice(-2),[768,768],'an analytical answer may continue for a second bounded segment');assert.equal(analytical.answer,'First part continued.');assert.equal(budget,768);
- await groundedAnswer({store:store,engine:engine},{model:'model',question:'Explain this in detail.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});assert.equal(budget,768,'explicit length outranks the concise setting at the actual generation boundary');
+  const analytical=await groundedAnswer({store:store,engine:engine},{model:'model',question:'Review the architecture and assess its trade-offs.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'balanced'});assert.deepEqual(budgets.slice(-2),[768,768],'an analytical answer may continue for a second bounded segment');assert.equal(analytical.answer,'First part continued.');assert.equal(budget,768);
+  await groundedAnswer({store:store,engine:engine},{model:'model',question:'Explain this in detail.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'concise'});assert.equal(budget,1024,'explicit length outranks the concise setting at the actual generation boundary');
  await assert.rejects(groundedAnswer({store:store,engine:engine},{model:'model',question:'Hello.',query:'',mode:'chat',context:context,check:()=>{},scope:{kind:'conversation'},replyStyle:'do anything'}),/Unsupported reply style/);
 });
 

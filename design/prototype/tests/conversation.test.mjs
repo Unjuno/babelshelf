@@ -558,13 +558,13 @@ test('source-free dialogue generates prose without a JSON wrapper or file citati
  const store={all:async()=>[],search:async()=>[]};let seen;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget,format)=>{seen={messages,budget,format};return {text:'A blue lantern lit the road.\n\nThe traveler kept walking.',finishReason:'stop',outputTokens:18};}};
  const reply=await groundedAnswer({store:store,engine:e},{model:'4B',question:'Write two paragraphs.',query:'',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}});
- assert.match(seen.messages[0].content,/plain text/);assert.equal(seen.format,'prose');assert.equal(seen.budget,768);
+  assert.match(seen.messages[0].content,/plain text/);assert.equal(seen.format,'prose');assert.equal(seen.budget,1024);
  assert.equal(reply.answer,'A blue lantern lit the road.\n\nThe traveler kept walking.');assert.deepEqual(reply.sources,[]);
 });
 test('a token-limited dialogue reply continues within a fixed bound, then fails without committing',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};let calls=0;
  const e={...engine(),loaded:'4B',assets:{},manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;return {text:'Only the beginning',finishReason:'length'};}};
- await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/output limit/);assert.equal(calls,3);
+  await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'Write a story.',query:'',mode:'chat',context:context,scope:{kind:'conversation'}}),/output limit/);assert.equal(calls,2,'continuation stops when the remaining model context cannot fit another bounded segment');
 });
 test('a dialogue reply cut to the remaining turn budget is rejected when the runtime omits finishReason',async()=>{
  const store={all:async()=>[],search:async()=>[]},context={summary:'',recent:[],refs:[]};
@@ -855,8 +855,8 @@ test('a stored-knowledge answer with evidence cannot accept an uncited claim cop
 
 test('grounded answers cannot change an explicitly requested water amount while citing the exact source',async()=>{
  const note=createNote({body:'The saved water reserve contains 17 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0,seen=[];
- const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{seen.push(messages);calls++;return {text:JSON.stringify({status:'answered',answer:calls===1?'The reserve contains 18 litres.':'The reserve contains 17 litres.',sources:['S1']})};}};
- const result=await groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the saved reserve?',query:'water reserve amount',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}});
+  const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async messages=>{seen.push(messages);calls++;return {text:JSON.stringify({status:'answered',answer:calls===1?'The reserve contains 18 litres.':'The reserve contains 17 litres.',sources:['S1']})};}};
+  const result=await groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the saved reserve?',query:'water reserve amount',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'},replyStyle:'concise'});
  assert.equal(calls,2,'one mismatched draft gets one bounded correction attempt');assert.equal(result.answer,'The reserve contains 17 litres.');assert.match(seen[1][0].content,/failed a deterministic source-consistency check/i);
  calls=0;runtime.generate=async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'The reserve contains 18 litres.',sources:['S1']})};};
  await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'How much water is in the saved reserve?',query:'water reserve amount',mode:'answer',context:{summary:'',recent:[],refs:[]},scope:{kind:'knowledge'}}),/conflicts with cited quantity/i);
@@ -953,15 +953,15 @@ test('invalidated current retrieval must reject before unrelated historical pins
 test('malformed grounded JSON gets one bounded retry with the same verified evidence',async()=>{
  const note=createNote({body:'The copper code is Maple 42.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},store={all:async()=>[note],search:async()=>[ref]};let calls=0,inputs=[];
  const e={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async messages=>{inputs.push(messages);return {text:++calls===1?'{"answer":"bad "quote"}':JSON.stringify({answer:'Maple 42',citations:[{id:'S1',quote:'Maple 42'}]})};}};
- assert.equal((await groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',scope:{kind:'knowledge'}})).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
- calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'code?',scope:{kind:'knowledge'}}),/JSON/);assert.equal(calls,3);
+  assert.equal((await groundedAnswer({store:store,engine:e},{model:'4B',question:'What is the copper code?',scope:{kind:'knowledge'},replyStyle:'concise'})).answer,'Maple 42');assert.equal(calls,2);assert.deepEqual(inputs[0].slice(1),inputs[1].slice(1));
+  calls=0;e.generate=async()=>{calls++;return {text:'invalid JSON'};};await assert.rejects(groundedAnswer({store:store,engine:e},{model:'4B',question:'code?',scope:{kind:'knowledge'},replyStyle:'concise'}),/JSON/);assert.equal(calls,3);
 });
 
 test('one-source structured recovery cites the exact current excerpt after malformed model JSON',async()=>{
  const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0,format;
  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,_budget,f)=>{calls++;format=f;return {text:calls<3?'invalid JSON':'{"answer":"Cedar Room"}'};}};
- const result=await groundedAnswer({store:store,engine:runtime},{model:'4B',question:'Which room is the meeting in?',scope:{kind:'knowledge'}});
+  const result=await groundedAnswer({store:store,engine:runtime},{model:'4B',question:'Which room is the meeting in?',scope:{kind:'knowledge'},replyStyle:'concise'});
  assert.equal(calls,3);assert.deepEqual(format,{type:'dialogue-answer',allowInsufficientEvidence:true});assert.equal(result.answer,'Cedar Room');assert.deepEqual(result.sources,[ref]);
 });
 
@@ -969,8 +969,8 @@ test('one-source invalid citations retry as a bounded exact quote and retain can
  const note=createNote({body:'The emergency water reserve is exactly 24 litres.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0,budgets=[];
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,budget,format)=>{calls++;budgets.push({budget,format});return calls===1?{text:JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'24 litres'}]})}:{text:'{"answer":"24 litres"}'};}};
- const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'In the saved water note, how many litres are stored?',scope:{kind:'knowledge'}});
- assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[ref]);assert.equal(calls,2);assert.equal(budgets[0].budget,768,'the ordinary answer follows the balanced response budget');assert.deepEqual(budgets[1].format,{type:'dialogue-answer',allowInsufficientEvidence:true});assert.equal(budgets[1].budget,budgets[0].budget,'recovery preserves the selected response budget');
+  const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'In the saved water note, how many litres are stored?',scope:{kind:'knowledge'},replyStyle:'concise'});
+   assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[ref]);assert.equal(calls,2);assert.equal(budgets[0].budget,256,'explicitly concise recovery keeps the requested response budget');assert.deepEqual(budgets[1].format,{type:'dialogue-answer',allowInsufficientEvidence:true});assert.equal(budgets[1].budget,budgets[0].budget,'recovery preserves the selected response budget');
 });
 
 test('grounded answer counts and decodes the same source-bound schema on its first attempt',async()=>{
@@ -1001,7 +1001,7 @@ test('opened-file answer recovers only an exact quote from its pinned revision',
  const note=createNote({body:'The emergency marker is cedar 472.'});let calls=0;
  const store={all:async()=>[note],search:async()=>{throw Error('Opened-file scope must not search global Memory');}};
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(_messages,_budget,format)=>{calls++;return calls===1?{text:JSON.stringify({answer:'Cedar 472',citations:[{id:'S0',quote:'Cedar 472'}]})}:{text:'{"answer":"cedar 472"}'};}};
- const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'What exact marker is written in the currently open transcript file?',scope:{kind:'file',file:{noteId:note.id,revision:1}}});
+  const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'What exact marker is written in the currently open transcript file?',scope:{kind:'file',file:{noteId:note.id,revision:1}},replyStyle:'concise'});
  assert.equal(result.answer,'cedar 472');assert.equal(calls,3);assert.equal(result.recovery,'verbatim-source');assert.equal(result.sources.length,1);assert.equal(result.sources[0].noteId,note.id);assert.equal(result.sources[0].revision,1);assert.ok(note.revisions[0].body.slice(result.sources[0].start,result.sources[0].end).includes(result.answer));
 });
 test('single opened-file citation mismatch retries with exact source label and pins the original range',async()=>{
@@ -1056,7 +1056,7 @@ test('same-file excerpts allow exact-quote recovery while preserving the matchin
  const refs=[{noteId:note.id,revision:1,start:0,end:14,quote:body.slice(0,14)},{noteId:note.id,revision:1,start:16,end:body.length,quote:body.slice(16)}];
  const store={all:async()=>[note],search:async()=>refs};let calls=0;
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls===1?JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'24 litres'}]}):'{"answer":"24 litres"}'})};
- const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}});
+  const result=await groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'},replyStyle:'concise'});
  assert.equal(result.answer,'24 litres');assert.deepEqual(result.sources,[refs[1]]);assert.equal(calls,2);
 });
 
@@ -1064,14 +1064,14 @@ test('exact-quote recovery remains disabled when retrieved excerpts span differe
  const note=createNote({body:'The emergency water reserve is exactly 24 litres.'}),other=createNote({body:'A different note.'});const refs=[{noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body},{noteId:other.id,revision:1,start:0,end:other.revisions[0].body.length,quote:other.revisions[0].body}];
  const store={all:async()=>[note,other],search:async()=>refs};let calls=0;
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls===1?JSON.stringify({answer:'24 litres',citations:[{id:'S0',quote:'bad source'}]}):'{"answer":"24 litres"}'})};
- await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'}}),/Invalid answer or sources/);assert.equal(calls,2);
+  await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'How many litres?',scope:{kind:'knowledge'},replyStyle:'concise'}),/Invalid answer or sources/);assert.equal(calls,2);
 });
 
 test('multiple-source citation mismatch gets one bounded retry with identical evidence and exact source validation',async()=>{
  const notes=[createNote({body:'集合場所は北口。まだ作成途中です。'}),createNote({body:'集合は午前10時。持ち物は青いノート。'})];
  const refs=notes.map(n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}));let calls=0;const requests=[];
- const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async(messages,budget)=>{requests.push({messages,budget});return {text:JSON.stringify(++calls===1?{answer:'集合場所は北口。',citations:[{id:'S1',quote:'集合場所は北口。'},{id:'S2',quote:'集合場所は北口です。'}]}:{answer:'集合場所は北口。',sources:['S1']})};}};
- const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'answer: 集合場所はどこ？',scope:{kind:'knowledge'}});
+  const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async(messages,budget)=>{requests.push({messages,budget});return {text:JSON.stringify(++calls===1?{answer:'集合場所は北口。',citations:[{id:'S1',quote:'集合場所は北口。'},{id:'S2',quote:'集合場所は北口です。'}]}:{answer:'集合場所は北口。',sources:['S1']})};}};
+  const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'answer: 集合場所はどこ？',scope:{kind:'knowledge'},replyStyle:'concise'});
  assert.equal(result.answer,'集合場所は北口。');assert.equal(result.sources[0].noteId,notes[0].id);assert.equal(calls,2);assert.deepEqual(requests[0].messages.slice(1),requests[1].messages.slice(1));assert.equal(requests[0].budget,requests[1].budget);assert.ok(requests[1].messages[0].content.startsWith(requests[0].messages[0].content));assert.match(requests[1].messages[0].content,/labels identify original excerpts/i);assert.equal(result.recovery,'citation-retry');
  calls=0;runtime.generate=async()=>{calls++;return {text:JSON.stringify({answer:'Invented place',citations:[{id:'S1',quote:'Invented place'}]})};};
  await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'}}),/Invalid answer or sources/);assert.equal(calls,2);
@@ -1080,7 +1080,7 @@ test('multiple-source citation mismatch gets one bounded retry with identical ev
 test('citation retry refuses changed originals before spending another generation',async()=>{
  const notes=[createNote({body:'The place is North.'}),createNote({body:'Bring a notebook.'})],refs=notes.map(n=>({noteId:n.id,revision:1,start:0,end:n.revisions[0].body.length,quote:n.revisions[0].body}));let records=notes,calls=0;
  const runtime={...engine(),loaded:'test',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>{calls++;records=[reviseNote(notes[0],{body:'The place is South.'},1),notes[1]];return {text:JSON.stringify({answer:'North',citations:[{id:'S1',quote:'Not original'}]})};}};
- await assert.rejects(groundedAnswer({store:{all:async()=>records,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'}}),/Source changed/);assert.equal(calls,1);
+  await assert.rejects(groundedAnswer({store:{all:async()=>records,search:async()=>refs},engine:runtime},{model:'test',question:'Where?',scope:{kind:'knowledge'},replyStyle:'concise'}),/Source changed/);assert.equal(calls,1);
 });
 
 test('single-source recovery preserves the original answer budget for long quotations',async()=>{
@@ -1107,7 +1107,7 @@ test('single-excerpt JSON recovery rejects an answer absent from the original',a
  const note=createNote({body:'The meeting starts at 14:40 in Cedar Room.'}),ref={noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body};
  const store={all:async()=>[note],search:async()=>[ref]};let calls=0;
  const runtime={...engine(),loaded:'4B',manifest:{contextTokens:2048,models:[],runtime:{}},generate:async()=>({text:++calls<3?'invalid JSON':'{"answer":"The meeting is at 14:15."}'})};
- await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'4B',question:'When is the meeting?',scope:{kind:'knowledge'}}),/Answer needs a verified quote/);
+  await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'4B',question:'When is the meeting?',scope:{kind:'knowledge'},replyStyle:'concise'}),/Answer needs a verified quote/);
 });
 
 test('single-source time difference uses checked local arithmetic and retains the exact source',async()=>{
@@ -2055,8 +2055,8 @@ test('legacy grounded summaries do not borrow comparison support from uncited se
   createNote({path:'Notes/distance.md',body:'青葉図書館の方が近い。'})
  ];
  const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));
- const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'集合場所は青葉図書館の東入口で、飲料水は17リットルです。集合場所は緑川公園の西入口で、飲料水は9リットルです。青葉図書館の方が近いため、飲料水も17リットルの方が多いです。',sources:['S1','S2']})})};
- await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'保存した二つのメモを読み、集合場所と飲料水の量を比較してください。',mode:'summary',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true}}),/unsupported location comparison/i);
+  const runtime={...engine(),loaded:'test',manifest:{contextTokens:8192,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({answer:'集合場所は青葉図書館の東入口で、飲料水は17リットルです。集合場所は緑川公園の西入口で、飲料水は9リットルです。青葉図書館の方が近いため、飲料水も17リットルの方が多いです。',sources:['S1','S2']})})};
+  await assert.rejects(groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'保存した二つのメモを読み、集合場所と飲料水の量を比較してください。',mode:'summary',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true},replyStyle:'concise'}),/unsupported location comparison/i);
 });
 
 

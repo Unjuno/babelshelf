@@ -8,9 +8,9 @@ export const answerLanguageInstruction='Write in the explicitly requested output
 export const userFacingAnswerInstruction='Use natural wording for the user. Do not expose internal tool names, record IDs, schema fields or diagnostic labels unless the user asks about them.';
 
 const guidance:Record<ReplyStyle,string>={
- balanced:'Use a clear, proportionate answer.',
+ balanced:'Answer fully enough to address the request, with useful explanation and context. Do not compress the answer by default; match its depth to the request. Be brief when the request is simple or the user asks for a short answer.',
  concise:'Prefer a brief answer while preserving necessary context.',
- detailed:'Give more explanation and useful context when the request allows it.',
+ detailed:'Give a thorough, well-organized answer with supporting explanation and useful context when the request allows it.',
 };
 const explicitLongRequest=/(?:\bin detail\b|\bdetailed\b|\bcomprehensive\b|\bthorough\b|\bstep[- ]by[- ]step\b|\blong[- ]form\b|\bwrite (?:me )?a story\b|\b(?:\d+|two|three|four|five|several) paragraphs?\b|詳しく|詳細に|詳細な|網羅的|徹底的|段階的に|長文|物語|\d+段落)/u;
 const analyticalRequest=/(?:\b(?:analy[sz](?:e|es|ed|ing)|analysis|evaluat(?:e|es|ed|ing|ion)|review|compare|comparison|assess|pros and cons|trade[- ]offs?|implications)\b|分析|比較|比べ|評価|レビュー|検討|考察|長所と短所|利点と欠点|トレードオフ)/iu;
@@ -31,13 +31,13 @@ export function dialogueOutputLimits(style:unknown,question:string,availableToke
  const explicitLong=explicitLongRequest.test(text);
  const analytical=analyticalRequest.test(text);
  let total:number,segment:number;
- if(explicitLong&&explicitShort&&additionalStage.test(text)){total=3072;segment=768;}
+ if(explicitLong&&explicitShort&&additionalStage.test(text)){total=4096;segment=1024;}
  else if(explicitShort){total=256;segment=256;}
- else if(explicitLong){total=3072;segment=768;}
- else if(analytical){total=1536;segment=768;}
+ else if(explicitLong){total=4096;segment=1024;}
+ else if(analytical){total=3072;segment=768;}
  else if(style==='concise'){total=256;segment=256;}
- else if(style==='detailed'){total=1536;segment=768;}
- else {total=768;segment=512;}
+ else if(style==='detailed'){total=3072;segment=768;}
+ else {total=2048;segment=768;}
  total=Math.min(total,availableTokens);
  return {total,segment:Math.min(segment,total)};
 }
