@@ -708,7 +708,11 @@ export default function Prototype() {
   if(p.held){const next=targetRef.current;if(next){closeNav();navigate(next);}else markTarget(null);}
   else if(!p.moved){closeNav();navigate('input');}
  }
- function cancelHold(){
+ function cancelHold(e:PointerEvent<HTMLButtonElement>){
+  const active=press.current;
+  // Capture-loss/cancel can be delivered late after another pointer began.
+  // Only the gesture that owns this pointer may cancel the active press.
+  if(!active||active.id!==e.pointerId)return;
   // pointercancel has no corresponding compatibility click to consume.
   // Creating a guard here can consume the next intentional touch activation.
   clearGestureClickSuppression();closeNav();
@@ -1360,7 +1364,7 @@ export default function Prototype() {
   {page==='memory'&&editing&&<div className="editor-actions" style={{bottom:bottomInset+8}}><div className="action-row"><button className="quiet-button" disabled={editSaving} onClick={()=>requestEditorExit(()=>{keyboard.hide();setEditing(false);})}>Cancel</button><button className="solid-button" disabled={editSaving||storagePending} onClick={save}><Check size={18}/>Save</button></div></div>}
   <nav aria-label="Main navigation" onKeyDown={navKeys} onBlur={e=>{if(!press.current&&!e.currentTarget.contains(e.relatedTarget))closeNav();}}>
    {navOpen&&<div className="nav-scrim" onPointerDown={()=>closeNav()} aria-hidden="true"/>}
-   <button ref={home} className={'chat-home'+(page==='input'?' selected':'')+(navOpen?' menu-open':'')} aria-label="Input" aria-haspopup="menu" aria-expanded={navOpen} aria-controls={navOpen?'arc-navigation':undefined} aria-current={page==='input'?'page':undefined} onPointerDown={beginHold} onPointerMove={slideHold} onPointerUp={finishHold} onPointerCancel={cancelHold} onLostPointerCapture={()=>{if(press.current)cancelHold();}} onContextMenu={e=>e.preventDefault()}
+   <button ref={home} className={'chat-home'+(page==='input'?' selected':'')+(navOpen?' menu-open':'')} aria-label="Input" aria-haspopup="menu" aria-expanded={navOpen} aria-controls={navOpen?'arc-navigation':undefined} aria-current={page==='input'?'page':undefined} onPointerDown={beginHold} onPointerMove={slideHold} onPointerUp={finishHold} onPointerCancel={cancelHold} onLostPointerCapture={cancelHold} onContextMenu={e=>e.preventDefault()}
     aria-description="Click: open or close navigation. Touch: hold for 80 milliseconds, slide to a destination, then release. Release without a destination to open the menu." onClick={e=>{if(press.current&&e.detail>0)return;if(consumeGestureClick(e))return;if(navOpen){closeNav();navigate('input');}else{showNav();if(e.detail===0)requestAnimationFrame(()=>navButtons.current.memory?.focus());}}}><ChatCircle size={32} weight={page==='input'?'fill':'regular'}/>{notifications.some(n=>!n.read)&&<span className="unread-badge" aria-label="Unread notifications">{notifications.filter(n=>!n.read).length}</span>}</button>
    {navOpen&&<><div className="glass-nav"><svg className="nav-curve" viewBox="0 0 146 146" aria-hidden="true"><path className="curve-edge" d="M101.86 14.98 A75 75 0 0 1 14.98 101.86"/><path className="curve-surface" d="M101.86 14.98 A75 75 0 0 1 14.98 101.86"/></svg><div className="nav-items" id="arc-navigation" role="menu" aria-label="Go to">{tabs.slice(1).map(t=><button ref={el=>{navButtons.current[t.id]=el;}} key={t.id} role="menuitem" aria-label={t.label} aria-current={page===t.id?'page':undefined} className={(page===t.id?'selected ':'')+(navTarget===t.id?'gesture-selected':'')} onFocus={()=>markTarget(t.id)} onPointerMove={e=>{if(!press.current&&(e.movementX||e.movementY))markTarget(t.id);}} onClick={()=>{closeNav();navigate(t.id);}}>{t.id==='notifications'&&notifications.some(n=>!n.read)&&<span className="arc-unread-dot"/>}<t.icon size={23} weight={page===t.id||navTarget===t.id?'fill':'regular'}/></button>)}</div></div>{navTarget&&<div className="arc-choice" role="status">{tabs.find(t=>t.id===navTarget)?.label}</div>}</>}
 

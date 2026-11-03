@@ -380,6 +380,8 @@ test('a cancelled hold timer cannot take over the next touch gesture',async({pag
   const nativeSetTimeout=window.setTimeout.bind(window),nativeClearTimeout=window.clearTimeout.bind(window);
   const queued:Array<()=>void>=[];let nextId=900000;
   (window as Window&{__queuedHoldTimers?:Array<()=>void>;__captureHoldTimers?:boolean}).__queuedHoldTimers=queued;
+  (window as Window&{__navPointerIds?:number[]}).__navPointerIds=[];
+  document.addEventListener('pointerdown',event=>{if((event.target as HTMLElement|null)?.closest('.chat-home'))(window as Window&{__navPointerIds:number[]}).__navPointerIds.push((event as PointerEvent).pointerId);},true);
   window.setTimeout=((handler:TimerHandler,timeout?:number,...args:unknown[])=>{
    if((window as Window&{__captureHoldTimers?:boolean}).__captureHoldTimers&&timeout===80&&typeof handler==='function'){
     queued.push(()=>handler());return nextId++ as unknown as number;
@@ -392,19 +394,22 @@ test('a cancelled hold timer cannot take over the next touch gesture',async({pag
  await page.evaluate(()=>{(window as Window&{__captureHoldTimers?:boolean}).__captureHoldTimers=true;});
  const input=page.getByRole('button',{name:'Input',exact:true}),inputBox=await input.boundingBox();expect(inputBox).not.toBeNull();
  const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,configuration:'mobile'});
- const touch=(box:{x:number;y:number;width:number;height:number})=>({x:box.x+box.width/2,y:box.y+box.height/2,id:1});
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(inputBox!)]});
+ const touch=(box:{x:number;y:number;width:number;height:number},id:number)=>({x:box.x+box.width/2,y:box.y+box.height/2,id});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(inputBox!,1)]});
  await expect.poll(()=>page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[]).length)).toBe(1);
+ const oldPointerId=await page.evaluate(()=>(window as Window&{__navPointerIds:number[]}).__navPointerIds[0]);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(input).toHaveAttribute('aria-expanded','false');
  const nextBox=await input.boundingBox();expect(nextBox).not.toBeNull();
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(nextBox!)]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(nextBox!,2)]});
  await expect.poll(()=>page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[]).length)).toBe(2);
+ const currentPointerId=await page.evaluate(()=>(window as Window&{__navPointerIds:number[]}).__navPointerIds[1]);expect(currentPointerId).not.toBe(oldPointerId);
+ await input.evaluate((el,id)=>{for(const type of ['pointercancel','lostpointercapture'])el.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerId:id,pointerType:'touch',isPrimary:true,button:-1}));},oldPointerId);
  await page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[])[0]());
  await expect(input).toHaveAttribute('aria-expanded','false');
  await page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[])[1]());
  await expect(input).toHaveAttribute('aria-expanded','true');
  const destination=page.getByRole('menuitem',{name:'Schedule',exact:true}),destinationBox=await destination.boundingBox();expect(destinationBox).not.toBeNull();
- await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(destinationBox!)]});await expect(page.locator('.arc-choice')).toHaveText('Schedule');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(destinationBox!,2)]});await expect(page.locator('.arc-choice')).toHaveText('Schedule');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.getByRole('heading',{name:'Schedule',exact:true})).toBeVisible();
  await cdp.detach();
 });
