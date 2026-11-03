@@ -12,6 +12,14 @@ tree produced the live build. No deployment was performed in this verification.
 Reconcile the source provenance before publishing another build; do not replace
 the live v315 with a different artifact based on asset count alone.
 
+Read-only artifact follow-up: manifest entry `./assets/Prototype-D1ijNXYd.js`
+declares 733,285 bytes and SHA-256
+`fe99385b0b5e61fac25f051a06f3ad4f0b47e1f37b513b2fe4f4d75fc1fe387d`. Fetching
+that exact URL returned text whose SHA-256 matched and included the maximum
+runtime-preparation deadline, idle timeout, visibility-resume deadline check,
+and `runtime-timeout` diagnostic. This establishes code presence in the live
+artifact; it does not prove the iPhone execution behavior or source-tree identity.
+
 # Public Site v311 — bounded inference-runtime preparation (2026-11-04 JST)
 
 Product source commit `d581f5f664288822e3e091c9c1878b85c3139885`; product

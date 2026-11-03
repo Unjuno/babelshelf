@@ -9,8 +9,12 @@ The current Sites record's source SHA is `f7688865dfa6d828ac24a220da88efa5d754dc
 which does not resolve in this GitHub repository. This confirms the reported
 29-minute failure belongs to an older public build and that the currently live
 artifact's source provenance is not yet tied to the checked-out branch. The
-runtime deadline fix is already present in the repository; the old report does
-not establish whether it works on the current iPhone build. No product code or
+live manifest's `Prototype-D1ijNXYd.js` entry (733,285 bytes,
+`fe99385b0b5e61fac25f051a06f3ad4f0b47e1f37b513b2fe4f4d75fc1fe387d`) matched
+the fetched artifact's byte count and SHA-256. That bundle contains the maximum
+runtime-preparation deadline, idle timeout, `visibilitychange` resume check,
+and `runtime-timeout` category. This verifies the code is in the served
+artifact, not that it runs correctly on the reported iPhone. No product code or
 deployment was changed during this provenance check. See
 [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md) for the Sites version and artifact
 metadata.
