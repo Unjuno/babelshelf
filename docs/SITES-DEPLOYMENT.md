@@ -1,3 +1,17 @@
+# Public Site v315 — current live deployment observed (2026-11-04 JST)
+
+The Sites project reports version 315 deployed successfully to the existing
+public URL. The deployed archive is 84,633,600 bytes /196 files with recorded
+source SHA `f7688865dfa6d828ac24a220da88efa5d754dcf0`; the live
+`https://babelshelf.com/build.json` currently returns app build
+`2f47f2bc1bca02d3` /165 assets. The deployment status is `succeeded`, and the
+site remains public. The recorded source SHA is not present in this GitHub
+repository (`gh api repos/Unjuno/babelshelf/commits/f7688865dfa6d828ac24a220da88efa5d754dcf0`
+returned HTTP 422), so this observation does not establish which repository
+tree produced the live build. No deployment was performed in this verification.
+Reconcile the source provenance before publishing another build; do not replace
+the live v315 with a different artifact based on asset count alone.
+
 # Public Site v311 — bounded inference-runtime preparation (2026-11-04 JST)
 
 Product source commit `d581f5f664288822e3e091c9c1878b85c3139885`; product

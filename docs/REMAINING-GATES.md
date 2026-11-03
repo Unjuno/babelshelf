@@ -1,4 +1,20 @@
 ## Current status · 2026-11-04
+
+### Live deployment provenance check
+
+The supplied iPhone failure report is from public app build
+`48777327b2d5c402` (historical Site v308), while the current public endpoint
+now serves build `2f47f2bc1bca02d3` (Sites v315, deployment status `succeeded`).
+The current Sites record's source SHA is `f7688865dfa6d828ac24a220da88efa5d754dcf0`,
+which does not resolve in this GitHub repository. This confirms the reported
+29-minute failure belongs to an older public build and that the currently live
+artifact's source provenance is not yet tied to the checked-out branch. The
+runtime deadline fix is already present in the repository; the old report does
+not establish whether it works on the current iPhone build. No product code or
+deployment was changed during this provenance check. See
+[SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md) for the Sites version and artifact
+metadata.
+
 ### 2026-11-04 · split CI browser prerequisites for failure attribution
 
 Clean-checkout CI for `2194fc0` passed every stage in 21m52s
