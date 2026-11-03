@@ -109,3 +109,8 @@ test('performance metadata survives the private handoff but reply text and unkno
  const value={schema:1,createdAt:new Date().toISOString(),checks:[],selectedModel:{id:'lfm3-1.7b-q8-0',revision:'r',runtimeRevision:'rt',quantization:'Q8_0',filesPresent:true,loaded:true},modelGeneration:{status:'fail',model:'m',modelRevision:'r',runtimeRevision:'rt',quantization:'Q8_0',testMode:'performance',workload:'prose-128-v2',inputTokens:42,maxOutputTokens:128,loadState:'not-loaded',failureStage:'load',failureType:'Error',rawReply:'PRIVATE-ANSWER',runtimeMetrics:{memoryAfter:{liveBytes:123,peakBytes:456,privateNote:'PRIVATE-ANSWER'}}}};
  const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/prose-128-v2/);assert.match(text,/"quantization": "Q8_0"/);assert.match(text,/"inputTokens": 42/);assert.match(text,/"loadState": "not-loaded"/);assert.match(text,/"failureStage": "load"/);assert.match(text,/"liveBytes": 123/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
 });
+
+test('a stopped model run retains its failure stage without exposing generated text',()=>{
+ const value={schema:1,createdAt:new Date().toISOString(),checks:[],selectedModel:{id:'lfm3-1.7b-q4-0',revision:'r',runtimeRevision:'rt',filesPresent:true,loaded:false},modelGeneration:{status:'stopped',model:'lfm3-1.7b-q4-0',modelRevision:'r',runtimeRevision:'rt',testMode:'quick',workload:'ready-v1',maxOutputTokens:64,loadState:'not-loaded',failureStage:'model-load',failureType:'stopped',answerText:'PRIVATE-ANSWER'}};
+ const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/"status": "stopped"/);assert.match(text,/"failureStage": "model-load"/);assert.match(text,/"loadState": "not-loaded"/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
+});
