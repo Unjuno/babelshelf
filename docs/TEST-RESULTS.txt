@@ -1,3 +1,12 @@
+2026-11-03 — Activity summaries separate Decision checks from Text generation.
+Completed `decision.classify` receipts now appear as separate checks with their
+receipt interval; Text generation call counts are no longer labeled as all
+agent model calls. The summary explicitly says it covers recorded phases, not
+total turn time. Unit tests passed 8/8, Activity browser tests 2/2,
+`npm run check` passed, production packaging verified 165 assets (shell
+`b001af3ee0141b1b`), and app acceptance passed 8/8. These are receipt/UI
+checks, not an end-to-end timing measurement or live model benchmark.
+
 2026-11-03 — Decimal-comma source quantities remain citation-checkable.
 The narrow liquid-volume consistency guard previously skipped `1,5 L` while it
 recognized grouped thousands such as `1,000 L`. It now parses one- and two-digit

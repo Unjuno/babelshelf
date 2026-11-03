@@ -3,10 +3,12 @@ import {builtinToolIds} from './tools/builtin-tools.ts';
 
 export type TurnWorkSummary={
  measuredModelCalls:number;
+ decisionChecks:number;
  promptTokens?:number;
  outputTokens?:number;
  tokenCountMs?:number;
  generationMs?:number;
+ decisionElapsedMs?:number;
  measuredToolCalls:number;
  toolElapsedMs?:number;
 };
@@ -29,7 +31,7 @@ function isAgentTool(tool:string){
 
 /** Read-only rollup of measured model and registered-tool work from turn receipts. */
 export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummary|null{
- let measuredModelCalls=0,promptTokens:number|undefined,outputTokens:number|undefined,tokenCountMs:number|undefined,generationMs:number|undefined,measuredToolCalls=0,toolElapsedMs:number|undefined;
+ let measuredModelCalls=0,decisionChecks=0,promptTokens:number|undefined,outputTokens:number|undefined,tokenCountMs:number|undefined,generationMs:number|undefined,decisionElapsedMs:number|undefined,measuredToolCalls=0,toolElapsedMs:number|undefined;
  for(const activity of activities){
   if((activity.tool==='dialogue.plan'||activity.tool==='knowledge.answer'||activity.tool==='dialogue.compact'||activity.tool==='text.inspect'||activity.tool==='schedule.propose'||activity.tool==='memory.propose_correction')&&activity.status!=='running'){
    const inference=record(record(activity.output)?.inference);
@@ -45,12 +47,17 @@ export function summarizeTurnWork(activities:readonly Activity[]):TurnWorkSummar
    generationMs=add(generationMs,inference.generationWallMs);
    continue;
   }
+  if(activity.tool==='decision.classify'&&activity.status!=='running'&&activity.finishedAt){
+   const started=Date.parse(activity.startedAt),finished=Date.parse(activity.finishedAt),elapsed=finished-started;
+   if(Number.isFinite(elapsed)&&elapsed>=0&&elapsed<=Number.MAX_SAFE_INTEGER){decisionChecks++;decisionElapsedMs=add(decisionElapsedMs,elapsed);}
+   continue;
+  }
   if(!isAgentTool(activity.tool)||!activity.finishedAt)continue;
   const started=Date.parse(activity.startedAt),finished=Date.parse(activity.finishedAt),elapsed=finished-started;
   if(!Number.isFinite(elapsed)||elapsed<0||elapsed>Number.MAX_SAFE_INTEGER)continue;
   measuredToolCalls++;
   toolElapsedMs=add(toolElapsedMs,elapsed);
  }
- if(!measuredModelCalls&&!measuredToolCalls&&tokenCountMs===undefined)return null;
- return {measuredModelCalls,...(promptTokens!==undefined?{promptTokens}:{}),...(outputTokens!==undefined?{outputTokens}:{}),...(tokenCountMs!==undefined?{tokenCountMs}:{}),...(generationMs!==undefined?{generationMs}:{}),measuredToolCalls,...(toolElapsedMs!==undefined?{toolElapsedMs}:{})};
+ if(!measuredModelCalls&&!decisionChecks&&!measuredToolCalls&&tokenCountMs===undefined)return null;
+ return {measuredModelCalls,decisionChecks,...(promptTokens!==undefined?{promptTokens}:{}),...(outputTokens!==undefined?{outputTokens}:{}),...(tokenCountMs!==undefined?{tokenCountMs}:{}),...(generationMs!==undefined?{generationMs}:{}),...(decisionElapsedMs!==undefined?{decisionElapsedMs}:{}),measuredToolCalls,...(toolElapsedMs!==undefined?{toolElapsedMs}:{})};
 }

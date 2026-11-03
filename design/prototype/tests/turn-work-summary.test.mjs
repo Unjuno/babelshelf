@@ -12,16 +12,17 @@ test('turn summary totals only observed model metrics and registered agent tool 
   activity('tools.search','2026-01-01T00:00:02.025Z','2026-01-01T00:00:02.030Z'),
   activity('knowledge.answer','2026-01-01T00:00:02.030Z','2026-01-01T00:00:03.000Z'),
   activity('knowledge.answer','2026-01-01T00:00:03.000Z','2026-01-01T00:00:04.000Z','succeeded',{model:{id:'test'},sourceCount:1,inference:{measuredModelCalls:1,promptTokens:80,outputTokens:12,countMs:1.1,generationWallMs:150.5}}),
+  activity('decision.classify','2026-01-01T00:00:04.000Z','2026-01-01T00:00:04.075Z'),
   activity('external.shell','2026-01-01T00:00:04.000Z','2026-01-01T00:00:09.000Z'),
  ];
  const summary=summarizeTurnWork(rows);assert.ok(summary);
- const {tokenCountMs,...totals}=summary;assert.deepEqual(totals,{measuredModelCalls:3,promptTokens:300,outputTokens:55,generationMs:1451.3,measuredToolCalls:2,toolElapsedMs:30});
+ const {tokenCountMs,...totals}=summary;assert.deepEqual(totals,{measuredModelCalls:3,decisionChecks:1,promptTokens:300,outputTokens:55,generationMs:1451.3,decisionElapsedMs:75,measuredToolCalls:2,toolElapsedMs:30});
  assert.ok(Math.abs(tokenCountMs-6.8)<1e-9);
 });
 
 test('answer activity counts measured model retries instead of treating the receipt as one call',()=>{
  const rows=[activity('knowledge.answer','2026-01-01T00:00:00.000Z','2026-01-01T00:00:02.000Z','succeeded',{model:{id:'test'},inference:{measuredModelCalls:3,promptTokens:240,outputTokens:36,countMs:4,generationWallMs:1200}})];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,promptTokens:240,outputTokens:36,tokenCountMs:4,generationMs:1200,measuredToolCalls:0});
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,decisionChecks:0,promptTokens:240,outputTokens:36,tokenCountMs:4,generationMs:1200,measuredToolCalls:0});
 });
 
 test('context compaction inference is included and count-only work remains visible',()=>{
@@ -29,7 +30,7 @@ test('context compaction inference is included and count-only work remains visib
   activity('dialogue.compact','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{compaction:{through:3,summaryCharacters:82},inference:{measuredModelCalls:2,promptTokens:90,outputTokens:24,countMs:11,generationWallMs:740}}),
   activity('dialogue.compact','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','succeeded',{inference:{measuredModelCalls:0,countMs:4}}),
  ];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:2,promptTokens:90,outputTokens:24,tokenCountMs:15,generationMs:740,measuredToolCalls:0});
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:2,decisionChecks:0,promptTokens:90,outputTokens:24,tokenCountMs:15,generationMs:740,measuredToolCalls:0});
 });
 
 test('summary omits unavailable and malformed measurements instead of inventing zeroes',()=>{
@@ -45,7 +46,7 @@ test('successful activity without an explicit model-call measurement does not in
  const rows=[
   activity('dialogue.plan','2026-01-01T00:00:00.000Z','2026-01-01T00:00:01.000Z','succeeded',{inference:{countMs:12}}),
  ];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:0,tokenCountMs:12,measuredToolCalls:0});
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:0,decisionChecks:0,tokenCountMs:12,measuredToolCalls:0});
 });
 
 test('failed inference receipts count only explicit attempted calls and preserve measured timing',()=>{
@@ -54,7 +55,7 @@ test('failed inference receipts count only explicit attempted calls and preserve
   activity('knowledge.answer','2026-01-01T00:00:01.000Z','2026-01-01T00:00:02.000Z','stopped',{inference:{measuredModelCalls:2,promptTokens:100,generationWallMs:500}}),
   activity('knowledge.answer','2026-01-01T00:00:02.000Z','2026-01-01T00:00:03.000Z','failed',{error:'preflight failed'}),
  ];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,promptTokens:180,generationMs:740,measuredToolCalls:0});
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:3,decisionChecks:0,promptTokens:180,generationMs:740,measuredToolCalls:0});
 });
 
 test('failed registered calls remain counted as real tool work but unfinished or reversed intervals do not',()=>{
@@ -63,5 +64,11 @@ test('failed registered calls remain counted as real tool work but unfinished or
   activity('memory.search','2026-01-01T00:00:00.040Z','2026-01-01T00:00:00.020Z'),
   {schema:1,id:'unfinished',tool:'memory.search',input:null,startedAt:'2026-01-01T00:00:00.000Z',status:'running'},
  ];
- assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:0,measuredToolCalls:1,toolElapsedMs:40});
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:0,decisionChecks:0,measuredToolCalls:1,toolElapsedMs:40});
+});
+
+test('decision checks are visible separately and use their completed receipt interval',()=>{
+ const rows=[activity('decision.classify','2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.250Z','failed',{error:'not persisted'})];
+ assert.deepEqual(summarizeTurnWork(rows),{measuredModelCalls:0,decisionChecks:1,decisionElapsedMs:250,measuredToolCalls:0});
+ assert.equal(summarizeTurnWork([{...rows[0],finishedAt:undefined,status:'running'}]),null);
 });

@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · report decision work separately from text generation
+
+Activity summaries previously labeled measured Text-model generation calls as `Agent model calls` and omitted the completed Decision classifier's receipt interval. The summary now counts completed Decision checks separately and shows their measured receipt time; labels distinguish Text generation from decision work, and the panel says these are recorded phases rather than total turn time. The summary unit suite passed 8/8, Activity browser suite 2/2, `npm run check`, production build verified 165 assets (shell `b001af3ee0141b1b`), and app acceptance passed 8/8. Build, component tests, and receipt timing do not measure unrecorded orchestration or real model latency. Existing data and model assets were not changed.
+
 ### 2026-11-03 · check decimal-comma quantities against cited values
 
 The source-value guard recognized grouped thousands such as `1,000 L`, but skipped decimal-comma values such as `1,5 L`; that could let an answer change the cited value without triggering this narrow consistency check. Arabic measurements now accept one- and two-digit comma decimals while three-digit comma groups remain thousands (the ambiguous `1,234` convention is deliberately not reinterpreted). Regressions prove `1,5 L` matches `1.5 L`, rejects `15 L`, and preserves `1,000 L` behavior. Answer-consistency tests passed 12/12; the full prototype suite passed 1,856/1,856; `npm run check` passed; production build verified 165 assets (shell `a37ce9525018163f`); app acceptance passed 8/8. Clean-checkout CI [41610502767](https://github.com/Unjuno/babelshelf/actions/runs/41610502767) passed every stage in 10m19s on `edd17d1`, including the repeated-touch navigation regression recorded below. These are deterministic parser/build checks, not real-model semantic entailment or live locale coverage. No original, Memory record, or model asset was changed.
