@@ -8056,3 +8056,15 @@ CI follow-up — The shared-Send output truncation fix (`7d811f3`) passed clean-
 
 2026-11-03 — Separate definitive WebGPU unavailability from transient preflight failure. Missing WebGPU and a null result remain eligible for the registered CPU/WASM fallback; rejected or timed-out adapter checks now retain retryable error codes so LFM3 does not silently choose CPU after an inconclusive probe. Regression coverage checks the code taxonomy, late timeout completion, and that retryable `auto` failures neither load the model file nor attempt CPU. Focused preflight/runtime tests passed 48/48; the full prototype suite passed 1,839/1,839; root tests passed 257/257; `npm run check` passed; the production shell verified 165 assets; product acceptance passed 8/8. No live-model or physical-device run was performed. No user data, model files, or retained QA artifacts were changed.
 CI follow-up — commit `0fbedec` passed clean-checkout GitHub Actions [41530267810](https://github.com/Unjuno/babelshelf/actions/runs/41530267810) in 11m1s. Core/build and app acceptance, review/offline calculation, tool/MCP/help/Markdown, device/inference/settings, editorial/iOS handoff, and offline/installed-PWA stages all passed. This proves the code/test/package path is reproducible in CI; it does not run a physical device or a real local model benchmark.
+2026-11-03 — Keep curved touch navigation available across repeated holds.
+An active hold-and-slide menu was closed by a focus-out `blur` with no related
+target, clearing the gesture state before the next pointer move. The blur handler
+now preserves the active pointer gesture. The Chromium sequence
+Schedule → Notifications → Settings → Schedule → BabelShelf passes, including
+the closed-menu precondition before every subsequent hold. Focused editorial
+appearance browser tests passed 30/30; `npm run check` and `npm run build:app`
+passed. Clean-checkout GitHub Actions
+[41586094894](https://github.com/Unjuno/babelshelf/actions/runs/41586094894)
+passed all stages, including device/settings, editorial/iOS handoff and
+offline/installed-PWA acceptance. This does not establish all physical
+touch-controller behavior. Commit `939bb87` is on `codex/ui-design-handoff`.
