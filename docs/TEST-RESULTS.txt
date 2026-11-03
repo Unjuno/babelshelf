@@ -1,3 +1,15 @@
+2026-11-03 — Expand Developer diagnostic types and result visibility.
+Added Model readiness as a check-only report mode. It uses the selected model's
+local files-present signal and browser runtime prerequisites; it does not load,
+generate, prepare, or download a model. The result view presents 11 diagnostic
+areas without a disclosure step, and old reports without a mode remain legible.
+Focused diagnostics/unit/report-copy tests passed 65/65; Developer UI tests
+passed 30/30; the full prototype suite passed 1,856/1,856; `npm run check`
+passed; production packaging verified 165 assets; app acceptance passed 8/8.
+Commit `17c46f5` is pushed. Clean-checkout CI [41605085273](https://github.com/Unjuno/babelshelf/actions/runs/41605085273)
+is running; this records local evidence only until CI completes. No model or
+user data was downloaded, loaded, or modified.
+
 2026-11-03 — A prior inference deadline cannot stop the next generation.
 The regression held a completed generation's timeout callback, started the next
 generation, then replayed the stale callback. It failed before the fix because
