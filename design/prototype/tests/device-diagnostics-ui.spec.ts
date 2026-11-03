@@ -6,7 +6,7 @@ for(const action of ['type','offline'] as const)test(`working during app update:
    update:()=>new Promise(resolve=>{(window as any).__releaseUpdate=()=>resolve(registration);})};
   Object.defineProperty(navigator.serviceWorker,'getRegistration',{configurable:true,value:async()=>registration});
  });
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
  await page.getByRole('button',{name:'Update app'}).click();
  await page.waitForFunction(()=>typeof (window as any).__releaseUpdate==='function');
@@ -34,9 +34,14 @@ async function openSettingsItem(page:Page,name:string){
  await item.click();
 }
 
+async function openApp(page:Page){
+ await page.goto('/',{waitUntil:'domcontentloaded'});
+ await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
+}
+
 test('saved timing results identify their model, time and build independently of next test options',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'previous-build',checks:[],modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'model-revision',runtimeRevision:'runtime-revision',outputTokens:128,tokensPerSecond:7.42}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();
  await expect(page.locator('time[datetime="2026-10-20T01:02:03.000Z"]')).toBeVisible();
  await expect(page.getByText('4B · Sample complete',{exact:true})).toBeVisible();
@@ -49,7 +54,7 @@ test('saved timing results identify their model, time and build independently of
 });
 
 test('every test type has a visible overview and App & storage runs without a model',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByRole('region',{name:'Quick overview'})).toContainText('one short reply');
  await page.getByText('Test options · Quick',{exact:true}).click();
  for(const mode of ['App & storage','Quick','Performance','Full cycle'])await expect(page.getByRole('button',{name:mode,exact:true})).toBeVisible();
@@ -58,25 +63,26 @@ test('every test type has a visible overview and App & storage runs without a mo
  await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Run app checks',exact:true}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
  const report=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(report.deviceTestMode).toBe('app');expect(report.modelGeneration).toBeUndefined();
- await page.locator('.device-test-steps > summary').filter({hasText:'Check results'}).click();await expect(page.getByText('App & PWA',{exact:true})).toBeVisible();await expect(page.getByText('Storage',{exact:true})).toBeVisible();await expect(page.getByText('Runtime',{exact:true})).toBeVisible();await expect(page.getByText('Selected model',{exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Last test overview · App & storage'})).toContainText('No model load or download');
+ await page.locator('.device-test-steps > summary').filter({hasText:'Check results'}).click();for(const area of ['App security','Offline cache','Browser storage','Memory workflow','Inference runtime','Model files','Model reply','Offline restart'])await expect(page.getByText(area,{exact:true})).toBeVisible();
 });
 
 test('legacy timing reports use their workload when testMode is absent',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'legacy-build',checks:[],selectedModel:{id:'4B',revision:'m',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',workload:'prose-128-v1',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:96,tokensPerSecond:6.5}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();await expect(page.getByText('4B · Sample complete',{exact:true})).toBeVisible();await expect(page.getByText('Overall speed',{exact:true})).toBeVisible();await expect(page.getByText('6.50 tokens/s',{exact:true})).toBeVisible();
 });
 
 test('an incomplete timing response is explained in plain language',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],modelGeneration:{status:'fail',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',failureStage:'output-validation',failureType:'incomplete-output'}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByText('4B · Incomplete output',{exact:true})).toBeVisible();
  await expect(page.getByText('Failed · output-validation',{exact:true})).toHaveCount(0);
 });
 
 test('performance distinguishes configured route, quantization, context limit, selected runtime backend, and unreported runtime GPU offload',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',platform:'iPhone',userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1',checks:[],hardware:{logicalProcessors:6,memoryGiBEstimate:8},selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',contextTokens:8192,filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',quantization:'Q8_0',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'cpu-wasm',gpuFallbackReason:'webgpu-no-layers-offloaded'},runtimeMetrics:{runtimePrefillMs:2345,visibleTextTtftMs:840,runtimeDecodeTokensPerSecond:12.34}}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  const fallback=page.locator('section[aria-label="Device test"] .capability-row:visible').filter({hasText:'GPU fallback'});
  await expect(fallback).toBeVisible();await expect(fallback).toContainText('GPU ran no model layers · CPU/WASM used');
  await expect(page.getByText('Model load',{exact:true})).toBeVisible();await expect(page.getByText('First text',{exact:true})).toBeVisible();await expect(page.getByText('Overall speed',{exact:true})).toBeVisible();await expect(page.getByText('7.42 tokens/s',{exact:true})).toBeVisible();await expect(page.getByText('Test environment',{exact:true})).toBeVisible();await expect(page.getByText('iPhone · Safari 26.6.1',{exact:true})).toBeVisible();await expect(page.getByText('Run on',{exact:true})).toBeVisible();await expect(page.getByText('CPU · WASM',{exact:true})).toBeVisible();await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Quantization',{exact:true})).toBeVisible();await expect(page.getByText('Q8_0',{exact:true})).toBeVisible();await expect(page.getByText('Context limit · configured',{exact:true})).toBeVisible();await expect(page.getByText('8,192 tokens',{exact:true})).toBeVisible();await expect(page.getByText('Backend route · configured',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU',{exact:true})).toBeVisible();await expect(page.getByText('Logical processors · browser',{exact:true})).toBeVisible();await expect(page.getByText('6',{exact:true})).toBeVisible();await expect(page.getByText('Memory estimate · browser',{exact:true})).toBeVisible();await expect(page.getByText('8 GiB',{exact:true})).toBeVisible();await expect(page.getByText('Prompt processing · runtime',{exact:true})).toBeVisible();await expect(page.getByText('2.35 s',{exact:true})).toBeVisible();await expect(page.getByText('Decode speed',{exact:true})).toBeVisible();await expect(page.getByText('12.34 tokens/s',{exact:true})).toBeVisible();
@@ -84,28 +90,28 @@ test('performance distinguishes configured route, quantization, context limit, s
 
 test('performance displays runtime mode and GPU layer counts in the result summary',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'webgpu',runtimeVariant:'compatibility'},runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:28}}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('Run on',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU · 24/28 GPU layers',{exact:true})).toBeVisible();await expect(page.getByText('WASM mode',{exact:true})).toBeVisible();await expect(page.getByText('Compatibility',{exact:true})).toBeVisible();await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Backend route · configured',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU',{exact:true})).toBeVisible();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('Run on',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU · 24/28 GPU layers',{exact:true})).toBeVisible();await expect(page.getByText('WASM mode',{exact:true})).toBeVisible();await expect(page.getByText('Compatibility',{exact:true})).toBeVisible();await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Backend route · configured',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU',{exact:true})).toBeVisible();
 });
 
 test('performance does not label an unconfirmed WebGPU route as executed',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',contextTokens:8192,filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'4B',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,runtimeMetrics:{runtimeObservedGpuLayers:0,runtimeObservedGpuTotalLayers:25}}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByText('Run on',{exact:true})).toBeVisible();await expect(page.getByText('GPU not confirmed',{exact:true})).toBeVisible();await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Backend route · configured',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU',{exact:true})).toBeVisible();await expect(page.getByText('CPU · WASM',{exact:true})).toHaveCount(0);
 });
 
 test('performance shows requested and runtime-reported thread counts separately',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'lfm3',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'lfm3',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'webgpu'},runtimeMetrics:{requestedThreads:4,runtimeThreads:3}}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Threads · runtime',{exact:true})).toBeVisible();await expect(page.getByText('4 requested · 3 reported',{exact:true})).toBeVisible();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Threads · runtime',{exact:true})).toBeVisible();await expect(page.getByText('4 requested · 3 reported',{exact:true})).toBeVisible();
 });
 
 test('performance shows a bounded browser GPU hint without calling it the inference adapter',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],webgpu:{available:true,fallbackAdapter:false,vendor:'intel',architecture:'gen-12lp',features:[],limits:{},device:'PRIVATE_DEVICE'},selectedModel:{id:'lfm3',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'performance',model:'lfm3',modelRevision:'m',runtimeRevision:'r',outputTokens:128,tokensPerSecond:7.42,loadMetrics:{executionBackend:'webgpu'},runtimeMetrics:{runtimeDecodeTokensPerSecond:12.34,runtimeObservedGpuLayers:24,runtimeObservedGpuTotalLayers:24}}})));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Technical details',{exact:true}).click();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Technical details',{exact:true}).click();
  const hint=page.locator('section[aria-label="Device test"] .capability-row:visible').filter({hasText:'GPU hint · browser'});await expect(hint).toContainText('intel · gen-12lp');await expect(hint).not.toContainText('PRIVATE_DEVICE');await expect(page.getByText('WebGPU · 24/24 GPU layers',{exact:true})).toBeVisible();
 });
 
 test('Settings keeps common choices visible and groups advanced actions under More',async({page})=>{
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();
@@ -125,7 +131,7 @@ test('Settings keeps common choices visible and groups advanced actions under Mo
 
 test('iOS Home Screen standalone signal is retained even when display-mode is unavailable',async({page})=>{
  await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
@@ -146,7 +152,7 @@ test('Settings device test creates a local report that can be copied for handoff
   const write=clipboard.writeText.bind(clipboard);
   try{Object.defineProperty(clipboard,'writeText',{configurable:true,value:async(text:string)=>{(window as any).__capturedDeviceHandoff=text;return write(text);}});}catch{}
  });
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
@@ -183,7 +189,8 @@ test('Settings device test creates a local report that can be copied for handoff
 });
 
 test('chat shows a clear higher connection state and shares the selected mode with Settings',async({page})=>{
- await page.goto('/');
+ await openApp(page);
+ await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
  const offline=page.getByRole('button',{name:'Offline · Tap to switch Online'});
  await expect(offline).toBeVisible();
  await expect(offline).toContainText('Offline');
@@ -202,7 +209,8 @@ test('chat shows a clear higher connection state and shares the selected mode wi
 });
 
 test('chat connection mode survives a full page reload',async({page})=>{
- await page.goto('/');
+ await openApp(page);
+ await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
  await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
  await expect(page.getByRole('button',{name:'Online · Tap to switch Offline'})).toHaveAttribute('aria-pressed','true');
  await page.reload();
@@ -215,7 +223,7 @@ test('explicit online update retries a missing app registration',async({page})=>
   Object.defineProperty(sw,'getRegistration',{configurable:true,value:async()=>undefined});
   Object.defineProperty(sw,'register',{configurable:true,value:async()=>{attempts++;(window as any).__registrationAttempts=attempts;if(attempts===1)throw Error('initial failure');const registration=new EventTarget() as ServiceWorkerRegistration;Object.defineProperty(registration,'active',{value:{state:'activated'}});return registration;}});
  });
- await page.goto('/');await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
+ await openApp(page);await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).__registrationAttempts)).toBe(1);
  await page.getByRole('button',{name:'Update app'}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).__registrationAttempts)).toBe(2);
@@ -223,7 +231,7 @@ test('explicit online update retries a missing app registration',async({page})=>
 });
 
 test('chat exposes an explicit app refresh beside the online/offline control',async({page})=>{
- await page.goto('/');
+ await openApp(page);
  const refresh=page.getByRole('button',{name:'Update app'});
  await expect(refresh).toBeVisible();
  await expect(refresh).toBeDisabled();
@@ -242,7 +250,8 @@ test('chat exposes an explicit app refresh beside the online/offline control',as
 });
 
 test('app refresh is available online and blocked while a draft could be lost',async({page})=>{
- await page.goto('/');
+ await openApp(page);
+ await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await page.getByRole('button',{name:'Connection',exact:true}).click();
@@ -250,7 +259,7 @@ test('app refresh is available online and blocked while a draft could be lost',a
  await expect(refresh).toBeDisabled();
  await page.getByRole('group',{name:'App connection mode'}).getByRole('button',{name:'Online'}).click();
  await expect(refresh).toBeEnabled();
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('textbox',{name:'Message'}).fill('Keep this unsent note');
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
@@ -261,7 +270,7 @@ test('app refresh is available online and blocked while a draft could be lost',a
 
 test('one iOS offline handoff stores a local continuation marker and asks for one run',async({page})=>{
  await page.addInitScript(()=>{Object.defineProperty(navigator,'platform',{configurable:true,value:'iPhone'});Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'});Object.defineProperty(navigator,'standalone',{configurable:true,value:true});});
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
@@ -275,8 +284,8 @@ test('one iOS offline handoff stores a local continuation marker and asks for on
 
 test('Windows installed-app restart guidance does not mention iOS actions',async({page})=>{
  await page.addInitScript(()=>{Object.defineProperty(navigator,'platform',{configurable:true,value:'Win32'});Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/149.0.0.0 Safari/537.36'});Object.defineProperty(navigator,'standalone',{configurable:true,value:true});});
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');const options=page.locator('details.device-test-steps').filter({hasText:'Test options'});await options.locator('summary').click();await expect(options).toContainText('App + model · Installed app: restart check');
- const checks=page.locator('details.device-test-steps').filter({hasText:'Restart: installed app only.'});await checks.locator('summary').click();await expect(checks).toContainText('Browser tabs finish without a restart check');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByRole('region',{name:'Quick overview'})).toContainText('Installed-app Quick may include a one-run restart check');
+ const guide=page.locator('details.device-test-steps').filter({hasText:'Test guide'});await guide.locator('summary').click();await expect(guide).toContainText('start from the installed app, not a browser tab');
  await page.getByRole('button',{name:'Run tests'}).click();
  await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
  const steps=page.locator('.device-offline-test');await expect(steps).toContainText('Disconnect the device from the network');await expect(steps).not.toContainText(/Airplane Mode|Home Screen/);
@@ -293,7 +302,7 @@ test('a saved return check resumes after reload and leaves a copyable handoff',a
   try{Object.defineProperty(clipboard,'writeText',{configurable:true,value:async(text:string)=>{(window as any).__capturedDeviceHandoff=text;return write(text);}});}catch{}
  });
  await page.addInitScript(()=>Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>localStorage.getItem('device-test-offline')!=='true'}));
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
@@ -323,7 +332,7 @@ test('a saved return check resumes after reload and leaves a copyable handoff',a
 
 test('an interrupted one-run return is reported once without automatically repeating probes or model execution',async({page})=>{
  await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
@@ -353,7 +362,7 @@ test('an interrupted one-run return is reported once without automatically repea
 
 test('one Run binds the selected model before the installed-app restart without another checkbox',async({page})=>{
  await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByRole('checkbox',{name:'Test model after restart'})).toHaveCount(0);
  await page.getByRole('button',{name:'Run tests'}).click();await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
  const marker=JSON.parse((await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1')))??'null');
@@ -362,7 +371,7 @@ test('one Run binds the selected model before the installed-app restart without 
 });
 
 test('Connection settings label navigator.onLine as a browser signal, not verified reachability',async({page})=>{
- await page.goto('/');
+ await openApp(page);
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await page.getByRole('button',{name:'Connection',exact:true}).click();
@@ -372,7 +381,7 @@ test('Connection settings label navigator.onLine as a browser signal, not verifi
 });
 
 test('diagnostic log review opens an editable chat draft without sending it',async({page})=>{
- await page.goto('/');
+ await openApp(page);
  await page.evaluate(()=>localStorage.setItem('babelshelf.diagnostic-logs.v1',JSON.stringify([{schema:1,id:'review-me',at:new Date().toISOString(),tool:'dialogue.plan',status:'failed',code:'planner_protocol',message:'The planner response did not match the required action format.'}])));
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
@@ -388,23 +397,23 @@ test('diagnostic log review opens an editable chat draft without sending it',asy
 });
 
 test('installed Performance uses one Run without requiring a restart or model download',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await page.getByText('Test options · Quick',{exact:true}).click();await page.getByRole('button',{name:'Performance',exact:true}).click();await expect(page.getByRole('button',{name:'Run speed sample',exact:true})).toHaveCount(1);await page.getByRole('button',{name:'Run speed sample',exact:true}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
  await expect(page.getByRole('heading',{name:'Restart needed',exact:true})).toHaveCount(0);await expect(page.getByRole('region',{name:'Performance overview'})).toContainText('selected model must already be prepared');await expect(page.getByRole('region',{name:'Performance overview'})).toContainText('No download');const marker=await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'));expect(marker).toBeNull();const report=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(report.modelGeneration).toMatchObject({testMode:'performance',status:'not-run',failureType:'model-files-not-ready'});await expect(page.getByText('Load',{exact:true})).toHaveCount(0);expect(report.manualSteps.join(' ')).not.toMatch(/Airplane|Home Screen/);await page.reload();await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();const retained=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(retained.createdAt).toBe(report.createdAt);
 });
 
 test('Full cycle explains missing model preparation and download requirements before running',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · Quick',{exact:true}).click();await page.getByRole('button',{name:'Full cycle',exact:true}).click();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · Quick',{exact:true}).click();await page.getByRole('button',{name:'Full cycle',exact:true}).click();
  const overview=page.getByRole('region',{name:'Full cycle overview'});await expect(overview).toContainText('Check or prepare files');await expect(overview).toContainText('load model');await expect(overview).toContainText('first answer');await expect(overview).toContainText('warm run');await expect(overview).toContainText('Downloads Off');
  await expect(page.getByRole('button',{name:'Run full model test',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toHaveCount(0);
 });
 
 test('a legacy Performance restart marker still completes once after an update',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run tests',exact:true}).click();await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible();
+ await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run tests',exact:true}).click();await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible();
  await page.evaluate(()=>{const key='babelshelf.device-test.offline-restart.v1',marker=JSON.parse(localStorage.getItem(key)!);marker.modelTestMode='performance';localStorage.setItem(key,JSON.stringify(marker));});await page.reload();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeVisible();await expect(page.getByText('Test options · Performance',{exact:true})).toBeVisible();await expect.poll(()=>page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'))).toBeNull();
 });
 
 test('a new run cannot copy the previous result as if it were the current test',async({page})=>{
  await page.addInitScript(()=>{localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'old',modelRevision:'old-rev',runtimeRevision:'old-runtime'}}));(window as any).__gpuProbeCount=0;const pending:Array<(value:null)=>void>=[];(window as any).__releaseGpuProbe=()=>pending.shift()?.(null);Object.defineProperty(navigator,'gpu',{configurable:true,value:{requestAdapter:()=>{(window as any).__gpuProbeCount++;return new Promise(resolve=>pending.push(resolve));}}});});
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run tests'}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await expect(page.getByText('Previous report',{exact:true})).toBeVisible();await page.waitForFunction(()=>typeof (window as any).__releaseGpuProbe==='function'&&(window as any).__gpuProbeCount===1);await page.evaluate(()=>(window as any).__releaseGpuProbe());await page.waitForFunction(()=>(window as any).__gpuProbeCount===2);await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await page.evaluate(()=>(window as any).__releaseGpuProbe());await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run tests'}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await expect(page.getByText('Previous report',{exact:true})).toBeVisible();await page.waitForFunction(()=>typeof (window as any).__releaseGpuProbe==='function'&&(window as any).__gpuProbeCount===1);await page.evaluate(()=>(window as any).__releaseGpuProbe());await page.waitForFunction(()=>(window as any).__gpuProbeCount===2);await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await page.evaluate(()=>(window as any).__releaseGpuProbe());await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
 });

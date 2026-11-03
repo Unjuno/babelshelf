@@ -481,6 +481,10 @@ button.model-picker svg{flex-shrink:0}
 .device-test-overview{display:flex;flex-direction:column;gap:5px}
 .device-test-overview strong{font-weight:650}
 .device-test-overview span,.device-test-progress{font-size:.9rem;color:#40554a;line-height:1.45}
+.diagnostic-result{padding:9px 0;border-bottom:1px solid var(--glass-border,rgba(128,150,145,.28))}
+.diagnostic-result:last-of-type{border-bottom:0}
+.diagnostic-result .capability-row{align-items:baseline}
+.diagnostic-result p{margin:2px 0 0}
 .device-test-progress{display:flex;justify-content:space-between;gap:12px}
 .device-test-progress time{white-space:nowrap}
 .full-cycle-progress{margin-top:14px;padding:14px;border:1px solid #cbd9d1;border-radius:16px;background:rgba(255,255,255,.62)}
@@ -495,6 +499,7 @@ button.model-picker svg{flex-shrink:0}
 @keyframes full-cycle-shimmer{to{transform:translateX(100%)}}
 .device-screen:has(.appearance-dark) .full-cycle-progress{background:#1b2d25;border-color:#587367}
 .device-screen:has(.appearance-dark) .device-test-overview,.device-screen:has(.appearance-dark) .device-test-progress{background:#1b2d25;border-color:#587367;color:#d5e2da}
+.device-screen:has(.appearance-dark) .diagnostic-result{border-bottom-color:rgba(173,198,184,.22)}
 .device-screen:has(.appearance-dark) .full-cycle-progress-track span{background:#33463c}
 .device-screen:has(.appearance-dark) .full-cycle-progress-track span.complete{background:#61be94}
 .device-screen:has(.appearance-dark) .full-cycle-progress-track span.active{background:#395c4b}
