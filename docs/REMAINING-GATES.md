@@ -1,4 +1,24 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · interpret the earlier iPhone Full cycle report
+
+The supplied report is from app build `48777327b2d5c402` in an iOS Safari tab
+(`standalone:false`). Runtime setup failed after 1,764,321 ms with only a generic
+`Error`; `filesPresent:false`, `assetState:not-run`, and `loadState:not-loaded`
+show that model preparation, loading, and generation were never reached. The
+1,049,615,680-byte `expectedModelBytes` value is manifest metadata, not evidence
+that those model bytes were downloaded. Browser WebGPU/WASM capability signals
+do not prove the configured runtime used the GPU. This report cannot identify
+the runtime failure cause or establish iPhone model compatibility.
+
+The current app has since added bounded runtime failure categories and separate
+runtime bytes-read/downloaded counters; the old report predates those fields.
+PC preflight passed 109 focused unit checks and 33 Developer UI browser checks;
+clean-checkout CI [41689016571](https://github.com/Unjuno/babelshelf/actions/runs/41689016571)
+passed all stages. Public Site v310 serves app build `4eafc309b4e5a18e`.
+One installed-Home-Screen Full cycle rerun is needed to capture an actionable
+runtime failure on this phone; because model files are absent, that test may
+also prepare the selected model. No model was downloaded in this PC session.
+
 ### 2026-11-04 · retain runtime read progress in failed device reports
 
 The supplied iPhone report stopped during runtime setup after 1,764,321 ms,

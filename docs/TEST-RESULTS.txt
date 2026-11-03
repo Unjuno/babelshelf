@@ -1,3 +1,20 @@
+2026-11-04 — Diagnose the supplied iPhone Full cycle report and publish the current app build.
+The report is from app build `48777327b2d5c402` in a Safari tab, not the Home
+Screen app. Its generic `Error` occurred at runtime setup after 1,764,321 ms;
+`filesPresent:false`, `assetState:not-run`, and `loadState:not-loaded` confirm
+that model preparation, load, and generation did not run. `expectedModelBytes`
+(1,049,615,680) is manifest metadata, not a measured transfer. The report
+predates stable runtime failure categories and separate bytes-read/downloaded
+counters, so the underlying runtime cause remains unknown. No new platform
+failure can be fixed from this evidence alone. Focused local worker/runtime/
+diagnostic tests passed 109/109; Developer diagnostic UI passed 33/33; complete
+clean-checkout GitHub Actions [41689016571](https://github.com/Unjuno/babelshelf/actions/runs/41689016571)
+passed. Public Site v310 serves product build `4eafc309b4e5a18e` with 165
+verified assets; both the custom domain and Site hostname returned that exact
+build. No model download or device change occurred. A targeted installed-PWA
+Full cycle rerun is needed to collect the newer diagnostic fields; since the
+selected model files are absent, it can proceed into model preparation.
+
 2026-11-04 — Retain runtime read-progress measurement after a failed device run.
 An iPhone Full cycle report showed a 1,764,321 ms runtime-setup failure before
 model preparation or generation, with no specific exception cause. Added bounded
