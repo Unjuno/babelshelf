@@ -8187,3 +8187,19 @@ receipt concurrency and validation, backup/restore, and transaction rollback
 on quota failure without replaying already completed operations. This does not
 measure long varied real-model behavior or imply a default total-call/task-time
 ceiling. No stored user data or model assets were changed.
+
+2026-11-03 — Expand the default response allowance and verify restored harness
+settings. The balanced response policy now permits up to 2,048 answer tokens;
+analysis/detailed requests permit up to 3,072 and explicit long-form requests up
+to 4,096, each still bounded by the selected runtime and remaining context.
+Generation is streamed in bounded segments; this removes short-by-default
+guidance without requiring every answer to fill its allowance. Harness backup
+restore now restores only validated records through the existing revisioned
+recovery path; current connection-download policy remains forced off and history
+is preserved. Full prototype tests passed 1,860/1,860, `npm run check` and the
+product build passed. Clean-checkout GitHub Actions
+[41645201704](https://github.com/Unjuno/babelshelf/actions/runs/41645201704)
+passed all stages, including browser/editorial, device-settings, and
+offline/installed-PWA acceptance. No physical-device or real-model answer-length
+comparison was run; token ceilings are not a quality or compatibility claim.
+Commits `f70effa` and `719a40a` are on `codex/ui-design-handoff`.
