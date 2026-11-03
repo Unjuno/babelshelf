@@ -644,20 +644,23 @@ export default function Prototype() {
  const files=useRef<HTMLInputElement>(null), mediaFiles=useRef<HTMLInputElement>(null), cameraFiles=useRef<HTMLInputElement>(null), toolPackageImport=useRef<HTMLInputElement>(null), noticeTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const [navOpen,setNavOpen]=useState(false),[navTarget,setNavTarget]=useState<Page|null>(null);
  const home=useRef<HTMLButtonElement>(null),navButtons=useRef<Partial<Record<Page,HTMLButtonElement|null>>>({});
- const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),skipClick=useRef(false),skipClickTimer=useRef<ReturnType<typeof setTimeout>|null>(null),targetRef=useRef<Page|null>(null);
+ const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),skipClick=useRef(0),skipClickTimer=useRef<ReturnType<typeof setTimeout>|null>(null),targetRef=useRef<Page|null>(null);
  const press=useRef<{id:number;x:number;y:number;held:boolean;moved:boolean}|null>(null);
  function clearHold(){if(holdTimer.current){clearTimeout(holdTimer.current);holdTimer.current=null;}}
+ function clearGestureClickSuppression(){skipClick.current=0;if(skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}}
  function suppressGestureClick(){
   if(skipClickTimer.current)clearTimeout(skipClickTimer.current);
-  skipClick.current=true;
-  // Ignore the compatibility click that follows pointerup. The short expiry
-  // prevents a browser that omits it from swallowing a later keyboard action.
-  skipClickTimer.current=setTimeout(()=>{skipClick.current=false;skipClickTimer.current=null;},250);
+  skipClick.current++;
+  // Some touch browsers dispatch a compatibility click several hundred
+  // milliseconds after pointerup. Count pending clicks so a late click from an
+  // earlier gesture cannot cancel the next gesture; keyboard navigation clears
+  // the guard explicitly, and the timer bounds how long it can remain active.
+  skipClickTimer.current=setTimeout(()=>{skipClick.current=0;skipClickTimer.current=null;},750);
  }
  function consumeGestureClick(){
   if(!skipClick.current)return false;
-  skipClick.current=false;
-  if(skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}
+  skipClick.current--;
+  if(!skipClick.current&&skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}
   return true;
  }
  function markTarget(next:Page|null){targetRef.current=next;setNavTarget(next);}
@@ -666,7 +669,7 @@ export default function Prototype() {
  useEffect(()=>()=>{clearHold();if(skipClickTimer.current)clearTimeout(skipClickTimer.current);},[]);
  function beginHold(e:PointerEvent<HTMLButtonElement>){
   if(!e.isPrimary||e.button!==0)return;
-  clearHold();skipClick.current=false;markTarget(null);
+  clearHold();markTarget(null);
   // Mouse/trackpad clicks use a persistent menu; only touch/pen owns a hold gesture.
   if(e.pointerType!=='touch'&&e.pointerType!=='pen'){press.current=null;return;}
   const gesture={id:e.pointerId,x:e.clientX,y:e.clientY,held:false,moved:false};
@@ -698,7 +701,7 @@ export default function Prototype() {
  function cancelHold(){suppressGestureClick();closeNav();}
  useEffect(()=>{const cancel=()=>closeNav();window.addEventListener('blur',cancel);return()=>window.removeEventListener('blur',cancel);},[]);
  function navKeys(e:KeyboardEvent<HTMLElement>){
-  if(skipClick.current){skipClick.current=false;if(skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}}
+  if(skipClick.current)clearGestureClickSuppression();
   if(e.key==='Escape'){e.preventDefault();if(press.current)suppressGestureClick();closeNav();home.current?.focus();return;}
   if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft','Home','End'].includes(e.key)){
    e.preventDefault();showNav();const currentIndex=tabs.slice(1).findIndex(t=>navButtons.current[t.id]===document.activeElement);

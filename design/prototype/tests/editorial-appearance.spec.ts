@@ -335,13 +335,15 @@ test('touch hold, slide and release selects the destination on the arc',async({p
  await cdp.detach();
 });
 
-test('repeated touch navigation ignores a zero-detail compatibility click',async({page,context})=>{
+test('repeated touch navigation ignores delayed zero-detail compatibility clicks',async({page,context})=>{
  await page.addInitScript(()=>{
   // Reproduce a touch compatibility click delivered after pointerup with
   // detail=0; it must not reopen the navigation after a selected route change.
+  let dispatchingDelayedClick=false;
+  document.addEventListener('click',event=>{if(!dispatchingDelayedClick)event.stopImmediatePropagation();},true);
   document.addEventListener('pointerup',event=>{
    const button=(event.target as HTMLElement|null)?.closest('.chat-home');
-   if(button)button.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}));
+   if(button)setTimeout(()=>{dispatchingDelayedClick=true;button.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:0}));dispatchingDelayedClick=false;},300);
   });
  });
  await page.setViewportSize({width:390,height:844});await page.goto('/');
@@ -355,6 +357,7 @@ test('repeated touch navigation ignores a zero-detail compatibility click',async
   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(targetBox!)]});await expect(page.locator('.arc-choice')).toHaveText(destinationName);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await expect(page.getByRole('heading',{name:destinationName,exact:true})).toBeVisible();
+  await page.waitForTimeout(320);
   await expect(anchor).toHaveAttribute('aria-expanded','false');
  }
  await cdp.detach();
