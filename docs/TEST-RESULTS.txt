@@ -8324,4 +8324,13 @@ conversation, inference-budget and submission suites passed 425/425; TypeScript,
 `npm run check`, and `git diff --check` passed. Commit `2194fc0` was pushed to
 `codex/ui-design-handoff`; clean-checkout GitHub Actions
 [41727447976](https://github.com/Unjuno/babelshelf/actions/runs/41727447976) was
-still running when recorded. No model or Memory data was loaded or modified.
+passed every stage in 21m52s. No model or Memory data was loaded or modified.
+2026-11-04: The completed 41727447976 CI log showed the combined Playwright
+`install --with-deps chromium webkit` step took 10m16s: APT dependency setup
+consumed about 10 minutes, while pinned browser downloads took about 14
+seconds. A previous run completed the same combined step in 41 seconds. Split
+CI into separately named system-dependency and pinned-browser installation
+steps to expose which phase varies. Playwright version, browser versions,
+browser coverage and acceptance commands are unchanged. No cache, retries or
+timeouts were added. The workflow-only change requires a fresh clean-checkout
+CI run.
