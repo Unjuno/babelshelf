@@ -644,44 +644,48 @@ export default function Prototype() {
  const files=useRef<HTMLInputElement>(null), mediaFiles=useRef<HTMLInputElement>(null), cameraFiles=useRef<HTMLInputElement>(null), toolPackageImport=useRef<HTMLInputElement>(null), noticeTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const [navOpen,setNavOpen]=useState(false),[navTarget,setNavTarget]=useState<Page|null>(null);
  const home=useRef<HTMLButtonElement>(null),navButtons=useRef<Partial<Record<Page,HTMLButtonElement|null>>>({});
- const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),gestureClick=useRef<{x:number;y:number;until:number}|null>(null),skipClickTimer=useRef<ReturnType<typeof setTimeout>|null>(null),targetRef=useRef<Page|null>(null);
+ const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),gestureClicks=useRef<Array<{x:number;y:number;until:number}>>([]),targetRef=useRef<Page|null>(null);
  const press=useRef<{id:number;x:number;y:number;held:boolean;moved:boolean}|null>(null);
  function clearHold(){if(holdTimer.current){clearTimeout(holdTimer.current);holdTimer.current=null;}}
- function clearGestureClickSuppression(){gestureClick.current=null;if(skipClickTimer.current){clearTimeout(skipClickTimer.current);skipClickTimer.current=null;}}
+ function clearGestureClickSuppression(){gestureClicks.current=[];}
  function suppressGestureClick(x:number,y:number){
-  if(skipClickTimer.current)clearTimeout(skipClickTimer.current);
-  const suppression={x,y,until:Date.now()+750};gestureClick.current=suppression;
+  const now=Date.now(),active=gestureClicks.current.filter(item=>item.until>=now);
+  active.push({x,y,until:now+750});
+  // Touch compatibility clicks can arrive after a following gesture has
+  // already completed. Keep a small, time-bounded queue rather than replacing
+  // the previous gesture's location with the newest one.
+  gestureClicks.current=active.slice(-16);
   // Ignore only a compatibility click at the completed touch/pen gesture's
-  // location. A counter can accumulate when pointercancel produces no click,
-  // then consume a later, intentional activation after several repetitions.
-  skipClickTimer.current=setTimeout(()=>{if(gestureClick.current===suppression)gestureClick.current=null;skipClickTimer.current=null;},750);
+  // location. A bounded queue avoids poisoning later intentional activations.
  }
  function consumeGestureClick(event:React.MouseEvent<HTMLButtonElement>){
-  const suppression=gestureClick.current;if(!suppression||Date.now()>suppression.until)return false;
+  const now=Date.now();gestureClicks.current=gestureClicks.current.filter(item=>item.until>=now);
+  if(!gestureClicks.current.length)return false;
   const native=event.nativeEvent as unknown as PointerEvent;
   if(native.pointerType==='mouse')return false;
   if(native.pointerType==='touch'||native.pointerType==='pen'){
-   clearGestureClickSuppression();
-   return true;
+   const index=gestureClicks.current.findIndex(item=>Math.hypot(event.clientX-item.x,event.clientY-item.y)<32);
+   if(index>=0)gestureClicks.current.splice(index,1);
+   return index>=0;
   }
   // Older engines may expose touch compatibility clicks as MouseEvent. Keep
   // keyboard activation (detail=0) and clicks elsewhere fully functional.
-  const matches=event.detail>0&&Math.hypot(event.clientX-suppression.x,event.clientY-suppression.y)<32;
-  if(matches)clearGestureClickSuppression();
+  const index=event.detail>0?gestureClicks.current.findIndex(item=>Math.hypot(event.clientX-item.x,event.clientY-item.y)<32):-1;
+  const matches=index>=0;
+  if(matches)gestureClicks.current.splice(index,1);
   return matches;
  }
  function markTarget(next:Page|null){targetRef.current=next;setNavTarget(next);}
  function closeNav(){clearHold();press.current=null;setNavOpen(false);markTarget(null);}
  function showNav(){keyboard.hide();setNavOpen(true);markTarget(null);}
- useEffect(()=>()=>{clearHold();if(skipClickTimer.current)clearTimeout(skipClickTimer.current);},[]);
+ useEffect(()=>()=>{clearHold();clearGestureClickSuppression();},[]);
  function beginHold(e:PointerEvent<HTMLButtonElement>){
   if(!e.isPrimary||e.button!==0)return;
   clearHold();markTarget(null);
   // Mouse/trackpad clicks use a persistent menu; only touch/pen owns a hold gesture.
   if(e.pointerType!=='touch'&&e.pointerType!=='pen'){press.current=null;return;}
-  // A browser may omit the compatibility click after a completed or cancelled
-  // pointer. Never let its short-lived guard swallow this new gesture.
-  clearGestureClickSuppression();
+  // Retain guards for completed gestures: their compatibility click may be
+  // delayed until after this new gesture finishes.
   const gesture={id:e.pointerId,x:e.clientX,y:e.clientY,held:false,moved:false};
   press.current=gesture;
   e.currentTarget.setPointerCapture(e.pointerId);
@@ -713,13 +717,13 @@ export default function Prototype() {
   // Capture-loss/cancel can be delivered late after another pointer began.
   // Only the gesture that owns this pointer may cancel the active press.
   if(!active||active.id!==e.pointerId)return;
-  // pointercancel has no corresponding compatibility click to consume.
-  // Creating a guard here can consume the next intentional touch activation.
-  clearGestureClickSuppression();closeNav();
+  // pointercancel has no corresponding compatibility click. Preserve guards
+  // from earlier completed gestures, which may still be awaiting their click.
+  closeNav();
  }
  useEffect(()=>{const cancel=()=>closeNav();window.addEventListener('blur',cancel);return()=>window.removeEventListener('blur',cancel);},[]);
  function navKeys(e:KeyboardEvent<HTMLElement>){
-  if(gestureClick.current)clearGestureClickSuppression();
+  if(gestureClicks.current.length)clearGestureClickSuppression();
   if(e.key==='Escape'){e.preventDefault();if(press.current)suppressGestureClick(press.current.x,press.current.y);closeNav();home.current?.focus();return;}
   if(['ArrowDown','ArrowRight','ArrowUp','ArrowLeft','Home','End'].includes(e.key)){
    e.preventDefault();showNav();const currentIndex=tabs.slice(1).findIndex(t=>navButtons.current[t.id]===document.activeElement);

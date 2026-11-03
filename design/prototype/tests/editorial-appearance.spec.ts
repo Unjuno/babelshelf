@@ -363,6 +363,41 @@ test('repeated touch navigation ignores delayed compatibility clicks without con
  await cdp.detach();
 });
 
+test('late touch clicks from several completed slide gestures do not reopen navigation',async({page,context})=>{
+ await page.addInitScript(()=>{
+  const target=window as Window&{__releasedNavGestures?:Array<{x:number;y:number}>;__deliverNavClick?: (x:number,y:number)=>void};
+  target.__releasedNavGestures=[];
+  let delivering=false;
+  target.__deliverNavClick=(x,y)=>{
+   const button=document.querySelector<HTMLButtonElement>('.chat-home');if(!button)return;
+   delivering=true;button.dispatchEvent(new PointerEvent('click',{bubbles:true,detail:1,pointerType:'touch',pointerId:1,clientX:x,clientY:y}));delivering=false;
+  };
+  document.addEventListener('click',event=>{if(!delivering)event.stopImmediatePropagation();},true);
+  document.addEventListener('pointerup',event=>{
+   if((event.target as HTMLElement|null)?.closest('.chat-home'))(target.__releasedNavGestures??[]).push({x:(event as PointerEvent).clientX,y:(event as PointerEvent).clientY});
+  },true);
+ });
+ await page.setViewportSize({width:390,height:844});await page.goto('/');
+ const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,configuration:'mobile'});
+ const touch=(box:{x:number;y:number;width:number;height:number})=>({x:box.x+box.width/2,y:box.y+box.height/2,id:1});
+ for(const [index,destinationName] of ['Schedule','Settings','Notifications'].entries()){
+  const anchor=page.getByRole('button',{name:'Input',exact:true}),anchorBox=await anchor.boundingBox();expect(anchorBox).not.toBeNull();
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(anchorBox!)]});await page.waitForTimeout(100);
+  await expect(anchor).toHaveAttribute('aria-expanded','true');
+  const target=page.getByRole('menuitem',{name:destinationName,exact:true}),targetBox=await target.boundingBox();expect(targetBox).not.toBeNull();
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(targetBox!)]});await expect(page.locator('.arc-choice')).toHaveText(destinationName);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect(page.getByRole('heading',{name:destinationName,exact:true})).toBeVisible();
+  if(index>0){
+   const prior=await page.evaluate(index=>(window as Window&{__releasedNavGestures?:Array<{x:number;y:number}>}).__releasedNavGestures?.[index-1],index);expect(prior).toBeTruthy();
+   await page.evaluate(({x,y})=>(window as Window&{__deliverNavClick?:(x:number,y:number)=>void}).__deliverNavClick?.(x,y),prior!);
+   await expect(page.getByRole('button',{name:'Input',exact:true})).toHaveAttribute('aria-expanded','false');
+  }
+ }
+ const released=await page.evaluate(()=>(window as Window&{__releasedNavGestures?:Array<{x:number;y:number}>}).__releasedNavGestures??[]);expect(released).toHaveLength(3);
+ await cdp.detach();
+});
+
 test('a touch cancellation cannot consume the next intentional mouse activation',async({page,context})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');
  const input=page.getByRole('button',{name:'Input',exact:true}),box=await input.boundingBox();expect(box).not.toBeNull();
