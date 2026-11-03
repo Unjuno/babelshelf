@@ -40,10 +40,18 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    for(const char of raw){if(char in digit){current=digit[char];continue;}const unit=char==='十'?10:char==='百'?100:char==='千'?1000:char==='万'?10000:0;if(!unit)continue;if(unit===10000){section=(section+current||1)*unit;total+=section;section=0;current=0;}else section+=(current||1)*unit,current=0;}
    return total+section+current;
   };
+  const parseArabic=(raw:string)=>{
+   const comma=raw.lastIndexOf(',');
+   // A one- or two-digit comma suffix is an unambiguous decimal-comma form
+   // for the supported measurements. Three digits remain grouped thousands
+   // (1,234), since that form cannot be distinguished lexically from 1.234.
+   if(comma>=0&&!raw.includes('.')&&raw.length-comma-1<=2)return Number(`${raw.slice(0,comma).replace(/,/gu,'')}.${raw.slice(comma+1)}`);
+   return Number(raw.replace(/,/gu,''));
+  };
   const values:{value:number;start:number;end:number}[]=[];
-  const pattern=/((?:[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?|[零〇一二三四五六七八九十百千万]+))\s*(millilit(?:er|re)s?|ml|lit(?:er|re)s?|l|ミリリットル|リットル|リッター|ℓ)(?![A-Za-z])/giu;
+  const pattern=/((?:[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+,[0-9]{1,2}|[零〇一二三四五六七八九十百千万]+))\s*(millilit(?:er|re)s?|ml|lit(?:er|re)s?|l|ミリリットル|リットル|リッター|ℓ)(?![A-Za-z])/giu;
   const matches=[...text.matchAll(pattern)].flatMap(match=>{
-   const amount=parseJapanese(match[1]),unit=match[2].toLocaleLowerCase();
+   const amount=/[0-9]/u.test(match[1])?parseArabic(match[1]):parseJapanese(match[1]),unit=match[2].toLocaleLowerCase();
    if(!Number.isFinite(amount)||amount<0||match.index===undefined)return[];
    return[{value:/^(?:ml|millilit|ミリ)/u.test(unit)?amount/1000:amount,start:match.index,end:match.index+match[0].length}];
   });

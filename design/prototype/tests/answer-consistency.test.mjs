@@ -25,6 +25,11 @@ test('explicit liquid-volume answers cannot contradict the cited amount',()=>{
  assert.throws(()=>checkAnswerConsistency('備蓄水は何リットルですか？','備蓄水は18リットルです。',japanese),/conflicts with cited quantity/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('備蓄水は何リットルですか？','備蓄水は17リットルです。',japanese));
  assert.throws(()=>checkAnswerConsistency('水の備蓄量を教えて。','水は18リットルです。',japanese),/conflicts with cited quantity/i);
+ const decimalComma=[{quote:'The reserve contains 1,5 litres of water.'}];
+ assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in the reserve?','The reserve contains 1.5 L.',decimalComma));
+ assert.throws(()=>checkAnswerConsistency('How much water is in the reserve?','The reserve contains 15 L.',decimalComma),/conflicts with cited quantity/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in the reserve?','The reserve contains 1,000 L.',[{quote:'The reserve contains 1,000 litres of water.'}]));
+ assert.throws(()=>checkAnswerConsistency('How much water is in the reserve?','The reserve contains 1 L.',[{quote:'The reserve contains 1,000 litres of water.'}]),/conflicts with cited quantity/i);
  assert.throws(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 18 litres.',[{quote:'The reserve contains 17 litres of water, and the fuel can contains 18 litres of fuel.'}]),/conflicts with cited quantity/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('How much water is in the saved reserve?','The reserve contains 17 litres.',[{quote:'The reserve contains 17 litres of water, and the fuel can contains 18 litres of fuel.'}]));
 });

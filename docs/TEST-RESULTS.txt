@@ -1,3 +1,15 @@
+2026-11-03 — Decimal-comma source quantities remain citation-checkable.
+The narrow liquid-volume consistency guard previously skipped `1,5 L` while it
+recognized grouped thousands such as `1,000 L`. It now parses one- and two-digit
+comma decimals as decimal values and preserves three-digit comma groups as
+thousands; it does not guess the ambiguous `1,234` convention. Regression checks
+show a cited `1,5 L` matches `1.5 L`, rejects `15 L`, and keeps `1,000 L`
+behavior. Answer-consistency tests passed 12/12; the full prototype suite passed
+1,856/1,856; `npm run check` passed; production build verified 165 assets (shell
+`a37ce9525018163f`); product acceptance passed 8/8. These checks establish the
+bounded numeric parser contract, not general semantic grounding or live-model
+quality. No user Memory or model asset was modified.
+
 2026-11-03 — Repeated touch navigation no longer consumes later clicks.
 The curved left navigation's delayed-click guard used to count pending clicks.
 When a touch was cancelled and emitted no compatibility click, that count could
