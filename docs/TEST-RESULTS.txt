@@ -8087,3 +8087,12 @@ real IndexedDB Appearance record, reloads the product, and explicitly repairs
 that record while checking the other settings remain available. This is a
 controlled PC browser/storage flow, not cross-device eviction or retention
 evidence. No stored user data or model assets were changed.
+2026-11-03 — Recheck Send, agent-loop and activity persistence contracts.
+The focused agent-loop, coordinator, Send workflow, harness activity and
+paged-activity suites passed 222/222. They cover stale search snapshot
+invalidation, current-revision citation evidence, bounded repair/cancellation,
+no repeated execution after a failed call, partial-work signaling, paged
+receipt concurrency and validation, backup/restore, and transaction rollback
+on quota failure without replaying already completed operations. This does not
+measure long varied real-model behavior or imply a default total-call/task-time
+ceiling. No stored user data or model assets were changed.

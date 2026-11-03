@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · recheck Send, tool-loop and activity receipt boundaries
+
+The current Send and agent execution paths were rechecked with 222 focused tests. Coverage includes current-revision search/read evidence, stale paged-search invalidation, bounded protocol repair, Stop without late publish/save, one recovery opportunity after a tool failure without rerunning the same operation, storage-derived partial-work signaling when receipt capacity is the limit, paged activity concurrency, backup/restore validation, and quota rollback without repeating completed tool work. This verifies controlled coordinator and persistence contracts; it does not establish that every real small-model sequence will choose efficient tools, nor does it add a default total-call or task-time ceiling. Long varied live-model sequences remain unmeasured.
+
 ### 2026-11-03 · verify settings migration and targeted recovery in the browser
 
 The settings contract was rechecked against current schema code and run on PC. Legacy schemas project known defaults in memory and keep the original bytes until an explicit save; unsupported future schema versions reject ordinary reads/writes, while explicit single-record recovery appends the untouched body to history. The browser recovery flow corrupts one real IndexedDB Appearance record, then restores that record without changing Models or Harness. Preference migration/recovery tests passed 40/40 and Settings/model-picker browser tests passed 18/18. This verifies the current settings boundary in controlled PC/browser flows, not cross-device storage retention or arbitrary future schemas. No user data or model assets were changed.
