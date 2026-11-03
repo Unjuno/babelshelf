@@ -1,4 +1,19 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · expire silent runtime setup when the page resumes
+
+The absolute runtime deadline was already checked by the watchdog and before
+accepting a worker reply. A suspended page whose runtime worker never replied
+could still leave the caller waiting after resume until another event arrived.
+Runtime setup now checks the deadline on `visibilitychange` and `focus`, sends
+the existing worker cancellation, and settles with the bounded timeout error.
+The regression advances wall time and dispatches page visibility without
+delivering any worker response. Runtime tests passed 21/21, the full prototype
+suite passed 1,870/1,870, `npm run check` passed, the production app built with
+165 verified assets, and app acceptance passed 8/8. This proves the event and
+cancellation contract in local browser/runtime tests; it does not prove iOS
+will deliver those lifecycle events in every suspended state or that LFM3
+loads or runs on the phone. A targeted installed-PWA run is still required.
+
 ### 2026-11-04 · surface model-preparation storage pressure
 
 The initial-preparation sheet now warns when the browser's available-space

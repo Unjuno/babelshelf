@@ -59,7 +59,8 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
   let settled=false,watchdog:ReturnType<typeof setTimeout>,idleDeadline=Date.now()+timeoutMs;
   const maxDeadline=Date.now()+maxDurationMs;
   const cancel=()=>{try{worker.postMessage({type:'cancel-product-assets',operationId},[]);}catch{}};
-  const finish=(error?:Error,result?:ProductRuntimeResult)=>{if(settled)return;settled=true;clearTimeout(watchdog);options.signal?.removeEventListener('abort',abort);channel.port1.close();if(error)reject(error);else resolve(result!);};
+  const onResume=()=>{if(!expireIfDue())armWatchdog();};
+  const finish=(error?:Error,result?:ProductRuntimeResult)=>{if(settled)return;settled=true;clearTimeout(watchdog);options.signal?.removeEventListener('abort',abort);if(typeof document!=='undefined')document.removeEventListener('visibilitychange',onResume);if(typeof window!=='undefined')window.removeEventListener('focus',onResume);channel.port1.close();if(error)reject(error);else resolve(result!);};
   const abort=()=>{cancel();finish(codedError('Stopped','stopped'));};
   const expireIfDue=()=>{
    const now=Date.now();
@@ -84,6 +85,8 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
    finish(undefined,reply);
   };
   options.signal?.addEventListener('abort',abort,{once:true});
+  if(typeof document!=='undefined')document.addEventListener('visibilitychange',onResume);
+  if(typeof window!=='undefined')window.addEventListener('focus',onResume);
   armWatchdog();
   try{worker.postMessage({type:'prepare-product-assets',role,operationId,acquire},[channel.port2]);}catch(error){finish(codedError(error instanceof Error?error.message:'Could not start app runtime preparation','runtime-messaging-unavailable'));}
  });

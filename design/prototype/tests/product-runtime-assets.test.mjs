@@ -67,6 +67,18 @@ test('a late success reply after a suspended-page wall-clock deadline is rejecte
   assert.equal(channel.channel.port1.closed,true);
  }finally{Date.now=now;}
 });
+test('returning to a suspended page expires a silent runtime operation immediately',async()=>{
+ const channel=fakeChannel(),worker=fakeWorker(channel),priorDocument=globalThis.document,handlers=new Map();let now=Date.now;let current=now();
+ Object.defineProperty(globalThis,'document',{configurable:true,value:{visibilityState:'visible',addEventListener:(type,listener)=>handlers.set(type,listener),removeEventListener:type=>handlers.delete(type)}});
+ Date.now=()=>current;
+ try{
+  const pending=prepareProductRuntimeAssets('text-lfm3',{worker,operationId:'resume-deadline-01',makeChannel:()=>channel.channel,timeoutMs:10000,maxDurationMs:30000});
+  const rejection=assert.rejects(pending,error=>error.code==='runtime-timeout'&&/maximum duration/i.test(error.message));
+  current+=30001;handlers.get('visibilitychange')();await rejection;
+  assert.deepEqual(worker.messages.map(message=>message.type),['prepare-product-assets','cancel-product-assets']);
+  assert.equal(channel.channel.port1.closed,true);assert.equal(handlers.has('visibilitychange'),false);
+ }finally{Date.now=now;if(priorDocument===undefined)delete globalThis.document;else Object.defineProperty(globalThis,'document',{configurable:true,value:priorDocument});}
+});
 test('Full cycle acquires only after an explicit missing-runtime result, never after timeout or unknown errors',()=>{
  assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('missing'),{code:'runtime-not-prepared'}),true,true),true);
  assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('slow'),{code:'runtime-timeout'}),true,true),false);
