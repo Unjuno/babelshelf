@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,verifyProductRuntimeAssets} from '../src/product-runtime-assets.ts';
+import {prepareProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,shouldAcquireRuntimeAfterVerification,verifyProductRuntimeAssets} from '../src/product-runtime-assets.ts';
 
 test('runtime progress names the current asset count and cumulative verified bytes read',()=>{
  assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:0,total:2,bytes:1048576}),'Runtime · 0/2 · 1.0 MB read');
@@ -53,6 +53,14 @@ test('runtime progress cannot extend preparation beyond its absolute deadline',a
  await assert.rejects(pending,error=>error.code==='runtime-timeout'&&/maximum duration/i.test(error.message));
  assert.deepEqual(worker.messages.map(message=>message.type),['prepare-product-assets','cancel-product-assets']);
  assert.equal(channel.channel.port1.closed,true);
+});
+test('Full cycle acquires only after an explicit missing-runtime result, never after timeout or unknown errors',()=>{
+ assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('missing'),{code:'runtime-not-prepared'}),true,true),true);
+ assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('slow'),{code:'runtime-timeout'}),true,true),false);
+ assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('not available'),{code:'runtime-unavailable'}),true,true),false);
+ assert.equal(shouldAcquireRuntimeAfterVerification(Error('Runtime not prepared · switch Online to prepare'),true,true),false);
+ assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('missing'),{code:'runtime-not-prepared'}),false,true),false);
+ assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('missing'),{code:'runtime-not-prepared'}),true,false),false);
 });
 test('unexpected or mismatched runtime replies cannot claim preparation success',async()=>{
  for(const reply of [{status:'other'},{status:'prepared',role:'speech',assets:1,bytes:20},{status:'prepared',role:'pdf',assets:0,bytes:0},{status:'prepared',role:'pdf',assets:1,bytes:10,downloadedBytes:11}]){

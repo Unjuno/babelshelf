@@ -79,7 +79,7 @@ import {HarnessProfileReview,profileToolsLabel} from './HarnessProfileReview';
 import {BuiltinToolSettings} from './BuiltinToolSettings';
 import {setBuiltinToolEnabled} from './builtin-tool-preferences';
 import {copyDiagnosticReport,revealAndSelectDiagnosticReport} from './diagnostic-report-copy';
-import {prepareProductRuntimeAssets,verifyProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,runtimeRoleForModelEngine,runtimeRoleForPreparation,prepareTextAssets,type ProductRuntimeRole,type ProductRuntimeProgress,type ProductRuntimeResult} from './product-runtime-assets';
+import {prepareProductRuntimeAssets,verifyProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,runtimeRoleForModelEngine,runtimeRoleForPreparation,prepareTextAssets,shouldAcquireRuntimeAfterVerification,type ProductRuntimeRole,type ProductRuntimeProgress,type ProductRuntimeResult} from './product-runtime-assets';
 import {PdfPreview} from './PdfPreview';
 import {isPdf,pdfCitationPage,type PdfText} from './pdf-text';
 import {activityLabel,activityStatus,type Activity} from './harness-activity';
@@ -520,7 +520,7 @@ export default function Prototype() {
     if(Number.isSafeInteger(declared)&&declared>0)expectedModelBytes=declared;
     if(loadedAtStart){setDeviceTestStage('Unloading current model…');await bonsai.unload();}
     const role=selectedTextRuntimeRole(model),runtimeStart=performance.now();
-    if(role){stage='runtime-setup';const progress=(value:ProductRuntimeProgress)=>{runtimeBytesRead=value.bytes;setDeviceTestStage(productRuntimeProgressLabel(value));};setDeviceTestStage('Checking runtime…');try{runtimeBytesRead=undefined;try{await ensureProductRuntime(role,false,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;});}catch(error){if(!downloads||!navigator.onLine)throw error;runtimeBytesRead=undefined;setDeviceTestStage('Preparing runtime…');await ensureProductRuntime(role,true,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;});}}finally{runtimePreparationDurationMs=Math.round(performance.now()-runtimeStart);}}
+    if(role){stage='runtime-setup';const progress=(value:ProductRuntimeProgress)=>{runtimeBytesRead=value.bytes;setDeviceTestStage(productRuntimeProgressLabel(value));};setDeviceTestStage('Checking runtime…');try{runtimeBytesRead=undefined;try{await ensureProductRuntime(role,false,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;});}catch(error){if(!shouldAcquireRuntimeAfterVerification(error,downloads,navigator.onLine))throw error;runtimeBytesRead=undefined;setDeviceTestStage('Preparing runtime…');await ensureProductRuntime(role,true,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;});}}finally{runtimePreparationDurationMs=Math.round(performance.now()-runtimeStart);}}
     stage='model-preparation';const preparationStart=performance.now();
     try{
      if(!filesPresentAtStart){

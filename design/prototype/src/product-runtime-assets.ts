@@ -13,6 +13,12 @@ type RuntimeReply=ProductRuntimeProgress|ProductRuntimeResult|{status:'failed';e
 type RuntimeWorker={postMessage:(message:unknown,transfer?:Transferable[])=>void};
 type RuntimeOptions=NonNullable<Parameters<typeof prepareProductRuntimeAssets>[1]>;
 
+/** Only a confirmed cache miss justifies the Full-cycle transition from local verification to acquisition. */
+export function shouldAcquireRuntimeAfterVerification(error:unknown,downloads:boolean,online:boolean){
+ const code=error&&typeof error==='object'?'code' in error?(error as {code?:unknown}).code:undefined:undefined;
+ return downloads&&online&&code==='runtime-not-prepared';
+}
+
 // The GGUF stores validate and save local files without starting an inference worker.
 export async function prepareTextAssets(options:{role:ProductRuntimeRole|null;downloads:boolean;verifyOnly:boolean;hasLocalFiles:boolean;ensureRuntime:(role:ProductRuntimeRole,allowNetwork:boolean)=>Promise<unknown>;prepare:()=>Promise<unknown>;verify:()=>Promise<unknown>}){
  const localGguf=(options.verifyOnly||options.hasLocalFiles&&!options.downloads)&&(options.role==='text-lfm3'||options.role==='text-wllama');
