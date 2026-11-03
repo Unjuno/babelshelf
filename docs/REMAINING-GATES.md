@@ -1,4 +1,26 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · bound runtime preparation and verify public v311
+
+The iPhone Full cycle report stopped in runtime setup after 1,764,321 ms
+(29m24s), before model asset preparation, model load, or generation. The
+selected model was absent (`filesPresent:false`); `expectedModelBytes` is a
+manifest estimate, not measured transfer. WebGPU and shared-WASM signals are
+capability prerequisites only. The generic `Error` does not identify a
+device-specific cause.
+
+Added an absolute runtime preparation deadline (10 minutes for acquisition,
+3 minutes for cached verification), so repeated progress cannot keep the
+operation alive indefinitely. Full cycle retries acquisition only for the
+explicit `runtime-not-prepared` cache-miss result; a timeout or generic failure
+is reported without a second download attempt. Focused runtime checks passed
+19/19; root tests passed 262/262; `npm run check`, `npm run build:app`, and
+product acceptance (8/8) passed. Clean-checkout CI
+[41692622706](https://github.com/Unjuno/babelshelf/actions/runs/41692622706)
+passed all stages. Public Site v311 serves build `871ece8c087af8f9`; both
+`babelshelf.com/build.json` and the Site hostname returned the same build.
+Actual iPhone runtime setup, model acquisition, generation, GPU use, and
+installed-PWA behavior still require a targeted device run.
+
 ### 2026-11-04 · interpret the earlier iPhone Full cycle report
 
 The supplied report is from app build `48777327b2d5c402` in an iOS Safari tab

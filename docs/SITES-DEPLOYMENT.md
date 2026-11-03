@@ -1,3 +1,19 @@
+# Public Site v311 — bounded inference-runtime preparation (2026-11-04 JST)
+
+Product source commit `d581f5f664288822e3e091c9c1878b85c3139885`; product
+build `871ece8c087af8f9` /165 verified app assets. Site source commit
+`57e02ae4b56b6b3c791d10e6f086399843a05fc9`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_ed9a1d3a95bc8191b287ce3da2f2f2a4`
+(v311); deployment `appgdep_6aea2966c0788191b9bcd2fa44dd5122` succeeded and
+retained public access. Delivery verification passed. Both
+`https://babelshelf.com/build.json` and
+`https://babelshelf-device-check.unjuno.chatgpt.site/build.json` returned
+`871ece8c087af8f9`. The application adds absolute runtime-preparation
+deadlines and avoids reacquisition after timeout or generic failure. CI
+[41692622706](https://github.com/Unjuno/babelshelf/actions/runs/41692622706)
+passed all stages. This deployment does not prove iPhone runtime or model
+execution; see [REMAINING-GATES.md](REMAINING-GATES.md).
+
 # Public Site v310 — publish current diagnostic UX and generation-budget wording (2026-11-04 JST)
 
 Product source commit `c77dfd5697e72a0ce0c11b46d6b7120fb72d4dae`; product build `4eafc309b4e5a18e` /165 verified app assets. Site source commit `f530f0e3779fa205bb30999a9fe670bee05430d7`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_8f9e562caccc819190a4709bf123d032` (v310); deployment `appgdep_6aea2394f4308191b54b88ad556cef0b` succeeded at the public Site, preserving the public audience. Delivery verification passed exact compressed/identity WASM bytes, method checks, and offline-shell transport. Both `https://babelshelf.com/build.json` and the Site hostname return build `4eafc309b4e5a18e` /165 assets. The UI labels the Send budget `Text generation time` to distinguish generation from model loading, Decision work and tools.

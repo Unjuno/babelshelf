@@ -8280,3 +8280,18 @@ Follow-up: propagated each fixed ONNX model's 2,048-token output allowance throu
 2026-11-04 — Improve device full-cycle failure diagnosis after an iPhone report stopped during runtime setup. The report established that the LFM3 runtime/model did not reach load or generation, with model assets absent; its generic `Error` failure type could not identify whether runtime files were missing, timed out, unreachable or rejected. Runtime service-worker replies now carry validated fixed failure codes; copied reports retain only a safe code and stage, never the raw exception text. Developer results render a concise cause. Focused runtime/model diagnostics passed 59/59, product-worker tests 45/45, device diagnostics browser UI 33/33, root suite 259/259, prototype suite 1,863/1,863, `npm run check`, production build (165 verified assets), and app acceptance 8/8. The original iPhone root cause remains unknown because its report predates these codes; no device rerun or real model download was performed.
 
 2026-11-04 — Retain runtime stream progress in failed iPhone diagnostics. The supplied Safari-tab full-cycle report stopped in runtime setup after 1,764,321 ms; model files were absent and model preparation/generation never ran. Its `Error` was not specific enough to diagnose the cause. Device reports now include validated `runtimeBytesRead`, separate from network bytes downloaded; the Developer result labels read bytes as including cache. This is cumulative stream/read progress, not proof of network transfer or integrity. Focused diagnostics/report-copy tests passed 56/56; Developer UI tests 33/33; root suite 259/259; prototype suite 1,864/1,864; `npm run check`, production build (165 assets), and app acceptance 8/8 passed. Clean-checkout CI [41685474836](https://github.com/Unjuno/babelshelf/actions/runs/41685474836) passed all stages for product commit `69813fb0a42377e907794f5b02097f7fdca2b28b`. Public Site v309 is live and `https://babelshelf.com/build.json` returns `b483c588fa337fcb`. No device cause, iPhone model fit, generation, or GPU use is established; one installed-Home-Screen rerun is needed to collect the new diagnostic fields.
+2026-11-04 — Bound runtime preparation after the iPhone Full-cycle timeout.
+The supplied report stopped in runtime setup after 1,764,321 ms (29m24s),
+before model preparation or generation; selected-model files were absent and
+the generic `Error` does not expose a root cause. Added an absolute 10-minute
+runtime-acquisition deadline and 3-minute cached-verification deadline, plus
+Full-cycle retry gating so only an explicit `runtime-not-prepared` cache miss
+may start acquisition. Progress cannot extend the absolute deadline, and a
+timeout/generic failure does not trigger another download. Focused runtime
+tests: 19/19; root tests: 262/262; `npm run check`, `npm run build:app`,
+product acceptance 8/8 and `git diff --check` passed. Clean-checkout CI
+[41692622706](https://github.com/Unjuno/babelshelf/actions/runs/41692622706)
+passed all stages. Public Site v311 serves build `871ece8c087af8f9`; both
+public build manifests returned that identifier. No model was downloaded or
+run on PC. Actual iPhone runtime setup, model acquisition, inference, and GPU
+selection remain unverified; a targeted installed-PWA rerun is needed.
