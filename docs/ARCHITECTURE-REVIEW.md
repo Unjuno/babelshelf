@@ -2,7 +2,7 @@
 
 ## Long-answer allowance · 2026-11-04
 
-The former fixed output guards (3,072 tokens for LFM3 and 768 for LFM2/Qwen) were app policy, not measured model limits. Each selected GGUF model now advertises its configured context size as the output allowance, and the adapter accepts the same context-sized budget. Exact prompt counting still enforces `promptTokens + outputTokens <= contextTokens`; profile limits remain user-selected and per-Send. This permits longer answers when the model/context allow them; it does not force every answer to be long or prove long-form quality, memory fit, or speed on any device.
+The former fixed output guards (3,072 for LFM3 and 768 for LFM2/Qwen/WebML/ONNX) were app policy, not measured model limits. Selected local text models now advertise their configured context size as the output allowance; GGUF adapters accept that same context-sized budget, while ONNX uses its own model-specific generation validator. Exact prompt counting enforces `promptTokens + outputTokens <= contextTokens`; profile limits remain user-selected and per-Send. User-facing prose has no product-wide token ceiling and is not compressed by default. The internal structured planner still has its separate smaller cap. Longer allowances do not prove long-form quality, memory fit, or speed on any device.
 
 Scope: current local application after the Send boundary, shared model acquisition and one-button device-test changes. This is a code/design review, not proof of all model/device combinations. Accepted UI, canonical knowledge and history remain invariants.
 

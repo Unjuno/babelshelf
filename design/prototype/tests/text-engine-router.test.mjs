@@ -240,7 +240,8 @@ test('worker failure permits a fresh explicit load; old worker results cannot re
 import {validateOnnxTextBudget} from '../src/text-model-manifest.ts';
 test('adapter accepts harness task and rewrite output budgets and rejects actual context overflow',()=>{
  validateOnnxTextBudget(1000,384);validateOnnxTextBudget(1000,768);
- assert.throws(()=>validateOnnxTextBudget(1500,768),/budget/);assert.throws(()=>validateOnnxTextBudget(0,769),/budget/);
+ validateOnnxTextBudget(0,2048);
+ assert.throws(()=>validateOnnxTextBudget(1500,768),/budget/);assert.throws(()=>validateOnnxTextBudget(1,2048),/context budget/);assert.throws(()=>validateOnnxTextBudget(0,2049),/budget/);
 });
 
 test('structured worker failures retain bounded untrusted diagnostics without returning a result',async()=>{

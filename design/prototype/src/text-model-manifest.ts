@@ -9,7 +9,7 @@ export const getOnnxTextManifest=(id:string)=>onnxTextModels.find(m=>m.id===id);
 export const isOnnxText=(id:string)=>!!getOnnxTextManifest(id);
 export function combinedTextManifest(base:any,active=''){
  const selected=getOnnxTextManifest(active);
- return {...base,contextTokens:selected?.contextTokens??base.contextTokens,runtime:selected?.runtime??base.runtime,models:[...base.models,...onnxTextModels.map(m=>({id:m.id,name:m.name,revision:m.revision,engine:m.engine,file:{bytes:m.files.reduce((n,f)=>n+f.bytes,0)}}))]};
+ return {...base,contextTokens:selected?.contextTokens??base.contextTokens,maxOutputTokens:selected?.maxReplyTokens??base.maxOutputTokens,runtime:selected?.runtime??base.runtime,models:[...base.models,...onnxTextModels.map(m=>({id:m.id,name:m.name,revision:m.revision,engine:m.engine,contextTokens:m.contextTokens,maxReplyTokens:m.maxReplyTokens,file:{bytes:m.files.reduce((n,f)=>n+f.bytes,0)}}))]};
 }
 export function validateOnnxTextBudget(promptTokens:number,maxTokens:number,id=smol.id){
  const model=getOnnxTextManifest(id);if(!model)throw Error('Unknown text model');

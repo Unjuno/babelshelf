@@ -118,8 +118,8 @@
     },
     {
       "path": "./model-manifest.json",
-      "bytes": 3215,
-      "sha256": "500e6bd2809c05b4885c91f615ee50b0ea05c40db8bd023b2d099d1f830d2dd6"
+      "bytes": 3216,
+      "sha256": "cf598e848f9d6f079709c9a207c2df4e91db6bb1e50b6f5acea022a6ad1df182"
     },
     {
       "path": "./model-worker.js",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "0ab481efb8e13d8515b16b6d965f53ed697115aaf9fd3ef21541017f4a336cb0"
+      "sha256": "ccea857ee5f469872d787bfec054ea0568c593d9edd5196c22be9e56ebf9d737"
     },
     {
       "path": "./ui.js",

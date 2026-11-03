@@ -18,7 +18,7 @@
   "dtype": "q8",
   "device": "wasm",
   "contextTokens": 2048,
-  "maxReplyTokens": 768,
+  "maxReplyTokens": 2048,
   "files": [
     {
       "path": "config.json",
