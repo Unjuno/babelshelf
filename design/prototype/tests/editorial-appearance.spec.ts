@@ -449,6 +449,27 @@ test('a cancelled hold timer cannot take over the next touch gesture',async({pag
  await cdp.detach();
 });
 
+test('Safari page hide and back-forward restore reset navigation before the next touch slide',async({page,context})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');
+ const input=page.getByRole('button',{name:'Input',exact:true});
+ const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,configuration:'mobile'});
+ const touch=(box:{x:number;y:number;width:number;height:number},id:number)=>({x:box.x+box.width/2,y:box.y+box.height/2,id});
+ const firstBox=await input.boundingBox();expect(firstBox).not.toBeNull();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(firstBox!,1)]});await page.waitForTimeout(100);
+ await expect(input).toHaveAttribute('aria-expanded','true');
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
+ await expect(input).toHaveAttribute('aria-expanded','false');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+ await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+ const nextBox=await input.boundingBox();expect(nextBox).not.toBeNull();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(nextBox!,2)]});await page.waitForTimeout(100);
+ await expect(input).toHaveAttribute('aria-expanded','true');
+ const destination=page.getByRole('menuitem',{name:'Schedule',exact:true}),destinationBox=await destination.boundingBox();expect(destinationBox).not.toBeNull();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(destinationBox!,2)]});await expect(page.locator('.arc-choice')).toHaveText('Schedule');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.getByRole('heading',{name:'Schedule',exact:true})).toBeVisible();
+ await cdp.detach();
+});
+
 test('long dialogue initially shows recent turns and can reveal earlier turns without losing them',async({page})=>{
  await page.goto('/');
  await expect(page.getByRole('textbox',{name:'Message'})).toBeVisible();

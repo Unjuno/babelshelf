@@ -647,6 +647,13 @@ export default function Prototype() {
  const holdTimer=useRef<ReturnType<typeof setTimeout>|null>(null),gestureClicks=useRef<Array<{x:number;y:number;until:number}>>([]),targetRef=useRef<Page|null>(null);
  const press=useRef<{id:number;x:number;y:number;held:boolean;moved:boolean}|null>(null);
  function clearHold(){if(holdTimer.current){clearTimeout(holdTimer.current);holdTimer.current=null;}}
+ function releasePressCapture(){
+  const active=press.current;press.current=null;
+  const button=home.current;
+  if(active&&button?.hasPointerCapture(active.id)){
+   try{button.releasePointerCapture(active.id);}catch{/* The browser may have already released a cancelled pointer. */}
+  }
+ }
  function clearGestureClickSuppression(){gestureClicks.current=[];}
  function suppressGestureClick(x:number,y:number){
   const now=Date.now(),active=gestureClicks.current.filter(item=>item.until>=now);
@@ -676,11 +683,14 @@ export default function Prototype() {
   return matches;
  }
  function markTarget(next:Page|null){targetRef.current=next;setNavTarget(next);}
- function closeNav(){clearHold();press.current=null;setNavOpen(false);markTarget(null);}
+ function closeNav(){clearHold();releasePressCapture();setNavOpen(false);markTarget(null);}
  function showNav(){keyboard.hide();setNavOpen(true);markTarget(null);}
- useEffect(()=>()=>{clearHold();clearGestureClickSuppression();},[]);
+ useEffect(()=>()=>{clearHold();releasePressCapture();clearGestureClickSuppression();},[]);
  function beginHold(e:PointerEvent<HTMLButtonElement>){
   if(!e.isPrimary||e.button!==0)return;
+  // A new primary pointer supersedes any gesture whose terminal event was
+  // lost (for example when the page loses focus during a touch interaction).
+  if(press.current)releasePressCapture();
   clearHold();markTarget(null);
   // Mouse/trackpad clicks use a persistent menu; only touch/pen owns a hold gesture.
   if(e.pointerType!=='touch'&&e.pointerType!=='pen'){press.current=null;return;}
@@ -707,8 +717,7 @@ export default function Prototype() {
  function finishHold(e:PointerEvent<HTMLButtonElement>){
   const p=press.current;if(!p||p.id!==e.pointerId)return;
   slideHold(e);
-  clearHold();press.current=null;suppressGestureClick(e.clientX,e.clientY);
-  if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  clearHold();suppressGestureClick(e.clientX,e.clientY);releasePressCapture();
   if(p.held){const next=targetRef.current;if(next){closeNav();navigate(next);}else markTarget(null);}
   else if(!p.moved){closeNav();navigate('input');}
  }
@@ -721,7 +730,13 @@ export default function Prototype() {
   // from earlier completed gestures, which may still be awaiting their click.
   closeNav();
  }
- useEffect(()=>{const cancel=()=>closeNav();window.addEventListener('blur',cancel);return()=>window.removeEventListener('blur',cancel);},[]);
+ useEffect(()=>{
+  const reset=()=>{clearHold();releasePressCapture();clearGestureClickSuppression();setNavOpen(false);markTarget(null);};
+  const onPageShow=(event:PageTransitionEvent)=>{if(event.persisted)reset();};
+  const onVisibilityChange=()=>{if(document.visibilityState==='hidden')reset();};
+  window.addEventListener('blur',reset);window.addEventListener('pagehide',reset);window.addEventListener('pageshow',onPageShow);document.addEventListener('visibilitychange',onVisibilityChange);
+  return()=>{window.removeEventListener('blur',reset);window.removeEventListener('pagehide',reset);window.removeEventListener('pageshow',onPageShow);document.removeEventListener('visibilitychange',onVisibilityChange);};
+ },[]);
  function navKeys(e:KeyboardEvent<HTMLElement>){
   if(gestureClicks.current.length)clearGestureClickSuppression();
   if(e.key==='Escape'){e.preventDefault();if(press.current)suppressGestureClick(press.current.x,press.current.y);closeNav();home.current?.focus();return;}
