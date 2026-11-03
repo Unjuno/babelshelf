@@ -12,8 +12,11 @@ varies. Browser versions, Chromium/WebKit coverage and acceptance commands are
 unchanged; no retries, cache or timeout relaxation was added. The verification
 run [41731098851](https://github.com/Unjuno/babelshelf/actions/runs/41731098851)
 has reported 27s for system dependencies and 14s for browser downloads; the
-remaining acceptance stages are still running. This is one split-run sample,
-not evidence that the earlier APT delay cannot recur.
+remaining acceptance stages passed, including tool/MCP, settings, editorial,
+iOS handoff, offline, and installed-PWA acceptance. The clean run completed in
+11m40s. Markdown acceptance also passed locally (4/4). This is one split-run
+sample, not evidence that the earlier APT delay cannot recur; the delay's
+origin is now attributable to the system-dependency step if it returns.
 
 ### 2026-11-04 · use remaining finite tool budget for native batches
 

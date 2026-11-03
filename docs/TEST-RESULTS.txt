@@ -15,6 +15,16 @@ build. No model download or device change occurred. A targeted installed-PWA
 Full cycle rerun is needed to collect the newer diagnostic fields; since the
 selected model files are absent, it can proceed into model preparation.
 
+2026-11-04 — Attribute clean-checkout CI browser setup time by phase.
+Workflow run [41731098851](https://github.com/Unjuno/babelshelf/actions/runs/41731098851)
+passed every stage in 11m40s. The split Playwright 1.61.1 setup measured 27s
+for Chromium/WebKit system dependencies and 14s for pinned browser downloads;
+the remaining tool/MCP, device/settings, editorial/iOS handoff, offline and
+installed-PWA acceptance stages also passed. Local Markdown acceptance passed
+4/4. This is one successful CI sample and does not prove APT timing is stable;
+the split steps will identify whether system dependencies account for a future
+delay. The existing untracked QA artifacts and model data were left untouched.
+
 2026-11-04 — Retain runtime read-progress measurement after a failed device run.
 An iPhone Full cycle report showed a 1,764,321 ms runtime-setup failure before
 model preparation or generation, with no specific exception cause. Added bounded
