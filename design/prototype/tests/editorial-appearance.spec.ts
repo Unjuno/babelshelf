@@ -359,8 +359,8 @@ test('a cancelled hold timer cannot take over the next touch gesture',async({pag
  const nextBox=await input.boundingBox();expect(nextBox).not.toBeNull();
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(nextBox!)]});
  await expect.poll(()=>page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[]).length)).toBe(2);
- const staleTimerState=await page.evaluate(()=>{const timers=(window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[];const before=document.querySelector('.chat-home')?.getAttribute('aria-expanded');timers[0]();return{before,after:document.querySelector('.chat-home')?.getAttribute('aria-expanded')};});
- expect(staleTimerState).toEqual({before:'false',after:'false'});
+ await page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[])[0]());
+ await expect(input).toHaveAttribute('aria-expanded','false');
  await page.evaluate(()=>((window as Window&{__queuedHoldTimers?:Array<()=>void>}).__queuedHoldTimers??[])[1]());
  await expect(input).toHaveAttribute('aria-expanded','true');
  const destination=page.getByRole('menuitem',{name:'Schedule',exact:true}),destinationBox=await destination.boundingBox();expect(destinationBox).not.toBeNull();

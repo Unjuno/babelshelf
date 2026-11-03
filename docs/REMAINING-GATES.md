@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · bind each touch hold timer to its own gesture
+
+The 80 ms hold callback previously checked only whether any pointer press was active. If a cancelled callback was already queued when the next touch began, that stale callback could mark the new gesture held and open the navigation menu early. The timer now closes over its gesture object and only updates state when that exact object is still active. The regression deliberately replays a cancelled timer during the next touch: it failed on a rebuilt pre-fix application and passed on the rebuilt fix. The ordinary five-destination repeated touch flow and this cancellation/restart case pass; `npm run check` and the 165-asset build pass. Commit `a47e3de` is pushed and public Site v305 serves build `369c930423204e9d`. Clean-checkout CI for the current code is still running. Chromium simulation is not physical iOS Safari verification; keep the iPhone interaction gate open.
+
 ### 2026-11-03 · recheck Send, tool-loop and activity receipt boundaries
 
 The current Send and agent execution paths were rechecked with 222 focused tests. Coverage includes current-revision search/read evidence, stale paged-search invalidation, bounded protocol repair, Stop without late publish/save, one recovery opportunity after a tool failure without rerunning the same operation, storage-derived partial-work signaling when receipt capacity is the limit, paged activity concurrency, backup/restore validation, and quota rollback without repeating completed tool work. This verifies controlled coordinator and persistence contracts; it does not establish that every real small-model sequence will choose efficient tools, nor does it add a default total-call or task-time ceiling. Long varied live-model sequences remain unmeasured.

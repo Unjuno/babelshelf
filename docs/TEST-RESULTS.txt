@@ -1,3 +1,17 @@
+2026-11-03 — Cancelled touch-hold timer cannot take over a later gesture.
+The 80 ms navigation hold now checks the exact gesture object that scheduled it,
+so a cancelled callback already queued by the browser cannot mark the next touch
+as held. The browser regression deliberately delays the hold callback across a
+touch cancellation and starts a second touch before replaying the stale callback.
+The test failed against a freshly rebuilt pre-fix app, then passed after restoring
+the gesture identity guard and rebuilding. The ordinary repeated five-destination
+touch path and the cancellation/restart regression passed 2/2; `npm run check`
+passed and the app build verified 165 assets (`369c930423204e9d`). Commit
+`a47e3de` was pushed and Site v305 is live; production `build.json` returned HTTP
+200 with the exact build ID and 165 assets. The GitHub clean-checkout workflow is
+still in progress. This validates Chromium pointer simulation, not physical iOS
+Safari; no device interaction was run.
+
 2026-11-03 — Full selected-model acquisition-to-output diagnostic.
 Developer settings add a gated Full cycle measuring local model/runtime reuse or
 preparation, streamed model and runtime transfer bytes (including partial failed
