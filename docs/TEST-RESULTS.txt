@@ -8,7 +8,9 @@ behavior. Answer-consistency tests passed 12/12; the full prototype suite passed
 1,856/1,856; `npm run check` passed; production build verified 165 assets (shell
 `a37ce9525018163f`); product acceptance passed 8/8. These checks establish the
 bounded numeric parser contract, not general semantic grounding or live-model
-quality. No user Memory or model asset was modified.
+quality. Clean-checkout GitHub Actions [41610502767](https://github.com/Unjuno/babelshelf/actions/runs/41610502767)
+passed every workflow stage in 10m19s on `edd17d1`, including the repeated-touch
+navigation cancellation regression below. No user Memory or model asset was modified.
 
 2026-11-03 — Repeated touch navigation no longer consumes later clicks.
 The curved left navigation's delayed-click guard used to count pending clicks.
@@ -21,9 +23,9 @@ PointerEvent, cancelled-hold recovery, and the cancelled-touch → mouse-click
 failure sequence. The targeted cancellation test passed 1/1; `npm run check`
 passed; the product build verified 165 assets (shell `57e85be6437f4fbd`); app
 acceptance passed 8/8. GitHub Actions
-[41607134645](https://github.com/Unjuno/babelshelf/actions/runs/41607134645)
-passed all stages in 8m37s on `d760abb` before the final regression-only test;
-CI for the updated test is pending. This is PC browser-simulation evidence, not
+[41610502767](https://github.com/Unjuno/babelshelf/actions/runs/41610502767)
+passed all stages in 10m19s on `edd17d1`, including the final regression-only
+test. This is PC browser-simulation evidence, not
 physical iOS touch validation. No production deployment or device test was
 performed.
 
