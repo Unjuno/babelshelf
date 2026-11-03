@@ -13,6 +13,10 @@ import {ocrFiles} from './ocr-assets.ts';
 import {visionManifest} from './vision-assets.ts';
 export type PreparationRole='text'|'speech'|'ocr'|'decision'|'vision';
 type Role=PreparationRole;
+/** Browser quota estimates are advisory; they are not a hard install gate. */
+export function preparationEstimateMayBeTooLarge(requiredBytes:number,availableBytes:number|null|undefined){
+ return Number.isSafeInteger(requiredBytes)&&requiredBytes>0&&typeof availableBytes==='number'&&Number.isFinite(availableBytes)&&availableBytes>=0&&availableBytes<requiredBytes;
+}
 export function preparationRoles(value:Preferences['models'],onlyRole?:PreparationRole):PreparationRole[]{
  const selections=[['text','textModel'],['speech','transcriptionModel'],['ocr','ocrModel'],['decision','decisionModel'],['vision','visionModel']] as const;
  return selections.filter(([role,key])=>(!onlyRole||role===onlyRole)&&!!value[key]).map(([role])=>role);

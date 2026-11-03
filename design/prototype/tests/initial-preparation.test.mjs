@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {initialPreparationPlan,runInitialPreparation,textPreparationStatus} from '../src/initial-preparation.ts';
+import {initialPreparationPlan,preparationEstimateMayBeTooLarge,runInitialPreparation,textPreparationStatus} from '../src/initial-preparation.ts';
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
+
+test('browser storage estimates warn only when known free space is below selected asset bytes',()=>{
+ assert.equal(preparationEstimateMayBeTooLarge(100,99),true);
+ assert.equal(preparationEstimateMayBeTooLarge(100,100),false);
+ assert.equal(preparationEstimateMayBeTooLarge(100,null),false);
+ assert.equal(preparationEstimateMayBeTooLarge(100,NaN),false);
+ assert.equal(preparationEstimateMayBeTooLarge(0,0),false);
+ assert.equal(preparationEstimateMayBeTooLarge(-1,10),false);
+});
 
 test('pinned LFM3 Q8 preparation budgets only its verified weights and shared LFM3 runtime',async()=>{
  const {lfm3RuntimeBytes}=await import('../src/lfm3-text-manifest.ts');
