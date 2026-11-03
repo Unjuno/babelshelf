@@ -164,7 +164,7 @@ test('Settings device test creates a local report that can be copied for handoff
  const handoff=await handoffField.count()?await handoffField.inputValue():await page.evaluate(()=>((window as any).__capturedDeviceHandoff??''));
  expect(handoff).toContain('BabelShelf device test');
  expect(handoff).toContain('implement any code fix that can be made from the report');
- expect(handoff).toContain('complete PC preflight, then request one targeted rerun');
+ expect(handoff).toContain('complete local preflight first');
  expect(handoff).toContain('checks');
  expect(handoff).not.toContain('Write…');
 });
@@ -247,7 +247,7 @@ test('app refresh is available online and blocked while a draft could be lost',a
 });
 
 test('one iOS offline handoff stores a local continuation marker and asks for one run',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'standalone',{configurable:true,value:true}));
+ await page.addInitScript(()=>{Object.defineProperty(navigator,'platform',{configurable:true,value:'iPhone'});Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'});Object.defineProperty(navigator,'standalone',{configurable:true,value:true});});
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
@@ -257,7 +257,17 @@ test('one iOS offline handoff stores a local continuation marker and asks for on
  const marker=await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'));
  const parsedMarker=JSON.parse(marker??'null');expect(parsedMarker).toMatchObject({schema:1,baseline:{checks:expect.any(Array)}});expect(parsedMarker.baseline.checks.length).toBeGreaterThan(0);
  expect(parsedMarker.modelTestRequested).toBe(true);
- await expect(page.getByText('Turn on Airplane Mode.',{exact:true})).toBeVisible();
+ await expect(page.locator('.device-offline-test')).toContainText('Airplane Mode');
+});
+
+test('Windows installed-app restart guidance does not mention iOS actions',async({page})=>{
+ await page.addInitScript(()=>{Object.defineProperty(navigator,'platform',{configurable:true,value:'Win32'});Object.defineProperty(navigator,'userAgent',{configurable:true,value:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/149.0.0.0 Safari/537.36'});Object.defineProperty(navigator,'standalone',{configurable:true,value:true});});
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');const options=page.locator('details.device-test-steps').filter({hasText:'Test options'});await options.locator('summary').click();await expect(options).toContainText('App + model · Installed app: restart check');
+ const checks=page.locator('details.device-test-steps').filter({hasText:'Restart: installed app only.'});await checks.locator('summary').click();await expect(checks).toContainText('Browser tabs finish without a restart check');
+ await page.getByRole('button',{name:'Run tests'}).click();
+ await expect(page.getByText('Checks saved · model test after restart',{exact:true})).toBeVisible({timeout:30_000});
+ const steps=page.locator('.device-offline-test');await expect(steps).toContainText('Disconnect the device from the network');await expect(steps).not.toContainText(/Airplane Mode|Home Screen/);
+ const report=JSON.parse(await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.report.v1')??'{}'));expect(report.manualSteps.join(' ')).toContain('installed app');expect(report.manualSteps.join(' ')).not.toMatch(/Airplane Mode|Home Screen|iPhone/);
 });
 
 test('a saved return check resumes after reload and leaves a copyable handoff',async({page,browserName})=>{
@@ -295,7 +305,7 @@ test('a saved return check resumes after reload and leaves a copyable handoff',a
  const handoffField=page.locator('.diagnostic-handoff');
  const handoff=await handoffField.count()?await handoffField.inputValue():await page.evaluate(()=>((window as any).__capturedDeviceHandoff??''));
  expect(handoff).toContain('offline-cold-reopen');
- expect(handoff).toContain('Do not infer that Airplane Mode or force-close occurred');
+ expect(handoff).toContain('Do not infer that network disconnection or force-close occurred');
 });
 
 test('an interrupted one-run return is reported once without automatically repeating probes or model execution',async({page})=>{

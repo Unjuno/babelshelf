@@ -80,7 +80,7 @@ test('device diagnostics run bounded local probes and distinguish readiness from
  assert.equal(checks['secure-context'].status,'pass');assert.equal(checks['service-worker'].status,'pass');assert.equal(checks['offline-cache'].status,'pass');
  assert.equal(checks['storage-roundtrip'].status,'pass');assert.equal(checks['indexeddb-roundtrip'].status,'fail');
  assert.equal(checks['webgpu'].status,'not-run');assert.equal(checks['selected-model'].status,'warning');
- assert.equal(checks['home-screen-launch'].status,'warning');assert.match(checks['home-screen-launch'].detail,/browser tab.*Home Screen app/i);
+ assert.equal(checks['home-screen-launch'].status,'warning');assert.match(checks['home-screen-launch'].detail,/browser tab.*installed app/i);
  assert.match(report.manualSteps[0],/Home Screen icon/i);
  assert.deepEqual(report.webgpu,{available:false,fallbackAdapter:null,features:[],limits:{}});
  assert.match(checks['offline-cache'].detail,/offline restart not proven/);assert.match(checks['selected-model'].detail,/generation not tested/);
@@ -92,6 +92,9 @@ test('device diagnostics marks Home Screen app launch when the installed PWA is 
  const report=await runDeviceDiagnostics({standalone:true,isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null});
  const check=report.checks.find(item=>item.id==='home-screen-launch');
  assert.equal(check.status,'pass');assert.match(check.detail,/standalone display mode detected/i);assert.match(report.manualSteps[0],/Select Run tests/i);
+ assert.doesNotMatch(report.manualSteps.join(' '),/iPhone|Airplane Mode|Home Screen/i);
+ const ios=await runDeviceDiagnostics({platform:'iPhone',userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',standalone:true,isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null});
+ assert.match(ios.manualSteps.join(' '),/Airplane Mode/);assert.match(ios.manualSteps.join(' '),/Home Screen/);
 });
 
 test('IndexedDB browser exception text is replaced before it enters the diagnostic report',async()=>{
@@ -289,12 +292,13 @@ test('interrupted one-run return produces an honest warning without claiming an 
  assert.equal(interrupted.manualSteps.length,0);
 });
 
-test('offline return report uses browser-observed signals and does not claim iOS system state',async()=>{
+test('offline return report uses browser-observed signals and platform-accurate OS state limits',async()=>{
  const storage=memoryStorage(),baseline=await runDeviceDiagnostics({isSecureContext:true,standalone:true,online:true,serviceWorker:{controller:{}},appBuild:'before',storage,indexedDB:null,gpu:null});
  const marker={schema:1,startedAt:baseline.createdAt,appBuild:baseline.appBuild,baseline:{checkedAt:baseline.createdAt,appBuild:baseline.appBuild,standalone:true,onlineSignal:true,checks:baseline.checks}};
  const returned=await runDeviceDiagnostics({isSecureContext:true,standalone:true,online:false,serviceWorker:{controller:{}},appBuild:'after',storage,indexedDB:null,gpu:null});
  const report=completeOfflineRestartReport(returned,marker),checks=Object.fromEntries(report.checks.map(item=>[item.id,item]));
- assert.equal(checks['offline-cold-reopen'].status,'pass');assert.match(checks['offline-cold-reopen'].detail,/cannot be independently verifiable|not independently verifiable/i);assert.equal(checks['ios-system-state'].status,'warning');assert.equal(report.offlineRestart.returnObserved,true);assert.equal(report.manualSteps.length,0);
+ assert.equal(checks['offline-cold-reopen'].status,'pass');assert.match(checks['offline-cold-reopen'].detail,/cannot be independently verifiable|not independently verifiable/i);assert.equal(checks['os-system-state'].status,'warning');assert.doesNotMatch(JSON.stringify(report),/iOS Airplane Mode|iOS force-close/);assert.equal(report.offlineRestart.returnObserved,true);assert.equal(report.manualSteps.length,0);
+ const iosBase={...returned,platform:'iPhone',userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'};const iosReport=completeOfflineRestartReport(iosBase,marker);assert.equal(iosReport.checks.find(item=>item.id==='ios-system-state')?.status,'warning');assert.match(iosReport.scope.join(' '),/iOS force-closed/);
 });
 
 test('final device report is retained locally for a later one-tap copy and rejects oversized or malformed values',async()=>{
