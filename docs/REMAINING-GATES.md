@@ -1,4 +1,8 @@
-## Current status · 2026-11-03
+## Current status · 2026-11-04
+### 2026-11-04 · diagnose runtime preparation failures without exposing private errors
+
+An iPhone Full cycle report stopped at runtime setup before model acquisition or generation; selected-model files were absent, and its generic `Error` cannot identify the cause. The device report now records a bounded, validated runtime failure code and stage, and the Developer result shows an actionable category without retaining raw exception text. Focused local regression checks passed 92/92 across citation evidence, tool preferences, runtime preparation and device diagnostics. Commit `2cd989a` is pushed to `codex/ui-design-handoff`; clean-checkout CI [41670932817](https://github.com/Unjuno/babelshelf/actions/runs/41670932817) is still running. The original iPhone cause, actual model generation, Home Screen launch, GPU use, offline cold restart and physical-device behavior remain unverified. No model was downloaded and no device rerun was requested. Detailed implementation/check evidence is in [TEST-RESULTS.txt](TEST-RESULTS.txt).
+
 ### 2026-11-03 · use the full standard answer allowance
 
 The ordinary balanced answer allowance is up to 3,072 tokens, bounded by the selected model and remaining context. Planner headroom stays separate; a consistency retry is recounted and receives only the output budget that fits its revised prompt. This preserves evidence and revision checks while avoiding an unnecessary short-by-default cap. Focused tests, all 1,860 prototype tests, all 259 root tests, static check, 165-asset production build, app acceptance 8/8, and clean-checkout CI [41651902680](https://github.com/Unjuno/babelshelf/actions/runs/41651902680) passed. Real-model answer quality and physical-device behavior remain unmeasured; the public site was not redeployed for this change.
