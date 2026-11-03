@@ -21,6 +21,17 @@ passed all stages. Public Site v311 serves build `871ece8c087af8f9`; both
 Actual iPhone runtime setup, model acquisition, generation, GPU use, and
 installed-PWA behavior still require a targeted device run.
 
+Follow-up `f421937` closes a deadline race after page suspension: the client
+checks the absolute wall-clock deadline before accepting each Service Worker
+reply, not only when the page timer fires. A controlled regression simulates a
+late success after that deadline; focused runtime/device tests (24), the full
+prototype suite, production build, product acceptance (8/8), and clean-checkout
+CI [41706145383](https://github.com/Unjuno/babelshelf/actions/runs/41706145383)
+passed. This rejects late success; it cannot keep the PWA running while iOS has
+suspended it and does not diagnose the old generic runtime `Error` or prove
+LFM3 compatibility. No device rerun is requested without a current-build
+failure that this guard is intended to address.
+
 ### 2026-11-04 · interpret the earlier iPhone Full cycle report
 
 The supplied report is from app build `48777327b2d5c402` in an iOS Safari tab
