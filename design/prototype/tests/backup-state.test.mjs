@@ -20,20 +20,24 @@ test('calculation execution survives backup and rejects a forged result',async()
 
 test('reviewed settings recovery appends destination history and retains source versions without network permission',async()=>{
  const pref=(group,value)=>{const n=createNote({path:'Settings/'+group+'.md',body:formatPreference(group,{...readPreference(group,initialPreferenceNotes),...value})});n.id='settings-'+group;n.ui={managed:true};n.unknown={retained:true};return n;};
- const current={notes:[pref('appearance',{theme:'light',background:'paper',glass:'clear'}),pref('connection',{downloads:false})],settings:[],runs:[]};
- const incoming={schema:2,createdAt:new Date().toISOString(),notes:[pref('appearance',{theme:'dark',background:'sage',glass:'frosted'}),pref('connection',{downloads:true})],settings:[],runs:[]};
+ const baseHarness=readPreference('harness',initialPreferenceNotes),harnessProfile={...baseHarness.profiles[0],enabledTools:['memory.search','memory.read'],maxGenerationTokens:512,maxGenerationMs:10_000};
+ const current={notes:[pref('appearance',{theme:'light',background:'paper',glass:'clear'}),pref('models',{textModel:'4B',textLibrary:['lfm3-1.7b-qad-q4-0','4B']}),pref('connection',{downloads:false,diagnosticLogs:false}),pref('harness',{replyStyle:'balanced',userGuidance:'Destination guidance',profiles:[harnessProfile,...baseHarness.profiles.slice(1)]})],settings:[],runs:[]};
+ const incoming={schema:2,createdAt:new Date().toISOString(),notes:[pref('appearance',{theme:'dark',background:'sage',glass:'frosted'}),pref('models',{textModel:'lfm3-1.7b-qad-q4-0',textLibrary:['lfm3-1.7b-qad-q4-0','4B']}),pref('connection',{downloads:true,diagnosticLogs:true}),pref('harness',{replyStyle:'detailed',userGuidance:'Backup guidance',profiles:[{...harnessProfile,maxToolCalls:3,maxGenerationTokens:256,maxGenerationMs:5_000},...baseHarness.profiles.slice(1)]})],settings:[],runs:[]};
  const before=structuredClone({current,incoming}),plan=planSettingsRestore(current,incoming);
- assert.equal(plan.changes.length,1);assert.equal(plan.writes.length,1);
- assert.deepEqual(plan.writes[0].revisions.slice(0,-1),current.notes[0].revisions);assert.deepEqual(plan.writes[0].unknown,{retained:true});
- assert.deepEqual(plan.changes[0].source,incoming.notes[0]);assert.deepEqual({current,incoming},before);
+ assert.equal(plan.changes.length,4);assert.equal(plan.writes.length,4);
+ for(const write of plan.writes){const old=current.notes.find(n=>n.id===write.id);assert.deepEqual(write.revisions.slice(0,-1),old.revisions);assert.deepEqual(write.unknown,{retained:true});}
+ assert.deepEqual(plan.changes.map(change=>change.group),['appearance','models','connection','harness']);
+ assert.deepEqual(plan.changes.map(change=>change.source),incoming.notes);assert.deepEqual({current,incoming},before);
  const receipt={schema:1,type:'settings-restore',id:'recovery',appliedAt:new Date().toISOString(),backupHash:stateHash(incoming),changes:plan.changes.map(c=>({group:c.group,noteId:c.noteId,beforeVersion:c.beforeVersion,afterVersion:c.beforeVersion+1,source:c.source}))};
- const state={...current,notes:[plan.writes[0],current.notes[1]],runs:[{key:'ui-v1-settings-restore-recovery',value:receipt}]};
+ const state={...current,notes:current.notes.map(note=>plan.writes.find(write=>write.id===note.id)??note),runs:[{key:'ui-v1-settings-restore-recovery',value:receipt}]};
  assert.deepEqual((await parseStateBackup(JSON.stringify(await makeStateBackup(state)))).runs,state.runs);
  const changed=structuredClone(receipt);changed.changes[0].source.revisions[0].body=formatPreference('appearance',{...readPreference('appearance',initialPreferenceNotes),background:'sand'});
  assert.throws(()=>validateSettingsRestoreReceipt('ui-v1-settings-restore-recovery',changed,state.notes),/source changed/);
- const on={...current,notes:[current.notes[0],pref('connection',{downloads:true})]},offline=planSettingsRestore(on,incoming);
+ const on={...current,notes:current.notes.map(note=>note.id==='settings-connection'?pref('connection',{downloads:true}):note)},offline=planSettingsRestore(on,incoming);
  assert.match(offline.writes.find(n=>n.id==='settings-connection').revisions.at(-1).body,/"downloads": false/);
  assert.match(offline.changes.find(c=>c.group==='connection').source.revisions[0].body,/"downloads": true/);
+ const restoredHarness=JSON.parse(plan.writes.find(n=>n.id==='settings-harness').revisions.at(-1).body.split('```json\n')[1].split('\n```')[0]);
+ assert.equal(restoredHarness.userGuidance,'Backup guidance');assert.equal(restoredHarness.profiles[0].maxToolCalls,3);assert.equal(restoredHarness.profiles[0].maxGenerationTokens,256);assert.equal(restoredHarness.profiles[0].maxGenerationMs,5_000);
 });
 
 test('settings-only recovery cannot select arbitrary IDs, protected paths or legacy state',()=>{
