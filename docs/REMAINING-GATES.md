@@ -19,8 +19,9 @@ or prove quality on every runtime. The first clean CI run exposed one activity
 assertion pinned to the old 2,048-token maximum; it now derives the expected
 limit from the 32,000-token test context minus its 123-token prompt. Focused
 agent-coordinator/conversation tests passed 308/308, and the full local
-prototype suite, root suite and static check passed after that correction. A
-clean CI rerun is pending.
+prototype suite, root suite and static check passed after that correction.
+Clean-checkout CI [41741611062](https://github.com/Unjuno/babelshelf/actions/runs/41741611062)
+passed every stage in 9m54s on commit `855f5c7`.
 
 ### Live deployment provenance check
 
