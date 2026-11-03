@@ -185,12 +185,12 @@ test('optional exact count never falls back to generation and discards cancelled
 
 test('normal output budgets are explicit while diagnostic default remains bounded',async()=>{
  const old=setup();await old.adapter.load(file,model.id,{backend:'cpu'});await assert.rejects(old.adapter.generate([{role:'user',content:'fixture'}],{maxTokens:384}),/Output budget/);await old.adapter.unload();
- const normal=setup(768);await normal.adapter.load(file,model.id,{backend:'cpu'});await normal.adapter.generate([{role:'user',content:'fixture'}],{maxTokens:768});assert.equal(normal.adapter.runtime.options.max_tokens,768);assert.throws(()=>setup(769),/output budget/);await normal.adapter.unload();
+ const normal=setup(2048);await normal.adapter.load(file,model.id,{backend:'cpu'});await normal.adapter.generate([{role:'user',content:'fixture'}],{maxTokens:2048});assert.equal(normal.adapter.runtime.options.max_tokens,2048);assert.doesNotThrow(()=>setup(32768));assert.throws(()=>setup(262145),/output budget/);await normal.adapter.unload();
 });
-test('LFM3 accepts the configured context-sized output budget while LFM2/Qwen remain capped at 768',async()=>{
+test('LFM2, LFM3 and Qwen adapters accept context-sized budgets; the host enforces each selected context',async()=>{
  const {Lfm3Adapter}=await import('../dist/lfm-adapter.js');
  const make=(architecture,maxReplyTokens)=>()=>new PreparedGgufAdapter({Wllama:class{},paths:{default:'/local.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[model],architecture,maxReplyTokens});
- assert.doesNotThrow(make('lfm3',262144));assert.throws(make('lfm3',262145),/output budget/);assert.throws(make('lfm2',769),/output budget/);assert.throws(make('qwen3',769),/output budget/);
+ for(const architecture of ['lfm2','lfm3','qwen3']){assert.doesNotThrow(make(architecture,32768));assert.throws(make(architecture,262145),/output budget/);}
  let options;const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'/local.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[model],maxReplyTokens:8192});
  adapter.loaded='local';adapter.runtime={createChatCompletion:async value=>{options=value;return (async function*(){yield {choices:[{delta:{content:'fixture'}}]};})();}};
  await adapter.generate([{role:'user',content:'detail'}],{maxTokens:8192});assert.equal(options.max_tokens,8192);

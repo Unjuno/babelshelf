@@ -24,6 +24,6 @@ self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  const assets:Record<string,{filesPresent:boolean}>={};for(const model of manifest.models){let present=false;try{present=(await readFile(model.id)).size===model.file.bytes;}catch{/* absence is not preparation */}assets[model.id]={filesPresent:present};}
  // The pinned native server validates token prefixes and recurrent checkpoints.
  // Reuse only completed work in this resident engine; Stop/unload clears eligibility.
- const adapter=new LfmAdapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:768,reusePrompt:true,onProgress:progress});
+ const adapter=new LfmAdapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:Math.max(...manifest.models.map((model:any)=>model.contextTokens)),reusePrompt:true,onProgress:progress});
  return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets});
 },message=>self.postMessage(message),owned.dispose);

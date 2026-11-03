@@ -91,7 +91,7 @@ test('LFM2.5 230M and 350M are distinct pinned text choices on the same local ru
  assert.equal(smaller.engine,'wllama-cpu-count');assert.equal(smaller.runtime.revision,larger.runtime.revision);
  assert.equal(smaller.revision,'03502067c64ce32ac4fe87b0cec0310a1a13d3e9');assert.equal(smaller.file.bytes,149081056);
  assert.equal(smaller.file.sha256,'e75f83268de11b2a1bcfab5f3b5c5c0c97569ddbbc0990aad88437e45b8ba292');
- assert.equal(smaller.contextTokens,2048);assert.equal(smaller.files[0].path,smaller.file.name);
+ assert.equal(smaller.contextTokens,2048);assert.equal(smaller.maxReplyTokens,2048);assert.equal(smaller.files[0].path,smaller.file.name);
 });
 test('a validated custom LFM2 record becomes a hash-pinned local-only model on the fixed runtime',()=>{
  const sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2 fine tune',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes:149081056,name:'My model',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};

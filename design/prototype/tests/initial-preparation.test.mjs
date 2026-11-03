@@ -34,6 +34,7 @@ test('custom Qwen3 persists its own CPU identity and prepares without WebML asse
  const restored=parsePreference('models',formatPreference('models',prefs));
  assert.deepEqual(restored.customModels,[record]);assert.equal(restored.textModel,record.id);
  const descriptor=describeQwen3Text(restored.customModels,record.id),base={models:[],runtime:{revision:'unrelated'},contextTokens:8192};
+ assert.equal(descriptor.models[0].maxReplyTokens,4096,'Qwen3 reply allowance follows this model’s validated context');
  const combined=combinedLocalTextManifest(base,record.id,restored.customModels);
  assert.equal(combined.runtime.revision,descriptor.runtime.revision);assert.equal(combined.contextTokens,4096);
  const model=combined.models.find(m=>m.id===record.id);assert.equal(model.engine,'wllama-qwen3-cpu');assert.equal(model.file.sha256,sha);assert.equal(model.url,undefined);
