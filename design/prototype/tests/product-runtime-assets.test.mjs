@@ -6,9 +6,9 @@ function fakeChannel(){const state={};const port1={onmessage:null,closed:false,c
 function fakeWorker(channel,onMessage){const messages=[];return {messages,postMessage(message,transfer){messages.push(message);if(onMessage)onMessage(message,transfer,channel);}};}
 
 test('runtime preparation uses an exact feature role and returns aggregate verified progress without paths',async()=>{
- const channel=fakeChannel(),progress=[],worker=fakeWorker(channel,(message,_transfer,state)=>{assert.deepEqual(message,{type:'prepare-product-assets',role:'speech',operationId:'test-op-0001',acquire:true});queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'progress',role:'speech',completed:1,total:2,bytes:100}}));queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'prepared',role:'speech',assets:2,bytes:200}}));});
+ const channel=fakeChannel(),progress=[],worker=fakeWorker(channel,(message,_transfer,state)=>{assert.deepEqual(message,{type:'prepare-product-assets',role:'speech',operationId:'test-op-0001',acquire:true});queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'progress',role:'speech',completed:1,total:2,bytes:100}}));queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'prepared',role:'speech',assets:2,bytes:200,downloadedBytes:120}}));});
  const result=await prepareProductRuntimeAssets('speech',{worker,operationId:'test-op-0001',makeChannel:()=>channel.channel,onProgress:value=>progress.push(value)});
- assert.deepEqual(result,{status:'prepared',role:'speech',assets:2,bytes:200});assert.equal(progress.length,1);assert.equal(channel.channel.port1.closed,true);
+ assert.deepEqual(result,{status:'prepared',role:'speech',assets:2,bytes:200,downloadedBytes:120});assert.equal(progress.length,1);assert.equal(channel.channel.port1.closed,true);
 });
 test('runtime preparation accepts progress while the first file is still downloading',async()=>{
  const channel=fakeChannel(),progress=[],worker=fakeWorker(channel,(_message,_transfer,state)=>{queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'progress',role:'speech',completed:0,total:1,bytes:3}}));queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'prepared',role:'speech',assets:1,bytes:7}}));});
@@ -39,10 +39,14 @@ test('silent runtime preparation and local verification time out and cancel the 
  }
 });
 test('unexpected or mismatched runtime replies cannot claim preparation success',async()=>{
- for(const reply of [{status:'other'},{status:'prepared',role:'speech',assets:1,bytes:20},{status:'prepared',role:'pdf',assets:0,bytes:0}]){
+ for(const reply of [{status:'other'},{status:'prepared',role:'speech',assets:1,bytes:20},{status:'prepared',role:'pdf',assets:0,bytes:0},{status:'prepared',role:'pdf',assets:1,bytes:10,downloadedBytes:11}]){
   const channel=fakeChannel(),worker=fakeWorker(channel,(_message,_transfer,state)=>queueMicrotask(()=>state.channel.port1.onmessage({data:reply})));
   await assert.rejects(verifyProductRuntimeAssets('pdf',{worker,operationId:'invalid-op-01',makeChannel:()=>channel.channel,timeoutMs:100}),/invalid.*runtime/i);
  }
+});
+test('runtime acquisition failure retains the measured partial payload byte count',async()=>{
+ const channel=fakeChannel(),worker=fakeWorker(channel,(_message,_transfer,state)=>queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'failed',error:'Runtime verification failed',downloadedBytes:37}})));
+ await assert.rejects(prepareProductRuntimeAssets('pdf',{worker,operationId:'partial-op-01',makeChannel:()=>channel.channel}),error=>error.message==='Runtime verification failed'&&error.downloadedBytes===37);
 });
 
 test('load-time runtime verification can use the active app service worker without custom options',async()=>{

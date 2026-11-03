@@ -10,7 +10,7 @@ test('vision runtime shares a bounded high-performance WebGPU check before its f
  assert.match(worker,/configureLocalTransformerRuntime\(env,wasmURL,mjsURL\)/);
  assert.match(worker,/requireVisionWebGPU\(/);
  assert.doesNotMatch(worker,/powerPreference:'low-power'/);
- assert.match(app,/if\(role==='vision'\)await requireVisionWebGPU\([\s\S]*?controller\.signal\);await prepareProductRuntimeAssets/,'preparation must check and allow Stop before acquiring runtime assets');
+ assert.match(app,/async function ensureProductRuntime[\s\S]*?if\(role==='vision'\)await requireVisionWebGPU\([\s\S]*?controller\.signal\);result=await prepareProductRuntimeAssets/,'preparation must check and allow Stop before acquiring runtime assets');
 });
 
 test('vision runtime resolves only its immutable revision-pinned manifest files',()=>{

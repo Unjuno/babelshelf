@@ -4,6 +4,7 @@ import {describeDiagnosticEnvironment,offlineRestartManualSteps,type OfflineRest
 
 type Props={
  testMode:DeviceTestMode;onTestModeChange:(mode:DeviceTestMode)=>void;
+ selectedModel?:string;modelAssetBytes?:number;modelFilesPresent:boolean;downloads:boolean;testStage:string;
  diagnosticBuild:string;
  bundle:string;
  deviceTestRunning:boolean;
@@ -25,10 +26,10 @@ type Props={
 
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
- const {testMode,onTestModeChange,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
+ const {testMode,onTestModeChange,selectedModel,modelAssetBytes,modelFilesPresent,downloads,testStage,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
  let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportGpuHint='',reportContextTokens:number|undefined,reportLogicalProcessors:number|undefined,reportMemoryEstimate:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
-  performanceSample=generation?.testMode==='performance'||generation?.workload==='prose-128-v1'||generation?.workload==='prose-128-v2';
+  performanceSample=generation?.testMode==='performance'||generation?.testMode==='full-cycle'||generation?.workload==='prose-128-v1'||generation?.workload==='prose-128-v2';
   if(typeof report?.createdAt==='string'&&Number.isFinite(Date.parse(report.createdAt)))reportAt=new Date(report.createdAt).toISOString();
   if(typeof report?.appBuild==='string')reportBuild=report.appBuild.slice(0,40);
   if(typeof report?.platform==='string'&&typeof report?.userAgent==='string')reportEnvironment=describeDiagnosticEnvironment(report.platform.slice(0,128),report.userAgent.slice(0,512));
@@ -44,7 +45,7 @@ export function DiagnosticsSettings(props:Props){
   else if(typeof report?.selectedModel?.id==='string')reportModel=report.selectedModel.id.slice(0,120);
   if(generation)modelStatus=generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.failureType==='incomplete-output'?'Incomplete output':generation.failureType==='empty-output'?'No output':generation.status==='fail'&&generation.failureStage?`Failed · ${generation.failureStage}`:generation.status==='pass'&&performanceSample?'Sample complete':({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run';
  }catch{/* A broken local report must not break Settings. */}
- if(deviceTestRunning||deviceModelTesting)modelStatus='Testing…';
+ if(deviceTestRunning||deviceModelTesting)modelStatus=testStage||'Testing…';
  const restartSteps=offlineRestartMarker?offlineRestartManualSteps(typeof navigator==='undefined'?'Unknown':navigator.platform,typeof navigator==='undefined'?'Unknown':navigator.userAgent,offlineRestartMarker.baseline.standalone):[];
  const threadInfo=[typeof generation?.runtimeMetrics?.requestedThreads==='number'?`${generation.runtimeMetrics.requestedThreads} requested`:'',typeof generation?.runtimeMetrics?.runtimeThreads==='number'?`${generation.runtimeMetrics.runtimeThreads} reported`:'' ].filter(Boolean).join(' · ');
  const observedGpuLayers=generation?.runtimeMetrics?.runtimeObservedGpuLayers,observedGpuTotal=generation?.runtimeMetrics?.runtimeObservedGpuTotalLayers;
@@ -52,13 +53,13 @@ export function DiagnosticsSettings(props:Props){
  return <>
   <section aria-label="Device test">
    <h2>Device test</h2>
-   <p className="source-revision">App + selected model. Local files only.</p>
-   <details className="device-test-steps"><summary>Test options · {testMode==='performance'?'Performance':'Quick'}</summary><div className="appearance-options" role="group" aria-label="Test mode">{(['quick','performance'] as const).map(mode=><button key={mode} type="button" disabled={deviceTestRunning||deviceModelTesting||!!offlineRestartMarker} aria-pressed={testMode===mode} onClick={()=>onTestModeChange(mode)}>{mode==='quick'?'Quick':'Performance'}</button>)}</div><p className="source-revision">{offlineRestartMarker?'Restart check pending':testMode==='performance'?'Runs here · No restart · Up to 128 tokens · May use more battery':'App + model · Installed app: restart check'}</p></details>
-   <button className="solid-button" disabled={deviceTestRunning||deviceModelTesting} onClick={offlineRestartMarker?onCancelDeviceTest:onRunDeviceTest}>{deviceTestRunning||deviceModelTesting?'Testing…':offlineRestartMarker?'Cancel test':testMode==='performance'?'Run speed sample':'Run tests'}</button>
+   <p className="source-revision">App + selected model · local inference</p>
+   <details className="device-test-steps"><summary>Test options · {testMode==='performance'?'Performance':testMode==='full-cycle'?'Full cycle':'Quick'}</summary><div className="appearance-options" role="group" aria-label="Test mode">{(['quick','performance','full-cycle'] as const).map(mode=><button key={mode} type="button" disabled={deviceTestRunning||deviceModelTesting||!!offlineRestartMarker} aria-pressed={testMode===mode} onClick={()=>onTestModeChange(mode)}>{mode==='quick'?'Quick':mode==='performance'?'Performance':'Full cycle'}</button>)}</div><p className="source-revision">{offlineRestartMarker?'Restart check pending':testMode==='performance'?'Prepared model · one timing sample · no restart':testMode==='full-cycle'?`Prepare if missing · load · first text · warm run${!modelFilesPresent&&downloads?' · Online may use data':''}`:'App + model · Installed app: restart check'}</p>{testMode==='full-cycle'&&selectedModel&&<p className="source-revision">{modelFilesPresent?'Model files ready · no download expected':modelAssetBytes?`Selected model · ${(modelAssetBytes/1024**3).toFixed(2)} GB expected`:'Model files not ready'} · Downloads {downloads?'On':'Off'}</p>}</details>
+   <button className="solid-button" disabled={deviceTestRunning||deviceModelTesting} onClick={offlineRestartMarker?onCancelDeviceTest:onRunDeviceTest}>{deviceTestRunning||deviceModelTesting?(testStage||'Testing…'):offlineRestartMarker?'Cancel test':testMode==='performance'?'Run speed sample':testMode==='full-cycle'?'Run full model test':'Run tests'}</button>
    {deviceModelTesting&&<button className="quiet-button" onClick={onStopModelTest}>Stop test</button>}
    {offlineRestartMarker&&<div className="device-offline-test"><h3>Restart needed</h3><p role="status">Checks saved · model test after restart</p><ol>{restartSteps.slice(1,2).map(step=><li key={step}>{step}</li>)}</ol><p className="source-revision">Tests continue automatically.</p></div>}
    {!deviceTestRunning&&!deviceModelTesting&&deviceTestReport&&<>
-    <div className="capability-row"><span>Last test{performanceSample?' · Performance':generation?.testMode==='quick'?' · Quick':''}</span>{reportAt&&<time dateTime={reportAt}>{new Date(reportAt).toLocaleString()}</time>}</div>
+    <div className="capability-row"><span>Last test{generation?.testMode==='full-cycle'?' · Full cycle':performanceSample?' · Performance':generation?.testMode==='quick'?' · Quick':''}</span>{reportAt&&<time dateTime={reportAt}>{new Date(reportAt).toLocaleString()}</time>}</div>
     {reportBuild&&<div className="capability-row"><span>Test build</span><span>{reportBuild}</span></div>}
     {reportEnvironment&&<div className="capability-row"><span>Test environment</span><span>{reportEnvironment}</span></div>}
    </>}
@@ -67,6 +68,16 @@ export function DiagnosticsSettings(props:Props){
    {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&generation.loadMetrics?.runtimeVariant&&<div className="capability-row"><span>WASM mode</span><span>{generation.loadMetrics.runtimeVariant==='compatibility'?'Compatibility':'Standard'}</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation?.loadMetrics?.gpuFallbackReason&&<div className="capability-row"><span>GPU fallback</span><span>{generation.loadMetrics.gpuFallbackReason==='webgpu-unavailable'?'WebGPU unavailable':generation.loadMetrics.gpuFallbackReason==='webgpu-no-layers-offloaded'?'GPU ran no model layers':'GPU model load failed'} · CPU/WASM used</span></div>}
    {!deviceTestRunning&&!deviceModelTesting&&generation&&performanceSample&&generation.status!=='not-run'&&<>
+    {generation.testMode==='full-cycle'&&<>
+     <div className="capability-row"><span>Assets</span><span>{generation.assetState==='prepared'?'Prepared during test':generation.assetState==='reused'?'Already prepared':'Not prepared'}</span></div>
+     {typeof generation.preparationDurationMs==='number'&&<div className="capability-row"><span>Verify / prepare</span><span>{(generation.preparationDurationMs/1000).toFixed(1)} s</span></div>}
+     {typeof generation.expectedModelBytes==='number'&&<div className="capability-row"><span>Model size · pinned</span><span>{(generation.expectedModelBytes/1024**2).toFixed(1)} MB</span></div>}
+     {typeof generation.downloadedBytes==='number'&&<div className="capability-row"><span>Model downloaded</span><span>{(generation.downloadedBytes/1024**2).toFixed(1)} MB</span></div>}
+     {typeof generation.runtimeDownloadedBytes==='number'&&<div className="capability-row"><span>Runtime downloaded</span><span>{(generation.runtimeDownloadedBytes/1024**2).toFixed(1)} MB</span></div>}
+     {typeof generation.runtimePreparationDurationMs==='number'&&<div className="capability-row"><span>Runtime check / setup</span><span>{(generation.runtimePreparationDurationMs/1000).toFixed(1)} s</span></div>}
+     {typeof generation.modelStartToFirstTextMs==='number'&&<div className="capability-row"><span>Run → first text</span><span>{(generation.modelStartToFirstTextMs/1000).toFixed(1)} s</span></div>}
+     {typeof generation.warmTokensPerSecond==='number'&&<div className="capability-row"><span>Warm speed</span><span>{generation.warmTokensPerSecond.toFixed(2)} tokens/s</span></div>}
+    </>}
     <div className="capability-row"><span>Model load</span><span>{generation.loadState==='already-loaded'?'Already loaded':generation.loadState==='not-loaded'?'Not loaded':typeof generation.loadDurationMs==='number'?(generation.loadDurationMs/1000).toFixed(1)+' s':'—'}</span></div>
     {typeof generation.runtimeMetrics?.visibleTextTtftMs==='number'&&<div className="capability-row"><span>First text</span><span>{(generation.runtimeMetrics.visibleTextTtftMs/1000).toFixed(2)} s</span></div>}
     {typeof generation.tokensPerSecond==='number'&&<div className="capability-row"><span>Overall speed</span><span>{generation.tokensPerSecond.toFixed(2)} tokens/s</span></div>}
@@ -86,8 +97,8 @@ export function DiagnosticsSettings(props:Props){
     </details>
    </>}
    {deviceTestReport&&<><div className="action-row"><button className="quiet-button" disabled={deviceTestRunning||deviceModelTesting} onClick={onCopyDeviceTestReport}>Copy report for Codex</button><button className="quiet-button" disabled={deviceTestRunning||deviceModelTesting||!!offlineRestartMarker} onClick={onClearDeviceTestReport}>Clear report</button></div><details className="device-test-report"><summary>{deviceTestRunning||deviceModelTesting?'Previous report':'Report'}</summary><pre className="diagnostic-report">{deviceTestReport}</pre></details></>}
-   <details className="device-test-steps"><summary>Checks</summary><p className="source-revision">App, storage, Memory, GPU and one short model reply. Unprepared models are skipped.</p><p className="source-revision">Restart: installed app only. Browser tabs finish without a restart check.</p><p className="source-revision">Uses model memory. No downloads. Test reply is discarded.</p></details>
-   <details className="device-test-steps"><summary>Limits</summary><p className="source-revision">Disconnecting the network and closing the app need your action. The app cannot verify those OS-level actions.</p><p className="source-revision">Overall speed includes input processing. Decode speed is reported by the runtime when available.</p><p className="source-revision">This is not a test of answer quality, long use or heat.</p></details>
+   <details className="device-test-steps"><summary>Checks</summary><p className="source-revision">Quick checks app, storage, Memory and one short reply. Performance measures one prepared-model timing sample.</p><p className="source-revision">Full cycle prepares or verifies the selected model, loads it, measures first text and runs a warm sample. Model files stay on this device.</p><p className="source-revision">Quick and Performance never download. Full cycle downloads only if the selected model is missing, Downloads are On and the browser reports Online.</p><p className="source-revision">Restart: installed app only. Browser tabs finish without a restart check. Test replies are discarded.</p></details>
+   <details className="device-test-steps"><summary>Limits</summary><p className="source-revision">Disconnecting the network and closing the app need your action. The app cannot verify those OS-level actions.</p><p className="source-revision">Overall speed includes input processing. Decode speed is reported by the runtime when available. Downloaded bytes are exact only for runtimes that report streamed transfer bytes.</p><p className="source-revision">One run does not establish answer quality, long use, heat or broad device compatibility.</p></details>
   </section>
   <section aria-label="App build">
    <div className="capability-row"><span>Active worker</span><span>{diagnosticBuild}</span></div>

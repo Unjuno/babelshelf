@@ -1,6 +1,6 @@
 export type ProductRuntimeRole='text-onnx'|'text-wllama'|'text-lfm3'|'text-lfm-check'|'decision'|'speech'|'vision'|'ocr'|'pdf'|'custom-tools';
 export type ProductRuntimeProgress={status:'progress';role:ProductRuntimeRole;completed:number;total:number;bytes:number};
-export type ProductRuntimeResult={status:'prepared';role:ProductRuntimeRole;assets:number;bytes:number};
+export type ProductRuntimeResult={status:'prepared';role:ProductRuntimeRole;assets:number;bytes:number;downloadedBytes?:number};
 type RuntimeReply=ProductRuntimeProgress|ProductRuntimeResult|{status:'failed';error:string};
 type RuntimeWorker={postMessage:(message:unknown,transfer?:Transferable[])=>void};
 type RuntimeOptions=NonNullable<Parameters<typeof prepareProductRuntimeAssets>[1]>;
@@ -54,8 +54,8 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
     if(reply.role!==role||!Number.isSafeInteger(reply.completed)||!Number.isSafeInteger(reply.total)||reply.completed<0||reply.total<1||reply.total<reply.completed||!Number.isSafeInteger(reply.bytes)||reply.bytes<0)return invalid();
     arm();try{options.onProgress?.(reply);}catch{/* UI observers cannot strand the worker job. */}return;
    }
-   if(reply.status==='failed'){if(typeof reply.error!=='string'||!reply.error)return invalid();finish(Error(reply.error));return;}
-   if(reply.status!=='prepared'||reply.role!==role||!Number.isSafeInteger(reply.assets)||reply.assets<1||!Number.isSafeInteger(reply.bytes)||reply.bytes<0)return invalid();
+   if(reply.status==='failed'){if(typeof reply.error!=='string'||!reply.error||(reply.downloadedBytes!==undefined&&(!Number.isSafeInteger(reply.downloadedBytes)||reply.downloadedBytes<0)))return invalid();const error=Error(reply.error);if(reply.downloadedBytes!==undefined)Object.assign(error,{downloadedBytes:reply.downloadedBytes});finish(error);return;}
+   if(reply.status!=='prepared'||reply.role!==role||!Number.isSafeInteger(reply.assets)||reply.assets<1||!Number.isSafeInteger(reply.bytes)||reply.bytes<0||(reply.downloadedBytes!==undefined&&(!Number.isSafeInteger(reply.downloadedBytes)||reply.downloadedBytes<0||reply.downloadedBytes>reply.bytes)))return invalid();
    finish(undefined,reply);
   };
   options.signal?.addEventListener('abort',abort,{once:true});arm();

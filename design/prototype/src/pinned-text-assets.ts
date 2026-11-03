@@ -42,6 +42,8 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
    return {filesPresent:true};
   },
   async prepare(allowNetwork:boolean,signal:AbortSignal,progress:Progress=()=>{},localFiles:File[]=[]){
+   let downloadedBytes=0,downloadedAssets=0;
+   try{
    for(const pin of pins.files){
     try{await readPin(pin,signal,progress);continue;}catch(error){stopped(signal);if(!(error instanceof PinnedAssetVerificationError)&&!(error instanceof Error&&error.name==='NotFoundError'))throw error;}
     const matches=localFiles.filter(f=>f.name===pin.path||f.name===pin.path.split('/').at(-1));
@@ -49,7 +51,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
     // A single-file GGUF remains identifiable by its pinned size and digest
     // even if the user renamed it. Multi-file packages still require names.
     if(!matches.length&&pins.files.length===1&&localFiles.length===1&&pin.path.toLowerCase().endsWith('.gguf')&&localFiles[0].name.toLowerCase().endsWith('.gguf'))matches.push(localFiles[0]);
-    let source:ReadableStream<Uint8Array>|undefined;
+     let source:ReadableStream<Uint8Array>|undefined,networkSource=false;
     let writer:FileSystemWritableFileStream|undefined;
     let reader:ReadableStreamDefaultReader<Uint8Array>|undefined;
     try{
@@ -59,13 +61,14 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
       stopped(signal);const response=await io.fetch(pin.url,{signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});
       source=response.body??undefined;stopped(signal);
       if(!response.ok||!source)throw Error('Asset download failed');
+      networkSource=true;downloadedAssets++;
      }
      stopped(signal);const directory=await io.directory();stopped(signal);
      const handle=await directory.getFileHandle(pin.sha256,{create:true});stopped(signal);
      writer=await handle.createWritable();stopped(signal);
      reader=source.getReader();const activeReader=reader,activeWriter=writer;
      const streamed={size:pin.bytes,stream:()=>({getReader:()=>({
-      async read(){const chunk=await activeReader.read();stopped(signal);if(!chunk.done){await activeWriter.write(chunk.value.slice().buffer);stopped(signal);}return chunk;},
+      async read(){const chunk=await activeReader.read();stopped(signal);if(!chunk.done){if(networkSource)downloadedBytes+=chunk.value.byteLength;await activeWriter.write(chunk.value.slice().buffer);stopped(signal);}return chunk;},
       cancel:()=>activeReader.cancel(),releaseLock:()=>activeReader.releaseLock()
      })})};
      if(await hashLocalModel(streamed,{signal,progress})!==pin.sha256)throw Error('Asset verification failed');
@@ -77,6 +80,8 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
     }
    }
    stopped(signal);
+   return {downloadedBytes,downloadedAssets,assetCount:pins.files.length};
+   }catch(error){if(error&&typeof error==='object')try{Object.assign(error,{downloadedBytes,downloadedAssets});}catch{}throw error;}
   }
  };
 }

@@ -138,7 +138,10 @@ test('runtime preparation reports actual incoming bytes before the file complete
  const gotProgress=new Promise(resolve=>{first=resolve;});
  h.handlers.message({source,data:{type:'prepare-product-assets',role:'speech',operationId:'stream-op-0001',acquire:true},ports:[{postMessage:value=>{replies.push(value);if(value.status==='progress'&&value.completed===0)first();}}],waitUntil:value=>work=value});
  let timer;try{await Promise.race([gotProgress,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No partial progress')),2000);})]);assert.equal(replies[0].bytes,3);}finally{clearTimeout(timer);resume();}
- await work;assert.equal(replies.at(-1).status,'prepared');assert.equal(replies.at(-1).bytes,7);
+ await work;assert.equal(replies.at(-1).status,'prepared');assert.equal(replies.at(-1).bytes,7);assert.equal(replies.at(-1).downloadedBytes,7);
+});
+test('runtime preparation failure reports the partial verified-stream transfer size',async()=>{
+ const file={...pinned('./assets/speech-ABCDEFGH.wasm','GOOD'),roles:['speech']},h=await harness('BAD',{files:[file]});const result=await prepareRole(h,'speech');assert.equal(result.status,'failed');assert.equal(result.downloadedBytes,3);assert.match(result.error,/verification/i);
 });
 test('stopping a streaming runtime download does not commit its completed bytes',async()=>{
  let resume;const gate=new Promise(resolve=>{resume=resolve;}),file={...pinned('./assets/speech-ABCDEFGH.wasm','RUNTIME'),roles:['speech']};
@@ -153,8 +156,8 @@ test('stopping a streaming runtime download does not commit its completed bytes'
 test('custom tool QuickJS assets are excluded from first-install shell and acquired only on explicit preparation',async()=>{
  const files=[pinned('./index.html','INDEX'),{...pinned('./assets/custom-tool-worker-ABCDEFGH.js','TOOL-WORKER'),roles:['custom-tools']},{...pinned('./assets/emscripten-module-ABCDEFGH.wasm','QUICKJS-WASM'),roles:['custom-tools']}],body=url=>String(url).endsWith('index.html')?'INDEX':String(url).includes('custom-tool-worker-')?'TOOL-WORKER':'QUICKJS-WASM',h=await harness(body,{files});
  await install(h);assert.deepEqual(h.network,[origin+'/index.html']);assert.equal((await h.request('/assets/custom-tool-worker-ABCDEFGH.js')).status,503);
- const prepared=await prepareRole(h,'custom-tools');assert.equal(prepared.status,'prepared');assert.equal(prepared.assets,2);assert.equal(await(await h.request('/assets/custom-tool-worker-ABCDEFGH.js')).text(),'TOOL-WORKER');assert.equal(await(await h.request('/assets/emscripten-module-ABCDEFGH.wasm')).text(),'QUICKJS-WASM');
- assert.equal((await prepareRole(h,'custom-tools','tab-a',false)).status,'prepared');
+ const prepared=await prepareRole(h,'custom-tools');assert.equal(prepared.status,'prepared');assert.equal(prepared.assets,2);assert.equal(prepared.downloadedBytes,files[1].bytes+files[2].bytes);assert.equal(await(await h.request('/assets/custom-tool-worker-ABCDEFGH.js')).text(),'TOOL-WORKER');assert.equal(await(await h.request('/assets/emscripten-module-ABCDEFGH.wasm')).text(),'QUICKJS-WASM');
+ const cached=await prepareRole(h,'custom-tools','tab-a',false);assert.equal(cached.status,'prepared');assert.equal(cached.downloadedBytes,0);
 });
 test('inference and PDF worker bundles are fetched only when their exact feature runtime is prepared',async()=>{
  const features=[

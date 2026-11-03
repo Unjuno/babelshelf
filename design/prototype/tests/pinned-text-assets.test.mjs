@@ -28,6 +28,9 @@ function fixture() {
 test('pinned assets never acquire missing data during read or offline preparation',async()=>{
  const f=fixture(),signal=new AbortController().signal;await assert.rejects(f.store.read('onnx/model_quantized.onnx',signal),/missing/);await assert.rejects(f.store.prepare(false,signal),/Downloads/);assert.equal(f.fetches,0);assert.equal(f.writers,0);
 });
+test('pinned preparation counts network transfer bytes and reports local reuse as zero',async()=>{
+ const f=fixture(),signal=new AbortController().signal;const first=await f.store.prepare(true,signal);assert.deepEqual(first,{downloadedBytes:3,downloadedAssets:1,assetCount:1});const second=await f.store.prepare(true,signal);assert.deepEqual(second,{downloadedBytes:0,downloadedAssets:0,assetCount:1});assert.equal(f.fetches,1);
+});
 test('explicit local import is verified, restart status is declarative and reads rehash retained bytes',async()=>{
  const f=fixture(),signal=new AbortController().signal;await f.store.prepare(false,signal,()=>{},[new File([bytes],'model_quantized.onnx')]);assert.equal(f.fetches,0);assert.equal((await f.store.status(signal)).filesPresent,true);assert.deepEqual(new Uint8Array(await(await f.store.read('onnx/model_quantized.onnx',signal)).arrayBuffer()),bytes);
  f.files.set(sha256,new Blob([new Uint8Array([3,2,1])]));await assert.rejects(f.store.read('onnx/model_quantized.onnx',signal),/verification/);assert.equal(f.fetches,0);
@@ -41,7 +44,7 @@ test('corrupt explicit download never commits unverified bytes',async()=>{
  f.files.set(sha256,new Blob([new Uint8Array([9,9])]));
  const before=f.files.get(sha256);
  const store=createPinnedAssetStore(manifest,{directory:async()=>({async getFileHandle(name){return {getFile:async()=>f.files.get(name),async createWritable(){let pending;return {async write(bytes){pending=bytes;},async close(){f.files.set(name,new Blob([pending]));},async abort(){}};}};}}),fetch:async()=>new Response(new Uint8Array([9,8,7]))});
- await assert.rejects(store.prepare(true,signal),/verification/);
+ await assert.rejects(store.prepare(true,signal),error=>/verification/.test(error.message)&&error.downloadedBytes===3);
  assert.equal(f.files.get(sha256),before);
 });
 

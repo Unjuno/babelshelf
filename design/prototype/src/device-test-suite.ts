@@ -5,7 +5,7 @@ function notRun(report:DeviceDiagnosticReport,failureType:string,testMode:Device
 /** Performance runs here on every surface. Quick in an installed PWA defers
  * the model run to its claimed restart continuation; browser runs never arm it. */
 export async function startDeviceTestSuite(ports:Ports,mode:DeviceTestMode='quick'){
- if(mode!=='quick'&&mode!=='performance')throw Error('Unknown device test mode');
+ if(mode!=='quick'&&mode!=='performance'&&mode!=='full-cycle')throw Error('Unknown device test mode');
  let report=await ports.collect();report=structuredClone(report);
  if(report.standalone&&mode==='quick'){
   notRun(report,report.selectedModel?.filesPresent?'restart-pending':'model-files-not-ready',mode);
@@ -14,7 +14,7 @@ export async function startDeviceTestSuite(ports:Ports,mode:DeviceTestMode='quic
   await ports.save(report);await ports.arm(marker);return {report,marker};
  }
  report.scope.push(mode==='performance'?'Performance mode does not schedule an offline restart.':'Restart testing requires the Home Screen app; this browser run does not arm a restart test in another storage context.');
- if(report.selectedModel?.filesPresent){report=await ports.testModel(report,mode)??report;if(!report.modelGeneration)notRun(report,'model-test-not-run',mode);}
+ if(report.selectedModel&&(report.selectedModel.filesPresent||mode==='full-cycle')){report=await ports.testModel(report,mode)??report;if(!report.modelGeneration)notRun(report,'model-test-not-run',mode);}
  else notRun(report,'model-files-not-ready',mode);
  report.manualSteps=['Review the results in Developer.','Copy report for Codex to share the results.'];
  await ports.save(report);return {report,marker:null};

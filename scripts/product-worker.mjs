@@ -205,16 +205,18 @@ self.addEventListener('message',event=>{
   if(!selected.length){reply({status:'failed',error:valid?'Runtime assets unavailable for this feature':'Invalid app asset request'});return;}
   const job={clientId:source.id,stopped:false,controllers:new Set()};productAssetJobs.set(operationId,job);
   const work=(async()=>{
-   const pool=await caches.open(SHARED),epoch=networkEpoch;let bytes=0;
+   const pool=await caches.open(SHARED),epoch=networkEpoch;let bytes=0,downloadedBytes=0;
+   try{
    for(let index=0;index<selected.length;index++){
     if(job.stopped)throw Error('Stopped');
-    const file=selected[index],key=poolKey(file),saved=await pool.match(key),onBytes=read=>{if(!job.stopped&&epoch===networkEpoch)reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+read});};
+    const file=selected[index],key=poolKey(file),saved=await pool.match(key);let networkSource=false;const onBytes=read=>{if(networkSource)downloadedBytes+=read;if(!job.stopped&&epoch===networkEpoch)reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+read});};
     if(saved&&await verified(saved,file,onBytes)){if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});continue;}
     if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
     if(!acquire)throw Error('Runtime not prepared · switch Online to prepare');
     if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)throw Error('Downloads are off');
     const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);let response;
     try{
+     networkSource=true;
      response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
      if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
      if(!response.ok||!await verified(response,file,onBytes))throw Error('App asset verification failed');
@@ -222,10 +224,11 @@ self.addEventListener('message',event=>{
      await pool.put(key,response);if(!await verified(await pool.match(key),file))throw Error('App asset storage verification failed');
      if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
     }finally{networkRequests.delete(controller);job.controllers.delete(controller);}
-    bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});
+     bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});
    }
-   reply({status:'prepared',role,assets:selected.length,bytes});
-  })().catch(error=>reply({status:'failed',error:error instanceof Error?error.message:'App runtime preparation failed'})).finally(()=>productAssetJobs.delete(operationId));
+   reply({status:'prepared',role,assets:selected.length,bytes,downloadedBytes});
+   }catch(error){reply({status:'failed',error:error instanceof Error?error.message:'App runtime preparation failed',downloadedBytes});}
+  })().finally(()=>productAssetJobs.delete(operationId));
   event.waitUntil?.(work);return;
  }
  if(event.data?.type==='cancel-product-assets'){

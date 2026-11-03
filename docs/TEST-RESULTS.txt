@@ -1,3 +1,17 @@
+2026-11-03 — Full selected-model acquisition-to-output diagnostic.
+Developer settings add a gated Full cycle measuring local model/runtime reuse or
+preparation, streamed model and runtime transfer bytes (including partial failed
+transfers), model load, bounded time-to-first-visible-text, complete response,
+and a warm response. The selected model and runtime are retained. Quick and
+Performance remain no-download routes; Full cycle prepares missing assets only
+when Downloads is enabled and the browser reports Online. Root tests passed
+258/258, full prototype tests 1,849/1,849, Developer Chromium/WebKit UI 29/29,
+`npm run check`, production build with 165 verified assets, and app acceptance
+8/8. No model was downloaded or run: this verifies PC implementation and
+bounded workflow, not live-model speed/quality, physical hardware fit, GPU use,
+thermal stability, or iOS/Android performance. Offline cold-restart testing is
+kept separate. Existing model files and saved user data were not cleared.
+
 2026-11-02 — First service-worker registration race during offline-shell preparation.
 An isolated PC Chrome Q8 product-flow report stopped before model discovery or
 download: its app-shell status was `Preparation failed`, with no external

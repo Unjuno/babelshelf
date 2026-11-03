@@ -15,6 +15,11 @@ test('installed Performance runs immediately while the older default still uses 
  const skipped=setup(report(true,false)),notReady=await startDeviceTestSuite(skipped.ports,'performance');assert.equal(notReady.marker,null);assert.deepEqual(skipped.events.map(e=>e[0]),['save']);assert.equal(notReady.report.modelGeneration.testMode,'performance');assert.equal(notReady.report.modelGeneration.failureType,'model-files-not-ready');
 });
 
+test('Full cycle runs the selected model when its files are missing without arming a restart',async()=>{
+ const f=setup(report(false,false));let selected;f.ports.testModel=async(r,mode)=>{selected=mode;f.events.push(['model']);return {...r,modelGeneration:{status:'pass',testMode:mode,model:'chosen',modelRevision:'revision',runtimeRevision:'runtime'}};};
+ const result=await startDeviceTestSuite(f.ports,'full-cycle');assert.equal(selected,'full-cycle');assert.equal(result.marker,null);assert.equal(result.report.modelGeneration.status,'pass');assert.deepEqual(f.events.map(e=>e[0]),['model','save']);
+});
+
 test('legacy Performance restart markers remain readable and invalid modes are discarded',async()=>{
  const {writeOfflineRestartMarker,readOfflineRestartMarker}=await import('../src/device-diagnostics.ts');const f=setup(report()),result=await startDeviceTestSuite(f.ports,'quick');result.marker.modelTestMode='performance';const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
  writeOfflineRestartMarker(storage,result.marker);assert.equal(readOfflineRestartMarker(storage).modelTestMode,'performance');const key=[...values.keys()][0],value=JSON.parse(values.get(key));values.set(key,JSON.stringify({...value,modelTestMode:'execute external command'}));assert.equal(readOfflineRestartMarker(storage),null);assert.equal(values.size,0);

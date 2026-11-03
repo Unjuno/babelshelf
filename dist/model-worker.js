@@ -29,19 +29,19 @@ const pinnedFiles=createPinnedFileSnapshots({read:name=>file(name),hash:(snapsho
 async function meta(id){try{return JSON.parse(await (await file('ready-'+id+'.json')).text());}catch{return null;}}
 async function writeJSON(name,value){const w=await(await(await directory()).getFileHandle(name,{create:true})).createWritable();await w.write(JSON.stringify(value));await w.close();}
 async function hashFile(f,notify=()=>{}){return hashLocalModel(f,{signal:controller?.signal,progress:(bytes,total)=>notify(bytes/total)});}
-async function storeAsset(entry,id,local=null){
- const name=entry.sha256;try{await pinnedFiles.verify(name,entry,{signal:controller?.signal});return name;}catch{controller?.signal.throwIfAborted();pinnedFiles.invalidate(name);}
+async function storeAsset(entry,id,local=null,onNetworkBytes=()=>{}){
+ const name=entry.sha256;try{await pinnedFiles.verify(name,entry,{signal:controller?.signal});return {name,downloadedBytes:0,reused:true};}catch{controller?.signal.throwIfAborted();pinnedFiles.invalidate(name);}
  controller?.signal.throwIfAborted();
  const h=await createStreamingSHA256();controller?.signal.throwIfAborted();
  const handle=await(await directory()).getFileHandle(name,{create:true}),w=await handle.createWritable();let count=0,last=0,yieldBytes=0;let reader,cancellation;
  const cancel=()=>cancellation??=reader?.cancel().catch(()=>{});const abort=()=>{void cancel();};
- try{
+ let downloadedBytes=0;try{
   if(local){if(local.size!==entry.bytes)throw Error('File size mismatch');reader=local.stream().getReader();}
   else {const res=await networkFetch(entry.url,{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store'});if(!res.ok||!res.body)throw Error('Download failed · HTTP '+res.status);reader=res.body.getReader();}
   controller.signal.throwIfAborted();controller.signal.addEventListener('abort',abort,{once:true});
-  while(true){controller.signal.throwIfAborted();const {value,done}=await reader.read();controller.signal.throwIfAborted();if(done)break;count+=value.length;if(count>entry.bytes)throw Error('Unexpected file size');h.update(value);await w.write(value);yieldBytes+=value.length;if(yieldBytes>=1048576){yieldBytes=0;await new Promise(resolve=>setTimeout(resolve,0));controller.signal.throwIfAborted();}if(Date.now()-last>300){send(id,'progress',`${entry.name} · ${(count/1e6).toFixed(1)} / ${(entry.bytes/1e6).toFixed(1)} MB`);last=Date.now();}}
-  controller.signal.throwIfAborted();if(count!==entry.bytes||h.hex()!==entry.sha256)throw Error('Verification failed');await w.close();return name;
- }catch(e){await cancel();await w.abort().catch(()=>{});try{await(await directory()).removeEntry(name);}catch{}throw e;}
+  while(true){controller.signal.throwIfAborted();const {value,done}=await reader.read();controller.signal.throwIfAborted();if(done)break;count+=value.length;if(!local){downloadedBytes+=value.length;onNetworkBytes(value.length);}if(count>entry.bytes)throw Error('Unexpected file size');h.update(value);await w.write(value);yieldBytes+=value.length;if(yieldBytes>=1048576){yieldBytes=0;await new Promise(resolve=>setTimeout(resolve,0));controller.signal.throwIfAborted();}if(Date.now()-last>300){send(id,'progress',`${entry.name} · ${(count/1e6).toFixed(1)} / ${(entry.bytes/1e6).toFixed(1)} MB`);last=Date.now();}}
+  controller.signal.throwIfAborted();if(count!==entry.bytes||h.hex()!==entry.sha256)throw Error('Verification failed');await w.close();return {name,downloadedBytes,reused:false};
+ }catch(e){await cancel();await w.abort().catch(()=>{});try{await(await directory()).removeEntry(name);}catch{}try{Object.assign(e,{downloadedBytes});}catch{}throw e;}
  finally{controller.signal.removeEventListener('abort',abort);await cancel();reader?.releaseLock();}
 }
 async function status(){const out={};for(const m of manifest.models){const x=await meta(m.id);if(x){try{const a=await file(x.modelHash),r=await file(x.runtimeHash);out[m.id]={...x,filesPresent:a.size===m.file.bytes&&r.size===manifest.runtime.file.bytes};}catch{out[m.id]={...x,filesPresent:false};}}else out[m.id]=null;}return out;}
@@ -78,7 +78,7 @@ async function unload(){
 onmessage=async({data})=>{
  const {id,cmd,args={}}=data;
  if(cmd==='abort'){countedInput=null;controller?.abort(new DOMException('Stopped','AbortError'));return;}
- if(busy){send(id,'error','Busy');return;}busy=true;controller=new AbortController();
+ if(busy){send(id,'error','Busy');return;}busy=true;controller=new AbortController();let preparingDownloadedBytes=0;
  try{
   let result;
   switch(cmd){
@@ -95,15 +95,15 @@ onmessage=async({data})=>{
      const local=args.modelFile;if(!local)throw Error('Local model file required');
      await verifyLocalModelFile(local,m.localModel,{signal:controller.signal,progress:(n,total)=>send(id,'progress','Verifying model · '+Math.round(n/total*100)+'%')});
      const supplied=(args.localFiles??[]).find(f=>f.name===manifest.runtime.file.name||f.name===manifest.runtime.file.sha256);
-     if(supplied){if(supplied.size!==manifest.runtime.file.bytes||await hashLocalModel(supplied,{signal:controller.signal})!==manifest.runtime.file.sha256)throw Error('Runtime verification failed');await storeAsset(manifest.runtime.file,id,supplied);}
+     let runtimeAsset={downloadedBytes:0,reused:true};if(supplied){if(supplied.size!==manifest.runtime.file.bytes||await hashLocalModel(supplied,{signal:controller.signal})!==manifest.runtime.file.sha256)throw Error('Runtime verification failed');runtimeAsset=await storeAsset(manifest.runtime.file,id,supplied,bytes=>preparingDownloadedBytes+=bytes);}
      else {let cached;try{cached=await file(manifest.runtime.file.sha256);}catch{throw Error('Verified runtime.js required');}if(cached.size!==manifest.runtime.file.bytes||await hashLocalModel(cached,{signal:controller.signal})!==manifest.runtime.file.sha256)throw Error('Verified runtime.js required');}
-     await storeAsset(m.file,id,local);controller.signal.throwIfAborted();
-     const ready={model:m.id,modelHash:m.file.sha256,runtimeHash:manifest.runtime.file.sha256,verifiedAt:new Date().toISOString(),generationVerified:false,offlineVerified:false};await writeJSON('ready-'+m.id+'.json',ready);result=ready;break;
+     const modelAsset=await storeAsset(m.file,id,local,bytes=>preparingDownloadedBytes+=bytes);controller.signal.throwIfAborted();
+     const ready={model:m.id,modelHash:m.file.sha256,runtimeHash:manifest.runtime.file.sha256,verifiedAt:new Date().toISOString(),generationVerified:false,offlineVerified:false,preparation:{downloadedBytes:modelAsset.downloadedBytes+runtimeAsset.downloadedBytes,downloadedAssets:Number(!modelAsset.reused)+Number(!runtimeAsset.reused)}};await writeJSON('ready-'+m.id+'.json',ready);result=ready;break;
     }
     const files=args.localFiles??[];const match=e=>files.find(f=>f.name===e.name||f.name===e.sha256);
     if(args.localFiles&&(!match(m.file)||!match(manifest.runtime.file)))throw Error('Model GGUF and runtime.js required');
-    await storeAsset(manifest.runtime.file,id,match(manifest.runtime.file));await storeAsset(m.file,id,match(m.file));
-    const ready={model:m.id,modelHash:m.file.sha256,runtimeHash:manifest.runtime.file.sha256,verifiedAt:new Date().toISOString(),generationVerified:false,offlineVerified:false};await writeJSON('ready-'+m.id+'.json',ready);result=ready;break;
+    const runtimeAsset=await storeAsset(manifest.runtime.file,id,match(manifest.runtime.file),bytes=>preparingDownloadedBytes+=bytes),modelAsset=await storeAsset(m.file,id,match(m.file),bytes=>preparingDownloadedBytes+=bytes);
+    const ready={model:m.id,modelHash:m.file.sha256,runtimeHash:manifest.runtime.file.sha256,verifiedAt:new Date().toISOString(),generationVerified:false,offlineVerified:false,preparation:{downloadedBytes:modelAsset.downloadedBytes+runtimeAsset.downloadedBytes,downloadedAssets:Number(!modelAsset.reused)+Number(!runtimeAsset.reused)}};await writeJSON('ready-'+m.id+'.json',ready);result=ready;break;
    }
    case 'load':result=await load(id,args.model);break;
    case 'unload':await unload();result=true;break;
@@ -130,5 +130,5 @@ onmessage=async({data})=>{
    default:throw Error('Unknown action');
   }
   send(id,'done',result);
- }catch(e){if(cmd==='load')try{await unload();}catch(cleanup){e=new AggregateError([e,cleanup],'Model load and cleanup failed');}postMessage({id,type:'error',value:e?.name==='AbortError'?'Stopped':String(e?.message??e),...(e?.name!=='AbortError'&&e?.diagnostic?{diagnostic:e.diagnostic}:{})});}finally{busy=false;controller=null;}
+ }catch(e){if(cmd==='load')try{await unload();}catch(cleanup){e=new AggregateError([e,cleanup],'Model load and cleanup failed');}postMessage({id,type:'error',value:e?.name==='AbortError'?'Stopped':String(e?.message??e),...(e?.name!=='AbortError'&&e?.diagnostic?{diagnostic:e.diagnostic}:{}),...(cmd==='prepare'&&Number.isSafeInteger(preparingDownloadedBytes)?{downloadedBytes:preparingDownloadedBytes}:{})});}finally{busy=false;controller=null;}
 };
