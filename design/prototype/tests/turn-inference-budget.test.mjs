@@ -87,6 +87,22 @@ test('concurrent pinned/model views cannot double-spend a shared budget or repla
  assert.equal(clears,1);assert.equal(budget.generatedTokens,12);
 });
 
+test('a delayed deadline from a completed generation cannot stop the next generation',async()=>{
+ let time=0,nextTimer=0,stopCount=0,finishSecond;const callbacks=new Map(),cleared=[];
+ const timers={set(callback){const id=++nextTimer;callbacks.set(id,callback);return id;},clear(id){cleared.push(id);}};
+ const base=engine(async(_messages,_maxTokens)=>{
+  if(nextTimer===1){time+=10;return {text:'first',outputTokens:1};}
+  return new Promise(resolve=>{finishSecond=resolve;});
+ },{stop(){stopCount++;}});
+ const budget=createTurnInferenceBudget({maxGenerationTokens:null,maxGenerationMs:1000,now:()=>time,timers}),wrapped=budget.wrap(base);
+ assert.equal((await wrapped.generate([],32)).text,'first');assert.deepEqual(cleared,[1]);
+ const pending=wrapped.generate([],32);await new Promise(resolve=>setImmediate(resolve));
+ callbacks.get(1)();
+ assert.equal(stopCount,0,'the stale first deadline must not stop the active second generation');
+ finishSecond({text:'second',outputTokens:1});assert.equal((await pending).text,'second');
+ assert.equal(budget.generationMs,10);assert.equal(budget.generatedTokens,2);
+});
+
 test('the generation slot is released after a runtime failure without losing its charged allowance',async()=>{
  const budget=createTurnInferenceBudget({maxGenerationTokens:256,maxGenerationMs:null});
  await assert.rejects(budget.wrap(engine(async()=>{throw Error('Runtime failed');})).generate([],200),/Runtime failed/);

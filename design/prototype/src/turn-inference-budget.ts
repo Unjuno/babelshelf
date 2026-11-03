@@ -25,7 +25,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
  const {maxGenerationTokens,maxGenerationMs}=options,now=options.now??(()=>performance.now());
  const timers=options.timers??{set:(callback:()=>void,delay:number)=>setTimeout(callback,delay),clear:(handle:unknown)=>clearTimeout(handle as ReturnType<typeof setTimeout>)};
  if(maxGenerationTokens!==null&&(!Number.isSafeInteger(maxGenerationTokens)||maxGenerationTokens<256||maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||maxGenerationMs!==null&&(!Number.isSafeInteger(maxGenerationMs)||maxGenerationMs<1_000||maxGenerationMs>MAX_TURN_GENERATION_MS))throw Error('Invalid generation budget');
- let generatedTokens=0,generationMs=0,expired=false,active=false;
+ let generatedTokens=0,generationMs=0,expired=false,active=false,generationSequence=0,activeGeneration=0;
  const check=()=>{if(expired||maxGenerationMs!==null&&generationMs>=maxGenerationMs)throw new TurnInferenceBudgetError('time');if(maxGenerationTokens!==null&&generatedTokens>=maxGenerationTokens)throw new TurnInferenceBudgetError('tokens');};
  const checkCompleted=()=>{if(expired||maxGenerationMs!==null&&generationMs>maxGenerationMs)throw new TurnInferenceBudgetError('time');if(maxGenerationTokens!==null&&generatedTokens>maxGenerationTokens)throw new TurnInferenceBudgetError('tokens');};
  const budget:TurnInferenceBudget={
@@ -42,9 +42,9 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
     if(!Number.isSafeInteger(remaining)||remaining<1)throw new TurnInferenceBudgetError('tokens');
     const started=now(),remainingMs=maxGenerationMs===null?undefined:maxGenerationMs-generationMs;
     if(remainingMs!==undefined&&remainingMs<=0)throw new TurnInferenceBudgetError('time');
-    active=true;expired=false;let elapsedRecorded=false,tokensRecorded=false,timer:unknown;
+    active=true;expired=false;const generation=++generationSequence;activeGeneration=generation;let elapsedRecorded=false,tokensRecorded=false,timer:unknown;
     try{
-     if(remainingMs!==undefined)timer=timers.set(()=>{expired=true;try{(target as TextEngine&{stop?:()=>void}).stop?.();}catch{/* The generation rejection below remains authoritative. */}},remainingMs);
+     if(remainingMs!==undefined)timer=timers.set(()=>{if(activeGeneration!==generation)return;expired=true;try{(target as TextEngine&{stop?:()=>void}).stop?.();}catch{/* The generation rejection below remains authoritative. */}},remainingMs);
      const result=await target.generate(messages,remaining,format,onPreview?preview=>{if(!expired&&(remainingMs===undefined||now()-started<=remainingMs))onPreview(preview);}:undefined);
      generationMs+=Math.max(0,now()-started);elapsedRecorded=true;
      const used=result.outputTokens??remaining;if(!Number.isSafeInteger(used)||used<0)throw Error('Invalid generated token count');generatedTokens+=used;tokensRecorded=true;
@@ -56,7 +56,7 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
      if(!tokensRecorded)generatedTokens+=remaining;
      if(expired||maxGenerationMs!==null&&generationMs>maxGenerationMs)throw new TurnInferenceBudgetError('time');
      throw error;
-    }finally{active=false;if(timer!==undefined)timers.clear(timer);}
+    }finally{active=false;if(activeGeneration===generation)activeGeneration=0;if(timer!==undefined)timers.clear(timer);}
     };
     const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
    }});
