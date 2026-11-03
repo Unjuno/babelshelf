@@ -2,8 +2,9 @@
 ### 2026-11-04 · show byte movement during long runtime preparation
 
 The Full cycle Developer view already shows its active step and elapsed time.
-It now adds cumulative MB to the live runtime preparation label, so a single
-large runtime asset does not appear stuck at `0/1`. Local TypeScript/build and
+It now adds cumulative verified MB read to the live runtime preparation label,
+so a single large runtime asset does not appear stuck at `0/1`. This may include
+cached reads and is not a network-transfer measurement. Local TypeScript/build and
 static check passed; Developer UI browser coverage passed 33/33, and the full
 prototype suite passed 1,864/1,864. The provided iPhone run still failed before
 model files, load, or generation; it reported no runtime transfer count. No

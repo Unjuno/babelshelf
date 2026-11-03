@@ -5,7 +5,7 @@ export type ProductRuntimeResult={status:'prepared';role:ProductRuntimeRole;asse
 export function productRuntimeProgressLabel(progress:ProductRuntimeProgress){
  if(!Number.isSafeInteger(progress.completed)||progress.completed<0||!Number.isSafeInteger(progress.total)||progress.total<1||progress.completed>progress.total||!Number.isSafeInteger(progress.bytes)||progress.bytes<0)throw Error('Invalid runtime progress');
  const megabytes=Math.floor(progress.bytes/100000)/10;
- return `Runtime · ${progress.completed}/${progress.total} · ${megabytes.toFixed(1)} MB`;
+ return `Runtime · ${progress.completed}/${progress.total} · ${megabytes.toFixed(1)} MB read`;
 }
 export const PRODUCT_RUNTIME_FAILURE_CODES=['invalid-request','runtime-unavailable','runtime-messaging-unavailable','runtime-invalid-response','runtime-timeout','runtime-assets-unavailable','runtime-not-prepared','downloads-off','runtime-http-error','runtime-network-error','runtime-integrity-error','runtime-storage-error','runtime-setup-error','stopped'] as const;
 export type ProductRuntimeFailureCode=typeof PRODUCT_RUNTIME_FAILURE_CODES[number];

@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {prepareProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,verifyProductRuntimeAssets} from '../src/product-runtime-assets.ts';
 
-test('runtime progress names the current asset count and visible transferred size',()=>{
- assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:0,total:2,bytes:1048576}),'Runtime · 0/2 · 1.0 MB');
- assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:1,total:2,bytes:16777216}),'Runtime · 1/2 · 16.7 MB');
+test('runtime progress names the current asset count and cumulative verified bytes read',()=>{
+ assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:0,total:2,bytes:1048576}),'Runtime · 0/2 · 1.0 MB read');
+ assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:1,total:2,bytes:16777216}),'Runtime · 1/2 · 16.7 MB read');
  assert.throws(()=>productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:3,total:2,bytes:1}),/Invalid runtime progress/);
 });
 
