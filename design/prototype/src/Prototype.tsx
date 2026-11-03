@@ -228,6 +228,8 @@ export default function Prototype() {
   const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false);
  const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>('quick');
  const [deviceTestStage,setDeviceTestStage]=useState('');
+ const [deviceTestElapsedMs,setDeviceTestElapsedMs]=useState(0),deviceTestStartedAt=useRef<number|null>(null);
+ useEffect(()=>{if(!deviceTestRunning&&!deviceModelTesting)return;const started=deviceTestStartedAt.current??Date.now();const tick=()=>setDeviceTestElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[deviceTestRunning,deviceModelTesting]);
  const offlineRestartStartedInPage=useRef(false);
  const customFile=useRef<HTMLInputElement>(null),customDecisionFile=useRef<HTMLInputElement>(null),customSpeechFile=useRef<HTMLInputElement>(null),customVisionFile=useRef<HTMLInputElement>(null),customAbort=useRef<AbortController|null>(null),hfAbort=useRef<AbortController|null>(null);const [customReview,setCustomReview]=useState<{model:CustomLocalModel;files:File[];remove?:()=>Promise<void>}|null>(null),[customDecisionReview,setCustomDecisionReview]=useState<{model:CustomDecisionModel;files:File[]}|null>(null),[customSpeechReview,setCustomSpeechReview]=useState<{model:CustomSpeechModel;files:File[];status:'execution-not-tested'}|null>(null),[customVisionReview,setCustomVisionReview]=useState<{model:CustomVisionModel;files:File[];status:'execution-not-tested'}|null>(null),[customProgress,setCustomProgress]=useState(''),[customBusy,setCustomBusy]=useState(false),[hfBusy,setHfBusy]=useState(false),[hfProgress,setHfProgress]=useState(''),[hfError,setHfError]=useState('');
  const cleanupRetries=useRef<(()=>Promise<void>)[]>([]),[cleanupPending,setCleanupPending]=useState(()=>{try{return failedStagingNames(localStorage).length>0||leasedStagingNames(localStorage).length>0;}catch{return true;}}),[cleanupBusy,setCleanupBusy]=useState(false);
@@ -491,7 +493,7 @@ export default function Prototype() {
   return runDeviceDiagnostics({isSecureContext,platform:navigator.platform,userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemoryGiB:(navigator as Navigator&{deviceMemory?:number}).deviceMemory,standalone:isStandalonePwa(matchMedia('(display-mode: standalone)').matches,iosStandalone),online:navigator.onLine,serviceWorker:navigator.serviceWorker,appBuild:build,bundle:script?.src.split('/').at(-1)??'Unknown',cacheStorage:typeof caches==='undefined'?null:caches,storage:localStorage,indexedDB:typeof indexedDB==='undefined'?null:indexedDB,applicationSmoke:()=>runDeviceMemorySmokeTest(),gpu:gpu??null,crossOriginIsolated:globalThis.crossOriginIsolated===true,sharedArrayBuffer:typeof SharedArrayBuffer!=='undefined',selectedModel:model||undefined,selectedModelRevision:selectedModelInfo?.revision??(model?'custom':'unknown'),selectedModelEngine:selectedModelInfo?.engine,selectedModelBackend:selectedModelInfo?.backend,selectedModelContextTokens:selectedContextTokens,selectedModelQuantization:textExecutionQuantization(model,modelPreferences.customModels),runtimeRevision:selectedModelInfo?.runtimeRevision??(model?'unknown':bonsai.manifest.runtime.revision),modelFilesPresent:!!bonsai.assets[model]?.filesPresent,modelLoaded:!!model&&bonsai.loaded===model,connectionMode:downloads?'online':'offline'});
  }
  async function runDeviceTest(completeOfflineRestart=false){
-   if(deviceTestRunning)return;setDeviceTestRunning(true);setDeviceTestReport('');
+   if(deviceTestRunning)return;deviceTestStartedAt.current=Date.now();setDeviceTestElapsedMs(0);setDeviceTestRunning(true);setDeviceTestReport('');
   try{let report=await collectDeviceReport();const marker=completeOfflineRestart?readOfflineRestartMarker(localStorage):null;
    if(marker)report=completeOfflineRestartReport(report,marker);
    if(marker?.modelTestRequested){
@@ -507,7 +509,7 @@ export default function Prototype() {
   const fullCycle=testMode==='full-cycle',filesPresentAtStart=!!bonsai.assets[model]?.filesPresent;
   if(!filesPresentAtStart&&!fullCycle){toast('Prepare the selected model before testing it');return null;}
   if(bonsai.busy||sending||!!assetAction||decision.busy||speech.busy||ocr.busy||vision.busy){toast('Wait for current work to finish');return null;}
-  setDeviceModelTesting(true);setDeviceTestStage(fullCycle?'Checking model files…':'Loading selected model…');
+  if(deviceTestStartedAt.current===null){deviceTestStartedAt.current=Date.now();setDeviceTestElapsedMs(0);}setDeviceModelTesting(true);setDeviceTestStage(fullCycle?'Checking model files…':'Loading selected model…');
   const profile=deviceModelTestProfile(testMode),warmProfile=fullCycle?deviceWarmModelTestProfile():null,loadedAtStart=bonsai.loaded===model;
   let loadMetrics:import('./text-inference.ts').RuntimeLoadMetrics|undefined,inputTokens:number|undefined,loadedByTest=false,loadDurationMs=0,durationMs=0,outputTokens:number|undefined,answerCharacters=0,runtimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined;
   let assetState:'reused'|'prepared'|'not-run'='not-run',preparationDurationMs=0,downloadedBytes:number|undefined,expectedModelBytes:number|undefined,runtimePreparationDurationMs=0,runtimeDownloadedBytes:number|undefined,modelStartToFirstTextMs:number|undefined,warmDurationMs:number|undefined,warmOutputTokens:number|undefined,warmTokensPerSecond:number|undefined,warmRuntimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined;
@@ -1267,6 +1269,7 @@ export default function Prototype() {
  testMode={deviceTestMode}
  onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
+ deviceTestElapsedMs={deviceTestElapsedMs}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={stopAssets}
  offlineRestartMarker={offlineRestartMarker}
@@ -1303,6 +1306,7 @@ export default function Prototype() {
  testMode={deviceTestMode}
  onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
+ deviceTestElapsedMs={deviceTestElapsedMs}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={()=>bonsai.stop()}
  offlineRestartMarker={offlineRestartMarker}

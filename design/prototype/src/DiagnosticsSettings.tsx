@@ -9,6 +9,7 @@ type Props={
  bundle:string;
  deviceTestRunning:boolean;
  deviceModelTesting:boolean;
+ deviceTestElapsedMs:number;
  onRunDeviceTest:()=>void;
  onStopModelTest:()=>void;
  offlineRestartMarker:OfflineRestartMarker|null;
@@ -26,7 +27,7 @@ type Props={
 
 /** One shared Settings diagnostics surface for both app shells. */
 export function DiagnosticsSettings(props:Props){
- const {testMode,onTestModeChange,selectedModel,modelAssetBytes,modelFilesPresent,downloads,testStage,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
+ const {testMode,onTestModeChange,selectedModel,modelAssetBytes,modelFilesPresent,downloads,testStage,diagnosticBuild,bundle,deviceTestRunning,deviceModelTesting,deviceTestElapsedMs,onRunDeviceTest,onStopModelTest,offlineRestartMarker,onCancelDeviceTest,deviceTestReport,onCopyDeviceTestReport,onClearDeviceTestReport,diagnosticLogging,onDiagnosticLoggingChange,onRefresh,onReviewLogsInChat,onClearLogs,diagnosticLogs}=props;
  let modelStatus='',reportAt='',reportBuild='',reportModel='',reportBackend='',reportEnvironment='',reportGpuHint='',reportContextTokens:number|undefined,reportLogicalProcessors:number|undefined,reportMemoryEstimate:number|undefined,reportQuantization='';let generation:ModelGenerationDiagnostic|undefined,performanceSample=false;
  try{const report=JSON.parse(deviceTestReport||'null');generation=report?.modelGeneration;
   performanceSample=generation?.testMode==='performance'||generation?.testMode==='full-cycle'||generation?.workload==='prose-128-v1'||generation?.workload==='prose-128-v2';
@@ -50,12 +51,18 @@ export function DiagnosticsSettings(props:Props){
  const threadInfo=[typeof generation?.runtimeMetrics?.requestedThreads==='number'?`${generation.runtimeMetrics.requestedThreads} requested`:'',typeof generation?.runtimeMetrics?.runtimeThreads==='number'?`${generation.runtimeMetrics.runtimeThreads} reported`:'' ].filter(Boolean).join(' · ');
  const observedGpuLayers=generation?.runtimeMetrics?.runtimeObservedGpuLayers,observedGpuTotal=generation?.runtimeMetrics?.runtimeObservedGpuTotalLayers;
  const executionStatus=generation?.loadMetrics?.executionBackend==='webgpu'?`WebGPU${typeof observedGpuLayers==='number'&&typeof observedGpuTotal==='number'?` · ${observedGpuLayers}/${observedGpuTotal} GPU layers`:''}`:generation?.loadMetrics?.executionBackend==='cpu-wasm'?'CPU · WASM':reportBackend==='webgpu'?'GPU not confirmed':reportBackend==='cpu-wasm'?'CPU · WASM route':'Not reported';
+ const fullCycleActive=testMode==='full-cycle'&&(deviceTestRunning||deviceModelTesting);
+ const fullCycleSteps=['Prepare files','Load model','First answer','Warm run'];
+ const stage=testStage.toLowerCase();
+ const activeStep=stage.includes('warm')?3:stage.includes('generat')||stage.includes('test input')?2:stage.includes('loading model')?1:0;
+ const elapsedSeconds=Math.floor(deviceTestElapsedMs/1000),elapsedLabel=elapsedSeconds>=3600?`${Math.floor(elapsedSeconds/3600)}h ${String(Math.floor(elapsedSeconds%3600/60)).padStart(2,'0')}m`:`${Math.floor(elapsedSeconds/60)}m ${String(elapsedSeconds%60).padStart(2,'0')}s`;
  return <>
   <section aria-label="Device test">
    <h2>Device test</h2>
    <p className="source-revision">App + selected model · local inference</p>
    <details className="device-test-steps"><summary>Test options · {testMode==='performance'?'Performance':testMode==='full-cycle'?'Full cycle':'Quick'}</summary><div className="appearance-options" role="group" aria-label="Test mode">{(['quick','performance','full-cycle'] as const).map(mode=><button key={mode} type="button" disabled={deviceTestRunning||deviceModelTesting||!!offlineRestartMarker} aria-pressed={testMode===mode} onClick={()=>onTestModeChange(mode)}>{mode==='quick'?'Quick':mode==='performance'?'Performance':'Full cycle'}</button>)}</div><p className="source-revision">{offlineRestartMarker?'Restart check pending':testMode==='performance'?'Prepared model · one timing sample · no restart':testMode==='full-cycle'?`Prepare if missing · load · first text · warm run${!modelFilesPresent&&downloads?' · Online may use data':''}`:'App + model · Installed app: restart check'}</p>{testMode==='full-cycle'&&selectedModel&&<p className="source-revision">{modelFilesPresent?'Model files ready · no download expected':modelAssetBytes?`Selected model · ${(modelAssetBytes/1024**3).toFixed(2)} GB expected`:'Model files not ready'} · Downloads {downloads?'On':'Off'}</p>}</details>
    <button className="solid-button" disabled={deviceTestRunning||deviceModelTesting} onClick={offlineRestartMarker?onCancelDeviceTest:onRunDeviceTest}>{deviceTestRunning||deviceModelTesting?(testStage||'Testing…'):offlineRestartMarker?'Cancel test':testMode==='performance'?'Run speed sample':testMode==='full-cycle'?'Run full model test':'Run tests'}</button>
+   {fullCycleActive&&<div className="full-cycle-progress" role="status" aria-live="polite" aria-label="Full cycle progress"><div className="capability-row"><span>{testStage||'Starting full cycle…'}</span><time>{elapsedLabel} elapsed</time></div><div className="full-cycle-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={activeStep} aria-valuetext={`Step ${activeStep+1} of 4 · ${fullCycleSteps[activeStep]}`}>{fullCycleSteps.map((label,index)=><span key={label} className={index<activeStep?'complete':index===activeStep?'active':''} aria-hidden="true" />)}</div><div className="capability-row"><span>Step {activeStep+1} of 4 · {fullCycleSteps[activeStep]}</span><span>Time varies by model and connection</span></div></div>}
    {deviceModelTesting&&<button className="quiet-button" onClick={onStopModelTest}>Stop test</button>}
    {offlineRestartMarker&&<div className="device-offline-test"><h3>Restart needed</h3><p role="status">Checks saved · model test after restart</p><ol>{restartSteps.slice(1,2).map(step=><li key={step}>{step}</li>)}</ol><p className="source-revision">Tests continue automatically.</p></div>}
    {!deviceTestRunning&&!deviceModelTesting&&deviceTestReport&&<>
