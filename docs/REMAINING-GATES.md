@@ -1,4 +1,8 @@
 ## Current status · 2026-11-03
+### 2026-11-03 · use the full standard answer allowance
+
+The ordinary balanced answer allowance is up to 3,072 tokens, bounded by the selected model and remaining context. Planner headroom stays separate; a consistency retry is recounted and receives only the output budget that fits its revised prompt. This preserves evidence and revision checks while avoiding an unnecessary short-by-default cap. Focused tests, all 1,860 prototype tests, all 259 root tests, static check, 165-asset production build, app acceptance 8/8, and clean-checkout CI [41651902680](https://github.com/Unjuno/babelshelf/actions/runs/41651902680) passed. Real-model answer quality and physical-device behavior remain unmeasured; the public site was not redeployed for this change.
+
 
 ### 2026-11-03 · preserve late touch-click guards across repeated navigation
 
