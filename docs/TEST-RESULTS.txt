@@ -5,8 +5,11 @@ the callback invoked `stop()` on the active model, then passed after deadline
 callbacks were bound to unique generation identities. The turn-budget suite
 passed 11/11; all prototype tests passed 1,855/1,855; `npm run check` passed;
 the product build verified 165 assets (`3ccd42ef42429f7a`); product acceptance
-passed 8/8. This tests the wrapper with a controlled timer, not physical model
-cancellation on a device.
+passed 8/8. Clean-checkout GitHub Actions [41595265292](https://github.com/Unjuno/babelshelf/actions/runs/41595265292)
+passed every stage on `e7f7025`. Site v306 serves the same build; its public
+`build.json` and `index-DUBsKuh1.js` SHA-256 match the locally verified manifest.
+This tests the wrapper with a controlled timer, not physical model cancellation
+on a device.
 
 2026-11-03 — Cancelled touch-hold timer cannot take over a later gesture.
 The 80 ms navigation hold now checks the exact gesture object that scheduled it,
