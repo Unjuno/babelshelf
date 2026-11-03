@@ -194,3 +194,21 @@ test('answers cannot add a location ranking absent from cited excerpts',()=>{
  assert.throws(()=>checkAnswerConsistency(question,'Alpha reserve contains 29 litres; Beta reserve contains 17 litres.',evidence),/conflicts with cited quantity|not bound/);
  assert.throws(()=>checkAnswerConsistency(question,'Alpha reserve contains 17 litres; the other reserve contains 29 litres.',evidence),/not bound/);
 });
+
+test('a second mixed-title clause cannot smuggle swapped values past correctly labelled clauses',()=>{
+ const evidence=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 29 litres of water.'},
+ ];
+ const question='Compare the water volumes in the cited reserves.';
+ const answer='Alpha reserve contains 17 litres. Beta reserve contains 29 litres. Alpha reserve contains 29 litres and Beta reserve contains 17 litres.';
+ assert.throws(()=>checkAnswerConsistency(question,answer,evidence),/conflicts with cited quantity|not bound to their source/i);
+ const correctlyLabelled='Alpha reserve contains 17 litres and Beta reserve contains 29 litres.';
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,correctlyLabelled,evidence));
+ const japanese=[
+  {noteId:'aoba',title:'青葉備蓄',quote:'青葉備蓄の飲料水は17リットルです。'},
+  {noteId:'midorikawa',title:'緑川備蓄',quote:'緑川備蓄の飲料水は29リットルです。'},
+ ];
+ assert.doesNotThrow(()=>checkAnswerConsistency('二つの備蓄の水量を比較してください。','青葉備蓄は17リットルで、緑川備蓄は29リットルです。',japanese));
+ assert.throws(()=>checkAnswerConsistency('二つの備蓄の水量を比較してください。','青葉備蓄は17リットルで、緑川備蓄は29リットルです。青葉備蓄は29リットルで、緑川備蓄は17リットルです。',japanese),/conflicts with cited quantity|not bound to their source/i);
+});

@@ -129,9 +129,32 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    const boundVolumes:number[]=[];
    for(const clause of sentenceMatches.map(sentence=>sentence.text)){
     const spans=titleSpans(clause),measures=volumeMeasures(clause);
-    if(spans.length!==1||!spans[0].candidate||!measures.length)continue;
-    const candidate=spans[0].candidate,uniqueValue=[...new Set(candidate.values)];
-    if(uniqueValue.length===1&&measures.every(measure=>sameVolume(measure.value,uniqueValue[0])))boundVolumes.push(uniqueValue[0]);
+     if(!measures.length||!spans.length)continue;
+     if(spans.length===1){
+      const candidate=spans[0].candidate;
+      if(!candidate)throw Error('Comparison values are not bound to their source notes · try again');
+      const uniqueValue=[...new Set(candidate.values)];
+      if(uniqueValue.length!==1||measures.some(measure=>!sameVolume(measure.value,uniqueValue[0])))throw Error('Answer quantity conflicts with cited quantity · try again');
+      boundVolumes.push(...measures.map(measure=>measure.value));
+      continue;
+     }
+     // A mixed-title clause may contain more than one independently labelled
+     // value. Bind only values in the text after one title and before the next;
+     // if a segment has duplicate source values or no unique source identity,
+     // fail closed rather than letting a correctly labelled clause elsewhere
+     // mask a contradictory value here.
+     const assigned=new Set<typeof measures[number]>();
+     for(let index=0;index<spans.length;index++){
+      const span=spans[index],candidate=span.candidate,end=spans[index+1]?.start??clause.length;
+      const segmentMeasures=measures.filter(measure=>measure.start>=span.end&&measure.end<=end);
+      if(!segmentMeasures.length)continue;
+      if(!candidate)throw Error('Comparison values are not bound to their source notes · try again');
+      const uniqueValue=[...new Set(candidate.values)];
+      if(uniqueValue.length!==1||segmentMeasures.some(measure=>!sameVolume(measure.value,uniqueValue[0])))throw Error('Answer quantity conflicts with cited quantity · try again');
+      for(const measure of segmentMeasures)assigned.add(measure);
+      boundVolumes.push(...segmentMeasures.map(measure=>measure.value));
+     }
+     if(assigned.size!==measures.length)throw Error('Comparison values are not bound to their source notes · try again');
    }
    // Retrieval may include additional notes. Require bindings for the values
    // actually stated, not an exhaustive summary of every retrieved source.

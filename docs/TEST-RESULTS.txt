@@ -8295,3 +8295,20 @@ passed all stages. Public Site v311 serves build `871ece8c087af8f9`; both
 public build manifests returned that identifier. No model was downloaded or
 run on PC. Actual iPhone runtime setup, model acquisition, inference, and GPU
 selection remain unverified; a targeted installed-PWA rerun is needed.
+2026-11-04: Reproduced a citation-value mismatch that escaped the existing
+multi-source comparison guard: correctly labelled Alpha=17 L and Beta=29 L
+clauses were followed by a mixed-title clause claiming Alpha=29 L and Beta=17
+L; because both values had already been bound elsewhere, the contradictory
+clause passed. Added title-anchored value segments inside mixed-title clauses.
+Each amount must match the unique cited value for the preceding exact title;
+an unassigned, duplicate-title, multi-valued, or mismatched segment fails
+closed and flows through the existing one-shot consistency repair. The unit
+regression failed before the patch and passed after it. The actual
+`groundedAnswer` route retries the bad draft and returns the corrected answer
+with the same two exact source revisions. Focused answer/grounded tests passed
+19/19; root tests passed 262/262; prototype tests passed
+1,872/1,872; `npm run check` passed; production app built as
+`5559a3ef7d75f651` with 165 verified assets; product acceptance passed 8/8.
+This narrows one water-volume comparison failure only; it is not general
+semantic entailment and does not establish live-model correction quality.
+No Memory data or model assets were read, changed, or deleted.
