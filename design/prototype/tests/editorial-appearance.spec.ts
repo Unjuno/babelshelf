@@ -363,6 +363,18 @@ test('repeated touch navigation ignores delayed compatibility clicks without con
  await cdp.detach();
 });
 
+test('a touch cancellation cannot consume the next intentional mouse activation',async({page,context})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');
+ const input=page.getByRole('button',{name:'Input',exact:true}),box=await input.boundingBox();expect(box).not.toBeNull();
+ const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,configuration:'mobile'});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box!.x+box!.width/2,y:box!.y+box!.height/2,id:1}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(input).toHaveAttribute('aria-expanded','false');
+ // Cancellation emits no compatibility click. The old counter remained
+ // pending and swallowed this mouse click; the guard must distinguish it.
+ await input.click();await expect(input).toHaveAttribute('aria-expanded','true');
+ await cdp.detach();
+});
+
 test('a cancelled hold timer cannot take over the next touch gesture',async({page,context})=>{
  await page.addInitScript(()=>{
   const nativeSetTimeout=window.setTimeout.bind(window),nativeClearTimeout=window.clearTimeout.bind(window);
