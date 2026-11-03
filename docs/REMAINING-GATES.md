@@ -19,6 +19,24 @@ deployment was changed during this provenance check. See
 [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md) for the Sites version and artifact
 metadata.
 
+### 2026-11-04 · diagnose the supplied iPhone Full cycle report
+
+The supplied report is from the older public build `48777327b2d5c402`, not the
+currently served v315 build. It records a Full cycle failure in `runtime-setup`
+after 1,764,321 ms, with `assetState: not-run` and `filesPresent: false`. This
+run therefore did not measure model download, model load, generation, or GPU
+execution; it stopped before model asset preparation. Its `standalone: false`
+signal means it ran in a browser tab, and it contains no evidence that Airplane
+Mode or force-close occurred. Current code already bounds runtime preparation,
+cancels it on timeout, and rejects late worker replies; the public v315 bundle
+contains that implementation. Focused runtime/device regressions passed 25/25
+locally, covering timeout, cancellation, resume deadlines, stable error
+classification, and the rule that a timeout does not trigger an automatic
+second download. No source fix is justified by this old report alone. A current
+Home Screen Full cycle is still needed to validate the runtime behavior on this
+specific iPhone and, if it gets past runtime setup, model acquisition and
+generation.
+
 ### 2026-11-04 · split CI browser prerequisites for failure attribution
 
 Clean-checkout CI for `2194fc0` passed every stage in 21m52s
