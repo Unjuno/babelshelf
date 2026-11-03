@@ -187,8 +187,11 @@ export function recoverPreferenceRecord<T extends PreferenceRecord>(group:Prefer
 export function updatePreference<G extends PreferenceGroup,T extends PreferenceRecord>(group:G,records:T[],change:(value:Preferences[G])=>Preferences[G]):T[]{
  const current=records.find(n=>n.id==='settings-'+group);
  if(!current)throw Error('Required settings record missing');
- try{parsePreference(group,current.body);}catch(error){if(error instanceof UnsupportedPreferenceSchemaError)throw error;}
- const next=change(readPreferenceWithFallback(group,records).value),body=formatPreference(group,next);
+ // Normal edits must never turn a damaged record into a fallback-derived save.
+ // Recovery is an explicit, separately reviewed operation that preserves the
+ // bad current bytes in revision history before edits can resume.
+ const currentValue=parsePreference(group,current.body);
+ const next=change(currentValue),body=formatPreference(group,next);
  parsePreference(group,body);
  if(body===current.body)return records;
  const history=Array.isArray(current.history)?current.history:[];

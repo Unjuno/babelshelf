@@ -318,9 +318,14 @@ test('corrupt settings use the newest valid historical value and a user edit pre
  const damaged=structuredClone(second),current=damaged.find(n=>n.id==='settings-harness');current.body='broken current revision';
  const recovered=readPreferenceWithFallback('harness',damaged);
  assert.equal(recovered.valid,false);assert.equal(recovered.value.replyStyle,'concise');
- const repaired=updatePreference('harness',damaged,value=>({...value,replyStyle:'balanced'})),saved=repaired.find(n=>n.id==='settings-harness');
- assert.equal(saved.version,current.version+1);assert.equal(saved.history.at(-1),'broken current revision');
- assert.equal(saved.paths.at(-1),'Settings/harness.md');assert.equal(readPreference('harness',repaired).replyStyle,'balanced');
+ const before=structuredClone(damaged);
+ assert.throws(()=>updatePreference('harness',damaged,value=>({...value,replyStyle:'balanced'})),/Use one JSON block/);
+ assert.deepEqual(damaged,before);
+ const restored=recoverPreferenceRecord('harness',damaged),restoredRecord=restored.find(n=>n.id==='settings-harness');
+ assert.equal(readPreference('harness',restored).replyStyle,'concise');assert.equal(restoredRecord.version,current.version+1);assert.equal(restoredRecord.history.at(-1),'broken current revision');
+ assert.equal(restoredRecord.paths.at(-1),'Settings/harness.md');
+ const repaired=updatePreference('harness',restored,value=>({...value,replyStyle:'balanced'})),saved=repaired.find(n=>n.id==='settings-harness');
+ assert.equal(saved.version,restoredRecord.version+1);assert.equal(readPreference('harness',repaired).replyStyle,'balanced');
  assert.equal(readPreferenceWithFallback('harness',repaired).valid,true);assert.equal(notes.find(n=>n.id==='settings-harness').body,original);assert.equal(notes.find(n=>n.id==='settings-harness').version,1);
 });
 
