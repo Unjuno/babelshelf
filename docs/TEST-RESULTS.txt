@@ -8078,3 +8078,12 @@ the production build (165 verified assets) passed. No device benchmark or
 physical run was performed. Clean-checkout Actions
 [41587442471](https://github.com/Unjuno/babelshelf/actions/runs/41587442471)
 passed every stage. Commit `212e7f6` is on `codex/ui-design-handoff`.
+2026-11-03 — Recheck legacy settings projection and targeted recovery.
+Preference tests passed 40/40, covering in-memory legacy defaults without
+read-time writes, preservation of customized values, future-schema refusal,
+single-record repair, and history-preserving restore defaults. Settings and
+model-picker browser acceptance passed 18/18. Its recovery flow corrupts one
+real IndexedDB Appearance record, reloads the product, and explicitly repairs
+that record while checking the other settings remain available. This is a
+controlled PC browser/storage flow, not cross-device eviction or retention
+evidence. No stored user data or model assets were changed.

@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · verify settings migration and targeted recovery in the browser
+
+The settings contract was rechecked against current schema code and run on PC. Legacy schemas project known defaults in memory and keep the original bytes until an explicit save; unsupported future schema versions reject ordinary reads/writes, while explicit single-record recovery appends the untouched body to history. The browser recovery flow corrupts one real IndexedDB Appearance record, then restores that record without changing Models or Harness. Preference migration/recovery tests passed 40/40 and Settings/model-picker browser tests passed 18/18. This verifies the current settings boundary in controlled PC/browser flows, not cross-device storage retention or arbitrary future schemas. No user data or model assets were changed.
+
 ### 2026-11-03 · align LFM3 picker guidance with the selected device route
 
 The LFM3 model picker always said `CPU fallback`, while the registered runtime intentionally selects strict WebGPU on iPhone/iPad/Android and refuses CPU retry there. The picker now shows `GPU route required on mobile` on those platforms and keeps `GPU preferred · CPU fallback` for desktop automatic routing, for built-in and custom LFM3 entries. This is a truthful route-policy hint, not model-fit or GPU-use evidence. Model-catalog tests passed 14/14; text-device policy, preflight, execution-route and LFM runtime tests passed 55/55; `npm run check` passed; production app build verified 165 assets. Clean-checkout CI [41587442471](https://github.com/Unjuno/babelshelf/actions/runs/41587442471) passed every stage. No physical-device run or model benchmark was performed. Commit `212e7f6` is on `codex/ui-design-handoff`.
