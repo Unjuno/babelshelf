@@ -308,6 +308,7 @@ test('curved navigation keeps its Input anchor round and labels only an active d
 test('touch hold, slide and release selects the destination on the arc',async({page,context})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');
  const input=page.getByRole('button',{name:'Input',exact:true});
+ await expect(input).toBeVisible();
  const inputBox=await input.boundingBox();expect(inputBox).not.toBeNull();
  const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,configuration:'mobile'});
  const touch=(box:{x:number;y:number;width:number;height:number})=>({x:box.x+box.width/2,y:box.y+box.height/2,id:1});
@@ -321,6 +322,16 @@ test('touch hold, slide and release selects the destination on the arc',async({p
   expect(await page.locator('.arc-choice').evaluate(el=>getComputedStyle(el).borderRadius)).toBe('16px');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await expect(page.getByRole('heading',{name:'Schedule',exact:true})).toBeVisible();
+ for(const destinationName of ['Notifications','Settings','Schedule','BabelShelf']){
+  const anchor=page.getByRole('button',{name:'Input',exact:true}),anchorBox=await anchor.boundingBox();expect(anchorBox).not.toBeNull();
+  await expect(anchor).toHaveAttribute('aria-expanded','false');
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(anchorBox!)]});await page.waitForTimeout(100);
+  await expect(anchor).toHaveAttribute('aria-expanded','true');
+  const target=page.getByRole('menuitem',{name:destinationName,exact:true}),targetBox=await target.boundingBox();expect(targetBox).not.toBeNull();
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(targetBox!)]});await expect(page.locator('.arc-choice')).toHaveText(destinationName);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect(page.getByRole('heading',{name:destinationName==='BabelShelf'?'Memory':destinationName,exact:true})).toBeVisible();
+ }
  await cdp.detach();
 });
 
