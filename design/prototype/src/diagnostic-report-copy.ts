@@ -40,6 +40,13 @@ function projectModelGeneration(value:unknown):Record<string,unknown>|undefined{
  if(!['pass','fail','not-run','stopped','interrupted'].includes(String(generation.status)))return;
  if(!['model','modelRevision','runtimeRevision'].every(key=>typeof generation[key]==='string'))return;
  for(const [key,allowed] of Object.entries({testMode:['quick','performance','full-cycle'],workload:['ready-v1','prose-128-v1','prose-128-v2'],loadState:['already-loaded','loaded-for-test','not-loaded'],failureStage:['load','runtime-setup','model-preparation','model-load','count','generation','warm-generation','output-validation','unload']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
+ if(source.testMode==='full-cycle'){
+  if(['prepared','reused','not-run'].includes(String(source.assetState)))generation.assetState=source.assetState;
+  const measurements=pickFields(source,['expectedModelBytes','downloadedBytes','preparationDurationMs','runtimePreparationDurationMs','runtimeDownloadedBytes','modelStartToFirstTextMs','warmDurationMs','warmOutputTokens','warmTokensPerSecond']);
+  const bounds:Record<string,number>={expectedModelBytes:1_000_000_000_000,downloadedBytes:1_000_000_000_000,preparationDurationMs:86_400_000,runtimePreparationDurationMs:86_400_000,runtimeDownloadedBytes:1_000_000_000_000,modelStartToFirstTextMs:86_400_000,warmDurationMs:86_400_000,warmOutputTokens:65_536,warmTokensPerSecond:100_000};
+  for(const [key,limit] of Object.entries(bounds)){const measurement=measurements?.[key];if(typeof measurement==='number'&&Number.isFinite(measurement)&&measurement>=0&&measurement<=limit&&(key==='warmTokensPerSecond'||Number.isSafeInteger(measurement)))generation[key]=measurement;}
+  const warmMetrics=projectMetrics(source.warmRuntimeMetrics);if(warmMetrics)generation.warmRuntimeMetrics=warmMetrics;
+ }
  const metrics=projectMetrics(source.runtimeMetrics);if(metrics)generation.runtimeMetrics=metrics;
  const loadMetrics=safeRuntimeLoadMetrics(source.loadMetrics);if(loadMetrics)generation.loadMetrics=loadMetrics;
  return generation;

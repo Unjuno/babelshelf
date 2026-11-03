@@ -106,10 +106,16 @@ test('performance displays runtime mode and GPU layer counts in the result summa
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await expect(page.getByText('Run on',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU · 24/28 GPU layers',{exact:true})).toBeVisible();await expect(page.getByText('WASM mode',{exact:true})).toBeVisible();await expect(page.getByText('Compatibility',{exact:true})).toBeVisible();await page.getByText('Technical details',{exact:true}).click();await expect(page.getByText('Backend route · configured',{exact:true})).toBeVisible();await expect(page.getByText('WebGPU',{exact:true})).toBeVisible();
 });
 
-test('full cycle separates run-to-text time from runtime first-text timing',async({page})=>{
- await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'full-cycle',model:'4B',modelRevision:'m',runtimeRevision:'r',modelStartToFirstTextMs:12000,loadState:'already-loaded',runtimeMetrics:{visibleTextTtftMs:840}}})));
+test('full-cycle results and timings remain visible and copy into the Codex handoff',async({page})=>{
+ await page.addInitScript(()=>{
+  localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-10-20T01:02:03.000Z',appBuild:'fixture',checks:[],selectedModel:{id:'4B',revision:'m',engine:'wllama-lfm3',backend:'webgpu',runtimeRevision:'r',filesPresent:true,loaded:true},modelGeneration:{status:'pass',testMode:'full-cycle',model:'4B',modelRevision:'m',runtimeRevision:'r',assetState:'prepared',expectedModelBytes:1800000000,downloadedBytes:1800000000,preparationDurationMs:42000,modelStartToFirstTextMs:12000,warmDurationMs:5500,warmOutputTokens:64,warmTokensPerSecond:11.64,loadState:'already-loaded',runtimeMetrics:{visibleTextTtftMs:840}}}));
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).__capturedDeviceHandoff=text;}}});
+ });
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByText('Run → first text',{exact:true})).toBeVisible();await expect(page.getByText('12.0 s',{exact:true})).toBeVisible();await expect(page.getByText('Runtime · first text',{exact:true})).toBeVisible();await expect(page.getByText('0.84 s',{exact:true})).toBeVisible();
+ await expect(page.getByText('Assets',{exact:true})).toBeVisible();await expect(page.getByText('Prepared during test',{exact:true})).toBeVisible();await expect(page.getByText('Warm speed',{exact:true})).toBeVisible();await expect(page.getByText('11.64 tokens/s',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Copy report for Codex'}).click();
+ const handoff=await page.evaluate(()=>(window as any).__capturedDeviceHandoff as string);expect(handoff).toContain('"modelStartToFirstTextMs": 12000');expect(handoff).toContain('"warmTokensPerSecond": 11.64');expect(handoff).toContain('"assetState": "prepared"');
 });
 
 test('performance does not label an unconfirmed WebGPU route as executed',async({page})=>{
