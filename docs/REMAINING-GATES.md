@@ -1,4 +1,27 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · surface model-preparation storage pressure
+
+The initial-preparation sheet now warns when the browser's available-space
+estimate is below the selected assets and disables the download switch while
+settings cannot accept changes. The estimate is advisory: it is not a quota
+reservation, physical free-space measurement, or proof that a later write will
+succeed. A browser regression simulates a low estimate without downloading
+assets or changing the setting. Unit tests passed 27/27; the focused browser
+suite passed 3/3; the full prototype suite passed 1,869/1,869; the production
+app built and acceptance passed 8/8. Commit `fb96fcb` is pushed, and clean
+GitHub Actions [41709690237](https://github.com/Unjuno/babelshelf/actions/runs/41709690237)
+passed every stage.
+
+The supplied iPhone report still records `runtime-setup` failure before asset
+preparation (`filesPresent:false`, `assetState:not-run`) and generation. Its
+generic `Error` after 1,764,321 ms does not isolate a cause. It is from a
+Safari tab (`standalone:false`), not an installed Home Screen launch. The
+wall-clock deadline guard rejects a late worker reply after page suspension,
+but cannot run while iOS suspends the PWA. No real quota exhaustion, model
+download, model load, or inference was observed in this report. A targeted
+current-build installed-PWA run remains necessary to validate that specific
+deadline behavior on iOS.
+
 ### 2026-11-04 · bound runtime preparation and verify public v311
 
 The iPhone Full cycle report stopped in runtime setup after 1,764,321 ms
