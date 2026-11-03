@@ -407,8 +407,10 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
    // protocol. A second failed check still aborts this answer before the
    // caller can present it as verified or offer it for saving.
    const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:message.content+' The previous draft failed a deterministic source-consistency check: '+error.message+'. Re-read the same excerpts and correct the unsupported or mismatched claim. For a numeric comparison across titled records, put each exact record title in the same sentence as its value. If the evidence cannot establish the binding or comparison, state that clearly instead of guessing. Keep the original requested language and detail; return the same JSON and source-label format.'}:message);
-   if((await checkedAnswerCount(engine,retry,format)).prompt_tokens+replyTokens>engine.manifest.contextTokens)throw Error('Context limit · consistency retry');check();
-   generated=await engine.generate(retry,replyTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,replyTokens))throw Error('Response exceeded model output limit');
+   const retryPromptTokens=(await checkedAnswerCount(engine,retry,format)).prompt_tokens;check();
+   const retryTokens=Math.min(replyTokens,engine.manifest.contextTokens-retryPromptTokens);
+   if(retryTokens<256)throw Error('Context limit · consistency retry');
+   generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
    parsed=summaryLabelBinding?parseSingleLabelSummary(generated.text):parse(generated.text);
    if(parsed.status!=='insufficient_evidence')checkAnswerConsistency(question,parsed.answer,parsed.sources);
    if(mode==='summary'&&parsed.status!=='insufficient_evidence'&&echoedRequest())throw Error('Summary repeated the request · try again');

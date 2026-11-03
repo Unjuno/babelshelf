@@ -16,7 +16,7 @@ test('reply style is a finite presentation preference and never overrides a dire
 
 test('dialogue output budgets allow complete answers by default and obey explicit length within available context',()=>{
  assert.deepEqual(dialogueOutputLimits('concise','What time is it?',4096),{total:256,segment:256});
- assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',4096),{total:2048,segment:768});
+ assert.deepEqual(dialogueOutputLimits('balanced','What time is it?',4096),{total:3072,segment:768},'ordinary requests may use the selected model’s full standard reply allowance');
  assert.deepEqual(dialogueOutputLimits('detailed','What time is it?',4096),{total:3072,segment:768});
  for(const question of ['Analyze the design.','Review the architecture and assess its trade-offs.','Compare the two approaches.','この設計を分析して。','長所と短所を比較して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:3072,segment:768},question);
  assert.deepEqual(dialogueOutputLimits('concise','Analyze the design.',4096),{total:3072,segment:768},'an analytical request takes precedence over a concise preference');
@@ -26,7 +26,7 @@ test('dialogue output budgets allow complete answers by default and obey explici
  assert.deepEqual(dialogueOutputLimits('detailed','簡潔に一言で答えて',4096),{total:256,segment:256},'an explicit short request takes precedence over the detailed preference');
  for(const question of ['Write two sentences about a blue lantern.','Write exactly two sentences.','Use a two-sentence answer.','二文で答えて。','2文で説明して。'])assert.deepEqual(dialogueOutputLimits('balanced',question,4096),{total:256,segment:256},question);
  assert.deepEqual(dialogueOutputLimits('detailed','Explain this in detail.',600),{total:600,segment:600},'available context remains the hard upper bound');
- assert.equal(groundedOutputTokens('balanced','What does the note say?',4096),2048);
+ assert.equal(groundedOutputTokens('balanced','What does the note say?',4096),3072);
  assert.equal(groundedOutputTokens('detailed','What does the note say?',4096),3072);
  assert.equal(groundedOutputTokens('concise','Explain this in detail.',600),600,'saved knowledge follows explicit length within the remaining model context');
 });

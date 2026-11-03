@@ -15,6 +15,7 @@ const guidance:Record<ReplyStyle,string>={
 const explicitLongRequest=/(?:\bin detail\b|\bdetailed\b|\bcomprehensive\b|\bthorough\b|\bstep[- ]by[- ]step\b|\blong[- ]form\b|\bwrite (?:me )?a story\b|\b(?:\d+|two|three|four|five|several) paragraphs?\b|詳しく|詳細に|詳細な|網羅的|徹底的|段階的に|長文|物語|\d+段落)/u;
 const analyticalRequest=/(?:\b(?:analy[sz](?:e|es|ed|ing)|analysis|evaluat(?:e|es|ed|ing|ion)|review|compare|comparison|assess|pros and cons|trade[- ]offs?|implications)\b|分析|比較|比べ|評価|レビュー|検討|考察|長所と短所|利点と欠点|トレードオフ)/iu;
 const additionalStage=/(?:\bthen\b|\bafterwards\b|\bfollowed by\b|その後|そのあと|続けて|その上で)/iu;
+export function requestsExtendedReply(question:string){return explicitLongRequest.test(question)||analyticalRequest.test(question);}
 
 /** Fixed presentation guidance only; no free-form setting can alter harness policy. */
 export function replyStyleInstruction(value:unknown='balanced'){
@@ -37,7 +38,10 @@ export function dialogueOutputLimits(style:unknown,question:string,availableToke
  else if(analytical){total=3072;segment=768;}
  else if(style==='concise'){total=256;segment=256;}
  else if(style==='detailed'){total=3072;segment=768;}
- else {total=2048;segment=768;}
+ // The ordinary style should not impose a short-answer ceiling. Use the
+ // current LFM runtime's full reply allowance by default; the selected engine
+ // and remaining context still provide the hard upper bounds.
+ else {total=3072;segment=768;}
  total=Math.min(total,availableTokens);
  return {total,segment:Math.min(segment,total)};
 }

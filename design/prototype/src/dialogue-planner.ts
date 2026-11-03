@@ -8,7 +8,7 @@ import {safeRuntimeMetrics,type RuntimeGenerationMetrics} from './text-inference
 import {DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOOL_SEARCH_ID,deferredToolReferences} from './deferred-tool-search.ts';
 import {nativeFinalPlanTools} from './native-output-format.ts';
 import {agentEvidenceFromCalls,agentCalculationsFromCalls,agentClockReadingsFromCalls,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindSourceLabelAnswer,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer,type LabelledSource} from './agent-evidence.ts';
-import {answerLanguageInstruction,groundedOutputTokens,replyStyleInstruction,type ReplyStyle} from './reply-style.ts';
+import {answerLanguageInstruction,groundedOutputTokens,replyStyleInstruction,requestsExtendedReply,type ReplyStyle} from './reply-style.ts';
 import {AgentContextCapacityError,type AgentToolCapability} from './agent-loop.ts';
 import {historyPayload,historyMessages,type DialogueContext,type ChatEngine,type SourceRef} from './conversation.ts';
 // @ts-expect-error Shared baseline is JavaScript.
@@ -335,7 +335,11 @@ export async function plannerContextFits(engine:ChatEngine,question:string,conte
  // A first call that barely fits leaves no room for its observations or final
  // answer. Compact archived dialogue before that happens; never truncate the
  // current request, tool schemas, originals or live tool history to make room.
- const desired=engine.plannerProtocol==='native-tool-calls'?engine.manifest.maxOutputTokens??3072:Math.max(plannerOutputTokenBudget(0,capacity,engine.manifest.maxOutputTokens),Math.min(engine.manifest.maxOutputTokens??3072,groundedOutputTokens(agent.replyStyle??'balanced',question,capacity)));
+ // This is planning/repair headroom, not the final user-facing answer budget.
+ // Keep the planner reserve within its own bound so a fuller reply preference
+ // does not trigger unnecessary context compaction before any tools run.
+ const extended=agent.replyStyle==='detailed'||requestsExtendedReply(question);
+ const desired=engine.plannerProtocol==='native-tool-calls'?engine.manifest.maxOutputTokens??3072:Math.max(plannerOutputTokenBudget(0,capacity,engine.manifest.maxOutputTokens),Math.min(engine.manifest.maxOutputTokens??3072,extended?groundedOutputTokens(agent.replyStyle??'balanced',question,capacity):MAX_PLANNER_OUTPUT_TOKENS));
  if(capacity-count.prompt_tokens>=desired)return true;
  const baseline=plannerInput(question,{...context,summary:'',recent:[],recalled:[]},attachments,agent,engine.plannerProtocol==='native-tool-calls');
  const baseCount=(await engine.count(baseline.messages,baseline.format)).prompt_tokens;
