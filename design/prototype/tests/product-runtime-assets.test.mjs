@@ -54,6 +54,19 @@ test('runtime progress cannot extend preparation beyond its absolute deadline',a
  assert.deepEqual(worker.messages.map(message=>message.type),['prepare-product-assets','cancel-product-assets']);
  assert.equal(channel.channel.port1.closed,true);
 });
+test('a late success reply after a suspended-page wall-clock deadline is rejected and cancelled',async()=>{
+ const channel=fakeChannel(),worker=fakeWorker(channel);let now=Date.now;let current=now();
+ Date.now=()=>current;
+ try{
+  const pending=prepareProductRuntimeAssets('text-lfm3',{worker,operationId:'suspended-wall-clock',makeChannel:()=>channel.channel,timeoutMs:10000,maxDurationMs:30000});
+  const rejection=assert.rejects(pending,error=>error.code==='runtime-timeout'&&/maximum duration/i.test(error.message));
+  current+=30001;
+  channel.channel.port1.onmessage({data:{status:'prepared',role:'text-lfm3',assets:1,bytes:100}});
+  await rejection;
+  assert.deepEqual(worker.messages.map(message=>message.type),['prepare-product-assets','cancel-product-assets']);
+  assert.equal(channel.channel.port1.closed,true);
+ }finally{Date.now=now;}
+});
 test('Full cycle acquires only after an explicit missing-runtime result, never after timeout or unknown errors',()=>{
  assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('missing'),{code:'runtime-not-prepared'}),true,true),true);
  assert.equal(shouldAcquireRuntimeAfterVerification(Object.assign(Error('slow'),{code:'runtime-timeout'}),true,true),false);

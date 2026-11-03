@@ -56,14 +56,23 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
  let channel:MessageChannel;
  try{channel=options.makeChannel?.()??new MessageChannel();}catch{return Promise.reject(codedError('App runtime messaging unavailable','runtime-messaging-unavailable'));}
  return new Promise<ProductRuntimeResult>((resolve,reject)=>{
-  let settled=false,idleTimer:ReturnType<typeof setTimeout>,maxTimer:ReturnType<typeof setTimeout>;
+  let settled=false,watchdog:ReturnType<typeof setTimeout>,idleDeadline=Date.now()+timeoutMs;
+  const maxDeadline=Date.now()+maxDurationMs;
   const cancel=()=>{try{worker.postMessage({type:'cancel-product-assets',operationId},[]);}catch{}};
-  const finish=(error?:Error,result?:ProductRuntimeResult)=>{if(settled)return;settled=true;clearTimeout(idleTimer);clearTimeout(maxTimer);options.signal?.removeEventListener('abort',abort);channel.port1.close();if(error)reject(error);else resolve(result!);};
+  const finish=(error?:Error,result?:ProductRuntimeResult)=>{if(settled)return;settled=true;clearTimeout(watchdog);options.signal?.removeEventListener('abort',abort);channel.port1.close();if(error)reject(error);else resolve(result!);};
   const abort=()=>{cancel();finish(codedError('Stopped','stopped'));};
-  const arm=()=>{clearTimeout(idleTimer);idleTimer=setTimeout(()=>{cancel();finish(codedError('Runtime check timed out · retry','runtime-timeout'));},timeoutMs);};
+  const expireIfDue=()=>{
+   const now=Date.now();
+   if(now>=maxDeadline){cancel();finish(codedError('Runtime preparation exceeded the maximum duration · retry','runtime-timeout'));return true;}
+   if(now>=idleDeadline){cancel();finish(codedError('Runtime check timed out · retry','runtime-timeout'));return true;}
+   return false;
+  };
+  const armWatchdog=()=>{if(settled)return;clearTimeout(watchdog);const remaining=Math.max(0,Math.min(idleDeadline,maxDeadline)-Date.now());watchdog=setTimeout(()=>{if(!expireIfDue())armWatchdog();},remaining);};
+  const arm=()=>{idleDeadline=Date.now()+timeoutMs;armWatchdog();};
   const invalid=()=>{cancel();finish(codedError('Invalid app runtime response','runtime-invalid-response'));};
   channel.port1.onmessage=event=>{
    if(settled)return;
+   if(expireIfDue())return;
    const reply=event.data;
    if(!reply||typeof reply!=='object')return invalid();
    if(reply.status==='progress'){
@@ -75,8 +84,7 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
    finish(undefined,reply);
   };
   options.signal?.addEventListener('abort',abort,{once:true});
-  maxTimer=setTimeout(()=>{cancel();finish(codedError('Runtime preparation exceeded the maximum duration · retry','runtime-timeout'));},maxDurationMs);
-  arm();
+  armWatchdog();
   try{worker.postMessage({type:'prepare-product-assets',role,operationId,acquire},[channel.port2]);}catch(error){finish(codedError(error instanceof Error?error.message:'Could not start app runtime preparation','runtime-messaging-unavailable'));}
  });
 }
