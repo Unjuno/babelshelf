@@ -44,6 +44,16 @@ test('silent runtime preparation and local verification time out and cancel the 
   assert.equal(worker.messages[1].operationId,'timeout-op-01');assert.equal(channel.channel.port1.closed,true);
  }
 });
+test('runtime progress cannot extend preparation beyond its absolute deadline',async()=>{
+ const channel=fakeChannel(),worker=fakeWorker(channel,(_message,_transfer,state)=>{
+  setTimeout(()=>state.channel.port1.onmessage({data:{status:'progress',role:'text-lfm3',completed:0,total:1,bytes:1}}),8);
+  setTimeout(()=>state.channel.port1.onmessage({data:{status:'progress',role:'text-lfm3',completed:0,total:1,bytes:2}}),16);
+ });
+ const pending=prepareProductRuntimeAssets('text-lfm3',{worker,operationId:'absolute-time-01',makeChannel:()=>channel.channel,timeoutMs:80,maxDurationMs:30});
+ await assert.rejects(pending,error=>error.code==='runtime-timeout'&&/maximum duration/i.test(error.message));
+ assert.deepEqual(worker.messages.map(message=>message.type),['prepare-product-assets','cancel-product-assets']);
+ assert.equal(channel.channel.port1.closed,true);
+});
 test('unexpected or mismatched runtime replies cannot claim preparation success',async()=>{
  for(const reply of [{status:'other'},{status:'prepared',role:'speech',assets:1,bytes:20},{status:'prepared',role:'pdf',assets:0,bytes:0},{status:'prepared',role:'pdf',assets:1,bytes:10,downloadedBytes:11}]){
   const channel=fakeChannel(),worker=fakeWorker(channel,(_message,_transfer,state)=>queueMicrotask(()=>state.channel.port1.onmessage({data:reply})));

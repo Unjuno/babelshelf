@@ -36,7 +36,7 @@ export function productRuntimeAssetInput(role:ProductRuntimeRole,allowNetwork:bo
  return {source:{name:labels[role]},role:'runtime',feature:role,runtime:{name:'BabelShelf app assets',revision:'build-pinned'},allowNetwork,method:allowNetwork?'explicit-preparation':'local-only'} as const;
 }
 
-type RuntimeRequestOptions={worker?:RuntimeWorker|null;signal?:AbortSignal;operationId?:string;onProgress?:(progress:ProductRuntimeProgress)=>void;makeChannel?:()=>MessageChannel;timeoutMs?:number};
+type RuntimeRequestOptions={worker?:RuntimeWorker|null;signal?:AbortSignal;operationId?:string;onProgress?:(progress:ProductRuntimeProgress)=>void;makeChannel?:()=>MessageChannel;timeoutMs?:number;maxDurationMs?:number};
 /** Prepare or inspect only the selected, build-pinned runtime. */
 function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:RuntimeRequestOptions){
  const worker=options.worker===undefined?(typeof navigator!=='undefined'?navigator.serviceWorker?.controller:null):options.worker;
@@ -45,15 +45,16 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
  if(options.signal?.aborted)return Promise.reject(codedError('Stopped','stopped'));
  const operationId=options.operationId??globalThis.crypto?.randomUUID?.()??`asset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
  const timeoutMs=options.timeoutMs??(acquire?300000:60000);
- if(!Number.isFinite(timeoutMs)||timeoutMs<1)return Promise.reject(codedError('Invalid runtime timeout','runtime-setup-error'));
+ const maxDurationMs=options.maxDurationMs??(acquire?600000:180000);
+ if(!Number.isFinite(timeoutMs)||timeoutMs<1||!Number.isFinite(maxDurationMs)||maxDurationMs<1)return Promise.reject(codedError('Invalid runtime timeout','runtime-setup-error'));
  let channel:MessageChannel;
  try{channel=options.makeChannel?.()??new MessageChannel();}catch{return Promise.reject(codedError('App runtime messaging unavailable','runtime-messaging-unavailable'));}
  return new Promise<ProductRuntimeResult>((resolve,reject)=>{
-  let settled=false,timer:ReturnType<typeof setTimeout>;
+  let settled=false,idleTimer:ReturnType<typeof setTimeout>,maxTimer:ReturnType<typeof setTimeout>;
   const cancel=()=>{try{worker.postMessage({type:'cancel-product-assets',operationId},[]);}catch{}};
-  const finish=(error?:Error,result?:ProductRuntimeResult)=>{if(settled)return;settled=true;clearTimeout(timer);options.signal?.removeEventListener('abort',abort);channel.port1.close();if(error)reject(error);else resolve(result!);};
+  const finish=(error?:Error,result?:ProductRuntimeResult)=>{if(settled)return;settled=true;clearTimeout(idleTimer);clearTimeout(maxTimer);options.signal?.removeEventListener('abort',abort);channel.port1.close();if(error)reject(error);else resolve(result!);};
   const abort=()=>{cancel();finish(codedError('Stopped','stopped'));};
-  const arm=()=>{clearTimeout(timer);timer=setTimeout(()=>{cancel();finish(codedError('Runtime check timed out · retry','runtime-timeout'));},timeoutMs);};
+  const arm=()=>{clearTimeout(idleTimer);idleTimer=setTimeout(()=>{cancel();finish(codedError('Runtime check timed out · retry','runtime-timeout'));},timeoutMs);};
   const invalid=()=>{cancel();finish(codedError('Invalid app runtime response','runtime-invalid-response'));};
   channel.port1.onmessage=event=>{
    if(settled)return;
@@ -67,7 +68,9 @@ function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:R
    if(reply.status!=='prepared'||reply.role!==role||!Number.isSafeInteger(reply.assets)||reply.assets<1||!Number.isSafeInteger(reply.bytes)||reply.bytes<0||(reply.downloadedBytes!==undefined&&(!Number.isSafeInteger(reply.downloadedBytes)||reply.downloadedBytes<0||reply.downloadedBytes>reply.bytes)))return invalid();
    finish(undefined,reply);
   };
-  options.signal?.addEventListener('abort',abort,{once:true});arm();
+  options.signal?.addEventListener('abort',abort,{once:true});
+  maxTimer=setTimeout(()=>{cancel();finish(codedError('Runtime preparation exceeded the maximum duration · retry','runtime-timeout'));},maxDurationMs);
+  arm();
   try{worker.postMessage({type:'prepare-product-assets',role,operationId,acquire},[channel.port2]);}catch(error){finish(codedError(error instanceof Error?error.message:'Could not start app runtime preparation','runtime-messaging-unavailable'));}
  });
 }
