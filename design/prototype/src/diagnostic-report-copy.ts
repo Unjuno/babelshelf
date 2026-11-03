@@ -39,7 +39,7 @@ function projectModelGeneration(value:unknown):Record<string,unknown>|undefined{
  const source=objectRecord(value);if(!source)return;
  if(!['pass','fail','not-run','stopped','interrupted'].includes(String(generation.status)))return;
  if(!['model','modelRevision','runtimeRevision'].every(key=>typeof generation[key]==='string'))return;
- for(const [key,allowed] of Object.entries({testMode:['quick','performance'],workload:['ready-v1','prose-128-v1','prose-128-v2'],loadState:['already-loaded','loaded-for-test','not-loaded'],failureStage:['load','runtime-setup','model-load','count','generation','output-validation','unload']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
+ for(const [key,allowed] of Object.entries({testMode:['quick','performance','full-cycle'],workload:['ready-v1','prose-128-v1','prose-128-v2'],loadState:['already-loaded','loaded-for-test','not-loaded'],failureStage:['load','runtime-setup','model-preparation','model-load','count','generation','warm-generation','output-validation','unload']})){if(typeof source[key]==='string'&&allowed.includes(source[key] as string))generation[key]=source[key];}
  const metrics=projectMetrics(source.runtimeMetrics);if(metrics)generation.runtimeMetrics=metrics;
  const loadMetrics=safeRuntimeLoadMetrics(source.loadMetrics);if(loadMetrics)generation.loadMetrics=loadMetrics;
  return generation;
@@ -75,6 +75,7 @@ function projectSelectedModel(value:unknown):Record<string,unknown>|undefined{
 }
 function projectDiagnosticReport(report:Record<string,unknown>):Record<string,unknown>{
  const result:Record<string,unknown>=pickFields(report,['schema','createdAt','appBuild','bundle','platform','userAgent','standalone','connectionMode','onlineSignal'])??{};
+ if(['app','quick','performance','full-cycle'].includes(String(report.deviceTestMode)))result.deviceTestMode=report.deviceTestMode;
  for(const key of ['createdAt','appBuild','bundle','platform','userAgent'])if(result[key]!==undefined&&typeof result[key]!=='string')delete result[key];
  for(const key of ['standalone','onlineSignal'])if(result[key]!==undefined&&typeof result[key]!=='boolean')delete result[key];
  if(typeof result.createdAt!=='string')delete result.createdAt;

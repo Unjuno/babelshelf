@@ -12,7 +12,7 @@ import {startupGate} from '../product/startup-recovery';
 import {useComposerDraft} from './composer-draft';
 import {PendingCorrectionConflictError,validatePendingCorrection,pendingCorrectionProblem,PENDING_CORRECTION_STATE,type PendingCorrection} from './pending-correction';
 import {makePendingNoteReview,validatePendingNoteReview,PENDING_NOTE_REVIEW_STATE,type PendingNoteReview,type PendingNoteDraft} from './pending-note-review';
-import {deviceModelTestProfile,deviceWarmModelTestProfile,validateDeviceModelTest,type DeviceTestMode} from './device-model-test';
+import {deviceModelTestProfile,deviceWarmModelTestProfile,validateDeviceModelTest,type DeviceModelTestMode, type DeviceTestMode} from './device-model-test';
 import {startDeviceTestSuite} from './device-test-suite';
 import {executeScheduledAnswer} from './scheduled-answer';
 import {createModelExecutionManager} from './model-execution';
@@ -503,7 +503,7 @@ export default function Prototype() {
    const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);if(marker){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);}
   }catch(error){toast((error as Error).message||'Device test failed');}finally{setDeviceTestRunning(false);}
  }
- async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceTestMode='quick',runStartedAt=performance.now()):Promise<DeviceDiagnosticReport|null>{
+ async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceModelTestMode='quick',runStartedAt=performance.now()):Promise<DeviceDiagnosticReport|null>{
   if(deviceModelTesting||!model)return null;
   if(decision.loaded){toast('Unload the Decision model before testing the selected Text model');return null;}
   const fullCycle=testMode==='full-cycle',filesPresentAtStart=!!bonsai.assets[model]?.filesPresent;

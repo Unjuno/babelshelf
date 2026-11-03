@@ -114,3 +114,8 @@ test('a stopped model run retains its failure stage without exposing generated t
  const value={schema:1,createdAt:new Date().toISOString(),checks:[],selectedModel:{id:'lfm3-1.7b-q4-0',revision:'r',runtimeRevision:'rt',filesPresent:true,loaded:false},modelGeneration:{status:'stopped',model:'lfm3-1.7b-q4-0',modelRevision:'r',runtimeRevision:'rt',testMode:'quick',workload:'ready-v1',maxOutputTokens:64,loadState:'not-loaded',failureStage:'model-load',failureType:'stopped',answerText:'PRIVATE-ANSWER'}};
  const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/"status": "stopped"/);assert.match(text,/"failureStage": "model-load"/);assert.match(text,/"loadState": "not-loaded"/);assert.doesNotMatch(text,/PRIVATE-ANSWER/);
 });
+
+test('handoff preserves the selected diagnostic type and Full cycle stage metadata',()=>{
+ const value={schema:1,createdAt:new Date().toISOString(),deviceTestMode:'full-cycle',checks:[],modelGeneration:{status:'fail',model:'local-model',modelRevision:'r',runtimeRevision:'rt',testMode:'full-cycle',failureStage:'model-preparation',failureType:'model-files-not-ready'}};
+ const text=formatDiagnosticHandoff(JSON.stringify(value));assert.match(text,/"deviceTestMode": "full-cycle"/);assert.match(text,/"testMode": "full-cycle"/);assert.match(text,/"failureStage": "model-preparation"/);
+});
