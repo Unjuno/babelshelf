@@ -1,3 +1,14 @@
+2026-11-04 — Agent corrections stay proposals until reviewed and atomically saved.
+Rechecked submission/model-execution flows and 144 agent loop, coordinator and
+evidence tests. Browser tests passed 7/7 for a pending correction surviving
+dismissal/restart, explicit Save/Cancel, revision races, and light/dark review
+readability; review-store integration passed 6/6, including IndexedDB CAS,
+activity-receipt privacy and backup/restore. No original file is changed before
+Save, and a stale or competing proposal cannot overwrite a newer revision. This
+is controlled fixture/browser evidence, not a live-model correction-quality
+test. Clean-checkout code CI remains green on `93ef56b`; this verification added
+no code change and did not download or modify model/user data.
+
 2026-11-04 — Runtime fetch failures retain their real cause.
 Service-worker runtime preparation now classifies fetch TypeErrors only at the
 fetch boundary. Stop and Online-to-Offline cancellation return their distinct

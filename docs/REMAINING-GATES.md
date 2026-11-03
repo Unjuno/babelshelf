@@ -1,4 +1,16 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · revalidate the proposal-to-approval boundary
+
+The selected model can discover and read local evidence, then return a typed
+correction proposal. The app persists that proposal as inert review state; only
+the explicit Save action performs a revision-checked transaction and receipt.
+Focused submission tests, 144 agent/evidence/coordinator tests, 7 correction UI
+browser tests, and 6 review-store browser tests passed. They cover dismissal,
+restart, explicit Cancel/Save, cross-tab races and bounded activity receipts.
+The model cannot write through its read-only tool loop. This confirms the
+existing approval boundary; it does not test live-model decision quality,
+real-browser storage exhaustion, or device behavior.
+
 ### 2026-11-04 · classify runtime acquisition interruption at its source
 
 Commit `93ef56b` limits runtime network classification to fetch failures and
