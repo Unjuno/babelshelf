@@ -1,3 +1,15 @@
+2026-11-04 — Runtime fetch failures retain their real cause.
+Service-worker runtime preparation now classifies fetch TypeErrors only at the
+fetch boundary. Stop and Online-to-Offline cancellation return their distinct
+stable codes, while TypeErrors from integrity verification remain setup errors.
+The focused worker/runtime/diagnostic group passed 107/107; root tests passed
+262/262; `npm run check`, production build, and app acceptance passed (8/8).
+Clean-checkout GitHub Actions [41674310774](https://github.com/Unjuno/babelshelf/actions/runs/41674310774)
+passed every stage on `93ef56b`. The supplied older iPhone report still does
+not identify why runtime setup failed: its sanitized `Error`, absent runtime
+byte count and absent model files cannot distinguish network, integrity,
+storage, or other setup failure. No device rerun or model download was done.
+
 2026-11-03 — Full cycle timings identify the measurement boundary.
 The elapsed time from Run to first text includes app checks, asset preparation
 and model loading; `Runtime · first text` reports the inference adapter's

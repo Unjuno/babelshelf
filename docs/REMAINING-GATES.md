@@ -1,4 +1,17 @@
 ## Current status · 2026-11-04
+### 2026-11-04 · classify runtime acquisition interruption at its source
+
+Commit `93ef56b` limits runtime network classification to fetch failures and
+preserves explicit Stop/Offline-switch outcomes; non-network `TypeError`s no
+longer appear as network errors. Root tests 262/262, focused worker/runtime/
+diagnostic tests 107/107, build, app acceptance 8/8, and clean-checkout CI
+[41674310774](https://github.com/Unjuno/babelshelf/actions/runs/41674310774)
+passed. This improves failure diagnosis only. The earlier iPhone `runtime-setup`
+failure remains unexplained because its report contains only a sanitized generic
+`Error` and no runtime transfer count; the model files were absent and inference
+never ran. Do not claim LFM3 works on that device. A new device run is not yet
+requested because the available evidence does not isolate a device-only cause.
+
 ### 2026-11-04 · diagnose runtime preparation failures without exposing private errors
 
 An iPhone Full cycle report stopped at runtime setup before model acquisition or generation; selected-model files were absent, and its generic `Error` cannot identify the cause. The device report now records a bounded, validated runtime failure code and stage, and the Developer result shows an actionable category without retaining raw exception text. Focused local regression checks passed 92/92 across citation evidence, tool preferences, runtime preparation and device diagnostics. Clean-checkout CI [41670932817](https://github.com/Unjuno/babelshelf/actions/runs/41670932817) passed every stage on code commit `2cd989a`. The original iPhone cause, actual model generation, Home Screen launch, GPU use, offline cold restart and physical-device behavior remain unverified. No model was downloaded and no device rerun was requested. Detailed implementation/check evidence is in [TEST-RESULTS.txt](TEST-RESULTS.txt).
