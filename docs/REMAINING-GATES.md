@@ -1,5 +1,9 @@
 ## Current status · 2026-11-03
 
+### 2026-11-03 · align LFM3 picker guidance with the selected device route
+
+The LFM3 model picker always said `CPU fallback`, while the registered runtime intentionally selects strict WebGPU on iPhone/iPad/Android and refuses CPU retry there. The picker now shows `GPU route required on mobile` on those platforms and keeps `GPU preferred · CPU fallback` for desktop automatic routing, for built-in and custom LFM3 entries. This is a truthful route-policy hint, not model-fit or GPU-use evidence. Model-catalog tests passed 14/14; text-device policy, preflight, execution-route and LFM runtime tests passed 55/55; `npm run check` passed; production app build verified 165 assets. Clean-checkout CI [41587442471](https://github.com/Unjuno/babelshelf/actions/runs/41587442471) passed every stage. No physical-device run or model benchmark was performed. Commit `212e7f6` is on `codex/ui-design-handoff`.
+
 ### 2026-11-03 · keep touch navigation active across repeated gestures
 
 The curved left navigation could stop responding after the first hold-and-slide. A focus-out `blur` with no related target closed the menu during the active pointer gesture and cleared its press state before the following move. The blur handler now preserves an active gesture. Chromium regression coverage chooses Schedule, Notifications, Settings, Schedule, then BabelShelf in successive touch gestures and verifies each menu closes before the next. The focused editorial appearance suite passed 30/30; `npm run check` and `npm run build:app` passed. Clean-checkout GitHub Actions [41586094894](https://github.com/Unjuno/babelshelf/actions/runs/41586094894) passed every stage, including device/settings, editorial/iOS and offline/installed-PWA acceptance. This verifies browser-level repeated touch behavior, not every physical touch controller or device.

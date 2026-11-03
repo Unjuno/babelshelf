@@ -8068,3 +8068,13 @@ passed. Clean-checkout GitHub Actions
 passed all stages, including device/settings, editorial/iOS handoff and
 offline/installed-PWA acceptance. This does not establish all physical
 touch-controller behavior. Commit `939bb87` is on `codex/ui-design-handoff`.
+2026-11-03 — Match LFM3 model-picker guidance to the device execution policy.
+The LFM3 picker claimed CPU fallback on every platform, but the actual runtime
+requires the WebGPU route on iPhone/iPad/Android and does not retry on CPU there.
+Built-in and custom LFM3 hints now disclose the mobile requirement while keeping
+desktop's automatic fallback wording. Model catalog tests passed 14/14;
+device-policy/preflight/route/runtime tests passed 55/55; `npm run check` and
+the production build (165 verified assets) passed. No device benchmark or
+physical run was performed. Clean-checkout Actions
+[41587442471](https://github.com/Unjuno/babelshelf/actions/runs/41587442471)
+passed every stage. Commit `212e7f6` is on `codex/ui-design-handoff`.
