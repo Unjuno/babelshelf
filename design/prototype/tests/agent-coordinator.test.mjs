@@ -445,7 +445,7 @@ test('planner receipt includes bounded token/timing evidence without changing th
  const result=await coordinateAgentTurn(value);
  assert.deepEqual(result.final,{action:'chat',query:''});
  const timing=receipts[0].result.inference;
- assert.equal(timing.promptTokens,123);assert.equal(timing.outputTokens,8);assert.equal(timing.maxOutputTokens,2048);
+ assert.equal(timing.promptTokens,123);assert.equal(timing.outputTokens,8);assert.equal(timing.maxOutputTokens,32000-123);
  assert.equal(timing.visibleTextTtftMs,700);assert.equal(timing.generationMs,1000);
  assert.equal(timing.runtimePrefillMs,650);assert.equal(timing.runtimePromptTokens,120);assert.equal(timing.runtimeCachedTokens,0);assert.equal(timing.requestedThreads,4);assert.equal(timing.runtimeThreads,undefined);
  assert.ok(Number.isFinite(timing.countMs));assert.ok(Number.isFinite(timing.generationWallMs));

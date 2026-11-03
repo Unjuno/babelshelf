@@ -15,7 +15,12 @@ window. Conversation tests passed 233/233, grounded-answer/reply-style and
 planner-evidence tests passed 21/21, static checks passed, and the production
 shell built with 165 verified assets; app acceptance passed 8/8. This removes a
 harness-side cap; it does not guarantee the model will produce longer answers
-or prove quality on every runtime.
+or prove quality on every runtime. The first clean CI run exposed one activity
+assertion pinned to the old 2,048-token maximum; it now derives the expected
+limit from the 32,000-token test context minus its 123-token prompt. Focused
+agent-coordinator/conversation tests passed 308/308, and the full local
+prototype suite, root suite and static check passed after that correction. A
+clean CI rerun is pending.
 
 ### Live deployment provenance check
 
