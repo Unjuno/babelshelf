@@ -7,7 +7,7 @@ const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1'
 const hfGrants=new Map(),productAssetJobs=new Map();let shellRepair=null;
 const networkRequests=new Set();let networkEpoch=0;
 const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
-function productAssetFailureCode(error){const message=error instanceof Error?error.message:'',name=error&&typeof error==='object'&&typeof error.name==='string'?error.name:'';if(message==='Stopped')return 'stopped';if(message==='Runtime not prepared · switch Online to prepare')return 'runtime-not-prepared';if(message==='Downloads are off')return 'downloads-off';if(message==='App runtime HTTP request failed')return 'runtime-http-error';if(message==='App asset verification failed')return 'runtime-integrity-error';if(message==='App asset storage verification failed'||name==='QuotaExceededError')return 'runtime-storage-error';if(error instanceof TypeError)return 'runtime-network-error';return 'runtime-setup-error';}
+function productAssetFailureCode(error){const message=error instanceof Error?error.message:'',name=error&&typeof error==='object'&&typeof error.name==='string'?error.name:'',code=error&&typeof error==='object'&&typeof error.code==='string'?error.code:'';if(code==='runtime-network-error')return code;if(message==='Stopped')return 'stopped';if(message==='Runtime not prepared · switch Online to prepare')return 'runtime-not-prepared';if(message==='Downloads are off')return 'downloads-off';if(message==='App runtime HTTP request failed')return 'runtime-http-error';if(message==='App asset verification failed')return 'runtime-integrity-error';if(message==='App asset storage verification failed'||name==='QuotaExceededError')return 'runtime-storage-error';return 'runtime-setup-error';}
 function isolatedResponse(response){
  const headers=new Headers(response.headers);
  headers.set('Cross-Origin-Opener-Policy','same-origin');
@@ -218,7 +218,7 @@ self.addEventListener('message',event=>{
     const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);let response;
     try{
      networkSource=true;networkRead=0;
-     response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+     try{response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}catch(error){if(job.stopped)throw Error('Stopped');if(epoch!==networkEpoch||controller.signal.aborted)throw Error('Downloads are off');if(error instanceof TypeError)throw Object.assign(Error('App runtime network request failed'),{code:'runtime-network-error'});throw error;}
      if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
      if(!response.ok)throw Error('App runtime HTTP request failed');if(!await verified(response,file,onBytes))throw Error('App asset verification failed');
      if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
@@ -228,7 +228,7 @@ self.addEventListener('message',event=>{
      bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes});
    }
    reply({status:'prepared',role,assets:selected.length,bytes,downloadedBytes});
-   }catch(error){reply({status:'failed',error:error instanceof Error?error.message:'App runtime preparation failed',code:productAssetFailureCode(error),downloadedBytes});}
+   }catch(error){const failure=job.stopped?Error('Stopped'):epoch!==networkEpoch?Error('Downloads are off'):error;reply({status:'failed',error:failure instanceof Error?failure.message:'App runtime preparation failed',code:productAssetFailureCode(failure),downloadedBytes});}
   })().finally(()=>productAssetJobs.delete(operationId));
   event.waitUntil?.(work);return;
  }
