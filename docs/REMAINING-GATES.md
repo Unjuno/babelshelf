@@ -1,5 +1,15 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · fail closed on incomplete current settings
+
+Preference parsing previously supplied known legacy defaults even when a
+current schema-v3 record was missing the field. A partially written current
+record could therefore appear valid and allow a subsequent save to normalize
+away the damaged shape. Legacy projection now runs only for older schemas;
+current-schema omissions are invalid and remain untouched until the existing
+explicit, history-preserving recovery action. The regression covers Models,
+Appearance, Connection, and Harness read and save paths.
+
 ### 2026-11-04 · keep complete graphemes in source excerpts
 
 The core knowledge chunker uses UTF-16 offsets so citations map directly to

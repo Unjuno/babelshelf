@@ -50,7 +50,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(schemaVersion>PREFERENCE_SCHEMA_VERSION)throw new UnsupportedPreferenceSchemaError(group,schemaVersion);
  // Project only known missing fields from older schemas; never rewrite the
  // stored body during a read or guess over a present invalid value.
- if(group==='models'){
+ if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='models'){
   if(!('textLibrary' in value))value.textLibrary=value.textModel?[value.textModel]:[];
   if(!('decisionLibrary' in value))value.decisionLibrary=value.decisionModel?[value.decisionModel]:[];
   if(!('transcriptionLanguage' in value))value.transcriptionLanguage='en';
@@ -67,7 +67,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   // Preserve the selected model if the older record predates a role library.
   if(!('lfm3ContextTokens' in value))value.lfm3ContextTokens=8192;
  }
- if(group==='appearance'){
+ if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='appearance'){
   if(!('fontFamily' in value))value.fontFamily='system';
   if(!('fonts' in value))value.fonts=[];
   if(!('paletteRegistry' in value)){
@@ -78,9 +78,9 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   }else if('palette' in value)throw Error('Ambiguous legacy palette setting');
   if(!('activePaletteId' in value))value.activePaletteId='';
  }
- if(group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
- if(group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
- if(group==='harness'&&!('userGuidance' in value))value.userGuidance='';
+ if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
+ if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
+ if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='harness'&&!('userGuidance' in value))value.userGuidance='';
  if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles))for(const profile of value.profiles){if(profile&&typeof profile==='object'){if(!('maxGenerationTokens' in profile))profile.maxGenerationTokens=null;if(!('maxGenerationMs' in profile))profile.maxGenerationMs=null;}}
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
  // This defaults migration belongs only to schema 1 -> 2. Later schema

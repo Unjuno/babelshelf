@@ -45,6 +45,17 @@ test('settings files carry a schema version and legacy records migrate only in m
  const saved=updatePreference('appearance',records,value=>({...value,background:'sand'})),record=saved.find(note=>note.id===target.id);
  assert.equal(readPreference('appearance',saved).schemaVersion,3);assert.equal(record.history[0],oldBytes);assert.equal(JSON.parse(record.body.match(/```json\n([\s\S]+)\n```/)[1]).schemaVersion,3);
 });
+test('current settings schemas reject missing fields instead of silently applying legacy defaults',()=>{
+ const missing={models:'customModels',appearance:'fonts',connection:'diagnosticLogs',harness:'userGuidance'};
+ for(const [group,field] of Object.entries(missing)){
+  const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-'+group),value=JSON.parse(record.body.match(/```json\n([\s\S]+)\n```/)[1]);
+  delete value[field];record.body=formatPreference(group,value);const stored=record.body,before=structuredClone(records);
+  assert.throws(()=>parsePreference(group,stored),/Unknown or missing setting/);
+  const read=readPreferenceWithFallback(group,records);assert.equal(read.valid,false);
+  assert.throws(()=>updatePreference(group,records,current=>current),/Unknown or missing setting/);
+  assert.deepEqual(records,before,`${group} was changed while rejecting a damaged current schema`);
+ }
+});
 test('appearance settings migrate a single legacy palette in memory and retain a named editable registry',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-appearance'),legacy=readPreference('appearance',notes);
  delete legacy.paletteRegistry;delete legacy.activePaletteId;
