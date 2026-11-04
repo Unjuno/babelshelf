@@ -9,6 +9,7 @@ import {validateAppearancePalette,validateAppearancePaletteRegistry,type NamedAp
 import {REPLY_STYLES,type ReplyStyle} from './reply-style.ts';
 import {validateHarnessGuidance} from './harness-guidance.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
+import {validateRustXngEndpoint} from './rustxng-search-client.ts';
 
 export type CustomLocalModel={id:string;label:string;role:'text';engine:'webml-qwen35'|'wllama-lfm2'|'wllama-lfm3'|'wllama-qwen3';revision:string;file:{bytes:number;sha256:string};contextTokens:number;source?:{provider:'huggingface';repo:string;revision:string;file:string;license:string|null};inspection:{format:'GGUF';version:number;bytes:number;name:string;architecture:string;contextLength:number;tokenizer:string;chatTemplate:boolean;tokenCount:number;tensorCount:number;tensorTypes:number[];tensorExtentsChecked:boolean}};
 export type CustomDecisionModel={id:string;label:string;role:'decision';engine:'onnx-d1-text';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'D1-ONNX';architecture:'d1_omni';contextTokens:16384;inputLimit:2048;scope:'text-only'}};
@@ -20,7 +21,7 @@ export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';
 export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number;maxGenerationTokens?:number|null;maxGenerationMs?:number|null};
 export type HarnessPreferences={replyStyle:ReplyStyle;userGuidance:string;activeProfileId:string;profiles:HarnessProfile[]};
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
-export const PREFERENCE_SCHEMA_VERSION=4 as const;
+export const PREFERENCE_SCHEMA_VERSION=5 as const;
 export class UnsupportedPreferenceSchemaError extends Error{
  readonly group:PreferenceGroup;readonly version:number;
  constructor(group:PreferenceGroup,version:number){super('Settings use a newer format · update the app');this.name='UnsupportedPreferenceSchemaError';this.group=group;this.version=version;}
@@ -28,7 +29,7 @@ export class UnsupportedPreferenceSchemaError extends Error{
 const defaults={
  models:{schemaVersion:PREFERENCE_SCHEMA_VERSION,customSets:[] as UserModelSet[],customModels:[] as CustomLocalModel[],customDecisionModels:[] as CustomDecisionModel[],customSpeechModels:[] as CustomSpeechModel[],customVisionModels:[] as CustomVisionModel[],visionModel:'',visionLibrary:[] as string[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel,'2B'] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,lfm3ContextTokens:8192,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[]},
  appearance:{schemaVersion:PREFERENCE_SCHEMA_VERSION,theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[],paletteRegistry:[] as NamedAppearancePalette[],activePaletteId:''},
- connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false},
+ connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false,rustxngEndpoint:''},
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
   {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
   {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read','memory.sources'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:null,maxGenerationMs:null},
@@ -92,6 +93,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   if(!('activePaletteId' in value))value.activePaletteId='';
  }
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='connection'&&!('diagnosticLogs' in value))value.diagnosticLogs=false;
+ if(schemaVersion<5&&group==='connection'&&!('rustxngEndpoint' in value))value.rustxngEndpoint='';
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='harness'&&!('userGuidance' in value))value.userGuidance='';
  if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles))for(const profile of value.profiles){if(profile&&typeof profile==='object'){if(!('maxGenerationTokens' in profile))profile.maxGenerationTokens=null;if(!('maxGenerationMs' in profile))profile.maxGenerationMs=null;}}
@@ -135,7 +137,8 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   if(typeof a.fontFamily!=='string'||a.fontFamily!=='system'&&!a.fonts?.some(font=>font.id===a.fontFamily)||!Array.isArray(a.fonts)||a.fonts.length>32||new Set(a.fonts.map(font=>font?.id)).size!==a.fonts.length||a.fonts.some(font=>!font||!/^font-[a-f0-9]{64}$/.test(font.id)||typeof font.label!=='string'||font.label.length>128||!['woff2','woff','ttf','otf'].includes(font.format)||!Number.isSafeInteger(font.bytes)||font.bytes<1||font.bytes>20*1024*1024||font.sha256!==font.id.slice(5)))throw Error('Invalid local font registry');
   const validated=validateAppearancePaletteRegistry(a.paletteRegistry,a.activePaletteId);a.paletteRegistry=validated.paletteRegistry;a.activePaletteId=validated.activePaletteId;
  }else if(group==='connection'){
-  if(typeof value.downloads!=='boolean'||typeof value.diagnosticLogs!=='boolean')throw Error('Invalid connection preference');
+  if(typeof value.downloads!=='boolean'||typeof value.diagnosticLogs!=='boolean'||typeof value.rustxngEndpoint!=='string'||value.rustxngEndpoint.length>2048)throw Error('Invalid connection preference');
+  if(value.rustxngEndpoint)validateRustXngEndpoint(value.rustxngEndpoint);
  }else {
   const harness=value as Preferences['harness'];
   if(typeof harness.replyStyle!=='string'||!REPLY_STYLES.includes(harness.replyStyle as ReplyStyle)||!validateHarnessGuidance(harness.userGuidance)||typeof harness.activeProfileId!=='string'||!Array.isArray(harness.profiles)||!harness.profiles.length||harness.profiles.length>12)throw Error('Invalid harness profile registry or user guidance');
@@ -180,7 +183,7 @@ export function restoreDefaultPreferences<T extends PreferenceRecord>(records:T[
  for(const group of groups){
   const current=next.find(record=>record.id==='settings-'+group),fallback=initialPreferenceNotes.find(record=>record.id==='settings-'+group)!;
   if(!current||current.path!==preferencePath(group)||current.managed!==true||current.protected)throw Error('Settings record unavailable · restore was not applied');
-  const body=group==='connection'?formatPreference('connection',{downloads:false,diagnosticLogs:false}):fallback.body;parsePreference(group,body);if(current.body===body)continue;
+  const body=group==='connection'?formatPreference('connection',{downloads:false,diagnosticLogs:false,rustxngEndpoint:''}):fallback.body;parsePreference(group,body);if(current.body===body)continue;
   const history=current.history??[];next=next.map(record=>record.id!==current.id?record:{...record,body,version:current.version+1,history:[...history,current.body],paths:[...(current.paths??history.map(()=>current.path)),current.path]});
  }
  return next;

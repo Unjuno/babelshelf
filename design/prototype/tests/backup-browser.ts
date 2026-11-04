@@ -28,7 +28,7 @@ document.querySelector('#run')!.addEventListener('click',async()=>{
   check(rejected&&(await b.all())[0].revisions.length===3,'checksum failure cannot partially restore a store');
   const tx=(await b.open()).transaction('settings','readwrite');tx.objectStore('settings').put(new Date(),'unsupported');await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});let unsupported=false;try{await b.backup();}catch(e){unsupported=/JSON/.test((e as Error).message);}
   check(unsupported,'unsupported clone-only values fail export rather than being silently lost');
-  const legacy=new KnowledgeStore(name+'-legacy'),connection=createNote({path:'Settings/connection.md',body:formatPreference('connection',{downloads:true})});connection.id='settings-connection';connection.ui={managed:true};
+  const legacy=new KnowledgeStore(name+'-legacy'),connection=createNote({path:'Settings/connection.md',body:formatPreference('connection',{downloads:true,rustxngEndpoint:''})});connection.id='settings-connection';connection.ui={managed:true};
   await legacy.initialize([]);await legacy.restore(JSON.stringify(await makeBackup([connection])));const restoredConnection=(await legacy.all())[0];
   check(restoredConnection.revisions.length===2&&!parsePreference('connection',restoredConnection.revisions.at(-1).body).downloads&&restoredConnection.revisions[0].body===connection.revisions[0].body,'legacy schema1 restore also retains ON original and appends downloads OFF');legacy.close();
   const hydrated=await b.getState<string[]>('folders'),displayed=[...(hydrated??[]),'Notes/Recovered'],writer=new MetadataWriter<string[]>((before,next)=>b.compareState('folders',before,next));writer.hydrate(hydrated,displayed);

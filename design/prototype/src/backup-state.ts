@@ -111,7 +111,7 @@ export async function parseStateBackup(text:string):Promise<StatePayload>{
 }
 export function guardRestoredNote(note:any){
  let n=structuredClone(note);if(n.ui?.recordType==='schedule')n.ui={...n.ui,requiresReview:true};
- if(n.id==='settings-connection'&&n.ui?.managed){const current=parsePreference('connection',latest(n).body);if(current.downloads||current.diagnosticLogs)n=reviseNote(n,{body:formatPreference('connection',{downloads:false,diagnosticLogs:false})},latest(n).version);}
+ if(n.id==='settings-connection'&&n.ui?.managed){const current=parsePreference('connection',latest(n).body);if(current.downloads||current.diagnosticLogs)n=reviseNote(n,{body:formatPreference('connection',{downloads:false,diagnosticLogs:false,rustxngEndpoint:current.rustxngEndpoint})},latest(n).version);}
  return n;
 }
 export type RestoreMode='strict'|'new-only';
