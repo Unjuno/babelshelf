@@ -20,6 +20,8 @@ export function shouldAcquireRuntimeAfterVerification(error:unknown,downloads:bo
  const code=error&&typeof error==='object'?'code' in error?(error as {code?:unknown}).code:undefined:undefined;
  return downloads&&online&&code==='runtime-not-prepared';
 }
+/** Reuse a runtime verified in this app session unless the user explicitly asks to check it. */
+export function canReusePreparedRuntime(ready:boolean,forceCheck=false){return ready&&!forceCheck;}
 
 // Runtime files are a separate prerequisite and must be ready before model
 // acquisition begins. Local GGUF imports remain storage-only; runtime is still

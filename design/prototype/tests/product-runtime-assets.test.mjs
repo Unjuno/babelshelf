@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,shouldAcquireRuntimeAfterVerification,verifyProductRuntimeAssets} from '../src/product-runtime-assets.ts';
+import {canReusePreparedRuntime,prepareProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgressLabel,shouldAcquireRuntimeAfterVerification,verifyProductRuntimeAssets} from '../src/product-runtime-assets.ts';
+
+test('a runtime verified in this session is reused unless an explicit check is requested',()=>{
+ assert.equal(canReusePreparedRuntime(false),false);
+ assert.equal(canReusePreparedRuntime(true),true);
+ assert.equal(canReusePreparedRuntime(true,true),false);
+});
 
 test('runtime progress names the current asset count and cumulative verified bytes read',()=>{
  assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:0,total:2,bytes:1048576}),'Runtime · 0/2 · 1.0 MB read');
