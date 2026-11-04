@@ -60,6 +60,8 @@ test('browser starts with a report-only App & storage check; every test type has
  await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeVisible();
  await page.getByText('Test options · App & storage',{exact:true}).click();
  for(const mode of ['App & storage','Offline readiness','Storage health','Runtime support','Model readiness','Quick','Performance','Full cycle'])await expect(page.getByRole('button',{name:mode,exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Quick',exact:true}).click();await expect(page.getByRole('region',{name:'Quick overview'})).toContainText('loads the prepared model into memory first');await expect(page.getByRole('region',{name:'Quick overview'})).toContainText('No download');
+ await page.getByRole('button',{name:'Performance',exact:true}).click();await expect(page.getByRole('region',{name:'Performance overview'})).toContainText('may still load into memory first');
  await page.getByRole('button',{name:'Model readiness',exact:true}).click();await expect(page.getByRole('region',{name:'Model readiness overview'})).toContainText('No model load, generation, or download');
  await page.getByRole('button',{name:'Check model readiness',exact:true}).click();await expect(page.getByRole('region',{name:'Last test overview · Model readiness'})).toBeVisible();
  let readinessReport=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(readinessReport.deviceTestMode).toBe('model-readiness');expect(readinessReport.modelGeneration).toBeUndefined();
