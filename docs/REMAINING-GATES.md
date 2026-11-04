@@ -1,5 +1,16 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · keep installed-PWA diagnostics acceptance aligned
+
+The offline-process acceptance opened the Developer screen but did not open
+its collapsed Test options section. It also assumed the browser-tab default
+(`App & storage`) inside the installed PWA, whose default is `Quick`. The
+acceptance now expands the section and checks the mode-appropriate action.
+Local `npm run test:quality:offline` and `npm run test:quality:installed-pwa`
+passed; clean-checkout GitHub Actions [41777291794](https://github.com/Unjuno/babelshelf/actions/runs/41777291794)
+passed all stages on `1687f0e`. This confirms the PC browser and installed-PWA
+acceptance script path, not physical iOS offline behavior or model execution.
+
 ### 2026-11-04 · fail closed on incomplete current settings
 
 Preference parsing previously supplied known legacy defaults even when a

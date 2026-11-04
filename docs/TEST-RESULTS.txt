@@ -8361,3 +8361,15 @@ CI run. Its split run [41731098851](https://github.com/Unjuno/babelshelf/actions
 reported 27s for system dependencies and 14s for pinned browsers; downstream
 acceptance was still running at this entry. One run does not establish that the
 previous APT delay cannot recur.
+2026-11-04: Clean-checkout CI exposed an installed-PWA acceptance assumption:
+the test did not expand the collapsed Developer Test options and expected the
+browser-tab default mode instead of the installed-PWA `Quick` default. Updated
+the shared offline-process flow to expand the first Test options control and
+assert the mode-specific action. Local `npm run test:quality:offline` passed;
+local `npm run test:quality:installed-pwa` passed with standalone=true,
+networkProbeReachable=false, four verified backup archives, and appUninstalled=true.
+Clean-checkout CI [41777291794](https://github.com/Unjuno/babelshelf/actions/runs/41777291794)
+passed all 16 acceptance stages on `1687f0e2b4da396bcbfd08bd05b09c72e02b5a1c`
+in 12m39s. This verifies PC Chromium and installed-PWA QA only; it does not
+verify physical iOS offline launch or any model execution. No user Memory,
+model files, or retained untracked QA artifacts were changed.
