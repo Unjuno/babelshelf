@@ -46,6 +46,7 @@ test('saved timing results identify their model, time and build independently of
  await expect(page.locator('time[datetime="2026-10-20T01:02:03.000Z"]')).toBeVisible();
  await expect(page.getByText('4B · Sample complete',{exact:true})).toBeVisible();
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'This report is from a different app build. Run the check again to verify the current build.'})).toBeVisible();
  await page.locator('.device-test-steps > summary').filter({hasText:'Test options'}).click();
  await page.getByRole('button',{name:'Quick',exact:true}).click();
  await expect(page.getByText('Last test · Performance',{exact:true})).toBeVisible();

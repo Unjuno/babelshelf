@@ -19,6 +19,17 @@ settings, editorial/iOS handoff, and offline/installed-PWA acceptance. This
 confirms the migration guard and correctly labeled legacy fixture in CI; it
 does not prove recovery behavior against a real user's existing database.
 
+### 2026-11-04 · identify saved diagnostics from another app build
+
+Developer previously showed a report's build ID but did not compare it with
+the active service-worker build. Old device results could therefore look like
+current-build evidence. The report summary now says when the saved report came
+from a different app build and directs the user to rerun the check. A UI
+regression covers the mismatch; the complete diagnostic UI suite passed
+34/34, `npm run check` passed, and the product build completed with 165
+verified assets. This is an explicit freshness cue, not a claim that the
+current build behaves the same on that physical device.
+
 ### 2026-11-04 · keep complete graphemes in source excerpts
 
 The core knowledge chunker uses UTF-16 offsets so citations map directly to

@@ -105,6 +105,7 @@ export function DiagnosticsSettings(props:Props){
    {!deviceTestRunning&&!deviceModelTesting&&deviceTestReport&&<>
     <div className="capability-row"><span>Last test{reportModeLabel?` · ${reportModeLabel}`:''}</span>{reportAt&&<time dateTime={reportAt}>{new Date(reportAt).toLocaleString()}</time>}</div>
     {resultOverview&&<div className="device-test-overview" role="region" aria-label={`Last test overview · ${reportModeLabel||resultOverview.label}`}><strong>{reportModeLabel||resultOverview.label}</strong><span>{resultOverview.overview}</span><span>{overviewFor(resultMode,reportChecks)}</span>{generation&&<span>Model result · {modelStatus}</span>}{runtimeFailedBeforeModelPreparation&&<span>Runtime setup stopped before model preparation. Model files were not downloaded, and no model load or generation was tested.</span>}</div>}
+    {reportBuild&&diagnosticBuild!=='Not checked'&&reportBuild!==diagnosticBuild&&<p className="source-revision" role="status">This report is from a different app build. Run the check again to verify the current build.</p>}
     {reportBuild&&<div className="capability-row"><span>Test build</span><span>{reportBuild}</span></div>}
     {reportEnvironment&&<div className="capability-row"><span>Test environment</span><span>{reportEnvironment}</span></div>}
    </>}
