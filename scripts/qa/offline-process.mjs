@@ -81,7 +81,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
    await input(p);await p.locator('input[type=file][multiple][accept*=".txt"]').setInputFiles(offlineInputs.map(v=>join(outputDir,v.name)));
    await p.getByRole('button',{name:/Text offline-import.md.*Text available/}).waitFor();await p.getByRole('button',{name:'Send',exact:true}).click();await p.getByText('Text imported',{exact:true}).waitFor();entry.offlineImportedOriginals=2;
    await input(p);entry.offlineMarkdownSearch=await search(p,'防災用電池','防災用電池は台所の棚。');assert.ok(entry.offlineMarkdownSearch.includes('台所の棚'));
-   await go(p,'Settings');await p.getByText('More',{exact:true}).click();await p.getByRole('button',{name:'Developer',exact:true}).click();await p.getByRole('heading',{name:'Device test'}).waitFor();await p.getByRole('button',{name:'Run tests',exact:true}).waitFor();entry.offlineDiagnosticsChunkLoaded=true;
+   await go(p,'Settings');await p.getByText('More',{exact:true}).click();await p.getByRole('button',{name:'Developer',exact:true}).click();await p.getByRole('heading',{name:'Device test'}).waitFor();await p.getByRole('button',{name:'Run app checks',exact:true}).waitFor();entry.offlineDiagnosticsChunkLoaded=true;
    afterEdit=await backup(p,'after-edit.brainpack');
   });
   await phase(true,async(p,entry)=>{
