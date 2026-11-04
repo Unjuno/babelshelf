@@ -504,6 +504,16 @@ test('coordinator lets the read tool resolve an exact name without requiring pri
  assert.equal(result.calls[0].result[0].noteId,note.id);
 });
 
+test('coordinator resolves a stable note ID directly without loading the full Memory view',async()=>{
+ const note={id:'note-7f2',path:'Notes/meeting.md',version:2,body:'Monday at 10'};let views=0,directReads=0;
+ const {value}=input([
+  JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:note.id})}),
+  JSON.stringify({action:'answer',query:'meeting notes',target:'knowledge'}),
+ ],{enabledTools:['memory.read'],builtinPackages:[...builtinPackages,readPackage],views:async()=>{views++;return [note];},resolveById:async id=>{directReads++;return id===note.id?note:null;}});
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.calls[0].result[0].noteId,note.id);assert.equal(directReads,1);assert.equal(views,0);
+});
+
 test('an unmatched direct read adds no evidence and can be followed by search',async()=>{
  const note={id:'reserve-1',path:'Notes/water.md',version:1,body:'Reserve: 7 litres.'};
  const {value}=input([

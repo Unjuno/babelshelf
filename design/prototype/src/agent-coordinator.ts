@@ -110,6 +110,7 @@ export async function coordinateAgentTurn(input:{
  search:(query:string,signal?:AbortSignal)=>Promise<MemorySearchResult[]>;
  searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal)=>Promise<unknown>;
  views:(signal?:AbortSignal)=>Promise<ToolNote[]>;
+ resolveById?:(id:string,signal?:AbortSignal)=>Promise<ToolNote|null>;
  records?:(signal?:AbortSignal)=>Promise<any[]>;
  listFolders?:()=>Promise<string[]>;
  ensureCustomRuntime:()=>Promise<unknown>;
@@ -302,7 +303,7 @@ export async function coordinateAgentTurn(input:{
     const host:ToolHost={
      search:(query,signal)=>input.search(query,signal),
      searchPage:input.searchPage?async(query,options,signal)=>{try{return await input.searchPage!(query,options,signal);}catch(error){if(call.tool==='memory.search'&&error instanceof SearchSnapshotChangedError)throw new AgentSearchSnapshotChangedError();throw error;}}:undefined,
-     resolve:async(query,signal)=>{const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
+     resolve:async(query,signal)=>{const direct=await input.resolveById?.(query,signal);signal?.throwIfAborted();if(direct)return [direct];const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
      list:async(path,offset,limit,signal)=>{const [notes,folders]=await Promise.all([input.views(signal),input.listFolders?.()??Promise.resolve([])]);signal?.throwIfAborted();return listMemoryEntries(path,notes,[...SYSTEM_FOLDERS,...folders],offset,limit);},
      sources:input.records?async(id,revision,signal)=>{const records=await input.records!(signal);signal?.throwIfAborted();return noteSourceMetadata(records,id,revision);}:undefined,
      check:input.check,signal:input.signal,

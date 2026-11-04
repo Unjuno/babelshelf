@@ -167,6 +167,11 @@ export class KnowledgeStore {
  }
  async all(signal?:AbortSignal):Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);},signal);}
  async views(signal?:AbortSignal){return (await this.all(signal)).filter(n=>n.state==='active').map(projectNote);}
+ /** Resolve a stable note ID without materializing every saved note for agent reads. */
+ async viewById(id:string,signal?:AbortSignal):Promise<NoteView|null>{
+  if(typeof id!=='string'||!id)return null;
+  return this.transaction<NoteView|null>(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').get(id);q.onsuccess=()=>done(q.result?.state==='active'?projectNote(q.result):null);},signal);
+ }
  // Preparation needs only these two canonical records, even with a large diary.
  async preparationSettings(){
   return this.transaction<{models:ReturnType<typeof readPreference<'models'>>;connection:ReturnType<typeof readPreference<'connection'>>}>(['notes'],'readonly',(tx,done,fail)=>{

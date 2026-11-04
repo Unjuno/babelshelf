@@ -51,3 +51,13 @@ test('a stale tool-setting change cannot overwrite another tab’s committed pre
   assert.equal(tools.includes('time.now'),false);assert.equal(tools.includes('math.calculate'),true);
  }finally{first.close();second.close();await new Promise((resolve,reject)=>{const req=indexedDB.deleteDatabase(name);req.onsuccess=resolve;req.onerror=()=>reject(req.error);});}
 });
+
+test('agent note lookup by stable ID reads one IndexedDB record and preserves active-state filtering',async()=>{
+ const name='agent-note-lookup-'+crypto.randomUUID(),store=new KnowledgeStore(name);
+ try{
+  await store.initialize([{id:'source-note',path:'Notes/source.md',body:'Local source.',version:1,history:[]}]);
+  assert.deepEqual(await store.viewById('source-note'),{id:'source-note',path:'Notes/source.md',body:'Local source.',version:1,history:[],kind:'original',sources:[],paths:['Notes/source.md'],protected:false,managed:false});
+  assert.equal(await store.viewById('missing-note'),null);
+  assert.equal(await store.viewById(''),null);
+ }finally{store.close();await new Promise((resolve,reject)=>{const req=indexedDB.deleteDatabase(name);req.onsuccess=resolve;req.onerror=()=>reject(req.error);});}
+});
