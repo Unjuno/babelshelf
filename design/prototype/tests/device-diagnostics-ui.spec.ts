@@ -76,6 +76,18 @@ test('browser starts with a report-only App & storage check; every test type has
  await expect(page.getByRole('region',{name:'Check results · 13 areas'})).toBeVisible();
 });
 
+test('an active diagnostic keeps running and visible while moving to another app screen',async({page})=>{
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await page.evaluate(()=>{const cache=caches,keys=cache.keys.bind(cache);Object.defineProperty(cache,'keys',{configurable:true,value:()=>new Promise<string[]>(resolve=>{(window as any).__releaseDiagnosticCacheKeys=()=>void keys().then(resolve);})});});
+ await page.getByRole('button',{name:'Run app checks',exact:true}).click();await page.waitForFunction(()=>typeof (window as any).__releaseDiagnosticCacheKeys==='function');
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();
+ await expect(page.getByRole('status').filter({hasText:'Device check'})).toBeVisible();
+ await page.evaluate(()=>(window as any).__releaseDiagnosticCacheKeys());
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeEnabled({timeout:30_000});
+ await expect(page.getByRole('region',{name:'Last test overview · App & storage'})).toBeVisible();
+});
+
 test('focused Offline, Storage and Runtime diagnostics each show a result overview',async({page})=>{
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · App & storage',{exact:true}).click();
  for(const [label,button,focus] of [['Offline readiness','Check offline readiness','Offline cache'],['Storage health','Check storage','Browser storage'],['Runtime support','Check runtime support','GPU capability']] as const){
