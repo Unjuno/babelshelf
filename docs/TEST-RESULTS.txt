@@ -1,3 +1,17 @@
+2026-11-04 — Guard ordinary dialogue from internal tool/source leakage.
+Read-only review of the currently open public app showed old retained QA turns
+with internal tool syntax and source IDs. They were not edited or deleted and
+were not treated as a current-model reproduction. Code inspection found the
+plain `mode: chat` generation path lacked the internal-detail check used by
+grounded/native-agent replies. Added completed-answer validation, preview
+clearing, one content-only rewrite against the same dialogue, and fail-closed
+behavior if the rewrite remains invalid. The new integration regression failed
+before the change, then passed including the retry ceiling and streamed preview
+behavior. Validation: conversation 234/234; root 264/264; prototype 1,877/1,877;
+`npm run check`; production build `56675ea2af9c9039` with 165 verified assets;
+product acceptance 8/8. This does not establish real-model rewrite quality, and
+historical dialogue remains unchanged.
+
 2026-11-04 — Diagnose the supplied iPhone Full cycle report and publish the current app build.
 The report is from app build `48777327b2d5c402` in a Safari tab, not the Home
 Screen app. Its generic `Error` occurred at runtime setup after 1,764,321 ms;

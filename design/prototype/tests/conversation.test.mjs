@@ -303,6 +303,17 @@ test('dialogue-only generation has no knowledge-store dependency while keeping c
  await assert.rejects(groundedAnswer({store:store,engine:runtime},{model:'test',question:'What is in this file?',query:'',mode:'chat',context:context,check:()=>{},scope:({noteId:'file',revision:1}?{kind:'file',file:{noteId:'file',revision:1}}:{kind:'conversation'})}),/Knowledge read must not run/);assert.equal(reads,1);
 });
 
+test('dialogue-only answers repair internal tool and source identifiers before returning',async()=>{
+ const leaked='出典ノート ID は 2372af46-49ba-4e64-a365-4cafd14c3ee5 です。memory.read(query="meeting") から取得しました。';
+ const store={all:async()=>{throw Error('Knowledge store must not be read');},search:async()=>{throw Error('Knowledge search must not run');}};let calls=0,seen=[],previews=[];
+ const runtime={manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},loaded:'test',assets:{},count:async()=>({prompt_tokens:100}),generate:async(messages,budget,format,onPreview)=>{calls++;seen.push({messages,budget,format});const text=calls===1?leaked:'元資料の場所と内容を確認しました。';onPreview?.(text);return {text,finishReason:'stop'};}};
+ const result=await groundedAnswer({store,engine:runtime},{model:'test',question:'出典をたどって元資料を確認してください。',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'},onPreview:text=>previews.push(text)});
+ assert.equal(calls,2);assert.equal(result.answer,'元資料の場所と内容を確認しました。');assert.deepEqual(result.sources,[]);assert.equal(seen[0].format,'prose');assert.equal(seen[1].format,'prose');
+ assert.match(seen[1].messages[0].content,/internal implementation details/i);assert.doesNotMatch(result.answer,/memory\.read|sourceReferences|2372af46/);assert.ok(previews.includes(''),'untrusted streamed text is hidden when its internal identifiers are detected');assert.equal(previews.at(-1),result.answer);
+ let repeated=0;const stillLeaking={...runtime,generate:async(_messages,_budget,_format,onPreview)=>{repeated++;onPreview?.(leaked);return {text:leaked,finishReason:'stop'};}};
+ await assert.rejects(groundedAnswer({store,engine:stillLeaking},{model:'test',question:'出典をたどって元資料を確認してください。',mode:'chat',context:{summary:'',recent:[],refs:[]},scope:{kind:'conversation'}}),/Could not produce a safe answer/);assert.equal(repeated,2,'the answer repair is attempted only once');
+});
+
 test('failed answer generation reports only attempted-call timing to its observer',async()=>{
  const store={all:async()=>{throw Error('Knowledge read must not run');},search:async()=>{throw Error('Search must not run');}},metrics=[];
  const engine={manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime'}},loaded:'test',assets:{},count:async()=>({prompt_tokens:100}),generate:async()=>{throw Error('PRIVATE_MODEL_FAILURE');}};

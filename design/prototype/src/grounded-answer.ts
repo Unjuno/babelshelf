@@ -344,17 +344,33 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   recovery='verbatim-source';
   const {noteId,revision,start,end,quote,title}=source;return {answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
  };
+ let previewScannedLength=0,previewHasLeak=false;
+ const resetPreviewGuard=()=>{previewScannedLength=0;previewHasLeak=false;};
  const preview=mode==='chat'&&request.onPreview?(text:string)=>{
   check();let visible=cleanReasoningMarkup(text);
   const start=visible.lastIndexOf('<'),tail=visible.slice(start).toLowerCase();
   if(start>=0&&['<think','</think'].some(marker=>marker.startsWith(tail)))visible=visible.slice(0,start).trimEnd();
+  const bounded=visible.slice(0,32768),scanFrom=Math.max(0,previewScannedLength-512);
+  if(!previewHasLeak&&hasInternalImplementationLeak(bounded.slice(scanFrom),question,[]))previewHasLeak=true;
+  previewScannedLength=bounded.length;
   // A bounded UI projection must not abort otherwise valid long generation.
-  try{request.onPreview?.(visible.slice(0,32768));}catch{/* Presentation only. */}
+  try{request.onPreview?.(previewHasLeak?'':bounded);}catch{/* Presentation only. */}
  }:undefined;
  check();let generated=await engine.generate(messages,replyTokens,format,preview);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);
  let parsed:ParsedAnswer;
  if(mode==='chat'){
-  const answer=await continueDialogue(engine,messages,generated,replyTokens,outputLimits?.total??replyTokens,check,preview);
+  let answer=await continueDialogue(engine,messages,generated,replyTokens,outputLimits?.total??replyTokens,check,preview);
+  if(hasInternalImplementationLeak(answer,question,[])){
+   try{request.onPreview?.('');}catch{/* Clear an untrusted preview before retrying. */}
+   resetPreviewGuard();
+   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:message.content+' The previous response exposed internal implementation details. Rewrite the original answer naturally for the user. Omit tool names, record identifiers, source metadata and protocol fields unless the user explicitly asks for technical implementation details. Do not repeat or discuss the previous response; answer the original request from the supplied dialogue only.'}:message);
+   const retryPromptTokens=(await checkedAnswerCount(engine,retry,'prose')).prompt_tokens;check();
+   const retryAvailable=engine.manifest.contextTokens-retryPromptTokens,retryTokens=Math.min(replyTokens,retryAvailable),retryTotal=Math.min(outputLimits?.total??replyTokens,retryAvailable);
+   if(retryTokens<128||retryTotal<retryTokens)throw Error('Could not produce a safe answer · try again');
+   const repaired=await engine.generate(retry,retryTokens,'prose',preview);check();if(repaired.stopped)throw Error('Stopped');checkRepeatedOutput(repaired.text);
+   answer=await continueDialogue(engine,retry,repaired,retryTokens,retryTotal,check,preview);
+   if(hasInternalImplementationLeak(answer,question,[]))throw Error('Could not produce a safe answer · try again');
+  }
   parsed={answer:requestsOneSentence(question)?firstSentenceOnly(answer):answer,sources:[]};
  }
  else {

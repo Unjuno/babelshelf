@@ -109,6 +109,24 @@ Home Screen Full cycle is still needed to validate the runtime behavior on this
 specific iPhone and, if it gets past runtime setup, model acquisition and
 generation.
 
+### 2026-11-04 · validate internal details on the plain-dialogue route
+
+An existing public-page conversation displayed tool syntax and source
+identifiers in an older retained answer. That historical turn is not proof of
+current-model behavior, but inspection found that the ordinary `mode: chat`
+path returned generated prose without the internal-implementation validator
+used by grounded and native-agent answers. Plain dialogue now checks the
+completed answer, clears a flagged streaming preview, retries once against the
+same dialogue without the rejected answer, and fails closed if the rewrite
+still leaks. The regression failed before the fix and passes after it; it also
+checks preview clearing and the one-retry limit. Conversation tests passed
+234/234, the full prototype suite passed 1,877/1,877, root tests passed
+264/264, static checks passed, and the production shell built with 165 verified
+assets (`56675ea2af9c9039`); product acceptance passed 8/8. This is a bounded
+protocol-leak guard, not semantic correctness or live-model repair evidence.
+The historical dialogue was left unchanged; real-model behavior on the rebuilt
+app remains unverified.
+
 ### 2026-11-04 · split CI browser prerequisites for failure attribution
 
 Clean-checkout CI for `2194fc0` passed every stage in 21m52s
