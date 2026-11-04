@@ -232,6 +232,7 @@ export default function Prototype() {
  useEffect(()=>{const worker=navigator.serviceWorker,invalidate=()=>setRuntimeAssetsReady({});worker?.addEventListener('controllerchange',invalidate);return()=>worker?.removeEventListener('controllerchange',invalidate);},[]);
  const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false),deviceModelTestAbort=useRef<AbortController|null>(null);
  const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>(()=>typeof navigator!=='undefined'&&isStandalonePwa(typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches,(navigator as Navigator&{standalone?:boolean}).standalone)?'quick':'app');
+ const [deviceLargeContextTestConfirm,setDeviceLargeContextTestConfirm]=useState(false);
  const [deviceTestStage,setDeviceTestStage]=useState('');
  const [deviceTestElapsedMs,setDeviceTestElapsedMs]=useState(0),deviceTestStartedAt=useRef<number|null>(null);
  useEffect(()=>{if(!deviceTestRunning&&!deviceModelTesting)return;const started=deviceTestStartedAt.current??Date.now();const tick=()=>setDeviceTestElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[deviceTestRunning,deviceModelTesting]);
@@ -521,14 +522,15 @@ export default function Prototype() {
   try{let report=await collectDeviceReport();const marker=completeOfflineRestart?readOfflineRestartMarker(localStorage):null;
    if(marker)report=completeOfflineRestartReport(report,marker);
    if(marker?.modelTestRequested){
-    if(model&&model===marker.modelTestModel&&bonsai.assets[model]?.filesPresent){const modelReport=await runDeviceModelTest(report,marker.modelTestMode??'quick');if(modelReport){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);return;}const identity=textExecutionIdentity(model,modelPreferences.customModels);report.modelGeneration={status:'not-run',model,modelRevision:identity?.revision??'custom',runtimeRevision:identity?.runtimeRevision??'unknown',failureType:decision.loaded?'another-model-loaded':'model-test-not-run'};report.scope.push(decision.loaded?'The selected model test was not run because the Decision model is already loaded; no other model was unloaded.':'The requested model test could not start; no model was loaded or changed.');}
+    if(model&&model===marker.modelTestModel&&bonsai.assets[model]?.filesPresent){const modelReport=await runDeviceModelTest(report,marker.modelTestMode??'quick');if(modelReport){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);return;}const identity=textExecutionIdentity(model,modelPreferences.customModels),largeContext=requiresLargeContextLoadConfirmation(model,modelPreferences.customModels.some(item=>item.id===model),modelPreferences.lfm3ContextTokens);report.modelGeneration={status:'not-run',model,modelRevision:identity?.revision??'custom',runtimeRevision:identity?.runtimeRevision??'unknown',failureType:decision.loaded?'another-model-loaded':largeContext?'large-context-confirmation-required':'model-test-not-run'};report.scope.push(decision.loaded?'The selected model test was not run because the Decision model is already loaded; no other model was unloaded.':largeContext?'The model test was not resumed because a large context now requires explicit confirmation in Developer. No model was loaded.':'The requested model test could not start; no model was loaded or changed.');}
     else {const requested=marker.modelTestModel??model??'unknown',identity=textExecutionIdentity(requested,modelPreferences.customModels);report.modelGeneration={status:'not-run',model:requested,modelRevision:identity?.revision??'custom',runtimeRevision:identity?.runtimeRevision??'unknown',failureType:!model?'no-model-selected':model!==requested?'selected-model-changed':'model-files-not-ready'};report.scope.push('A model test was explicitly requested before restart but the exact selected model was unavailable; no model was loaded.');}
    }
    const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);if(marker){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);}
   }catch(error){toast((error as Error).message||'Device test failed');}finally{setDeviceTestRunning(false);}
  }
- async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceModelTestMode='quick',runStartedAt=performance.now()):Promise<DeviceDiagnosticReport|null>{
+ async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceModelTestMode='quick',runStartedAt=performance.now(),largeContextConfirmed=false):Promise<DeviceDiagnosticReport|null>{
   if(deviceModelTesting||!model)return null;
+  if(requiresLargeContextLoadConfirmation(model,modelPreferences.customModels.some(item=>item.id===model),modelPreferences.lfm3ContextTokens)&&!largeContextConfirmed){toast('Large context test not started · confirm in Developer');return null;}
   if(decision.loaded){toast('Unload the Decision model before testing the selected Text model');return null;}
   const fullCycle=testMode==='full-cycle',filesPresentAtStart=!!bonsai.assets[model]?.filesPresent;
   if(!filesPresentAtStart&&!fullCycle){toast('Prepare the selected model before testing it');return null;}
@@ -587,14 +589,16 @@ export default function Prototype() {
   try{const saved=readSavedDeviceTestReport(localStorage);if(!saved)throw Error('Baseline report unavailable');const report=completeInterruptedOfflineRestartReport(JSON.parse(saved),marker),text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);toast('Device test interrupted · not repeated');}
   catch{try{clearOfflineRestartMarker(localStorage);}catch{}setOfflineRestartMarker(null);toast('Device test interrupted · start a new check when ready');}
  }
- async function runAllDeviceTests(){
+ async function runAllDeviceTests(largeContextConfirmed=false){
   if(deviceSuiteLock.current||deviceTestRunning||deviceModelTesting)return;
+  if(['quick','performance','full-cycle'].includes(deviceTestMode)&&requiresLargeContextLoadConfirmation(model,modelPreferences.customModels.some(item=>item.id===model),modelPreferences.lfm3ContextTokens)&&!largeContextConfirmed){setDeviceLargeContextTestConfirm(true);return;}
+  setDeviceLargeContextTestConfirm(false);
   deviceSuiteLock.current=true;setDeviceTestReport('');setDeviceTestRunning(true);setDeviceTestStage('Checking device…');const runStartedAt=performance.now();
   try{
    const result=await startDeviceTestSuite({collect:collectDeviceReport,
     save:async report=>{const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);},
     arm:async marker=>{writeOfflineRestartMarker(localStorage,marker);offlineRestartStartedInPage.current=true;setOfflineRestartMarker(marker);},
-    testModel:(report,mode)=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report,mode,runStartedAt),
+    testModel:(report,mode)=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report,mode,runStartedAt,largeContextConfirmed),
    },deviceTestMode);
    toast(result.marker?'Checks saved · restart the Home Screen app':'Tests complete · copy report');
   }catch(error){toast((error as Error).message||'Device test failed');}
@@ -1359,6 +1363,11 @@ export default function Prototype() {
  onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
  deviceTestElapsedMs={deviceTestElapsedMs}
+ largeContextTestConfirm={deviceLargeContextTestConfirm}
+ largeContextTestTokens={modelPreferences.lfm3ContextTokens}
+ onCancelLargeContextTest={()=>setDeviceLargeContextTestConfirm(false)}
+ onOpenModelSettings={()=>{setDeviceLargeContextTestConfirm(false);openModelSettings('text');}}
+ onContinueLargeContextTest={()=>void runAllDeviceTests(true)}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={stopAssets}
  offlineRestartMarker={offlineRestartMarker}
@@ -1396,6 +1405,11 @@ export default function Prototype() {
  onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
  deviceTestElapsedMs={deviceTestElapsedMs}
+ largeContextTestConfirm={deviceLargeContextTestConfirm}
+ largeContextTestTokens={modelPreferences.lfm3ContextTokens}
+ onCancelLargeContextTest={()=>setDeviceLargeContextTestConfirm(false)}
+ onOpenModelSettings={()=>{setDeviceLargeContextTestConfirm(false);openModelSettings('text');}}
+ onContinueLargeContextTest={()=>void runAllDeviceTests(true)}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={stopDeviceModelTest}
  offlineRestartMarker={offlineRestartMarker}
