@@ -8,7 +8,7 @@ import {initialPreparationPlan} from '../src/initial-preparation.ts';
 import {settings} from '../src/app-settings.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-speech','text-image','text-vision','local-text-media','text-image-audio','text-image-audio-q8','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -21,13 +21,10 @@ test('model sets only reference adapters already connected to app-owned local ru
  assert.equal(matchingModelSet(readPreference('models',initialPreferenceNotes))?.id,'lfm3-1.7b-qad-q4-0');
 });
 
-test('model set grouping separates text choices, added input roles, combined sets and saved sets without changing stored records',()=>{
+test('model set grouping separates text choices, the complete local set and saved sets without changing stored records',()=>{
  assert.equal(modelSetGroup('lfm3-1.7b-qad-q4-0'),'Text models');
  assert.equal(modelSetGroup('bonsai-9b-text'),'Text models');
- assert.equal(modelSetGroup('text-speech'),'Input sets');
- assert.equal(modelSetGroup('text-vision'),'Input sets');
- assert.equal(modelSetGroup('text-image-audio'),'Combined sets');
- assert.equal(modelSetGroup('local-full'),'Combined sets');
+ assert.equal(modelSetGroup('local-full'),'Complete local set');
  assert.equal(modelSetGroup('user-reading-2'),'Saved by you');
  assert.throws(()=>modelSetGroup('unknown'),/Unknown model set/);
  const notes=structuredClone(initialPreferenceNotes),set=createUserModelSet(readPreference('models',notes),'Reading','Text only');
@@ -44,13 +41,7 @@ test('task presets expose connected text choices without implying device verific
   'bonsai-2b-text':['2B','','','',''],
   'bonsai-4b-text':['4B','','','',''],
   'bonsai-9b-text':['9B','','','',''],
-  'text-speech':['lfm3-1.7b-qad-q4-0','','whisper-tiny','',''],
-  'text-image':['lfm3-1.7b-qad-q4-0','','','tesseract-7',''],
-  'text-vision':['lfm3-1.7b-qad-q4-0','','','','lfm25-vl-450m-q4f16'],
-  'local-text-media':['lfm3-1.7b-qad-q4-0','','whisper-tiny','tesseract-7',''],
-  'text-image-audio':['lfm3-1.7b-qad-q4-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
-  'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
-  'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7',''],
+  'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
  };
  for(const set of modelSets){
   const model=set.models;
@@ -64,8 +55,8 @@ test('task presets expose connected text choices without implying device verific
  assert.equal(modelSets.find(set=>set.id==='lfm3-1.7b-q8-0').detail,'Text · WebGPU first · 1.85 GB');
  const d1=settings.models.decision.find(model=>model.value==='d1-omni-600M');
  assert.equal(d1.label,'Open d1 · 600M · Text decision');
- assert.equal(modelSets.find(set=>set.id==='local-full').label,'Text + voice + OCR + decision');
- assert.match(modelSets.find(set=>set.id==='local-full').detail,/text decisions only · no image understanding/);
+ assert.equal(modelSets.find(set=>set.id==='local-full').label,'Full local set');
+ assert.equal(modelSets.find(set=>set.id==='local-full').models.visionModel,'lfm25-vl-450m-q4f16');
  assert.equal(modelSets.some(set=>set.models.decisionModel==='d1-3B'),false);
  assert.equal(modelSets.some(set=>set.models.transcriptionModel==='whisper-base'),false);
  assert.equal(modelSets.some(set=>['lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0'].includes(set.models.textModel)),false);
@@ -75,9 +66,9 @@ test('applying a set changes only model selections and adds their registered cat
  const original=structuredClone(initialPreferenceNotes),before=readPreference('models',original);
  const next=updatePreference('models',original,current=>applyModelSet(current,'local-full'));
  const after=readPreference('models',next);
- assert.deepEqual({text:after.textModel,decision:after.decisionModel,speech:after.transcriptionModel,ocr:after.ocrModel,vision:after.visionModel},{text:'lfm3-1.7b-qad-q4-0',decision:'d1-omni-600M',speech:'whisper-tiny',ocr:'tesseract-7',vision:''});
+ assert.deepEqual({text:after.textModel,decision:after.decisionModel,speech:after.transcriptionModel,ocr:after.ocrModel,vision:after.visionModel},{text:'lfm3-1.7b-qad-q4-0',decision:'d1-omni-600M',speech:'whisper-tiny',ocr:'tesseract-7',vision:'lfm25-vl-450m-q4f16'});
  assert.ok(after.textLibrary.includes('lfm3-1.7b-qad-q4-0'));assert.ok(after.decisionLibrary.includes('d1-omni-600M'));
- assert.ok(after.transcriptionLibrary.includes('whisper-tiny'));assert.ok(after.ocrLibrary.includes('tesseract-7'));
+ assert.ok(after.transcriptionLibrary.includes('whisper-tiny'));assert.ok(after.ocrLibrary.includes('tesseract-7'));assert.ok(after.visionLibrary.includes('lfm25-vl-450m-q4f16'));
  for(const key of Object.keys(before))if(!['textModel','decisionModel','transcriptionModel','ocrModel','visionModel','textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary','visionLibrary'].includes(key))assert.deepEqual(after[key],before[key],key);
  assert.equal(next.find(n=>n.id==='settings-models').version,2);
  assert.equal(matchingModelSet(after)?.id,'local-full');
@@ -179,27 +170,14 @@ test('every visible standard set reports its cold model asset bytes before selec
  assert.ok(sizes.get('bonsai-4b-text')>sizes.get('bonsai-2b-text'));
  assert.ok(sizes.get('bonsai-9b-text')>sizes.get('bonsai-4b-text'));
  assert.ok(sizes.get('local-full')>sizes.get('bonsai-4b-text'));
- assert.ok(sizes.get('text-image-audio')>sizes.get('local-text-media'));
  assert.deepEqual(before,snapshot);
  assert.equal(readPreference('connection',initialPreferenceNotes).downloads,false);
 });
 
-test('image and audio set prepares only its selected local readers',()=>{
- const selected=applyModelSet(readPreference('models',initialPreferenceNotes),'text-image-audio');
- assert.equal(matchingModelSet(selected)?.id,'text-image-audio');
+test('complete local set prepares only its selected readers',()=>{
+ const selected=applyModelSet(readPreference('models',initialPreferenceNotes),'local-full');
+ assert.equal(matchingModelSet(selected)?.id,'local-full');
  const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,vision:false});
- assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','vision']);
- assert.equal(plan.steps.some(step=>step.role==='decision'),false);
- assert.equal(plan.bytes,modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'text-image-audio'));
-});
-
-test('Q8 can be selected with image and audio without changing existing model preferences',()=>{
- const before=readPreference('models',initialPreferenceNotes),snapshot=structuredClone(before);
- const selected=applyModelSet(before,'text-image-audio-q8');
- assert.equal(selected.textModel,'lfm3-1.7b-q8-0');assert.equal(selected.transcriptionModel,'whisper-tiny');
- assert.equal(selected.ocrModel,'tesseract-7');assert.equal(selected.visionModel,'lfm25-vl-450m-q4f16');assert.equal(selected.decisionModel,'');
- assert.deepEqual(before,snapshot);assert.equal(readPreference('connection',initialPreferenceNotes).downloads,false);
- assert.equal(matchingModelSet(selected)?.id,'text-image-audio-q8');
- const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,vision:false});
- assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','vision']);assert.equal(plan.bytes,modelSetAssetBytes(before,'text-image-audio-q8'));
+ assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','decision','vision']);
+ assert.equal(plan.bytes,modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'local-full'));
 });

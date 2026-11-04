@@ -4,17 +4,14 @@ import type {Preferences,ModelSetSelection,UserModelSet} from './preference-reco
 
 export type ModelSetId=string;
 export type ModelSet=UserModelSet;
-export type ModelSetGroup='Text models'|'Input sets'|'Combined sets'|'Saved by you';
+export type ModelSetGroup='Text models'|'Complete local set'|'Saved by you';
 
 const textModelSetIds=new Set(['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text']);
-const inputSupportSetIds=new Set(['text-speech','text-image','text-vision']);
-const combinedSetIds=new Set(['local-text-media','text-image-audio','text-image-audio-q8','local-full']);
 
 /** Presentation-only grouping; persisted custom-set records keep their existing schema. */
 export function modelSetGroup(id:string):ModelSetGroup{
  if(textModelSetIds.has(id))return 'Text models';
- if(inputSupportSetIds.has(id))return 'Input sets';
- if(combinedSetIds.has(id))return 'Combined sets';
+ if(id==='local-full')return 'Complete local set';
  if(/^user-[a-z0-9-]+$/.test(id))return 'Saved by you';
  throw Error('Unknown model set');
 }
@@ -27,13 +24,7 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'bonsai-2b-text',label:'Bonsai 2 · 2B',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-4b-text',label:'Bonsai 2 · 4B',detail:'Text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-9b-text',label:'Bonsai 2 · 9B',detail:'Text only · PC prose unstable',models:{textModel:'9B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
- {id:'text-speech',label:'Text + speech',detail:'LFM3 QAD Q4_0 · Whisper tiny',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'',visionModel:''}},
- {id:'text-image',label:'Text + OCR',detail:'LFM3 QAD Q4_0 · Tesseract 7 · image text only',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'tesseract-7',visionModel:''}},
- {id:'text-vision',label:'Text + vision',detail:'LFM3 QAD Q4_0 · LFM2.5-VL 450M',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'lfm25-vl-450m-q4f16'}},
- {id:'local-text-media',label:'Text + capture',detail:'LFM3 QAD Q4_0 · Whisper tiny · Tesseract 7 · no image understanding',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
- {id:'text-image-audio',label:'Text + image + audio',detail:'LFM3 QAD Q4_0 · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · sampled video frames',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
- {id:'text-image-audio-q8',label:'Text + image + audio · Q8',detail:'LFM3 Q8_0 · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · device fit not checked',models:{textModel:'lfm3-1.7b-q8-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
- {id:'local-full',label:'Text + voice + OCR + decision',detail:'LFM3 text · Whisper tiny · Tesseract 7 · d1 text decisions only · no image understanding',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:''}},
+ {id:'local-full',label:'Full local set',detail:'LFM3 · Decision · Speech · OCR · Vision',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
 ]);
 
 const connected=(set:ModelSet,value?:Preferences['models'])=>{

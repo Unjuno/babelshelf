@@ -171,8 +171,7 @@ test('current model choices can be saved as a Memory-backed model set and remain
  await page.getByRole('button',{name:/Model set ·/}).click();
  await expect(page.getByRole('heading',{name:'Model set'})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Text models',exact:true})).toBeVisible();
- await expect(page.getByRole('heading',{name:'Input sets',exact:true})).toBeVisible();
- await expect(page.getByRole('heading',{name:'Combined sets',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Complete local set',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Save current as set'}).click();
  await page.getByRole('textbox',{name:'Model set name'}).fill('My reading setup');
  await page.getByRole('textbox',{name:'Model set detail'}).fill('Text only');
