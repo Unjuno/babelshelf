@@ -32,7 +32,7 @@
     "hash-wasm": "4.12.0",
     "mediabunny": "1.61.6",
     "motion": "12.42.2",
-    "onnxruntime-web-d1": "npm:onnxruntime-web@1.31.0-dev.20260914-8d85527a0",
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
     "pdfjs-dist": "6.4.299",
     "quickjs-emscripten": "0.32.0",
     "react": "19.2.7",

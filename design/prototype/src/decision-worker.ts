@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
-import * as ort from 'onnxruntime-web-d1/webgpu';
-import wasmURL from '../node_modules/onnxruntime-web-d1/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
-import mjsURL from '../node_modules/onnxruntime-web-d1/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
+import * as ort from 'onnxruntime-web/webgpu';
+import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
+import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
 import {PreTrainedTokenizer,env} from '@huggingface/transformers';
 import {decisionManifest,decisionModelDescriptor,decisionStatus,prepareDecision,readDecisionFile,readCustomDecisionFile} from './decision-assets';
 import type {CustomDecisionModel} from './preference-records';
