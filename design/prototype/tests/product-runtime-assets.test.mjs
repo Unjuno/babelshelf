@@ -5,7 +5,9 @@ import {prepareProductRuntimeAssets,productRuntimeAssetInput,productRuntimeProgr
 test('runtime progress names the current asset count and cumulative verified bytes read',()=>{
  assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:0,total:2,bytes:1048576}),'Runtime · 0/2 · 1.0 MB read');
  assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:1,total:2,bytes:16777216}),'Runtime · 1/2 · 16.7 MB read');
+ assert.equal(productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:1,total:4,bytes:16777216,totalBytes:33554432}),'Runtime · 50% · 16.7 / 33.5 MB');
  assert.throws(()=>productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:3,total:2,bytes:1}),/Invalid runtime progress/);
+ assert.throws(()=>productRuntimeProgressLabel({status:'progress',role:'text-lfm3',completed:0,total:2,bytes:5,totalBytes:4}),/Invalid runtime progress/);
 });
 
 function fakeChannel(){const state={};const port1={onmessage:null,closed:false,close(){this.closed=true;}},port2={};state.channel={port1,port2};return state;}

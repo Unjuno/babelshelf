@@ -137,7 +137,7 @@ test('runtime preparation reports actual incoming bytes before the file complete
  const source={type:'window',id:'tab-a',url:origin+'/'},replies=[];let work,first;
  const gotProgress=new Promise(resolve=>{first=resolve;});
  h.handlers.message({source,data:{type:'prepare-product-assets',role:'speech',operationId:'stream-op-0001',acquire:true},ports:[{postMessage:value=>{replies.push(value);if(value.status==='progress'&&value.completed===0)first();}}],waitUntil:value=>work=value});
- let timer;try{await Promise.race([gotProgress,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No partial progress')),2000);})]);assert.equal(replies[0].bytes,3);}finally{clearTimeout(timer);resume();}
+ let timer;try{await Promise.race([gotProgress,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('No partial progress')),2000);})]);assert.equal(replies[0].bytes,3);assert.equal(replies[0].totalBytes,7);}finally{clearTimeout(timer);resume();}
  await work;assert.equal(replies.at(-1).status,'prepared');assert.equal(replies.at(-1).bytes,7);assert.equal(replies.at(-1).downloadedBytes,7);
 });
 test('runtime preparation failure reports the partial verified-stream transfer size',async()=>{
