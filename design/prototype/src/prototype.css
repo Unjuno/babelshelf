@@ -349,6 +349,9 @@ button.model-picker svg{flex-shrink:0}
 .preview-toast{display:flex;align-items:center;justify-content:center}
 .preview-toast.is-model-loading{flex-wrap:wrap}
 .model-load-feedback{display:flex;flex:1 1 100%;min-width:120px;flex-direction:column;gap:5px;align-items:stretch;font-size:.75rem;text-align:left}
+.context-load-confirm{margin:10px 0 14px;padding:14px;border:1px solid #8fa69a;border-radius:12px;background:#f1f6f2;font-size:.9rem}
+.context-load-confirm p{margin:6px 0 10px;font-size:.875rem;line-height:1.45}
+.device-screen:has(.appearance-dark) .context-load-confirm{background:#233a30;color:#eef8f1;border-color:#668574}
 .model-load-feedback-heading{display:flex;justify-content:space-between;gap:10px;align-items:center}
 .model-load-feedback-heading time{font-variant-numeric:tabular-nums;white-space:nowrap;color:#53645c}
 .model-load-guidance{font-size:.6875rem;line-height:1.35;color:#53645c}
