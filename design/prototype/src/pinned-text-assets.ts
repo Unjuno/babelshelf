@@ -7,6 +7,9 @@ type Manifest={id:string;revision:string;runtime:{revision:string};files:Pin[]};
 type IO={directory:()=>Promise<FileSystemDirectoryHandle>;fetch:typeof fetch};
 type Progress=(bytes:number,total:number)=>void;
 class PinnedAssetVerificationError extends Error {constructor(){super('Asset verification failed');}}
+// Large GGUF files are fetched in bounded, durable ranges. Closing each range
+// commits it to OPFS, so a later attempt can continue after the last full range.
+const resumableGgufRangeBytes=16*1024*1024;
 export function createPinnedAssetStore(manifest:Manifest,io:IO){
  const pins=structuredClone(manifest);
  if(!/^[a-z0-9](?:[a-z0-9._-]{0,78}[a-z0-9])?$/.test(pins.id)||!/^[a-f0-9]{40}$/.test(pins.revision)||!pins.runtime.revision||!pins.files.length||pins.files.length>64)throw Error('Invalid pinned manifest');
@@ -51,6 +54,37 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
     // A single-file GGUF remains identifiable by its pinned size and digest
     // even if the user renamed it. Multi-file packages still require names.
     if(!matches.length&&pins.files.length===1&&localFiles.length===1&&pin.path.toLowerCase().endsWith('.gguf')&&localFiles[0].name.toLowerCase().endsWith('.gguf'))matches.push(localFiles[0]);
+     if(!matches.length&&pin.path.toLowerCase().endsWith('.gguf')&&pin.bytes>resumableGgufRangeBytes){
+      if(!allowNetwork)throw Error('Downloads are off');
+      stopped(signal);const directory=await io.directory();stopped(signal);const handle=await directory.getFileHandle(pin.sha256,{create:true});stopped(signal);
+      let existing=await handle.getFile(),offset=existing.size;
+      if(offset===pin.bytes){try{await verify(pin,existing,signal,progress);continue;}catch(error){stopped(signal);if(!(error instanceof PinnedAssetVerificationError))throw error;const reset=await handle.createWritable({keepExistingData:true});try{await reset.truncate(0);await reset.close();}catch(resetError){await reset.abort().catch(()=>{});throw resetError;}existing=await handle.getFile();offset=existing.size;}}
+      // Only complete, aligned ranges from this protocol are resumable. A
+      // legacy or malformed partial is truncated before requesting the model.
+      if(offset>pin.bytes||offset%resumableGgufRangeBytes!==0){const reset=await handle.createWritable({keepExistingData:true});try{await reset.truncate(0);await reset.close();}catch(error){await reset.abort().catch(()=>{});throw error;}existing=await handle.getFile();offset=existing.size;}
+      if(offset)progress(offset,pin.bytes);
+      downloadedAssets++;
+      while(offset<pin.bytes){
+       const start=offset,end=Math.min(pin.bytes-1,start+resumableGgufRangeBytes-1),expected=end-start+1,range=`bytes ${start}-${end}/${pin.bytes}`;
+       stopped(signal);const response=await io.fetch(pin.url,{signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',headers:{Range:`bytes=${start}-${end}`}});stopped(signal);
+       const reader=response.body?.getReader();
+       if(response.status!==206||!reader){await response.body?.cancel().catch(()=>{});throw Error('Resumable GGUF download requires range requests');}
+       if(response.headers.get('content-range')!==range){await reader.cancel().catch(()=>{});reader.releaseLock();throw Error('GGUF download range changed');}
+       const length=response.headers.get('content-length');if(length&&Number(length)!==expected){await reader.cancel().catch(()=>{});reader.releaseLock();throw Error('GGUF download range size changed');}
+       let writer:FileSystemWritableFileStream|undefined,received=0,closed=false;
+       try{
+        writer=await handle.createWritable({keepExistingData:true});await writer.seek(start);await writer.truncate(start);stopped(signal);
+        while(true){stopped(signal);const part=await reader.read();stopped(signal);if(part.done)break;if(part.value.byteLength>expected-received)throw Error('GGUF range exceeds requested size');await writer.write(part.value.slice().buffer);received+=part.value.byteLength;downloadedBytes+=part.value.byteLength;progress(start+received,pin.bytes);}
+        if(received!==expected)throw Error('GGUF range incomplete');stopped(signal);await writer.close();writer=undefined;closed=true;offset=end+1;
+       }finally{
+        if(writer)await writer.abort().catch(()=>{});
+        await reader.cancel().catch(()=>{});reader.releaseLock();
+       }
+       if(!closed)throw Error('GGUF range was not committed');
+      }
+      stopped(signal);const complete=await handle.getFile();
+      try{await verify(pin,complete,signal,progress);continue;}catch(error){stopped(signal);if(!(error instanceof PinnedAssetVerificationError))throw error;const reset=await handle.createWritable({keepExistingData:true});try{await reset.truncate(0);await reset.close();}catch(resetError){await reset.abort().catch(()=>{});throw resetError;}throw error;}
+     }
      let source:ReadableStream<Uint8Array>|undefined,networkSource=false;
     let writer:FileSystemWritableFileStream|undefined;
     let reader:ReadableStreamDefaultReader<Uint8Array>|undefined;

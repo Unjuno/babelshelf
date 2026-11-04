@@ -31,6 +31,21 @@ test('pinned assets never acquire missing data during read or offline preparatio
 test('pinned preparation counts network transfer bytes and reports local reuse as zero',async()=>{
  const f=fixture(),signal=new AbortController().signal;const first=await f.store.prepare(true,signal);assert.deepEqual(first,{downloadedBytes:3,downloadedAssets:1,assetCount:1});const second=await f.store.prepare(true,signal);assert.deepEqual(second,{downloadedBytes:0,downloadedAssets:0,assetCount:1});assert.equal(f.fetches,1);
 });
+test('large pinned GGUF resumes after an interrupted request from its last committed range',async()=>{
+ const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+37);for(let i=0;i<all.length;i++)all[i]=i%251;
+ const digest=createHash('sha256').update(all).digest('hex'),pin={path:'model.gguf',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/model.gguf',bytes:all.length,sha256:digest},files=new Map(),ranges=[];
+ const handle={async getFile(){return files.get(digest)??new Blob([]);},async createWritable(){let data=new Uint8Array(await (files.get(digest)??new Blob([])).arrayBuffer()),position=0;return {async seek(value){position=value;},async truncate(value){data=data.slice(0,value);position=Math.min(position,value);},async write(value){const chunk=new Uint8Array(value),next=new Uint8Array(Math.max(data.length,position+chunk.length));next.set(data);next.set(chunk,position);data=next;position+=chunk.length;},async close(){files.set(digest,new Blob([data]));},async abort(){}};}};
+ const directory={async getFileHandle(name,{create=false}={}){assert.equal(name,digest);if(!create&&!files.has(name))throw new DOMException('missing','NotFoundError');return handle;}};
+ const manifest={id:'lfm3-1.7b-qad-q4-0',revision:'a'.repeat(40),runtime:{revision:'test-runtime'},files:[pin]};let secondRangeAttempts=0;
+ const fetch=async(_url,options)=>{const range=options.headers.Range,m=/bytes=(\d+)-(\d+)/.exec(range),start=Number(m[1]),end=Number(m[2]);ranges.push(range);const headers={'content-range':`bytes ${start}-${end}/${all.length}`,'content-length':String(end-start+1)};
+  if(start===rangeBytes&&secondRangeAttempts++===0){let sent=false;return new Response(new ReadableStream({pull(controller){if(!sent){sent=true;controller.enqueue(all.subarray(start,start+5));}else controller.error(new TypeError('connection reset'));}}),{status:206,headers});}
+  return new Response(all.subarray(start,end+1),{status:206,headers});
+ };
+ const store=createPinnedAssetStore(manifest,{directory:async()=>directory,fetch}),signal=new AbortController().signal;
+ await assert.rejects(store.prepare(true,signal),/connection reset/);assert.equal(files.get(digest).size,rangeBytes,'only the complete first range is durable');
+ const resumed=await store.prepare(true,signal);assert.equal(resumed.downloadedBytes,37);assert.deepEqual(ranges,[`bytes=0-${rangeBytes-1}`,`bytes=${rangeBytes}-${all.length-1}`,`bytes=${rangeBytes}-${all.length-1}`]);
+ assert.equal((await store.status(signal)).filesPresent,true);assert.deepEqual(new Uint8Array(await(await store.read('model.gguf',signal)).arrayBuffer()),all);
+});
 test('explicit local import is verified, restart status is declarative and reads rehash retained bytes',async()=>{
  const f=fixture(),signal=new AbortController().signal;await f.store.prepare(false,signal,()=>{},[new File([bytes],'model_quantized.onnx')]);assert.equal(f.fetches,0);assert.equal((await f.store.status(signal)).filesPresent,true);assert.deepEqual(new Uint8Array(await(await f.store.read('onnx/model_quantized.onnx',signal)).arrayBuffer()),bytes);
  f.files.set(sha256,new Blob([new Uint8Array([3,2,1])]));await assert.rejects(f.store.read('onnx/model_quantized.onnx',signal),/verification/);assert.equal(f.fetches,0);
