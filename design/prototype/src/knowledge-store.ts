@@ -20,7 +20,6 @@ import {updateActivity,validateActivity} from './harness-activity.ts';
 import {TURN_ACTIVITY_PAGE_SIZE,turnActivityMetaKey,turnActivityPageKey,turnActivityIndexKey,turnActivityPagePrefix,validateTurnActivityMeta,validateTurnActivityPage,validateTurnActivityIndex,type TurnActivityMeta,type TurnActivityPage,type TurnActivityIndex} from './turn-activity-pages.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
 import {deletionContents,canRestore} from './memory-trash.ts';
-import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
@@ -158,7 +157,6 @@ export class KnowledgeStore {
    try{const records=q.result;for(const seed of defaults){if(records.some(n=>n.id===seed.id))continue;
     const note={...createNote({title:seed.path.split('/').at(-1),body:seed.body,path:seed.path}),id:seed.id,ui:{protected:!!seed.protected,managed:!!seed.managed}};records.push(note);store.add(note);
    }
-   for(const update of builtinToolUpdates(records,defaults)){records[records.findIndex(n=>n.id===update.id)]=update;store.put(update);}
    // Connection mode is a durable user preference. Offline remains the default,
    // but a deliberate Online choice must survive a normal PWA restart/reload.
    // Malformed settings are retained for explicit recovery; never rewrite user data here.
