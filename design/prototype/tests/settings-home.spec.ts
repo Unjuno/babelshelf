@@ -73,6 +73,19 @@ test('pinned LFM3 context window is selectable and persists without loading mode
  await expect(page.getByText('Loaded',{exact:true})).toHaveCount(0);
 });
 
+test('LFM3 runtime has a separate visible prepare or local-check action',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ const text=page.locator('[data-model-role="text"]');
+ await expect(text.getByRole('button',{name:'Text model',exact:true})).toContainText('LFM3');
+ const runtime=text.locator('.model-preparation').nth(1);
+ await expect(runtime).toContainText('Runtime ·');
+ await expect(runtime.getByRole('button')).toHaveAttribute('aria-label',/^(Prepare text runtime|Check local text runtime files|Check text runtime)$/);
+ await expect(runtime.getByRole('button')).toBeVisible();
+});
+
 test('older schema-1 settings keep the selected model until an explicit edit adds a history revision',async({page})=>{
  await page.goto('/');await expect(page.getByRole('button',{name:'Input',exact:true})).toBeVisible();
  const legacyBody=await page.evaluate(async()=>{

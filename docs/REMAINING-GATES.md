@@ -1,5 +1,21 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · make LFM3 runtime preparation visible on its own
+
+Models now shows the selected text engine's runtime state and a separate
+runtime-only Prepare / Check action, with Stop while it runs. This uses the
+existing pinned runtime cache operation and does not fetch model weights. The
+Initial setup flow remains available for users who want the selected set
+prepared together. The LFM3 runtime is 27,562,631 bytes across four optional,
+hash-pinned assets; the selected Q4 model file is about 1.05 GB. Production
+acceptance confirms the runtime worker is included in the app shell while the
+runtime itself stays on demand and its retry chunks reassemble to the pinned
+asset. Settings browser coverage passed 12/12; full prototype tests passed
+1,883/1,883; root check passed; production app build verified 165 assets; app
+acceptance passed 9/9. This validates preparation UX and packaging, not a fresh
+LFM3 generation or iPhone runtime success. The supplied iPhone report stopped
+before model-weight preparation and generation.
+
 ### 2026-11-04 · verify a real model load across an app-screen change
 
 On the public Windows/Chrome PWA (active build `76f88c05662d96e0`), the
