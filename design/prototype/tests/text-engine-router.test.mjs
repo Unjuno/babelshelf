@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {TextEngineRouter} from '../src/text-engine-router.ts';
 import {customLfm3TextModels,describeLfm3Text,lfm3TextModels} from '../src/lfm3-text-manifest.ts';
 import {onnxTextManifest,onnxTextModels} from '../src/text-model-manifest.ts';
-import {createOnnxTextClient} from '../src/onnx-text-client.ts';
+import {createIsolatedTextClient} from '../src/isolated-text-client.ts';
 import {Engine} from '../../../dist/engine.js';
 import {nativeOutputRequest} from '../src/native-output-format.ts';
 import {nativeResponseTools,nativeResponseText} from '../../../dist/native-response.js';
@@ -214,14 +214,14 @@ test('Stop during ONNX load discards worker and rejects late completion without 
 });
 test('ONNX client Stop rejects pending work, ignores late result and requires a new client',async()=>{
  const sent=[],worker={postMessage(m){sent.push(m);},terminate(){this.terminated=true;}};
- const client=createOnnxTextClient(worker),pending=client.load(onnxTextManifest.id);client.abort();worker.onmessage({data:{id:sent[0].id,type:'done',value:true}});
+ const client=createIsolatedTextClient(worker),pending=client.load(onnxTextManifest.id);client.abort();worker.onmessage({data:{id:sent[0].id,type:'done',value:true}});
  await assert.rejects(pending,/Stopped/);assert.equal(client.loaded,null);assert.equal(worker.terminated,true);await assert.rejects(client.call('status'),/Stopped/);assert.equal(sent.length,1);
 });
 
 test('Stop during optional status permits a fresh explicit configure and load',async()=>{
  const workers=[];
  const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
- const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createOnnxTextClient(worker);});
+ const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createIsolatedTextClient(worker);});
  await router.init();assert.equal(workers.length,0);
  const first=router.call('configure',{models:[]});await Promise.resolve();await Promise.resolve();assert.equal(workers.length,1);router.abort();await assert.rejects(first,/Stopped/);
  const next=router.call('configure',{models:[]});await Promise.resolve();await Promise.resolve();assert.equal(workers.length,2);
@@ -231,7 +231,7 @@ test('Stop during optional status permits a fresh explicit configure and load',a
 test('worker failure permits a fresh explicit load; old worker results cannot resurrect identity',async()=>{
  const workers=[];
  const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
- const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createOnnxTextClient(worker);});
+ const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createIsolatedTextClient(worker);});
  const first=router.load(onnxTextManifest.id);workers[0].onmessage({data:{id:1,type:'done',value:true}});await first;workers[0].onerror();assert.equal(router.loaded,null);
  const second=router.load(onnxTextManifest.id);for(let i=0;i<20&&workers.length<2;i++)await Promise.resolve();assert.equal(workers.length,2);workers[0].onmessage({data:{id:1,type:'done',value:true}});assert.equal(router.loaded,null);
  workers[1].onmessage({data:{id:1,type:'done',value:true}});await second;assert.equal(router.loaded,onnxTextManifest.id);workers[1].onerror();await router.load('4B');assert.equal(router.loaded,'4B');
@@ -245,7 +245,7 @@ test('adapter accepts harness task and rewrite output budgets and rejects actual
 });
 
 test('structured worker failures retain bounded untrusted diagnostics without returning a result',async()=>{
- const sent=[],worker={postMessage(m){sent.push(m);},terminate(){}};const client=createOnnxTextClient(worker),pending=client.call('generate');
+ const sent=[],worker={postMessage(m){sent.push(m);},terminate(){}};const client=createIsolatedTextClient(worker),pending=client.call('generate');
  worker.onmessage({data:{id:sent[0].id,type:'error',value:'Invalid model JSON · incomplete structured output',diagnostic:{raw:'{"action":"chat","query":"unfinished',reason:'structured:budget',truncated:false}}});
  await assert.rejects(pending,error=>error.name==='PlannerOutputError'&&error.diagnostic.reason==='structured:budget'&&error.diagnostic.raw.endsWith('unfinished'));
 });
