@@ -21,15 +21,13 @@ export function shouldAcquireRuntimeAfterVerification(error:unknown,downloads:bo
  return downloads&&online&&code==='runtime-not-prepared';
 }
 
-// The GGUF stores validate and save local files without starting an inference worker.
+// Runtime files are a separate prerequisite and must be ready before model
+// acquisition begins. Local GGUF imports remain storage-only; runtime is still
+// checked before the model can execute.
 export async function prepareTextAssets(options:{role:ProductRuntimeRole|null;downloads:boolean;verifyOnly:boolean;hasLocalFiles:boolean;ensureRuntime:(role:ProductRuntimeRole,allowNetwork:boolean)=>Promise<unknown>;prepare:()=>Promise<unknown>;verify:()=>Promise<unknown>}){
- // Model assets are independent from the inference runtime. Finish their
- // explicit local verification/download first; only then prepare/check the
- // runtime required to execute them. A failed large-model transfer must not
- // leave a user waiting on an unrelated runtime download.
- if(options.verifyOnly)await options.verify();else await options.prepare();
  const localGguf=(options.verifyOnly||options.hasLocalFiles&&!options.downloads)&&(options.role==='text-lfm3'||options.role==='text-wllama');
  if(options.role&&!localGguf)await options.ensureRuntime(options.role,options.downloads&&!options.verifyOnly);
+ if(options.verifyOnly)await options.verify();else await options.prepare();
 }
 
 export function runtimeRoleForModelEngine(engine:string|undefined|null):ProductRuntimeRole|null{
