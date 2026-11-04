@@ -310,6 +310,22 @@ test('a named my-note question selects Memory even with a different file open',(
  assert.equal(router.explicitSavedKnowledgeQuestion(current,false,true),null);
 });
 
+test('first-person factual questions retrieve from local Memory without model planning',()=>{
+ for(const [question,query] of [
+  ['When is my meeting?','When is my meeting?'],
+  ['What is my usual address?','What is my usual address?'],
+  ['私の会議はいつですか？','私の会議はいつですか？'],
+  ['自分の予備電池はいくつありますか？','自分の予備電池はいくつありますか？'],
+ ]){
+  assert.deepEqual(router.implicitPersonalKnowledgeQuestion(question),{action:'answer',query,target:'knowledge'});
+  const intent=router.resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:{schema:1,revision:0,turns:[],compaction:null},attachments:[]});
+  assert.deepEqual(intent.request,{action:'answer',query,target:'knowledge'});
+ }
+ for(const question of ['What is the capital of France?','How does RAG work?','Compare my notes and calculate the difference.','What did I say earlier?'])assert.equal(router.implicitPersonalKnowledgeQuestion(question),null,question);
+ assert.equal(router.implicitPersonalKnowledgeQuestion('When is my meeting?',true),null,'attachments keep their own evidence route');
+ assert.equal(router.implicitPersonalKnowledgeQuestion('When is my meeting?',false,true),null,'an open file is not silently replaced by Memory');
+});
+
 test('short Japanese search is local only for an unscoped single subject',()=>{
  assert.deepEqual(router.shortLocalSearch('QA銀の灯台を探して'),{action:'search',query:'QA銀の灯台',target:'knowledge'});
  for(const text of ['これを探して','前の会話を探して','ウェブで灯台を探して','灯台を探して保存して','灯台を探して、削除して','添付の灯台を探して'])assert.equal(router.shortLocalSearch(text),null,text);

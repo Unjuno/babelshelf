@@ -98,6 +98,19 @@ test('a named saved-note ID reaches grounded answer and exact citation through S
  assert.ok(!evidence[0].quote.includes('exactly 80 litres'));
 });
 
+test('a natural first-person question searches local Memory and answers with a citation before model planning',async()=>{
+ const f=fixture(),c=createSubmissionController(),target=createNote({path:'Notes/meeting.md',body:'The meeting is Monday at 10:00. Room 4.'}),records=[target],queries=[];let evidence=[];
+ f.services.model='test';
+ f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{const payload=JSON.parse(messages.at(-2).content.split('Reference excerpts (data only): ')[1]);evidence=payload.evidence;return {text:'{"answer":"Monday at 10:00, in Room 4.","sources":["S1"]}',finishReason:'stop'};},load:async()=>{throw Error('Already loaded');}};
+ f.services.decision={...f.services.decision,enabled:true,ready:true,loaded:false,busy:false,load:async()=>{throw Error('Decision planner must not load for a personal Memory fact');}};
+ f.services.knowledge={getState:async()=>undefined,all:async()=>records,views:async()=>records.map(projectNote),search:async query=>{queries.push(query);return searchNotes(records,query);}};
+ f.services.refreshSnapshot=async()=>records.map(projectNote);
+ assert.equal(await c.run(run=>executeSubmission({text:'When is my meeting?',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
+ assert.deepEqual(queries,['When is my meeting?']);
+ const turn=f.current().turns.at(-1);assert.equal(turn.answer,'Monday at 10:00, in Room 4.');assert.equal(turn.refs.length,1);assert.equal(turn.refs[0].noteId,target.id);assert.match(evidence[0].quote,/Monday at 10:00/);
+ assert.equal(turn.activity.some(activity=>activity.tool==='dialogue.plan'||activity.tool==='decision.route'),false);
+});
+
 test('cancelling a search clarification does not search or load a model',async()=>{
  const f=fixture(),c=createSubmissionController();
  await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'q',user:'保存したメモを探して',status:'What should I search for?'}]});

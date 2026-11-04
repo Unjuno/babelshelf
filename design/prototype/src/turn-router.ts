@@ -156,6 +156,20 @@ export function explicitSavedKnowledgeQuestion(question:string,currentInputs=fal
  if((namesSavedKnowledge(text)||savedSubject)&&(englishQuestion.test(text)||japaneseQuestion.test(text))&&/[?？。.]\s*$|\b(?:recorded|written|saved|stored)\s*$|(?:ですか|ますか)\s*$/iu.test(text))return {action:'answer' as const,query:savedKnowledgeSearchQuery(text),target:'knowledge' as const};
  return null;
 }
+
+/** Personal factual questions should retrieve from local Memory before asking
+ * a model to plan a tool call. This is intentionally limited to first-person
+ * subjects and factual question forms; generic conversation, dialogue recall,
+ * attachments, open files and compound operations keep their normal routes. */
+export function implicitPersonalKnowledgeQuestion(question:string,currentInputs=false,workingFile=false){
+ const text=question.trim();
+ if(currentInputs||workingFile||!text||text.length>300||requestNamesEarlierDialogue(text)||/[\r\n;]/u.test(text))return null;
+ if(/\b(?:delete|remove|erase|edit|update|change|replace|rewrite|save|store|create|send|email|upload|download|execute|run|schedule|notify|compare|calculate)\b|(?:削除|消して|消去|編集|変更|訂正|修正|書き換|置き換|保存して|記録して|作成して|送信|実行して|通知して|比較して|計算して)/iu.test(text))return null;
+ const english=/\bmy\s+(?:(?:saved|stored|usual|planned|upcoming|last)\s+)?[\p{L}\p{N}-]+(?:\s+[\p{L}\p{N}-]+){0,5}\b/iu.test(text)
+  &&/\b(?:what|when|where|who|which|how\s+(?:many|much)|is|are|was|were|did|does|do)\b|[?]$/iu.test(text);
+ const japanese=/(?:私|自分)の[\p{L}\p{N}\p{M}・ー]{1,24}(?:[\p{L}\p{N}\p{M}・ー]{0,24})?(?:は|が|について)?[^。！？!?]{0,60}(?:何|いつ|どこ|誰|どれ|いくつ|何時|何日|何件|ですか|ますか|でしょう|？|\?)/u.test(text);
+ return english||japanese?{action:'answer' as const,query:text,target:'knowledge' as const}:null;
+}
 /** A question that explicitly names the already opened file has one safe
  * evidence scope. Resolve it before Decision/Text planning so unrelated chat
  * history cannot redirect a small model to a recall action. */
@@ -265,7 +279,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
  const currentCapture=literalRequest?null:explicitCurrentAnswerCapture(question,hasAttachments||hasCurrentInputReadings);
  const directSavedSearch=explicitSavedKnowledgeSearch(question,hasAttachments||hasCurrentInputReadings)??shortLocalSearch(question,hasAttachments||hasCurrentInputReadings||!!prior.currentFile),directSavedOpen=explicitSavedKnowledgeOpen(question,hasAttachments||hasCurrentInputReadings);
- const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile));
+ const explicitSavedRequest=directSavedSearch??directSavedOpen??(literalRequest?null:explicitSavedKnowledgeSummary(question,hasAttachments||hasCurrentInputReadings)??explicitSavedKnowledgeQuestion(question,hasAttachments,!!prior.currentFile)??implicitPersonalKnowledgeQuestion(question,hasAttachments||hasCurrentInputReadings,!!prior.currentFile));
  const source=literalRequest?null:explicitCurrentSourceQuestion(question,prior,hasAttachments||hasCurrentInputReadings),sourceFile=source?.file;
  const explicitFileQuestion=literalRequest?null:explicitWorkingFileSummary(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitWorkingFileQuestion(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings)??explicitPinnedPlaceFollowup(question,prior,hasAttachments||hasCurrentInputReadings)??source?.request??null;
  const fileCorrection=literalRequest?null:explicitWorkingFileCorrection(question,!!prior.currentFile,hasAttachments||hasCurrentInputReadings);
