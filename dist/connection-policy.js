@@ -22,7 +22,7 @@ export function readAppNetworkAccess(factory,timeout=3000){
        if(note?.id!=='settings-connection'||note.state!=='active'||note.ui?.managed!==true||revision?.path!=='Settings/connection.md')return;
        const block=revision.body.match(/^# [^\n]+\n\n```json\n([\s\S]+)\n```\n?$/);if(!block)return;
        const value=JSON.parse(block[1]);
-       if(!value||Array.isArray(value)||typeof value!=='object'||Object.keys(value).some(key=>!['schemaVersion','downloads','diagnosticLogs'].includes(key))||value.schemaVersion!==undefined&&![1,2,3,4].includes(value.schemaVersion)||typeof value.downloads!=='boolean'||value.diagnosticLogs!==undefined&&typeof value.diagnosticLogs!=='boolean')return;
+       if(!value||Array.isArray(value)||typeof value!=='object'||Object.keys(value).some(key=>!['schemaVersion','downloads','diagnosticLogs','rustxngEndpoint'].includes(key))||value.schemaVersion!==undefined&&![1,2,3,4,5].includes(value.schemaVersion)||typeof value.downloads!=='boolean'||value.diagnosticLogs!==undefined&&typeof value.diagnosticLogs!=='boolean'||value.rustxngEndpoint!==undefined&&(typeof value.rustxngEndpoint!=='string'||value.rustxngEndpoint.length>2048))return;
        allowed=value.downloads;
       }catch{}
      };

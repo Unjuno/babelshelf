@@ -45,7 +45,7 @@ test('only the untouched schema-1 Standard default gets an explicit profile migr
  custom.profiles.find(profile=>profile.id==='standard').enabledTools.push('time.now');
  const customizedNote=reviseNote(customized,{body:latest(customized).body.replace(/```json\n([\s\S]+)\n```/,()=> '```json\n'+JSON.stringify(custom,null,2)+'\n```')},1);
  assert.equal(hasLegacyStandardDefault(customizedNote),false);
- const currentSchema=structuredClone(note),current=JSON.parse(latest(currentSchema).body.match(/```json\n([\s\S]+)\n```/)[1]);current.schemaVersion=4;
+ const currentSchema=structuredClone(note),current=JSON.parse(latest(currentSchema).body.match(/```json\n([\s\S]+)\n```/)[1]);current.schemaVersion=5;
  const currentSchemaNote=reviseNote(currentSchema,{body:latest(currentSchema).body.replace(/```json\n([\s\S]+)\n```/,()=> '```json\n'+JSON.stringify(current,null,2)+'\n```')},1);
  assert.equal(hasLegacyStandardDefault(currentSchemaNote),false);
 });
