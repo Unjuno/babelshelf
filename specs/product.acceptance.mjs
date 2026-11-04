@@ -65,6 +65,11 @@ test('production shell includes the LFM3 update worker but keeps optional runtim
  const sw=await fs.readFile(root+'sw.js','utf8');
  assert.match(sw,/INSTALL_FILES=FILES\.filter\(file=>file\.shell===true\|\|!Array\.isArray\(file\.roles\)\|\|file\.roles\.length===0\)/);
 });
+test('LFM3 runtime retry chunks are individually pinned and reassemble to the original build asset',async()=>{
+ const manifest=JSON.parse(await fs.readFile(root+'build.json','utf8')),chunked=manifest.files.filter(file=>file.roles?.includes('text-lfm3')&&file.parts?.length);
+ assert.ok(chunked.length>=1);assert.equal(manifest.files.some(file=>file.roles?.includes('text-wllama')&&file.parts?.length),false,'Avoid duplicating unrelated runtimes in the deploy');
+ for(const file of chunked){let size=0;const chunks=[];for(const part of file.parts){const bytes=await fs.readFile(root+part.path.slice(2));assert.equal(bytes.length,part.bytes);assert.equal(createHash('sha256').update(bytes).digest('hex'),part.sha256);size+=bytes.length;chunks.push(bytes);}assert.equal(size,file.bytes);assert.equal(createHash('sha256').update(Buffer.concat(chunks)).digest('hex'),file.sha256);}
+});
 test('published worker permits every pinned Vision preparation URL and no neighboring revision',async()=>{
  const vision=JSON.parse(await fs.readFile('design/prototype/src/vision-manifest.json','utf8'));
  const sw=await fs.readFile(root+'sw.js','utf8'),declaration=sw.match(/\bREMOTE=(\[[^;]*\]);/);

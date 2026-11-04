@@ -12,6 +12,9 @@ execFileSync(process.execPath,[path.join(prototype,'scripts/prepare-ocr-runtime.
 execFileSync(process.execPath,[path.join(prototype,'node_modules/typescript/bin/tsc'),'--project',path.join(prototype,'product/tsconfig.json')],{stdio:'inherit'});
 execFileSync(process.execPath,[path.join(prototype,'node_modules/vite/bin/vite.js'),'build','--config',path.join(prototype,'product.vite.config.ts')],{cwd:prototype,stdio:'inherit'});
 const root=path.join(prototype,'dist/app'),files=[];
+// The iPhone report stalled during the pinned LFM3 runtime setup. Keep this
+// targeted so retryable chunks do not duplicate unrelated engine bundles.
+const resumableRuntimePartBytes=4*1024*1024;
 function optionalRoles(file){
  const name=path.basename(file);
  if(name.startsWith('custom-tool-worker-')||name.startsWith('emscripten-module-'))return ['custom-tools'];
@@ -36,7 +39,7 @@ function optionalRoles(file){
  if(name.startsWith('pdf.worker.min-')||/\.(bcmap|pfb|ttf)$/.test(name))return ['pdf'];
  return [];
 }
-async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const full=path.join(folder,entry.name);if(entry.isDirectory())await walk(full);else{const bytes=await readFile(full),filePath='./'+path.relative(root,full).split(path.sep).join('/'),roles=optionalRoles(filePath),shell=path.basename(filePath).startsWith('lfm3-text-worker-');files.push({path:filePath,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length,...(roles.length?{roles}:{}),...(shell?{shell:true}:{})});}}}
+async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const full=path.join(folder,entry.name);if(entry.isDirectory())await walk(full);else{const bytes=await readFile(full),filePath='./'+path.relative(root,full).split(path.sep).join('/'),roles=optionalRoles(filePath),shell=path.basename(filePath).startsWith('lfm3-text-worker-'),sha256=createHash('sha256').update(bytes).digest('hex'),parts=[];if(roles.includes('text-lfm3')&&bytes.length>resumableRuntimePartBytes){for(let offset=0,index=0;offset<bytes.length;offset+=resumableRuntimePartBytes,index++){const part=bytes.subarray(offset,Math.min(bytes.length,offset+resumableRuntimePartBytes)),name=`${sha256}-${String(index).padStart(4,'0')}.bin`,partPath='./runtime-parts/'+name;await mkdir(path.join(root,'runtime-parts'),{recursive:true});await writeFile(path.join(root,'runtime-parts',name),part);parts.push({path:partPath,sha256:createHash('sha256').update(part).digest('hex'),bytes:part.length});}}files.push({path:filePath,sha256,bytes:bytes.length,...(roles.length?{roles}:{}),...(parts.length?{parts}:{}),...(shell?{shell:true}:{})});}}}
 await mkdir(path.join(root,'licenses'),{recursive:true});for(const name of await readdir('design/prototype/licenses'))await copyFile(path.join('design/prototype/licenses',name),path.join(root,'licenses',name));
 await walk(root);files.sort((a,b)=>a.path.localeCompare(b.path));
 const upstreamManifest=JSON.parse(await readFile('dist/model-manifest.json','utf8'));

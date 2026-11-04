@@ -211,20 +211,53 @@ self.addEventListener('message',event=>{
    for(let index=0;index<selected.length;index++){
     if(job.stopped)throw Error('Stopped');
     const file=selected[index],key=poolKey(file),saved=await pool.match(key);let networkSource=false,networkRead=0;const onBytes=read=>{if(networkSource){downloadedBytes+=Math.max(0,read-networkRead);networkRead=read;}if(!job.stopped&&epoch===networkEpoch)reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+read,totalBytes});};
-    if(saved&&await verified(saved,file,onBytes)){if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes,totalBytes});continue;}
+    if(saved&&await verified(saved,file,onBytes)){for(const part of file.parts??[])await pool.delete(poolKey(part));if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes,totalBytes});continue;}
+    if(saved)await pool.delete(key);
     if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
     if(!acquire)throw Error('Runtime not prepared · switch Online to prepare');
     if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)throw Error('Downloads are off');
-    const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);let response;
-    try{
-     networkSource=true;networkRead=0;
-     try{response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}catch(error){if(job.stopped)throw Error('Stopped');if(epoch!==networkEpoch||controller.signal.aborted)throw Error('Downloads are off');const fetchTypeError=error instanceof TypeError||error&&typeof error==='object'&&error.name==='TypeError';if(fetchTypeError)throw Object.assign(Error('App runtime network request failed'),{code:'runtime-network-error'});throw error;}
-     if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
-     if(!response.ok)throw Error('App runtime HTTP request failed');if(!await verified(response,file,onBytes))throw Error('App asset verification failed');
-     if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
-     await pool.put(key,response);if(!await verified(await pool.match(key),file))throw Error('App asset storage verification failed');
-     if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
-    }finally{networkRequests.delete(controller);job.controllers.delete(controller);}
+    let response;
+    if(Array.isArray(file.parts)&&file.parts.length){
+     const partBytes=file.parts.reduce((sum,part)=>sum+(Number.isSafeInteger(part?.bytes)&&part.bytes>0?part.bytes:0),0);if(partBytes!==file.bytes||file.parts.length>4096||file.parts.some(part=>typeof part.path!=='string'||!/^\.\/runtime-parts\/[a-f0-9]{64}-\d{4}\.bin$/.test(part.path)||!/^[a-f0-9]{64}$/.test(part.sha256)||!Number.isSafeInteger(part.bytes)||part.bytes<1))throw Error('App asset verification failed');
+     const bodies=[];let assetBytes=0;
+     for(const part of file.parts){
+      if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
+      const partKey=poolKey(part);let partResponse=await pool.match(partKey),partNetwork=false,partRead=0;
+      const partProgress=read=>{if(partNetwork){downloadedBytes+=Math.max(0,read-partRead);partRead=read;}if(!job.stopped&&epoch===networkEpoch)reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+assetBytes+read,totalBytes});};
+      if(!partResponse||!await verified(partResponse,part,partProgress)){
+       await pool.delete(partKey);if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)throw Error('Downloads are off');
+       const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);
+       try{
+        partNetwork=true;partRead=0;
+        try{partResponse=await fetch(absolute(part.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}catch(error){if(job.stopped)throw Error('Stopped');if(epoch!==networkEpoch||controller.signal.aborted)throw Error('Downloads are off');const fetchTypeError=error instanceof TypeError||error&&typeof error==='object'&&error.name==='TypeError';if(fetchTypeError)throw Object.assign(Error('App runtime network request failed'),{code:'runtime-network-error'});throw error;}
+        if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
+        if(!partResponse.ok)throw Error('App runtime HTTP request failed');if(!await verified(partResponse,part,partProgress))throw Error('App asset verification failed');
+        if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
+        await pool.put(partKey,partResponse);if(!await verified(await pool.match(partKey),part))throw Error('App asset storage verification failed');
+        if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');
+       }finally{networkRequests.delete(controller);job.controllers.delete(controller);}
+      }
+      const storedPart=await pool.match(partKey);if(!storedPart||!await verified(storedPart,part))throw Error('App asset storage verification failed');
+      bodies.push(await storedPart.arrayBuffer());assetBytes+=part.bytes;reply({status:'progress',role,completed:index,total:selected.length,bytes:bytes+assetBytes,totalBytes});
+     }
+     response=new Response(new Blob(bodies),{headers:{'Content-Type':'application/wasm'}});
+    }else{
+     const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);
+     try{
+      networkSource=true;networkRead=0;
+      try{response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}catch(error){if(job.stopped)throw Error('Stopped');if(epoch!==networkEpoch||controller.signal.aborted)throw Error('Downloads are off');const fetchTypeError=error instanceof TypeError||error&&typeof error==='object'&&error.name==='TypeError';if(fetchTypeError)throw Object.assign(Error('App runtime network request failed'),{code:'runtime-network-error'});throw error;}
+      if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
+      if(!response.ok)throw Error('App runtime HTTP request failed');
+     }finally{networkRequests.delete(controller);job.controllers.delete(controller);}
+    }
+    if(Array.isArray(file.parts))networkSource=false;networkRead=0;
+    if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
+    if(!response||!await verified(response,file,Array.isArray(file.parts)?undefined:onBytes))throw Error('App asset verification failed');
+    networkSource=false;
+    if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
+    await pool.put(key,response);if(!await verified(await pool.match(key),file))throw Error('App asset storage verification failed');
+    for(const part of file.parts??[])await pool.delete(poolKey(part));
+    if(job.stopped||epoch!==networkEpoch)throw Error('Stopped');
      bytes+=file.bytes;reply({status:'progress',role,completed:index+1,total:selected.length,bytes,totalBytes});
    }
    reply({status:'prepared',role,assets:selected.length,bytes,downloadedBytes});
