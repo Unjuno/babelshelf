@@ -96,6 +96,6 @@ export function prepareProductRuntimeAssets(role:ProductRuntimeRole,options:Runt
  return requestProductRuntime(role,true,options);
 }
 /** Confirms an already cached feature runtime without permitting any network acquisition. */
-export function verifyProductRuntimeAssets(role:ProductRuntimeRole,options:Omit<RuntimeOptions,'signal'>={}){
+export function verifyProductRuntimeAssets(role:ProductRuntimeRole,options:RuntimeRequestOptions={}){
  return requestProductRuntime(role,false,options);
 }
