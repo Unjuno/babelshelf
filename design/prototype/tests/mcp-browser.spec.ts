@@ -22,13 +22,13 @@ test('official MCP client and local read-only adapter interoperate offline in th
   expect(value.names).toEqual(['math.calculate']);expect(JSON.parse(value.result.content[0].text)).toEqual({result:42});
  }finally{await context.setOffline(false);}
 });
-test('the agent executes an audited local tool over MCP with the browser offline',async({page,context})=>{
+test('the agent executes an audited local tool with the browser offline',async({page,context})=>{
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');await context.setOffline(true);
  try{const value=await page.evaluate(()=>(window as any).mcpAgentFixture());
   expect(value.calls).toHaveLength(1);expect(value.calls[0].tool).toBe('math.calculate');expect(value.calls[0].result[0].result).toBe('42');expect(value.activities).toEqual(['running','succeeded']);
  }finally{await context.setOffline(false);}
 });
-test('the offline MCP agent searches local IndexedDB with versioned source ranges',async({page,context})=>{
+test('the offline agent searches local IndexedDB with versioned source ranges',async({page,context})=>{
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');await context.setOffline(true);
  try{const value=await page.evaluate(()=>(window as any).mcpMemoryFixture());
   expect(value.calls).toHaveLength(1);expect(value.calls[0].tool).toBe('memory.search');
@@ -43,7 +43,7 @@ test('offline agent follows saved provenance to the cited original',async({page,
   expect(value.refs).toHaveLength(1);expect(value.refs[0].noteId).toBe('source');expect(value.refs[0].revision).toBe(1);expect(value.refs[0].quote).toBe('Water reserve: 17 liters.');
  }finally{await context.setOffline(false);}
 });
-test('an offline multi-source MCP workflow saves the reviewed text and exact original references',async({page,context})=>{
+test('an offline multi-source agent workflow saves reviewed text and exact original references',async({page,context})=>{
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');await context.setOffline(true);
  try{const value=await page.evaluate(()=>(window as any).mcpComparisonFixture());
   expect(value.calls).toEqual(['memory.search','memory.read','memory.read','memory.read']);expect(value.completed).toEqual(value.calls);
@@ -53,7 +53,7 @@ test('an offline multi-source MCP workflow saves the reviewed text and exact ori
   expect(value.savedBody).toBe(value.answer);expect(value.savedSources).toEqual(pins);
  }finally{await context.setOffline(false);}
 });
-test('MCP agent executes a selected custom tool with actual isolated runtime and source tracking',async({page,context})=>{
+test('agent executes a selected custom tool with isolated runtime and source tracking',async({page,context})=>{
  await context.route('**/*',route=>{const url=new URL(route.request().url());return ['127.0.0.1','localhost'].includes(url.hostname)?route.continue():route.abort();});
  await page.goto('/tests/mcp-browser-fixture.html');await expect(page.locator('#root')).toHaveText('ready');
  const value=await page.evaluate(()=>(window as any).mcpCustomFixture());

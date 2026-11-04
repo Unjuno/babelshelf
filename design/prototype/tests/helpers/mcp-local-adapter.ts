@@ -1,6 +1,6 @@
 import {InMemoryTransport,Server,type Tool} from '@modelcontextprotocol/server';
-import {validateToolArguments,type ToolInputSchema} from './tools/tool-input.ts';
-import type {AgentToolCapability} from './agent-loop.ts';
+import {validateToolArguments,type ToolInputSchema} from '../../src/tools/tool-input.ts';
+import type {AgentToolCapability} from '../../src/agent-loop.ts';
 
 function validSchema(value:unknown):value is ToolInputSchema{
  if(!value||typeof value!=='object'||Array.isArray(value))return false;

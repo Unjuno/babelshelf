@@ -1,6 +1,5 @@
 import {Client} from '@modelcontextprotocol/client';
-import {createLocalMcpServer} from '../src/mcp-local-adapter.ts';
-import '../src/mcp-agent-bridge.ts';
+import {createLocalMcpServer} from './helpers/mcp-local-adapter.ts';
 import {coordinateAgentTurn} from '../src/agent-coordinator.ts';
 import {captureTurnExecutionSnapshot} from '../src/turn-execution-snapshot.ts';
 import {recordOperation} from '../src/harness-activity.ts';

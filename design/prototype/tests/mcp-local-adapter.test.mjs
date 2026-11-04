@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Client} from '@modelcontextprotocol/client';
-import {createLocalMcpServer} from '../src/mcp-local-adapter.ts';
+import {createLocalMcpServer} from './helpers/mcp-local-adapter.ts';
 import {createToolRegistry} from '../src/tools/tool-registry.ts';
 import * as calculator from '../src/tools/math.calculate/tool.ts';
 import {recordOperation} from '../src/harness-activity.ts';
