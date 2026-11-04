@@ -28,7 +28,11 @@ from a different app build and directs the user to rerun the check. A UI
 regression covers the mismatch; the complete diagnostic UI suite passed
 34/34, `npm run check` passed, and the product build completed with 165
 verified assets. This is an explicit freshness cue, not a claim that the
-current build behaves the same on that physical device.
+current build behaves the same on that physical device. Clean-checkout CI
+[41752323522](https://github.com/Unjuno/babelshelf/actions/runs/41752323522)
+passed all stages on `fcf56c1`; system dependency install took 33 seconds and
+pinned browser install 13 seconds in this run. This single fast run does not
+show that the previously observed APT delay cannot recur.
 
 ### 2026-11-04 · keep complete graphemes in source excerpts
 
