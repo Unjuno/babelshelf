@@ -12,7 +12,7 @@ import {startupGate} from '../product/startup-recovery';
 import {useComposerDraft} from './composer-draft';
 import {PendingCorrectionConflictError,validatePendingCorrection,pendingCorrectionProblem,PENDING_CORRECTION_STATE,type PendingCorrection} from './pending-correction';
 import {makePendingNoteReview,validatePendingNoteReview,PENDING_NOTE_REVIEW_STATE,type PendingNoteReview,type PendingNoteDraft} from './pending-note-review';
-import {deviceModelTestProfile,deviceWarmModelTestProfile,validateDeviceModelTest,deviceModelTestFailureType,type DeviceModelTestFailureStage,type DeviceModelTestMode, type DeviceTestMode} from './device-model-test';
+import {deviceModelTestProfile,deviceWarmModelTestProfile,validateDeviceModelTest,deviceModelTestFailureType,prepareFullCycleAssets,type DeviceModelTestFailureStage,type DeviceModelTestMode, type DeviceTestMode} from './device-model-test';
 import {startDeviceTestSuite} from './device-test-suite';
 import {executeScheduledAnswer} from './scheduled-answer';
 import {createModelExecutionManager} from './model-execution';
@@ -529,23 +529,29 @@ export default function Prototype() {
     const descriptor=(bonsai.manifest.models as any[]).find(item=>item.id===model),declared=descriptor?.file?.bytes??descriptor?.files?.reduce?.((sum:number,file:any)=>sum+(Number.isSafeInteger(file?.bytes)?file.bytes:0),0);
     if(Number.isSafeInteger(declared)&&declared>0)expectedModelBytes=declared;
     if(loadedAtStart){setDeviceTestStage('Unloading current model…');await bonsai.unload();}
-    const role=selectedTextRuntimeRole(model),runtimeStart=performance.now();
-    if(role){stage='runtime-setup';const progress=(value:ProductRuntimeProgress)=>{runtimeBytesRead=value.bytes;setDeviceTestStage(productRuntimeProgressLabel(value));};setDeviceTestStage('Checking runtime…');try{runtimeBytesRead=undefined;try{await ensureProductRuntime(role,false,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;},testController.signal);}catch(error){if(!shouldAcquireRuntimeAfterVerification(error,downloads,navigator.onLine))throw error;runtimeBytesRead=undefined;setDeviceTestStage('Preparing runtime…');await ensureProductRuntime(role,true,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;},testController.signal);}}finally{runtimePreparationDurationMs=Math.round(performance.now()-runtimeStart);}}
-    stage='model-preparation';const preparationStart=performance.now();
-    try{
-     if(!filesPresentAtStart){
-      if(modelPreferences.customModels.some(item=>item.id===model))throw Error('Import the custom model files before running the full test');
-      if(!downloads)throw Object.assign(Error('Downloads are Off'),{code:'downloads-off'});
-      if(!navigator.onLine)throw Object.assign(Error('Browser reports Offline'),{code:'offline-signal'});
-      setDeviceTestStage('Downloading and verifying model…');const result=await bonsai.prepare(model,true);
-      const value=result&&typeof result==='object'?result as Record<string,any>:{};const prep=value.preparation&&typeof value.preparation==='object'?value.preparation:value;
-      if(Number.isSafeInteger(prep.downloadedBytes)&&prep.downloadedBytes>=0)downloadedBytes=prep.downloadedBytes;
-      assetState='prepared';
-     }else{
-      setDeviceTestStage('Verifying prepared model…');await bonsai.verify(model);assetState='reused';downloadedBytes=0;
-     }
-    }finally{preparationDurationMs=Math.round(performance.now()-preparationStart);}
-    const updated=await bonsai.refreshStatus();if(!updated?.[model]?.filesPresent)throw Object.assign(Error('Model files are not ready after preparation'),{code:'model-files-not-ready'});
+    await prepareFullCycleAssets(async()=>{
+     stage='model-preparation';const preparationStart=performance.now();
+     try{
+      if(!filesPresentAtStart){
+       if(modelPreferences.customModels.some(item=>item.id===model))throw Error('Import the custom model files before running the full test');
+       if(!downloads)throw Object.assign(Error('Downloads are Off'),{code:'downloads-off'});
+       if(!navigator.onLine)throw Object.assign(Error('Browser reports Offline'),{code:'offline-signal'});
+       setDeviceTestStage('Downloading and verifying model…');const result=await bonsai.prepare(model,true);
+       const value=result&&typeof result==='object'?result as Record<string,any>:{};const prep=value.preparation&&typeof value.preparation==='object'?value.preparation:value;
+       if(Number.isSafeInteger(prep.downloadedBytes)&&prep.downloadedBytes>=0)downloadedBytes=prep.downloadedBytes;
+       assetState='prepared';
+      }else{
+       setDeviceTestStage('Verifying prepared model…');await bonsai.verify(model);assetState='reused';downloadedBytes=0;
+      }
+     }finally{preparationDurationMs=Math.round(performance.now()-preparationStart);}
+     const updated=await bonsai.refreshStatus();if(!updated?.[model]?.filesPresent)throw Object.assign(Error('Model files are not ready after preparation'),{code:'model-files-not-ready'});
+     return true;
+    },async()=>{
+     const role=selectedTextRuntimeRole(model);if(!role)return true;
+     stage='runtime-setup';const runtimeStart=performance.now();const progress=(value:ProductRuntimeProgress)=>{runtimeBytesRead=value.bytes;setDeviceTestStage(productRuntimeProgressLabel(value));};
+     setDeviceTestStage('Checking runtime…');try{runtimeBytesRead=undefined;try{await ensureProductRuntime(role,false,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;},testController.signal);}catch(error){if(!shouldAcquireRuntimeAfterVerification(error,downloads,navigator.onLine))throw error;runtimeBytesRead=undefined;setDeviceTestStage('Preparing runtime…');await ensureProductRuntime(role,true,progress,result=>{runtimeBytesRead=result.bytes;runtimeDownloadedBytes=result.downloadedBytes;},testController.signal);}}finally{runtimePreparationDurationMs=Math.round(performance.now()-runtimeStart);}
+     return true;
+    });
    }
    if(bonsai.loaded!==model){stage='runtime-setup';if(!fullCycle){const role=selectedTextRuntimeRole(model);if(role)await ensureProductRuntime(role,false);}stage='model-load';setDeviceTestStage('Loading model…');setAssetAction('model.load');const loadStarted=performance.now();try{loadMetrics=(await bonsai.load(model))??undefined;loadedByTest=true;}finally{loadDurationMs=Math.round(performance.now()-loadStarted);}}else{loadMetrics=(await bonsai.load(model))??undefined;}
    stage='count';setDeviceTestStage('Preparing test input…');setAssetAction('model.load');inputTokens=(await bonsai.count(profile.messages,profile.format)).prompt_tokens;

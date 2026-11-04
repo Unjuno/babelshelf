@@ -143,15 +143,21 @@ test('offline local GGUF preparation does not require the inference runtime',asy
  assert.deepEqual(calls,['saved']);
 });
 
-test('other text preparation paths still require the runtime before accessing model assets',async()=>{
+test('text model files are prepared before their separate runtime',async()=>{
  const {prepareTextAssets}=await import('../src/product-runtime-assets.ts');
  for(const opts of [{role:'text-lfm3',downloads:true,verifyOnly:false,hasLocalFiles:true},{role:'text-lfm3',downloads:false,verifyOnly:false,hasLocalFiles:false},{role:'text-onnx',downloads:false,verifyOnly:false,hasLocalFiles:true}]){
-  const calls=[];await assert.rejects(prepareTextAssets({...opts,ensureRuntime:async()=>{calls.push('runtime');throw Error('missing runtime');},prepare:async()=>calls.push('prepare'),verify:async()=>calls.push('verify')}),/missing runtime/);assert.deepEqual(calls,['runtime']);
+  const calls=[];await assert.rejects(prepareTextAssets({...opts,ensureRuntime:async()=>{calls.push('runtime');throw Error('missing runtime');},prepare:async()=>calls.push('prepare'),verify:async()=>calls.push('verify')}),/missing runtime/);assert.deepEqual(calls,['prepare','runtime']);
  }
 });
 
-test('offline verification of stored GGUF does not require the inference runtime',async()=>{
+test('failed model preparation never starts a separate runtime download',async()=>{
  const {prepareTextAssets}=await import('../src/product-runtime-assets.ts');const calls=[];
- await prepareTextAssets({role:'text-lfm3',downloads:false,verifyOnly:true,hasLocalFiles:false,ensureRuntime:async()=>{throw Error('Runtime not prepared');},prepare:async()=>{throw Error('unexpected prepare');},verify:async()=>{calls.push('verified');}});
+ await assert.rejects(prepareTextAssets({role:'text-lfm3',downloads:true,verifyOnly:false,hasLocalFiles:false,ensureRuntime:async()=>{calls.push('runtime');},prepare:async()=>{calls.push('model');throw Error('model transfer failed');},verify:async()=>{}}),/model transfer failed/);
+ assert.deepEqual(calls,['model']);
+});
+
+test('local GGUF verification remains independent of the inference runtime',async()=>{
+ const {prepareTextAssets}=await import('../src/product-runtime-assets.ts');const calls=[];
+ await prepareTextAssets({role:'text-lfm3',downloads:false,verifyOnly:true,hasLocalFiles:false,ensureRuntime:async()=>{calls.push('runtime');},prepare:async()=>{throw Error('unexpected prepare');},verify:async()=>{calls.push('verified');}});
  assert.deepEqual(calls,['verified']);
 });
