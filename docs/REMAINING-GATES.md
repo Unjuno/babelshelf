@@ -1,5 +1,26 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · distinguish LFM3 model-load time from runtime setup
+
+The supplied screenshot shows LFM3 context `256K` selected. The application
+default and the fresh Q4/Q8 manifests are `8K`; the selected context is passed
+through the LFM3 manifest as `n_ctx` to Wllama `loadModel`. The settings UI
+already warns that 256K is the model maximum, uses more memory, and can make
+phone loading slower or fail. This makes the selected context a plausible
+load-time contributor, but the screenshot contains no device memory, elapsed
+stage breakdown or load metrics that establish it as the cause of a 30-minute
+load.
+
+The pinned Wllama `loadModel` API emits no incremental model-load progress;
+the adapter reports the phase name only. The current UI therefore shows an
+indeterminate bar, elapsed time and Stop instead of inventing a percentage.
+Stop routes through `TextEngineRouter.abort`, which retires the selected
+inference Worker; local engine-loss and adapter cancellation tests cover the
+contract, but this has not been confirmed on the reported iPhone. The next
+useful device comparison is one cold 8K load with its phase/timing report,
+after current build and installed Home Screen status are confirmed. Do not
+interpret the earlier `runtime-setup` report as a model-load measurement.
+
 ### 2026-11-04 · keep installed-PWA diagnostics acceptance aligned
 
 The offline-process acceptance opened the Developer screen but did not open
