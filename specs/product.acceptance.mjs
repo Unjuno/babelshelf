@@ -56,12 +56,12 @@ test('production shell includes the LFM3 update worker but keeps optional runtim
  assert.ok(lfm3Wasm.length>0);for(const file of lfm3Wasm)assert.notEqual(file.shell,true,`${file.path} remains an optional runtime asset`);
  const pdfEngine=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-engine-')&&file.path.endsWith('.js'));
  assert.equal(pdfEngine.length,1,'Expected one PDF engine');
- assert.equal(pdfEngine[0].roles,undefined,'PDF engine is part of the verified core shell for offline updates');
+ assert.deepEqual(pdfEngine[0].roles,['pdf'],'PDF engine is prepared only when the PDF feature is selected');
  const pdfText=manifest.files.find(file=>file.path.startsWith('./assets/pdf-text-')&&file.path.endsWith('.js'));
  if(pdfText)assert.equal(pdfText.roles,undefined,'The startup text helper must be available offline');
  const pdfChunks=manifest.files.filter(file=>file.path.startsWith('./assets/pdf-')&&!file.path.startsWith('./assets/pdf-text-')&&file.path.endsWith('.js'));
- assert.ok(pdfChunks.length>=2,'The PDF engine and PDF.js chunks must be in the core shell');
- for(const file of pdfChunks)assert.equal(file.roles,undefined,file.path+' must be available in the core shell');
+ assert.ok(pdfChunks.length>=2,'The PDF engine and PDF.js chunks must be available as optional PDF assets');
+ for(const file of pdfChunks)assert.deepEqual(file.roles,['pdf'],file.path+' must be prepared with the PDF reader');
  roleFor('pdf.worker.min-','pdf');
  const sw=await fs.readFile(root+'sw.js','utf8');
  assert.match(sw,/INSTALL_FILES=FILES\.filter\(file=>file\.shell===true\|\|!Array\.isArray\(file\.roles\)\|\|file\.roles\.length===0\)/);

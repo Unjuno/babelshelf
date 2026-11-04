@@ -23,14 +23,12 @@ function optionalRoles(file){
  if(name.startsWith('vision-worker-'))return ['vision'];
  if(name.startsWith('lfm3-text-worker-')||name.startsWith('lfm3-')&&name.endsWith('.wasm'))return ['text-lfm3'];
  if(name.startsWith('lfm-text-worker-')||name.startsWith('qwen3-text-worker-'))return ['text-wllama'];
- // The application imports this lightweight text helper during startup; it is
- // part of the offline shell, unlike the optional PDF.js processing engine.
+ // The application imports this lightweight text helper during startup.
  if(name.startsWith('pdf-text-'))return [];
- // The PDF JS chunks can change when the app's shared chunks change, even
- // without a PDF dependency update. Cache them with every verified shell so
- // an ordinary app update does not strand a previously prepared PDF reader.
- // PDF worker, fonts and cmaps remain explicitly prepared optional assets.
- if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return [];
+ // PDF processing is prepared on demand. Keep its JavaScript beside the PDF
+ // worker/fonts/cmaps so an ordinary shell update does not force a large
+ // parser into every first load.
+ if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return ['pdf'];
  if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['decision','speech','vision'];
  if(/^(default|compat)-.*\.wasm$/.test(name))return ['text-wllama'];
  if(/^wllama-.*\.wasm$/.test(name))return ['text-lfm-check'];
