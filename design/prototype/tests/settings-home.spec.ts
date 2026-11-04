@@ -76,12 +76,23 @@ test('pinned LFM3 context window is selectable and persists without loading mode
  await expect(group.getByRole('button',{name:'16K',exact:true})).toBeVisible();
  await expect(section).toContainText('256K is the model maximum, not a recommended phone setting');
  await expect(section.getByRole('note')).toContainText('try 8K first if model loading is slow');
+ await expect(page.getByRole('note',{name:'256K context may need more memory'})).toContainText('not a phone recommendation');
+ await expect(page.getByRole('button',{name:'Use 16K',exact:true})).toBeVisible();
  await page.reload();
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Models',exact:true}).click();
  await page.getByText('More text options',{exact:true}).click();
  await expect(page.getByRole('group',{name:'LFM3 context window',exact:true}).getByRole('button',{name:'256K',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Use 16K',exact:true}).click();
+ await expect(page.getByRole('group',{name:'LFM3 context window',exact:true}).getByRole('button',{name:'16K',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('note',{name:'256K context may need more memory'})).toHaveCount(0);
+ await page.reload();
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.getByText('More text options',{exact:true}).click();
+ await expect(page.getByRole('group',{name:'LFM3 context window',exact:true}).getByRole('button',{name:'16K',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(page.getByText('Loaded',{exact:true})).toHaveCount(0);
 });
 

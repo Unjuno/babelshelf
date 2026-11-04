@@ -522,6 +522,8 @@ button.model-picker svg{flex-shrink:0}
 .settings-screen .model-picker svg{flex-shrink:0}
 .settings-screen .speech-heading{min-height:44px;margin:-6px 0 6px}
 .settings-screen .model-preparation{min-height:54px;line-height:1.5}
+.model-context-notice{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;margin:8px 0;padding:6px 10px;border:1px solid var(--theme-border,var(--rule,#bcb8aa));border-radius:8px;background:var(--theme-surface,#fcfbf6);color:var(--theme-surface-text,#435f52);font-size:.875rem;line-height:1.4}
+.model-context-notice .quiet-button{flex-shrink:0;min-height:40px}
 .settings-reset{display:flex;margin:4px auto 0}
 .device-screen:has(.appearance-dark) .settings-header .icon-button{background:#243830;border-color:#587367;color:#eff8f3}
 .device-screen:has(.appearance-dark) .settings-screen h2{color:#c0d1c7}
