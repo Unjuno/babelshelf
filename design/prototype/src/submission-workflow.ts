@@ -112,7 +112,10 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
   const pagingAvailable=typeof knowledge.recordTurnActivity==='function';
   const trace=createTurnActivityTracer({check:checkSend,readActivities,persistActivities:activity=>finishTurn(id,{activity}),...(pagingAvailable?{persistActivity:async activity=>{const paged=await persistTurnActivity({turnId:id,readActivities,readStored:storedDialogue,persistInline:items=>finishTurn(id,{activity:items}),persistPaged:(turnId,item,expected)=>knowledge.recordTurnActivity(turnId,item,expected)},activity);if(paged)try{view.activityChanged?.(id);}catch{/* Presentation must not change the committed receipt. */}}}:{}),onFailureRecorded:()=>{activityFailureRecorded=true;},onStepStarted:tool=>run.progress(tool==='model.load'?'Loading model…':activityLabel(tool),'planning'),onStepCompleted:()=>run.stepCompleted(),diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
    const ensureText=async(resumeStage:'planning'|'generating'='planning')=>{
-    if(bonsai.loaded!==model)run.progress('Loading model…',resumeStage);
+    // The execution manager verifies the selected local runtime before it
+    // starts loading model weights. Keep that long stage distinct in the chat
+    // so runtime setup is not mistaken for a stalled GGUF/model load.
+    if(bonsai.loaded!==model)run.progress('Checking local runtime…',resumeStage);
     inference=inferenceBudget.wrap(await models.text(model,checkSend,work=>trace('model.load',{model},work))) as TextRuntime;
     run.progress('',resumeStage);
    };
