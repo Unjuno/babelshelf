@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 
-type Props={percent?:number;stage?:string};
+type Props={percent?:number;stage?:string;contextTokens?:number;isLfm3?:boolean};
 
 function elapsedLabel(milliseconds:number){
  const seconds=Math.floor(milliseconds/1000),hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60),remaining=seconds%60;
@@ -16,7 +16,9 @@ function stageLabel(stage=''){
  return 'Loading model into memory';
 }
 
-export function ModelLoadFeedback({percent,stage}:Props){
+function contextLabel(tokens:number){return tokens>=1024?`${tokens/1024}K`:`${tokens}`;}
+
+export function ModelLoadFeedback({percent,stage,contextTokens,isLfm3=false}:Props){
  const [elapsedMs,setElapsedMs]=useState(0);
  useEffect(()=>{const started=Date.now(),tick=()=>setElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[]);
  const elapsed=elapsedLabel(elapsedMs),takingLong=elapsedMs>=60_000,veryLong=elapsedMs>=300_000;
@@ -27,6 +29,6 @@ export function ModelLoadFeedback({percent,stage}:Props){
    <time aria-label={`Elapsed ${elapsed}`} aria-live="off">{elapsed}</time>
   </div>
   <progress max={100} {...(percent===undefined?{}:{value:percent})} aria-label={percent===undefined?`${label}; runtime progress is unavailable`:`${label} ${percent}%`}/>
-  {percent===undefined&&<span className="model-load-guidance">The model file is already saved. The runtime is loading it into memory and does not report an exact percentage.{veryLong?' You can stop and retry; the saved model file and your notes stay in place.':takingLong?' Keep BabelShelf open, or stop and retry.':''}</span>}
+  {percent===undefined&&<span className="model-load-guidance">The model file is already saved. The runtime is loading it into memory and does not report an exact percentage.{isLfm3&&contextTokens&&contextTokens>8192?` ${contextLabel(contextTokens)} context is selected. Larger windows need more memory and may load more slowly; RAG retrieves relevant notes so routine questions can use a smaller window.`:''}{veryLong?' You can stop and retry; the saved model file and your notes stay in place.':takingLong?' Keep BabelShelf open, or stop and retry.':''}</span>}
  </div>;
 }
