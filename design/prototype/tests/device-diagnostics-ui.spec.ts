@@ -443,7 +443,7 @@ test('installed Performance uses one Run without requiring a restart or model do
 
 test('Full cycle explains missing model preparation and download requirements before running',async({page})=>{
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · App & storage',{exact:true}).click();await page.getByRole('button',{name:'Full cycle',exact:true}).click();
- const overview=page.getByRole('region',{name:'Full cycle overview'});await expect(overview).toContainText('Check or prepare files');await expect(overview).toContainText('load model');await expect(overview).toContainText('first answer');await expect(overview).toContainText('warm run');await expect(overview).toContainText('Downloads Off');
+ const overview=page.getByRole('region',{name:'Full cycle overview'});await expect(overview).toContainText('Prepare the model first');await expect(overview).toContainText('separate runtime');await expect(overview).toContainText('load');await expect(overview).toContainText('first answer');await expect(overview).toContainText('warm run');await expect(overview).toContainText('Downloads Off');
  await expect(page.getByRole('button',{name:'Run full model test',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toHaveCount(0);
 });
 
