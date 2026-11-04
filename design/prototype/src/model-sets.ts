@@ -11,7 +11,7 @@ const textModelSetIds=new Set(['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-
 /** Presentation-only grouping; persisted custom-set records keep their existing schema. */
 export function modelSetGroup(id:string):ModelSetGroup{
  if(textModelSetIds.has(id))return 'Text models';
- if(id==='local-full')return 'Complete local set';
+ if(id==='local-full'||id==='text-image-audio-q8')return 'Complete local set';
  if(/^user-[a-z0-9-]+$/.test(id))return 'Saved by you';
  throw Error('Unknown model set');
 }
@@ -24,6 +24,7 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'bonsai-2b-text',label:'Bonsai 2 · 2B',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-4b-text',label:'Bonsai 2 · 4B',detail:'Text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-9b-text',label:'Bonsai 2 · 9B',detail:'Text only · PC prose unstable',models:{textModel:'9B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
+ {id:'text-image-audio-q8',label:'Text + image + audio · Q8',detail:'LFM3 Q8_0 · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M',models:{textModel:'lfm3-1.7b-q8-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
  {id:'local-full',label:'Full local set',detail:'LFM3 · Decision · Speech · OCR · Vision',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
 ]);
 
