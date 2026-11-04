@@ -28,7 +28,15 @@ export async function startDeviceTestSuite(ports:Ports,mode:DeviceTestMode='quic
   await ports.save(report);await ports.arm(marker);return {report,marker};
  }
  report.scope.push(modelMode==='performance'?'Performance mode does not schedule an offline restart.':'Restart testing requires the Home Screen app; this browser run does not arm a restart test in another storage context.');
- if(report.selectedModel&&(report.selectedModel.filesPresent||modelMode==='full-cycle')){report=await ports.testModel(report,modelMode)??report;if(!report.modelGeneration)notRun(report,'model-test-not-run',modelMode);}
+ if(report.selectedModel&&(report.selectedModel.filesPresent||modelMode==='full-cycle')){
+  // Persist a copyable baseline before any model/runtime wait. If loading is
+  // slow or the page is suspended, the user can still share device evidence.
+  notRun(report,'model-test-in-progress',modelMode);
+  report.scope.push('Environment snapshot saved before the model test. While the test runs, this report can be copied without waiting for model load or generation.');
+  report.manualSteps=['Model test may still be running. Copy the current report at any time.','Stop the model test to record its completed or stopped stage.'];
+  await ports.save(report);
+  report=await ports.testModel(report,modelMode)??report;if(!report.modelGeneration||report.modelGeneration.failureType==='model-test-in-progress')notRun(report,'model-test-not-run',modelMode);
+ }
  else notRun(report,'model-files-not-ready',modelMode);
  report.manualSteps=['Review the results in Developer.','Copy report for Codex to share the results.'];
  await ports.save(report);return {report,marker:null};
