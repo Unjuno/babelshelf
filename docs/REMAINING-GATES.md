@@ -1,5 +1,19 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · verify a real model load across an app-screen change
+
+On the public Windows/Chrome PWA (active build `76f88c05662d96e0`), the
+already-prepared Bonsai 2 · 4B model was loaded from Models. While the UI
+reported `Compiling kernels (warmup)`, navigation to Memory completed and the
+global operation indicator and Stop action remained visible. After returning
+to Models, the model reported `Loaded · GPU unconfirmed`. It was then unloaded
+to restore the prior in-memory state. No model was downloaded, no model
+selection or preference changed, and no Memory content was created or edited.
+This is one observed PC run and confirms model-load continuity across SPA
+navigation; `GPU unconfirmed` does not prove GPU execution. Generation or
+tool execution continuing across screen navigation, browser reload, app close,
+and physical iOS behavior remain separate, unverified gates.
+
 ### 2026-11-04 · distinguish LFM3 model-load time from runtime setup
 
 The supplied screenshot shows LFM3 context `256K` selected. The application
