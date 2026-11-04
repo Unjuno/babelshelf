@@ -12,7 +12,13 @@ Actual PC samples show that local D1 can load and classify bounded current-only 
 
 ## Unconnected candidates and capability limits
 
-`d1-3B` remains selectable in the catalog but has no connected runtime adapter; the UI must report that boundary explicitly. Preparing the 600M text graph does not install its image or audio encoders. The “Omni” name does not establish OCR, transcription, video understanding, simultaneous image/audio input, or general visual reasoning. Image text and speech recognition remain separate locally prepared pipelines.
+`d1-3B` is retained as a known candidate, but it has no connected runtime adapter and is not selectable in the current model picker. If it appears as a legacy selection, the UI disables it and reports `Runtime not connected`. Preparing the 600M text graph does not install its image or audio encoders. The “Omni” name does not establish OCR, transcription, video understanding, simultaneous image/audio input, or general visual reasoning. Image text and speech recognition remain separate locally prepared pipelines.
+
+## Current role-selection gaps
+
+LFM3 IQ3_M is present as an optional text candidate at a pinned community revision and is selectable from the Text model library. It is about 869 MB. The QAD Q4_0 model remains the fresh-install default; IQ3_M selection and preparation metadata do not establish generation quality or phone compatibility.
+
+Image understanding has the pinned LFM2.5-VL 450M model and supports importing compatible local LFM2-VL ONNX packages. Image text currently has only the Tesseract 7 adapter; users can choose OCR languages, but cannot add a different OCR model. Search has no separate embedding or reranking model: the selected Text model plans the search, while local Memory retrieval uses the app's lexical index. A dedicated semantic-search model needs its own adapter, index lifecycle and offline tests before it can be offered as a selectable role.
 
 The official sources reviewed for the original proposal are [Liquid AI’s Open d1 announcement](https://www.liquid.ai/blog/d1-open), [d1-omni-600M](https://huggingface.co/LiquidAI/d1-omni-600M), and [d1-3B](https://huggingface.co/LiquidAI/d1-3B). The announced model is a research checkpoint. Its advertised audio/image behavior is not product capability evidence. Do not use these candidate descriptions to silently select another model or send content to an API.
 
