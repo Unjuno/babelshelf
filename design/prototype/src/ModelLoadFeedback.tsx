@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 
-type Props={percent?:number};
+type Props={percent?:number;stage?:string};
 
 function elapsedLabel(milliseconds:number){
  const seconds=Math.floor(milliseconds/1000),hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60),remaining=seconds%60;
@@ -8,16 +8,24 @@ function elapsedLabel(milliseconds:number){
 }
 
 /** Keep the once-per-second timer isolated so the full application does not rerender while a model initializes. */
-export function ModelLoadFeedback({percent}:Props){
+function stageLabel(stage=''){
+ if(/verif|check/i.test(stage))return 'Checking model file';
+ if(/stream.*weight/i.test(stage))return 'Reading model weights';
+ if(/kernel|warmup|compile/i.test(stage))return 'Preparing model';
+ return 'Loading model';
+}
+
+export function ModelLoadFeedback({percent,stage}:Props){
  const [elapsedMs,setElapsedMs]=useState(0);
  useEffect(()=>{const started=Date.now(),tick=()=>setElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[]);
  const elapsed=elapsedLabel(elapsedMs),takingLong=elapsedMs>=60_000,veryLong=elapsedMs>=300_000;
+ const label=stageLabel(stage);
  return <div className="model-load-feedback">
   <div className="model-load-feedback-heading">
-   <span>{percent===undefined?(veryLong?'Taking longer than expected · % unavailable':takingLong?'Still loading · % unavailable':'Loading · % unavailable'):`Loading · ${percent}%`}</span>
+   <span>{percent===undefined?`${label} · ${veryLong?'taking longer than expected · ':takingLong?'still in progress · ':''}% unavailable`:`${label} · ${percent}%`}</span>
    <time aria-label={`Elapsed ${elapsed}`} aria-live="off">{elapsed}</time>
   </div>
-  <progress max={100} {...(percent===undefined?{}:{value:percent})} aria-label={percent===undefined?'Model is loading; runtime progress is unavailable':`Model load ${percent}%`}/>
-  {percent===undefined&&<span className="model-load-guidance">{veryLong?'The runtime does not report exact progress. You can stop and retry; your files and notes stay saved.':takingLong?'The runtime does not report exact progress. Keep BabelShelf open; you can stop and retry.':'The runtime does not report exact progress. First load may take time on this device.'}</span>}
+  <progress max={100} {...(percent===undefined?{}:{value:percent})} aria-label={percent===undefined?`${label}; runtime progress is unavailable`:`${label} ${percent}%`}/>
+  {percent===undefined&&<span className="model-load-guidance">{veryLong?'This runtime does not report exact progress. Stop and retry if it appears stuck; your files and notes stay saved.':takingLong?'This runtime does not report exact progress. Keep BabelShelf open, or stop and retry.':'First load may take time. This runtime does not report exact progress.'}</span>}
  </div>;
 }
