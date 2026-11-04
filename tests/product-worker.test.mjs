@@ -204,7 +204,7 @@ test('custom tool QuickJS assets are excluded from first-install shell and acqui
 test('inference and PDF worker bundles are fetched only when their exact feature runtime is prepared',async()=>{
  const features=[
   ['decision-worker-ABCDEFGH.js','decision'],['speech-worker-ABCDEFGH.js','speech'],['speech-assets-worker-ABCDEFGH.js','speech'],['vision-worker-ABCDEFGH.js','vision'],
-  ['onnx-text-worker-ABCDEFGH.js','text-onnx'],['lfm-text-worker-ABCDEFGH.js','text-wllama'],
+  ['lfm-text-worker-ABCDEFGH.js','text-wllama'],
   ['qwen3-text-worker-ABCDEFGH.js','text-wllama'],['lfm3-compat-ABCDEFGH.wasm','text-lfm3'],['pdf.worker.min-ABCDEFGH.mjs','pdf']
  ];
  const files=[pinned('./index.html','INDEX'),...features.map(([name,role])=>({...pinned('./assets/'+name,name),roles:[role]}))];

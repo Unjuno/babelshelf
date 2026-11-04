@@ -21,7 +21,6 @@ function optionalRoles(file){
  if(name.startsWith('decision-worker-'))return ['decision'];
  if(name.startsWith('speech-worker-')||name.startsWith('speech-assets-worker-'))return ['speech'];
  if(name.startsWith('vision-worker-'))return ['vision'];
- if(name.startsWith('onnx-text-worker-'))return ['text-onnx'];
  if(name.startsWith('lfm3-text-worker-')||name.startsWith('lfm3-')&&name.endsWith('.wasm'))return ['text-lfm3'];
  if(name.startsWith('lfm-text-worker-')||name.startsWith('qwen3-text-worker-'))return ['text-wllama'];
  // The application imports this lightweight text helper during startup; it is
@@ -32,7 +31,7 @@ function optionalRoles(file){
  // an ordinary app update does not strand a previously prepared PDF reader.
  // PDF worker, fonts and cmaps remain explicitly prepared optional assets.
  if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return [];
- if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['text-onnx','decision','speech','vision'];
+ if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['decision','speech','vision'];
  if(/^(default|compat)-.*\.wasm$/.test(name))return ['text-wllama'];
  if(/^wllama-.*\.wasm$/.test(name))return ['text-lfm-check'];
  if(/^(bridge|worker|lstm|simd-lstm|relaxedsimd-lstm)-.*\.bin$/.test(name))return ['ocr'];

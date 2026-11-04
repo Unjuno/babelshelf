@@ -46,7 +46,8 @@ test('production shell includes the LFM3 update worker but keeps optional runtim
  assert.equal(visionAssets.length,1,'Local Vision inspection needs its lightweight asset worker');
  assert.equal(visionAssets[0].roles,undefined,'Local Vision file import must work before inference runtime preparation');
  assert.ok(visionAssets[0].bytes<128*1024,'Asset inspection must not bundle the inference engine');
- roleFor('onnx-text-worker-','text-onnx');roleFor('lfm-text-worker-','text-wllama');roleFor('qwen3-text-worker-','text-wllama');
+ assert.equal(manifest.files.some(file=>file.path.startsWith('./assets/onnx-text-worker-')),false,'Retired ONNX text candidates must not emit a worker');
+ roleFor('lfm-text-worker-','text-wllama');roleFor('qwen3-text-worker-','text-wllama');
  roleFor('lfm3-text-worker-','text-lfm3');
  const shellRoleFiles=manifest.files.filter(file=>file.shell===true&&file.roles?.length);
  assert.equal(shellRoleFiles.length,1,'Only the LFM3 worker is a role asset needed for offline app updates');

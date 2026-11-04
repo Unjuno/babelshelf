@@ -32,7 +32,7 @@ test('runtime preparation accepts progress while the first file is still downloa
 
 test('load-time runtime verification explicitly forbids acquisition and fails on missing assets',async()=>{
  const channel=fakeChannel(),worker=fakeWorker(channel,(message,_transfer,state)=>{assert.equal(message.acquire,false);queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'failed',error:'Runtime not prepared'}}));});
- await assert.rejects(verifyProductRuntimeAssets('text-onnx',{worker,operationId:'verify-op-01',makeChannel:()=>channel.channel}),/Runtime not prepared/);
+ await assert.rejects(verifyProductRuntimeAssets('text-onnx',{worker,operationId:'verify-op-01',makeChannel:()=>channel.channel}),/Unknown app runtime role/);
 });
 test('local-only runtime verification exposes real read progress without permitting a download',async()=>{
  const channel=fakeChannel(),progress=[],worker=fakeWorker(channel,(message,_transfer,state)=>{assert.equal(message.acquire,false);queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'progress',role:'pdf',completed:0,total:1,bytes:1024}}));queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'prepared',role:'pdf',assets:1,bytes:4096}}));});
@@ -122,8 +122,8 @@ test('load-time runtime verification can use the active app service worker witho
 import {runtimeRoleForModelEngine,runtimeRoleForPreparation} from '../src/product-runtime-assets.ts';
 
 test('maps only known browser runtime engines to their pinned bundles',()=>{
- assert.equal(runtimeRoleForModelEngine('transformers-causal-wasm'),'text-onnx');
- assert.equal(runtimeRoleForModelEngine('transformers-causal-webgpu'),'text-onnx');
+ assert.equal(runtimeRoleForModelEngine('transformers-causal-wasm'),null);
+ assert.equal(runtimeRoleForModelEngine('transformers-causal-webgpu'),null);
  assert.equal(runtimeRoleForModelEngine('wllama-cpu-count'),'text-wllama');assert.equal(runtimeRoleForModelEngine('wllama-qwen3-cpu'),'text-wllama');assert.equal(runtimeRoleForModelEngine('wllama-qwen3'),'text-wllama');assert.equal(runtimeRoleForModelEngine('wllama-lfm2'),'text-wllama');
  assert.equal(runtimeRoleForModelEngine('wllama-lfm3'),'text-lfm3');
  assert.equal(runtimeRoleForModelEngine('webml-qwen35'),null);
@@ -140,7 +140,7 @@ test('maps each preparation action to its exact optional runtime role',()=>{
 });
 
 test('runtime processing input uses a fixed feature identity and explicit network permission',()=>{
- assert.deepEqual(productRuntimeAssetInput('text-onnx',false),{source:{name:'ONNX text runtime'},role:'runtime',feature:'text-onnx',runtime:{name:'BabelShelf app assets',revision:'build-pinned'},allowNetwork:false,method:'local-only'});
+ assert.throws(()=>productRuntimeAssetInput('text-onnx',false),/Unknown app runtime role/);
  assert.equal(productRuntimeAssetInput('pdf',true).allowNetwork,true);assert.throws(()=>productRuntimeAssetInput('arbitrary-code',true));
 });
 
@@ -153,7 +153,7 @@ test('offline local GGUF preparation does not require the inference runtime',asy
 
 test('the separate runtime is ready before text model files are prepared',async()=>{
  const {prepareTextAssets}=await import('../src/product-runtime-assets.ts');
- for(const opts of [{role:'text-lfm3',downloads:true,verifyOnly:false,hasLocalFiles:true},{role:'text-lfm3',downloads:false,verifyOnly:false,hasLocalFiles:false},{role:'text-onnx',downloads:false,verifyOnly:false,hasLocalFiles:true}]){
+ for(const opts of [{role:'text-lfm3',downloads:true,verifyOnly:false,hasLocalFiles:true},{role:'text-lfm3',downloads:false,verifyOnly:false,hasLocalFiles:false}]){
   const calls=[];await assert.rejects(prepareTextAssets({...opts,ensureRuntime:async()=>{calls.push('runtime');throw Error('missing runtime');},prepare:async()=>calls.push('prepare'),verify:async()=>calls.push('verify')}),/missing runtime/);assert.deepEqual(calls,['runtime']);
  }
 });

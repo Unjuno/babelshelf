@@ -23,12 +23,12 @@ function validOutputLimit(value:unknown,contextTokens:number){return value===und
 // Trusted factories come from application code. Stored models/config cannot supply code.
 export class TextEngineRouter{
  private registrations:Registered[]=[];private active:TextBackend|null=null;private base:any;private epoch=0;private generationSession=0;private webml:TextBackend;private residentIdentity='';private residentLoadMetrics:{executionBackend?:'webgpu'|'cpu-wasm';gpuFallbackReason?:'webgpu-unavailable'|'webgpu-model-load-failed'|'webgpu-no-layers-offloaded'}|undefined;private nativeStructuredOutput=false;private createBase:(()=>TextBackend)|undefined;private cleanupFailure:Error|null=null;
- constructor(webml:TextBackend,createOnnx:()=>TextBackend,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend,nativeStructuredOutput=false){
+ constructor(webml:TextBackend,createOnnx:(()=>TextBackend)|undefined,additional:TextBackendRegistration[]=[],createBase?:()=>TextBackend,nativeStructuredOutput=false){
   this.nativeStructuredOutput=nativeStructuredOutput===true;
   this.webml=webml;this.base=webml.manifest;this.createBase=createBase;
-  const defaults:TextBackendRegistration={id:'onnx-text',modelIds:onnxTextModels.map(m=>m.id),describe:id=>combinedTextManifest({...this.base,models:[]},id),create:createOnnx};
+  const defaults:TextBackendRegistration|undefined=createOnnx?{id:'onnx-text',modelIds:onnxTextModels.map(m=>m.id),describe:id=>combinedTextManifest({...this.base,models:[]},id),create:createOnnx}:undefined;
   const engines=new Set<string>(),models=new Set<string>((this.base.models??[]).map((m:any)=>m.id));
-  for(const r of [defaults,...additional]){
+  for(const r of [...(defaults?[defaults]:[]),...additional]){
    if(!r||typeof r.id!=='string'||!/^[a-z][a-z0-9-]*$/.test(r.id)||engines.has(r.id)||typeof r.create!=='function'||typeof r.describe!=='function'||!Array.isArray(r.modelIds)||r.modelIds.some(id=>typeof id!=='string'||!id||models.has(id))||new Set(r.modelIds).size!==r.modelIds.length)throw Error('Invalid text engine registration');
    for(const id of r.modelIds.length?r.modelIds:['']){const d=r.describe(id);if(!d||!Number.isSafeInteger(d.contextTokens)||d.contextTokens<1||!validOutputLimit(d.maxOutputTokens,d.contextTokens)||(typeof d.runtime?.revision!=='string'||!d.runtime.revision)||!Array.isArray(d.models)||d.models.length!==r.modelIds.length||d.models.some(m=>!r.modelIds.includes(m.id)||typeof m.revision!=='string'||!m.revision)||new Set(d.models.map(m=>m.id)).size!==r.modelIds.length)throw Error('Invalid text engine manifest');if(id)models.add(id);}
    engines.add(r.id);this.registrations.push({...r,modelIds:Object.freeze([...r.modelIds]),instance:null});

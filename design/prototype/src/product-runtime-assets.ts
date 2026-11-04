@@ -1,4 +1,5 @@
-export type ProductRuntimeRole='text-onnx'|'text-wllama'|'text-lfm3'|'text-lfm-check'|'decision'|'speech'|'vision'|'ocr'|'pdf'|'custom-tools';
+export type ProductRuntimeRole='text-wllama'|'text-lfm3'|'text-lfm-check'|'decision'|'speech'|'vision'|'ocr'|'pdf'|'custom-tools';
+const runtimeLabels:Record<ProductRuntimeRole,string>={'text-wllama':'GGUF text runtime','text-lfm3':'LFM3 WebGPU runtime','text-lfm-check':'LFM text checker',decision:'Decision runtime',speech:'Speech runtime',vision:'Vision runtime',ocr:'OCR runtime',pdf:'PDF reader runtime','custom-tools':'Custom tool runtime'};
 export type ProductRuntimeProgress={status:'progress';role:ProductRuntimeRole;completed:number;total:number;bytes:number;totalBytes?:number};
 export type ProductRuntimeResult={status:'prepared';role:ProductRuntimeRole;assets:number;bytes:number;downloadedBytes?:number};
 /** Show useful movement while one large runtime asset is still streaming. */
@@ -33,7 +34,6 @@ export async function prepareTextAssets(options:{role:ProductRuntimeRole|null;do
 }
 
 export function runtimeRoleForModelEngine(engine:string|undefined|null):ProductRuntimeRole|null{
- if(engine==='transformers-causal-wasm'||engine==='transformers-causal-webgpu')return 'text-onnx';
  if(engine==='wllama-cpu-count'||engine==='wllama-qwen3-cpu'||engine==='wllama-qwen3'||engine==='wllama-lfm2')return 'text-wllama';
  if(engine==='wllama-lfm3')return 'text-lfm3';
  return null;
@@ -43,14 +43,14 @@ export function runtimeRoleForPreparation(role:'text'|'decision'|'speech'|'visio
 }
 
 export function productRuntimeAssetInput(role:ProductRuntimeRole,allowNetwork:boolean){
- const labels:Record<ProductRuntimeRole,string>={'text-onnx':'ONNX text runtime','text-wllama':'GGUF text runtime','text-lfm3':'LFM3 WebGPU runtime','text-lfm-check':'LFM text checker',decision:'Decision runtime',speech:'Speech runtime',vision:'Vision runtime',ocr:'OCR runtime',pdf:'PDF reader runtime','custom-tools':'Custom tool runtime'};
- if(!Object.hasOwn(labels,role))throw Error('Unknown app runtime role');
- return {source:{name:labels[role]},role:'runtime',feature:role,runtime:{name:'BabelShelf app assets',revision:'build-pinned'},allowNetwork,method:allowNetwork?'explicit-preparation':'local-only'} as const;
+ if(!Object.hasOwn(runtimeLabels,role))throw Error('Unknown app runtime role');
+ return {source:{name:runtimeLabels[role]},role:'runtime',feature:role,runtime:{name:'BabelShelf app assets',revision:'build-pinned'},allowNetwork,method:allowNetwork?'explicit-preparation':'local-only'} as const;
 }
 
 type RuntimeRequestOptions={worker?:RuntimeWorker|null;signal?:AbortSignal;operationId?:string;onProgress?:(progress:ProductRuntimeProgress)=>void;makeChannel?:()=>MessageChannel;timeoutMs?:number;maxDurationMs?:number};
 /** Prepare or inspect only the selected, build-pinned runtime. */
 function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:RuntimeRequestOptions){
+ if(!Object.hasOwn(runtimeLabels,role))return Promise.reject(Error('Unknown app runtime role'));
  const worker=options.worker===undefined?(typeof navigator!=='undefined'?navigator.serviceWorker?.controller:null):options.worker;
  const codedError=(message:string,code:ProductRuntimeFailureCode)=>Object.assign(Error(message),{code});
  if(!worker)return Promise.reject(codedError('App runtime unavailable · reopen the installed app','runtime-unavailable'));
