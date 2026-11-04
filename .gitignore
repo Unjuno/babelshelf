@@ -20,3 +20,4 @@ design/prototype/src/generated/package-notices.json
 
 # Ephemeral local QA profiles and cache probes
 .tmp-*/
+feedback-api/.wrangler/

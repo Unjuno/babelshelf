@@ -40,8 +40,8 @@
     "tesseract.js": "7.0.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "^2.4.0",
-    "@modelcontextprotocol/server": "^2.4.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "@playwright/test": "1.61.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",

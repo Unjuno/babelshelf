@@ -18,7 +18,7 @@ test('Settings keeps core categories visible and secondary tools grouped under M
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
 
- for(const label of ['Models','Files & media','Appearance','Connection','Local files','Help','Licenses']){
+ for(const label of ['Models','Files & media','Appearance','Connection','Local files','Help','Send feedback','Licenses']){
   await expect(page.getByRole('button',{name:label,exact:true})).toBeVisible();
  }
  await expect(page.getByRole('button',{name:'Assistant',exact:true})).toHaveCount(0);
@@ -30,6 +30,18 @@ test('Settings keeps core categories visible and secondary tools grouped under M
  for(const label of ['Assistant','Tools','Developer','Tool files','Restore defaults']){
   await expect(page.getByRole('button',{name:label,exact:true})).toBeVisible();
  }
+});
+
+test('feedback can be drafted in Settings but cannot be sent while app connection is Offline',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Send feedback',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Feedback',exact:true})).toBeVisible();
+ const message=page.getByRole('textbox',{name:'Feedback message',exact:true});await expect(message).toBeEnabled();await message.fill('Draft stays local until an explicit online send.');
+ await expect(page.getByRole('button',{name:'Send feedback',exact:true})).toBeDisabled();
+ await expect(page.getByRole('status')).toContainText('Connect and turn Online on to send');
+ await expect(page.getByText(/Do not include private notes or personal information/)).toBeVisible();
 });
 
 test('Connection separates cached app readiness from Home Screen launch mode',async({page})=>{

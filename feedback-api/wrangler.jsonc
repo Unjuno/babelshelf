@@ -1,0 +1,19 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "babelshelf-feedback-api",
+	"main": "src/index.mjs",
+	"compatibility_date": "2026-11-04",
+  "workers_dev": true,
+	"preview_urls": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "babelshelf-feedback",
+			"database_id": "0f430c94-74f4-4906-af13-ffb640a3c1c2",
+			"migrations_dir": "migrations"
+		}
+	],
+	"vars": {
+		"ALLOWED_ORIGINS": "https://babelshelf.com"
+	}
+}

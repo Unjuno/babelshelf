@@ -1,7 +1,7 @@
 import {CaretRight} from '@phosphor-icons/react';
 import type {PreferenceGroup} from './preference-records.ts';
 
-export type SettingsHomePanel='models'|'media'|'appearance'|'connection'|'files'|'agent'|'tools'|'help'|'licenses';
+export type SettingsHomePanel='models'|'media'|'appearance'|'connection'|'files'|'agent'|'tools'|'feedback'|'help'|'licenses';
 
 interface SettingsHomeScreenProps {
  recoveryNeeded:boolean;
@@ -38,6 +38,7 @@ export function SettingsHomeScreen({recoveryNeeded,recoveryGroups,recoveringGrou
   </details>
   <div className="settings-support" aria-label="Help and legal">
    <button className="settings-action" onClick={()=>onOpenPanel('help')}>Help<CaretRight size={18}/></button>
+   <button className="settings-action" onClick={()=>onOpenPanel('feedback')}>Send feedback<CaretRight size={18}/></button>
    <button className="settings-action" onClick={()=>onOpenPanel('licenses')}>Licenses<CaretRight size={18}/></button>
   </div>
  </section>;

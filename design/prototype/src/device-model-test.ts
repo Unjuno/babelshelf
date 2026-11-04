@@ -3,11 +3,11 @@ import {parseDeviceModelSmokeAnswer} from './device-diagnostics.ts';
 export type DeviceModelTestMode='quick'|'performance'|'full-cycle';
 export type DeviceTestMode='app'|'offline-readiness'|'storage-health'|'runtime-support'|'model-readiness'|DeviceModelTestMode;
 export type DeviceModelTestFailureStage='runtime-setup'|'model-preparation'|'model-load'|'count'|'generation'|'warm-generation'|'output-validation'|'unload';
-/** Prepare the separate runtime before model acquisition or loading. */
+/** Prepare the separately cached runtime before model acquisition or loading. */
 export async function prepareFullCycleAssets<TModel,TRuntime>(prepareModel:()=>Promise<TModel>,prepareRuntime:()=>Promise<TRuntime>){
  const runtime=await prepareRuntime();
  const model=await prepareModel();
- return {model,runtime};
+ return {runtime,model};
 }
 const knownFailureCodes=new Set(['stopped','incomplete-output','empty-output','model-files-not-ready','restart-pending','return-attempt-interrupted','another-model-loaded','model-test-not-run','no-model-selected','selected-model-changed','downloads-off','offline-signal','runtime-unavailable','runtime-messaging-unavailable','runtime-invalid-response','runtime-timeout','runtime-assets-unavailable','runtime-not-prepared','runtime-http-error','runtime-network-error','runtime-integrity-error','runtime-storage-error','runtime-setup-error']);
 /** Keep device reports useful without retaining raw exception text or user data. */
