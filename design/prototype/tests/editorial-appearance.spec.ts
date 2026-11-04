@@ -90,6 +90,16 @@ test('saving an answer keeps actions visible while the source list scrolls',asyn
  await expect(dialog.getByRole('textbox',{name:'New file content'})).toHaveValue('20');
 });
 
+test('a sent prompt can be edited into a new turn without rewriting its original',async({page})=>{
+ await page.goto('/');const composer=page.getByRole('textbox',{name:'Message'});
+ await composer.fill('12 + 8');await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.locator('.reply-text').last()).toContainText('20');
+ const original=page.getByText('12 + 8',{exact:true});await expect(original).toBeVisible();
+ await page.getByRole('button',{name:'Edit and resend prompt'}).click();await expect(composer).toHaveValue('12 + 8');
+ await composer.fill('30 + 2');await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect(page.locator('.reply-text').last()).toContainText('32');await expect(page.getByText('12 + 8',{exact:true})).toBeVisible();await expect(page.getByText('30 + 2',{exact:true})).toBeVisible();
+});
+
 test('saving a reviewed answer rejects a changed source state without losing the draft',async({page,context})=>{
  await page.goto('/');await createInboxFile(page,'QA-source-state','original');
  await page.evaluate(async()=>{

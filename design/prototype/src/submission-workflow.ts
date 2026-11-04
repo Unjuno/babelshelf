@@ -22,7 +22,7 @@ import {appendDiagnosticLog} from './diagnostic-logs.ts';
 import {recordUnclassifiedTurnFailure} from './turn-failure-log.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
 import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
-import {createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
+import {activityLabel,createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
 import {inspectDialogueText} from './text-transform.ts';
 import {plannerContextFits,resolveDialogueTarget,dialogueTargetInput,type ChatEngine,type Dialogue,type DialogueTurn,type DialogueContext} from './conversation.ts';
 import {prepareTurnContext} from './turn-context-preparation.ts';
@@ -110,7 +110,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
   const recoverDraft=()=>{const recovered=submission.recover(view.composer());if(recovered)view.restore(recovered);};
   const readActivities=()=>{const turn=currentDialogue().turns.find(t=>t.id===id);return turn?turn.activity??[]:undefined;};
   const pagingAvailable=typeof knowledge.recordTurnActivity==='function';
-  const trace=createTurnActivityTracer({check:checkSend,readActivities,persistActivities:activity=>finishTurn(id,{activity}),...(pagingAvailable?{persistActivity:async activity=>{const paged=await persistTurnActivity({turnId:id,readActivities,readStored:storedDialogue,persistInline:items=>finishTurn(id,{activity:items}),persistPaged:(turnId,item,expected)=>knowledge.recordTurnActivity(turnId,item,expected)},activity);if(paged)try{view.activityChanged?.(id);}catch{/* Presentation must not change the committed receipt. */}}}:{}),onFailureRecorded:()=>{activityFailureRecorded=true;},onStepCompleted:()=>run.stepCompleted(),diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
+  const trace=createTurnActivityTracer({check:checkSend,readActivities,persistActivities:activity=>finishTurn(id,{activity}),...(pagingAvailable?{persistActivity:async activity=>{const paged=await persistTurnActivity({turnId:id,readActivities,readStored:storedDialogue,persistInline:items=>finishTurn(id,{activity:items}),persistPaged:(turnId,item,expected)=>knowledge.recordTurnActivity(turnId,item,expected)},activity);if(paged)try{view.activityChanged?.(id);}catch{/* Presentation must not change the committed receipt. */}}}:{}),onFailureRecorded:()=>{activityFailureRecorded=true;},onStepStarted:tool=>run.progress(tool==='model.load'?'Loading model…':activityLabel(tool),'planning'),onStepCompleted:()=>run.stepCompleted(),diagnosticsEnabled:connectionPreferences.diagnosticLogs,writeDiagnostic:event=>appendDiagnosticLog(diagnostics,event)});
    const ensureText=async(resumeStage:'planning'|'generating'='planning')=>{
     if(bonsai.loaded!==model)run.progress('Loading model…',resumeStage);
     inference=inferenceBudget.wrap(await models.text(model,checkSend,work=>trace('model.load',{model},work))) as TextRuntime;

@@ -91,9 +91,9 @@ test('dialogue retains activity but never includes its tool payloads in model hi
 
 test('turn activity trace commits its current receipt around work and projects only bounded output',async()=>{
  const {createTurnActivityTracer}=await import('../src/harness-activity.ts');assert.equal(typeof createTurnActivityTracer,'function');
- let current=[];const commits=[],steps=[],trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;commits.push(value.map(activity=>activity.status));},onFailureRecorded:()=>assert.fail('successful operation marked failed'),onStepCompleted:()=>{assert.equal(current[0].status,'succeeded');steps.push(current[0].status);},diagnosticsEnabled:false,writeDiagnostic:()=>assert.fail('diagnostic written while disabled')});
+ let current=[];const commits=[],steps=[],started=[],trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;commits.push(value.map(activity=>activity.status));},onFailureRecorded:()=>assert.fail('successful operation marked failed'),onStepStarted:tool=>{assert.equal(current[0].status,'running');started.push(tool);},onStepCompleted:()=>{assert.equal(current[0].status,'succeeded');steps.push(current[0].status);},diagnosticsEnabled:false,writeDiagnostic:()=>assert.fail('diagnostic written while disabled')});
  const result=await trace('memory.search',input,async()=>({count:1,privateResult:'do not persist'}),value=>({count:value.count}));
- assert.deepEqual(commits,[['running'],['succeeded']]);assert.deepEqual(steps,['succeeded']);assert.deepEqual(current[0].output,{count:1});assert.deepEqual(result,{count:1,privateResult:'do not persist'});
+ assert.deepEqual(commits,[['running'],['succeeded']]);assert.deepEqual(started,['memory.search']);assert.deepEqual(steps,['succeeded']);assert.deepEqual(current[0].output,{count:1});assert.deepEqual(result,{count:1,privateResult:'do not persist'});
 });
 
 test('turn activity trace records cancellation once and emits only the enabled failure diagnostic',async()=>{

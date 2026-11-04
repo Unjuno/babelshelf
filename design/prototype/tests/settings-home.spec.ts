@@ -62,7 +62,8 @@ test('pinned LFM3 context window is selectable and persists without loading mode
  await group.getByRole('button',{name:'256K',exact:true}).click();
  await expect(group.getByRole('button',{name:'256K',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(group.getByRole('button',{name:'16K',exact:true})).toBeVisible();
- await expect(section).toContainText('Larger windows need more memory and may fail on this device');
+ await expect(section).toContainText('256K is the model maximum, not a recommended phone setting');
+ await expect(section.getByRole('note')).toContainText('try 8K first if model loading is slow');
  await page.reload();
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();

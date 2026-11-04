@@ -71,8 +71,8 @@ export class ActivityPersistenceError extends Error {
 }
 async function persistActivity(persist:(activity:Activity)=>Promise<void>,activity:Activity){try{await persist(structuredClone(activity));}catch{throw new ActivityPersistenceError();}}
 export function finishActivity(a:Activity,result:{output?:unknown;error?:unknown}):Activity{validateActivity([a]);if(a.status!=='running')throw Error('Activity already finished');let next:Activity;if('error' in result){const error=failure(result.error);next={...a,finishedAt:new Date().toISOString(),status:error.code==='stopped'?'stopped':'failed',error,...(result.output!==undefined?{output:payload(result.output)}:{})};}else next={...a,finishedAt:new Date().toISOString(),status:'succeeded',output:payload(result.output??null)};validateActivity([next]);return structuredClone(next);}
-export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined):Promise<T>{
- const started=startActivity(tool,input);await persistActivity(persist,started);let result:T;
+export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined,onStarted?:(tool:ActivityTool)=>void):Promise<T>{
+ const started=startActivity(tool,input);await persistActivity(persist,started);try{onStarted?.(tool);}catch{/* Live status must not change execution. */}let result:T;
  try{result=await work();}catch(error){try{
   // Invalid model output can echo prompts, source text or private note content.
   // Keep the raw value only on the transient error used by in-turn repair;
@@ -87,7 +87,7 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
  // A final persistence failure must not run the tool again or invent a tool failure.
  try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
 }
-export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;onStepCompleted?:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
+export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;onStepStarted?:(tool:ActivityTool)=>void;onStepCompleted?:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
  return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined){
   return recordOperation(tool,input,async()=>{ports.check();const result=await work();ports.check();return result;},async activity=>{
    if(ports.persistActivity)await ports.persistActivity(activity);
@@ -96,7 +96,7 @@ export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()
    if(activity.status==='failed'||activity.status==='stopped'){
     ports.onFailureRecorded();if(ports.diagnosticsEnabled)try{ports.writeDiagnostic({tool:activity.tool,status:activity.status,code:activity.error?.code??activity.status,message:activity.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}
    }
-  },project,failureOf,failureProject);
+  },project,failureOf,failureProject,ports.onStepStarted);
  };
 }
 /** Preserve old inline receipts and append overflow in separately persisted pages. */

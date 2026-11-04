@@ -8,6 +8,7 @@ export function LfmContextSettings({value,disabled=false,onChange}:Props){
   <div className="appearance-options" role="group" aria-label="LFM3 context window">
    {choices.map(size=><button key={size} type="button" aria-pressed={value===size} disabled={disabled} onClick={()=>onChange(size)}>{label(size)}</button>)}
   </div>
-  <div className="source-revision">LFM3 supports up to 256K. Larger windows need more memory and may fail on this device.</div>
+  <div className="source-revision">Higher context uses more memory. On phones, start with 8K or 16K. 256K is the model maximum, not a recommended phone setting; it can make loading much slower or fail.</div>
+  {value>=131072&&<div className="source-revision" role="note">Large context selected · try 8K first if model loading is slow.</div>}
  </section>;
 }

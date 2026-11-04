@@ -10,9 +10,10 @@ function elapsedLabel(milliseconds:number){
 /** Keep the once-per-second timer isolated so the full application does not rerender while a model initializes. */
 function stageLabel(stage=''){
  if(/verif|check/i.test(stage))return 'Checking model file';
- if(/stream.*weight/i.test(stage))return 'Reading model weights';
- if(/kernel|warmup|compile/i.test(stage))return 'Preparing model';
- return 'Loading model';
+ if(/stream.*weight|reading.*weight/i.test(stage))return 'Reading model weights';
+ if(/kernel|warmup|compile|context/i.test(stage))return 'Preparing model';
+ if(/gpu/i.test(stage))return 'Starting GPU';
+ return 'Loading model into memory';
 }
 
 export function ModelLoadFeedback({percent,stage}:Props){
@@ -22,10 +23,10 @@ export function ModelLoadFeedback({percent,stage}:Props){
  const label=stageLabel(stage);
  return <div className="model-load-feedback">
   <div className="model-load-feedback-heading">
-   <span>{percent===undefined?`${label} · ${veryLong?'taking longer than expected · ':takingLong?'still in progress · ':''}% unavailable`:`${label} · ${percent}%`}</span>
+   <span>{percent===undefined?`${label} · progress not reported${veryLong?' · taking longer than expected':takingLong?' · still in progress':''}`:`${label} · ${percent}%`}</span>
    <time aria-label={`Elapsed ${elapsed}`} aria-live="off">{elapsed}</time>
   </div>
   <progress max={100} {...(percent===undefined?{}:{value:percent})} aria-label={percent===undefined?`${label}; runtime progress is unavailable`:`${label} ${percent}%`}/>
-  {percent===undefined&&<span className="model-load-guidance">{veryLong?'This runtime does not report exact progress. Stop and retry if it appears stuck; your files and notes stay saved.':takingLong?'This runtime does not report exact progress. Keep BabelShelf open, or stop and retry.':'First load may take time. This runtime does not report exact progress.'}</span>}
+  {percent===undefined&&<span className="model-load-guidance">The model file is already saved. The runtime is loading it into memory and does not report an exact percentage.{veryLong?' You can stop and retry; the saved model file and your notes stay in place.':takingLong?' Keep BabelShelf open, or stop and retry.':''}</span>}
  </div>;
 }
