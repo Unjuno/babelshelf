@@ -1,3 +1,24 @@
+# Public Site v322 — visible LFM3 context guidance (2026-11-05 JST)
+
+Product source: `codex/ui-design-handoff` at
+`be9c8eb32e77bdc9489678575ad901554002bda1`; app build
+`038691e668978b4e` /163 verified assets. Site source commit
+`11f52f49133bfa3f13a5606e03f44d3526fb7623`; saved Site version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_0cb7f3714a5881918f761a9a440649f5`
+(v322); deployment `appgdep_6aeb6e58306481919ebce4cd49f9ac36` succeeded.
+The Site remains public at `https://babelshelf.com`. The live build manifest
+returns `038691e668978b4e` /163 assets. Archive SHA-256 is
+`cbf219bf98b49ba366fd9281b0fca4161070c13765d327a8e78b33ebdf734287`
+(110,438,400 bytes).
+
+Model settings now keep a high-memory LFM3 context warning visible above the
+collapsed options, with an explicit `Use 16K` action. It does not silently
+change a stored context choice. The settings UI acceptance suite passed 13
+tests, the production shell acceptance passed 9 tests, and `npm run check`
+passed. The existing public sidebar tab was refreshed and retained its saved
+conversation. The supplied iPhone report was from build `bae57d2542fed742`,
+before v321; this release does not claim iPhone model-load validation.
+
 # Public Site v321 — selectable model candidates and LFM3 IQ3_M (2026-11-05 JST)
 
 Product source: `codex/ui-design-handoff` at
