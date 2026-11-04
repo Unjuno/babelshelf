@@ -54,10 +54,11 @@ test('saved timing results identify their model, time and build independently of
  await expect(page.getByText('previous-build',{exact:true})).toBeVisible();
 });
 
-test('every test type has a visible overview and App & storage runs without a model',async({page})=>{
+test('browser starts with a report-only App & storage check; every test type has a visible overview',async({page})=>{
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
- await expect(page.getByRole('region',{name:'Quick overview'})).toContainText('one short reply');
- await page.getByText('Test options · Quick',{exact:true}).click();
+ await expect(page.getByRole('region',{name:'App & storage overview'})).toContainText('No model load or download');
+ await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeVisible();
+ await page.getByText('Test options · App & storage',{exact:true}).click();
  for(const mode of ['App & storage','Offline readiness','Storage health','Runtime support','Model readiness','Quick','Performance','Full cycle'])await expect(page.getByRole('button',{name:mode,exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Model readiness',exact:true}).click();await expect(page.getByRole('region',{name:'Model readiness overview'})).toContainText('No model load, generation, or download');
  await page.getByRole('button',{name:'Check model readiness',exact:true}).click();await expect(page.getByRole('region',{name:'Last test overview · Model readiness'})).toBeVisible();
@@ -73,7 +74,7 @@ test('every test type has a visible overview and App & storage runs without a mo
 });
 
 test('focused Offline, Storage and Runtime diagnostics each show a result overview',async({page})=>{
- await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · Quick',{exact:true}).click();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · App & storage',{exact:true}).click();
  for(const [label,button,focus] of [['Offline readiness','Check offline readiness','Offline cache'],['Storage health','Check storage','Browser storage'],['Runtime support','Check runtime support','GPU capability']] as const){
   await page.getByRole('button',{name:label,exact:true}).click();await expect(page.getByRole('region',{name:`${label} overview`})).toContainText(focus);
   await page.getByRole('button',{name:button,exact:true}).click();const result=page.getByRole('region',{name:`Last test overview · ${label}`});await expect(result).toContainText('areas');await expect(result).toContainText('ready');
@@ -195,11 +196,11 @@ test('Settings device test creates a local report that can be copied for handoff
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
  await expect(page.getByRole('heading',{name:'Device test'})).toBeVisible();
- await expect(page.getByRole('button',{name:'Run tests',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toHaveCount(1);
  await expect(page.getByRole('button',{name:'Test selected model'})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Start restart test'})).toHaveCount(0);
 
- await page.getByRole('button',{name:'Run tests'}).click();
+ await page.getByRole('button',{name:'Run app checks'}).click();
  const report=page.locator('.device-test-report');
  await expect(report).toBeVisible({timeout:30000});
  const text=await page.locator('.diagnostic-report').textContent();
@@ -424,7 +425,7 @@ test('diagnostic log review opens an editable chat draft without sending it',asy
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings'}).click();
  await openSettingsItem(page,'Developer');
- await expect(page.getByRole('button',{name:'Run tests',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeVisible();
  await expect(page.locator('section[aria-label="Diagnostic logging"]')).toHaveCount(1);
  await expect(page.locator('button').filter({hasText:'Ask model'})).toHaveCount(0);
  await expect(page.locator('section[aria-label="Diagnostic entries"]:visible')).toContainText('The planner response did not match the required action format.');
@@ -441,7 +442,7 @@ test('installed Performance uses one Run without requiring a restart or model do
 });
 
 test('Full cycle explains missing model preparation and download requirements before running',async({page})=>{
- await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · Quick',{exact:true}).click();await page.getByRole('button',{name:'Full cycle',exact:true}).click();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByText('Test options · App & storage',{exact:true}).click();await page.getByRole('button',{name:'Full cycle',exact:true}).click();
  const overview=page.getByRole('region',{name:'Full cycle overview'});await expect(overview).toContainText('Check or prepare files');await expect(overview).toContainText('load model');await expect(overview).toContainText('first answer');await expect(overview).toContainText('warm run');await expect(overview).toContainText('Downloads Off');
  await expect(page.getByRole('button',{name:'Run full model test',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toHaveCount(0);
 });
@@ -451,7 +452,7 @@ test('a legacy Performance restart marker still completes once after an update',
  await page.evaluate(()=>{const key='babelshelf.device-test.offline-restart.v1',marker=JSON.parse(localStorage.getItem(key)!);marker.modelTestMode='performance';localStorage.setItem(key,JSON.stringify(marker));});await page.reload();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeVisible();await expect(page.getByText('Test options · Performance',{exact:true})).toBeVisible();await expect.poll(()=>page.evaluate(()=>localStorage.getItem('babelshelf.device-test.offline-restart.v1'))).toBeNull();
 });
 
-test('a new run cannot copy the previous result as if it were the current test',async({page})=>{
+test('a report-only run cannot copy the previous result while checks are running',async({page})=>{
  await page.addInitScript(()=>{localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'old',modelRevision:'old-rev',runtimeRevision:'old-runtime'}}));(window as any).__gpuProbeCount=0;const pending:Array<(value:null)=>void>=[];(window as any).__releaseGpuProbe=()=>pending.shift()?.(null);Object.defineProperty(navigator,'gpu',{configurable:true,value:{requestAdapter:()=>{(window as any).__gpuProbeCount++;return new Promise(resolve=>pending.push(resolve));}}});});
- await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run tests'}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await expect(page.getByText('Previous report',{exact:true})).toBeVisible();await page.waitForFunction(()=>typeof (window as any).__releaseGpuProbe==='function'&&(window as any).__gpuProbeCount===1);await page.evaluate(()=>(window as any).__releaseGpuProbe());await page.waitForFunction(()=>(window as any).__gpuProbeCount===2);await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await page.evaluate(()=>(window as any).__releaseGpuProbe());await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');await page.getByRole('button',{name:'Run app checks',exact:true}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await expect(page.getByText('Previous report',{exact:true})).toBeVisible();await page.waitForFunction(()=>typeof (window as any).__releaseGpuProbe==='function'&&(window as any).__gpuProbeCount===1);await page.evaluate(()=>(window as any).__releaseGpuProbe());await page.waitForFunction(()=>(window as any).__gpuProbeCount===2);await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeDisabled();await page.evaluate(()=>(window as any).__releaseGpuProbe());await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
 });

@@ -227,7 +227,7 @@ export default function Prototype() {
  const appRefreshLock=useRef(false),appRefreshState=useRef({blocked:true,online:false});
  const [diagnosticBuild,setDiagnosticBuild]=useState('Not checked'),[runtimeAssetsReady,setRuntimeAssetsReady]=useState<Partial<Record<ProductRuntimeRole,boolean>>>({});
   const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false);
- const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>('quick');
+ const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>(()=>typeof navigator!=='undefined'&&isStandalonePwa(typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches,(navigator as Navigator&{standalone?:boolean}).standalone)?'quick':'app');
  const [deviceTestStage,setDeviceTestStage]=useState('');
  const [deviceTestElapsedMs,setDeviceTestElapsedMs]=useState(0),deviceTestStartedAt=useRef<number|null>(null);
  useEffect(()=>{if(!deviceTestRunning&&!deviceModelTesting)return;const started=deviceTestStartedAt.current??Date.now();const tick=()=>setDeviceTestElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[deviceTestRunning,deviceModelTesting]);
