@@ -14,10 +14,10 @@ export function ModelLoadFeedback({percent}:Props){
  const elapsed=elapsedLabel(elapsedMs),takingLong=elapsedMs>=60_000,veryLong=elapsedMs>=300_000;
  return <div className="model-load-feedback">
   <div className="model-load-feedback-heading">
-   <span>{percent===undefined?(veryLong?'Taking longer than expected':takingLong?'Still loading':'Loading'):`Loading · ${percent}%`}</span>
+   <span>{percent===undefined?(veryLong?'Taking longer than expected · % unavailable':takingLong?'Still loading · % unavailable':'Loading · % unavailable'):`Loading · ${percent}%`}</span>
    <time aria-label={`Elapsed ${elapsed}`} aria-live="off">{elapsed}</time>
   </div>
   <progress max={100} {...(percent===undefined?{}:{value:percent})} aria-label={percent===undefined?'Model is loading; runtime progress is unavailable':`Model load ${percent}%`}/>
-  {percent===undefined&&<span className="model-load-guidance">{veryLong?'No exact progress is available. You can stop and retry; your files and notes stay saved.':takingLong?'Keep BabelShelf open. You can stop and retry if needed.':'First load may take time on this device.'}</span>}
+  {percent===undefined&&<span className="model-load-guidance">{veryLong?'The runtime does not report exact progress. You can stop and retry; your files and notes stay saved.':takingLong?'The runtime does not report exact progress. Keep BabelShelf open; you can stop and retry.':'The runtime does not report exact progress. First load may take time on this device.'}</span>}
  </div>;
 }
