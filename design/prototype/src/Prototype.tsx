@@ -226,6 +226,7 @@ export default function Prototype() {
  const [appRefreshing,setAppRefreshing]=useState(false);
  const appRefreshLock=useRef(false),appRefreshState=useRef({blocked:true,online:false});
  const [diagnosticBuild,setDiagnosticBuild]=useState('Not checked'),[runtimeAssetsReady,setRuntimeAssetsReady]=useState<Partial<Record<ProductRuntimeRole,boolean>>>({});
+ useEffect(()=>{const worker=navigator.serviceWorker,invalidate=()=>setRuntimeAssetsReady({});worker?.addEventListener('controllerchange',invalidate);return()=>worker?.removeEventListener('controllerchange',invalidate);},[]);
  const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false),deviceModelTestAbort=useRef<AbortController|null>(null);
  const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>(()=>typeof navigator!=='undefined'&&isStandalonePwa(typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches,(navigator as Navigator&{standalone?:boolean}).standalone)?'quick':'app');
  const [deviceTestStage,setDeviceTestStage]=useState('');
