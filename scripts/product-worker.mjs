@@ -218,7 +218,7 @@ self.addEventListener('message',event=>{
     const controller=new AbortController();networkRequests.add(controller);job.controllers.add(controller);let response;
     try{
      networkSource=true;networkRead=0;
-     try{response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}catch(error){if(job.stopped)throw Error('Stopped');if(epoch!==networkEpoch||controller.signal.aborted)throw Error('Downloads are off');if(error instanceof TypeError)throw Object.assign(Error('App runtime network request failed'),{code:'runtime-network-error'});throw error;}
+     try{response=await fetch(absolute(file.downloadPath??file.path),{cache:'no-store',credentials:'same-origin',signal:controller.signal});}catch(error){if(job.stopped)throw Error('Stopped');if(epoch!==networkEpoch||controller.signal.aborted)throw Error('Downloads are off');const fetchTypeError=error instanceof TypeError||error&&typeof error==='object'&&error.name==='TypeError';if(fetchTypeError)throw Object.assign(Error('App runtime network request failed'),{code:'runtime-network-error'});throw error;}
      if(epoch!==networkEpoch||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');
      if(!response.ok)throw Error('App runtime HTTP request failed');if(!await verified(response,file,onBytes))throw Error('App asset verification failed');
      if(job.stopped||controller.signal.aborted||epoch!==networkEpoch)throw Error('Stopped');

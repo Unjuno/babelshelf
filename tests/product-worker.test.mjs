@@ -143,6 +143,12 @@ test('runtime preparation reports actual incoming bytes before the file complete
 test('runtime preparation failure reports the partial verified-stream transfer size',async()=>{
  const file={...pinned('./assets/speech-ABCDEFGH.wasm','GOOD'),roles:['speech']},h=await harness('BAD',{files:[file]});const result=await prepareRole(h,'speech');assert.equal(result.status,'failed');assert.equal(result.downloadedBytes,3);assert.equal(result.code,'runtime-integrity-error');assert.match(result.error,/verification/i);
 });
+test('a disconnected runtime request reports a safe network failure without leaking the request URL',async()=>{
+ const file={...pinned('./assets/speech-ABCDEFGH.wasm','RUNTIME'),roles:['speech']};
+ const h=await harness('unused',{files:[file],fetcher:()=>{throw TypeError('Failed to fetch https://assets.example/runtime.wasm?token=private');}});
+ const result=await prepareRole(h,'speech');
+ assert.equal(result.status,'failed');assert.equal(result.code,'runtime-network-error');assert.equal(result.error,'App runtime network request failed');assert.equal(result.downloadedBytes,0);
+});
 test('stopping a streaming runtime download does not commit its completed bytes',async()=>{
  let resume;const gate=new Promise(resolve=>{resume=resolve;}),file={...pinned('./assets/speech-ABCDEFGH.wasm','RUNTIME'),roles:['speech']};
  const h=await harness('unused',{files:[file],fetcher:()=>Promise.resolve(new Response(new ReadableStream({async start(controller){controller.enqueue(new TextEncoder().encode('RUN'));await gate;controller.enqueue(new TextEncoder().encode('TIME'));controller.close();}})))});
