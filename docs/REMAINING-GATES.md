@@ -1,5 +1,18 @@
 ## Current status · 2026-11-04
 
+### 2026-11-04 · keep supplementary Unicode characters intact in source excerpts
+
+The core knowledge chunker uses UTF-16 offsets so citations map directly to
+JavaScript string ranges. A boundary at code unit 700 could split an emoji's
+surrogate pair, leaving an invalid half in one search excerpt and the other
+half in the next. Chunk boundaries now move before the pair; a one-unit chunk
+size still advances by the full pair, and invalid non-positive sizes fail
+instead of looping. The regression checks both exact citation slicing and the
+real search result at the boundary. Root tests passed 263/263, prototype tests
+1,875/1,875, static checks passed, the production shell verified 165 assets,
+and app acceptance passed 8/8. This protects supplementary code points; it
+does not normalize grapheme clusters or change stored source text.
+
 ### 2026-11-04 · let planner replies use model/context output capacity
 
 The final planner generation had hidden product ceilings: 2,048 tokens for the

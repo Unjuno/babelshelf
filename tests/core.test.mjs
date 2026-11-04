@@ -19,6 +19,18 @@ test('Japanese search finds evidence beyond document beginning with exact UTF-16
  const hits=core.searchNotes([n],'青葉742');assert.ok(hits.length);
  const h=hits[0];assert.equal(n.revisions[0].body.slice(h.start,h.end),h.quote);assert.ok(h.start>1000);
 });
+test('citation chunks keep UTF-16 surrogate pairs intact at the chunk boundary',()=>{
+ const body='a'.repeat(699)+'😀tail',rows=core.chunks(body);
+ assert.deepEqual(rows.map(({start,end,quote})=>({start,end,quote})),[
+  {start:0,end:699,quote:'a'.repeat(699)},
+  {start:699,end:body.length,quote:'😀tail'},
+ ]);
+ for(const row of rows)assert.equal(body.slice(row.start,row.end),row.quote);
+ assert.deepEqual(core.chunks('😀x',1).map(row=>row.quote),['😀','x']);
+ assert.throws(()=>core.chunks('text',0),/chunk size/);
+ const note=core.createNote({title:'Emoji boundary',body:'a'.repeat(699)+'😀needle tail'}),hit=core.searchNotes([note],'needle')[0];
+ assert.ok(hit);assert.ok(hit.quote.startsWith('😀'));assert.equal(note.revisions[0].body.slice(hit.start,hit.end),hit.quote);
+});
 test('withdrawn notes and derivatives with withdrawn sources cannot ground answers',()=>{
  const n=core.createNote({title:'計画',body:'会場は京都です。'});
  const ref=core.searchNotes([n],'会場')[0];
