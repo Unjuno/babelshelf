@@ -31,6 +31,14 @@ test('citation chunks keep UTF-16 surrogate pairs intact at the chunk boundary',
  const note=core.createNote({title:'Emoji boundary',body:'a'.repeat(699)+'😀needle tail'}),hit=core.searchNotes([note],'needle')[0];
  assert.ok(hit);assert.ok(hit.quote.startsWith('😀'));assert.equal(note.revisions[0].body.slice(hit.start,hit.end),hit.quote);
 });
+test('citation chunks keep combining marks and joined emoji together',()=>{
+ const combining='a'.repeat(699)+'e\u0301tail',family='a'.repeat(699)+'👩‍👩‍👧‍👦tail';
+ for(const body of [combining,family]){const rows=core.chunks(body);assert.equal(rows.map(row=>row.quote).join(''),body);for(const row of rows)assert.equal(body.slice(row.start,row.end),row.quote);}
+ assert.equal(core.chunks(combining)[0].quote,'a'.repeat(699));
+ assert.ok(core.chunks(combining)[1].quote.startsWith('e\u0301'));
+ assert.equal(core.chunks(family)[0].quote,'a'.repeat(699));
+ assert.ok(core.chunks(family)[1].quote.startsWith('👩‍👩‍👧‍👦'));
+});
 test('withdrawn notes and derivatives with withdrawn sources cannot ground answers',()=>{
  const n=core.createNote({title:'計画',body:'会場は京都です。'});
  const ref=core.searchNotes([n],'会場')[0];

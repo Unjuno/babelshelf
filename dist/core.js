@@ -18,15 +18,20 @@ export function reviseNote(note,patch,expected){
 export function withdrawNote(note,expected){const n=reviseNote(note,{},expected);n.state='withdrawn';n.withdrawnAt=new Date().toISOString();return n;}
 export function chunks(body,max=700){
  if(!Number.isSafeInteger(max)||max<1)throw Error('Invalid chunk size');
- const out=[];let start=0;for(const part of body.split(/(\n\s*\n)/)){
-  if(part.trim())for(let i=0;i<part.length;){
+ const out=[],segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null;let start=0;for(const part of body.split(/(\n\s*\n)/)){
+  if(part.trim()){const graphemes=segmenter?[...segmenter.segment(part)].map(({index,segment})=>({start:index,end:index+segment.length})):null;let g=0;for(let i=0;i<part.length;){
    let end=Math.min(part.length,i+max);
-   // Citation offsets are UTF-16 code units. Never split a supplementary
-   // code point; when max=1, keep the pair together even if the chunk is 2.
-   if(end<part.length&&end>i){const left=part.charCodeAt(end-1),right=part.charCodeAt(end);if(left>=0xd800&&left<=0xdbff&&right>=0xdc00&&right<=0xdfff)end--;}
-   if(end===i&&i<part.length){const left=part.charCodeAt(i),right=part.charCodeAt(i+1);end=left>=0xd800&&left<=0xdbff&&right>=0xdc00&&right<=0xdfff?i+2:i+1;}
+   // Keep each citation boundary between visible graphemes where the runtime
+   // supports Unicode segmentation. A single grapheme may exceed max.
+   if(graphemes){while(graphemes[g]?.end<end)g++;const item=graphemes[g];if(item&&item.start<end&&item.end>end)end=item.start>i?item.start:item.end;}
+   else{
+    // Citation offsets are UTF-16 code units. Fallback: never split a
+    // supplementary code point; when max=1, keep its pair together.
+    if(end<part.length&&end>i){const left=part.charCodeAt(end-1),right=part.charCodeAt(end);if(left>=0xd800&&left<=0xdbff&&right>=0xdc00&&right<=0xdfff)end--;}
+    if(end===i&&i<part.length){const left=part.charCodeAt(i),right=part.charCodeAt(i+1);end=left>=0xd800&&left<=0xdbff&&right>=0xdc00&&right<=0xdfff?i+2:i+1;}
+   }
    out.push({start:start+i,end:start+end,quote:part.slice(i,end)});i=end;
-  }
+  }}
   start+=part.length;
  }return out;
 }

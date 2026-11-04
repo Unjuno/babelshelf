@@ -1,17 +1,19 @@
 ## Current status · 2026-11-04
 
-### 2026-11-04 · keep supplementary Unicode characters intact in source excerpts
+### 2026-11-04 · keep complete graphemes in source excerpts
 
 The core knowledge chunker uses UTF-16 offsets so citations map directly to
 JavaScript string ranges. A boundary at code unit 700 could split an emoji's
 surrogate pair, leaving an invalid half in one search excerpt and the other
-half in the next. Chunk boundaries now move before the pair; a one-unit chunk
-size still advances by the full pair, and invalid non-positive sizes fail
-instead of looping. The regression checks both exact citation slicing and the
-real search result at the boundary. Root tests passed 263/263, prototype tests
-1,875/1,875, static checks passed, the production shell verified 165 assets,
-and app acceptance passed 8/8. This protects supplementary code points; it
-does not normalize grapheme clusters or change stored source text.
+half in the next. Chunk boundaries now use grapheme segmentation when the
+runtime supports it, keeping combining marks and joined emoji intact; the
+fallback still protects surrogate pairs. An oversized single grapheme is kept
+whole to guarantee progress. Source text and UTF-16 citation offsets remain
+unchanged. Regression checks cover exact slicing, search citations, combining
+marks, and family emoji.
+The regression suite passed 264/264, prototype tests passed 1,875/1,875,
+static checks passed, and the rebuilt shell verified 165 assets with app
+acceptance 8/8.
 
 ### 2026-11-04 · let planner replies use model/context output capacity
 
