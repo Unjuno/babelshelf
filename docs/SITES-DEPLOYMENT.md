@@ -19,6 +19,14 @@ passed. The existing public sidebar tab was refreshed and retained its saved
 conversation. The supplied iPhone report was from build `bae57d2542fed742`,
 before v321; this release does not claim iPhone model-load validation.
 
+On 2026-11-05, the existing public PWA was confirmed Offline and still showed
+the pre-IQ3_M model catalog. Switching Online and using its Update action
+refreshed the client to v322; Models → Browse text models then showed
+`LFM3 · 1.7B · IQ3_M · Community · 869 MB`. The chat history and selected
+QAD Q4_0 model remained unchanged, and the app was returned to Offline. This
+is a PC sidebar UI/update check only; no model was selected, downloaded, or
+run, and it does not establish iPhone model compatibility.
+
 # Public Site v321 — selectable model candidates and LFM3 IQ3_M (2026-11-05 JST)
 
 Product source: `codex/ui-design-handoff` at
