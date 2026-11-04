@@ -1,4 +1,25 @@
-# Public Site v315 — current live deployment observed (2026-11-04 JST)
+# Public Site v321 — selectable model candidates and LFM3 IQ3_M (2026-11-05 JST)
+
+Product source: `codex/ui-design-handoff` at
+`1bf47af1cce68e60f1990d6acda32d093e20c4f8`; app build
+`3c9fc57aca4e8553` /163 verified assets. Site source commit
+`ea4711aa38043c1e5cfea36ada19c6585543765b`; saved Site version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_fc07dfc262f08191bd7ca1eb99bc754f`
+(v321); deployment `appgdep_6aeb6a2145288191a61c3df1a6987651` succeeded.
+The Site remains public at `https://babelshelf.com`. The exact deployed build
+manifest returns `3c9fc57aca4e8553` /163 assets. Archive SHA-256 is
+`7654e435f25b0cf00a18bc4a06eaab10727f4d9c0ba8533c8e6134ca67b2c2d7`
+(113,233,920 bytes /208 files).
+
+This release contains the model-picker fixes, selectable LFM3 IQ3_M preset,
+and clearer supported model roles. Local model-discovery and UI acceptance
+passed; clean-checkout CI job [126729482515](https://github.com/Unjuno/babelshelf/actions/runs/41874319143/job/126729482515)
+passed. The existing Codex sidebar tab loaded the updated public application;
+the model settings page showed LFM3 1.7B, Decision, Speech to text, Image text,
+and Image understanding sections. No model weights, knowledge, backups, or
+browser data were part of the Site archive.
+
+# Public Site v315 — deployment observed before source reconciliation (2026-11-04 JST)
 
 The Sites project reports version 315 deployed successfully to the existing
 public URL. The deployed archive is 84,633,600 bytes /196 files with recorded
