@@ -4,13 +4,14 @@ import type {Preferences,ModelSetSelection,UserModelSet} from './preference-reco
 
 export type ModelSetId=string;
 export type ModelSet=UserModelSet;
-export type ModelSetGroup='Text models'|'Complete local set'|'Saved by you';
+export type ModelSetGroup='Text models'|'Compact local set'|'Complete local set'|'Saved by you';
 
-const textModelSetIds=new Set(['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text']);
+const textModelSetIds=new Set(['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text']);
 
 /** Presentation-only grouping; persisted custom-set records keep their existing schema. */
 export function modelSetGroup(id:string):ModelSetGroup{
  if(textModelSetIds.has(id))return 'Text models';
+ if(id==='lfm3-iq3m-media')return 'Compact local set';
  if(id==='local-full'||id==='text-image-audio-q8')return 'Complete local set';
  if(/^user-[a-z0-9-]+$/.test(id))return 'Saved by you';
  throw Error('Unknown model set');
@@ -20,11 +21,13 @@ export function modelSetGroup(id:string):ModelSetGroup{
 // bundles, capability declarations, executable plans, or device-fit guarantees.
 export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'lfm3-1.7b-qad-q4-0',label:'LFM3 · 1.7B · QAD Q4_0',detail:'Text · WebGPU first',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
+ {id:'lfm3-1.7b-iq3m',label:'LFM3 · 1.7B · IQ3_M · Community',detail:'Text · 869 MB · community quantization',models:{textModel:'lfm3-1.7b-iq3m',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'lfm3-1.7b-q8-0',label:'LFM3 · 1.7B · Q8_0',detail:'Text · WebGPU first · 1.85 GB',models:{textModel:'lfm3-1.7b-q8-0',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-2b-text',label:'Bonsai 2 · 2B',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-4b-text',label:'Bonsai 2 · 4B',detail:'Text only',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'bonsai-9b-text',label:'Bonsai 2 · 9B',detail:'Text only · PC prose unstable',models:{textModel:'9B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},
  {id:'text-image-audio-q8',label:'Text + image + audio · Q8',detail:'LFM3 Q8_0 · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M',models:{textModel:'lfm3-1.7b-q8-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
+ {id:'lfm3-iq3m-media',label:'Compact local media set',detail:'LFM3 IQ3_M · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M',models:{textModel:'lfm3-1.7b-iq3m',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
  {id:'local-full',label:'Full local set',detail:'LFM3 · Decision · Speech · OCR · Vision',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16'}},
 ]);
 

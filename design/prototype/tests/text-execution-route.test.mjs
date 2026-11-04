@@ -21,6 +21,7 @@ test('diagnostic identity follows the selected model route, revision and runtime
 test('diagnostic quantization covers pinned GGUF and ONNX registrations',()=>{
  assert.equal(textExecutionQuantization('lfm3-1.7b-qad-q4-0'),'Q4_0');
  assert.equal(textExecutionQuantization('lfm3-1.7b-q8-0'),'Q8_0');
+ assert.equal(textExecutionQuantization('lfm3-1.7b-iq3m'),'IQ3_M');
  assert.equal(textExecutionQuantization('lfm25-350m-qad-q4-0'),'Q4_0');
  assert.equal(textExecutionQuantization('4B'),'PTQ1_0');
  assert.equal(textExecutionQuantization('smollm2-360m-instruct-webgpu-q4f16'),'q4f16');

@@ -18,7 +18,7 @@ test('settings cannot declare installed media or grant remote/destructive execut
 test('configuration rejects unsupported models, budgets and missing fields',()=>{
  const candidate=structuredClone(settings);candidate.models.text[0].value='remote-model';
  assert.throws(()=>validateSettings(candidate),/Unsupported/);
- candidate.models.text[0].value='lfm3-1.7b-qad-q4-0';candidate.models.text[1].value='lfm3-1.7b-q8-0';candidate.models.text[2].value='4B';candidate.media.maxTextBytes=2**30;
+ candidate.models.text[0].value='lfm3-1.7b-qad-q4-0';candidate.models.text[1].value='lfm3-1.7b-iq3m';candidate.models.text[2].value='lfm3-1.7b-q8-0';candidate.media.maxTextBytes=2**30;
  assert.throws(()=>validateSettings(candidate),/budget/);
  delete candidate.media;assert.throws(()=>validateSettings(candidate));
  const speech=structuredClone(settings);speech.models.transcription[0].value='whisper-tiny.en';
@@ -47,11 +47,13 @@ test('Vision catalog separates image understanding from OCR and remains unprepar
 
 test('LFM3 Q8 is a registered local WebGPU candidate while QAD Q4 stays the fresh default',()=>{
  assert.ok(settings.models.text.some(model=>model.value==='lfm3-1.7b-q8-0'));
+ assert.ok(settings.models.text.some(model=>model.value==='lfm3-1.7b-iq3m'));
  assert.equal(settings.defaults.textModel,'lfm3-1.7b-qad-q4-0');
  assert.equal(capabilityState('text.generate','lfm3-1.7b-q8-0',false).status,'Not prepared');
+ assert.equal(capabilityState('text.generate','lfm3-1.7b-iq3m',false).status,'Not prepared');
 });
 test('standard text catalog contains only LFM3 and Bonsai; old experiments are not surfaced',()=>{
- assert.deepEqual(settings.models.text.map(model=>model.value),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','4B','2B','9B']);
+ assert.deepEqual(settings.models.text.map(model=>model.value),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0','4B','2B','9B']);
  for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct','lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'])assert.equal(settings.models.text.some(model=>model.value===id),false);
 });
 

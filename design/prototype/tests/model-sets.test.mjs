@@ -8,7 +8,7 @@ import {initialPreparationPlan} from '../src/initial-preparation.ts';
 import {settings} from '../src/app-settings.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-image-audio-q8','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-image-audio-q8','lfm3-iq3m-media','local-full']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -25,6 +25,7 @@ test('model set grouping separates text choices, the complete local set and save
  assert.equal(modelSetGroup('lfm3-1.7b-qad-q4-0'),'Text models');
  assert.equal(modelSetGroup('bonsai-9b-text'),'Text models');
  assert.equal(modelSetGroup('local-full'),'Complete local set');
+ assert.equal(modelSetGroup('lfm3-iq3m-media'),'Compact local set');
  assert.equal(modelSetGroup('user-reading-2'),'Saved by you');
  assert.throws(()=>modelSetGroup('unknown'),/Unknown model set/);
  const notes=structuredClone(initialPreferenceNotes),set=createUserModelSet(readPreference('models',notes),'Reading','Text only');
@@ -37,11 +38,13 @@ test('model set grouping separates text choices, the complete local set and save
 test('task presets expose connected text choices without implying device verification or downloading assets',()=>{
  const expected={
   'lfm3-1.7b-qad-q4-0':['lfm3-1.7b-qad-q4-0','','','',''],
+  'lfm3-1.7b-iq3m':['lfm3-1.7b-iq3m','','','',''],
   'lfm3-1.7b-q8-0':['lfm3-1.7b-q8-0','','','',''],
   'bonsai-2b-text':['2B','','','',''],
   'bonsai-4b-text':['4B','','','',''],
   'bonsai-9b-text':['9B','','','',''],
   'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
+  'lfm3-iq3m-media':['lfm3-1.7b-iq3m','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
   'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
  };
  for(const set of modelSets){
@@ -54,10 +57,12 @@ test('task presets expose connected text choices without implying device verific
  }
  assert.equal(modelSets.find(set=>set.id==='lfm3-1.7b-qad-q4-0').detail,'Text · WebGPU first');
  assert.equal(modelSets.find(set=>set.id==='lfm3-1.7b-q8-0').detail,'Text · WebGPU first · 1.85 GB');
+ assert.ok(modelSets.find(set=>set.id==='lfm3-1.7b-iq3m').detail.includes('869 MB'));
  const d1=settings.models.decision.find(model=>model.value==='d1-omni-600M');
  assert.equal(d1.label,'Open d1 · 600M · Text decision');
  assert.equal(modelSets.find(set=>set.id==='local-full').label,'Full local set');
  assert.equal(modelSets.find(set=>set.id==='local-full').models.visionModel,'lfm25-vl-450m-q4f16');
+ assert.ok(modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'lfm3-iq3m-media')<modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'text-image-audio-q8'));
  assert.equal(modelSets.some(set=>set.models.decisionModel==='d1-3B'),false);
  assert.equal(modelSets.some(set=>set.models.transcriptionModel==='whisper-base'),false);
  assert.equal(modelSets.some(set=>['lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0'].includes(set.models.textModel)),false);

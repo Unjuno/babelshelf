@@ -62,12 +62,15 @@ test('direct native final actions preserve scoped capture selectors and cannot m
 test('LFM3 fresh-install manifest uses a useful context larger than the legacy 2K ceiling',async()=>{
  const {lfm3TextModels,describeLfm3Text}=await import('../src/lfm3-text-manifest.ts');
  assert.equal(lfm3TextModels[0].contextTokens,8192);
- assert.equal(lfm3TextModels[1].id,'lfm3-1.7b-q8-0');
- assert.equal(lfm3TextModels[1].file.bytes,1846238496);
- assert.equal(lfm3TextModels[1].file.sha256,'8f6b24182258205e9e01e21f1f24a1f208c1e8115578825d202ce39976af20b6');
- assert.equal(lfm3TextModels[1].contextTokens,8192);
+ assert.equal(lfm3TextModels[1].id,'lfm3-1.7b-iq3m');
+ assert.equal(lfm3TextModels[1].file.bytes,868803392);
+ assert.equal(lfm3TextModels[1].file.sha256,'ef80fe4cc508cdf9718c4cf9ad01e0ce670d2420dd763a467b18fd527d11aba8');
+ assert.equal(lfm3TextModels[2].id,'lfm3-1.7b-q8-0');
+ assert.equal(lfm3TextModels[2].file.bytes,1846238496);
+ assert.equal(lfm3TextModels[2].file.sha256,'8f6b24182258205e9e01e21f1f24a1f208c1e8115578825d202ce39976af20b6');
+ assert.equal(lfm3TextModels[2].contextTokens,8192);
  assert.equal(describeLfm3Text().contextTokens,8192);
- assert.deepEqual(describeLfm3Text().models.map(model=>model.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0']);
+ assert.deepEqual(describeLfm3Text().models.map(model=>model.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0']);
 });
 test('the shipped LFM3 manifest and adapter output ceiling initialize together',async()=>{
  const {describeLfm3Text}=await import('../src/lfm3-text-manifest.ts');const manifest=describeLfm3Text();

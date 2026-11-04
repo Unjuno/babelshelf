@@ -7,6 +7,10 @@
         "label": "LFM3 · 1.7B \u00b7 QAD Q4_0"
       },
       {
+        "value": "lfm3-1.7b-iq3m",
+        "label": "LFM3 · 1.7B · IQ3_M · Community · 869 MB"
+      },
+      {
         "value": "lfm3-1.7b-q8-0",
         "label": "LFM3 · 1.7B \u00b7 Q8_0"
       },

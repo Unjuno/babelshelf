@@ -51,5 +51,5 @@ export function textExecutionQuantization(id:string,customModels:readonly Custom
  // from its user-controlled filename or ID.
  const fileName=(model as {file?:{name?:unknown}}|undefined)?.file?.name;
  if(typeof fileName!=='string')return;
- return /(?:^|[-_.])(Q[0-9]+(?:_[A-Z0-9]+)*)(?=\.|[-_]|$)/i.exec(fileName)?.[1]?.toUpperCase();
+ return /(?:^|[-_.])((?:IQ|Q)[0-9]+(?:_[A-Z0-9]+)*)(?=\.|[-_]|$)/i.exec(fileName)?.[1]?.toUpperCase();
 }

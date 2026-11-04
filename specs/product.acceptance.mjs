@@ -84,9 +84,9 @@ test('published worker permits every pinned Vision preparation URL and no neighb
 });
 test('published worker permits every pinned built-in model asset',async()=>{
  const read=async file=>JSON.parse(await fs.readFile(file,'utf8'));
- const [bonsai,lfm,lfm3,lfm3Q8,smol,qwen,decision,ocr,speech,speechBase,vision]=await Promise.all([
+ const [bonsai,lfm,lfm3,lfm3IQ3M,lfm3Q8,smol,qwen,decision,ocr,speech,speechBase,vision]=await Promise.all([
   read('dist/model-manifest.json'),read('dist/lfm-model-manifest.json'),
-  read('design/prototype/src/lfm3-manifest.json'),read('design/prototype/src/lfm3-q8-manifest.json'),
+  read('design/prototype/src/lfm3-manifest.json'),read('design/prototype/src/lfm3-iq3m-manifest.json'),read('design/prototype/src/lfm3-q8-manifest.json'),
   read('design/prototype/src/onnx-text-manifest.json'),read('design/prototype/src/qwen-text-manifest.json'),
   read('design/prototype/src/decision-manifest.json'),read('design/prototype/src/ocr-manifest.json'),
   read('design/prototype/src/speech-manifest.json'),read('design/prototype/src/speech-base-manifest.json'),read('design/prototype/src/vision-manifest.json')
@@ -101,8 +101,11 @@ test('published worker permits every pinned built-in model asset',async()=>{
   ...ocr.data.map(file=>file.url),bonsai.runtime.file.url,
   ...bonsai.models.map(model=>model.file.url),...speech.files.map(file=>file.url),...speechBase.files.map(file=>file.url),
   ...vision.files.map(file=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${file.path}`),
-  lfm3.file.url,lfm3Q8.file.url
+  lfm3.file.url,lfm3IQ3M.file.url,lfm3Q8.file.url
  ];
+ assert.equal(lfm3IQ3M.id,'lfm3-1.7b-iq3m');
+ assert.equal(lfm3IQ3M.file.bytes,868803392);
+ assert.equal(lfm3IQ3M.file.sha256,'ef80fe4cc508cdf9718c4cf9ad01e0ce670d2420dd763a467b18fd527d11aba8');
  assert.deepEqual([...actual].sort(),[...required].sort(),'Service Worker remote asset list differs from pinned model manifests');
  assert.equal(new Set(actual).size,actual.length,'Duplicate model asset URL');
  for(const url of actual){

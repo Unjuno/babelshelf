@@ -60,7 +60,8 @@ const qwenText=JSON.parse(await readFile('design/prototype/src/qwen-text-manifes
 const lfm=JSON.parse(await readFile('dist/lfm-model-manifest.json','utf8'));
 const lfm3=JSON.parse(await readFile('design/prototype/src/lfm3-manifest.json','utf8'));
 const lfm3Q8=JSON.parse(await readFile('design/prototype/src/lfm3-q8-manifest.json','utf8'));
-const remote=[lfm3.file.url,lfm3Q8.file.url,...lfm.models.filter(m=>['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'].includes(m.id)).map(m=>m.file.url),...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...(onnxText.variants??[]).map(variant=>variant.weight.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url),...speechBase.files.map(f=>f.url),...vision.files.map(f=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${f.path}`)];
+const lfm3IQ3M=JSON.parse(await readFile('design/prototype/src/lfm3-iq3m-manifest.json','utf8'));
+const remote=[lfm3.file.url,lfm3IQ3M.file.url,lfm3Q8.file.url,...lfm.models.filter(m=>['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'].includes(m.id)).map(m=>m.file.url),...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...(onnxText.variants??[]).map(variant=>variant.weight.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url),...speechBase.files.map(f=>f.url),...vision.files.map(f=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${f.path}`)];
 // The remote allowlist is part of the worker's behavior even when emitted app
 // assets and the worker template source are unchanged. Give that change a new
 // build ID so existing PWA registrations can receive the reviewed update.

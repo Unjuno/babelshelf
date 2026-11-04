@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "status": "experimental-community-candidate",
+  "id": "lfm3-1.7b-iq3m",
+  "name": "LFM3 · 1.7B · IQ3_M · Community",
+  "repository": "ngquocvinh/LFM3-1.7B-GGUF",
+  "revision": "830c73d6f8461a536cec9217a9ae41956848761c",
+  "license": "LFM Open License v1.0",
+  "engine": "wllama-lfm3",
+  "contextTokens": 8192,
+  "maxReplyTokens": 8192,
+  "runtime": {
+    "name": "Wllama LFM3 app runtime",
+    "revision": "wllama-3.12.0-llama-19cce6919992fdffd92e0ac152caaf1e2b8f254e-emdawn-2026-03-17-checkpoints-2"
+  },
+  "file": {
+    "name": "LFM3-1.7B-IQ3_M.gguf",
+    "bytes": 868803392,
+    "sha256": "ef80fe4cc508cdf9718c4cf9ad01e0ce670d2420dd763a467b18fd527d11aba8",
+    "url": "https://huggingface.co/ngquocvinh/LFM3-1.7B-GGUF/resolve/830c73d6f8461a536cec9217a9ae41956848761c/LFM3-1.7B-IQ3_M.gguf"
+  },
+  "provenance": "Community imatrix quantized from BF16; limited next-token fidelity measurements are not a task-quality guarantee."
+}

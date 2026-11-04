@@ -1,5 +1,6 @@
 import source from './lfm3-manifest.json' with {type:'json'};
 import q8Source from './lfm3-q8-manifest.json' with {type:'json'};
+import iq3mSource from './lfm3-iq3m-manifest.json' with {type:'json'};
 import runtimeAssets from '../runtime/wllama-lfm3/manifest.json' with {type:'json'};
 import type {CustomLocalModel} from './preference-records.ts';
 
@@ -9,7 +10,7 @@ const pinned=(model:typeof source)=>({
  file:{name:model.file.name,bytes:model.file.bytes,sha256:model.file.sha256,url:model.file.url},
  repository:model.repository,license:model.license,
 });
-export const lfm3TextModels=[pinned(source),pinned(q8Source)];
+export const lfm3TextModels=[pinned(source),pinned(iq3mSource),pinned(q8Source)];
 export const lfm3RuntimeBytes=runtimeAssets.assets.reduce((total,asset)=>total+asset.bytes,0);
 export const customLfm3TextModels=(custom:readonly CustomLocalModel[]=[])=>custom.filter(model=>model.engine==='wllama-lfm3').map(model=>({
  id:model.id,name:model.label,revision:model.revision,engine:'wllama-lfm3',contextTokens:model.contextTokens,maxReplyTokens:model.contextTokens,runtime:source.runtime,
