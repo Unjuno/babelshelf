@@ -8,7 +8,11 @@ record could therefore appear valid and allow a subsequent save to normalize
 away the damaged shape. Legacy projection now runs only for older schemas;
 current-schema omissions are invalid and remain untouched until the existing
 explicit, history-preserving recovery action. The regression covers Models,
-Appearance, Connection, and Harness read and save paths.
+Appearance, Connection, and Harness read and save paths. The browser migration
+fixture now explicitly declares schema 1 instead of carrying schema 3 while
+omitting current fields. Settings UI acceptance passed 19/19 locally after
+correcting the fixture; the prior CI failure was this mislabeled fixture, not
+the current-schema rejection.
 
 ### 2026-11-04 · keep complete graphemes in source excerpts
 
