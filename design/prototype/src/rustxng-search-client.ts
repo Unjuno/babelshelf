@@ -19,9 +19,11 @@ function isLoopback(host:string){
 
 export function validateRustXngEndpoint(value:string):URL{
  if(typeof value!=='string'||!value.trim()||value.length>2048)throw new RustXngSearchError('invalid_endpoint');
- let endpoint:URL;try{endpoint=new URL(value.trim());}catch{throw new RustXngSearchError('invalid_endpoint');}
+ const raw=value.trim();let endpoint:URL;try{endpoint=new URL(raw);}catch{throw new RustXngSearchError('invalid_endpoint');}
+ const rawPath=/^https?:\/\/[^/?#]*(\/[^?#]*)?/i.exec(raw)?.[1]??'';
+ const hasDotSegment=rawPath.split('/').some(part=>{try{const decoded=decodeURIComponent(part);return decoded==='.'||decoded==='..';}catch{return true;}});
  const localHttp=endpoint.protocol==='http:'&&isLoopback(endpoint.hostname);
- if((endpoint.protocol!=='https:'&&!localHttp)||endpoint.username||endpoint.password||endpoint.search||endpoint.hash||endpoint.pathname.split('/').some(part=>part==='.'||part==='..')||/[\u0000-\u0020]/.test(endpoint.href))throw new RustXngSearchError('invalid_endpoint');
+ if((endpoint.protocol!=='https:'&&!localHttp)||endpoint.username||endpoint.password||endpoint.search||endpoint.hash||hasDotSegment||/[\u0000-\u0020]/.test(raw))throw new RustXngSearchError('invalid_endpoint');
  endpoint.pathname=endpoint.pathname.replace(/\/+$/,'');
  return endpoint;
 }

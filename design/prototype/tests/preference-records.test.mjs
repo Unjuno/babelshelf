@@ -103,6 +103,13 @@ test('diagnostic logging defaults off and legacy connection preferences migrate 
  assert.equal(readPreference('connection',records).diagnosticLogs,false);assert.equal(readPreference('connection',records).rustxngEndpoint,'');assert.equal(record.body,legacy);
  const enabled=updatePreference('connection',records,value=>({...value,diagnosticLogs:true}));assert.equal(readPreference('connection',enabled).diagnosticLogs,true);assert.equal(enabled.find(n=>n.id===record.id).history[0],legacy);
 });
+test('connection schema 4 gains an empty RustXNG address in memory and validates configured HTTPS endpoints',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-connection'),current=readPreference('connection',notes);delete current.rustxngEndpoint;record.body=formatPreference('connection',current).replace('"schemaVersion": 5','"schemaVersion": 4');const original=record.body,projected=readPreference('connection',notes);
+ assert.equal(projected.rustxngEndpoint,'');assert.equal(record.body,original);
+ const configured=formatPreference('connection',{...projected,rustxngEndpoint:'https://search.example/rustxng'});assert.equal(parsePreference('connection',configured).rustxngEndpoint,'https://search.example/rustxng');
+ assert.throws(()=>parsePreference('connection',formatPreference('connection',{...projected,rustxngEndpoint:'https://user:secret@search.example'})),/RustXNG address/i);
+ assert.throws(()=>parsePreference('connection',formatPreference('connection',{...projected,rustxngEndpoint:'https://search.example/path/../admin'})),/RustXNG address/i);
+});
 test('model selections reference the library and managed settings cannot be deleted',()=>{
  const original=structuredClone(initialPreferenceNotes);
  assert.throws(()=>updatePreference('models',original,m=>({...m,transcriptionModel:'whisper-tiny'})),/before selecting/);
