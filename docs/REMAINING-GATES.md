@@ -12,7 +12,12 @@ Appearance, Connection, and Harness read and save paths. The browser migration
 fixture now explicitly declares schema 1 instead of carrying schema 3 while
 omitting current fields. Settings UI acceptance passed 19/19 locally after
 correcting the fixture; the prior CI failure was this mislabeled fixture, not
-the current-schema rejection.
+the current-schema rejection. Clean-checkout GitHub Actions
+[41749613966](https://github.com/Unjuno/babelshelf/actions/runs/41749613966)
+then passed every stage on `b754d25`, including core/build, tool/MCP, device,
+settings, editorial/iOS handoff, and offline/installed-PWA acceptance. This
+confirms the migration guard and correctly labeled legacy fixture in CI; it
+does not prove recovery behavior against a real user's existing database.
 
 ### 2026-11-04 · keep complete graphemes in source excerpts
 
