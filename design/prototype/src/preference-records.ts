@@ -20,7 +20,7 @@ export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';
 export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number;maxGenerationTokens?:number|null;maxGenerationMs?:number|null};
 export type HarnessPreferences={replyStyle:ReplyStyle;userGuidance:string;activeProfileId:string;profiles:HarnessProfile[]};
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
-export const PREFERENCE_SCHEMA_VERSION=3 as const;
+export const PREFERENCE_SCHEMA_VERSION=4 as const;
 export class UnsupportedPreferenceSchemaError extends Error{
  readonly group:PreferenceGroup;readonly version:number;
  constructor(group:PreferenceGroup,version:number){super('Settings use a newer format · update the app');this.name='UnsupportedPreferenceSchemaError';this.group=group;this.version=version;}
@@ -66,6 +66,19 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   if(!('customSets' in value))value.customSets=[];
   // Preserve the selected model if the older record predates a role library.
   if(!('lfm3ContextTokens' in value))value.lfm3ContextTokens=8192;
+ }
+ if(schemaVersion<4&&group==='models'){
+  // The pre-release catalog now exposes only the supported core text set.
+  // Keep imported/custom models and their files; replace references to retired
+  // built-ins in local settings and saved presets with the current default.
+  const models=value as Preferences['models'];
+  const valid=(id:string)=>settings.models.text.some(model=>model.value===id)||models.customModels.some(model=>model.id===id);
+  if(Array.isArray(models.textLibrary))models.textLibrary=models.textLibrary.filter(valid);
+  if(typeof models.textModel!=='string'||!valid(models.textModel))models.textModel=settings.defaults.textModel;
+  if(!models.textLibrary.includes(models.textModel))models.textLibrary.push(models.textModel);
+  if(Array.isArray(models.customSets))for(const set of models.customSets){
+   if(set?.models&&typeof set.models.textModel==='string'&&!valid(set.models.textModel))set.models.textModel=models.textModel;
+  }
  }
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='appearance'){
   if(!('fontFamily' in value))value.fontFamily='system';

@@ -76,7 +76,7 @@ test('applying a set changes only model selections and adds their registered cat
 });
 
 test('applying a text-only set preserves registered libraries, custom declarations and every non-model record',()=>{
- const start=structuredClone(initialPreferenceNotes),registered=updatePreference('models',start,m=>({...m,textLibrary:[...m.textLibrary,'smollm2-360m-instruct'],decisionLibrary:['d1-omni-600M'],transcriptionLibrary:['whisper-tiny'],ocrLibrary:['tesseract-7'],decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7'}));
+ const start=structuredClone(initialPreferenceNotes),registered=updatePreference('models',start,m=>({...m,textLibrary:[...m.textLibrary,'4B'],decisionLibrary:['d1-omni-600M'],transcriptionLibrary:['whisper-tiny'],ocrLibrary:['tesseract-7'],decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7'}));
  const snapshot=structuredClone(registered),next=updatePreference('models',registered,m=>applyModelSet(m,'bonsai-2b-text'));
  const before=readPreference('models',snapshot),after=readPreference('models',next);
  assert.equal(after.textModel,'2B');assert.equal(after.decisionModel,'');assert.equal(after.transcriptionModel,'');assert.equal(after.ocrModel,'');
@@ -85,12 +85,11 @@ test('applying a text-only set preserves registered libraries, custom declaratio
  assert.throws(()=>applyModelSet(after,'unknown'),/Unknown model set/);
 });
 
-test('less-used text candidates remain preserved when another preset is applied',()=>{
- const legacy=updatePreference('models',structuredClone(initialPreferenceNotes),value=>({...value,textLibrary:[...value.textLibrary,'9B','lfm25-230m-qad-q4-0','lfm25-350m-qad-q4-0'],textModel:'lfm25-230m-qad-q4-0'}));
+test('Bonsai alternatives remain preserved when another preset is applied',()=>{
+ const legacy=updatePreference('models',structuredClone(initialPreferenceNotes),value=>({...value,textLibrary:[...value.textLibrary,'9B'],textModel:'9B'}));
  const loaded=readPreference('models',legacy);
- assert.equal(loaded.textModel,'lfm25-230m-qad-q4-0');
+ assert.equal(loaded.textModel,'9B');
  assert.ok(loaded.textLibrary.includes('9B'));
- assert.ok(loaded.textLibrary.includes('lfm25-350m-qad-q4-0'));
  assert.equal(applyModelSet(loaded,'bonsai-9b-text').textModel,'9B');
  assert.throws(()=>applyModelSet(loaded,'text-compact'),/Unknown model set/);
 });
@@ -124,7 +123,7 @@ test('saving current model choices creates a stable Memory ID without preparing 
 
 test('legacy model Memory records read an empty set list without rewriting their stored revision',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models'),legacy=readPreference('models',notes);
- delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 3,\n','');const storedBytes=record.body;
+ delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 4,\n','');const storedBytes=record.body;
  assert.deepEqual(readPreference('models',notes).customSets,[]);
  assert.equal(record.body,storedBytes);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
 });

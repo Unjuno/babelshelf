@@ -50,6 +50,10 @@ test('LFM3 Q8 is a registered local WebGPU candidate while QAD Q4 stays the fres
  assert.equal(settings.defaults.textModel,'lfm3-1.7b-qad-q4-0');
  assert.equal(capabilityState('text.generate','lfm3-1.7b-q8-0',false).status,'Not prepared');
 });
+test('standard text catalog contains only LFM3 and Bonsai; old experiments are not surfaced',()=>{
+ assert.deepEqual(settings.models.text.map(model=>model.value),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-q8-0','4B','2B','9B']);
+ for(const id of ['smollm2-360m-instruct','qwen25-05b-instruct','lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'])assert.equal(settings.models.text.some(model=>model.value===id),false);
+});
 
 import {readDeviceStorage,requestStorageProtection,storageBytes} from '../src/device-storage.ts';
 test('device storage reports only measured browser values and never asks permission while reading',async()=>{
