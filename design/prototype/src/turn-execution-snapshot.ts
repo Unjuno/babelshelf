@@ -1,7 +1,7 @@
 import type {ReplyStyle} from './reply-style.ts';
 import type {HarnessProfile} from './preference-records.ts';
 import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
-import {MAX_AGENT_RESULT_CHARS} from './agent-loop.ts';
+import {MAX_AGENT_RESULT_CHARS} from './agent-limits.ts';
 
 export type TurnExecutionSnapshot=Readonly<{
  schema:1;

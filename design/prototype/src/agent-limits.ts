@@ -1,5 +1,7 @@
 /** Shared tool-catalog bound used by profile validation and planner schemas. */
 export const MAX_CONFIGURED_AGENT_TOOLS=64;
+/** Bounded result size shared by saved preferences, snapshots and Agent tools. */
+export const MAX_AGENT_RESULT_CHARS=8_000;
 /** Two application-owned discovery tools do not consume user catalog slots. */
 export const AGENT_DISCOVERY_TOOL_IDS=['tools.search','tools.read-skill'] as const;
 export const MAX_PLANNER_AGENT_TOOLS=MAX_CONFIGURED_AGENT_TOOLS+AGENT_DISCOVERY_TOOL_IDS.length;

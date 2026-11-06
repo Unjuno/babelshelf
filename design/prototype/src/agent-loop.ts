@@ -2,10 +2,10 @@
 // has no arbitrary per-turn call ceiling; an optional profile limit is a user
 // preference, while context capacity and cancellation remain hard boundaries.
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
-import {MAX_CONFIGURED_AGENT_TOOLS} from './agent-limits.ts';
+import {MAX_CONFIGURED_AGENT_TOOLS,MAX_AGENT_RESULT_CHARS} from './agent-limits.ts';
 export {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 export {MAX_CONFIGURED_AGENT_TOOLS} from './agent-limits.ts';
-export const MAX_AGENT_RESULT_CHARS=8_000;
+export {MAX_AGENT_RESULT_CHARS} from './agent-limits.ts';
 export {builtinToolIds as SAFE_AGENT_TOOL_IDS} from './tools/builtin-tools.ts';
 
 export type AgentToolEffect='read'|'review'|'external';
