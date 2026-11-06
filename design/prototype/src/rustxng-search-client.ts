@@ -69,8 +69,12 @@ export async function searchRustXng(input:{endpoint:string;query:string;onlineMo
  try{
   const target=new URL(endpoint.href.replace(/\/$/, '')+'/search');target.searchParams.set('q',input.query.trim());target.searchParams.set('format','json');target.searchParams.set('max_results',String(maxResults));
   const response=await fetcher(target,{method:'GET',signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',redirect:'error',headers:{Accept:'application/json'}});
+  // A caller may cancel even when the transport resolves despite its signal.
+  if(controller.signal.aborted)throw new RustXngSearchError('unavailable');
   if(!response.ok)throw new RustXngSearchError('unavailable');
   const payload=await readBoundedBody(response);
+  // Streams may also complete after cancellation; never publish stale results.
+  if(controller.signal.aborted)throw new RustXngSearchError('unavailable');
   if(!payload||typeof payload!=='object'||Array.isArray(payload)||!Array.isArray((payload as Record<string,unknown>).results))throw new RustXngSearchError('invalid_response');
   const rows=(payload as {results:unknown[]}).results,result:RustXngSearchResult[]=[];
   for(const value of rows){
