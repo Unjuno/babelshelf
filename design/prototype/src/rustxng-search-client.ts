@@ -14,12 +14,16 @@ export class RustXngSearchError extends Error{
 
 function isLoopback(host:string){
  const normalized=host.toLowerCase().replace(/^\[|\]$/g,'');
- return normalized==='localhost'||normalized==='::1'||normalized==='127.0.0.1'||normalized.startsWith('127.');
+ // URL.hostname has already canonicalized numeric IPv4 spellings. A DNS
+ // name beginning with 127. is not a loopback address.
+ return normalized==='localhost'||normalized==='::1'||/^127(?:\.\d{1,3}){3}$/.test(normalized);
 }
 
 export function validateRustXngEndpoint(value:string):URL{
  if(typeof value!=='string'||!value.trim()||value.length>2048)throw new RustXngSearchError('invalid_endpoint');
- const raw=value.trim();let endpoint:URL;try{endpoint=new URL(raw);}catch{throw new RustXngSearchError('invalid_endpoint');}
+ // HTTP(S) URL parsing normalizes backslashes and can erase traversal.
+ const raw=value.trim();if(raw.includes('\\'))throw new RustXngSearchError('invalid_endpoint');
+ let endpoint:URL;try{endpoint=new URL(raw);}catch{throw new RustXngSearchError('invalid_endpoint');}
  const rawPath=/^https?:\/\/[^/?#]*(\/[^?#]*)?/i.exec(raw)?.[1]??'';
  const hasDotSegment=rawPath.split('/').some(part=>{try{const decoded=decodeURIComponent(part);return decoded==='.'||decoded==='..';}catch{return true;}});
  const localHttp=endpoint.protocol==='http:'&&isLoopback(endpoint.hostname);

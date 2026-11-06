@@ -1,6 +1,6 @@
 # Repository working agreement
 
-Updated 2026-10-21. This file is the current operational guide. Historical experiments and dated release observations are preserved in `docs/history/AGENTS-2026-10-21.md`; they are evidence from their stated builds, not live instructions.
+Updated 2026-11-06. This file is the current operational guide. Historical experiments and dated release observations are preserved in `docs/history/AGENTS-2026-10-21.md`; they are evidence from their stated builds, not live instructions.
 
 ## Start here
 
@@ -26,7 +26,7 @@ Updated 2026-10-21. This file is the current operational guide. Historical exper
 - Run the narrowest relevant tests plus required regressions. Report the actual environment and scope: Node, PC browser, installed PWA, physical iOS/Android, and model/GPU acceptance are distinct.
 - Do not use mocked inference as evidence of model behavior. Do not repeat broad experiments when existing evidence answers the question; collect new measurements only to resolve a concrete uncertainty.
 - The Settings > Developer iOS handoff is a one-run device check. The PWA cannot verify iOS Airplane Mode or force-close. Copy its bounded report/context and analyze it before requesting a repeat.
-- Preserve Site audience. Public deployment to the existing BabelShelf Site is authorized; build and verify the exact artifact before deployment. Keep GitHub changes on the existing `codex/ui-design-handoff` branch; do not update `main`.
+- Preserve Site audience. Public deployment to the existing BabelShelf Site is authorized; build and verify the exact artifact before deployment. Integration into `main` is authorized: use a focused branch and pull request, preserve existing development history, and merge only after the exact candidate passes the full quality workflow. Keep `main` and main-target pull requests covered by CI; a merge is not a deployment or physical-device acceptance.
 - Keep downloaded models, browser profiles, device-test results, generated bundles, and packaging archives local unless a specific tracked artifact is required. Never commit credentials or private user data.
 - Clean up agent-generated artifacts as part of each task. Reuse one staging directory and one current package instead of accumulating versioned copies; retain the latest delivery archive and small reports needed to explain results. Remove obsolete staging copies and archives after checking their resolved paths and ownership. Preserve source changes, Git metadata, models, originals, browser storage and diagnostic evidence. Reuse one preview server/origin; stop only servers created by this task when no longer needed.
 
