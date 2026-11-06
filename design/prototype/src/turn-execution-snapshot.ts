@@ -1,6 +1,7 @@
 import type {ReplyStyle} from './reply-style.ts';
 import type {HarnessProfile} from './preference-records.ts';
 import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
+import {MAX_AGENT_RESULT_CHARS} from './agent-loop.ts';
 
 export type TurnExecutionSnapshot=Readonly<{
  schema:1;
@@ -41,7 +42,7 @@ export function captureTurnExecutionSnapshot(input:{
   attachments:readonly {id:string;kind:string;status:string;asset?:{id:string;revision:1;sha256:string};reading?:{kind:string;noteId:string;revision:number}}[];
 }):TurnExecutionSnapshot{
  if(typeof input.turnId!=='string'||!input.turnId||input.turnId.length>128)throw Error('Invalid turn identity');
- if(!input.profile||!Array.isArray(input.profile.enabledTools)||(input.profile.maxToolCalls!==null&&!Number.isSafeInteger(input.profile.maxToolCalls))||!Number.isSafeInteger(input.profile.maxResultChars)||input.profile.maxGenerationTokens!=null&&(!Number.isSafeInteger(input.profile.maxGenerationTokens)||input.profile.maxGenerationTokens<256||input.profile.maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||input.profile.maxGenerationMs!=null&&(!Number.isSafeInteger(input.profile.maxGenerationMs)||input.profile.maxGenerationMs<1_000||input.profile.maxGenerationMs>MAX_TURN_GENERATION_MS))throw Error('Invalid active harness profile');
+ if(!input.profile||!Array.isArray(input.profile.enabledTools)||(input.profile.maxToolCalls!==null&&(!Number.isSafeInteger(input.profile.maxToolCalls)||input.profile.maxToolCalls<0))||!Number.isSafeInteger(input.profile.maxResultChars)||input.profile.maxResultChars<256||input.profile.maxResultChars>MAX_AGENT_RESULT_CHARS||input.profile.maxGenerationTokens!=null&&(!Number.isSafeInteger(input.profile.maxGenerationTokens)||input.profile.maxGenerationTokens<256||input.profile.maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||input.profile.maxGenerationMs!=null&&(!Number.isSafeInteger(input.profile.maxGenerationMs)||input.profile.maxGenerationMs<1_000||input.profile.maxGenerationMs>MAX_TURN_GENERATION_MS))throw Error('Invalid active harness profile');
  const settingsRevisions=input.settingsRevisions??{models:null,harness:null};
  if(['models','harness'].some(group=>{const revision=settingsRevisions[group as 'models'|'harness'];return revision!==null&&(!Number.isSafeInteger(revision)||revision<1);}))throw Error('Invalid settings revision');
  const attachments=input.attachments.map(item=>{

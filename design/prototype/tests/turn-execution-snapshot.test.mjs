@@ -35,3 +35,31 @@ test('execution snapshot rejects an invalid run identity or harness bounds',()=>
  assert.throws(()=>captureTurnExecutionSnapshot(input({profile:{...input().profile,maxToolCalls:NaN}})),/harness profile/);
  assert.throws(()=>captureTurnExecutionSnapshot(input({settingsRevisions:{models:0,harness:1}})),/settings revision/);
 });
+
+test('execution snapshot rejects invalid configured tool and result bounds before Agent execution',()=>{
+ const baseline=input(),cases=[
+  {maxToolCalls:-1},
+  {maxToolCalls:-100},
+  {maxResultChars:-1},
+  {maxResultChars:0},
+  {maxResultChars:255},
+  {maxResultChars:8001},
+ ];
+ for(const change of cases)assert.throws(
+  ()=>captureTurnExecutionSnapshot(input({profile:{...baseline.profile,...change}})),
+  /Invalid active harness profile/,
+  JSON.stringify(change),
+ );
+});
+
+test('execution snapshot preserves the supported boundary values',()=>{
+ const baseline=input();
+ for(const profile of [
+  {...baseline.profile,maxToolCalls:0,maxResultChars:256},
+  {...baseline.profile,maxToolCalls:null,maxResultChars:8000},
+ ]){
+  const snapshot=captureTurnExecutionSnapshot(input({profile}));
+  assert.equal(snapshot.harness.maxToolCalls,profile.maxToolCalls);
+  assert.equal(snapshot.harness.maxResultChars,profile.maxResultChars);
+ }
+});
