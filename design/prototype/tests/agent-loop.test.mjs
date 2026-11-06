@@ -335,3 +335,35 @@ test('tool evidence and arguments are stable after a handler or planner mutates 
  assert.deepEqual(result.calls,observed);
  assert.equal(argumentsFromPlan.query,'Notes/meeting.md');
 });
+
+test('an unexecuted duplicate failure signal does not consume the remaining tool-call slot',async()=>{
+ const failed={kind:'tool',tool:'memory.search',arguments:{query:'bad'}};
+ const recovery={kind:'tool',tool:'memory.search',arguments:{query:'recovery'}};
+ const plans=[failed,failed,recovery,{kind:'final',value:'recovered'}],executed=[];
+ const result=await runReadOnlyAgentLoop({
+  allowedTools:[memoryTools[0]],maxToolCalls:2,check:()=>{},
+  plan:async()=>plans.shift(),
+  execute:async call=>{executed.push(call.arguments.query);if(call.arguments.query==='bad')throw new AgentToolExecutionError('memory.search',Error('failed'));return [{noteId:'recovered'}];},
+ });
+ assert.equal(result.final,'recovered');
+ assert.deepEqual(executed,['bad','recovery']);
+ assert.deepEqual(result.attempts.map(item=>item.error?.code??'success'),['tool_execution','no_progress_loop','success']);
+});
+
+test('skipped batch members do not spend execution slots; actual repeated calls still do',async()=>{
+ const search={kind:'tool',tool:'memory.search',arguments:{query:'same'}};
+ const read={kind:'tool',tool:'memory.read',arguments:{query:'note'}};
+ const further={kind:'tool',tool:'memory.read',arguments:{query:'extra'}};
+ const plans=[{kind:'tools',calls:[search,search,search,read]},read,further],executed=[];
+ const result=await runReadOnlyAgentLoop({
+  allowedTools:memoryTools,maxToolCalls:4,check:()=>{},
+  plan:async()=>plans.shift(),
+  execute:async call=>{executed.push(call.tool+':'+call.arguments.query);return [{body:'content'}];},
+  onBudgetExhausted:history=>({partial:true,usableResults:history.filter(item=>!item.error).length}),
+ });
+ assert.deepEqual(executed,['memory.search:same','memory.search:same','memory.search:same','memory.read:note']);
+ assert.equal(result.budgetExhausted,true);
+ assert.equal(result.budgetCause,'tool-limit');
+ assert.deepEqual(result.final,{partial:true,usableResults:3});
+ assert.deepEqual(result.attempts.map(item=>item.error?.code??'success'),['success','success','no_progress_loop','batch_not_executed','success']);
+});

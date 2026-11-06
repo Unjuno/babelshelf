@@ -2,10 +2,10 @@
 // has no arbitrary per-turn call ceiling; an optional profile limit is a user
 // preference, while context capacity and cancellation remain hard boundaries.
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
-import {MAX_CONFIGURED_AGENT_TOOLS} from './agent-limits.ts';
+import {MAX_CONFIGURED_AGENT_TOOLS,MAX_AGENT_RESULT_CHARS} from './agent-limits.ts';
 export {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 export {MAX_CONFIGURED_AGENT_TOOLS} from './agent-limits.ts';
-export const MAX_AGENT_RESULT_CHARS=8_000;
+export {MAX_AGENT_RESULT_CHARS} from './agent-limits.ts';
 export {builtinToolIds as SAFE_AGENT_TOOL_IDS} from './tools/builtin-tools.ts';
 
 export type AgentToolEffect='read'|'review'|'external';
@@ -112,6 +112,9 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  const maxToolCalls=input.maxToolCalls??null,maxResultChars=input.maxResultChars??MAX_AGENT_RESULT_CHARS;
  if(maxToolCalls!==null&&(!Number.isSafeInteger(maxToolCalls)||maxToolCalls<0)||!Number.isSafeInteger(maxResultChars)||maxResultChars<256||maxResultChars>MAX_AGENT_RESULT_CHARS)throw new AgentProtocolError('Invalid agent profile budget');
  const allowed=new Set(input.allowedTools.map(tool=>tool.id)),history:AgentToolAttempt[]=[];let budgetExhausted=false,budgetCause:'tool-limit'|undefined;
+ // Model-visible history includes skipped placeholders; only dispatched calls
+ // consume a user's configured execution limit.
+ let dispatchedCalls=0;
  for(;;){
   input.check();
   // A planner must not be able to change evidence from an earlier step.
@@ -137,8 +140,8 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   else throw new AgentProtocolError('Tool is not registered or call is invalid');
   if(calls.some(call=>call.kind!=='tool'||typeof call.tool!=='string'||!allowed.has(call.tool)||!validRecord(call.arguments)||!contentIsValid(call.assistantContent)))throw new AgentProtocolError('Tool is not registered or call is invalid');
   const plannedCalls=calls;let overBudgetCalls:AgentToolCall[]=[];
-  if(maxToolCalls!==null&&history.length+calls.length>maxToolCalls){
-   const remaining=maxToolCalls-history.length;
+  if(maxToolCalls!==null&&dispatchedCalls+calls.length>maxToolCalls){
+   const remaining=maxToolCalls-dispatchedCalls;
    if(remaining<=0){
     if(input.onBudgetExhausted){
      const final=await input.onBudgetExhausted(structuredClone(usableHistory(history)));input.check();
@@ -173,6 +176,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
    }
    input.check();
    try{
+    dispatchedCalls++;
     const result=await input.execute(call,history.length);
     input.check();
     const boundedResult=snapshotBoundedResult(result,maxResultChars);
