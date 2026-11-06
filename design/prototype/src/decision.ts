@@ -21,9 +21,13 @@ export function encodeDecision(tok:Tokenizer,state:string,q:DecisionQuestion,max
  const enc=(text:string)=>{const ids=tok.encode(text,{add_special_tokens:false});if(!Array.isArray(ids)||ids.some(n=>!Number.isInteger(n)||n<0||n>=65536))throw Error('Decision tokenizer invalid');return ids;};
  const markersSpec:[string,number][]=[['<|startoftext|>',1],['<|reserved_7|>',17],['<|reserved_8|>',18],['<|reserved_9|>',19],['<|reserved_10|>',20],['<|reserved_11|>',21],['<|mask|>',16]];
  for(const [token,id] of markersSpec){const ids=enc(token);if(ids.length!==1||ids[0]!==id)throw Error('Decision tokenizer markers incompatible');}
- const opts=decisionOptions(q),budget=Math.max(96,Math.min(opts.length*24+32,Math.floor(maxLength/2))),per=Math.max(2,Math.floor((budget-3*opts.length)/opts.length));
- const instructions=enc(escape(q.instructions));if(instructions.length+1>Math.max(16,budget))throw new DecisionContextError('Decision instruction context limit');const branch=[18,...instructions],markers:number[]=[];
- for(const option of opts){const ids=enc(escape(' '+option));if(ids.length>per)throw new DecisionContextError('Decision option token limit');markers.push(branch.length+1);branch.push(19,16,...ids,20);}
+ // Upstream apportions an option budget and truncates each option. Keep complete
+ // meanings instead: unequal options share the actual sequence budget. Reserve
+ // BOS/state and the final decide marker even before adding the state tokens.
+ const opts=decisionOptions(q),instructions=enc(escape(q.instructions));
+ if(instructions.length+4>maxLength)throw new DecisionContextError('Decision context limit');
+ const branch=[18,...instructions],markers:number[]=[];
+ for(const option of opts){const ids=enc(escape(' '+option));if(branch.length+ids.length+6>maxLength)throw new DecisionContextError('Decision context limit');markers.push(branch.length+1);branch.push(19,16,...ids,20);}
  branch.push(21);const stateIds=enc(escape(state)),room=maxLength-branch.length-2;if(stateIds.length>room)throw new DecisionContextError('Decision context limit');
  const prefix=[1,17,...stateIds],ids=[...prefix,...branch],positions=markers.map(p=>p+prefix.length);if(ids.length>maxLength||positions.some(p=>ids[p]!==16))throw Error('Decision marker positions invalid');
  return {ids,markers:positions,qtype:q.type==='choice'?0:q.type==='score'?1:2,stateTokens:stateIds.length,stateTruncated:false};

@@ -1,5 +1,4 @@
 # memory.read
 
-Use for explicit local saved-record reading by exact ID, path or filename. Resolve exact IDs first, then full paths, then filenames. A filename shared by multiple records returns all matches; do not select the first arbitrarily.
-
-Input: `{query: string}`. Execution uses the current canonical host snapshot. Results retain IDs and revisions. No writes, network, installation or permission changes. Guidance is not execution authority.
+query resolves exact ID, full path, then filename, supplied by user or discovered. Multiple matches are ambiguous; no match does not prove a topic absent. Search topics with memory.search.
+start/length: UTF-16, defaults 0/2000, length max 3000; returned boundaries preserve characters. Results: ID/path/revision/text/start/totalChars. Continue at returned start+text length using returned ID/expectedRevision; stop at totalChars. On revision failure restart; never mix revisions or guess offsets. Read-only, offline; grants no permissions.

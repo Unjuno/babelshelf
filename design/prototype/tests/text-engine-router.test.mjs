@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TextEngineRouter} from '../src/text-engine-router.ts';
+import {customLfm3TextModels,describeLfm3Text,lfm3TextModels} from '../src/lfm3-text-manifest.ts';
 import {onnxTextManifest,onnxTextModels} from '../src/text-model-manifest.ts';
-import {createOnnxTextClient} from '../src/onnx-text-client.ts';
+import {createIsolatedTextClient} from '../src/isolated-text-client.ts';
 import {Engine} from '../../../dist/engine.js';
 import {nativeOutputRequest} from '../src/native-output-format.ts';
 import {nativeResponseTools,nativeResponseText} from '../../../dist/native-response.js';
@@ -14,6 +15,59 @@ function setup(nativeStructuredOutput=false){const calls=[];let finish;
  const router=new TextEngineRouter(webml,()=>onnx=backend('onnx'),[],undefined,nativeStructuredOutput);
  return {router,calls,webml,get onnx(){return onnx;},finish:()=>finish()};
 }
+test('count and generation share one leading system block without mutating guidance or history',async()=>{
+ for(const native of [false,true]){
+  const f=setup(native),seen=[];await f.router.load('4B');
+  f.webml.call=async(cmd,args)=>{seen.push({cmd,args});assert.ok(args.messages.slice(1).every(message=>message.role!=='system'),'template accepts system only at beginning');return {prompt_tokens:42,text:'done'};};
+  const messages=planDialogueMessages('What is saved?',{summary:'earlier context',recent:[],refs:[],turnCount:1},[],{allowedTools:[],history:[],queryRejected:true,userGuidance:'Prefer Japanese replies.'});
+  const original=structuredClone(messages);
+  await f.router.call('count',{messages});await f.router.generate(messages,undefined,256);
+  assert.deepEqual(seen[0].args.messages,seen[1].args.messages);
+  assert.equal(seen[0].args.messages[0].content,original.filter(message=>message.role==='system').map(message=>message.content).join('\n\n'));
+  assert.deepEqual(seen[0].args.messages.slice(1),original.filter(message=>message.role!=='system'));assert.deepEqual(messages,original);
+ }
+});
+test('a failed resident cannot be unloaded or switched until cleanup is confirmed',async()=>{
+ for(const switching of [false,true]){
+  const f=setup();await f.router.load('4B');f.webml.loaded=null;f.webml.failed=true;
+  f.webml.abort=()=>Promise.reject(Error('cleanup failed'));
+  await assert.rejects(switching?f.router.load(onnxTextModels[0].id):f.router.unload(),error=>error.cleanupUnconfirmed===true);
+  await assert.rejects(f.router.load('4B'),error=>error.cleanupUnconfirmed===true);
+  if(switching)assert.equal(f.calls.includes('onnx:load'),false);
+ }
+});
+test('reloading a failed registered engine does not discard its cleanup barrier',async()=>{
+ const f=setup(),manifest={contextTokens:2048,runtime:{revision:'r'},models:[{id:'local',revision:'m'}]},instances=[];
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('unused');},[{id:'local-engine',modelIds:['local'],describe:()=>manifest,create:()=>{const backend={manifest,loaded:null,failed:false,worker:{terminate(){}},async init(){},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){return Promise.reject(Error('cleanup failed'));}};instances.push(backend);return backend;}}]);
+ await router.load('local');instances[0].loaded=null;instances[0].failed=true;
+ await assert.rejects(router.load('local'),error=>error.cleanupUnconfirmed===true);assert.equal(instances.length,1);
+});
+test('status checks cannot discard a failed resident before its cleanup',async()=>{
+ const f=setup(),manifest={contextTokens:2048,runtime:{revision:'r'},models:[{id:'local',revision:'m'}]},instances=[];
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('unused');},[{id:'local-engine',modelIds:['local'],describe:()=>manifest,create:()=>{const backend={manifest,loaded:null,failed:false,worker:{terminate(){}},async init(){},async call(){throw Error('worker failed');},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){return Promise.reject(Error('cleanup failed'));}};instances.push(backend);return backend;}}]);
+ await router.load('local');instances[0].loaded=null;instances[0].failed=true;
+ await router.call('status',{model:'local'});await assert.rejects(router.load('local'),error=>error.cleanupUnconfirmed===true);assert.equal(instances.length,1);
+});
+
+test('planner protocol and selected output ceiling follow the active model registration',async()=>{
+ const f=setup(),describe=()=>({contextTokens:8192,maxOutputTokens:2048,runtime:{revision:'lfm3-fixed'},models:[{id:'lfm3-test',revision:'sha256:fixture'}]}),lfm3={manifest:describe(),loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){this.loaded=null;}};
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('Unused');},[{id:'lfm3-text',modelIds:['lfm3-test'],plannerProtocol:'native-tool-calls',describe,create:()=>lfm3}]);
+ assert.equal(router.plannerProtocol,'json');assert.equal(router.protocolForModel('lfm3-test'),'native-tool-calls');assert.equal(router.protocolForModel('4B'),'json');await router.load('lfm3-test');assert.equal(router.plannerProtocol,'native-tool-calls');assert.equal(router.manifest.maxOutputTokens,2048);await router.unload();await router.load('4B');assert.equal(router.plannerProtocol,'json');await router.unload();
+});
+
+test('registry sync unload policy preserves a warm backend when only another registration changes',async()=>{
+ const f=setup(),backend=(id,revision)=>({manifest:{contextTokens:8192,runtime:{revision},models:[{id,revision:'sha256:fixture'}]},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(model){this.loaded=model;},async unload(){this.loaded=null;},abort(){this.loaded=null;}}),lfm3=backend('lfm3-test','lfm3-fixed'),qwen=backend('qwen-test','qwen-fixed');
+ const describe=(id,revision)=>()=>({contextTokens:8192,runtime:{revision},models:[{id,revision:'sha256:fixture'}]}),lfm3Registration={id:'lfm3-text',modelIds:['lfm3-test'],plannerProtocol:'native-tool-calls',describe:describe('lfm3-test','lfm3-fixed'),create:()=>lfm3},qwenRegistration={id:'qwen3-text',modelIds:['qwen-test'],describe:describe('qwen-test','qwen-fixed'),create:()=>qwen};
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('Unused');},[lfm3Registration,qwenRegistration]);await router.load('lfm3-test');
+ assert.equal(router.mustUnloadForRegistryUpdate(false,['qwen3-text']),false);
+ router.replaceRegistration('qwen3-text',{...qwenRegistration,describe:describe('qwen-test','qwen-next')});
+ assert.equal(router.loaded,'lfm3-test');
+ assert.equal(router.mustUnloadForRegistryUpdate(true,[]),false);
+ assert.equal(router.mustUnloadForRegistryUpdate(false,['lfm3-text']),true);
+ await router.unload();await router.load('4B');
+ assert.equal(router.mustUnloadForRegistryUpdate(false,['lfm3-text']),false);
+ assert.equal(router.mustUnloadForRegistryUpdate(true,[]),true);
+});
 
 test('a custom-only installed engine stays idle with zero models and accepts/removes a validated registry later',async()=>{
  const f=setup(),calls=[];let ids=[];const describe=()=>({contextTokens:2048,runtime:{revision:'cpu-fixed'},models:ids.map(id=>({id,revision:'sha256:fixture'}))});
@@ -28,6 +82,12 @@ test('WebML count and generate share the exact native tool/schema/prompt while p
  await f.router.call('count',{messages,format:'dialogue-answer'});await f.router.generate(messages,undefined,32,'dialogue-answer');
  assert.deepEqual(seen[0].args.responseTool,seen[1].args.responseTool);assert.equal(seen[0].args.responseTool.name,'babelshelf_answer');assert.deepEqual(seen[0].args.messages,seen[1].args.messages);assert.notDeepEqual(seen[0].args.messages,messages);assert.deepEqual(messages,before);
  await f.router.generate(messages,undefined,32,'prose');assert.equal(seen[2].args.responseTool,undefined);assert.deepEqual(seen[2].args.messages,messages);
+});
+
+test('WebML transports source-bound calculation proposals as a separate constrained function schema',async()=>{
+ const f=setup(true);let captured;f.webml.call=async(command,args)=>{if(command==='generate')captured=args;return command==='generate'?{text:'{"operation":"divide","sourceOperandIndex":0,"sourceIndex":0,"sourceQuote":"七リットル","sourceUnit":"リットル","requestQuote":"3"}'}:{prompt_tokens:12};};await f.router.load('4B');
+ const format={type:'sourced-calculation',sourceCount:1},messages=[{role:'system',content:'Candidate instructions'},{role:'user',content:'Calculate from cited value'}];await f.router.call('count',{messages,format});await f.router.generate(messages,undefined,256,format);
+ assert.equal(captured.responseTool.name,'babelshelf_calculation');assert.deepEqual(captured.responseTool.parameters.required,['operation','sourceOperandIndex','sourceIndex','sourceQuote','sourceUnit','requestQuote']);assert.deepEqual(captured.responseTool.parameters.properties.sourceIndex,{type:'integer',minimum:0,maximum:0});
 });
 
 test('compact native planner schema omits unavailable scopes without becoming execution authority',()=>{
@@ -68,7 +128,8 @@ test('native planner omits duplicate catalog syntax but retains purposes and eve
  for(const action of scopedHarnessActions(scope))assert.ok(system.includes(action.purpose),action.id);
  const tail=messages[0].content.slice(messages[0].content.indexOf('. To answer or summarize')+1);
  assert.ok(system.includes(tail));
- assert.ok(system.length<messages[0].content.length);
+ assert.ok(!system.includes('Actions map ID to [purpose, allowed targets, optional tool IDs]'));
+ assert.ok(system.includes('Offered functions define allowed arguments and targets.'));
  assert.deepEqual(messages,before);assert.deepEqual(r.messages.slice(1),messages.slice(1));
  const custom=[{role:'system',content:'Custom policy '+messages[0].content},{role:'user',content:messages[0].content}];
  assert.ok(nativeOutputRequest(custom,format).messages[0].content.startsWith(custom[0].content));
@@ -81,13 +142,15 @@ test('native purposes advertise exactly the functions offered, including source-
  const context={summary:'',refs:[],recent:[{id:'a',user:'one',answer:'A'},{id:'b',user:'two',answer:'B'}],turnCount:2,historyAssistantIndices:[0,1],currentResult:{turnId:'b'}};
  const request=nativeOutputRequest(planDialogueMessages('Save your FIRST answer as a new note.',context),format);
  const advertised=[...request.messages[0].content.matchAll(/^([a-z]+): /gm)].map(match=>match[1]);
- assert.deepEqual(advertised,Object.keys(request.responseTool.actions));
+ assert.deepEqual(advertised,Object.keys(request.responseTool.actions).map(name=>name==='tool-create'?'toolcreate':name));
  assert.ok(!advertised.includes('capture'));
  assert.match(request.messages[0].content,/captureassistant: .*ONE.*assistant.*historyIndex/);
  assert.match(request.messages[0].content,/capturetext: .*new.*never.*dialogue/i);
+ assert.match(request.messages[0].content,/toolcreate: .*reviewable draft form/i);
  const empty={inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]};
  const r=nativeOutputRequest(planDialogueMessages('hello',{summary:'',refs:[],recent:[],turnCount:0}),{type:'dialogue-plan',scope:empty});
  assert.ok(!r.messages[0].content.includes('captureassistant'));
+ assert.ok(r.messages[0].content.includes('toolcreate:'));
 });
 
 test('base Engine transports bounded native failure evidence as PlannerOutputError, never as an answer',async()=>{
@@ -122,7 +185,7 @@ test('Stop during replacement initialization rejects recovery and never publishe
 });
 test('cross-engine load releases previous engine and pins active runtime identity',async()=>{
  const f=setup();await f.router.load('4B');assert.equal(f.router.manifest.runtime.revision,'webml-test');
- const pending=f.router.load(onnxTextManifest.id);await Promise.resolve();f.finish();await pending;
+ const pending=f.router.load(onnxTextManifest.id);for(let i=0;i<20&&!f.calls.includes('onnx:load');i++)await Promise.resolve();assert.ok(f.calls.includes('onnx:load'));f.finish();await pending;
  assert.ok(f.calls.indexOf('webml:unload')<f.calls.indexOf('onnx:load'));
  assert.equal(f.router.loaded,onnxTextManifest.id);assert.equal(f.router.manifest.runtime.revision,onnxTextManifest.runtime.revision);
  await f.router.unload();assert.equal(f.router.loaded,null);
@@ -151,14 +214,14 @@ test('Stop during ONNX load discards worker and rejects late completion without 
 });
 test('ONNX client Stop rejects pending work, ignores late result and requires a new client',async()=>{
  const sent=[],worker={postMessage(m){sent.push(m);},terminate(){this.terminated=true;}};
- const client=createOnnxTextClient(worker),pending=client.load(onnxTextManifest.id);client.abort();worker.onmessage({data:{id:sent[0].id,type:'done',value:true}});
+ const client=createIsolatedTextClient(worker),pending=client.load(onnxTextManifest.id);client.abort();worker.onmessage({data:{id:sent[0].id,type:'done',value:true}});
  await assert.rejects(pending,/Stopped/);assert.equal(client.loaded,null);assert.equal(worker.terminated,true);await assert.rejects(client.call('status'),/Stopped/);assert.equal(sent.length,1);
 });
 
 test('Stop during optional status permits a fresh explicit configure and load',async()=>{
  const workers=[];
  const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
- const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createOnnxTextClient(worker);});
+ const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createIsolatedTextClient(worker);});
  await router.init();assert.equal(workers.length,0);
  const first=router.call('configure',{models:[]});await Promise.resolve();await Promise.resolve();assert.equal(workers.length,1);router.abort();await assert.rejects(first,/Stopped/);
  const next=router.call('configure',{models:[]});await Promise.resolve();await Promise.resolve();assert.equal(workers.length,2);
@@ -168,27 +231,28 @@ test('Stop during optional status permits a fresh explicit configure and load',a
 test('worker failure permits a fresh explicit load; old worker results cannot resurrect identity',async()=>{
  const workers=[];
  const webml={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){}},async init(){},async call(){return{};},async load(id){this.loaded=id;},async unload(){this.loaded=null;},abort(){}};
- const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createOnnxTextClient(worker);});
+ const router=new TextEngineRouter(webml,()=>{const worker={postMessage(message){this.message=message;},terminate(){}};workers.push(worker);return createIsolatedTextClient(worker);});
  const first=router.load(onnxTextManifest.id);workers[0].onmessage({data:{id:1,type:'done',value:true}});await first;workers[0].onerror();assert.equal(router.loaded,null);
- const second=router.load(onnxTextManifest.id);assert.equal(workers.length,2);workers[0].onmessage({data:{id:1,type:'done',value:true}});assert.equal(router.loaded,null);
+ const second=router.load(onnxTextManifest.id);for(let i=0;i<20&&workers.length<2;i++)await Promise.resolve();assert.equal(workers.length,2);workers[0].onmessage({data:{id:1,type:'done',value:true}});assert.equal(router.loaded,null);
  workers[1].onmessage({data:{id:1,type:'done',value:true}});await second;assert.equal(router.loaded,onnxTextManifest.id);workers[1].onerror();await router.load('4B');assert.equal(router.loaded,'4B');
 });
 
 import {validateOnnxTextBudget} from '../src/text-model-manifest.ts';
 test('adapter accepts harness task and rewrite output budgets and rejects actual context overflow',()=>{
  validateOnnxTextBudget(1000,384);validateOnnxTextBudget(1000,768);
- assert.throws(()=>validateOnnxTextBudget(1500,768),/budget/);assert.throws(()=>validateOnnxTextBudget(0,769),/budget/);
+ validateOnnxTextBudget(0,2048);
+ assert.throws(()=>validateOnnxTextBudget(1500,768),/budget/);assert.throws(()=>validateOnnxTextBudget(1,2048),/context budget/);assert.throws(()=>validateOnnxTextBudget(0,2049),/budget/);
 });
 
 test('structured worker failures retain bounded untrusted diagnostics without returning a result',async()=>{
- const sent=[],worker={postMessage(m){sent.push(m);},terminate(){}};const client=createOnnxTextClient(worker),pending=client.call('generate');
+ const sent=[],worker={postMessage(m){sent.push(m);},terminate(){}};const client=createIsolatedTextClient(worker),pending=client.call('generate');
  worker.onmessage({data:{id:sent[0].id,type:'error',value:'Invalid model JSON · incomplete structured output',diagnostic:{raw:'{"action":"chat","query":"unfinished',reason:'structured:budget',truncated:false}}});
  await assert.rejects(pending,error=>error.name==='PlannerOutputError'&&error.diagnostic.reason==='structured:budget'&&error.diagnostic.raw.endsWith('unfinished'));
 });
 
 test('switching between fixed ONNX models reuses adapter but unloads old identity',async()=>{
  const f=setup(),first=f.router.load(onnxTextManifest.id);f.finish();await first;
- const second=f.router.load('qwen25-05b-instruct');await Promise.resolve();f.finish();await second;
+ const second=f.router.load('qwen25-05b-instruct');for(let i=0;i<20&&f.calls.filter(x=>x==='onnx:load').length<2;i++)await Promise.resolve();assert.equal(f.calls.filter(x=>x==='onnx:load').length,2);f.finish();await second;
  assert.equal(f.router.loaded,'qwen25-05b-instruct');assert.equal(f.calls.filter(x=>x==='onnx:unload').length,1);assert.equal(f.router.manifest.models.find(m=>m.id===f.router.loaded).revision,'22942cb7d7ba4cc81bb4673549ca4d4614469b5e');
 });
 
@@ -265,3 +329,89 @@ test('switching away releases an idle optional worker and reselecting starts a f
 });
 
 test('native structured transport is opt-in until full harness quality is verified',async()=>{const f=setup(),seen=[];f.webml.call=async(cmd,args)=>{seen.push(args);return{};};await f.router.load('4B');const messages=[{role:'user',content:'Question'}];await f.router.call('count',{messages,format:'dialogue-answer'});await f.router.generate(messages,undefined,32,'dialogue-answer');for(const args of seen){assert.equal(args.responseTool,undefined);assert.deepEqual(args.messages,messages);}});
+
+test('same model and runtime identity reuse the resident backend and its verified load metadata; a changed context reloads it',async()=>{
+ const f=setup(),calls=[];let context=8192;
+ const backend={manifest:{},loaded:null,worker:{terminate(){}},async init(){return{};},async call(){return{};},async load(id){calls.push('load');this.loaded=id;return {executionBackend:'webgpu'};},async unload(){calls.push('unload');this.loaded=null;},abort(){this.loaded=null;}};
+ const describe=()=>({contextTokens:context,runtime:{revision:'runtime'},models:[{id:'lfm3-fixture',revision:'model'}]});
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('unused');},[{id:'lfm3',modelIds:['lfm3-fixture'],describe,create:()=>backend}]);
+ await router.load('lfm3-fixture');assert.equal(router.executionBackend,'webgpu');assert.deepEqual(await router.load('lfm3-fixture'),{model:'lfm3-fixture',reused:true,executionBackend:'webgpu'});assert.deepEqual(calls,['load']);await router.unload();assert.equal(router.executionBackend,undefined);
+ context=16384;await router.load('lfm3-fixture');assert.deepEqual(calls,['load','unload','load']);
+});
+
+test('LFM3 custom registration accepts the inspector default context and keeps its engine identity',()=>{
+ const f=setup(),digest='a'.repeat(64),model={id:'local-'+digest,label:'LFM3 local',role:'text',engine:'wllama-lfm3',revision:'sha256:'+digest,file:{bytes:1049615680,sha256:digest},contextTokens:8192,inspection:{format:'GGUF',version:3,bytes:1049615680,name:'LFM3 1.7B QAD',architecture:'lfm3',contextLength:262144,tokenizer:'gpt2',chatTemplate:true,tokenCount:128000,tensorCount:287,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:8247360}};
+ const registration={id:'lfm3-text',plannerProtocol:'native-tool-calls',modelIds:[...lfm3TextModels.map(item=>item.id),...customLfm3TextModels([model]).map(item=>item.id)],describe:id=>describeLfm3Text([model],id,8192),create:()=>{throw Error('Registration must stay lazy');}};
+ const router=new TextEngineRouter(f.webml,()=>{throw Error('Unused');},[{...registration,modelIds:lfm3TextModels.map(item=>item.id),describe:id=>describeLfm3Text([],id,8192)}]);
+ router.replaceRegistration('lfm3-text',registration);
+ assert.equal(router.manifest.models.find(item=>item.id===model.id).revision,model.revision);
+ assert.equal(router.manifest.models.find(item=>item.id===model.id).runtime.revision,registration.describe(model.id).runtime.revision);
+});
+
+test('router Stop waits for base worker disposal and propagates disposal failure',async()=>{
+ let finish;const base={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},worker:{terminate(){}},async init(){},async call(){},async load(){},async unload(){},abort(){return new Promise((_,reject)=>{finish=reject;});}};
+ const router=new TextEngineRouter(base,()=>{throw Error('unused');});let settled=false;
+ const stopped=router.abort().finally(()=>{settled=true;});await Promise.resolve();assert.equal(settled,false);
+ finish(Error('disposal failed'));await assert.rejects(stopped,/disposal failed/);
+});
+test('registered model manifest retains its own runtime identity before loading',()=>{
+ const base={manifest:{contextTokens:2048,runtime:{revision:'base'},models:[{id:'4B',revision:'four'}]},worker:{terminate(){}},abort(){},async init(){},async call(){},async load(){},async unload(){}};
+ const registration={id:'example',modelIds:['other'],describe:()=>({contextTokens:2048,runtime:{revision:'other-runtime'},models:[{id:'other',revision:'other-model'}]}),create(){throw Error('must stay lazy');}};
+ const router=new TextEngineRouter(base,()=>{throw Error('unused');},[registration]);assert.equal(router.manifest.models.find(model=>model.id==='other').runtime.revision,'other-runtime');
+});
+
+test('WebML prose deltas reach cumulative previews before completion and retire afterward',async()=>{
+ const f=setup(),seen=[];await f.router.load('4B');let emit,finish;
+ f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise(resolve=>{finish=resolve;});};
+ const pending=f.router.generate([{role:'user',content:'Story'}],(type,value)=>{if(type==='answer-preview')seen.push(value);},128,'prose');
+ emit('text','Hello');emit('text',' world');assert.deepEqual(seen,['Hello','Hello world']);
+ finish({text:'Hello world'});assert.equal((await pending).text,'Hello world');emit('text','late');assert.equal(seen.length,2);
+});
+test('WebML preview retires on stop and failure and never exposes structured text',async()=>{
+ for(const mode of ['stop','error','json']){
+  const f=setup(),seen=[];await f.router.load('4B');let emit,resolve,reject;
+  f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise((yes,no)=>{resolve=yes;reject=no;});};
+  const pending=f.router.generate([],type=>seen.push(type),128,mode==='json'?undefined:'prose');
+  if(mode==='stop')await f.router.abort();
+  if(mode==='error'){reject(Error('GPU lost'));await assert.rejects(pending,/GPU lost/);}
+  emit('text','private');assert.ok(!seen.includes('answer-preview'));
+  if(mode!=='error'){resolve({text:''});if(mode==='stop')await assert.rejects(pending,/Stopped/);else await pending;}
+ }
+});
+
+
+test('a late successful generation cannot escape stop or unload for prose or structured calls',async()=>{
+ for(const action of ['abort','unload'])for(const format of ['prose',undefined]){
+  const f=setup();await f.router.load('4B');let finish;
+  f.webml.call=()=>new Promise(resolve=>{finish=resolve;});
+  const pending=f.router.generate([],undefined,128,format);
+  await f.router[action]();finish({text:'Late successful answer'});
+  await assert.rejects(pending,/Stopped/);
+ }
+});
+
+
+test('reloading the same worker retires old generation while resident reuse preserves it',async()=>{
+ for(const reload of [false,true]){
+  const f=setup(),seen=[];await f.router.load('4B');let finish,emit;
+  f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise(resolve=>{finish=resolve;});};
+  const pending=f.router.generate([],type=>seen.push(type),128,'prose');
+  if(reload)await f.router.unload();
+  await f.router.load('4B');emit('text','old');finish({text:'answer'});
+  if(reload){await assert.rejects(pending,/Stopped/);assert.deepEqual(seen,[]);}
+  else{assert.equal((await pending).text,'answer');assert.ok(seen.includes('answer-preview'));}
+ }
+});
+
+
+test('structured generation callbacks retire on stop and terminal completion',async()=>{
+ for(const stop of [false,true]){
+  const f=setup(),seen=[];await f.router.load('4B');let finish,emit;
+  f.webml.call=(_cmd,_args,events)=>{emit=events;return new Promise(resolve=>{finish=resolve;});};
+  const pending=f.router.generate([],type=>seen.push(type));
+  emit('progress',1);assert.deepEqual(seen,['progress']);
+  if(stop)await f.router.abort();
+  finish({text:'{}'});if(stop)await assert.rejects(pending,/Stopped/);else await pending;
+  emit('progress',2);emit('answer-preview','late');assert.deepEqual(seen,['progress']);
+ }
+});

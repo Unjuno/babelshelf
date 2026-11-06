@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import {formatTask,parseTask,taskDefinition,taskNextAt,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,taskRunView} from '../src/task-records.ts';
 import {projectNote,applyKnowledgeChanges} from '../src/knowledge-store.ts';
 import {createNote,latest} from '../../../dist/core.js';
+import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
 
 const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
 const task={repeat:'once',time:'09:00',days:[1],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:zone,enabled:true,notify:true,prompt:'  要約して\nOriginal bytes.\n'};
 function registered(){const n=createNote({path:'Schedule/test.md',body:formatTask(task)});n.ui={recordType:'schedule'};n.taskCursor={definition:taskDefinition(task),nextAt:taskNextAt(task,new Date(2026,9,19)).toISOString()};return n;}
+test('scheduled calculation preserves a validated receipt and rejects mismatched answers',()=>{const definition={...task,prompt:'Calculate 12 + 10'},note=createNote({path:'Schedule/calculation.md',body:formatTask(definition)});note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(definition),nextAt:taskNextAt(definition,new Date(2026,9,19)).toISOString()};const now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now),receipt=makeDecimalReceipt('12 + 10');const result={status:'succeeded',answer:'12 + 10 = 22',sources:[],calculation:receipt};assert.throws(()=>finishTaskRun([note,run],run.id,'owner',{...result,answer:'12 + 10 = 23'},now),/Invalid scheduled calculation/);assert.throws(()=>finishTaskRun([note,run],run.id,'owner',{...result,sources:[{}]},now),/Invalid scheduled calculation/);const finished=finishTaskRun([note,run],run.id,'owner',result,now);assert.deepEqual(taskRunView(finished.run).calculation,receipt);assert.equal(latest(finished.task).body,latest(note).body);assert.equal(finished.task.taskCursor.nextAt,null);});
 test('task Markdown preserves exact prompt and validation rejects execution directives',()=>{
  const body=formatTask(task);assert.equal(parseTask(body).prompt,task.prompt);
  assert.throws(()=>parseTask(body.replace('"enabled": true','"enabled": "yes"')),/Invalid/);
@@ -114,4 +116,26 @@ test('retry keeps prior model provenance in history without attributing it to a 
  const stopped=finishTaskRun([failed.task,retry.run],retry.run.id,'second',{status:'stopped',error:'Stopped'},now);
  assert.equal(taskRunView(stopped.run).model,undefined);
  assert.match(stopped.run.revisions[1].body,/previous-model/);
+});
+
+test('skipping in another timezone refuses to advance or create a run',()=>{
+ const other=zone==='Asia/Tokyo'?'America/New_York':'Asia/Tokyo';const definition={...task,repeat:'daily',timezone:other};
+ const note=createNote({path:'Schedule/timezone.md',body:formatTask(definition)});note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(definition),nextAt:'2026-10-20T00:00:00.000Z'};
+ const records=[note],before=structuredClone(records);assert.throws(()=>skipTaskRun(records,note.id,'user',new Date('2026-10-20T01:00:00Z')),/Timezone changed/);assert.deepEqual(records,before);
+});
+
+test('a timezone change during a run preserves completion without advancing in the new zone',async()=>{
+ const {spawnSync}=await import('node:child_process');
+ const script=`import {formatTask,taskDefinition,claimTaskRun,finishTaskRun,taskRunView,reviseTaskNote} from './design/prototype/src/task-records.ts';import {createNote} from './dist/core.js';
+ const t={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone:'Asia/Tokyo',enabled:true,notify:false,prompt:'Check supplies'};
+ const n=createNote({path:'Schedule/a.md',body:formatTask(t)});n.ui={recordType:'schedule'};n.taskCursor={definition:taskDefinition(t),nextAt:'2026-10-20T00:00:00.000Z'};
+ const now=new Date('2026-10-20T00:00:00.000Z');const once={...t,repeat:'once'},single=createNote({path:'Schedule/once.md',body:formatTask(once)});single.ui={recordType:'schedule'};single.taskCursor={definition:taskDefinition(once),nextAt:n.taskCursor.nextAt};const one=claimTaskRun([single],single.id,'owner',now);
+ const {run}=claimTaskRun([n],n.id,'owner',now);process.env.TZ='America/New_York';const result=finishTaskRun([n,run],run.id,'owner',{status:'succeeded',answer:'Completed',sources:[{noteId:n.id,revision:1,start:0,end:1,quote:'#'}]},now);const done=finishTaskRun([single,one.run],one.run.id,'owner',{status:'skipped',error:'Skipped'},now);const reviewed=reviseTaskNote(result.task,{...t,timezone:'America/New_York'},now);
+ console.log(JSON.stringify({cursor:result.task.taskCursor.nextAt,review:result.task.ui.requiresReview,status:taskRunView(result.run).status,answer:taskRunView(result.run).answer,onceCursor:done.task.taskCursor.nextAt,onceReview:!!done.task.ui.requiresReview,reviewed:!reviewed.ui.requiresReview,reviewedNext:reviewed.taskCursor.nextAt}));`;
+ const child=spawnSync(process.execPath,['--input-type=module','-e',script],{cwd:process.cwd(),env:{...process.env,TZ:'Asia/Tokyo'},encoding:'utf8'});assert.equal(child.status,0,child.stderr);assert.deepEqual(JSON.parse(child.stdout),{cursor:'2026-10-20T00:00:00.000Z',review:true,status:'succeeded',answer:'Completed',onceCursor:null,onceReview:false,reviewed:true,reviewedNext:'2026-10-20T13:00:00.000Z'});
+});
+
+test('review-required schedule cannot be claimed even by a manual run',()=>{
+ const note=registered();note.ui.requiresReview=true;const records=[note],before=structuredClone(records);
+ assert.throws(()=>claimTaskRun(records,note.id,'owner',new Date(2026,9,20,9),{manual:true}),/Review schedule/);assert.deepEqual(records,before);
 });

@@ -1,5 +1,5 @@
 # memory.search
 
-Use for explicit local saved-record search.
-
-Input: `{query: string}`. Execution uses the current canonical host snapshot. Results retain IDs and revisions. No writes, network, installation or permission changes. Guidance is not execution authority.
+Search saved records by topic/phrase/clues; exact IDs/paths/filenames use memory.read.
+Paging: offset=0, then returned nextOffset/snapshot with unchanged query/pathPrefix; restart at 0 on change. windowLimit means possible additional matches. Without offset: at most 12 matches, not exhaustive. pathPrefix restricts to that folder/descendants and defaults offset to 0.
+Results: IDs/revisions/excerpt quotes; partial=true means shortened. Use memory.read for full text. Read-only, offline; grants no permissions.

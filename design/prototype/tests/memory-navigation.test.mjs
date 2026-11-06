@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {memoryBreadcrumbs,memoryFolderEntries,memoryCreationFolder} from '../src/memory-navigation.ts';
+import {memoryBreadcrumbs,memoryFolderEntries,memoryNoteMatchesScope,memoryCreationFolder} from '../src/memory-navigation.ts';
 test('Home shows user locations and root exposes internal locations only on request',()=>{
  const folders=['Inbox','Notes','Notes/work','Schedule','Notifications','Attachments','Tools','Settings'];
  assert.deepEqual(memoryFolderEntries('home','',folders).map(e=>e.label),['Inbox','Notes','Files']);
@@ -14,4 +14,14 @@ test('breadcrumbs navigate ancestors without changing canonical paths or depth',
  assert.equal(memoryCreationFolder('home','','file'),'Inbox');
  assert.equal(memoryCreationFolder('home','','folder'),'Notes');
  assert.equal(memoryCreationFolder('folder','Notes/work','file'),'Notes/work');
+});
+test('search scope is global at Memory root, user-only at Home, and recursive inside a folder',()=>{
+ assert.equal(memoryNoteMatchesScope('root','','Schedule/2026-10-29.md','meeting'),true);
+ assert.equal(memoryNoteMatchesScope('root','','Notes/work/plan.md','meeting'),true);
+ assert.equal(memoryNoteMatchesScope('home','','Schedule/2026-10-29.md','meeting'),false);
+ assert.equal(memoryNoteMatchesScope('home','','Notes/work/plan.md','meeting'),true);
+ assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/work/plan.md','meeting'),true);
+ assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/plan.md',''),true);
+ assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/work/plan.md',''),false);
+ assert.equal(memoryNoteMatchesScope('root','','Notes/plan.md',''),false);
 });

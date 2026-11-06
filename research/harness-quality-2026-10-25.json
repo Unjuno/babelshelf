@@ -1,0 +1,28 @@
+{
+  "baseline": "7cdaae4309e84b0549c64e810adb181d14a9463f",
+  "build": "9842d1b34aceb052",
+  "command": "npm run test:quality",
+  "exitCode": 0,
+  "scope": "Windows PC Node/Chromium/WebKit/installed Chromium PWA regression; no real model inference or physical-device claim",
+  "nodeTestGroups": [
+    "169",
+    "845",
+    "22",
+    "13",
+    "6",
+    "4",
+    "1"
+  ],
+  "installedPwa": {
+    "pass": true,
+    "fixtureServerStopped": true,
+    "standalone": true,
+    "networkProbeReachable": false
+  },
+  "remaining": [
+    "production hook/race acceptance",
+    "real model grounded reuse and exact save flow",
+    "real Text/Speech/Vision roundtrip",
+    "physical device gates"
+  ]
+}

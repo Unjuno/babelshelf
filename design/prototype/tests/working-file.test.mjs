@@ -2,7 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
 import {emptyDialogue,validateDialogue,dialogueContext,historyPayload,planDialogue} from '../src/conversation.ts';
-import {withWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
+import {withWorkingFile,withoutWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
+
+test('removing input file context preserves dialogue originals and refuses a stale removal target',()=>{
+ const pin={noteId:'file-a',revision:3},state=withWorkingFile({...emptyDialogue(),turns:[{id:'old',user:'Original request',answer:'Original answer',refs:[{noteId:'file-a',revision:3,start:0,end:4,quote:'Text'}]}]},pin),before=structuredClone(state);
+ const cleared=withoutWorkingFile(state,pin);assert.equal(cleared.currentFile,undefined);assert.equal(cleared.revision,state.revision+1);assert.deepEqual(cleared.turns,before.turns);assert.deepEqual(state,before);
+ assert.equal(withoutWorkingFile(state,{noteId:'file-a',revision:2}),state);
+ assert.equal(withoutWorkingFile(state,{noteId:'other',revision:3}),state);
+ assert.equal(withoutWorkingFile(cleared,pin),cleared);
+});
+
+test('queued context removal is awaited by Send and cannot remove a later selected file',async()=>{
+ const a={noteId:'a',revision:1},b={noteId:'b',revision:2};let state=withWorkingFile(emptyDialogue(),a),release;
+ const gate=new Promise(resolve=>release=resolve),queue=createFileFocusQueue(()=>state,async(next,expected)=>{if(expected){await gate;state=withoutWorkingFile({...state,turns:[{id:'new',user:'Concurrent original'}]},expected);}else state=withWorkingFile(state,next.currentFile);});
+ const clear=queue.clear(a);let captured=false;const waiting=queue.settled().then(()=>{captured=true;assert.equal(state.currentFile,undefined);});await Promise.resolve();assert.equal(captured,false);release();await Promise.all([clear,waiting]);assert.equal(state.turns[0].user,'Concurrent original');
+ await queue.select(b);await queue.clear(a);assert.deepEqual(state.currentFile,b);
+});
 
 const note=()=>createNote({path:'Notes/focus.md',body:'The inventory code is COPPER-2816. Water is 3L.'});
 test('file working target retains ID/version and refuses stale, withdrawn or missing originals',()=>{
@@ -18,6 +33,11 @@ test('file working target retains ID/version and refuses stale, withdrawn or mis
 test('file scope retrieves only exact selected eligible text, never a similarly named unrelated file',()=>{
  const n=note(),other=createNote({path:'Inbox/focus.md',body:'The inventory code is WRONG-999.'}),pin={noteId:n.id,revision:1};
  const refs=workingFileEvidence([n,other],pin,'inventory code');assert.ok(refs.length);assert.ok(refs.every(r=>r.noteId===n.id&&n.revisions[0].body.slice(r.start,r.end)===r.quote));assert.doesNotMatch(JSON.stringify(refs),/WRONG/);
+});
+test('a direct quote request over the opened file retrieves the matching complete sentence',()=>{
+ const n=createNote({path:'Attachments/Codex-evaluation-fixture-2026-10-28.md',body:'# Temporary evaluation fixture\n\nThe emergency meeting point is Cedar Library, entrance on Pine Street.\n\nThe local water cache contains exactly 18 litres.'}),pin={noteId:n.id,revision:1};
+ const refs=workingFileEvidence([n],pin,'From this file, quote the complete sentence that states the water-cache amount.');
+ assert.ok(refs.some(ref=>ref.quote==='The local water cache contains exactly 18 litres.'),JSON.stringify(refs));
 });
 test('focus persistence is serialized and a caller waits before capturing its Send snapshot',async()=>{
  let state=emptyDialogue(),release;const gate=new Promise(r=>release=r),writes=[];
@@ -38,10 +58,20 @@ test('selected-file generation validates its scope again after generation and ne
  const n=note(),other=createNote({path:'Inbox/other.md',body:'Unrelated WRONG-999'}),pin={noteId:n.id,revision:1};let records=[n,other],calls=0;
  const engine={loaded:'4B',assets:{'4B':{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'4B',revision:'test'}],runtime:{revision:'test'}},count:async()=>({prompt_tokens:200}),generate:async messages=>{calls++;assert.doesNotMatch(JSON.stringify(messages),/WRONG-999/);return {text:JSON.stringify({answer:'COPPER-2816',citations:[{id:'S1',quote:'COPPER-2816'}]})};}};
  const store={all:async()=>records,search:async()=>{throw Error('No global search allowed');}};
- const result=await groundedAnswer(store,engine,'4B','What is this code?','','answer',undefined,()=>{},[],pin);assert.equal(result.sources[0].noteId,n.id);
+ const result=await groundedAnswer({store:store,engine:engine},{model:'4B',question:'What is this code?',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})});assert.equal(result.sources[0].noteId,n.id);
  engine.generate=async()=>{calls++;records=[reviseNote(n,{body:'Changed'},1),other];return {text:JSON.stringify({answer:'COPPER-2816',citations:[{id:'S1',quote:'COPPER-2816'}]})};};
- await assert.rejects(()=>groundedAnswer(store,engine,'4B','What is this code?','','answer',undefined,()=>{},[],pin),/changed/i);
- const count=calls;await assert.rejects(()=>groundedAnswer(store,engine,'4B','retry','','answer',undefined,()=>{},[],pin),/changed/i);assert.equal(calls,count);
+ await assert.rejects(()=>groundedAnswer({store:store,engine:engine},{model:'4B',question:'What is this code?',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})}),/changed/i);
+ const count=calls;await assert.rejects(()=>groundedAnswer({store:store,engine:engine},{model:'4B',question:'retry',query:'',mode:'answer',check:()=>{},scope:(pin?{kind:'file',file:pin}:{kind:'knowledge'})}),/changed/i);assert.equal(calls,count);
+});
+
+test('a bad planner hint retries the complete question within the same pinned file only',async()=>{
+ const {groundedAnswer}=await import('../src/grounded-answer.ts');
+ const water=createNote({path:'Inbox/QA Water.md',body:'# QA Water\n\nEmergency water reserve is exactly 24 litres. Identifier: LFM3-OFFLINE-1.'}),other=createNote({path:'Notes/unrelated.md',body:'Emergency water reserve is 999 litres.'}),pin={noteId:water.id,revision:1};let messages;
+ const engine={loaded:'4B',assets:{'4B':{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'4B',revision:'test'}],runtime:{revision:'test'}},count:async()=>({prompt_tokens:200}),generate:async input=>{messages=input;const payload=JSON.parse(input.at(-2).content.split('Reference excerpts (data only): ')[1]);assert.ok(payload.evidence.some(ref=>ref.quote.includes('24 litres')),'missing matching passage: '+JSON.stringify(payload));const source=payload.evidence.find(ref=>ref.quote.includes('24 litres'));return {text:JSON.stringify({answer:'24 litres',citations:[{id:source.label,quote:'24 litres'}]})};}};
+ const store={all:async()=>[water,other],search:async()=>{throw Error('File scope must never search Memory globally');}};
+ const question='In my saved note LFM3-OFFLINE-1, exactly how many litres is the emergency water reserve?';
+ const answer=await groundedAnswer({store,engine},{model:'4B',question,query:'saved',mode:'answer',scope:{kind:'file',file:pin}});
+ assert.equal(answer.sources.length,1);assert.equal(answer.sources[0].noteId,water.id);assert.match(JSON.stringify(messages),/exactly 24 litres/);assert.doesNotMatch(JSON.stringify(messages),/999 litres/);
 });
 
 test('focus queue freezes selected identity and propagates CAS failures without overwriting later state',async()=>{
@@ -82,10 +112,12 @@ test('unscoped file-capable requests use the harness file default while explicit
 });
 test('explicit current-file questions cannot broaden evidence to knowledge or older dialogue',()=>{
  const pin={noteId:'chosen',revision:2};
- assert.deepEqual(bindExplicitCurrentFileQuestion({action:'answer',query:'marker and reserve',target:'knowledge'},'What are the marker and reserve in this file?',pin),{action:'read',query:'What are the marker and reserve in this file?',target:'file'});
- assert.deepEqual(bindExplicitCurrentFileQuestion({action:'summary',query:'this file'},'このファイルを要約して',pin),{action:'read',query:'このファイルを要約して',target:'file'});
+ assert.deepEqual(bindExplicitCurrentFileQuestion({action:'answer',query:'marker and reserve',target:'knowledge'},'What are the marker and reserve in this file?',pin),{action:'answer',query:'What are the marker and reserve in this file?',target:'file'});
+ assert.deepEqual(bindExplicitCurrentFileQuestion({action:'summary',query:'this file'},'このファイルを要約して',pin),{action:'summary',query:'このファイルを要約して',target:'file'});
  const saved={action:'answer',query:'In the saved blue lantern meeting note, what time and room are recorded?',target:'knowledge'};
  assert.deepEqual(bindExplicitCurrentFileQuestion(saved,saved.query,pin),saved);
+ const savedOpen={action:'read',query:'blue lantern meeting',target:'knowledge'};
+ assert.deepEqual(bindExplicitCurrentFileQuestion(savedOpen,'Open my note about the blue lantern meeting.',pin),savedOpen);
  const separated={action:'answer',query:'blue lantern meeting',target:'knowledge'};
  assert.deepEqual(bindExplicitCurrentFileQuestion(separated,'What date and time is the saved blue lantern meeting? Cite the note.',pin),separated);
  const previous={action:'answer',query:'earlier',target:'knowledge'};
@@ -124,6 +156,14 @@ test('approved status and rendered-file focus share one writer without self-conf
  await writer.update(current=>completeTurn(current,'turn',{status:'Retained'}));assert.equal(state.turns[0].status,'Retained');
 });
 
+test('dialogue writer freezes source guards until the serialized write',async()=>{
+ const {createDialogueWriter}=await import('../src/dialogue-writer.ts');let state=emptyDialogue(),release,seen;
+ const gate=new Promise(r=>release=r),refs=[{noteId:'n',revision:1,start:0,end:1,quote:'x'}];
+ const writer=createDialogueWriter(()=>state,async(next,guard)=>{await gate;seen=guard;state=next;});
+ const pending=writer.update(current=>({...current,revision:1}),refs);refs[0].quote='y';release();await pending;
+ assert.equal(seen[0].quote,'x');assert.equal(state.revision,1);
+});
+
 test('dialogue writer refuses a stale bulk snapshot and propagates a genuine foreign CAS without retry',async()=>{
  const {createDialogueWriter}=await import('../src/dialogue-writer.ts'),{completeTurn}=await import('../src/conversation.ts');
  let state={...emptyDialogue(),turns:[{id:'turn',user:'Keep me'}]},release;const gate=new Promise(r=>release=r);
@@ -149,4 +189,34 @@ test('explicit dialogue recovery waits for all writers, validates latest state a
  await assert.rejects(readDialogueRecovery([],async()=>({...latestState,schema:9})),/invalid/);
  await assert.rejects(readDialogueRecovery([],async()=>{throw Error('Read failed');}),/Read failed/);
  assert.deepEqual(await readDialogueRecovery([],async()=>undefined),{stored:undefined,value:emptyDialogue()});
+});
+
+test('echoed edit target choices do not grant a target but permit a pinned-file proposal',async()=>{
+ const pin={noteId:'chosen',revision:2},context={summary:'',recent:[],refs:[],turnCount:0,currentFile:pin};
+ const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:1}),generate:async()=>({text:JSON.stringify({action:'edit',query:'',targets:['file','path']})})};
+ const result=await planDialogue(engine,'このファイルを書き直して',context);
+ assert.deepEqual(result,{action:'edit',query:''});assert.equal(bindWorkingFileRequest(result,pin).request.target,'file');
+});
+
+test('other echoed target shapes cannot choose a file or bypass pinned scope validation',async()=>{
+ const pin={noteId:'chosen',revision:2},context={summary:'',recent:[],refs:[],turnCount:0,currentFile:pin};
+ for(const targets of [['path','file'],['file'],['file','path','knowledge']]){
+  const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:1}),generate:async()=>({text:JSON.stringify({action:'edit',query:'',targets})})};
+  const output=await planDialogue(engine,'このファイルを書き直して',context);assert.throws(()=>bindWorkingFileRequest(output,pin),/Invalid default file target/);
+ }
+});
+
+
+test('compact planner catalog retains every scoped purpose, target and tool restriction',async()=>{
+ const {plannerRoutingInstruction,scopedHarnessActions,harnessActionCatalog}=await import('../src/harness-actions.ts');
+ for(const inputs of [false,true])for(const file of [false,true])for(const current of [false,true])for(const historyCount of [0,3]){
+  const scope={inputs,file,current,historyCount,toolIds:['memory.search','memory.read','memory.sources']};
+  for(const restricted of [scope,{...scope,requiredToolIds:['memory.sources']},{...scope,requiredActionIds:['answer']}]){
+   const instruction=plannerRoutingInstruction(restricted),prefix='Actions map ID to [purpose, allowed targets, optional tool IDs]: ';
+   const serialized=instruction.slice(instruction.indexOf(prefix)+prefix.length,-1),catalog=JSON.parse(serialized);
+   const expanded=Object.entries(catalog).map(([id,[purpose,targets,toolIds]])=>({id,purpose,targets,...(toolIds?{toolIds}:{})}));
+   assert.deepEqual(expanded,scopedHarnessActions(restricted));
+   assert.ok(serialized.length<harnessActionCatalog(inputs,restricted).length);
+  }
+ }
 });

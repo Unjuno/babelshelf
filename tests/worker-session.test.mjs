@@ -36,7 +36,7 @@ test('cleanup failures release both session and model ownership and allow an exp
 test('explicit diagnostic reset isolates a generation and reports runtime completion metadata',async()=>{
  const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
  const events=[];let resets=0;
- const stream={async *[Symbol.asyncIterator](){yield {type:'text',text:'actual worker fixture'};},result:Promise.resolve({finish_reason:'stop',usage:{prompt_tokens:12,cached_tokens:0,completion_tokens:3},timings:{ttft_ms:1,decode_ms:5,tokens_per_second:400}})};
+ const stream={async *[Symbol.asyncIterator](){yield {type:'text',text:'actual worker fixture'};},result:Promise.resolve({finish_reason:'stop',usage:{prompt_tokens:12,cached_tokens:0,completion_tokens:3},timings:{ttft_ms:1,prefill_ms:2,decode_ms:5,tokens_per_second:400}})};
  const context=vm.createContext({createStreamingSHA256,streamingSHA256Backend,createPinnedFileSnapshots,fetch:()=>{},postMessage:m=>events.push(m),AbortController,DOMException,performance,console});
  vm.runInContext(source+'\nglobalThis.setTestSession=(s)=>{session=s;model={contextLength:2048};};',context);
  context.setTestSession({reset:()=>{resets++;},count_tokens:()=>({prompt_tokens:12}),generate:()=>stream});
@@ -45,6 +45,7 @@ test('explicit diagnostic reset isolates a generation and reports runtime comple
  assert.equal(result.finishReason,'stop');assert.equal(result.usage.cached_tokens,0);
  assert.equal(result.metrics.outputTokens,3);assert.ok(result.metrics.generationTokensPerSecond>0);assert.equal(result.metrics.decodePipelineDepth,1);assert.equal(result.metrics.memoryAfter,null);
  assert.equal(result.metrics.runtimeTtftMs,1);assert.equal(result.metrics.runtimeDecodeMs,5);assert.equal(result.metrics.runtimeDecodeTokensPerSecond,400);
+ assert.equal(result.metrics.runtimePromptTokens,12);assert.equal(result.metrics.runtimeCachedTokens,0);
  await context.onmessage({data:{id:2,cmd:'generate',args:{messages:[],maxTokens:32}}});
  assert.equal(resets,1,'ordinary generation keeps the existing session behavior');
 });
@@ -115,4 +116,54 @@ test('actual worker Load reuses verified code but recreates models/sessions and 
  assert.equal((await context.loadActual()).timings.runtimeModuleReused,false);assert.equal((await context.loadActual()).timings.runtimeModuleReused,true);
  assert.equal(imports,1);assert.equal(verifies,2);assert.equal(models.length,2);assert.equal(disposedModels,1);assert.equal(disposedSessions,1);
  models[0].lose(Error('old controlled device loss'));await Promise.resolve();assert.equal(context.currentModel(),models[1]);
+});
+
+
+test('worker usage metrics preserve zero and do not invent missing or malformed token counts',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const events=[],context=vm.createContext({createStreamingSHA256,streamingSHA256Backend,createPinnedFileSnapshots,fetch:()=>{throw Error("Unexpected network");},postMessage:m=>events.push(m),AbortController,DOMException,performance,console});
+ vm.runInContext(source+'\nglobalThis.install=s=>{session=s;model={contextLength:2048};};',context);
+ for(const value of [undefined,null,-1,1.5,'12',Infinity,Number.MAX_SAFE_INTEGER+1,0,12]){
+  context.install({count_tokens:()=>({prompt_tokens:99}),generate:()=>({async *[Symbol.asyncIterator](){yield {type:'text',text:'fixture'};},result:Promise.resolve({usage:{prompt_tokens:value,cached_tokens:value}})})});
+  await context.onmessage({data:{id:events.length+1,cmd:'generate',args:{messages:[],maxTokens:16}}});
+  const result=events.at(-1);assert.equal(result.type,'done');
+  const expected=Number.isSafeInteger(value)&&value>=0?value:null;
+  assert.equal(result.value.metrics.runtimePromptTokens,expected);
+  assert.equal(result.value.metrics.runtimeCachedTokens,expected);
+  assert.equal(result.value.inputTokens,99,'preflight count is separate from reported runtime usage');
+ }
+});
+
+
+test('worker reuses exact preflight count once and invalidates after generation, abort and session change',async()=>{
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ let calls=0;const events=[];
+ const makeSession=()=>({count_tokens:()=>{calls++;return {prompt_tokens:12};},generate:()=>({async *[Symbol.asyncIterator](){yield {type:'text',text:'ok'};},result:Promise.resolve({usage:{completion_tokens:1}})})});
+ const context=vm.createContext({createPinnedFileSnapshots,fetch:()=>{},postMessage:m=>events.push(m),AbortController,DOMException,performance});
+ vm.runInContext(source+'\nglobalThis.install=s=>{session=s;model={contextLength:512};};',context);
+ context.install(makeSession());
+ const args={messages:[{role:'user',content:'hello'}],maxTokens:20};
+ const run=async(cmd,a=args)=>context.onmessage({data:{id:1,cmd,args:a}});
+ await run('count');await run('generate');assert.equal(calls,1);assert.equal(events.at(-1).type,'done');
+ await run('count');assert.equal(calls,2,'generation invalidates cache');
+ await run('count',{...args,messages:[{role:'user',content:'different'}]});assert.equal(calls,3);
+ await run('abort');await run('count',{...args,messages:[{role:'user',content:'different'}]});assert.equal(calls,4);
+ context.install(makeSession());await run('count',{...args,messages:[{role:'user',content:'different'}]});assert.equal(calls,5);
+ await run('count',{...args,messages:[{role:'user',content:'x'.repeat(262145)}]});
+ await run('count',{...args,messages:[{role:'user',content:'x'.repeat(262145)}]});assert.equal(calls,7,'oversized inputs are not retained');
+});
+
+test('worker configures runtime-owned adapter requests before loading inference',async()=>{
+ const {preferHighPerformanceAdapterRequests}=await import('../dist/webgpu-preference.js');
+ const source=(await readFile(new URL('../dist/model-worker.js',import.meta.url),'utf8')).replace(/^import .*;\r?\n/gm,'');
+ const calls=[],gpu={requestAdapter:async function(options){assert.equal(this,gpu);calls.push(options);return null;}};
+ const context=vm.createContext({preferHighPerformanceAdapterRequests,navigator:{gpu},createPinnedFileSnapshots,fetch:()=>{throw Error('No network');},postMessage(){},console});
+ vm.runInContext(source,context);
+ assert.equal(await gpu.requestAdapter(),null);
+ assert.equal(calls[0].powerPreference,'high-performance');
+ assert.deepEqual(calls[1],{},'a null preferred adapter retries the browser default');
+ const explicit={powerPreference:'low-power',forceFallbackAdapter:true};
+ await gpu.requestAdapter(explicit);
+ assert.deepEqual(calls[2],explicit,'runtime explicit choice must survive');
+ assert.notEqual(calls[2],explicit,'caller options must not be mutated');
 });

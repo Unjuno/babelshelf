@@ -18,7 +18,20 @@ export class Engine{
  call(cmd,args={},events){if(this.workerFault)return Promise.reject(this.workerFault);return new Promise((resolve,reject)=>{const id=++this.seq;this.pending.set(id,{cmd,resolve,reject,events});this.worker.postMessage({id,cmd,args});});}
  async init(){return this.call('init',{manifest:this.manifest});}
  async load(model,events){const epoch=this.resourceEpoch;this.loaded=null;const r=await this.call('load',{model},events);if(this.workerFault)throw this.workerFault;if(epoch!==this.resourceEpoch)throw this.lastResourceError??Error('GPU disconnected');this.loaded=model;return r;}
- abort(){this.cancelRequested=true;this.worker.postMessage({cmd:'abort'});}
+ abort(){
+  this.cancelRequested=true;this.worker.postMessage({cmd:'abort'});
+  // Only inference operations can be retired this way. Asset writes must finish
+  // their own abort/cleanup instead of being interrupted halfway through.
+  const active=[...this.pending].filter(([,p])=>['load','generate','count'].includes(p.cmd)).map(([id])=>id);
+  if(!active.length||this.stopTimer)return;
+  this.stopTimer=setTimeout(()=>{
+   this.stopTimer=null;
+   if(!active.some(id=>this.pending.has(id)))return;
+   if([...this.pending.values()].some(p=>['prepare','verify'].includes(p.cmd)))return;
+   const error=Error('Stopped');this.workerFault=error;this.lastResourceError=error;this.loaded=null;this.resourceEpoch++;
+   this.worker.terminate();for(const p of this.pending.values())p.reject(error);this.pending.clear();this.onState(error.message);
+  },2500);
+ }
  async unload(){await this.call('unload');this.loaded=null;}
  generate(messages,events,maxTokens=256){return this.call('generate',{messages,maxTokens},events);}
 }

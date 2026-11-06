@@ -1,21 +1,51 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {initialPreparationPlan,runInitialPreparation,textPreparationStatus} from '../src/initial-preparation.ts';
+import {initialPreparationPlan,preparationEstimateMayBeTooLarge,runInitialPreparation,textPreparationStatus} from '../src/initial-preparation.ts';
 import {initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 const initial=()=>readPreference('models',structuredClone(initialPreferenceNotes));
+
+test('browser storage estimates warn only when known free space is below selected asset bytes',()=>{
+ assert.equal(preparationEstimateMayBeTooLarge(100,99),true);
+ assert.equal(preparationEstimateMayBeTooLarge(100,100),false);
+ assert.equal(preparationEstimateMayBeTooLarge(100,null),false);
+ assert.equal(preparationEstimateMayBeTooLarge(100,NaN),false);
+ assert.equal(preparationEstimateMayBeTooLarge(0,0),false);
+ assert.equal(preparationEstimateMayBeTooLarge(-1,10),false);
+});
+
+test('pinned LFM3 Q8 preparation budgets only its verified weights and shared LFM3 runtime',async()=>{
+ const {lfm3RuntimeBytes}=await import('../src/lfm3-text-manifest.ts');
+ const prefs=initial();prefs.textModel='lfm3-1.7b-q8-0';prefs.textLibrary.push(prefs.textModel);
+ const plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false},'text');
+ assert.equal(plan.steps.length,1);assert.equal(plan.steps[0].role,'text');assert.match(plan.steps[0].label,/LFM3.*Q8_0/);
+ assert.equal(plan.steps[0].bytes,1846238496+lfm3RuntimeBytes);assert.equal(plan.bytes,1846238496+lfm3RuntimeBytes);
+ assert.equal(plan.models.textModel,'lfm3-1.7b-q8-0');
+});
+
+test('custom Vision setup verifies the selected local package and never budgets a builtin-model download',async()=>{
+ const {visionManifest}=await import('../src/vision-assets.ts');const {validateCustomVisionModel}=await import('../src/custom-vision-assets.ts');
+ const files=visionManifest.files.map(({path,bytes,sha256})=>({path,bytes,sha256}));
+ const hash=createHash('sha256').update(JSON.stringify(files)).digest('hex');
+ const model=validateCustomVisionModel({id:'local-vision-'+hash,label:'Local Vision',role:'vision',engine:'transformers-lfm2-vl-onnx',revision:'sha256:'+hash,files,inspection:{format:'LFM2-VL-ONNX',architecture:'lfm2_vl',device:'webgpu',dtype:'q4f16',maxImageTokens:256,scope:'image-text'}});
+ const prefs=initial();prefs.customVisionModels=[model];prefs.visionModel=model.id;prefs.visionLibrary=[model.id];const ready={text:false,speech:false,ocr:false,vision:true};
+ const plan=initialPreparationPlan(prefs,ready,'vision');assert.deepEqual(plan.steps,[{role:'vision',label:model.label,readyLabel:'Files verified',ready:true,bytes:0}]);assert.equal(plan.bytes,0);
+ assert.throws(()=>initialPreparationPlan(prefs,{...ready,vision:false},'vision'),/Import local Vision files first/);
+ assert.throws(()=>initialPreparationPlan({...prefs,customVisionModels:[]},ready,'vision'),/Vision runtime not connected/);
+});
 
 test('custom Qwen3 persists its own CPU identity and prepares without WebML assets',async()=>{
  const {formatPreference,parsePreference}=await import('../src/preference-records.ts');
  const {combinedLocalTextManifest}=await import('../src/lfm-text-manifest.ts');
  const {describeQwen3Text}=await import('../src/qwen3-text-manifest.ts');
- const sha='c'.repeat(64),record={id:'local-'+sha,label:'Local Qwen3',role:'text',engine:'wllama-qwen3',revision:'sha256:'+sha,file:{bytes:428970080,sha256:sha},inspection:{format:'GGUF',version:3,bytes:428970080,name:'Qwen3',architecture:'qwen3',contextLength:40960,tokenizer:'gpt2',chatTemplate:true,tokenCount:151936,tensorCount:311,tensorTypes:[0,2],tensorExtentsChecked:true,dataOffset:5951584}};
+ const sha='c'.repeat(64),record={id:'local-'+sha,label:'Local Qwen3',role:'text',engine:'wllama-qwen3',revision:'sha256:'+sha,file:{bytes:428970080,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes:428970080,name:'Qwen3',architecture:'qwen3',contextLength:40960,tokenizer:'gpt2',chatTemplate:true,tokenCount:151936,tensorCount:311,tensorTypes:[0,2],tensorExtentsChecked:true,dataOffset:5951584}};
  const prefs=initial();prefs.customModels=[record];prefs.textModel=record.id;prefs.textLibrary.push(record.id);
  const restored=parsePreference('models',formatPreference('models',prefs));
  assert.deepEqual(restored.customModels,[record]);assert.equal(restored.textModel,record.id);
- const descriptor=describeQwen3Text(restored.customModels),base={models:[],runtime:{revision:'unrelated'},contextTokens:8192};
+ const descriptor=describeQwen3Text(restored.customModels,record.id),base={models:[],runtime:{revision:'unrelated'},contextTokens:8192};
+ assert.equal(descriptor.models[0].maxReplyTokens,4096,'Qwen3 reply allowance follows this model’s validated context');
  const combined=combinedLocalTextManifest(base,record.id,restored.customModels);
- assert.equal(combined.runtime.revision,descriptor.runtime.revision);assert.equal(combined.contextTokens,2048);
+ assert.equal(combined.runtime.revision,descriptor.runtime.revision);assert.equal(combined.contextTokens,4096);
  const model=combined.models.find(m=>m.id===record.id);assert.equal(model.engine,'wllama-qwen3-cpu');assert.equal(model.file.sha256,sha);assert.equal(model.url,undefined);
  assert.throws(()=>initialPreparationPlan(restored,{text:false,speech:false,ocr:false},'text'),/Import local text model files first/);
  const plan=initialPreparationPlan(restored,{text:true,speech:false,ocr:false},'text');assert.equal(plan.bytes,0);assert.equal(plan.steps[0].bytes,record.file.bytes);assert.equal(plan.steps[0].label,record.label);
@@ -27,7 +57,7 @@ test('fresh selected Text status controls preparation without treating missing s
  assert.throws(()=>textPreparationStatus({'2B':{filesPresent:true}},'4B'),/status unavailable/);
  assert.deepEqual(textPreparationStatus({'9B':null},'9B'),{text:false,textStatusError:false});
  const failed=textPreparationStatus({'4B':{filesPresent:true,statusError:true}},'4B');
- assert.throws(()=>initialPreparationPlan(prefs,{...failed,speech:false,ocr:false}),/status unavailable/);
+ const uncertain=initialPreparationPlan(prefs,{...failed,speech:false,ocr:false});assert.equal(uncertain.textStatusError,true);assert.equal(uncertain.steps[0].ready,false);assert.ok(uncertain.bytes>0);
  prefs.decisionModel='d1-omni-600M';prefs.decisionLibrary=['d1-omni-600M'];
  assert.deepEqual(initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false,decision:false},'decision').steps.map(step=>step.role),['decision']);
 });
@@ -107,10 +137,9 @@ test('standard-set presence is not reported as text verification',()=>{
  assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.bytes,0);
 });
 
-test('an unavailable selected text status cannot be treated as missing downloadable files',()=>{
+test('an unavailable selected text status stays unverified but does not block the safe prepare/import flow',()=>{
  const prefs=initial();
- assert.throws(()=>initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false}),/Text file status unavailable/);
- assert.throws(()=>initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'text'),/retry check/);
+ for(const plan of [initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false}),initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'text')]){assert.equal(plan.textStatusError,true);assert.equal(plan.steps[0].ready,false);assert.ok(plan.bytes>0);}
  prefs.transcriptionModel='whisper-tiny';prefs.transcriptionLibrary=['whisper-tiny'];
  assert.deepEqual(initialPreparationPlan(prefs,{text:false,textStatusError:true,speech:false,ocr:false},'speech').steps.map(step=>step.role),['speech']);
 });
@@ -118,12 +147,12 @@ test('an unavailable selected text status cannot be treated as missing downloada
 
 test('LFM initial preparation budgets only selected weights; packaged runtime is independent',()=>{
  const prefs=initial();prefs.textModel='lfm25-350m-qad-q4-0';prefs.textLibrary.push(prefs.textModel);
- const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,219312832);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);assert.equal(initial().textModel,'4B');
+ const plan=initialPreparationPlan(prefs,{text:false,speech:true,ocr:true});assert.equal(plan.bytes,219312832);assert.equal(plan.steps[0].readyLabel,'Files present');assert.equal(plan.models.textModel,prefs.textModel);assert.equal(initial().textModel,'lfm3-1.7b-qad-q4-0');
 });
 test('custom LFM2 preparation uses the trusted runtime budget and keeps the default model unchanged',()=>{
- const prefs=initial(),sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},inspection:{format:'GGUF',version:3,bytes:149081056,name:'My LFM2',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};
+ const prefs=initial(),sha='c'.repeat(64),custom={id:'local-'+sha,label:'My LFM2',role:'text',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:149081056,sha256:sha},contextTokens:4096,inspection:{format:'GGUF',version:3,bytes:149081056,name:'My LFM2',architecture:'lfm2',contextLength:32768,tokenizer:'gpt2',chatTemplate:true,tokenCount:65536,tensorCount:3,tensorTypes:[0,2,14],tensorExtentsChecked:true,dataOffset:2387936}};
  prefs.customModels=[custom];prefs.textLibrary.push(custom.id);prefs.textModel=custom.id;
- const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true});assert.equal(plan.steps[0].label,'My LFM2');assert.equal(plan.steps[0].bytes,custom.file.bytes);assert.equal(plan.models.textModel,custom.id);assert.equal(plan.bytes,0);assert.equal(initial().textModel,'4B');
+ const plan=initialPreparationPlan(prefs,{text:true,speech:true,ocr:true});assert.equal(plan.steps[0].label,'My LFM2');assert.equal(plan.steps[0].bytes,custom.file.bytes);assert.equal(plan.models.textModel,custom.id);assert.equal(plan.bytes,0);assert.equal(initial().textModel,'lfm3-1.7b-qad-q4-0');
 });
 test('a registered custom D1 decision model stays in the app-owned local runtime during initial preparation',()=>{
  const prefs=initial(),files=[{path:'config.json',bytes:1,sha256:'1'.repeat(64)},{path:'tokenizer.json',bytes:1,sha256:'2'.repeat(64)},{path:'tokenizer_config.json',bytes:1,sha256:'3'.repeat(64)},{path:'onnx/model_quantized.onnx',bytes:1,sha256:'4'.repeat(64)},{path:'onnx/model_quantized.onnx_data',bytes:1,sha256:'5'.repeat(64)}],sha=createHash('sha256').update(JSON.stringify(files)).digest('hex'),custom={id:'local-decision-'+sha,label:'My D1',role:'decision',engine:'onnx-d1-text',revision:'sha256:'+sha,files,inspection:{format:'D1-ONNX',architecture:'d1_omni',contextTokens:16384,inputLimit:2048,scope:'text-only'}};
@@ -175,7 +204,7 @@ test('reader preparation does not require a selected text model or its status',a
  const ready={text:false,textStatusError:true,speech:false,ocr:false,vision:true};
  const speech=initialPreparationPlan(prefs,ready,'speech');assert.deepEqual(speech.steps.map(step=>step.role),['speech']);assert.equal(speech.bytes,79666385);assert.equal(speech.models.textModel,'');
  const all=initialPreparationPlan(prefs,ready);assert.deepEqual(all.steps.map(step=>step.role),['speech','vision']);assert.equal(all.bytes,speech.bytes);
- const calls=[];await runInitialPreparation(all,async role=>calls.push(role),async()=>calls.push('complete'));assert.deepEqual(calls,['speech','complete']);
+ const calls=[];await runInitialPreparation(all,async role=>calls.push(role),async()=>calls.push('complete'));assert.deepEqual(calls,['speech','vision','complete']);
  assert.equal(prefs.textModel,'');assert.deepEqual(prefs.textLibrary,initial().textLibrary);
 });
 

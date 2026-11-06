@@ -29,3 +29,7 @@ test('diagnosis does not infer repairs for unknown or unsupported failures',()=>
   {role:'text',label:'Text model'},
  ]);
 });
+
+test('search scope recovery retains text model settings action for both missing states',()=>{
+ for(const status of ['Model not prepared · remove input file to search Memory','Model not configured · remove input file to search Memory'])assert.deepEqual(diagnoseModelIssues(status),[{role:'text',label:'Text model'}]);
+});

@@ -1,6 +1,8 @@
 import {capabilityState,type LocalCapability} from './local-capabilities.ts';
-import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel} from './preference-records.ts';
+import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel,CustomVisionModel} from './preference-records.ts';
 import {textAssetInput} from './asset-activity.ts';
+import {textExecutionRoute} from './text-execution-route.ts';
+import {textBackendPolicy} from './text-device-policy.ts';
 
 export type ModelRole='text'|'decision'|'speech'|'ocr'|'vision';
 const roleCapability:Record<ModelRole,LocalCapability>={
@@ -9,11 +11,11 @@ const roleCapability:Record<ModelRole,LocalCapability>={
 
 // A custom declaration becomes selectable only for an app-owned adapter that
 // validates the role-specific package and routes it through local inference.
-export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonly CustomLocalModel[]=[],customDecisionModels:readonly CustomDecisionModel[]=[],customSpeechModels:readonly CustomSpeechModel[]=[]):string{
- if(role==='vision'&&id!=='lfm25-vl-450m-q4f16')return 'Runtime not connected';
+export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonly CustomLocalModel[]=[],customDecisionModels:readonly CustomDecisionModel[]=[],customSpeechModels:readonly CustomSpeechModel[]=[],customVisionModels:readonly CustomVisionModel[]=[]):string{
+ if(role==='vision'&&id!=='lfm25-vl-450m-q4f16')return customVisionModels.some(model=>model.id===id&&model.engine==='transformers-lfm2-vl-onnx')?'Not prepared':'Runtime not connected';
  if(role==='text'){
   const custom=customModels.find(model=>model.id===id);
-  if(custom)return custom.engine==='webml-qwen35'||['wllama-lfm2','wllama-qwen3'].includes(custom.engine)?'Not prepared':'Runtime not connected';
+  if(custom)return custom.engine==='webml-qwen35'||['wllama-lfm2','wllama-lfm3','wllama-qwen3'].includes(custom.engine)?'Not prepared':'Runtime not connected';
  }
  if(role==='decision'){
   const custom=customDecisionModels.find(model=>model.id===id);
@@ -26,13 +28,15 @@ export function modelCatalogStatus(role:ModelRole,id:string,customModels:readonl
  return capabilityState(roleCapability[role],id,false).status;
 }
 
-export function canAddModel(role:ModelRole,id:string,customModels:readonly CustomLocalModel[]=[],customDecisionModels:readonly CustomDecisionModel[]=[],customSpeechModels:readonly CustomSpeechModel[]=[]):boolean{
- return modelCatalogStatus(role,id,customModels,customDecisionModels,customSpeechModels)==='Not prepared';
+export function canAddModel(role:ModelRole,id:string,customModels:readonly CustomLocalModel[]=[],customDecisionModels:readonly CustomDecisionModel[]=[],customSpeechModels:readonly CustomSpeechModel[]=[],customVisionModels:readonly CustomVisionModel[]=[]):boolean{
+ return modelCatalogStatus(role,id,customModels,customDecisionModels,customSpeechModels,customVisionModels)==='Not prepared';
 }
 
 // The pinned weight/package size is useful before selection. It is not a RAM
 // estimate, a free-space check, or proof that this device can run the model.
 export function textModelFileSize(id:string,customModels:readonly CustomLocalModel[]=[]):number|null{
+ const custom=customModels.find(model=>model.id===id);
+ if(custom&&Number.isSafeInteger(custom.file?.bytes)&&custom.file.bytes>0)return custom.file.bytes;
  try{
   const model=textAssetInput(id,false,undefined,[...customModels]).model;
   if('files' in model&&Array.isArray(model.files))return model.files.reduce((total,file)=>total+file.bytes,0);
@@ -40,11 +44,19 @@ export function textModelFileSize(id:string,customModels:readonly CustomLocalMod
   return null;
  }catch{return null;}
 }
-export function textModelChoiceHint(id:string,customModels:readonly CustomLocalModel[]=[]):string{
+export function textModelChoiceHint(id:string,customModels:readonly CustomLocalModel[]=[],device?:Parameters<typeof textBackendPolicy>[0]):string{
  const bytes=textModelFileSize(id,customModels);
  if(bytes===null)return 'Size unavailable';
  const size=bytes>=1e9?(bytes/1e9).toFixed(2)+' GB':Math.round(bytes/1e6)+' MB';
+ const lfm3BackendHint=textBackendPolicy(device)==='auto'?'GPU preferred · CPU fallback':'GPU route required on mobile';
  const custom=customModels.find(model=>model.id===id);
- if(custom?.engine==='wllama-qwen3')return size+' · CPU WASM · execution not tested';
- return id==='9B'?size+' · PC prose unstable':size+' · model files';
+ if(custom){
+  if(custom.engine==='wllama-lfm3')return size+' · '+lfm3BackendHint+' · not tested on this device';
+  const route=textExecutionRoute(id,customModels),execution=route?.backend==='webgpu'?'GPU path':route?.backend==='cpu-wasm'?'CPU path':'Runtime unavailable';
+  return size+' · '+execution+' · not tested on this device';
+ }
+ if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-iq3m'||id==='lfm3-1.7b-q8-0')return size+' · '+lfm3BackendHint+' · not tested on this device';
+ if(id==='9B')return size+' · experimental · PC prose unstable';
+ if(id==='lfm25-230m-qad-q4-0'||id==='lfm25-350m-qad-q4-0')return size+' · experimental · diagnostic generation only';
+ return size+' · model files';
 }

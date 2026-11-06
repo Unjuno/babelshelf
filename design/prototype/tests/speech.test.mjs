@@ -46,7 +46,7 @@ test('note-only legacy cannot admit an orphan transcript without its raw source'
 
 test('transcription language is explicit and retained, and legacy settings gain a readable default without rewriting bytes',async()=>{
  const {parsePreference,initialPreferenceNotes,readPreference}=await import('../src/preference-records.ts');const asset=await prepareOriginal(new File(['raw'],'speech.wav',{type:'audio/wav'}));const t=makeTranscript(asset,1000,{text:'日本語',chunks:[{text:'日本語',timestamp:[0,1]}]},'ja');assert.equal(t.language,'ja');assert.throws(()=>makeTranscript(asset,1000,{text:'x',chunks:[{text:'x',timestamp:[0,1]}]},'invalid'),/language/i);
- const current=readPreference('models',initialPreferenceNotes);assert.equal(current.transcriptionLanguage,'en');const prior={...current};delete prior.transcriptionLanguage;const old='# Models\n\n```json\n'+JSON.stringify(prior)+'\n```\n';assert.equal(parsePreference('models',old).transcriptionLanguage,'en');
+ const current=readPreference('models',initialPreferenceNotes);assert.equal(current.transcriptionLanguage,'en');const prior={...current};delete prior.transcriptionLanguage;delete prior.schemaVersion;const old='# Models\n\n```json\n'+JSON.stringify(prior)+'\n```\n';assert.equal(parsePreference('models',old).transcriptionLanguage,'en');
 });
 
 test('actual Transformers cache helper cannot fall through to HTTP after missing or corrupt model assets',async()=>{

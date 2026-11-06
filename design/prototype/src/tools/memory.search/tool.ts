@@ -1,9 +1,17 @@
-import { validateQuery, type ToolHost } from '../tool-host.ts';
-export const definition = Object.freeze({id: 'memory.search', version: 1, readOnly: true, network: 'none', inputSchema: {type: 'object', required: ['query'], additionalProperties: false, properties: {query: {type: 'string', minLength: 1, maxLength: 2000}}}});
+import { validateQuery, validateMemoryListArgs, type ToolHost } from '../tool-host.ts';
+export const definition = Object.freeze({id: 'memory.search', version: 4, effect: 'read', network: 'none', inputSchema: {type: 'object', required: ['query'], additionalProperties: false, properties: {query: {type: 'string', minLength: 1, maxLength: 2000},offset:{type:'integer',minimum:0,maximum:10000},limit:{type:'integer',minimum:1,maximum:12},snapshot:{type:'string',minLength:64,maxLength:64},pathPrefix:{type:'string',minLength:1,maxLength:500}}}});
 export async function run(args: unknown, host: ToolHost) {
- const query = validateQuery(args);
+ if(!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).some(key=>!['query','offset','limit','snapshot','pathPrefix'].includes(key)))throw Error('Invalid tool arguments');
+ const input=args as Record<string,unknown>,query=validateQuery({query:input.query});
+ const hasOffset=Object.hasOwn(input,'offset'),paged=hasOffset||Object.hasOwn(input,'pathPrefix');
+ if(!hasOffset&&input.snapshot!==undefined||!paged&&input.limit!==undefined)throw Error('Search offset required');
+ const pathPrefix=input.pathPrefix===undefined?undefined:validateMemoryListArgs({path:input.pathPrefix}).path;
+ if(input.pathPrefix!==undefined&&!pathPrefix)throw Error('Invalid folder path');
+ const offset=hasOffset?input.offset:0;
+ if(paged&&(!Number.isSafeInteger(offset)||Number(offset)<0||Number(offset)>10000||input.limit!==undefined&&(!Number.isSafeInteger(input.limit)||Number(input.limit)<1||Number(input.limit)>12)||input.snapshot!==undefined&&(typeof input.snapshot!=='string'||!/^[a-f0-9]{64}$/.test(input.snapshot))))throw Error('Invalid search page');
  host.check();
- const result = await host.search(query);
+ if(paged&&!host.searchPage)throw Error('Paged search unavailable');
+ const result = paged?await host.searchPage!(query,{offset:Number(offset),limit:Number(input.limit??12),...(typeof input.snapshot==='string'?{snapshot:input.snapshot}:{}),...(pathPrefix?{pathPrefix}:{})},host.signal):await host.search(query,host.signal);
  host.check();
  return result;
 }

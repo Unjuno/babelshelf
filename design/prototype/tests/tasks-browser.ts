@@ -3,7 +3,7 @@ import {formatTask,parseTask,taskRunView,noticeView} from '../src/task-records.t
 import {localDate} from '../src/schedule-time.ts';
 const output=document.querySelector('#results')!;
 document.querySelector('#run')!.addEventListener('click',async()=>{
- const name='babelshelf-task-qa-'+crypto.randomUUID(),a=new KnowledgeStore(name),b=new KnowledgeStore(name),lines:string[]=[];
+ const name='babelshelf-task-qa-'+crypto.randomUUID(),a=new KnowledgeStore(name),b=new KnowledgeStore(name),lines:string[]=[];let restored:KnowledgeStore|undefined;
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);lines.push('PASS · '+label);output.textContent=lines.join('\n');};
  try{
   await a.initialize([]);const future=new Date(Date.now()+86400000);
@@ -28,11 +28,15 @@ document.querySelector('#run')!.addEventListener('click',async()=>{
   check(raw.find(n=>n.id===task.id).taskCursor.nextAt===null&&taskRunView(raw.find(n=>n.id===claimed.id)).attempt===2,'skip consumes occurrence without another inference attempt');
   const views=await a.views();await a.commit(views,views.filter(n=>n.id!==notice.id));
   check((await a.all()).find(n=>n.id===task.id).state==='active'&&(await a.all()).find(n=>n.id===claimed.id).state==='active','deleting notification does not delete task or execution');
-  const backup=JSON.stringify(await a.backup()),restored=new KnowledgeStore(name+'-restore');await restored.initialize([]);await restored.restore(backup);
+  const backup=JSON.stringify(await a.backup());restored=new KnowledgeStore(name+'-restore');await restored.initialize([]);await restored.restore(backup);
   const restoredTask=(await restored.views()).find(n=>n.id===task.id)!;
   check(restoredTask.requiresReview===true&&parseTask(restoredTask.body).prompt===definition.prompt,'restored tasks preserve bytes but require explicit review');
   let rejected=false;try{await restored.claimRun(task.id,'intruder',{manual:true});}catch{rejected=true;}check(rejected,'restoring a backup cannot grant execution authorization');
   const same=await a.restore(backup);check(same.conflicts.length===0,'identical task backup restore remains a no-op');
-  lines.push('COMPLETE · real IndexedDB state transitions; no model inference claimed');output.textContent=lines.join('\n');restored.close();
- }catch(e){output.textContent=lines.concat('FAIL · '+(e as Error).message).join('\n');}finally{a.close();b.close();}
+  lines.push('COMPLETE · real IndexedDB state transitions; no model inference claimed');output.textContent=lines.join('\n');
+ }catch(e){output.textContent=lines.concat('FAIL · '+(e as Error).message).join('\n');}finally{
+  a.close();b.close();restored?.close();
+  let cleaned=true;for(const database of [name,name+'-restore'])await new Promise<void>(resolve=>{const request=indexedDB.deleteDatabase(database);request.onsuccess=()=>resolve();request.onerror=request.onblocked=()=>{cleaned=false;output.textContent+='\nCleanup pending · '+database;resolve();};});
+  if(cleaned)output.textContent+='\nCleanup complete · temporary databases deleted';
+ }
 });

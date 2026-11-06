@@ -2,7 +2,9 @@ import {normalizePath,defaultPath,notePath,assertPaths} from './files.js';
 // Pure knowledge operations. Offsets are UTF-16 code units, matching String.slice.
 export const latest=n=>n.revisions.at(-1);
 const clone=v=>structuredClone(v);
-const norm=s=>s.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
+// Search folding is transient. Originals and UTF-16 citation offsets stay literal.
+export const normalizeSearchText=s=>s.normalize('NFKC').toLocaleLowerCase('ja').replace(/\s+/g,' ').trim();
+const norm=normalizeSearchText;
 export function createNote({title='',body='',aliases=[],kind='original',sources=[],path}={}){
  if(typeof title!=='string'||typeof body!=='string'||!['original','generated'].includes(kind))throw Error('Invalid note');
  const at=new Date().toISOString(),id=crypto.randomUUID();return {id,kind,state:'active',createdAt:at,aliases:[...aliases],sources:clone(sources),revisions:[{version:1,title,body,path:path===undefined?defaultPath(title,id):normalizePath(path),at}]};
@@ -15,8 +17,21 @@ export function reviseNote(note,patch,expected){
 }
 export function withdrawNote(note,expected){const n=reviseNote(note,{},expected);n.state='withdrawn';n.withdrawnAt=new Date().toISOString();return n;}
 export function chunks(body,max=700){
- const out=[];let start=0;for(const part of body.split(/(\n\s*\n)/)){
-  if(part.trim())for(let i=0;i<part.length;i+=max)out.push({start:start+i,end:start+Math.min(part.length,i+max),quote:part.slice(i,i+max)});
+ if(!Number.isSafeInteger(max)||max<1)throw Error('Invalid chunk size');
+ const out=[],segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter(undefined,{granularity:'grapheme'}):null;let start=0;for(const part of body.split(/(\n\s*\n)/)){
+  if(part.trim()){const graphemes=segmenter?[...segmenter.segment(part)].map(({index,segment})=>({start:index,end:index+segment.length})):null;let g=0;for(let i=0;i<part.length;){
+   let end=Math.min(part.length,i+max);
+   // Keep each citation boundary between visible graphemes where the runtime
+   // supports Unicode segmentation. A single grapheme may exceed max.
+   if(graphemes){while(graphemes[g]?.end<end)g++;const item=graphemes[g];if(item&&item.start<end&&item.end>end)end=item.start>i?item.start:item.end;}
+   else{
+    // Citation offsets are UTF-16 code units. Fallback: never split a
+    // supplementary code point; when max=1, keep its pair together.
+    if(end<part.length&&end>i){const left=part.charCodeAt(end-1),right=part.charCodeAt(end);if(left>=0xd800&&left<=0xdbff&&right>=0xdc00&&right<=0xdfff)end--;}
+    if(end===i&&i<part.length){const left=part.charCodeAt(i),right=part.charCodeAt(i+1);end=left>=0xd800&&left<=0xdbff&&right>=0xdc00&&right<=0xdfff?i+2:i+1;}
+   }
+   out.push({start:start+i,end:start+end,quote:part.slice(i,end)});i=end;
+  }}
   start+=part.length;
  }return out;
 }
@@ -25,7 +40,7 @@ function grams(s){s=norm(s);const c=Array.from(s);return c.length<2?c:[...new Se
 const wordPattern=/(?:[\p{Script=Latin}\p{Nd}]\p{M}*)+(?:[-_](?:[\p{Script=Latin}\p{Nd}]\p{M}*)+)*/gu;
 const words=s=>[...s.matchAll(wordPattern)].map(m=>m[0]);
 function searchTerms(s){return [...words(s),...[...s.replace(wordPattern,' ').matchAll(/[\p{L}\p{N}\p{M}\p{Extended_Pictographic}]+/gu)].flatMap(m=>grams(m[0]))];}
-function searchChunks(body,max=700){
+function searchChunks(body,max=700,literalPath=''){
  const spans=[...body.matchAll(wordPattern)].map(m=>({start:m.index,end:m.index+m[0].length})),out=[],seen=new Set();let a=0,b=0;
  for(const c of chunks(body,max)){
   while(spans[a]?.end<=c.start)a++;while(spans[b]?.end<c.end)b++;
@@ -33,48 +48,156 @@ function searchChunks(body,max=700){
   if(left&&left.start<start&&left.end>start)start=left.end-left.start<=max?left.start:left.end;
   if(right&&right.start<end&&right.end>end)end=right.end-right.start<=max?right.end:right.start;
   const key=start+':'+end;if(end>start&&!seen.has(key)){seen.add(key);out.push({start,end,quote:body.slice(start,end)});}
- }return out;
+ }
+ // Preserve a complete literal path when it straddles chunk boundaries.
+ // This applies only to stored-file discovery; grounded search stays unchanged.
+ const originalCount=out.length;
+ if(literalPath)for(let i=0;i<originalCount;i++){
+  if(norm(out[i].quote).includes(literalPath))continue;
+  for(let j=i+1;j<Math.min(originalCount,i+3);j++){
+   const start=out[i].start,end=out[j].end,quote=body.slice(start,end);
+   if(norm(quote).includes(literalPath)){const key=start+':'+end;if(!seen.has(key)){seen.add(key);out.push({start,end,quote});}break;}
+  }
+ }
+ return out;
 }
 function mediaAvailable(n,map){if(!n?.mediaSource)return true;const source=map.get(n.mediaSource.id);return source?.state==='active'&&source.originalAsset?.id===n.mediaSource.id&&source.originalAsset.revision===n.mediaSource.revision&&source.originalAsset.sha256===n.mediaSource.sha256;}
-export function validateRefs(notes,refs,{currentOnly=false}={}){
- const map=new Map(notes.map(n=>[n.id,n]));const errors=[];
+function validateRefsWithMap(map,refs,{currentOnly=false}={}){
+ const errors=[];
  for(const r of refs){const n=map.get(r.noteId),v=n?.revisions.find(v=>v.version===r.revision);
   if(!n||n.state!=='active'||!mediaAvailable(n,map)||!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote||(currentOnly&&latest(n).version!==r.revision))errors.push(r.noteId??'unknown');
  }return {ok:errors.length===0,errors};
 }
-function eligible(n,map,seen=new Set()){
- if(n.state!=='active'||!mediaAvailable(n,map)||seen.has(n.id))return false;
- if(n.kind!=='generated')return true;
- seen=new Set([...seen,n.id]);return n.sources.length>0&&n.sources.every(r=>{const parent=map.get(r.noteId);return parent&&validateRefs([...map.values()],[r],{currentOnly:true}).ok&&eligible(parent,map,seen);});
+function validCitedQuote(ref){
+ return ref?.citedQuote===undefined||typeof ref.citedQuote==='string'&&ref.citedQuote.length>0&&typeof ref.quote==='string'&&ref.quote.includes(ref.citedQuote);
+}
+export function validateRefs(notes,refs,options={}){return validateRefsWithMap(new Map(notes.map(n=>[n.id,n])),refs,options);}
+function eligible(n,map,memo=new Map()){
+ // Traverse iteratively so a long chain of generated notes cannot exhaust the
+ // JS call stack. Memo is scoped to one immutable snapshot, never global.
+ const stack=[{note:n,index:0}],visiting=new Set();
+ const fail=()=>{for(const frame of stack)memo.set(frame.note,false);return false;};
+ while(stack.length){
+  const frame=stack.at(-1),note=frame.note;
+  if(frame.index===0){
+   if(memo.has(note)){if(!memo.get(note))return fail();stack.pop();continue;}
+   if(note.state!=='active'||!mediaAvailable(note,map)||visiting.has(note.id))return fail();
+   if(note.kind!=='generated'){memo.set(note,true);stack.pop();continue;}
+   if(!note.sources.length)return fail();
+   visiting.add(note.id);
+  }
+  if(frame.index===note.sources.length){visiting.delete(note.id);memo.set(note,true);stack.pop();continue;}
+  const ref=note.sources[frame.index++],parent=map.get(ref.noteId);
+  if(!parent||!validateRefsWithMap(map,[ref],{currentOnly:true}).ok||visiting.has(parent.id))return fail();
+  stack.push({note:parent,index:0});
+ }
+ return true;
+}
+// Return the IDs that can participate in grounded text search without
+// allocating the full BM25 documents/postings index. Scope checks need only
+// eligibility and at least one searchable span, not ranking data.
+export function searchableNoteIds(notes){
+ const map=new Map(notes.map(n=>[n.id,n])),memo=new Map(),ids=new Set();
+ for(const n of notes)if(eligible(n,map,memo)&&searchChunks(latest(n).body).length)ids.add(n.id);
+ return ids;
 }
 // Admission for NEW grounded data. Historical citation display keeps validateRefs semantics.
 export function validateGroundingRefs(notes,refs){
- const checked=validateRefs(notes,refs,{currentOnly:true}),map=new Map(notes.map(n=>[n.id,n])),errors=new Set(checked.errors);
- for(const ref of refs){const note=map.get(ref.noteId);if(note&&!eligible(note,map))errors.add(ref.noteId);}
+ const map=new Map(notes.map(n=>[n.id,n])),checked=validateRefsWithMap(map,refs,{currentOnly:true}),errors=new Set(checked.errors),memo=new Map();
+ // `citedQuote` is presentation metadata, but it is persisted with generated
+ // notes and may come from an imported backup. Validate it at the same trust
+ // boundary as the canonical range so corrupt metadata cannot imply text that
+ // was never present in the cited passage. Historical display still uses
+ // validateRefs and keeps its existing compatibility behavior.
+ for(const ref of refs)if(!validCitedQuote(ref))errors.add(ref.noteId??'unknown');
+ for(const ref of refs){const note=map.get(ref.noteId);if(note&&!eligible(note,map,memo))errors.add(ref.noteId);}
  return {ok:errors.size===0,errors:[...errors]};
 }
 const indexCache=new WeakMap(),storedIndexCache=new WeakMap();
 export function buildIndex(notes,{force=false}={}){return buildNoteIndex(notes,force,false);}
 function buildNoteIndex(notes,force,stored){
  const cache=stored?storedIndexCache:indexCache;if(!force&&cache.has(notes))return cache.get(notes);
- const map=new Map(notes.map(n=>[n.id,n])),docs=[],postings=new Map();
- for(const n of notes){if(stored?n.state!=='active':!eligible(n,map))continue;const v=latest(n);for(const c of searchChunks(v.body)){
-  const text=norm(c.quote),head=norm(v.title+' '+n.aliases.join(' ')),tokens=searchTerms(text),textWords=words(text),headWords=words(head),i=docs.length;docs.push({n,v,c,text,head,tokens,textWords,headWords});
-  for(const term of new Set([...tokens,...searchTerms(head),...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
+ const map=new Map(notes.map(n=>[n.id,n])),docs=[],postings=new Map(),memo=new Map();
+ for(const n of notes){if(stored?n.state!=='active':!eligible(n,map,memo))continue;const v=latest(n);for(const c of searchChunks(v.body)){
+  const filename=notePath(n).split('/').at(-1).replace(/\.md$/i,''),text=norm(c.quote),head=norm(v.title+' '+filename+' '+n.aliases.join(' ')),tokens=searchTerms(text),textWords=words(text),headWords=[...words(head),...words(head.replace(/[-_]/g,' '))],i=docs.length;docs.push({n,v,c,text,head,tokens,textWords,headWords});
+  for(const term of new Set([...tokens,...searchTerms(head),...headWords,...Array.from(text+head)])){if(!postings.has(term))postings.set(term,new Set());postings.get(term).add(i);}
  }}
  const index={docs,postings,avg:docs.reduce((s,d)=>s+d.tokens.length,0)/Math.max(1,docs.length)};cache.set(notes,index);return index;
 }
-export function searchNotes(notes,query,limit=8){return searchIndexedNotes(notes,query,limit,false);}
-// File discovery does not authorize using a result as current grounding evidence.
-export function searchStoredNotes(notes,query,limit=8){const map=new Map(notes.map(n=>[n.id,n]));return searchIndexedNotes(notes,query,limit,true).map(hit=>({...hit,groundingEligible:eligible(map.get(hit.noteId),map)}));}
+export function searchNotes(notes,query,limit=8){return searchLowMemoryNotes(notes,query,limit,false);}
+export function searchStoredNotes(notes,query,limit=8){return searchLowMemoryNotes(notes,query,limit,true);}
+export function searchStoredNotesWindow(notes,query,limit){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>10021)throw Error('Invalid search window');
+ return searchLowMemoryNotes(notes,query,limit,true,10021);
+}
+export function searchStoredNotesUniqueWindow(notes,query,limit){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>10021)throw Error('Invalid search window');
+ return searchLowMemoryNotes(notes,query,limit,true,10021,true);
+}
+// Callers must keep `notes` unchanged across pages or restart their search.
+// The ordinary search API retains its existing 20-result bound.
+export function searchStoredNotesPage(notes,query,{offset=0,limit=12}={}){
+ if(!Number.isSafeInteger(offset)||offset<0||offset>10000||!Number.isSafeInteger(limit)||limit<1||limit>20)throw Error('Invalid search page');
+ const ranked=searchStoredNotesWindow(notes,query,offset+limit+1);
+ return {hits:ranked.slice(offset,offset+limit),hasMore:ranked.length>offset+limit};
+}
+// Grounded search only needs the best bounded set of passages. Building the
+// full multilingual postings map for every freshly-read IndexedDB snapshot
+// creates a second corpus-sized structure that is immediately discarded.
+// Two scans keep the same BM25 inputs and stable ranking while retaining only
+// corpus statistics and the requested top results.
+function searchLowMemoryNotes(notes,query,limit,stored,maxResults=20,uniqueOnly=false){
+ const q=norm(query);if(!q)return [];
+ const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),scriptTerms=terms.filter(t=>!lexical.has(t)&&Array.from(t).length>=2),map=new Map(notes.map(n=>[n.id,n])),df=new Map(terms.map(term=>[term,0])),memo=new Map();
+ let docCount=0,tokenCount=0;
+ const visit=(n,fn)=>{
+  if(n.state!=='active'||!stored&&!eligible(n,map,memo))return;
+  const v=latest(n),filename=notePath(n).split('/').at(-1).replace(/\.md$/i,'');
+  for(const c of searchChunks(v.body,700,stored&&q.includes('/')?q:'')){
+   const text=norm(c.quote),head=norm(v.title+' '+filename+' '+n.aliases.join(' ')),tokens=searchTerms(text),textWords=words(text),headWords=[...words(head),...words(head.replace(/[-_]/g,' '))],present=new Set([...tokens,...searchTerms(head),...headWords,...Array.from(text+head)]);
+   fn({n,v,c,text,head,tokens,textWords,headWords,present});
+  }
+ };
+ for(const n of notes)visit(n,d=>{docCount++;tokenCount+=d.tokens.length;for(const term of terms)if(d.present.has(term))df.set(term,df.get(term)+1);});
+ if(!docCount)return [];
+ const avg=tokenCount/docCount,cap=Math.max(1,Math.min(maxResults,limit)),ranked=[],bestByNote=stored?new Map():null,extras=stored?[]:null;
+ const compare=(a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start,before=(a,b)=>compare(a,b)<0;
+ const insertTop=(list,hit)=>{let at=list.findIndex(item=>before(hit,item));if(at<0)at=list.length;if(at>=cap)return;list.splice(at,0,hit);if(list.length>cap)list.pop();};
+ for(const n of notes)visit(n,d=>{
+  if(!terms.some(term=>d.present.has(term)))return;
+  if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return;
+  // Short Latin or numeric fragments alone are weak evidence for a query
+  // that also contains non-Latin text. Keep standalone numeric searches.
+  if(scriptTerms.length&&lexical.size&&!scriptTerms.some(t=>d.text.includes(t)||d.head.includes(t))&&![...lexical].some(t=>(Array.from(t).length>2||/[_-]/u.test(t))&&(d.textWords.includes(t)||d.headWords.includes(t))))return;
+  let score=0;
+  for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,frequency=df.get(t)??0,idf=Math.log(1+(docCount-frequency+.5)/(frequency+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
+  if(!score)return;
+  if(d.text.includes(q))score+=20;if(d.head.includes(q))score+=30;
+  const hit={noteId:d.n.id,revision:d.v.version,title:d.v.title,...d.c,score};
+  if(!stored){insertTop(ranked,hit);return;}
+  const prior=bestByNote.get(hit.noteId);
+  if(!prior||before(hit,prior)){if(prior&&!uniqueOnly)insertTop(extras,prior);bestByNote.set(hit.noteId,hit);}else if(!uniqueOnly)insertTop(extras,hit);
+ });
+ if(!stored)return ranked;
+ return [...bestByNote.values()].sort(compare).concat(extras).slice(0,cap).map(hit=>({...hit,groundingEligible:eligible(map.get(hit.noteId),map,memo)}));
+}
 function searchIndexedNotes(notes,query,limit,stored){
  const q=norm(query);if(!q)return [];
- const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),{docs,postings,avg}=buildNoteIndex(notes,false,stored),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
- return [...candidates].map(i=>{const d=docs[i];if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return null;let score=0;for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
+ const terms=searchTerms(q),lexical=new Set(words(q)),required=[...lexical].filter(t=>/[\p{Nd}_-]/u.test(t)),scriptTerms=terms.filter(t=>!lexical.has(t)&&Array.from(t).length>=2),{docs,postings,avg}=buildNoteIndex(notes,false,stored),candidates=new Set(terms.flatMap(t=>[...(postings.get(t)??[])]));
+ const ranked=[...candidates].map(i=>{const d=docs[i];if(required.some(t=>!d.textWords.includes(t)&&!d.headWords.includes(t)))return null;
+  // Short Latin or numeric fragments alone are weak evidence for a query
+  // that also contains non-Latin text. Keep standalone numeric searches.
+  if(scriptTerms.length&&lexical.size&&!scriptTerms.some(t=>d.text.includes(t)||d.head.includes(t))&&![...lexical].some(t=>(Array.from(t).length>2||/[_-]/u.test(t))&&(d.textWords.includes(t)||d.headWords.includes(t))))return null;
+  let score=0;for(const t of terms){const count=lexical.has(t)?d.textWords.filter(w=>w===t).length:d.text.split(t).length-1,df=postings.get(t)?.size??0;const idf=Math.log(1+(docs.length-df+.5)/(df+.5));if(count)score+=idf*count*2.2/(count+1.2*(.25+.75*d.tokens.length/Math.max(1,avg)));if(lexical.has(t)?d.headWords.includes(t):d.head.includes(t))score+=idf*2;}
   if(!score)return null;
   if(d.text.includes(q))score+=20;if(d.head.includes(q))score+=30;
   return {noteId:d.n.id,revision:d.v.version,title:d.v.title,...d.c,score};
- }).filter(h=>h&&h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,Math.max(1,Math.min(20,limit)));
+ }).filter(h=>h&&h.score>0).sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start);
+ const cap=Math.max(1,Math.min(20,limit));if(!stored)return ranked.slice(0,cap);
+ // Discovery shows one row per file. Reserve a slot for each matching file
+ // before filling spare slots with additional passages from the same file.
+ const seen=new Set(),first=[],extra=[];for(const hit of ranked){if(seen.has(hit.noteId))extra.push(hit);else{seen.add(hit.noteId);first.push(hit);}}
+ return first.concat(extra).slice(0,cap);
 }
 export function resolveLinks(note,notes){
  const text=latest(note).body;const matches=[...text.matchAll(/\[\[([^\]\n]+)\]\]|\[[^\]\n]*\]\((note:[a-zA-Z0-9-]+)\)/g)];
@@ -90,7 +213,7 @@ export function checkNotes(notes){
   for(const [i,v]of n.revisions.entries())if(!v||v.version!==i+1||typeof v.title!=='string'||typeof v.body!=='string'||v.body.length>10000000||typeof v.at!=='string')throw Error('Invalid revision');
  }
  for(const n of notes)for(const v of n.revisions)if(v.path!==undefined)normalizePath(v.path);assertPaths(notes);
- for(const n of notes)for(const r of n.sources){const v=notes.find(n=>n.id===r.noteId)?.revisions.find(v=>v.version===r.revision);if(!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote)throw Error('Invalid source reference');}
+ for(const n of notes)for(const r of n.sources){const v=notes.find(n=>n.id===r.noteId)?.revisions.find(v=>v.version===r.revision);if(!v||!Number.isInteger(r.start)||!Number.isInteger(r.end)||r.start<0||r.end<=r.start||r.end>v.body.length||v.body.slice(r.start,r.end)!==r.quote||!validCitedQuote(r))throw Error('Invalid source reference');}
  return true;
 }
 export async function parseBackup(text){

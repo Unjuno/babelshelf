@@ -1,29 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createNote,makeBackup,withdrawNote} from '../../../dist/core.js';
+import {createNote,digest,makeBackup,withdrawNote} from '../../../dist/core.js';
 import {emptyDialogue,appendTurn,completeTurn,currentDialogueResult} from '../src/conversation.ts';
 import {prepareCorrection,applyCorrection} from '../src/note-corrections.ts';
 import {formatTask,taskDefinition,createTaskNote,claimTaskRun,finishTaskRun} from '../src/task-records.ts';
-import {formatPreference} from '../src/preference-records.ts';
+import {formatPreference,initialPreferenceNotes,readPreference} from '../src/preference-records.ts';
 import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,serializeStateBackup} from '../src/backup-state.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from '../src/settings-restore.ts';
+import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
+import {noteSourceMetadata} from '../src/note-provenance.ts';
+
+test('calculation execution survives backup and rejects a forged result',async()=>{
+ const now=new Date('2026-10-17T00:00:00Z'),task={repeat:'once',time:'09:00',days:[],date:'2026-10-18',monthDay:1,interval:1,unit:'days',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,enabled:false,notify:false,prompt:'Calculate 12 + 10'};
+ const original={...createTaskNote([],task,crypto.randomUUID(),now),taskCursor:{definition:taskDefinition(task),nextAt:'2026-10-18T00:00:00Z'}},claim=claimTaskRun([original],original.id,'owner',now,{manual:true});
+ const done=finishTaskRun([original,claim.run],claim.run.id,'owner',{status:'succeeded',answer:'12 + 10 = 22',sources:[],calculation:makeDecimalReceipt('12 + 10')},now);
+ const state={notes:[done.task,done.run],settings:[],runs:[]};const restored=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(restored.notes,state.notes);
+ const forged=structuredClone(state);forged.notes[1].revisions.at(-1).body=forged.notes[1].revisions.at(-1).body.replace('12 + 10 = 22','12 + 10 = 23');await assert.rejects(()=>makeStateBackup(forged),/Invalid scheduled calculation/);
+});
 
 test('reviewed settings recovery appends destination history and retains source versions without network permission',async()=>{
- const pref=(group,value)=>{const n=createNote({path:'Settings/'+group+'.md',body:formatPreference(group,value)});n.id='settings-'+group;n.ui={managed:true};n.unknown={retained:true};return n;};
- const current={notes:[pref('appearance',{theme:'light',background:'paper',glass:'clear'}),pref('connection',{downloads:false})],settings:[],runs:[]};
- const incoming={schema:2,createdAt:new Date().toISOString(),notes:[pref('appearance',{theme:'dark',background:'sage',glass:'frosted'}),pref('connection',{downloads:true})],settings:[],runs:[]};
+ const pref=(group,value)=>{const n=createNote({path:'Settings/'+group+'.md',body:formatPreference(group,{...readPreference(group,initialPreferenceNotes),...value})});n.id='settings-'+group;n.ui={managed:true};n.unknown={retained:true};return n;};
+ const baseHarness=readPreference('harness',initialPreferenceNotes),harnessProfile={...baseHarness.profiles[0],enabledTools:['memory.search','memory.read'],maxGenerationTokens:512,maxGenerationMs:10_000};
+ const current={notes:[pref('appearance',{theme:'light',background:'paper',glass:'clear'}),pref('models',{textModel:'4B',textLibrary:['lfm3-1.7b-qad-q4-0','4B']}),pref('connection',{downloads:false,diagnosticLogs:false,rustxngEndpoint:''}),pref('harness',{replyStyle:'balanced',userGuidance:'Destination guidance',profiles:[harnessProfile,...baseHarness.profiles.slice(1)]})],settings:[],runs:[]};
+ const incoming={schema:2,createdAt:new Date().toISOString(),notes:[pref('appearance',{theme:'dark',background:'sage',glass:'frosted'}),pref('models',{textModel:'lfm3-1.7b-qad-q4-0',textLibrary:['lfm3-1.7b-qad-q4-0','4B']}),pref('connection',{downloads:true,diagnosticLogs:true,rustxngEndpoint:'https://search.example'}),pref('harness',{replyStyle:'detailed',userGuidance:'Backup guidance',profiles:[{...harnessProfile,maxToolCalls:3,maxGenerationTokens:256,maxGenerationMs:5_000},...baseHarness.profiles.slice(1)]})],settings:[],runs:[]};
  const before=structuredClone({current,incoming}),plan=planSettingsRestore(current,incoming);
- assert.equal(plan.changes.length,1);assert.equal(plan.writes.length,1);
- assert.deepEqual(plan.writes[0].revisions.slice(0,-1),current.notes[0].revisions);assert.deepEqual(plan.writes[0].unknown,{retained:true});
- assert.deepEqual(plan.changes[0].source,incoming.notes[0]);assert.deepEqual({current,incoming},before);
+ assert.equal(plan.changes.length,4);assert.equal(plan.writes.length,4);
+ for(const write of plan.writes){const old=current.notes.find(n=>n.id===write.id);assert.deepEqual(write.revisions.slice(0,-1),old.revisions);assert.deepEqual(write.unknown,{retained:true});}
+ assert.deepEqual(plan.changes.map(change=>change.group),['appearance','models','connection','harness']);
+ assert.deepEqual(plan.changes.map(change=>change.source),incoming.notes);assert.deepEqual({current,incoming},before);
  const receipt={schema:1,type:'settings-restore',id:'recovery',appliedAt:new Date().toISOString(),backupHash:stateHash(incoming),changes:plan.changes.map(c=>({group:c.group,noteId:c.noteId,beforeVersion:c.beforeVersion,afterVersion:c.beforeVersion+1,source:c.source}))};
- const state={...current,notes:[plan.writes[0],current.notes[1]],runs:[{key:'ui-v1-settings-restore-recovery',value:receipt}]};
+ const state={...current,notes:current.notes.map(note=>plan.writes.find(write=>write.id===note.id)??note),runs:[{key:'ui-v1-settings-restore-recovery',value:receipt}]};
  assert.deepEqual((await parseStateBackup(JSON.stringify(await makeStateBackup(state)))).runs,state.runs);
- const changed=structuredClone(receipt);changed.changes[0].source.revisions[0].body=formatPreference('appearance',{theme:'light',background:'paper',glass:'clear'});
+ const changed=structuredClone(receipt);changed.changes[0].source.revisions[0].body=formatPreference('appearance',{...readPreference('appearance',initialPreferenceNotes),background:'sand'});
  assert.throws(()=>validateSettingsRestoreReceipt('ui-v1-settings-restore-recovery',changed,state.notes),/source changed/);
- const on={...current,notes:[current.notes[0],pref('connection',{downloads:true})]},offline=planSettingsRestore(on,incoming);
+ const on={...current,notes:current.notes.map(note=>note.id==='settings-connection'?pref('connection',{downloads:true}):note)},offline=planSettingsRestore(on,incoming);
  assert.match(offline.writes.find(n=>n.id==='settings-connection').revisions.at(-1).body,/"downloads": false/);
  assert.match(offline.changes.find(c=>c.group==='connection').source.revisions[0].body,/"downloads": true/);
+ const restoredHarness=JSON.parse(plan.writes.find(n=>n.id==='settings-harness').revisions.at(-1).body.split('```json\n')[1].split('\n```')[0]);
+ assert.equal(restoredHarness.userGuidance,'Backup guidance');assert.equal(restoredHarness.profiles[0].maxToolCalls,3);assert.equal(restoredHarness.profiles[0].maxGenerationTokens,256);assert.equal(restoredHarness.profiles[0].maxGenerationMs,5_000);
 });
 
 test('settings-only recovery cannot select arbitrary IDs, protected paths or legacy state',()=>{
@@ -36,6 +50,18 @@ test('settings-only recovery cannot select arbitrary IDs, protected paths or leg
 
 const snapshot=()=>({notes:[createNote({path:'Inbox/原文.md',body:'水 Water 3L 🌳'})],settings:[{key:'ui-v1-dialogue',value:appendTurn(emptyDialogue(),{id:'t1',user:'Remember the exact original',answer:'Retained'})},{key:'ui-v1-folders',value:['Notes/日本語']},{key:'ui-v1-trash',value:[]}],runs:[]});
 const empty=()=>({notes:[],settings:[],runs:[]});
+
+test('backup retains answer source-state guards without upgrading legacy dialogue',async()=>{
+ const state=snapshot(),note=state.notes[0],turn=state.settings[0].value.turns[0];
+ const guard={noteId:note.id,revision:1,snapshot:stateHash(noteSourceMetadata(state.notes,note.id,1))};
+ turn.sourceMetadataGuards=[guard];
+ const parsed=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ assert.deepEqual(parsed.settings[0].value.turns[0].sourceMetadataGuards,[guard]);
+ const many=Array.from({length:65},(_,i)=>({...guard,noteId:`observed-${i}`}));turn.sourceMetadataGuards=many;
+ assert.deepEqual((await parseStateBackup(JSON.stringify(await makeStateBackup(state)))).settings[0].value.turns[0].sourceMetadataGuards,many);
+ const legacy=snapshot();assert.equal((await parseStateBackup(JSON.stringify(await makeStateBackup(legacy)))).settings[0].value.turns[0].sourceMetadataGuards,undefined);
+ state.settings[0].value.turns[0].sourceMetadataGuards[0].snapshot='invalid';await assert.rejects(()=>makeStateBackup(state),/source metadata/i);
+});
 
 test('working-result identity roundtrips with exact dialogue and rejects dangling backup pointers',async()=>{
  const state=snapshot();state.settings[0].value=completeTurn(state.settings[0].value,'t1',{answer:'Exact\nresult 🌳'});
@@ -55,6 +81,19 @@ test('state backup retains exact originals, compaction, recovery metadata and co
 });
 test('legacy note-only brainpacks remain readable and explicitly distinguish missing auxiliary state',async()=>{
  const state=snapshot(),pack=await makeBackup(state.notes),parsed=await parseStateBackup(JSON.stringify(pack));assert.equal(parsed.schema,1);assert.deepEqual(parsed.notes,state.notes);assert.equal(parsed.settings,undefined);
+});
+test('legacy note-only brainpacks cannot smuggle unvalidated auxiliary state through schema 1',async()=>{
+ const pack=await makeBackup(snapshot().notes);pack.payload.settings=[{key:'ui-v1-connection',value:{downloads:true}}];pack.sha256=await digest(JSON.stringify(pack.payload));
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(pack)),/legacy backup contains unsupported state/i);
+ const wrapper=await makeBackup(snapshot().notes);wrapper.settings=[{key:'ui-v1-connection',value:{downloads:true}}];
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(wrapper)),/legacy backup contains unsupported state/i);
+});
+test('state backups reject unknown wrapper or payload fields rather than silently dropping them',async()=>{
+ const pack=await makeStateBackup(snapshot());assert.equal((await parseStateBackup(JSON.stringify(pack))).schema,2);
+ const wrapper=structuredClone(pack);wrapper.futureState={settings:[{key:'unknown',value:'must retain'}]};
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(wrapper)),/unsupported backup fields/i);
+ const payload=structuredClone(pack);payload.payload.futureState={settings:[{key:'unknown',value:'must retain'}]};payload.sha256=stateHash(payload.payload);
+ await assert.rejects(()=>parseStateBackup(JSON.stringify(payload)),/unsupported backup fields/i);
 });
 test('historical dialogue citations remain portable after the original is withdrawn',async()=>{
  const state=snapshot(),n=state.notes[0];state.settings[0].value.turns[0].refs=[{noteId:n.id,revision:1,start:0,end:1,quote:'水'}];state.notes=[withdrawNote(n,1)];
@@ -78,7 +117,7 @@ test('restore refuses any conflicting note, dialogue or receipt without mutating
 test('restored schedules require review; downloads ON becomes a retained revision followed by OFF',async()=>{
  const state=empty(),task={repeat:'once',time:'09:00',date:'2026-10-20',days:[],monthDay:1,interval:1,unit:'days',timezone:'Asia/Tokyo',enabled:true,notify:true,prompt:'Read local knowledge'};
  const note=createNote({path:'Schedule/task.md',body:formatTask(task)});note.ui={recordType:'schedule'};note.taskCursor={definition:taskDefinition(task),nextAt:'2026-10-20T00:00:00.000Z'};
- const pref=createNote({path:'Settings/connection.md',body:formatPreference('connection',{downloads:true})});pref.id='settings-connection';pref.ui={managed:true};state.notes=[note,pref];
+ const pref=createNote({path:'Settings/connection.md',body:formatPreference('connection',{...readPreference('connection',initialPreferenceNotes),downloads:true})});pref.id='settings-connection';pref.ui={managed:true};state.notes=[note,pref];
  const payload=(await makeStateBackup(state)).payload,plan=planStateRestore(empty(),payload);
  assert.equal(plan.writes.notes.find(n=>n.id===note.id).ui.requiresReview,true);
  const offline=plan.writes.notes.find(n=>n.id===pref.id);assert.equal(offline.revisions.length,2);assert.equal(offline.revisions[0].body,pref.revisions[0].body);assert.match(offline.revisions[1].body,/"downloads": false/);assert.equal(pref.revisions.length,1);
@@ -152,6 +191,40 @@ test('chunked canonical hashing retains the existing payload digest and optional
 
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from '../src/note-restore.ts';
 import {reviseNote} from '../../../dist/core.js';
+
+test('restore conflict labels use familiar controls while retaining their exact internal identities',async()=>{
+ const {restoreConflictLabel}=await import('../src/backup-conflicts.ts');
+ assert.equal(typeof restoreConflictLabel,'function');
+ for(const [key,label] of [['ui-v1-dialogue','Messages'],['ui-v1-folders','Folders'],['ui-v1-trash','Trash'],['ui-v1-pending-correction','Pending changes'],['custom-private-key','Settings']]){
+  const conflict={store:'settings',key,label:key},before=structuredClone(conflict);
+  assert.equal(restoreConflictLabel(conflict),label);assert.deepEqual(conflict,before);
+ }
+ assert.equal(restoreConflictLabel({store:'runs',key:'ui-v1-note-restore-secret',label:'ui-v1-note-restore-secret'}),'History');
+ assert.equal(restoreConflictLabel({store:'notes',key:'id',label:'Notes/travel.md'}),'Notes/travel.md');
+});
+
+test('saved generated answer recovery appends a revision only with unchanged provenance and retains archival source proof',async()=>{
+ const parent=createNote({path:'Notes/source.md',body:'Source fact'}),ref={noteId:parent.id,revision:1,start:0,end:11,quote:'Source fact'};
+ const source={...createNote({path:'Inbox/answer.md',body:'Saved answer',kind:'generated',sources:[ref]}),dialogueCopy:{schema:1,noteRevision:1,turnId:'answer',turnIndex:0,speaker:'assistant',quote:'Saved answer',refs:[ref],edited:false}};
+ const local=reviseNote(source,{body:'Local edit'},1),current={notes:[parent,local],settings:[],runs:[]},incoming={schema:2,createdAt:new Date().toISOString(),notes:[parent,source],settings:[],runs:[]};
+ assert.equal(noteRestoreCandidates(current,incoming).length,1);
+ const {write}=planNoteRestore(current,incoming,local.id);
+ assert.deepEqual(write.revisions.slice(0,2),local.revisions);assert.equal(write.revisions[2].body,'Saved answer');assert.deepEqual(write.sources,local.sources);assert.deepEqual(write.dialogueCopy,local.dialogueCopy);
+ for(const differentParent of [{...parent,revisions:[{...parent.revisions[0],body:'Source fact with different unseen context'}]},{...parent,origin:'different source metadata'}]){
+  assert.equal(noteRestoreCandidates(current,{...incoming,notes:[differentParent,source]}).filter(change=>change.noteId===local.id).length,0,'Matching quote alone is not matching source-version identity');
+ }
+ const receipt={schema:1,type:'note-restore',id:'generated-restore',appliedAt:new Date().toISOString(),backupHash:'b'.repeat(64),noteId:local.id,beforeVersion:2,afterVersion:3,source};
+ const state={notes:[parent,write],settings:[],runs:[{key:'ui-v1-note-restore-generated-restore',value:receipt}]};
+ await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ state.notes[0]={...parent,state:'withdrawn'};state.notes[1]={...write,state:'withdrawn',withdrawnAt:new Date().toISOString()};
+ await parseStateBackup(JSON.stringify(await makeStateBackup(state)));
+ for(const altered of [{...source,sources:[]},{...source,dialogueCopy:{...source.dialogueCopy,turnId:'different'}},{...source,origin:'different provenance'}]){
+  assert.equal(noteRestoreCandidates(current,{...incoming,notes:[parent,altered]}).length,0);
+  assert.throws(()=>validateNoteRestoreReceipt(state.runs[0].key,{...receipt,source:altered},[parent,write]),/source|recovery/i);
+ }
+ const damagedParent={...parent,revisions:[{...parent.revisions[0],body:'Changed old source'}]};
+ assert.throws(()=>validateNoteRestoreReceipt(state.runs[0].key,receipt,[damagedParent,write]),/source/i);
+});
 test('reviewed divergent ordinary note recovery appends and retains both histories without adopting source paths',async()=>{
  const original=createNote({path:'Notes/work.md',body:'base'}),local=reviseNote(original,{body:'local branch'},1),source=reviseNote(original,{body:'backup branch',path:'Notes/old-name.md'},1),current={notes:[local],settings:[],runs:[]},incoming={schema:2,createdAt:new Date().toISOString(),notes:[source],settings:[],runs:[]},before=structuredClone(current);
  const plan=planNoteRestore(current,incoming,local.id);assert.deepEqual(plan.write.revisions.slice(0,2),local.revisions);assert.equal(plan.write.revisions[2].body,'backup branch');assert.equal(plan.write.revisions[2].path,'Notes/work.md');assert.deepEqual(current,before);

@@ -46,6 +46,7 @@ export async function inspectGGUF(file,{signal}={}){
   // Checking extents and adjacent offsets must reject that legacy layout.
   if(type===42){if(elements%64)fail('Invalid Q2_0 block shape');size=elements/64*18;}
   if(type===2){if(elements%32)fail('Invalid Q4_0 block shape');size=elements/32*18;}
+  if(type===8){if(elements%32)fail('Invalid Q8_0 block shape');size=elements/32*34;}
   if(type===14){if(elements%256)fail('Invalid Q6_K block shape');size=elements/256*210;}
   if(size!==null&&!Number.isSafeInteger(size))fail('Tensor size exceeds safe range');
   offsets.push({offset,size,type});

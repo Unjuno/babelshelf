@@ -18,3 +18,9 @@ test('vision-derived files reject a detached or rewritten original and malformed
  const {asset,value,note}=await fixture();assert.throws(()=>validateVisionLinks([note],[]),/original unavailable/);assert.throws(()=>makeVisionText(asset,{...value,revision:'main'}),/metadata invalid/);
  const edited=structuredClone(note);edited.revisions[0].body='forged';assert.throws(()=>validateVisionLinks([edited],[{key:originalKey(asset.id),value:asset}]),/original text changed/);
 });
+
+test('Vision provenance accepts a hash-bound custom model through the app-owned runtime and keeps it backup-verifiable',async()=>{
+ const asset=await prepareOriginal(new File(['custom vision source'],'custom.png',{type:'image/png'}),'custom-vision-source'),digest='a'.repeat(64),value=makeVisionText(asset,{model:'local-vision-'+digest,revision:'sha256:'+digest,runtime:visionManifest.runtime,prompt:'Describe',text:'A blue square.',width:100,height:100}),note=visionTextNote('custom-vision-note',asset,value),state={notes:[originalNote(asset),note],settings:[],runs:[{key:originalKey(asset.id),value:asset}]};
+ validateVisionLinks(state.notes,state.runs);const restored=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.equal(restored.notes.find(item=>item.id===note.id).visionText.model,value.model);
+ assert.throws(()=>makeVisionText(asset,{...value,model:'arbitrary-model'}),/metadata invalid/i);assert.throws(()=>makeVisionText(asset,{...value,revision:'main'}),/metadata invalid/i);
+});

@@ -1,6 +1,9 @@
 export type ScheduleRule={repeat:string;time:string;days:number[];date:string;monthDay:number;interval:number;unit:string};
 export const repeatOptions=[{value:'once',label:'Once'},{value:'daily',label:'Every day'},{value:'weekly',label:'Every week'},{value:'monthly',label:'Every month'},{value:'custom',label:'Custom'}];
 export function localDate(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+export function nextDefaultScheduleDate(now=new Date()){
+ const next=new Date(now);next.setHours(9,0,0,0);if(next<=now)next.setDate(next.getDate()+1);return localDate(next);
+}
 function parseDate(value:string){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw Error('Use YYYY-MM-DD');
  const [y,m,d]=value.split('-').map(Number),date=new Date(y,m-1,d);
@@ -17,11 +20,14 @@ export function nextScheduleOccurrence(rule:ScheduleRule,now=new Date()):Date{
  }
  if(rule.repeat==='custom'){
   if(!Number.isInteger(rule.interval)||rule.interval<1||rule.interval>365||!['days','weeks'].includes(rule.unit))throw Error('Use an interval from 1 to 365');
-  const anchor=at(parseDate(rule.date)),step=rule.interval*(rule.unit==='weeks'?7:1),next=new Date(anchor);
+  const anchor=parseDate(rule.date),step=rule.interval*(rule.unit==='weeks'?7:1);
   const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const calendarDays=Math.round((Date.UTC(midnight.getFullYear(),midnight.getMonth(),midnight.getDate())-Date.UTC(anchor.getFullYear(),anchor.getMonth(),anchor.getDate()))/86400000);
-  next.setDate(anchor.getDate()+Math.max(0,Math.floor(calendarDays/step))*step);
-  if(next<=now)next.setDate(next.getDate()+step);return next;
+  const occurrence=(days:number)=>at(new Date(anchor.getFullYear(),anchor.getMonth(),anchor.getDate()+days));
+  const days=Math.max(0,Math.floor(calendarDays/step))*step,next=occurrence(days);
+  // Reapply the requested wall time for each date. A normalized DST-gap time
+  // must not become the clock time of all later occurrences.
+  return next<=now?occurrence(days+step):next;
  }
  if(rule.repeat==='weekly'&&(!rule.days.length||rule.days.some(d=>!Number.isInteger(d)||d<0||d>6)))throw Error('Choose at least one weekday');
  for(let i=0;i<=7;i++){const next=at(new Date(now.getFullYear(),now.getMonth(),now.getDate()+i));if(next>now&&(rule.repeat==='daily'||rule.days.includes(next.getDay())))return next;}

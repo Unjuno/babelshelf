@@ -2,7 +2,9 @@ import defaults from './app-settings.json' with { type: 'json' };
 
 type Settings = typeof defaults;
 const roots = ['Inbox','Notes','Schedule','Notifications','Attachments','Tools','Settings'];
-const allowedText = ['4B','2B','9B','smollm2-360m-instruct','qwen25-05b-instruct','lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'];
+// The JSON registry is the single source of truth; avoid maintaining a second
+// copy of the model list here.
+const allowedText = defaults.models.text.map(model=>model.value);
 const allowedDecision = ['', 'd1-omni-600M','d1-3B'];
 
 function record(value:unknown):asserts value is Record<string,unknown> {

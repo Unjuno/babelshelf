@@ -6,7 +6,7 @@ import {withLocalModels,verifyLocalModelFile} from '../dist/local-model-manifest
 import {createPinnedFileSnapshots} from '../dist/pinned-file-snapshots.js';
 const base=JSON.parse(await readFile(new URL('../dist/model-manifest.json',import.meta.url)));
 const sha256='a'.repeat(64);
-const record=()=>({id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'My model',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}});
+const record=()=>({id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},contextTokens:2048,inspection:{format:'GGUF',version:3,bytes:1000,name:'My model',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}});
 test('custom manifest extends builtins with data only and preserves fixed runtime/budget',()=>{
  const before=structuredClone(base),r=record(),out=withLocalModels(base,[r]);assert.deepEqual(base,before);assert.deepEqual(out.runtime,base.runtime);assert.deepEqual(out.models.slice(0,base.models.length),base.models);assert.equal(out.contextTokens,2048);
  const model=out.models.at(-1);assert.equal(model.id,r.id);assert.equal(model.revision,r.revision);assert.equal(model.file.url,undefined);assert.equal(model.file.name,sha256+'.gguf');assert.equal(model.license,undefined);assert.equal(model.localModel.engine,'webml-qwen35');

@@ -1,7 +1,13 @@
+import {sourceReferenceForView,noteSourceMetadata,isSourceMetadataGuard,type SavedSourceRef} from './note-provenance.ts';
+import {GroundingConflictError} from './grounding-conflict.ts';
+import {PendingCorrectionConflictError,makePendingCorrection,validatePendingCorrection,PENDING_CORRECTION_KEY,type PendingCorrection} from './pending-correction.ts';
+import {PendingNoteReviewConflictError,validatePendingNoteReview,pendingNoteReviewView,PENDING_NOTE_REVIEW_KEY,type PendingNoteReview} from './pending-note-review.ts';
 import {assertDialogueCopySource,validateDialogueCopyRecord,type DialogueCopy} from './dialogue-copy.ts';
 import {assertFolderNamespace} from './storage-namespaces.ts';
 export {assertFolderNamespace} from './storage-namespaces.ts';
-import {findStoredFiles} from './file-discovery.ts';
+import {findStoredFiles,mergeStoredSearchResults,createStoredSearchCache} from './file-discovery.ts';
+import {createPagedSearchClient} from './search-worker-client.ts';
+import type {MemorySearchResult,MemoryPassageResult} from './memory-search-types.ts';
 import {noteRestoreCandidates,planNoteRestore,validateNoteRestoreReceipt} from './note-restore.ts';
 import {exportMarkdownRevision} from './markdown-export.ts';
 import {planSettingsRestore,validateSettingsRestoreReceipt} from './settings-restore.ts';
@@ -10,31 +16,33 @@ import {ocrTextNote,type OcrText} from './ocr-text.ts';
 import {visionTextNote,type VisionText} from './vision-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
+import {updateActivity,validateActivity} from './harness-activity.ts';
+import {TURN_ACTIVITY_PAGE_SIZE,turnActivityMetaKey,turnActivityPageKey,turnActivityIndexKey,turnActivityPagePrefix,validateTurnActivityMeta,validateTurnActivityPage,validateTurnActivityIndex,type TurnActivityMeta,type TurnActivityPage,type TurnActivityIndex} from './turn-activity-pages.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
 import {deletionContents,canRestore} from './memory-trash.ts';
-import {builtinToolUpdates} from './builtin-updates.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 // The existing PWA database is the only knowledge store. UI objects are projections.
 // @ts-expect-error Shared baseline is plain JavaScript.
-import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGroundingRefs,checkNotes,buildIndex,searchNotes,searchStoredNotes,mergeNotes} from '../../../dist/core.js';
+import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGroundingRefs,checkNotes,searchNotes,searchStoredNotes,mergeNotes} from '../../../dist/core.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {openDB} from '../../../dist/storage.js';
-import {parsePreference,readPreference,readPreferenceWithFallback,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
+import {parsePreference,readPreference,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
-import {applyCorrection,undoCorrection,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
-import {makeStateBackup,parseStateBackup,planStateRestore,stateHash,guardRestoredNote,type StateSnapshot,type RestoreMode} from './backup-state.ts';
+import {applyCorrection,undoCorrection,correctionProposalHash,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
+import {stateHash} from './backup-hash.ts';
+import type {StateSnapshot,RestoreMode} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
 export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
-export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:{noteId:string;revision:number;start:number;end:number;quote:string}[];dialogueCopy?:DialogueCopy;importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
+export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:SavedSourceRef[];dialogueCopy?:DialogueCopy;dialogueCopyCoverage?:'partial';importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
 type Canonical=ReturnType<typeof createNote>;
 export function projectNote(n:Canonical):NoteView {
- validateDialogueCopyRecord(n);const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.dialogueCopy?{dialogueCopy:structuredClone(n.dialogueCopy)}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{}),...(n.visionText?{vision:{model:n.visionText.model,revision:n.visionText.revision,prompt:n.visionText.prompt}}:{})};
+ validateDialogueCopyRecord(n);const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),...(n.kind?{kind:n.kind}:{}),...(Array.isArray(n.sources)?{sources:n.sources.map(sourceReferenceForView)}:{}),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.dialogueCopy?{dialogueCopy:structuredClone(n.dialogueCopy)}:{}),...(n.dialogueCopyCoverage?{dialogueCopyCoverage:n.dialogueCopyCoverage}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{}),...(n.visionText?{vision:{model:n.visionText.model,revision:n.visionText.revision,prompt:n.visionText.prompt}}:{})};
 }
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 function readSnapshot(tx:IDBTransaction,done:(value:StateSnapshot)=>void){
@@ -60,7 +68,7 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
   if(old?.ui?.managed){if(next.path!==notePath(old))throw Error('Settings path is protected');parsePreference(preferenceGroup(next.path)!,next.body);}
   if(!old||next.path!==notePath(old))validateMemoryFilePath(next.path);
   if(old){
-   if(!equal(old.dialogueCopy,next.dialogueCopy))throw Error('Dialogue copy origin is immutable');
+   if(!equal(old.dialogueCopy,next.dialogueCopy)||!equal(old.dialogueCopyCoverage,next.dialogueCopyCoverage))throw Error('Dialogue copy origin is immutable');
    if(old.state==='active'&&(!previous||next.version!==previous.version+1||!equal(next.history,[...previous.history,previous.body])))throw Error('Invalid revision history');
    if(old.state==='withdrawn'&&['execution','notification'].includes(old.ui?.recordType)&&(next.body!==latest(old).body||next.path!==notePath(old)))throw Error('Restore exact log before changing it');
    const active={...old,state:'active'};delete active.withdrawnAt;
@@ -70,12 +78,17 @@ export function applyKnowledgeChanges(records:Canonical[],before:NoteView[],afte
    if(next.recordType)throw Error('Register through Schedule');
    if(next.version!==1||next.history.length)throw Error('Invalid new revision');
    if(next.kind==='generated'&&(!Array.isArray(next.sources)||!validateGroundingRefs(records,next.sources).ok))throw Error('Source changed · review before saving');
+   const managedGroup=preferenceGroup(next.path),managed=managedGroup&&id==='settings-'+managedGroup;
+   if(managedGroup&&managed)parsePreference(managedGroup,next.body);
    const created=createNote({title:next.path.split('/').at(-1)!.replace(/\.md$/i,''),body:next.body,path:next.path,kind:next.kind??'original',sources:next.sources??[]});
-   const record={...created,id,...(next.importedFrom?{importedFrom:next.importedFrom}:{}),...(next.dialogueCopy?{dialogueCopy:structuredClone(next.dialogueCopy)}:{})};
-   validateDialogueCopyRecord(record);if(record.dialogueCopy)assertDialogueCopySource(dialogue,record.dialogueCopy);result.push(record);
+   const record={...created,id,...(managed?{ui:{managed:true}}:{}),...(next.importedFrom?{importedFrom:next.importedFrom}:{}),...(next.dialogueCopy?{dialogueCopy:structuredClone(next.dialogueCopy)}:{}),...(next.dialogueCopyCoverage?{dialogueCopyCoverage:next.dialogueCopyCoverage}:{})};
+   validateDialogueCopyRecord(record);if(record.dialogueCopy)assertDialogueCopySource(dialogue,record.dialogueCopy,record.dialogueCopyCoverage??'complete');result.push(record);
   }
  }
- checkNotes(result);for(const note of result)if(!records.some(old=>old.id===note.id)&&note.kind==='generated'&&!validateGroundingRefs(result,note.sources).ok)throw Error('Source changed · review before saving');return result;
+ checkNotes(result);for(const note of result)if(!records.some(old=>old.id===note.id)){
+  if(note.kind==='generated'&&!validateGroundingRefs(result,note.sources).ok)throw Error('Source changed · review before saving');
+  if(note.dialogueCopy?.speaker==='assistant'){const guards=dialogue?.turns[note.dialogueCopy.turnIndex]?.sourceMetadataGuards??[];try{for(const guard of guards)if(stateHash(noteSourceMetadata(result,guard.noteId,guard.revision))!==guard.snapshot)throw Error('changed');}catch{throw Error('Source changed · review before saving');}}
+ }return result;
 }
 
 export function planFolderRename(records:Canonical[],storedFolders:string[],from:string,name:string,expected:NoteView[]){
@@ -119,17 +132,24 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
  const updated=applyKnowledgeChanges(records,[],batch.notes);
  return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
+function searchableRecords(all:Canonical[],query:string,pathPrefix?:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query)||typeof pathPrefix==='string'&&/^(?:Tools|Settings|Notifications|Schedule\/Runs)(?:\/|$)/i.test(pathPrefix);return explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
+ private searchCache=createStoredSearchCache();
+ private searchWorker:ReturnType<typeof createPagedSearchClient>|undefined;
  private name:string;
  constructor(name='mlb-memory-v1'){this.name=name;}
  async open(){if(!this.database)this.database=await openDB(this.name);return this.database!;}
- private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void):Promise<T>{
-  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown;
+ private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void,signal?:AbortSignal):Promise<T>{
+  if(signal?.aborted)throw Error('Stopped');
+  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();if(signal?.aborted)throw Error('Stopped');return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown,stopped=false;
+   const cleanup=()=>signal?.removeEventListener('abort',abort);
+   const abort=()=>{stopped=true;try{tx.abort();}catch{/* The transaction may already be complete. */}};
+   signal?.addEventListener('abort',abort,{once:true});
    const fail=(e:unknown)=>{error=e;tx.abort();};
    try{run(tx,v=>{value=v;if(guarded){const rows=tx.objectStore('notes').getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2;const check=()=>{if(--pending)return;try{assertFolderNamespace(rows.result,folders.result??[]);}catch(e){fail(e);}};rows.onsuccess=check;folders.onsuccess=check;}},fail);}catch(e){fail(e);}
    tx.addEventListener('error',()=>{error??=tx.error;});
-   tx.oncomplete=()=>resolve(value);tx.onabort=()=>reject(error??tx.error??Error('Save failed'));
+   tx.oncomplete=()=>{cleanup();resolve(value);};tx.onabort=()=>{cleanup();reject(stopped?Error('Stopped'):error??tx.error??Error('Save failed'));};
   });
  }
  async initialize(defaults:NoteView[]){
@@ -137,16 +157,19 @@ export class KnowledgeStore {
    try{const records=q.result;for(const seed of defaults){if(records.some(n=>n.id===seed.id))continue;
     const note={...createNote({title:seed.path.split('/').at(-1),body:seed.body,path:seed.path}),id:seed.id,ui:{protected:!!seed.protected,managed:!!seed.managed}};records.push(note);store.add(note);
    }
-   for(const update of builtinToolUpdates(records,defaults)){records[records.findIndex(n=>n.id===update.id)]=update;store.put(update);}
-   const connection=records.find(n=>n.id==='settings-connection'&&n.ui?.managed);
-   // A malformed preference must not lock the user out of Memory/recovery.
-   // The safe fallback is downloads OFF; retain invalid bytes until explicit restore.
-   if(connection&&readPreferenceWithFallback('connection',[projectNote(connection)]).value.downloads){const safe=readPreferenceWithFallback('connection',[projectNote(connection)]).value;const changed=reviseNote(connection,{body:formatPreference('connection',{...safe,downloads:false})},latest(connection).version);records[records.indexOf(connection)]=changed;store.put(changed);}
+   // Connection mode is a durable user preference. Offline remains the default,
+   // but a deliberate Online choice must survive a normal PWA restart/reload.
+   // Malformed settings are retained for explicit recovery; never rewrite user data here.
    checkNotes(records);done(records.filter(n=>n.state==='active').map(projectNote));}catch(e){fail(e);}
   };});
  }
- async all():Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);});}
- async views(){return (await this.all()).filter(n=>n.state==='active').map(projectNote);}
+ async all(signal?:AbortSignal):Promise<Canonical[]>{return this.transaction(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').getAll();q.onsuccess=()=>done(q.result);},signal);}
+ async views(signal?:AbortSignal){return (await this.all(signal)).filter(n=>n.state==='active').map(projectNote);}
+ /** Resolve a stable note ID without materializing every saved note for agent reads. */
+ async viewById(id:string,signal?:AbortSignal):Promise<NoteView|null>{
+  if(typeof id!=='string'||!id)return null;
+  return this.transaction<NoteView|null>(['notes'],'readonly',(tx,done)=>{const q=tx.objectStore('notes').get(id);q.onsuccess=()=>done(q.result?.state==='active'?projectNote(q.result):null);},signal);
+ }
  // Preparation needs only these two canonical records, even with a large diary.
  async preparationSettings(){
   return this.transaction<{models:ReturnType<typeof readPreference<'models'>>;connection:ReturnType<typeof readPreference<'connection'>>}>(['notes'],'readonly',(tx,done,fail)=>{
@@ -158,36 +181,47 @@ export class KnowledgeStore {
   });
  }
  async original(ref:OriginalRef):Promise<OriginalAsset>{const asset=await this.transaction<OriginalAsset>(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').get(originalKey(ref.id));q.onsuccess=()=>done(q.result);});readOriginal(asset,ref);return asset;}
+ private saveReading<T extends {original:OriginalRef}>(id:string,value:T,newOriginal:OriginalAsset|undefined,duplicateError:string,build:(asset:OriginalAsset,value:T)=>Canonical){
+  ({value,newOriginal}=structuredClone({value,newOriginal}));const originalId=value.original.id;
+  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
+   const raw=tx.objectStore('runs').get(originalKey(originalId)),notes=tx.objectStore('notes').getAll();let finished=0;
+   const commit=()=>{if(++finished!==2)return;try{
+    const original=notes.result.find(n=>n.id===originalId);
+    if(newOriginal&&(original||raw.result))throw Error('Original already exists');
+    if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');
+    if(notes.result.some(n=>n.id===id))throw Error(duplicateError);
+    // Each reader builder still validates its own original pin, hash, model,
+    // coordinates/pages/timing. The shared transaction owns only persistence.
+    const note=build(newOriginal??raw.result,value),created=newOriginal?[originalNote(newOriginal)]:[];
+    checkNotes([...notes.result,...created,note]);
+    if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}
+    tx.objectStore('notes').add(note);done(note);
+   }catch(error){fail(error);}};
+   raw.onsuccess=commit;notes.onsuccess=commit;
+  });
+ }
  async saveTranscript(id:string,value:Transcript,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Transcript already saved');const asset=newOriginal??raw.result,note=transcriptNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
- } async savePdfText(id:string,value:PdfText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('PDF text already saved');const asset=newOriginal??raw.result,note=pdfTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
+  return this.saveReading(id,value,newOriginal,'Transcript already saved',(asset,snapshot)=>transcriptNote(id,asset,snapshot));
+ }
+ async savePdfText(id:string,value:PdfText,newOriginal?:OriginalAsset){
+  return this.saveReading(id,value,newOriginal,'PDF text already saved',(asset,snapshot)=>pdfTextNote(id,asset,snapshot));
  }
  async saveOcrText(id:string,value:OcrText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('OCR text already saved');const asset=newOriginal??raw.result,note=ocrTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
+  return this.saveReading(id,value,newOriginal,'OCR text already saved',(asset,snapshot)=>ocrTextNote(id,asset,snapshot));
  }
  async saveVisionText(id:string,value:VisionText,newOriginal?:OriginalAsset){
-  return this.transaction<Canonical>(['notes','runs'],'readwrite',(tx,done,fail)=>{
-   const raw=tx.objectStore('runs').get(originalKey(value.original.id)),notes=tx.objectStore('notes').getAll();let finished=0;
-   const commit=()=>{if(++finished!==2)return;try{const original=notes.result.find(n=>n.id===value.original.id);if(newOriginal&&(original||raw.result))throw Error('Original already exists');if(!newOriginal&&(!original||original.state!=='active'))throw Error('Original withdrawn');if(notes.result.some(n=>n.id===id))throw Error('Vision note already saved');const asset=newOriginal??raw.result,note=visionTextNote(id,asset,value),created=newOriginal?[originalNote(newOriginal)]:[];checkNotes([...notes.result,...created,note]);if(newOriginal){tx.objectStore('runs').add(newOriginal,originalKey(newOriginal.id));tx.objectStore('notes').add(created[0]);}tx.objectStore('notes').add(note);done(note);}catch(e){fail(e);}};raw.onsuccess=commit;notes.onsuccess=commit;
-  });
+  return this.saveReading(id,value,newOriginal,'Vision note already saved',(asset,snapshot)=>visionTextNote(id,asset,snapshot));
  }
- async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[]){
+ async submitInput(expected:Dialogue|undefined,next:Dialogue,originals:OriginalAsset[],readings:ReviewedText[]=[],expectedSettingsRevisions?:{models:number|null;harness:number|null}){
+  ({expected,next,originals,readings,expectedSettingsRevisions}=structuredClone({expected,next,originals,readings,expectedSettingsRevisions}));
+  if(expectedSettingsRevisions&&['models','harness'].some(group=>{const revision=expectedSettingsRevisions![group as 'models'|'harness'];return revision!==null&&(!Number.isSafeInteger(revision)||revision<1);}))throw Error('Invalid settings revision');
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');
   const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||!Array.isArray(turn.attachments)||new Set(turn.attachments.map(a=>a.id)).size!==turn.attachments.length||[...ids].some(id=>!turn.attachments!.some(a=>a.id===id))||turn.attachments.some(a=>!a.asset||a.asset.id!==a.id))throw Error('Attachment input mismatch');
   const db=await this.open();return new Promise<any[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown,inputNotes=created;
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
+    if(expectedSettingsRevisions)for(const group of ['models','harness'] as const){const id=group==='models'?'settings-models':'settings-harness',record=current.notes.find(note=>note.id===id&&note.state==='active'),revision=record?latest(record).version:null;if(revision!==expectedSettingsRevisions[group])throw Error('Settings changed in another tab · send again');}
     if(created.some(n=>current.notes.some(old=>old.id===n.id))||originals.some(a=>current.runs.some(r=>r.key===originalKey(a.id))))throw Error('Original already saved');
     const runs=[...current.runs,...originals.map(a=>({key:originalKey(a.id),value:a}))],derived=buildInputReadings(readings,runs),notes=[...current.notes,...created,...derived];inputNotes=[...created,...derived];if(derived.some(n=>!turn.attachments!.some(a=>a.reading?.noteId===n.id&&a.reading?.kind===inputReadingKind(n))))throw Error('Input reading mismatch');checkNotes(notes);assertFolderNamespace(notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);validateOriginalLinks(notes,[{key:'ui-v1-dialogue',value:next}],runs);validateVoiceInputs(next,runs);validateInputReadings(next,notes,runs);
     for(const a of turn.attachments!)if(a.reading&&!notes.some(n=>n.id===a.reading?.noteId&&n.state==='active'&&latest(n).version===a.reading?.revision))throw Error('Input source changed');
@@ -206,10 +240,57 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve(rows);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery history unavailable'));
   });
  }
- async approveCorrection(proposal:CorrectionProposal){
-  const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
-   const tx=db.transaction(['notes','runs'],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
-   prior.onsuccess=()=>{if(prior.result){error=Error('Correction already applied');tx.abort();return;}const q=notes.getAll();q.onsuccess=()=>{try{const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
+ async stageCorrection(proposal:CorrectionProposal,turnId?:string,signal?:AbortSignal):Promise<PendingCorrection>{
+  if(signal?.aborted)throw Error('Stopped');const pending=makePendingCorrection(proposal,turnId),db=await this.open();if(signal?.aborted)throw Error('Stopped');
+  return new Promise((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),prior=settings.get(PENDING_CORRECTION_KEY),rows=tx.objectStore('notes').getAll();let left=2,result=pending,error:unknown,stopped=false;
+   const abort=()=>{stopped=true;try{tx.abort();}catch{}};signal?.addEventListener('abort',abort,{once:true});
+   const cleanup=()=>signal?.removeEventListener('abort',abort);
+   const commit=()=>{if(--left)return;try{if(signal?.aborted)throw Error('Stopped');applyCorrection(rows.result,pending.proposal);if(prior.result!==undefined){const existing=validatePendingCorrection(prior.result);if(!equal(existing.proposal,pending.proposal)||existing.turnId!==turnId)throw Error('Review pending changes first');result=existing;}else settings.put(pending,PENDING_CORRECTION_KEY);}catch(e){error=e;tx.abort();}};prior.onsuccess=commit;rows.onsuccess=commit;
+   tx.oncomplete=()=>{cleanup();resolve(result);};tx.onabort=tx.onerror=()=>{cleanup();reject(stopped?Error('Stopped'):error??tx.error??Error('Could not save review'));};
+  });
+ }
+ async stageNoteReview(value:PendingNoteReview):Promise<PendingNoteReview>{
+  const pending=validatePendingNoteReview(value),db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let result=pending,error:unknown;
+   q.onsuccess=()=>{try{if(q.result!==undefined){const existing=validatePendingNoteReview(q.result);if(!equal(existing,pending))throw Error('Review pending note first');result=existing;}else settings.put(pending,PENDING_NOTE_REVIEW_KEY);}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not save note review'));
+  });
+ }
+ async updateNoteReview(expected:unknown,next:PendingNoteReview):Promise<PendingNoteReview>{
+  expected=structuredClone(expected);next=validatePendingNoteReview(next);const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
+   q.onsuccess=()=>{try{if(!equal(q.result,expected))throw new PendingNoteReviewConflictError();const prior=validatePendingNoteReview(q.result);if(prior.note.id!==next.note.id||prior.turnId!==next.turnId)throw new PendingNoteReviewConflictError();settings.put(next,PENDING_NOTE_REVIEW_KEY);}catch(e){error=e;tx.abort();}};
+   tx.oncomplete=()=>resolve(next);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not update note review'));
+  });
+ }
+ async discardNoteReview(expected:unknown){
+  expected=structuredClone(expected);const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
+   q.onsuccess=()=>{if(!equal(q.result,expected)){error=new PendingNoteReviewConflictError();tx.abort();return;}settings.delete(PENDING_NOTE_REVIEW_KEY);};
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not discard note review'));
+  });
+ }
+ async saveReviewedNote(expected:unknown,review:PendingNoteReview){
+  expected=structuredClone(expected);review=validatePendingNoteReview(review);const db=await this.open();return new Promise<NoteView>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),saved=settings.get(PENDING_NOTE_REVIEW_KEY),folders=settings.get('ui-v1-folders'),dialogue=settings.get('ui-v1-dialogue');let remaining=4,error:unknown,result:NoteView;
+   const commit=()=>{if(--remaining)return;try{
+    if(!equal(saved.result,expected)||!equal(saved.result,review))throw new PendingNoteReviewConflictError();
+    const view=pendingNoteReviewView(review),existing=rows.result.find((note:Canonical)=>note.id===view.id);
+    if(existing){result=projectNote(existing);if(!equal(result,view))throw Error('Note ID conflict · reopen review');}
+    else{const updated=applyKnowledgeChanges(rows.result,[],[view],dialogue.result);assertFolderNamespace(updated,folders.result??[]);const created=updated.find((note:Canonical)=>note.id===view.id);if(!created)throw Error('Could not create note');notes.add(created);result=projectNote(created);}
+    settings.delete(PENDING_NOTE_REVIEW_KEY);
+   }catch(e){error=e;tx.abort();}};
+   rows.onsuccess=commit;saved.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not save reviewed note'));
+  });
+ }
+ async discardCorrection(expected:unknown){
+  expected=structuredClone(expected);const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_CORRECTION_KEY);let error:unknown;
+   q.onsuccess=()=>{if(!equal(q.result,expected)){error=new PendingCorrectionConflictError();tx.abort();return;}settings.delete(PENDING_CORRECTION_KEY);};
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not discard review'));
+  });
+ }
+ async approveCorrection(proposal:CorrectionProposal,pending?:PendingCorrection){
+  proposal=structuredClone(proposal);pending=pending===undefined?undefined:structuredClone(pending);const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
+   const tx=db.transaction(['notes','runs',...(pending?['settings']:[])],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
+   const saved=pending?tx.objectStore('settings').get(PENDING_CORRECTION_KEY):null;
+   prior.onsuccess=()=>{if(prior.result){try{const existing=prior.result;if(existing.schema!==1||existing.type!=='note-correction'||existing.id!==proposal.id||existing.proposalHash!==correctionProposalHash(proposal))throw Error('Correction already applied · proposal conflict');if(pending){validatePendingCorrection(pending);if(!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}receipt=existing;}catch(e){error=e;tx.abort();}return;}const q=notes.getAll();q.onsuccess=()=>{try{if(pending){validatePendingCorrection(pending);if(!equal(saved?.result,pending)||!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);if(pending)tx.objectStore('settings').delete(PENDING_CORRECTION_KEY);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
    tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Correction save failed'));
   });
  }
@@ -239,15 +320,16 @@ export class KnowledgeStore {
  });}
  async heartbeat(runId:string,owner:string){return this.editRecords(records=>({put:[heartbeatRun(records,runId,owner)],value:true}));}
  async skipRun(taskId:string,owner:string){return this.editRecords(records=>{const result=skipTaskRun(records,taskId,owner),notice=taskNotice(result.task,result.run);return {put:[result.task,result.run,...(notice?[notice]:[])],value:projectNote(result.run)};});}
- async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[]},now=new Date()){return this.editRecords(records=>{
+ async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:import('./task-records.ts').RunData['calculation'];model?:import('./task-records.ts').RunData['model']},now=new Date()){return this.editRecords(records=>{
   const completed=finishTaskRun(records,runId,owner,result,now),notice=taskNotice(completed.task,completed.run);
   return {put:[completed.task,completed.run,...(notice?[notice]:[])],value:projectNote(completed.run)};
  });}
  async readNotification(id:string){return this.editRecords(records=>{const old=records.find(n=>n.id===id&&n.state==='active');if(!old)throw Error('Notification unavailable');const data=noticeView(old),note=data.read?old:reviseNote(old,{body:noticeBody({...data,read:true})},latest(old).version);return {put:[note],value:projectNote(note)};});}
  async restoreDefaults(expected:NoteView[]){
+  expected=structuredClone(expected);
   return this.transaction<void>(['notes'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{
    try{const before=q.result.filter(n=>n.state==='active').map(projectNote);
-    for(const id of ['settings-models','settings-appearance','settings-connection']){
+    for(const id of ['settings-models','settings-appearance','settings-connection','settings-harness']){
      const reviewed=expected.filter(n=>n.id===id),current=before.find(n=>n.id===id);
      if(reviewed.length!==1||!current||!equal(current,reviewed[0]))throw Error('Settings changed · cancel and reopen');
     }
@@ -258,13 +340,28 @@ export class KnowledgeStore {
   };});
  }
  async commit(before:NoteView[],after:NoteView[]){
-  const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,error:unknown,views:NoteView[];
+  before=structuredClone(before);after=structuredClone(after);const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,error:unknown,views:NoteView[];
    const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after,dialogue.result);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
    tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
   });
  }
- async createFolder(path:string,expected:string[]|undefined){const db=await this.open();return new Promise<{path:string;folders:string[]}>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('settings'),rows=tx.objectStore('notes').getAll(),folders=store.get('ui-v1-folders');let pending=2,error:unknown,result:{path:string;folders:string[]};const commit=()=>{if(--pending)return;try{if(!equal(folders.result,expected))throw Error('Local data changed in another tab · reopen to continue');const old=folders.result??[],occupied=[...old];for(const n of rows.result){const parts=notePath(n).split('/');while(parts.length){occupied.push(parts.join('/'));parts.pop();}}const parts=path.split('/'),name=parts.pop()??'',clean=memoryFolderPath(parts.join('/'),name,occupied);if(clean!==path)throw Error('Invalid folder path');const next=[...old,clean];assertFolderNamespace(rows.result,next);store.put(next,'ui-v1-folders');result={path:clean,folders:next};}catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder save failed'));});}
+  /** Revision a user-edited file through one explicit CAS operation; the UI never constructs a storage-wide diff. */
+  async saveFileEdit(id:string,expectedVersion:number,path:string,body:string){
+   if(typeof id!=='string'||!id||!Number.isSafeInteger(expectedVersion)||expectedVersion<1||typeof path!=='string'||typeof body!=='string')throw Error('Invalid file edit');
+   ({id,expectedVersion,path,body}=structuredClone({id,expectedVersion,path,body}));
+   return this.transaction<NoteView>(['notes'],'readwrite',(tx,done,fail)=>{
+    const store=tx.objectStore('notes'),q=store.getAll();q.onsuccess=()=>{try{
+     const record=q.result.find((note:Canonical)=>note.id===id&&note.state==='active');if(!record)throw Error('File unavailable');
+     const before=projectNote(record);if(before.version!==expectedVersion)throw Error('Version conflict · reopen editor');
+     const next={...before,path:path.trim()===before.path?before.path:path.trim(),body,version:before.version+1,history:[...before.history,before.body],paths:[...(before.paths??before.history.map(()=>before.path)),path.trim()===before.path?before.path:path.trim()]};
+     const updated=applyKnowledgeChanges(q.result,[before],[next]),saved=updated.find((note:Canonical)=>note.id===id);if(!saved)throw Error('File unavailable');
+     store.put(saved);done(projectNote(saved));
+    }catch(error){fail(error);}};
+   });
+  }
+ async createFolder(path:string,expected:string[]|undefined){expected=structuredClone(expected);const db=await this.open();return new Promise<{path:string;folders:string[]}>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('settings'),rows=tx.objectStore('notes').getAll(),folders=store.get('ui-v1-folders');let pending=2,error:unknown,result:{path:string;folders:string[]};const commit=()=>{if(--pending)return;try{if(!equal(folders.result,expected))throw Error('Local data changed in another tab · reopen to continue');const old=folders.result??[],occupied=[...old];for(const n of rows.result){const parts=notePath(n).split('/');while(parts.length){occupied.push(parts.join('/'));parts.pop();}}const parts=path.split('/'),name=parts.pop()??'',clean=memoryFolderPath(parts.join('/'),name,occupied);if(clean!==path)throw Error('Invalid folder path');const next=[...old,clean];assertFolderNamespace(rows.result,next);store.put(next,'ui-v1-folders');result={path:clean,folders:next};}catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder save failed'));});}
  async renameFolder(from:string,name:string,expectedNotes:NoteView[],expectedFolders:string[]|undefined){
+  ({expectedNotes,expectedFolders}=structuredClone({expectedNotes,expectedFolders}));
   const db=await this.open();return new Promise<{folders:string[];from:string;to:string}>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders');let pending=2,error:unknown,result:{folders:string[];from:string;to:string};
    const commit=()=>{if(--pending)return;try{
@@ -277,6 +374,7 @@ export class KnowledgeStore {
   });
  }
  async recoverMemory(action:RecoveryAction,expectedFolders:string[]|undefined,expectedTrash:RecoveryBatch[]|undefined){
+  ({action,expectedFolders,expectedTrash}=structuredClone({action,expectedFolders,expectedTrash}));
   const db=await this.open();return new Promise<{folders:string[];trash:RecoveryBatch[]}>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders'),trash=settings.get('ui-v1-trash');let pending=3,error:unknown,result:{folders:string[];trash:RecoveryBatch[]};
    const commit=()=>{if(--pending)return;try{
@@ -296,16 +394,34 @@ export class KnowledgeStore {
   });
  }
  async getState<T>(key:string):Promise<T|undefined>{return this.transaction(['settings'],'readonly',(tx,done)=>{const q=tx.objectStore('settings').get('ui-v1-'+key);q.onsuccess=()=>done(q.result);});}
- async setState(key:string,value:unknown){return this.transaction<void>(['settings'],'readwrite',(tx,done)=>{tx.objectStore('settings').put(value,'ui-v1-'+key);done();});}
+ async setState(key:string,value:unknown){value=structuredClone(value);return this.transaction<void>(['settings'],'readwrite',(tx,done)=>{tx.objectStore('settings').put(value,'ui-v1-'+key);done();});}
  async compareState(key:string,before:unknown,next:unknown){
+  ({before,next}=structuredClone({before,next}));
   if(key==='dialogue')validateDialogue(next);
   const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),s=tx.objectStore('settings'),q=s.get('ui-v1-'+key);let error:unknown;
    q.onsuccess=()=>{if(!equal(q.result,before)){error=Error(key==='dialogue'?'Conversation changed in another tab · reopen to continue':'Local data changed in another tab · reopen to continue');tx.abort();return;}s.put(next,'ui-v1-'+key);};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
  }
- async reindex(){const records=await this.all();buildIndex(records,{force:true});return records.filter(n=>n.state==='active').length;}
- async search(query:string,stored=false){const all=await this.all(),explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query),records=explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));if(!stored)return searchNotes(records,query,12);const text=searchStoredNotes(records,query,12),ids=new Set(text.map((r:any)=>r.noteId));return [...findStoredFiles(records,query).filter(file=>!ids.has(file.noteId)),...text].slice(0,12);}
+ /** Commit a newly grounded dialogue result only while its reviewed sources
+  * and expected conversation are still current. Historical turns are not
+  * revalidated here. */
+ async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[],metadataGuards:{noteId:string;revision:number;snapshot:string}[]=[]){
+  ({before,next,refs,metadataGuards}=structuredClone({before,next,refs,metadataGuards}));
+  validateDialogue(next);if(!Array.isArray(refs)||!Array.isArray(metadataGuards)||!refs.length&&!metadataGuards.length||!metadataGuards.every(isSourceMetadataGuard))throw Error('Source required');
+  const previous=new Map((before?.turns??[]).map(turn=>[turn.id,turn]));
+  const addedRefs=next.turns.flatMap(turn=>equal(turn.refs,previous.get(turn.id)?.refs)?[]:turn.refs??[]);
+  const sources=refs,db=await this.open();return new Promise<void>((resolve,reject)=>{
+   const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
+   const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(sources.length&&!validateGroundingRefs(notes.result,sources).ok||addedRefs.length&&!validateGroundingRefs(notes.result,addedRefs).ok)throw new GroundingConflictError();try{for(const guard of metadataGuards)if(stateHash(noteSourceMetadata(notes.result,guard.noteId,guard.revision))!==guard.snapshot)throw Error('changed');}catch{throw new GroundingConflictError();}settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
+   dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
+  });
+ }
+
+ search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
+ search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
+ async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query);if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12,query);}
+ async searchPage(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal){const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query,options.pathPrefix);if(typeof Worker==='undefined')return this.searchCache.search(records,query,options);this.searchWorker??=createPagedSearchClient();return this.searchWorker.search(records,query,options,signal);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
@@ -318,10 +434,74 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Processing record unavailable'));
   });
  }
+ /** Store one new or completed receipt without rewriting the conversation. */
+ async recordTurnActivity(turnId:string,next:Activity,expected:Dialogue):Promise<void>{
+  const receipt=structuredClone(next);validateActivity([receipt]);validateDialogue(expected);const expectedHash=stateHash(expected),metaKey=turnActivityMetaKey(turnId),indexKey=turnActivityIndexKey(turnId,receipt.id),db=await this.open();
+  return new Promise((resolve,reject)=>{const tx=db.transaction(['settings','runs'],'readwrite'),runs=tx.objectStore('runs'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue'),meta=runs.get(metaKey),index=runs.get(indexKey);let pending=3,error:unknown;
+   const read=()=>{if(--pending)return;try{
+    if(!dialogue.result)throw Error('Turn unavailable');const state=validateDialogue(dialogue.result),turn=state.turns.find(turn=>turn.id===turnId);if(!turn)throw Error('Turn unavailable');if(stateHash(state)!==expectedHash)throw Error('Conversation changed in another tab · reopen to continue');
+    if(turn.activity?.some(item=>item.id===receipt.id))throw Error('Duplicate activity identity');
+    const oldMeta=meta.result as TurnActivityMeta|undefined,oldIndex=index.result as TurnActivityIndex|undefined;
+    if(oldMeta)validateTurnActivityMeta(metaKey,oldMeta);if(oldIndex)validateTurnActivityIndex(indexKey,oldIndex);
+    if(receipt.status==='running'&&oldIndex)throw Error('Activity already exists');
+    if(receipt.status!=='running'&&(!oldMeta||!oldIndex))throw Error('Activity start unavailable');
+    const pageNumber=receipt.status==='running'?Math.floor((oldMeta?.count??0)/TURN_ACTIVITY_PAGE_SIZE):oldIndex!.page;
+    const key=turnActivityPageKey(turnId,pageNumber),request=runs.get(key);
+    request.onsuccess=()=>{try{
+     const oldPage=request.result as TurnActivityPage|undefined;if(oldPage)validateTurnActivityPage(key,oldPage);
+     if(receipt.status==='running'){
+      const count=oldMeta?.count??0,offset=count%TURN_ACTIVITY_PAGE_SIZE;
+      if(offset===0&&oldPage||offset>0&&(!oldPage||oldPage.items.length!==offset))throw Error('Activity page conflict');
+      const page:TurnActivityPage={schema:1,type:'turn-activity-page',turnId,page:pageNumber,items:updateActivity(oldPage?.items??[],receipt)};
+      const entry:TurnActivityIndex={schema:1,type:'turn-activity-index',turnId,id:receipt.id,page:pageNumber};
+      const updated:TurnActivityMeta={schema:1,type:'turn-activity-meta',turnId,count:count+1};
+      validateTurnActivityPage(key,page);validateTurnActivityIndex(indexKey,entry);validateTurnActivityMeta(metaKey,updated);
+      runs.put(page,key);runs.add(entry,indexKey);runs.put(updated,metaKey);
+     }else{
+      const expectedLength=Math.min(TURN_ACTIVITY_PAGE_SIZE,oldMeta!.count-pageNumber*TURN_ACTIVITY_PAGE_SIZE);
+      if(!oldPage||expectedLength<1||oldPage.items.length!==expectedLength||!oldPage.items.some(item=>item.id===receipt.id))throw Error('Activity start unavailable');
+      const page={...oldPage,items:updateActivity(oldPage.items,receipt)};validateTurnActivityPage(key,page);runs.put(page,key);
+     }
+    }catch(e){error=e;tx.abort();}};
+   }catch(e){error=e;tx.abort();}};
+   dialogue.onsuccess=read;meta.onsuccess=read;index.onsuccess=read;
+   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity record unavailable'));
+  });
+ }
+ /** Read one bounded activity page and its current continuation. */
+ async turnActivityPage(turnId:string,pageNumber:number):Promise<{items:Activity[];nextPage:number|null}>{
+  const metaKey=turnActivityMetaKey(turnId),pageKey=turnActivityPageKey(turnId,pageNumber),db=await this.open();
+  return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),page=runs.get(pageKey);let pending=2,error:unknown,result:{items:Activity[];nextPage:number|null}={items:[],nextPage:null};
+   const read=()=>{if(--pending)return;try{
+    const value=meta.result as TurnActivityMeta|undefined,record=page.result as TurnActivityPage|undefined;
+    if(!value){
+     if(record||pageNumber!==0)throw Error('Activity page unavailable');
+     const prefix=turnActivityPagePrefix(turnId),orphan=runs.openKeyCursor(IDBKeyRange.bound(prefix,prefix+'\uffff'));
+     orphan.onsuccess=()=>{if(orphan.result){error=Error('Activity page unavailable');tx.abort();}};
+     return;
+    }
+    validateTurnActivityMeta(metaKey,value);const length=Math.min(TURN_ACTIVITY_PAGE_SIZE,value.count-pageNumber*TURN_ACTIVITY_PAGE_SIZE);
+    if(length<1||!record)throw Error('Activity page unavailable');validateTurnActivityPage(pageKey,record);
+    if(record.turnId!==turnId||record.page!==pageNumber||record.items.length!==length)throw Error('Activity page unavailable');
+    result={items:structuredClone(record.items),nextPage:(pageNumber+1)*TURN_ACTIVITY_PAGE_SIZE<value.count?pageNumber+1:null};
+   }catch(e){error=e;tx.abort();}};meta.onsuccess=read;page.onsuccess=read;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity page unavailable'));
+  });
+ }
+ async turnActivities(turnId:string):Promise<Activity[]>{
+  const prefix=turnActivityPagePrefix(turnId),metaKey=turnActivityMetaKey(turnId),db=await this.open();
+  return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),request=runs.getAll(IDBKeyRange.bound(prefix,prefix+'\uffff'));let result:Activity[]=[],pending=2,error:unknown;
+   const read=()=>{if(--pending)return;try{
+    const value=meta.result as TurnActivityMeta|undefined,pages=request.result as TurnActivityPage[];if(!value){if(pages.length)throw Error('Activity metadata unavailable');return;}
+    validateTurnActivityMeta(metaKey,value);const ids=new Set<string>();
+    for(let i=0;i<pages.length;i++){const page=pages[i];validateTurnActivityPage(turnActivityPageKey(turnId,i),page);if(page.turnId!==turnId||page.page!==i||i<pages.length-1&&page.items.length!==TURN_ACTIVITY_PAGE_SIZE)throw Error('Incomplete activity pages');for(const item of page.items){if(ids.has(item.id))throw Error('Duplicate activity identity');ids.add(item.id);result.push(structuredClone(item));}}
+    if(result.length!==value.count)throw Error('Activity count mismatch');
+   }catch(e){error=e;tx.abort();}};meta.onsuccess=read;request.onsuccess=read;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity records unavailable'));
+  });
+ }
  async snapshot():Promise<StateSnapshot>{return this.transaction(['notes','settings','runs'],'readonly',(tx,done)=>readSnapshot(tx,done));}
- async backup(){return makeStateBackup(await this.snapshot());}
- async checkBackup(text:string){return parseStateBackup(text);}
- async reviewBackup(text:string){const payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);let newOnly=false,newOnlyError='';
+ async backup(){const {makeStateBackup}=await import('./backup-state.ts');return makeStateBackup(await this.snapshot());}
+ async checkBackup(text:string){const {parseStateBackup}=await import('./backup-state.ts');return parseStateBackup(text);}
+ async reviewBackup(text:string){const {planStateRestore}=await import('./backup-state.ts'),payload=await this.checkBackup(text),current=await this.snapshot(),plan=planStateRestore(current,payload);let newOnly=false,newOnlyError='';
   if(payload.schema===2&&plan.conflicts.length&&Object.values(plan.added).some(n=>n>0)){try{newOnly=!!planStateRestore(current,payload,'new-only').writes;}catch{newOnlyError='New records conflict with current data';}}
   let settingsRecovery:{group:string;noteId:string;before:string;after:string;beforeVersion:number;sourceVersion:number}[]=[];
   try{settingsRecovery=planSettingsRestore(current,payload).changes.map(({source,...change})=>({...change,sourceVersion:latest(source).version}));}catch{/* Unsupported settings never enable the separate recovery action. */}
@@ -333,7 +513,7 @@ export class KnowledgeStore {
   });
  }
  async restoreNote(text:string,expected:string,noteId:string){
-  if(!expected)throw Error('Review note before restoring');const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  if(!expected)throw Error('Review note before restoring');const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
   return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown;
    readSnapshot(tx,current=>{try{if(stateHash(current)!==expected)throw Error('Local data changed · review backup again');const {change,write}=planNoteRestore(current,incoming,noteId),id=crypto.randomUUID(),receipt={schema:1,type:'note-restore',id,appliedAt:new Date().toISOString(),backupHash,noteId,beforeVersion:change.beforeVersion,afterVersion:change.beforeVersion+1,source:change.source};validateNoteRestoreReceipt('ui-v1-note-restore-'+id,receipt,current.notes.map(n=>n.id===noteId?write:n));tx.objectStore('notes').put(write);tx.objectStore('runs').add(receipt,'ui-v1-note-restore-'+id);}catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Note restore failed'));
@@ -341,7 +521,7 @@ export class KnowledgeStore {
  }
  async restoreSettings(text:string,expected:string){
   if(!expected)throw Error('Review settings before restoring');
-  const incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
   return new Promise<number>((resolve,reject)=>{
    const tx=db.transaction(['notes','settings','runs'],'readwrite');let count=0,error:unknown;
    readSnapshot(tx,current=>{try{
@@ -358,7 +538,7 @@ export class KnowledgeStore {
  async restore(text:string,expected?:string,mode:RestoreMode='strict'){
   if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
   if(mode==='new-only'&&!expected)throw Error('Review backup before restoring new records');
-  const incoming=await parseStateBackup(text);
+  const {parseStateBackup,planStateRestore,guardRestoredNote}=await import('./backup-state.ts'),incoming=await parseStateBackup(text);
   if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');
   if(incoming.schema===1){for(const n of incoming.notes){if(n.ui?.recordType==='schedule')parseTask(latest(n).body);else if(n.ui?.recordType==='execution')taskRunView(n);else if(n.ui?.recordType==='notification')noticeView(n);}}
   const db=await this.open();return new Promise<{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean}>((resolve,reject)=>{
@@ -374,5 +554,5 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Restore failed'));
   });
  }
- close(){this.database?.close();this.database=null;}
+ close(){this.searchWorker?.close();this.searchWorker=undefined;this.searchCache.clear();this.database?.close();this.database=null;}
 }

@@ -1,26 +1,53 @@
 import type {ToolHost} from './tool-host.ts';
-export type PackageDefinition={id:string;version:number;readOnly:true;network:'none'};
+import type {AgentToolEffect} from '../agent-loop.ts';
+export type PackageDefinition={id:string;version:number;effect:AgentToolEffect;network:'none'|'explicit-online';inputSchema?:Readonly<Record<string,unknown>>};
 export type ToolCapability=PackageDefinition&{usage:string};
 export type PackageSource={path:string;body:string};
-export type ToolPackage={definition:PackageDefinition;entry:string;sources:PackageSource[];run:(args:unknown,host:ToolHost)=>Promise<any[]>};
+export type ToolPackage={definition:PackageDefinition;entry:string;sources:PackageSource[];run:(args:unknown,host:ToolHost)=>Promise<unknown>};
 export type PackageIdentity={package:string;packageVersion:number;packageSha256:string;entry:string};
+// Each active registry owns its contract, including nested JSON Schema arrays.
+// Neither a registration owner nor a planner may change it during a turn.
+function freezeContract<T>(value:T,seen=new WeakSet<object>()):T{
+ if(value&&typeof value==='object'&&!seen.has(value)){
+  seen.add(value);
+  for(const nested of Object.values(value))freezeContract(nested,seen);
+  Object.freeze(value);
+ }
+ return value;
+}
+function stableJson(value:unknown,ancestors=new WeakSet<object>()):string{
+ if(value===null||typeof value!=='object'){
+  if(typeof value==='number'&&!Number.isFinite(value))throw Error('Invalid tool contract JSON');
+  const encoded=JSON.stringify(value);
+  if(encoded===undefined)throw Error('Invalid tool contract JSON');
+  return encoded;
+ }
+ if(ancestors.has(value))throw Error('Invalid tool contract JSON');
+ ancestors.add(value);
+ try{
+  if(Array.isArray(value))return '['+Array.from({length:value.length},(_,index)=>index in value?(value[index]===undefined?'null':stableJson(value[index],ancestors)):'null').join(',')+']';
+  const record=value as Record<string,unknown>;
+  if(Object.getPrototypeOf(record)!==Object.prototype&&Object.getPrototypeOf(record)!==null)throw Error('Invalid tool contract JSON');
+  return '{'+Object.keys(record).filter(key=>record[key]!==undefined).sort().map(key=>JSON.stringify(key)+':'+stableJson(record[key],ancestors)).join(',')+'}';
+ }finally{ancestors.delete(value);}
+}
 export function createToolRegistry(packages:ToolPackage[]){
  const registry=new Map<string,ToolPackage>();
  for(const candidate of packages){
   const d=candidate.definition;
-  if(!d||typeof d.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(d.id)||!Number.isSafeInteger(d.version)||d.version<1||d.readOnly!==true||d.network!=='none'||typeof candidate.run!=='function'||registry.has(d.id))throw Error('Invalid bundled tool registration');
+  if(!d||typeof d.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(d.id)||!Number.isSafeInteger(d.version)||d.version<1||!['read','review','external'].includes(d.effect)||d.network!=='none'&&d.network!=='explicit-online'||d.effect!=='external'&&d.network!=='none'||d.effect==='external'&&d.network!=='explicit-online'||typeof candidate.run!=='function'||registry.has(d.id))throw Error('Invalid bundled tool registration');
   if(!Array.isArray(candidate.sources)||candidate.sources.length<2||candidate.sources.length>32)throw Error('Invalid tool sources');
   const paths=new Set<string>();
-  for(const s of candidate.sources){if(!s||typeof s.path!=='string'||s.path.length>200||!/^Tools\/(?:[a-z][a-z0-9.-]*\/)?(?:SKILL\.md|[a-z][a-z0-9-]*\.ts)$/.test(s.path)||s.path.split('/').some(p=>p==='.'||p==='..')||typeof s.body!=='string'||s.body.length>100000||paths.has(s.path))throw Error('Invalid tool sources');paths.add(s.path);}
-  if(candidate.entry!=='Tools/'+d.id+'/tool.ts'||!paths.has(candidate.entry)||!paths.has('Tools/'+d.id+'/SKILL.md'))throw Error('Tool entry or skill unavailable');
-  const frozen=Object.freeze({definition:Object.freeze({...d}),entry:candidate.entry,sources:Object.freeze(candidate.sources.map(s=>Object.freeze({...s}))),run:candidate.run});
+  for(const s of candidate.sources){if(!s||typeof s.path!=='string'||s.path.length>200||!/^Tools\/(?:[a-z][a-z0-9.-]*\/)?(?:SKILL\.md|[a-z][a-z0-9-]*\.(?:ts|js))$/.test(s.path)||s.path.split('/').some(p=>p==='.'||p==='..')||typeof s.body!=='string'||s.body.length>100000||paths.has(s.path))throw Error('Invalid tool sources');paths.add(s.path);}
+  if(candidate.entry!=='Tools/'+d.id+'/tool.ts'&&candidate.entry!=='Tools/'+d.id+'/tool.js'||!paths.has(candidate.entry)||!paths.has('Tools/'+d.id+'/SKILL.md'))throw Error('Tool entry or skill unavailable');
+  const frozen=Object.freeze({definition:freezeContract(structuredClone(d)),entry:candidate.entry,sources:Object.freeze(candidate.sources.map(s=>Object.freeze({...s}))),run:candidate.run});
   registry.set(d.id,frozen as unknown as ToolPackage);
  }
  const get=(id:string)=>{const pkg=registry.get(id);if(!pkg)throw Error('Tool not registered');return pkg;};
  async function identity(id:string):Promise<PackageIdentity>{
-  const pkg=get(id),text=JSON.stringify({id:pkg.definition.id,version:pkg.definition.version,entry:pkg.entry,sources:[...pkg.sources].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)});
+  const pkg=get(id),text=stableJson({definition:pkg.definition,entry:pkg.entry,sources:[...pkg.sources].sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0)});
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return {package:pkg.definition.id,packageVersion:pkg.definition.version,packageSha256:[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join(''),entry:pkg.entry};
  }
- return Object.freeze({identity,capabilities:()=>Object.freeze([...registry.values()].map(pkg=>{const skill=pkg.sources.find(source=>source.path==='Tools/'+pkg.definition.id+'/SKILL.md');if(!skill)throw Error('Tool usage guide unavailable');return Object.freeze({...structuredClone(pkg.definition),usage:skill.body});})),async run(id:string,args:unknown,host:ToolHost){host.check();const result=await get(id).run(args,host);host.check();return result;}});
+ return Object.freeze({identity,capabilities:()=>Object.freeze([...registry.values()].map(pkg=>{const skill=pkg.sources.find(source=>source.path==='Tools/'+pkg.definition.id+'/SKILL.md');if(!skill)throw Error('Tool usage guide unavailable');const frontMatter=/^---\r?\n[\s\S]*?\r?\n---\r?\n*/.exec(skill.body),usage=frontMatter?skill.body.slice(frontMatter[0].length):skill.body;return freezeContract({...structuredClone(pkg.definition),usage});})),async run(id:string,args:unknown,host:ToolHost){host.check();const result=await get(id).run(args,host);host.check();return result;}});
 }

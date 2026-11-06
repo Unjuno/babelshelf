@@ -1,3 +1,15 @@
+## Explicit quoted replacements — 2026-10-27
+
+For an ordinary editable note, a bounded complete replacement command with paired quoted operands uses those exact strings: e.g. `このファイルの「水」を「お茶」に直して。` or `Replace “water” with “tea” in this file.` A named saved-note prefix shares correction-request.ts with target discovery; it does not become a second target parser. Spaces, Unicode, punctuation and replacement symbols remain literal. Quoted command words cannot become routing instructions. Missing text, empty search, empty result and existing match/output bounds fail without semantic fallback.
+
+Discovery, optional file choice, editable target validation and original/version checks still precede the proposal. Model acquisition is deferred inside the correction executor until a model is actually needed. Literal proposals record source=literal and the existing text.replace receipt, with no model generation or preparation. Semantic/unsupported wording still uses the selected local model; unquoted honorific/wording fidelity remains unproven. Managed settings, schedules, tool source and protected files retain their existing typed paths; this adapter grants no generic patch bypass.
+
+Full Before/After, durable pending review, explicit Save, atomic receipt, whole-record CAS, history, Undo and backup verification are unchanged. Selecting or preparing a literal proposal writes no knowledge. Help contains one short exact-text example.
+
+## Durable pending review — 2026-10-26
+
+Correction proposals now survive normal reload in the existing local store and can be reopened with Input > Review changes. Dismissal retains the proposal; explicit Cancel removes only its exact pending snapshot. Save atomically commits the note/receipt and clears the proposal. Reopen and approval both revalidate current records; no startup approval, regeneration or stale overwrite. See [pending-review contract](PENDING-REVIEWS.md) for bounds, backup, concurrency and evidence scopes.
+
 ## Managed settings proposals (Unit35)
 
 Finite settings.patch supports canonical managed Settings/appearance.md and Settings/models.md through settings-corrections.ts. It validates ID/path/schema and allowed changes; registered model selections and reader languages do not imply readiness. Libraries/downloads/network/runtime/permissions are outside this patch. All existing review/CAS/history/Undo/backup checks remain; generic rewrite/replace of managed settings stays forbidden. Tools and protected README records remain unsupported.

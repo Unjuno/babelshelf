@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "status": "source-pinned research; product-connected candidate; redistribution review partial",
+  "wllama": {
+    "repository": "https://github.com/ngxson/wllama",
+    "version": "3.12.0",
+    "revision": "3bb2a46f0dab0b924e8cd992b85e8881c3d3a859",
+    "license": "MIT",
+    "licenseSha256": "2186b1f191c2fa62fd8a966a45f1af647e5e97c28415d65668163a6350ca054d",
+    "patch": "wllama-count.patch",
+    "patchSha256": "02d4ebdf48ec4f54805765939fe7a08c7c72d71a50a0e46fb663973678c83139"
+  },
+  "llamaCpp": {
+    "repository": "https://github.com/ggml-org/llama.cpp",
+    "revision": "19cce6919992fdffd92e0ac152caaf1e2b8f254e",
+    "licenseFile": "LICENSE",
+    "licenseSha256": "bcd8ec749126d45cb06737d0690295d73df4b6e7e194205bcf91190368f27285",
+    "compilePatch": "llama-emcc-fix.patch",
+    "compilePatchSha256": "d0b1b3d081c0f49560fd61a15a06c7117c5a1620dc6cab1ea240ddc15f2e7a2c"
+  },
+  "emscripten": {
+    "version": "4.0.20"
+  },
+  "webgpuPackage": {
+    "name": "emdawnwebgpu_pkg-v20260317.182325.zip",
+    "bytes": 127930,
+    "sha256": "8dcae86c630d76b6794b271c6572becba36f4237d132bee121a56638c3d76575"
+  },
+  "model": {
+    "repository": "LiquidAI/LFM3-1.7B-GGUF",
+    "revision": "b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf",
+    "file": "LFM3-1.7B-QAD-Q4_0.gguf",
+    "bytes": 1049615680,
+    "sha256": "43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452",
+    "license": "LFM Open License v1.0"
+  },
+  "builds": [
+    {
+      "path": "build-lfm3-cpu/wllama.wasm",
+      "bytes": 7524690,
+      "sha256": "e04a24eb703bbba81875f885ac0bf87ad122c70acb4ebebda0a3b57f62770fdf",
+      "scope": "Historical pre-checkpoint CPU build; not a current product asset"
+    },
+    {
+      "path": "build-lfm3-gpu/wllama.js",
+      "bytes": 138603,
+      "sha256": "1cdbb0231eeda4226d56756a6a98815a941b41445c7916dc9c154c0b737cacec"
+    },
+    {
+      "path": "build-lfm3-gpu/wllama.wasm",
+      "bytes": 9464630,
+      "sha256": "42f48e0490ba9f8590dfafcd2a9762267829ac8f602a7b5872735346066962cf"
+    },
+    {
+      "path": "build-lfm3-compat/wllama.js",
+      "bytes": 172247,
+      "sha256": "97696211da7eaa60318a0ed5ce87a8b3981b8fc15ea8089eb92607374f3df877"
+    },
+    {
+      "path": "build-lfm3-compat/wllama.wasm",
+      "bytes": 17534066,
+      "sha256": "449cb1a3e9148ad432c6e8bf7304dd68157fff6476c0e7511d464fbe527efdb9"
+    }
+  ],
+  "pcEvidence": {
+    "browser": "Chrome 156.0.8078.48; Windows x64; cross-origin isolated",
+    "loadMs": 12984,
+    "promptTokens": 40,
+    "generatedPromptTokens": 40,
+    "outputTokens": 5,
+    "answer": "準備ができました。",
+    "countMatch": true,
+    "scope": "One exact Japanese prompt using enable_thinking=false after Wllama/llama.cpp count patch; tool-call/JSON matrices did not complete."
+  }
+}

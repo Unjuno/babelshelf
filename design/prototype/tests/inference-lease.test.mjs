@@ -12,14 +12,19 @@ function locksFixture(){
  }};
 }
 
-test('a resident model holds the origin lock until its last same-tab owner releases',async()=>{
+test('same-tab inference leases allow same-role references but refuse overlapping roles',async()=>{
  const locks=locksFixture(),tab=createInferenceLeaseManager(locks),otherTab=createInferenceLeaseManager(locks);
- const text=await tab.acquire('Text');const decision=await tab.acquire('Decision');
+ const text=await tab.acquire('Text');const textReference=await tab.acquire('Text');
+ await assert.rejects(tab.acquire('Decision'),/another local inference role is active/i);
  await assert.rejects(otherTab.acquire('Text'),/already active/i);
  await text.release();await assert.rejects(otherTab.acquire('Text'),/already active/i);
+ await textReference.release();
+ const decision=await tab.acquire('Decision');
+ await assert.rejects(tab.acquire('Speech'),/another local inference role is active/i);
+ await assert.rejects(otherTab.acquire('Vision'),/already active/i);
  await decision.release();
  const next=await otherTab.acquire('Text');assert.equal(next.protected,true);await next.release();
- assert.equal(locks.requests,4);
+ assert.equal(locks.requests,6);
 });
 
 test('a browser lock request failure clears its reservation so a later attempt can retry',async()=>{

@@ -1,5 +1,5 @@
 // IndexedDB is canonical. These paths are a faithful projection, not OPFS files.
-export function isToolSourcePath(path){return typeof path==='string'&&(path==='Tools/tool-host.ts'||/^Tools\/[a-z][a-z0-9.-]*\/[a-z][a-z0-9-]*\.ts$/.test(path));}
+export function isToolSourcePath(path){return typeof path==='string'&&(path==='Tools/tool-host.ts'||/^Tools\/(?:[a-z][a-z0-9.-]*\/[a-z][a-z0-9-]*\.ts|user\.[a-z][a-z0-9-]*\/tool\.js)$/.test(path));}
 export function normalizePath(path){
  if(typeof path!=='string'||path.length>500||path!==path.trim()||/[\\\u0000-\u001f\u007f:*?"<>|%]/.test(path))throw Error('Invalid Markdown path');
  const parts=path.normalize('NFC').split('/');

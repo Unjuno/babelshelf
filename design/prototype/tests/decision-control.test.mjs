@@ -35,3 +35,24 @@ test('classification retires the decision worker before success or typed failure
  await assert.rejects(failed,e=>e.code==='decision_context_limit');assert.equal(f.workers[1].terminated,true);assert.equal(c.active,false);assert.equal(resets,2);
  const status=c.call('status');f.workers[2].reply({prepared:true,loaded:false});assert.deepEqual(await status,{prepared:true,loaded:false});assert.equal(f.workers[2].terminated,false);c.dispose();
 });
+
+test('malformed current worker messages reject the request instead of leaving the route pending',async()=>{
+ for(const message of [id=>null, id=>({progress:'Loading'}),id=>({id,progress:42}),id=>({id,value:{loaded:true},permission:'tool'}),id=>({id,error:'failed',code:'run_tool'})]){
+  const f=factory(),c=new DecisionClient(()=>f.create(),()=>{}),request=c.call('classify');
+  f.workers[0].onmessage({data:message(f.workers[0].messages[0].id)});
+  await assert.rejects(request,/Decision runtime failed/);assert.equal(c.working,false);assert.equal(f.workers[0].terminated,true);c.dispose();
+ }
+});
+
+test('resident state is synchronous across load, unload, classify and stale worker replies',async()=>{
+ const f=factory(),c=new DecisionClient(()=>f.create(),()=>{});
+ const reply=value=>{const w=f.workers.at(-1);w.onmessage({data:{id:w.messages.at(-1).id,value}});};
+ assert.equal(c.loaded,false);
+ let job=c.call('load');reply({loaded:true});await job;assert.equal(c.loaded,true);
+ job=c.call('unload');reply({loaded:false});await job;assert.equal(c.loaded,false);
+ job=c.call('load');reply({loaded:true});await job;assert.equal(c.loaded,true);
+ job=c.call('classify');reply({answer:'yes'});await job;assert.equal(c.loaded,false);
+ const old=f.workers[0];job=c.call('status');old.reply({loaded:true});assert.equal(c.loaded,false);reply({loaded:false});await job;
+ job=c.call('load');reply({loaded:true});await job;c.stop();assert.equal(c.loaded,false);
+ c.dispose();
+});

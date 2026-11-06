@@ -2,10 +2,12 @@
 // @ts-expect-error Shared baseline core is JavaScript.
 import {createNote,reviseNote,latest,validateRefs,validateGroundingRefs,checkNotes} from '../../../dist/core.js';
 import {nextScheduleOccurrence,localDate,type ScheduleRule} from './schedule-time.ts';
+import {validateScheduledCalculation} from './scheduled-calculation.ts';
+import type {DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
 export type RunStatus='running'|'succeeded'|'failed'|'stopped'|'missed'|'interrupted'|'skipped';
-export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];model?:{id:string;revision?:string;runtime:string}};
+export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:{id:string;revision?:string;runtime:string}};
 export type NoticeData={taskId:string;taskRevision:number;runId:string;runRevision?:number;attempt?:number;title:string;body:string;createdAt:string;read:boolean};
 const fields=['repeat','time','days','date','monthDay','interval','unit','timezone','enabled','notify','prompt'];
 const asDate=(value:string)=>{const date=new Date(value);if(!Number.isFinite(+date))throw Error('Invalid date');return date;};
@@ -48,9 +50,10 @@ function runBody(value:RunData){return '# Execution\n\n```json\n'+JSON.stringify
 export function taskRunView(note:any):RunData{
  if(note.ui?.recordType!=='execution')throw Error('Not an execution record');const m=latest(note).body.match(/^# Execution\n\n```json\n([\s\S]*)\n```\n$/);if(!m)throw Error('Invalid execution');return JSON.parse(m[1]);
 }
+export function validateRunCalculation(data:RunData){if(data.calculation===undefined)return;if(data.status!=='succeeded'||!data.answer||!Array.isArray(data.sources)||data.sources.length||data.model||data.error)throw Error('Invalid scheduled calculation');validateScheduledCalculation(data.prompt,data.answer,data.calculation);}
 export function skipTaskRun(records:any[],taskId:string,owner:string,now=new Date()){
  const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule'||task.ui.requiresReview)throw Error('Review schedule first');
- const definition=parseTask(latest(task).body),cursor=task.taskCursor;if(!cursor?.nextAt||cursor.definition!==taskDefinition(definition))throw Error('No pending occurrence');
+ const definition=parseTask(latest(task).body),cursor=task.taskCursor;if(definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone)throw Error('Timezone changed · review schedule');if(!cursor?.nextAt||cursor.definition!==taskDefinition(definition))throw Error('No pending occurrence');
  const old=records.find(n=>n.ui?.recordType==='execution'&&(()=>{const data=taskRunView(n);return data.taskId===task.id&&data.definition===cursor.definition&&data.dueAt===cursor.nextAt;})());
  if(old&&taskRunView(old).status==='running')throw Error('Stop execution before skipping');
  if(old&&old.state!=='active')throw Error('Execution is in Trash · restore it first');
@@ -69,7 +72,7 @@ export function taskNotice(task:any,run:any){const data=taskRunView(run),origina
  return typedRecord('notification','Notifications/'+localDate()+'-'+crypto.randomUUID()+'.md',noticeBody(value));
 }
 export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Date(),options:{retry?:boolean;manual?:boolean}={}){
- const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');
+ const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');if(task.ui.requiresReview)throw Error('Review schedule first');
  const definition=parseTask(latest(task).body);if(!definition.enabled&&!options.manual)throw Error('Task is disabled');
  if(definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone)throw Error('Timezone changed · review schedule');
  const signature=taskDefinition(definition),cursor=task.taskCursor;if(!cursor||cursor.definition!==signature||!cursor.nextAt)throw Error('Task has no pending occurrence');
@@ -86,7 +89,7 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
   }
   if(!options.retry||!['failed','stopped','missed','interrupted'].includes(data.status))throw Error('Occurrence already processed');
   const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
-  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.model;
+  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;
   const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;
   return {task,run,execute:true};
  }
@@ -99,18 +102,26 @@ export function heartbeatRun(records:any[],runId:string,owner:string,now=new Dat
  // The lease is transport metadata, not a content revision or a source change.
  return {...old,runLease:{owner,until:new Date(+now+90000).toISOString()}};
 }
-export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];model?:RunData['model']},now=new Date()){
+export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model']},now=new Date()){
  const old=records.find(n=>n.id===runId&&n.state==='active');if(!old)throw Error('Execution unavailable');const data=taskRunView(old);
  if(data.owner!==owner||data.status!=='running')throw Error('Execution owner conflict');
  const lease=old.runLease?.owner===owner?old.runLease.until:data.leaseUntil;if(asDate(lease)<now)throw Error('Execution owner expired');
  if(!['succeeded','failed','stopped','skipped'].includes(result.status))throw Error('Invalid completion');
- if(result.status==='succeeded'&&(!result.answer?.trim()||!result.sources?.length||!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
+ if(result.calculation!==undefined)validateRunCalculation({...data,...result});
+ else if(result.status==='succeeded'&&(!result.answer?.trim()||!result.sources?.length||!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
+ if(result.calculation!==undefined){const revision=task.revisions.find((v:any)=>v.version===data.taskRevision);if(!revision||parseTask(revision.body).prompt!==data.prompt||taskDefinition(parseTask(revision.body))!==data.definition)throw Error('Invalid scheduled calculation target');}
  const completed={...data,...result,finishedAt:now.toISOString()};const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
  if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition&&task.taskCursor.nextAt===data.dueAt){
-  const after=new Date(Math.max(+now,+asDate(data.dueAt))),nextAt=definition.repeat==='once'?null:nextScheduleOccurrence(definition,after).toISOString();
-  updated={...task,taskCursor:{...task.taskCursor,nextAt}};
+  if(definition.repeat!=='once'&&definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone){
+   // Retain the completed run and its occurrence until the user reviews the
+   // schedule; do not calculate the next occurrence in a different zone.
+   updated={...task,ui:{...task.ui,requiresReview:true}};
+  }else{
+   const after=new Date(Math.max(+now,+asDate(data.dueAt))),nextAt=definition.repeat==='once'?null:nextScheduleOccurrence(definition,after).toISOString();
+   updated={...task,taskCursor:{...task.taskCursor,nextAt}};
+  }
  }
  return {task:updated,run};
 }

@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {deletionContents,canRestore} from '../src/memory-trash.ts';
+import {deletionContents,canRestore,trashLocation} from '../src/memory-trash.ts';
+
+test('trash location identifies the folder root without guessing from ambiguous legacy data',()=>{
+ assert.equal(trashLocation({notes:[{path:'Notes/work/a.md'}],folders:[]}), 'Notes/work/a.md');
+ assert.equal(trashLocation({notes:[{path:'Notes/work/sub/a.md'}],folders:['Notes/work/sub','Notes/work']}), 'Notes/work');
+ assert.equal(trashLocation({notes:[],folders:['Inbox/projects']}), 'Inbox/projects');
+ assert.equal(trashLocation({notes:[{path:'Notes/a.md'},{path:'Inbox/b.md'}],folders:[]}), undefined);
+ assert.equal(trashLocation({notes:[],folders:['Notes/a','Notes/b']}), undefined);
+});
 
 test('folder deletion retains exact records and revisions, excludes similarly named siblings',()=>{
  const original={id:'a',path:'Notes/work/a.md',body:'原文',version:2,history:['以前']};

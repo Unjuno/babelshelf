@@ -1,3 +1,4 @@
+import {withTensorResources} from './tensor-resources';
 import {createStructuredTokenFilter} from './structured-decoding';
 import {validateOnnxTextBudget} from './text-model-manifest';
 /// <reference lib="webworker" />
@@ -5,8 +6,10 @@ import {AutoModelForCausalLM,AutoTokenizer,env,LogitsProcessor,LogitsProcessorLi
 import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
 import {configureLocalTransformerRuntime} from './transformers-runtime';
+import {transformerLoadOptions} from './onnx-execution-options';
 import {onnxTextModels,getOnnxTextManifest} from './text-model-manifest';
 import {createPinnedAssetStore} from './pinned-text-assets';
+import {collectPreparedTextStatuses} from './prepared-text-backend';
 const networkFetch=globalThis.fetch.bind(globalThis);
 const runtimeURLs=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{
@@ -28,54 +31,57 @@ env.customCache={
  async put(){throw Error('Use explicit text model preparation');}
 };
 configureLocalTransformerRuntime(env,wasmURL,mjsURL);
-function encode(messages:any[]){
+function encode(messages:any[],own:<V>(value:V)=>V){
  if(!tokenizer||!model)throw Error('Model not loaded');
  if(!Array.isArray(messages)||messages.length>256||messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>1000000))throw Error('Invalid text messages');
  const input=tokenizer.apply_chat_template(messages,{add_generation_prompt:true,return_dict:true});
+ for(const tensor of Object.values(input))own(tensor);
  return {input,tokens:Number(input.input_ids.dims.at(-1))};
 }
 async function unload(){const old=model;model=null;tokenizer=null;selected=undefined;if(old)await old.dispose();}
 self.onmessage=async({data})=>{
  if(data.cmd==='abort'){controller?.abort();return;}
  if(busy){self.postMessage({id:data.id,type:'error',value:'Model busy'});return;}
- busy=true;controller=new AbortController();const progress=(value:string)=>self.postMessage({id:data.id,type:'progress',value});
+ busy=true;const operationController=controller=new AbortController();const progress=(value:string)=>self.postMessage({id:data.id,type:'progress',value});
  let diagnostic:{raw:string;reason:string;truncated:boolean}|undefined;
- try{let value:any;const args=data.args??{};
-  if(['init','status'].includes(data.cmd)){value={};for(const [id,store]of stores){check();value[id]={...await store.status(controller.signal),presenceOnly:true};}}
+ try{const value=await withTensorResources(async own=>{let value:any;const args=data.args??{};
+  if(['init','status'].includes(data.cmd)){value=await collectPreparedTextStatuses(stores,operationController.signal);}
   else if(data.cmd==='verify'){
    const manifest=getOnnxTextManifest(args.model),store=stores.get(args.model);if(!manifest||!store)throw Error('Unknown model');
-   for(const pin of manifest.files){check();await store.read(pin.path,controller.signal);}
+   for(const pin of manifest.files){check();await store.read(pin.path,operationController.signal);}
    value=true;
   }else if(data.cmd==='prepare'){
    const store=stores.get(args.model);if(!store)throw Error('Unknown model');
-   await store.prepare(args.allowNetwork===true,controller.signal,(done,total)=>progress('Verifying '+Math.round(done/total*100)+'%'),args.localFiles??[]);value=true;
+   await store.prepare(args.allowNetwork===true,operationController.signal,(done,total)=>progress('Verifying '+Math.round(done/total*100)+'%'),args.localFiles??[]);value=true;
   }else if(data.cmd==='load'){
    const manifest=getOnnxTextManifest(args.model),store=stores.get(args.model);if(!manifest||!store)throw Error('Unknown model');
    if(model&&selected?.id!==manifest.id)throw Error('Unload previous text model first');
    if(!model){
     selected=manifest;
     progress('Verifying text model');
-    const config=JSON.parse(await(await store.read('config.json',controller.signal)).text());
+    const config=JSON.parse(await(await store.read('config.json',operationController.signal)).text());
     if(config.model_type!==manifest.architecture||!config.architectures?.includes(manifest.architecture==='qwen2'?'Qwen2ForCausalLM':'LlamaForCausalLM'))throw Error('Text model config incompatible');
-    progress('Loading · WASM');
+    const execution=transformerLoadOptions(manifest);
+    progress('Loading · '+(execution.device==='webgpu'?'WebGPU':'WASM'));
     tokenizer=await AutoTokenizer.from_pretrained(manifest.id,{local_files_only:true,revision:manifest.revision});check();
-    try{model=await AutoModelForCausalLM.from_pretrained(manifest.id,{local_files_only:true,revision:manifest.revision,device:'wasm',dtype:'q8'});check();}
+    try{model=await AutoModelForCausalLM.from_pretrained(manifest.id,{local_files_only:true,revision:manifest.revision,...execution});check();}
     catch(error){await unload();throw error;}
    }value=true;
   }else if(data.cmd==='unload'){await unload();value=true;}
-  else if(data.cmd==='count'){value={prompt_tokens:encode(args.messages).tokens};}
+  else if(data.cmd==='count'){value={prompt_tokens:encode(args.messages,own).tokens};}
   else if(data.cmd==='generate'){
-   const {input,tokens}=encode(args.messages),maxTokens=args.maxTokens??256;
+   const {input,tokens}=encode(args.messages,own),maxTokens=args.maxTokens??256;
    validateOnnxTextBudget(tokens,maxTokens,selected!.id);
    const filter=args.format&&args.format!=='prose'?createStructuredTokenFilter(args.format,tokenizer,model.generation_config?.eos_token_id??tokenizer.eos_token_id):null;
    const processors=new LogitsProcessorList();
    if(filter){class FormatProcessor extends LogitsProcessor{_call(ids:bigint[][],logits:any){if(ids.length!==1)throw Error('Structured batch unsupported');try{filter!.mask(ids[0].slice(tokens),logits.data);}catch(error){const raw=ids[0].length>tokens?tokenizer.decode(ids[0].slice(tokens).map(Number),{skip_special_tokens:true}):'';diagnostic={raw:raw.slice(0,8192),reason:ids[0].length-tokens>=maxTokens-1?'structured:budget':'structured:continuation',truncated:raw.length>8192};throw Error('Invalid model JSON · structured generation stopped');}return logits;}}processors.push(new FormatProcessor());}
-   progress('Generating');const output=await model.generate({...input,max_new_tokens:maxTokens,do_sample:false,...(filter?{logits_processor:processors}:{})});check();
+   progress('Generating');const output=own(await model.generate({...input,max_new_tokens:maxTokens,do_sample:false,...(filter?{logits_processor:processors}:{})}));check();
    const generated=output.tolist()[0].slice(tokens);
    if(filter&&!filter.complete(generated)){const raw=tokenizer.decode(generated,{skip_special_tokens:true});diagnostic={raw:raw.slice(0,8192),reason:'structured:incomplete',truncated:raw.length>8192};throw Error('Invalid model JSON · incomplete structured output');}
    value={text:tokenizer.decode(generated,{skip_special_tokens:true}),outputTokens:generated.length};
   }else throw Error('Unknown text operation');
+  return value;});
   check();self.postMessage({id:data.id,type:'done',value});
- }catch(error){self.postMessage({id:data.id,type:'error',value:controller.signal.aborted?'Stopped':(error as Error).message,...(!controller.signal.aborted&&diagnostic?{diagnostic}:{})});}
+ }catch(error){self.postMessage({id:data.id,type:'error',value:operationController.signal.aborted?'Stopped':(error as Error).message,...(!operationController.signal.aborted&&diagnostic?{diagnostic}:{})});}
  finally{controller=undefined;busy=false;}
 };

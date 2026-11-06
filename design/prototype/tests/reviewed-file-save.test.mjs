@@ -1,5 +1,15 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createReviewedFileSaver} from '../src/reviewed-file-save.ts';
+
+test('copy source pages show bounded original previews and search older multilingual messages without changing their bytes',async()=>{
+ const copy=await import('../src/dialogue-copy.ts'),{appendTurn,emptyDialogue}=await import('../src/conversation.ts');let state=emptyDialogue();
+ for(let i=0;i<30;i++)state=appendTurn(state,{id:'turn-'+i,user:'Question '+i,answer:i===2?'ＡＱＵＡ 日本語\noriginal text':'Answer '+i});
+ const review=copy.makeAnswerCopyReview(state,'turn-29','Answer 29'),before=structuredClone({state,review}),first=copy.dialogueCopyPage(state,review),older=copy.dialogueCopyPage(state,review,'',1);
+ assert.equal(first.items.length,12);assert.equal(first.items[0].preview,'Answer 29');assert.equal(first.items[0].selected,true);assert.equal(first.items[0].speaker,'assistant');assert.equal(first.hasMore,true);assert.equal(older.items[0].preview,'Answer 23');
+ const found=copy.dialogueCopyPage(state,review,'aqua 日本語');assert.equal(found.items.length,1);assert.equal(found.items[0].index,2);assert.equal(found.items[0].preview,'ＡＱＵＡ 日本語 original text');
+ const selected=copy.selectDialogueCopy(state,review,found.items[0].index,found.items[0].speaker);assert.equal(selected.source.quote,'ＡＱＵＡ 日本語\noriginal text');assert.deepEqual({state,review},before);
+ const changed=structuredClone(state);changed.turns[29].id='different';assert.equal(copy.dialogueCopyPage(changed,review).items.some(item=>item.turnId==='turn-29'),false);assert.equal(copy.dialogueCopyPage(state,review,'missing phrase').items.length,0);
+});
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 test('reviewed file save excludes duplicate submissions through commit and acknowledgement',async()=>{
  const saver=createReviewedFileSaver(),commit=deferred(),ack=deferred(),entered=deferred();let writes=0,acks=0;

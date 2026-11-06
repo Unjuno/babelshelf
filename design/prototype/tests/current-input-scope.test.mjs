@@ -16,8 +16,73 @@ test('explicit dialogue original scopes remain intact until exact-original valid
 test('validated legacy indexed capture keeps its original selector with current attachments',()=>{const request={action:'capture',query:'',historyIndex:0,historyPart:'assistant'};assert.equal(bindCurrentInputRequest(request,true),request);});
 
 import {explicitInputQuestion} from '../src/current-input-scope.ts';
+test('plain-text attachment questions use the current inputs in Japanese and English',()=>{
+ for(const question of ['この添付テキストの合言葉は何ですか？','添付の文章にあるコードは何ですか？','What is the code in this attached text?']){
+  assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+  assert.equal(explicitInputQuestion(question,false),null);
+ }
+ for(const question of ['この添付テキストの合言葉は何で、削除してください？','What is in this attached text and delete the file?'])assert.equal(explicitInputQuestion(question,true),null);
+});
+test('questions that mention current input and saved Memory remain with agent planning',()=>{
+ for(const question of ['Compare the code in this attachment with my saved notes.','What does this PDF say about my saved meeting notes?','この画像を保存したメモと比較して。','添付資料と保存済みのノートを照合して。']){
+  assert.equal(inputScope.explicitInputQuestion(question,true),null,question);
+  assert.equal(inputScope.explicitQuoteRequest(question),false,question);
+ }
+ const question='Compare the code in this attachment with my saved notes.';
+ const prompt=planDialogueMessages(question,planningContextForInputs(context,true),inputs,{allowedTools:[{id:'memory.search',effect:'read',network:'none',usage:'Search local saved notes.',inputSchema:{type:'object',properties:{query:{type:'string'}}}}],history:[]})[0].content;
+ assert.match(prompt,/MIXED SOURCE REQUEST/);assert.match(prompt,/memory\.search/);assert.match(prompt,/answer with target=inputs/);
+});
+test('an explicitly attachment-only text question remains read-only and excludes mixed commands',()=>{
+ const question='Using only the attached text, what is the temporary bronze phrase? Reply with the phrase.';
+ assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ assert.equal(explicitInputQuestion(question,false),null);
+ for(const text of ['Using only the attached text, what is the phrase and delete the file?','Using only the attached text, what is the phrase and search the memory?','Using only the attached text, what is the phrase? Save it.','Using only the attached text, what did I say earlier?','Using only the attached text, what is the phrase? What is the date?'])assert.equal(explicitInputQuestion(text,true),null);
+});
 test('self-contained questions about submitted files use a fixed read-only scope, while commands and prior dialogue stay planned',()=>{
- for(const question of ['What background color is visible in this image?','Which code is in the attached document?','この写真の背景は何色ですか？'])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
- for(const question of ['Delete this image.','Save this attachment.','What is in this image? Delete it.','What is in this image? What about that note?','What did I say earlier about this image?','What is the date?'])assert.equal(explicitInputQuestion(question,true),null);
+ for(const question of ['What background color is visible in this image?','Which code is in the attached document?','この写真の背景は何色ですか？','What code is printed on the attached image? Reply with the code only.','Which date is in this file? Return the date only.'])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ for(const question of ['Delete this image.','Save this attachment.','What is in this image and delete the file?','このファイルの値は何で、削除してください？','What is in this image? Delete it.','What is in this image? What about that note?','What did I say earlier about this image?','What is the date?'])assert.equal(explicitInputQuestion(question,true),null);
  assert.equal(explicitInputQuestion('What color is in this image?',false),null);
+});
+
+test('audio-only video questions select a transcript-only view and refuse multiple inputs',()=>{
+ const question='What code is spoken in the attached video? Use only the audio.',speech=[{kind:'speech',noteId:'transcript',revision:1}],vision=[{kind:'vision',noteId:'combined',revision:1}];
+ assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ assert.deepEqual(inputScope.constrainAudioOnlyInputs(question,speech,[{kind:'video'}]),speech);
+ assert.deepEqual(inputScope.constrainAudioOnlyInputs(question,vision,[{kind:'video'}]),[{...vision[0],kind:'video-audio'}]);
+ assert.throws(()=>inputScope.constrainAudioOnlyInputs(question,[...speech,...vision],[{kind:'video'}]),/Audio-only transcript unavailable/);
+ assert.throws(()=>inputScope.constrainAudioOnlyInputs(question,speech,[{kind:'video'},{kind:'image'}]),/Audio-only transcript unavailable/);
+ assert.equal(explicitInputQuestion('What is in this video and delete it? Use only the audio.',true),null);
+ assert.equal(explicitInputQuestion('What is in this video? Use only the audio. Save it.',true),null);
+});
+
+test('literal PDF questions stay scoped to current originals without accepting mixed actions or earlier dialogue',()=>{
+ for(const question of ['What is the silver code written on page 1 of this PDF? Reply with the code only.','Which date is printed in the attached PDF?','このPDFに記載されているコードは何ですか？'])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ for(const question of ['What is written in this PDF? Delete it.','What did I say earlier about this PDF?','What is in this PDF? What about that note?'])assert.equal(explicitInputQuestion(question,true),null);
+ assert.equal(explicitInputQuestion('What is in this PDF?',false),null);
+});
+
+test('attachment-only questions also recognize PDF and other original media without enabling actions',()=>{
+ for(const kind of ['PDF','document','image','audio','video']){
+  const question=`Using only the attached ${kind}, what is the paper verification code?`;
+  assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+  assert.equal(explicitInputQuestion(question,false),null);
+ }
+ for(const question of ['Using only the attached PDF, what is the code and delete the file?','Using only the attached PDF, what is the code? Save it.','Using only the attached PDF, what did I say earlier?'])assert.equal(explicitInputQuestion(question,true),null);
+});
+test('direct quote requests about a current file stay in attachment scope instead of dialogue recall',()=>{
+ for(const question of [
+  'From this file, quote the sentence that states the water-cache amount?',
+  'From this file, quote the complete sentence that states the water-cache amount.',
+  'From this file, quote the complete sentence that states the water-cache amount',
+  'Using this attached document, quote the sentence that gives the meeting point?',
+ ])assert.deepEqual(explicitInputQuestion(question,true),{action:'answer',query:question,target:'inputs'});
+ for(const question of [
+  'From this file, quote the sentence and delete the file.',
+  'From this file, quote the sentence. What did I say earlier?',
+  'From this file, quote the sentence. Save it.',
+ ])assert.equal(explicitInputQuestion(question,true),null,question);
+ for(const question of [
+  'From this file, quote the sentence and delete the file?',
+  'From this file, quote the sentence. What did I say earlier?',
+ ])assert.equal(explicitInputQuestion(question,true),null);
 });

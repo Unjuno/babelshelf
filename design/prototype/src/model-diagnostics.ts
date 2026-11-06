@@ -7,7 +7,7 @@ const issue=(role:ModelRole):ModelIssue=>({role,label:role==='text'?'Text model'
 // Generic/unsupported failures intentionally remain undiagnosed.
 export function diagnoseModelIssues(status:string|undefined,attachments:readonly {kind?:string;status?:string}[]=[]):ModelIssue[]{
  const roles:ModelRole[]=[];
- if(status&&/^Model not (?:prepared|configured)(?: · Settings)?$/.test(status))roles.push('text');
+ if(status&&/^Model not (?:prepared|configured)(?: · Settings| · remove input file to search Memory)?$/.test(status))roles.push('text');
  if(status==='Analysis not prepared')for(const attachment of attachments){
   if(attachment.status==='Image text not prepared'||attachment.status==='No text layer · OCR required')roles.push('ocr');
   if(attachment.status==='Speech to text not prepared')roles.push('speech');

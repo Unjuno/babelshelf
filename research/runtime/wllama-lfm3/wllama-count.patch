@@ -1,0 +1,256 @@
+diff --git a/cpp/glue.hpp b/cpp/glue.hpp
+index 9b338ce..ede4800 100644
+--- a/cpp/glue.hpp
++++ b/cpp/glue.hpp
+@@ -589,6 +589,20 @@ struct glue_msg_load_res
+ 
+ /////////
+ 
++struct glue_msg_count_req
++{
++  GLUE_HANDLER("cntq_req")
++  GLUE_FIELD(str, data_json)
++};
++
++struct glue_msg_count_res
++{
++  GLUE_HANDLER("cntq_res")
++  GLUE_FIELD(int, prompt_tokens)
++};
++
++/////////
++
+ struct glue_msg_completion_req
+ {
+   GLUE_HANDLER("cmpl_req")
+diff --git a/cpp/wllama-context.h b/cpp/wllama-context.h
+index cae07f6..03cb2b6 100644
+--- a/cpp/wllama-context.h
++++ b/cpp/wllama-context.h
+@@ -290,24 +290,34 @@ struct wllama_context
+ 
+   explicit wllama_context() {};
+ 
+-  void create_completion_task(server_response_reader &rd, std::string &req_raw, std::vector<raw_buffer> &files, bool is_chat)
++  struct parsed_completion_body
+   {
+-    json body = json::parse(req_raw);
+-    task_response_type res_type = TASK_RESPONSE_TYPE_OAI_CMPL;
++    json body;
+     common_chat_session chat_session;
++  };
+ 
++  parsed_completion_body parse_completion_body(std::string &req_raw, bool is_chat)
++  {
++    parsed_completion_body parsed{json::parse(req_raw), {}};
+     if (is_chat)
+     {
+       std::vector<raw_buffer> dummy_files; // unused
+-      json body_parsed = oaicompat_chat_params_parse(
++      parsed.body = oaicompat_chat_params_parse(
+           vocab,
+-          body,
++          parsed.body,
+           meta->chat_params,
+           dummy_files,
+-          chat_session);
+-      body = std::move(body_parsed);
+-      res_type = TASK_RESPONSE_TYPE_OAI_CHAT;
++          parsed.chat_session);
+     }
++    return parsed;
++  }
++
++  void create_completion_task(server_response_reader &rd, std::string &req_raw, std::vector<raw_buffer> &files, bool is_chat)
++  {
++    auto parsed = parse_completion_body(req_raw, is_chat);
++    json body = std::move(parsed.body);
++    task_response_type res_type = is_chat ? TASK_RESPONSE_TYPE_OAI_CHAT : TASK_RESPONSE_TYPE_OAI_CMPL;
++    common_chat_session chat_session = std::move(parsed.chat_session);
+ 
+     {
+       const auto &prompt = body.at("prompt");
+@@ -680,6 +690,36 @@ struct wllama_context
+     return res;
+   }
+ 
++  glue_msg_count_res action_count(const char *req_raw)
++  {
++    PARSE_REQ(glue_msg_count_req);
++    if (!model || !meta || meta->chat_params.allow_image || meta->chat_params.allow_audio)
++    {
++      throw app_exception("Text-only loaded model required for token count");
++    }
++    const json request = json::parse(req.data_json.value);
++    if (!request.contains("messages") || !request.at("messages").is_array())
++    {
++      throw app_exception("Chat messages required for token count");
++    }
++    for (const auto &message : request.at("messages"))
++    {
++      if (!message.contains("content") || !message.at("content").is_string())
++      {
++        throw app_exception("Text-only messages required for token count");
++      }
++    }
++    auto parsed = parse_completion_body(req.data_json.value, true);
++    const auto prompts = tokenize_input_prompts(vocab, nullptr, parsed.body.at("prompt"), true, true, mtmd_helper_init_opt_default());
++    if (prompts.size() != 1)
++    {
++      throw app_exception("One prompt required for token count");
++    }
++    glue_msg_count_res res;
++    res.prompt_tokens.value = prompts[0].size();
++    return res;
++  }
++
+   void create_embedding_tasks(server_response_reader &rd, std::string &req_raw)
+   {
+     json body = json::parse(req_raw);
+@@ -759,7 +799,7 @@ struct wllama_context
+ 
+     auto rd = std::make_unique<server_response_reader>(ctx_server.get_response_reader());
+ 
+-    auto tokens = format_prompt_rerank(model, vocab, nullptr, query, document, mtmd_helper_init_opt_default());
++    auto tokens = format_prompt_rerank(model, vocab, nullptr, query, document, {}, {}, mtmd_helper_init_opt_default());
+     server_task task = server_task(SERVER_TASK_TYPE_RERANK);
+     task.id = rd->get_new_id();
+     task.index = 0;
+diff --git a/cpp/wllama.cpp b/cpp/wllama.cpp
+index b499be1..d916faa 100644
+--- a/cpp/wllama.cpp
++++ b/cpp/wllama.cpp
+@@ -110,6 +110,7 @@ extern "C" const char *wllama_action(const char *name, const char *req_raw)
+     }
+ 
+     WLLAMA_ACTION(load)
++    WLLAMA_ACTION(count)
+     WLLAMA_ACTION(completion)
+     WLLAMA_ACTION(embedding)
+     WLLAMA_ACTION(rerank)
+diff --git a/src/glue/messages.ts b/src/glue/messages.ts
+index bf8e4af..6feeaa3 100644
+--- a/src/glue/messages.ts
++++ b/src/glue/messages.ts
+@@ -452,6 +452,30 @@ export const GLUE_MESSAGE_PROTOTYPES: { [name: string]: GlueMessageProto } = {
+       }
+     ]
+   },
++  "cntq_req": {
++    "name": "cntq_req",
++    "structName": "glue_msg_count_req",
++    "className": "GlueMsgCountReq",
++    "fields": [
++      {
++        "type": "str",
++        "name": "data_json",
++        "isNullable": false
++      }
++    ]
++  },
++  "cntq_res": {
++    "name": "cntq_res",
++    "structName": "glue_msg_count_res",
++    "className": "GlueMsgCountRes",
++    "fields": [
++      {
++        "type": "int",
++        "name": "prompt_tokens",
++        "isNullable": false
++      }
++    ]
++  },
+   "cmpl_req": {
+     "name": "cmpl_req",
+     "structName": "glue_msg_completion_req",
+@@ -777,6 +801,18 @@ export interface GlueMsgLoadRes {
+   has_audio_input: boolean;
+ }
+ 
++// struct glue_msg_count_req
++export interface GlueMsgCountReq {
++  _name: "cntq_req";
++  data_json: string;
++}
++
++// struct glue_msg_count_res
++export interface GlueMsgCountRes {
++  _name: "cntq_res";
++  prompt_tokens: number;
++}
++
+ // struct glue_msg_completion_req
+ export interface GlueMsgCompletionReq {
+   _name: "cmpl_req";
+@@ -873,4 +909,4 @@ export interface GlueMsgTestBackendOpsRes {
+ }
+ 
+ 
+-export type GlueMsg = GlueMsgError | GlueMsgLoadReq | GlueMsgLoadRes | GlueMsgCompletionReq | GlueMsgCompletionRes | GlueMsgEmbeddingReq | GlueMsgEmbeddingRes | GlueMsgRerankReq | GlueMsgRerankRes | GlueMsgSystemoneReq | GlueMsgSystemoneRes | GlueMsgGetResultReq | GlueMsgGetResultRes | GlueMsgCancelReq | GlueMsgCancelRes | GlueMsgTestBackendOpsReq | GlueMsgTestBackendOpsRes;
++export type GlueMsg = GlueMsgError | GlueMsgLoadReq | GlueMsgLoadRes | GlueMsgCountReq | GlueMsgCountRes | GlueMsgCompletionReq | GlueMsgCompletionRes | GlueMsgEmbeddingReq | GlueMsgEmbeddingRes | GlueMsgRerankReq | GlueMsgRerankRes | GlueMsgSystemoneReq | GlueMsgSystemoneRes | GlueMsgGetResultReq | GlueMsgGetResultRes | GlueMsgCancelReq | GlueMsgCancelRes | GlueMsgTestBackendOpsReq | GlueMsgTestBackendOpsRes;
+diff --git a/src/types/types.ts b/src/types/types.ts
+index de08636..ee4604d 100644
+--- a/src/types/types.ts
++++ b/src/types/types.ts
+@@ -59,6 +59,8 @@ export interface LoadModelParams {
+   ctx_shift?: boolean;
+   cache_idle_slots?: boolean;
+   n_cache_reuse?: number;
++  n_ctx_checkpoints?: number;
++  checkpoint_min_step?: number;
+   lora_adapters?: { path: string; scale?: number }[];
+   lora_init_without_apply?: boolean;
+   spec_draft_model?: string;
+diff --git a/src/wllama.ts b/src/wllama.ts
+index 6ecbb68..62bf5d4 100644
+--- a/src/wllama.ts
++++ b/src/wllama.ts
+@@ -18,6 +18,7 @@ import { ModelManager, Model, type ModelSource } from './model-manager';
+ import type {
+   GlueMsgCancelRes,
+   GlueMsgCompletionRes,
++  GlueMsgCountRes,
+   GlueMsgEmbeddingRes,
+   GlueMsgRerankRes,
+   GlueMsgSystemoneRes,
+@@ -567,6 +568,8 @@ export class Wllama {
+       ctx_shift: params.ctx_shift,
+       cache_idle_slots: params.cache_idle_slots,
+       n_cache_reuse: params.n_cache_reuse,
++      n_ctx_checkpoints: params.n_ctx_checkpoints,
++      checkpoint_min_step: params.checkpoint_min_step,
+       lora_paths: params.lora_adapters?.map((a) => a.path),
+       lora_scales: params.lora_adapters?.map((a) => a.scale ?? 1.0),
+       lora_init_without_apply: params.lora_init_without_apply,
+@@ -757,6 +760,31 @@ export class Wllama {
+     );
+   }
+ 
++  /** Count the exact text-only chat prompt after applying the loaded model template. */
++  async countChatTokens(options: ChatCompletionParams): Promise<number> {
++    this.checkModelLoaded();
++    if (!Array.isArray(options.messages) || options.messages.some(message => typeof message.content !== 'string')) {
++      throw new WllamaError('Text-only chat messages required');
++    }
++    if (Object.keys(this.chatTemplateKwargs).length > 0) {
++      options = {
++        ...options,
++        chat_template_kwargs: {
++          ...this.chatTemplateKwargs,
++          ...(options.chat_template_kwargs ?? {}),
++        },
++      };
++    }
++    const result = await this.proxy.wllamaAction<GlueMsgCountRes>('count', {
++      _name: 'cntq_req',
++      data_json: JSON.stringify(options),
++    });
++    if (!Number.isSafeInteger(result.prompt_tokens) || result.prompt_tokens < 0) {
++      throw new WllamaError('Invalid prompt token count');
++    }
++    return result.prompt_tokens;
++  }
++
+   /**
+    * Make chat completion for a given chat messages.
+    * @param options OAI-compatible chat completion options

@@ -1,0 +1,52 @@
+import {checkTextStorageStatus,safeRuntimeLoadMetrics,type TextRuntime} from './text-inference.ts';
+import {releaseIdleInference} from './inference-ownership.ts';
+import {runtimeRoleForModelEngine,type ProductRuntimeRole} from './product-runtime-assets.ts';
+import {ModelPreparationRequired} from './execution-result.ts';
+export {ModelPreparationRequired} from './execution-result.ts';
+
+type Resident={readonly loaded:string|boolean;readonly busy:boolean;unload:()=>Promise<unknown>};
+type Text=TextRuntime&Resident;
+type Decision=Resident&{readonly enabled:boolean;readonly ready:boolean;load:()=>Promise<unknown>};
+/** Shared acquisition policy. Existing engine clients retain leases and Worker ownership.
+ * Automatic execution can only verify local assets. Explicit Load may prepare runtime
+ * assets when its caller supplies the user's existing download permission.
+ */
+export function createModelExecutionManager<D extends Decision>(ports:{text:Text;decision:D;ensureRuntime:(role:ProductRuntimeRole,allowNetwork:boolean)=>Promise<void>}){
+ const requireText=(model:string|undefined)=>{
+  if(!model)throw new ModelPreparationRequired('model-selection','Model not configured · Settings');
+  checkTextStorageStatus(ports.text.assets,model);
+  if(!ports.text.assets[model]?.filesPresent)throw new ModelPreparationRequired('model-files','Model not prepared · Settings');
+  return model;
+ };
+ const ensureTextRuntime=async(selected:string,allowNetwork:boolean)=>{
+  const role=runtimeRoleForModelEngine((ports.text.manifest.models.find(item=>item.id===selected) as {engine?:string}|undefined)?.engine);
+  if(role)await ports.ensureRuntime(role,allowNetwork);
+ };
+ const loadText=async(model:string|undefined,check:()=>void,options:{allowNetwork?:boolean}={},runtimeReady=false)=>{
+  check();const selected=requireText(model);
+  if(!runtimeReady)await ensureTextRuntime(selected,options.allowNetwork===true);
+  check();const metrics=safeRuntimeLoadMetrics(await ports.text.load(selected));check();if(ports.text.loaded!==selected)throw Error('Text model did not load');return {loaded:selected,...(metrics?{metrics}:{})};
+ };
+ return {
+  async loadText(model:string|undefined,check:()=>void,options:{allowNetwork?:boolean}={}){
+   check();const selected=requireText(model);await ensureTextRuntime(selected,options.allowNetwork===true);check();requireText(selected);
+   await releaseIdleInference([ports.decision],check);return loadText(selected,check,options,true);
+  },
+  async text(model:string|undefined,check:()=>void,load:(work:()=>Promise<{loaded:string}>)=>Promise<unknown>=work=>work()):Promise<TextRuntime>{
+   let runtimeReady=false;
+   check();if(!model||ports.text.loaded!==model)requireText(model);
+   if(model&&ports.text.loaded!==model){await ensureTextRuntime(model,false);runtimeReady=true;check();requireText(model);}
+   await releaseIdleInference([ports.decision],check);check();
+   if(ports.text.loaded!==model)await load(()=>loadText(model,check,{},runtimeReady));
+   check();return ports.text.pin?.()??ports.text;
+  },
+  async decision(check:()=>void,load:(work:()=>Promise<unknown>)=>Promise<unknown>=work=>work()):Promise<D>{
+   check();if(!ports.decision.enabled||!ports.decision.ready)throw new ModelPreparationRequired('decision-files','Decision model not prepared · Settings');
+   if(!ports.decision.loaded){await ports.ensureRuntime('decision',false);check();if(!ports.decision.enabled||!ports.decision.ready)throw new ModelPreparationRequired('decision-files','Decision model not prepared · Settings');}
+   await releaseIdleInference([ports.text],check);check();
+   if(!ports.decision.loaded)await load(async()=>{check();const result=await ports.decision.load();check();if(!result||typeof result!=='object'||(result as {loaded?:unknown}).loaded!==true||!ports.decision.loaded)throw Error('Decision model did not load');return result;});
+   check();return ports.decision;
+  },
+  releaseForReader:(check:()=>void)=>releaseIdleInference([ports.text,ports.decision],check),
+ };
+}

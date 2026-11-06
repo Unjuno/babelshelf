@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const core=await import('../dist/core.js').catch(()=>({}));
+test('search discovers separated filename words without changing original citations',()=>{
+ const note=core.createNote({path:'Inbox/zephyr-meeting.md',body:'Friday at noon.'});
+ for(const search of [core.searchNotes,core.searchStoredNotes]){const hits=search([note],'zephyr meeting');assert.equal(hits[0]?.noteId,note.id);assert.equal(hits[0].quote,'Friday at noon.');assert.equal(core.validateRefs([note],hits).ok,true);}
+});
 test('new note preserves literal source and immutable revisions',()=>{
  assert.equal(typeof core.createNote,'function');
  const n=core.createNote({title:'設計',body:'<script>原文</script>\n\n予算は240万円。'});
@@ -15,12 +19,38 @@ test('Japanese search finds evidence beyond document beginning with exact UTF-16
  const hits=core.searchNotes([n],'青葉742');assert.ok(hits.length);
  const h=hits[0];assert.equal(n.revisions[0].body.slice(h.start,h.end),h.quote);assert.ok(h.start>1000);
 });
+test('citation chunks keep UTF-16 surrogate pairs intact at the chunk boundary',()=>{
+ const body='a'.repeat(699)+'😀tail',rows=core.chunks(body);
+ assert.deepEqual(rows.map(({start,end,quote})=>({start,end,quote})),[
+  {start:0,end:699,quote:'a'.repeat(699)},
+  {start:699,end:body.length,quote:'😀tail'},
+ ]);
+ for(const row of rows)assert.equal(body.slice(row.start,row.end),row.quote);
+ assert.deepEqual(core.chunks('😀x',1).map(row=>row.quote),['😀','x']);
+ assert.throws(()=>core.chunks('text',0),/chunk size/);
+ const note=core.createNote({title:'Emoji boundary',body:'a'.repeat(699)+'😀needle tail'}),hit=core.searchNotes([note],'needle')[0];
+ assert.ok(hit);assert.ok(hit.quote.startsWith('😀'));assert.equal(note.revisions[0].body.slice(hit.start,hit.end),hit.quote);
+});
+test('citation chunks keep combining marks and joined emoji together',()=>{
+ const combining='a'.repeat(699)+'e\u0301tail',family='a'.repeat(699)+'👩‍👩‍👧‍👦tail';
+ for(const body of [combining,family]){const rows=core.chunks(body);assert.equal(rows.map(row=>row.quote).join(''),body);for(const row of rows)assert.equal(body.slice(row.start,row.end),row.quote);}
+ assert.equal(core.chunks(combining)[0].quote,'a'.repeat(699));
+ assert.ok(core.chunks(combining)[1].quote.startsWith('e\u0301'));
+ assert.equal(core.chunks(family)[0].quote,'a'.repeat(699));
+ assert.ok(core.chunks(family)[1].quote.startsWith('👩‍👩‍👧‍👦'));
+});
 test('withdrawn notes and derivatives with withdrawn sources cannot ground answers',()=>{
  const n=core.createNote({title:'計画',body:'会場は京都です。'});
  const ref=core.searchNotes([n],'会場')[0];
  const derived=core.createNote({title:'要約',body:'会場は京都。',kind:'generated',sources:[ref]});
  const w=core.withdrawNote(n,1);assert.equal(core.searchNotes([w,derived],'会場').length,0);
  assert.equal(core.validateRefs([w,derived],[ref]).ok,false);
+});
+test('searchable source IDs preserve grounding eligibility without building ranking indexes',()=>{
+ const original=core.createNote({title:'原文',body:'保存した説明がここにある。'}),ref=core.searchNotes([original],'説明')[0];
+ const derived=core.createNote({title:'要約',body:'保存した説明。',kind:'generated',sources:[ref]}),empty=core.createNote({title:'空',body:'  \n'}),unsupported=core.createNote({title:'出典なし',body:'出典のない生成文。',kind:'generated'}),withdrawn=core.withdrawNote(core.createNote({title:'撤回',body:'使えない記録。'}),1);
+ const records=[original,derived,empty,unsupported,withdrawn],expected=new Set(core.buildIndex(records).docs.map(doc=>doc.n.id));
+ assert.deepEqual(core.searchableNoteIds(records),expected);
 });
 test('forged, changed and out of bounds references are rejected',()=>{
  const n=core.createNote({title:'予定',body:'日時は10月20日。'});const ref=core.searchNotes([n],'日時')[0];
@@ -51,6 +81,13 @@ test('1000 Japanese notes preserve specific evidence recall and aliases',()=>{
  assert.equal(core.searchNotes(notes,'試験742号')[0].noteId,notes[742].id);
  assert.equal(core.searchNotes(notes,'青葉プロジェクト')[0].noteId,notes[742].id);
 });
+test('current Markdown filename remains searchable after rename without altering originals or citation spans',()=>{
+ const original=core.createNote({title:'林檎会議',body:'集合場所は北口。',path:'Notes/林檎会議.md'}),renamed=core.reviseNote(original,{path:'Notes/避難案内.md'},1),before=structuredClone(renamed);
+ for(const search of [core.searchNotes,core.searchStoredNotes]){
+  const result=search([renamed],'避難案内');assert.equal(result[0]?.noteId,renamed.id);assert.equal(result[0].revision,2);assert.equal(renamed.revisions[1].body.slice(result[0].start,result[0].end),result[0].quote);
+ }
+ assert.equal(renamed.revisions[0].path,'Notes/林檎会議.md');assert.deepEqual(renamed,before);
+});
 test('Japanese English Chinese Korean and mixed input stay searchable',()=>{
  for(const [title,body,query] of [['ja','青葉会議の会場は京都です','青葉会議'],['en','The Aurora meeting room is Cedar Hall.','Aurora'],['zh','星河会议地点是上海。','星河会议'],['ko','새봄 회의 장소는 서울입니다.','새봄'],['mix','Aurora計画의 장소是京都。','Aurora計画']]){
   const n=core.createNote({title,body});assert.equal(core.searchNotes([n],query)[0]?.noteId,n.id);
@@ -76,6 +113,23 @@ test('literal Latin words and identifiers do not retrieve incidental bigram over
  assert.equal(core.searchNotes(notes,'missing-9876').length,0);
  assert.equal(core.searchNotes(notes,'a').length,0);
  assert.deepEqual(core.searchNotes(notes,'Water CEDAR-8642').map(h=>h.noteId),[wanted.id]);
+});
+test('mixed-script search ignores a short Latin fragment alone while retaining meaningful partial matches',()=>{
+ const wanted=core.createNote({title:'QA避難案内',body:'集合場所は北口。'}),noise=core.createNote({title:'Public QA',body:'Unrelated update.'}),partial=core.createNote({title:'避難準備',body:'備蓄品。'}),longLatin=core.createNote({title:'Aurora',body:'Project meeting.'});
+ for(const search of [core.searchNotes,core.searchStoredNotes]){
+  const mixed=search([noise,wanted,partial,longLatin],'QA避難案内').map(hit=>hit.noteId);assert.ok(mixed.includes(wanted.id));assert.ok(mixed.includes(partial.id));assert.ok(!mixed.includes(noise.id));
+  assert.ok(search([noise],'QA').some(hit=>hit.noteId===noise.id));
+  assert.ok(search([longLatin],'Aurora避難案内').some(hit=>hit.noteId===longLatin.id));
+ }
+});
+
+test('a mixed Japanese search does not match an unrelated one-digit number alone',()=>{
+ const wanted=core.createNote({title:'QA湯の水は2リットル',body:'QA湯の水は2リットル。'}),noise=core.createNote({title:'Vision',body:'Frame at 2.300 s CU'});
+ for(const search of [core.searchNotes,core.searchStoredNotes]){
+  assert.deepEqual(search([noise],'QA湯の水は2リットル'),[]);
+  assert.ok(search([noise,wanted],'QA湯の水は2リットル').some(hit=>hit.noteId===wanted.id));
+  assert.ok(search([noise],'2').some(hit=>hit.noteId===noise.id));
+ }
 });
 test('hybrid lexical search retains multilingual aliases and exact UTF-16 citation ranges',()=>{
  const n=core.createNote({body:'🪴備蓄。\n\n'.repeat(150)+'台帳 ABC_7294 を確認。',aliases:['Aurora Ledger']});
@@ -124,6 +178,17 @@ test('new grounded references require an eligible source chain while historical 
  assert.equal(core.validateGroundingRefs([original,parent],[]).ok,true);
 });
 
+test('new grounded citations and imported generated notes reject cited text absent from the exact source range',async()=>{
+ const original=core.createNote({body:'The access code is 4826.'}),base={noteId:original.id,revision:1,start:0,end:original.revisions[0].body.length,quote:original.revisions[0].body};
+ assert.equal(core.validateGroundingRefs([original],[{...base,citedQuote:'access code is 4826'}]).ok,true);
+ for(const citedQuote of ['', 'access code is 1111', 4826, null]){
+  const ref={...base,citedQuote};assert.equal(core.validateGroundingRefs([original],[ref]).ok,false,String(citedQuote));
+  assert.equal(core.validateRefs([original],[ref]).ok,true,'historical range validation remains backward-compatible');
+ }
+ const corrupted=core.createNote({title:'Imported answer',body:'The code is 4826.',kind:'generated',sources:[{...base,citedQuote:'1111'}]}),pack=await core.makeBackup([original,corrupted]);
+ await assert.rejects(()=>core.parseBackup(JSON.stringify(pack)),/source reference/i);
+});
+
 test('stored-note discovery finds reviewed unsourced and stale generated files without making them grounding evidence',()=>{
  const source=core.createNote({title:'Original',body:'The marker is CEDAR-2491.'});const ref=core.searchNotes([source],'CEDAR-2491')[0];
  const generated=core.createNote({title:'Saved summary',body:'CEDAR-2491 saved summary',kind:'generated',sources:[ref]}),calculation=core.createNote({title:'Calculation99',body:'(1200 + 800) / 4 = 500',kind:'generated',sources:[]});
@@ -133,4 +198,13 @@ test('stored-note discovery finds reviewed unsourced and stale generated files w
  const stale=core.searchStoredNotes(notes,'CEDAR-2491');assert.equal(stale[0].noteId,generated.id);assert.equal(stale[0].groundingEligible,false);assert.equal(core.validateGroundingRefs(notes,stale).ok,false);
  assert.equal(core.searchStoredNotes([core.withdrawNote(calculation,1)],'Calculation99').length,0);
  assert.equal(core.searchNotes(notes,'Calculation99').length,0); // A discovery index cannot pollute evidence caching.
+});
+
+test('stored file search includes other matching files when one long note has many higher-ranked passages',()=>{
+ const long=core.createNote({title:'水の備蓄',body:Array.from({length:16},()=> '水 水 水 水 水').join('\n\n')});
+ const other=core.createNote({title:'避難',body:'水を確認する。'});
+ const before=structuredClone([long,other]);const hits=core.searchStoredNotes([long,other],'水',12);
+ assert.ok(hits.some(hit=>hit.noteId===long.id));assert.ok(hits.some(hit=>hit.noteId===other.id),'another matching file must remain discoverable');
+ const grounded=core.searchNotes([long,other],'水',12);assert.equal(grounded.length,12);assert.ok(grounded.every(hit=>hit.noteId===long.id),'grounded passage ranking is unchanged');
+ assert.deepEqual([long,other],before);for(const hit of hits){const note=[long,other].find(n=>n.id===hit.noteId);assert.equal(note.revisions[0].body.slice(hit.start,hit.end),hit.quote);}
 });

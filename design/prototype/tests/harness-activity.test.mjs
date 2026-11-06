@@ -1,25 +1,68 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {recordOperation,startActivity,finishActivity,validateActivity} from '../src/harness-activity.ts';
+import {recordOperation,startActivity,finishActivity,validateActivity,activityLabel} from '../src/harness-activity.ts';
+import {AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 import {emptyDialogue,appendTurn,dialogueContext,historyPayload,validateDialogue} from '../src/conversation.ts';
 import {planDialogue} from '../src/conversation.ts';
 const input={query:'日本語の記録'};
+test('folder listing executes and persists an activity receipt',async()=>{
+ const entries=[];const result=await recordOperation('memory.list',{path:'Inbox'},async()=>({entries:[]}),async item=>entries.push(item));
+ assert.deepEqual(result,{entries:[]});assert.deepEqual(entries.map(item=>item.status),['running','succeeded']);validateActivity([entries[1]]);
+});
 
-test('unresolved speaker choice retains actual bounded model failure without becoming history or permission',async()=>{
- const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts'),entries=[],raw='{"source":"none"}';
+test('device-clock activity displays a plain action label instead of an internal tool ID',async()=>{
+ const {run}=await import('../src/tools/time.now/tool.ts'),entries=[];
+ const result=await recordOperation('time.now',{},()=>run({},{check(){}}),async item=>entries.push(item));
+ assert.equal(result.source,'device-clock');
+ assert.equal(entries.at(-1).status,'succeeded');
+ assert.equal(activityLabel(entries.at(-1).tool),'Read time');
+});
+
+test('compatibility agent budget reflects receipt costs and reserves completion plus repairs',async()=>{
+ const {activityBoundedToolBudget,MAX_ACTIVITY_EVENTS_PER_TURN,ACTIVITY_EVENTS_PER_AGENT_TOOL,RESERVED_AGENT_REPAIR_EVENTS}=await import('../src/harness-activity.ts');
+ assert.equal(MAX_ACTIVITY_EVENTS_PER_TURN,128);
+ assert.equal(ACTIVITY_EVENTS_PER_AGENT_TOOL,4);
+ assert.equal(RESERVED_AGENT_REPAIR_EVENTS,6);
+ assert.equal(activityBoundedToolBudget(0,null),29);
+ assert.equal(activityBoundedToolBudget(114,null),1);
+ assert.equal(activityBoundedToolBudget(118,null),0);
+ assert.equal(activityBoundedToolBudget(122,0),0);
+ assert.equal(activityBoundedToolBudget(114,8),1);
+ assert.throws(()=>activityBoundedToolBudget(129,null),/budget/i);
+});
+
+test('invalid speaker choice persists content-free failure metadata without becoming history or permission',async()=>{
+ const {resolveDialogueSubject}=await import('../src/dialogue-subject.ts'),entries=[],raw='{"source":"none","quote":"PRIVATE_SOURCE_SENTINEL"}';
  const a={turnId:'a',turnIndex:0,speaker:'user',quote:'user words',start:0,end:10},b={turnId:'b',turnIndex:1,speaker:'assistant',quote:'answer',start:0,end:6};
- await assert.rejects(recordOperation('dialogue.subject',{question:'which?',a,b},()=>resolveDialogueSubject({manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:raw})},'which?',a,b),async entry=>entries.push(entry)),/Original unavailable/);
- assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.equal(entries[1].output.raw,raw);assert.equal(entries[1].output.reason,'unresolved');validateActivity(entries.slice(1));
+ await assert.rejects(recordOperation('dialogue.subject',{question:'which?',a,b},()=>resolveDialogueSubject({manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:raw})},'which?',a,b),async entry=>entries.push(entry)),/Invalid model source/);
+ assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.equal(entries[1].output.rawBytes,new TextEncoder().encode(raw).byteLength);assert.equal(entries[1].output.reason,'source');assert.equal(entries[1].output.truncated,false);assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_SOURCE_SENTINEL|\"raw\"/);validateActivity(entries.slice(1));
  const state=appendTurn(emptyDialogue(),{id:'turn',user:'which?',activity:entries.slice(1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/source|dialogue.subject/);
 });
-test('invalid planner output is bounded audit evidence only, never accepted or added to model history',async()=>{
- const raw='{"action":"recall","historyIndex":0,"historyPart":"user"}',entries=[];
+test('query failure diagnostics expose only allowlisted categories and no model-authored values',async()=>{
+ const {PlannerOutputError}=await import('../src/planner-error.ts');
+ for(const [query,type] of [[undefined,'missing'],[null,'null'],[23,'number'],[['PRIVATE'],'array'],[{PRIVATE:'PRIVATE'},'object'],['PRIVATE','string']]){
+  const entries=[],raw='```json\n'+JSON.stringify({action:'PRIVATE_ACTION',target:'PRIVATE_TARGET',query})+'\n```';
+  await assert.rejects(recordOperation('dialogue.plan',{},async()=>{throw new PlannerOutputError('Invalid model action',raw,'query');},async a=>entries.push(a)));
+  assert.deepEqual(entries[1].output.queryShape,{action:'unknown',target:'other',type,...(type==='string'?{empty:false,overLimit:false}:{})});
+  assert.doesNotMatch(JSON.stringify(entries),/PRIVATE/);
+ }
+});
+
+test('invalid planner output persists content-free audit metadata, never accepted or added to model history',async()=>{
+ const raw='{"action":"recall","historyIndex":0,"historyPart":"user","quoted":"PRIVATE_PLAN_SENTINEL"}',entries=[];
  const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:10}),generate:async()=>({text:raw})};
  await assert.rejects(recordOperation('dialogue.plan',{question:'first message?'},()=>planDialogue(engine,'first message?',{summary:'',recent:[],refs:[],turnCount:1}),async a=>entries.push(a)),/Invalid model action/);
- assert.equal(entries[1].status,'failed');assert.equal(entries[1].error.code,'invalid_model_output');assert.equal(entries[1].output.raw,raw);assert.equal(entries[1].output.reason,'query');assert.equal(entries[1].output.truncated,false);
+ assert.deepEqual(entries[1].output.queryShape,{action:'recall',target:'other',type:'missing'});
+ assert.equal(entries[1].status,'failed');assert.equal(entries[1].error.code,'planner_protocol');assert.equal(entries[1].output.rawBytes,new TextEncoder().encode(raw).byteLength);assert.equal(entries[1].output.reason,'query');assert.equal(entries[1].output.truncated,false);assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_PLAN_SENTINEL|\"raw\"/);
  const state=appendTurn(emptyDialogue(),{id:'failed',user:'first message?',activity:entries.slice(-1)});assert.doesNotMatch(JSON.stringify(historyPayload(dialogueContext(state))),/historyIndex/);
- engine.generate=async()=>({text:'x'.repeat(20000)});const malformed=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>malformed.push(a)),/JSON/);assert.ok(malformed[1].output.raw.length<=8192);assert.equal(malformed[1].output.reason,'json');assert.equal(malformed[1].output.truncated,true);
+ engine.generate=async()=>({text:'x'.repeat(20000)});const malformed=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>malformed.push(a)),/JSON/);assert.equal(malformed[1].output.rawBytes,8192);assert.equal(malformed[1].output.reason,'json');assert.equal(malformed[1].output.truncated,true);assert.equal(Object.hasOwn(malformed[1].output,'raw'),false);
  engine.generate=async()=>({text:raw,stopped:true});const stopped=[];await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'q',{summary:'',recent:[],refs:[]}),async a=>stopped.push(a)),/Stopped/);assert.equal(stopped[1].output,undefined);
  const forged=Object.assign(Error('Invalid model action'),{diagnostic:{raw:'untrusted'}}),generic=[];await assert.rejects(recordOperation('dialogue.plan',{},async()=>{throw forged},async a=>generic.push(a)));assert.equal(generic[1].output,undefined);
+});
+test('a stopped planner retains attempt metrics but never its partial generated text',async()=>{
+ let observed;const entries=[];
+ const engine={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:'PRIVATE_PARTIAL_PLANNER_TEXT',stopped:true})};
+ await assert.rejects(recordOperation('dialogue.plan',{},()=>planDialogue(engine,'Find meeting notes.',{summary:'',recent:[],refs:[],turnCount:0},[],{allowedTools:[],history:[],onInference:metrics=>{observed=metrics;}}),async activity=>entries.push(activity),undefined,undefined,()=>observed?{inference:observed}:undefined),/Stopped/);
+ assert.equal(entries[1].status,'stopped');assert.equal(entries[1].output.inference.measuredModelCalls,1);assert.ok(Number.isFinite(entries[1].output.inference.generationWallMs));assert.doesNotMatch(JSON.stringify(entries[1].output),/PRIVATE_PARTIAL_PLANNER_TEXT/);
 });
 test('read-only attempt is persisted before work and records detached exact input/output once',async()=>{
  const events=[];const args=structuredClone(input),out={count:1,ids:['note1']};const result=await recordOperation('memory.search',args,async()=>{assert.equal(events.length,1);assert.equal(events[0].status,'running');args.query='changed';return out;},async a=>events.push(structuredClone(a)));
@@ -27,7 +70,14 @@ test('read-only attempt is persisted before work and records detached exact inpu
 });
 test('failed and stopped operations retain typed errors, and a failed start never runs work',async()=>{
  for(const [message,code,status] of [['Model not configured · Settings','not_prepared','failed'],['Source changed · retry','source_changed','failed'],['Stopped','stopped','stopped'],['Model not prepared · Settings','not_prepared','failed'],['Invalid model JSON · retry','invalid_model_output','failed']]){const entries=[];await assert.rejects(recordOperation('knowledge.answer',{question:'q'},async()=>{throw Error(message);},async e=>entries.push(e)),e=>e.message===message);assert.equal(entries[1].status,status);assert.deepEqual(entries[1].error,{code,message});}
- let ran=false;await assert.rejects(recordOperation('memory.search',input,async()=>{ran=true;},async()=>{throw Error('storage unavailable');}),/storage/);assert.equal(ran,false);
+ let ran=false;await assert.rejects(recordOperation('memory.search',input,async()=>{ran=true;},async()=>{throw Error('storage unavailable');}),error=>error.code==='persistence_failure');assert.equal(ran,false);
+});
+test('failure projections retain bounded numeric measurements without copying thrown content',async()=>{
+ const entries=[],error=Error('PRIVATE_PROMPT_OR_OUTPUT_MARKER');
+ await assert.rejects(recordOperation('knowledge.answer',{question:'private request'},async()=>{throw error;},async activity=>entries.push(activity),undefined,undefined,()=>({inference:{measuredModelCalls:1,generationWallMs:125.5}})),error);
+ assert.deepEqual(entries[1].output,{inference:{measuredModelCalls:1,generationWallMs:125.5}});
+ assert.doesNotMatch(JSON.stringify(entries[1].output),/PRIVATE_PROMPT_OR_OUTPUT_MARKER|private request/);
+ validateActivity([entries[1]]);
 });
 test('completion persistence failure never re-executes work or rewrites a completed result as a tool failure',async()=>{
  let calls=0,writes=0;await assert.rejects(recordOperation('memory.search',input,async()=>{calls++;return {count:0};},async()=>{if(++writes===2)throw Error('disk full');}),/receipt|record/i);assert.equal(calls,1);assert.equal(writes,2);
@@ -37,6 +87,21 @@ test('activity validates lifecycle and immutable terminals, rejects unknown tool
 });
 test('dialogue retains activity but never includes its tool payloads in model history',()=>{
  const a=finishActivity(startActivity('memory.search',{query:'PRIVATE_TRACE_ONLY'}),{output:{raw:'TRACE_RESULT_ONLY'}}),s=appendTurn(emptyDialogue(),{id:'turn',user:'Find a note',activity:[a]});validateDialogue(s);const payload=JSON.stringify(historyPayload(dialogueContext(s)));assert.doesNotMatch(payload,/PRIVATE_TRACE_ONLY|TRACE_RESULT_ONLY/);const bad=structuredClone(s);bad.turns[0].activity[0].tool='shell.exec';assert.throws(()=>validateDialogue(bad),/operation/i);validateDialogue(appendTurn(emptyDialogue(),{id:'legacy',user:'Old turn'}));
+});
+
+test('turn activity trace commits its current receipt around work and projects only bounded output',async()=>{
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');assert.equal(typeof createTurnActivityTracer,'function');
+ let current=[];const commits=[],steps=[],started=[],trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;commits.push(value.map(activity=>activity.status));},onFailureRecorded:()=>assert.fail('successful operation marked failed'),onStepStarted:tool=>{assert.equal(current[0].status,'running');started.push(tool);},onStepCompleted:()=>{assert.equal(current[0].status,'succeeded');steps.push(current[0].status);},diagnosticsEnabled:false,writeDiagnostic:()=>assert.fail('diagnostic written while disabled')});
+ const result=await trace('memory.search',input,async()=>({count:1,privateResult:'do not persist'}),value=>({count:value.count}));
+ assert.deepEqual(commits,[['running'],['succeeded']]);assert.deepEqual(started,['memory.search']);assert.deepEqual(steps,['succeeded']);assert.deepEqual(current[0].output,{count:1});assert.deepEqual(result,{count:1,privateResult:'do not persist'});
+});
+
+test('turn activity trace records cancellation once and emits only the enabled failure diagnostic',async()=>{
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');assert.equal(typeof createTurnActivityTracer,'function');
+ let current=[],checks=0,failed=0;const commits=[],diagnostics=[],steps=[];
+ const trace=createTurnActivityTracer({check:()=>{if(++checks===2)throw Error('Stopped');},readActivities:()=>current,persistActivities:async value=>{current=value;commits.push(value.map(activity=>activity.status));},onFailureRecorded:()=>failed++,onStepCompleted:()=>steps.push(current[0].status),diagnosticsEnabled:true,writeDiagnostic:value=>diagnostics.push(value)});
+ await assert.rejects(trace('memory.search',input,async()=>({count:9})),/Stopped/);
+ assert.deepEqual(commits,[['running'],['stopped']]);assert.deepEqual(steps,[]);assert.equal(failed,1);assert.equal(diagnostics.length,1);assert.deepEqual(diagnostics[0],{tool:'memory.search',status:'stopped',code:'stopped',message:'Stopped'});assert.equal(current[0].output,undefined);
 });
 
 test('updating an attempt only appends a new start or completes its original identity once',async()=>{
@@ -63,8 +128,75 @@ test('GPU failure display stays short while original operation diagnostics remai
  const {runtimeStatus,needsModelSettings}=await import('../src/runtime-status.ts');const raw='the GPU device was lost (unknown): ID3D12Device::GetDeviceRemovedReason failed with DXGI_ERROR_DEVICE_HUNG (0x887A0006)\n at CheckHRESULTImpl (...D3DError.cpp:121)';
  const receipt=finishActivity(startActivity('dialogue.plan',{question:'Read my local file'}),{error:Error(raw)}),before=structuredClone(receipt);
  assert.equal(runtimeStatus(raw),'GPU unavailable');assert.equal(runtimeStatus('GPU disconnected: device removed'),'GPU unavailable');assert.equal(receipt.error.message,raw);assert.deepEqual(receipt,before);
+ for(const value of ['Invalid model JSON','Invalid model JSON · retry','Invalid model action'])assert.equal(runtimeStatus(value),'Could not understand · try again');
+ for(const value of ['Invalid candidate source','Invalid candidate source shape','Invalid candidate source index','Invalid candidate source unit','Candidate quote not found','Candidate quote must be unique','Invalid calculation candidate'])assert.equal(runtimeStatus(value),'Could not prepare calculation · check values');
+ assert.equal(runtimeStatus('Invalid model JSON','What is in my note? Delete it.'),'Could not understand · try one request at a time');
+ assert.equal(runtimeStatus('Invalid model JSON','What is in my note?'),'Could not understand · try again');
  for(const value of ['Stopped','Source changed · retry','Generating…','Saved · Inbox/notes.md','Saved · Inbox/DXGI_ERROR_DEVICE_HUNG.md',''])assert.equal(runtimeStatus(value),value);
  const unavailable='Model not prepared · Settings',modelReceipt=finishActivity(startActivity('model.load',{model:'4B'}),{error:Error(unavailable)});
  assert.equal(runtimeStatus(unavailable),'Model not prepared');assert.equal(needsModelSettings(unavailable),true);assert.equal(modelReceipt.error.message,unavailable);
  assert.equal(needsModelSettings('Saved · Model not prepared'),false);
+});
+
+test('activity receipts preserve explicit planner and tool protocol failure stages',async()=>{
+ const {ModelRuntimeError,PlannerOutputError}=await import('../src/planner-error.ts');
+ const entries=[];await assert.rejects(recordOperation('dialogue.plan',{step:0},async()=>{throw new PlannerOutputError('Planner output invalid','{}','action');},async item=>entries.push(item)));
+ assert.equal(entries[1].error.code,'planner_protocol');
+ const {AgentProtocolError}=await import('../src/agent-loop.ts');
+ const receipt=finishActivity(startActivity('dialogue.plan',{step:1}),{error:new AgentProtocolError('Tool is not registered or call is invalid')});
+ assert.equal(receipt.error.code,'agent_protocol');
+ const model=finishActivity(startActivity('dialogue.plan',{step:2}),{error:new ModelRuntimeError(Error('WebGPU device lost'))});
+ assert.equal(model.error.code,'model_runtime');
+ const {AgentToolExecutionError}=await import('../src/agent-loop.ts');
+ const tool=finishActivity(startActivity('memory.search',{query:'meeting'}),{error:new AgentToolExecutionError('memory.search',Error('PRIVATE_PATH_SENTINEL'))});
+ assert.equal(tool.error.code,'tool_execution');
+ assert.doesNotMatch(JSON.stringify(tool),/PRIVATE_PATH_SENTINEL/);
+});
+
+test('receipt persistence failures are typed and never rerun completed work',async()=>{
+ let calls=0,writes=0;let failure;
+ try{await recordOperation('memory.search',input,async()=>{calls++;return {count:1};},async()=>{if(++writes===2)throw Error('quota exceeded');});}catch(error){failure=error;}
+ assert.equal(calls,1);assert.equal(failure?.code,'persistence_failure');
+});
+
+test('custom tool receipt projection strips private content without changing the immediate result',async()=>{
+ const {projectAgentActivityResult}=await import('../src/agent-evidence.ts'),body='PRIVATE_NOTE_SENTINEL',result={excerpt:body,path:'Notes/private.md'},entries=[];
+ const returned=await recordOperation('user.lookup',{query:'private'},async()=>result,async entry=>entries.push(structuredClone(entry)),value=>projectAgentActivityResult('user.lookup',value));
+ assert.equal(returned,result);
+ assert.equal(entries[1].status,'succeeded');
+ assert.deepEqual(entries[1].output,{kind:'custom_tool_result',resultBytes:new TextEncoder().encode(JSON.stringify(result)).byteLength});
+ assert.doesNotMatch(JSON.stringify(entries),/PRIVATE_NOTE_SENTINEL|Notes\/private\.md/);
+});
+
+test('custom tool result overflow is recorded as a typed failed receipt and remains recoverable',async()=>{
+ const {projectAgentActivityResult}=await import('../src/agent-evidence.ts'),entries=[],overflow=new AgentToolResultTooLargeError();
+ await assert.rejects(recordOperation('user.lookup',{query:'private'},async()=>({body:'x'.repeat(9000)}),async entry=>entries.push(structuredClone(entry)),value=>projectAgentActivityResult('user.lookup',value)),error=>error instanceof AgentToolResultTooLargeError);
+ assert.equal(entries.length,2);assert.equal(entries[1].status,'failed');assert.deepEqual(entries[1].error,{code:'result_too_large',message:overflow.message});validateActivity(entries.slice(1));
+});
+
+test('unclassified turn failures add one privacy-safe local diagnostic',async()=>{
+ const {recordUnclassifiedTurnFailure}=await import('../src/turn-failure-log.ts');let value=null;const local={getItem:()=>value,setItem:(_key,next)=>{value=next;}};
+ assert.equal(recordUnclassifiedTurnFailure(local,true,false,Error('PRIVATE PROMPT AND PATH')),true);
+ const rows=JSON.parse(value);assert.equal(rows.length,1);assert.equal(rows[0].tool,'dialogue.turn');assert.equal(rows[0].status,'failed');assert.equal(rows[0].code,'operation_failed');assert.equal(rows[0].message,'The local operation failed.');assert.doesNotMatch(value,/PRIVATE PROMPT|PATH/);
+});
+
+test('a stage failure already recorded on the turn is not duplicated',async()=>{
+ const {recordUnclassifiedTurnFailure}=await import('../src/turn-failure-log.ts');let value=null;const local={getItem:()=>value,setItem:(_key,next)=>{value=next;}};
+ assert.equal(recordUnclassifiedTurnFailure(local,true,true,Error('stage failed')),false);assert.equal(value,null);
+});
+
+test('only typed receipt persistence failure and explicit stop get specialized labels',async()=>{
+ const {recordUnclassifiedTurnFailure}=await import('../src/turn-failure-log.ts'),{ActivityPersistenceError}=await import('../src/harness-activity.ts');let value=null;const local={getItem:()=>value,setItem:(_key,next)=>{value=next;}};
+ recordUnclassifiedTurnFailure(local,true,false,new ActivityPersistenceError());recordUnclassifiedTurnFailure(local,true,false,Error('Stopped'));
+ const rows=JSON.parse(value);assert.deepEqual(rows.map(row=>[row.status,row.code]),[['failed','persistence_failure'],['stopped','stopped']]);assert.doesNotMatch(value,/Activity record unavailable/);
+});
+
+test('disabled logging leaves local storage untouched',async()=>{
+ const {recordUnclassifiedTurnFailure}=await import('../src/turn-failure-log.ts');let value=null;const local={getItem:()=>value,setItem:(_key,next)=>{value=next;}};
+ assert.equal(recordUnclassifiedTurnFailure(local,false,false,Error('failed')),false);assert.equal(value,null);
+});
+
+test('diagnostic storage failure never replaces the original turn failure',async()=>{
+ const {recordUnclassifiedTurnFailure}=await import('../src/turn-failure-log.ts'),local={getItem:()=>null,setItem:()=>{throw Error('disk full');}};
+ assert.equal(recordUnclassifiedTurnFailure(local,true,false,Error('original failure')),false);
 });

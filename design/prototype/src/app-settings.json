@@ -3,6 +3,18 @@
   "models": {
     "text": [
       {
+        "value": "lfm3-1.7b-qad-q4-0",
+        "label": "LFM3 · 1.7B \u00b7 QAD Q4_0"
+      },
+      {
+        "value": "lfm3-1.7b-iq3m",
+        "label": "LFM3 · 1.7B · IQ3_M · Community · 869 MB"
+      },
+      {
+        "value": "lfm3-1.7b-q8-0",
+        "label": "LFM3 · 1.7B \u00b7 Q8_0"
+      },
+      {
         "value": "4B",
         "label": "Bonsai 2 \u00b7 4B"
       },
@@ -13,22 +25,6 @@
       {
         "value": "9B",
         "label": "Bonsai 2 \u00b7 9B"
-      },
-      {
-        "value": "smollm2-360m-instruct",
-        "label": "SmolLM2 \u00b7 360M \u00b7 English"
-      },
-      {
-        "value": "qwen25-05b-instruct",
-        "label": "Qwen2.5 \u00b7 0.5B"
-      },
-      {
-        "value": "lfm25-350m-qad-q4-0",
-        "label": "LFM2.5 \u00b7 350M \u00b7 QAD"
-      },
-      {
-        "value": "lfm25-230m-qad-q4-0",
-        "label": "LFM2.5 \u00b7 230M \u00b7 QAD"
       }
     ],
     "decision": [
@@ -38,7 +34,7 @@
       },
       {
         "value": "d1-omni-600M",
-        "label": "Open d1 \u00b7 Omni 600M"
+        "label": "Open d1 \u00b7 600M \u00b7 Text decision"
       },
       {
         "value": "d1-3B",
@@ -73,10 +69,10 @@
     ]
   },
   "defaults": {
-    "textModel": "4B",
+    "textModel": "lfm3-1.7b-qad-q4-0",
     "decisionModel": "",
     "downloads": false,
-    "theme": "system",
+    "theme": "light",
     "background": "paper",
     "glass": "clear",
     "fontFamily": "system",

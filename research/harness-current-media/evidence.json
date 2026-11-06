@@ -1,0 +1,41 @@
+{
+  "scope": "Actual Chrome isolated IndexedDB extraction conflict errors and all-store rollback; controlled extraction fixtures, no recognition/inference or ordinary UI claim",
+  "sources": {
+    "design/prototype/src/knowledge-store.ts": "fad9cde5e721ef712f80c3aa35a00cc39876fa898ddf3d5048ec9739360fed81",
+    "design/prototype/src/pdf-text.ts": "e04e498fc60abd0bcb0d537a58e672eec82e22dada33d1563425071027644cee",
+    "design/prototype/src/ocr-text.ts": "b8ff3a410ccb4a950f10fff81ce5f2417cf0da01bdb78870370444182ff842e3",
+    "design/prototype/src/speech-transcript.ts": "64c31d194f85859a5e9fe4a5efa52e3adace19c58a04b8fc544d7a640016d901",
+    "design/prototype/src/vision-text.ts": "549b6821a09f70a20f1f337c9403915c9e0c7958c70eaaaacee8554791a17210"
+  },
+  "result": [
+    {
+      "kind": "PDF",
+      "duplicate": "PDF text already saved",
+      "original": "Original already exists",
+      "withdrawn": "Original withdrawn",
+      "allRejectedSavesAtomic": true
+    },
+    {
+      "kind": "OCR",
+      "duplicate": "OCR text already saved",
+      "original": "Original already exists",
+      "withdrawn": "Original withdrawn",
+      "allRejectedSavesAtomic": true
+    },
+    {
+      "kind": "Transcript",
+      "duplicate": "Transcript already saved",
+      "original": "Original already exists",
+      "withdrawn": "Original withdrawn",
+      "allRejectedSavesAtomic": true
+    },
+    {
+      "kind": "Vision",
+      "duplicate": "Vision note already saved",
+      "original": "Original already exists",
+      "withdrawn": "Original withdrawn",
+      "allRejectedSavesAtomic": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "checkedAt": "2026-10-21T04:32:53.9048835Z",
+  "scope": "Read-only Windows host readiness snapshot; no model load or inference",
+  "host": {
+    "platform": "win32",
+    "totalVisibleMemoryGiB": 15.7,
+    "freePhysicalMemoryGiB": 2.89,
+    "freePhysicalMemoryBytes": 3098378240
+  },
+  "models": [
+    {
+      "id": "ternary-bonsai-8b-q2-g64",
+      "bytes": 2310125920,
+      "sha256": "e17b298d84ee78797916ae5c2ecc8211469cc65cccfe3080cd9a9bb503fbc55e"
+    },
+    {
+      "id": "ternary-bonsai-2-9b-ptq1",
+      "bytes": 1997486976,
+      "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b"
+    }
+  ],
+  "qwen3CpuMemoryPath": {
+    "sourceRevision": "wllama 7ed17361caf221a84aa1e80ca85a3d6324f3af85 / llama.cpp 46ca246de9bb1c35269722a6240d37d9dfd79cad",
+    "fileAccess": "JSPI or compatibility mode reads bounded Blob slices on demand; it does not first materialize one full-file ArrayBuffer",
+    "residentWeights": "CPU model tensors remain resident in the WASM heap",
+    "kvEstimate": {
+      "contextTokens": 2048,
+      "layers": 36,
+      "kvHeads": 8,
+      "headDimension": 128,
+      "keyValueType": "FP16",
+      "bytes": 301989888,
+      "mib": 288,
+      "basis": "36 * 2048 * 8 * 128 * 2 (K,V) * 2 bytes"
+    },
+    "freeAfterWeightsAndKvBytes": 486262432,
+    "freeAfterWeightsAndKvMiB": 463.74
+  },
+  "decision": "No full-model attempt on this snapshot. The pinned runtime streams bounded Blob slices, so a second whole-file JS copy is not expected on the normal JSPI/compat path. However, CPU weights remain resident in WASM; after those weights plus the calculated 288 MiB FP16 KV estimate, about 464 MiB remains for allocator/runtime/compute/browser/OS variation. Those peaks are unmeasured. This is an unresolved fit question, not evidence of incompatibility. No user applications were closed."
+}

@@ -15,6 +15,7 @@ test('only validated confident read-only decisions skip planner and retain exact
  for(const action of ['recall','transform','capture','edit','search','read','schedule'])assert.deepEqual(decisionRoute(result(action),'x',empty),{request:null,reason:'structured-request'});
  assert.deepEqual(decisionRoute(result('answer',.8),'x',empty),{request:null,reason:'ambiguous'});
  for(const mutate of [r=>r.answer.choice='delete',r=>r.answer.confidence=NaN,r=>r.answer.probabilities.answer=1.1,r=>r.revision='other',r=>r.scope='omni',r=>r.inputTokens=9999,r=>delete r.answer.probabilities.recall]){const r=result();mutate(r);assert.throws(()=>decisionRoute(r,'x',empty),/Invalid decision route/);}
+ for(const invalid of [null,undefined,0,'answer',[],{}, {answer:{type:'choice',choice:'chat',confidence:1,probabilities:{}}},{...result(),permission:'write'},{...result(),answer:{...result().answer,tool:'memory.read'}}])assert.throws(()=>decisionRoute(invalid,'x',empty),/Invalid decision route/);
 });
 test('only a typed work context limit defers; Stop, crash, malformed output and receipt failures propagate',async()=>{
  let calls=0;const trace=async(_tool,_input,work,project)=>{calls++;const value=await work();project(value);return value;};const engine={identity,classify:async()=>result()};assert.equal((await routeWithDecision(engine,'q',{summary:'',recent:[],refs:[]},[],trace,()=>{})).request.action,'answer');assert.equal(calls,1);
@@ -64,6 +65,12 @@ test('an explicit saved-note question takes only the cited read path across text
  assert.deepEqual(explicitSavedKnowledgeQuestion(separated),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
  assert.deepEqual(explicitSavedKnowledgeQuestion(separated,false,true),{action:'answer',query:'blue lantern meeting',target:'knowledge'});
  assert.equal(savedKnowledgeSearchQuery('What is written in the saved note?'),'What is written in the saved note?');
+ const genericNamedNote='In my saved note LFM3-OFFLINE-1, exactly how many litres is the emergency water reserve?';
+ assert.deepEqual(explicitSavedKnowledgeQuestion(genericNamedNote),{action:'answer',query:'LFM3-OFFLINE-1',target:'knowledge'});
+ assert.equal(savedKnowledgeSearchQuery(genericNamedNote),'LFM3-OFFLINE-1');
+ const namedFile='In my saved note LFM3-Q8-b70b62786effc5dc.md, exactly how many litres is the emergency water reserve?';
+ assert.equal(savedKnowledgeSearchQuery(namedFile),'LFM3-Q8-b70b62786effc5dc.md');
+ assert.equal(savedKnowledgeSearchQuery('保存したQA空想会議のメモでは、会議はいつどこで行いますか？'),'QA空想会議');
  for(const q of ['What did I say about my saved note?','What is in this file?','Write a new note about my notes.','Delete my saved note','What date is the saved blue lantern meeting?','What time is it?'])assert.equal(explicitSavedKnowledgeQuestion(q),null,q);
  assert.equal(explicitSavedKnowledgeQuestion(question,true),null);
  assert.deepEqual(explicitSavedKnowledgeQuestion(question,false,true),direct);

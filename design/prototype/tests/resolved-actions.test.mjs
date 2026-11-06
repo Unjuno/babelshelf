@@ -1,0 +1,219 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createResolvedActions} from '../src/resolved-actions.ts';
+import * as application from '../src/resolved-actions.ts';
+import {recordOperation} from '../src/harness-activity.ts';
+import {summarizeTurnWork} from '../src/turn-work-summary.ts';
+import {prepareOriginal,originalNote} from '../src/original-assets.ts';
+import {makeVisionText,visionTextNote} from '../src/vision-text.ts';
+import {visionManifest} from '../src/vision-assets.ts';
+
+async function visionFixture(){
+ const question='What code is in this image? Reply with the code only.';
+ const asset=await prepareOriginal(new File(['synthetic image bytes'],'image.png',{type:'image/png'}),'image-original');
+ const value=makeVisionText(asset,{model:visionManifest.id,revision:visionManifest.revision,runtime:visionManifest.runtime,prompt:question,text:'MAPLE-6381',width:960,height:320});
+ const note=visionTextNote('image-reading',asset,value),records=[originalNote(asset),note],readings=[{kind:'vision',noteId:note.id,revision:1}],events=[];
+ const dependencies={store:{all:async()=>records},check:()=>{},trace:async(tool,input,work)=>{events.push({tool,input});return work();}};
+ return {question,note,records,readings,events,dependencies};
+}
+
+test('a single current image answer is reused unchanged with its actual model and original-linked revision',async()=>{
+ assert.equal(typeof application.answerCurrentVisionInput,'function');const f=await visionFixture(),before=structuredClone(f.records);
+ const answer=await application.answerCurrentVisionInput(f.dependencies,f.question,f.readings);
+ assert.equal(answer.answer,'MAPLE-6381');assert.equal(answer.model.id,visionManifest.id);assert.equal(answer.model.revision,visionManifest.revision);
+ assert.deepEqual(answer.sources,[{noteId:f.note.id,revision:1,start:0,end:10,quote:'MAPLE-6381',title:'image.png · image notes'}]);
+ assert.deepEqual(f.events.map(event=>event.tool),['knowledge.answer']);assert.equal(f.events[0].input.execution,'current-vision-result');assert.deepEqual(f.records,before);
+});
+
+test('Vision reuse cannot answer a different prompt, merge files, use edited text or a withdrawn original',async()=>{
+ assert.equal(typeof application.answerCurrentVisionInput,'function');const f=await visionFixture();
+ assert.equal(await application.answerCurrentVisionInput(f.dependencies,'What else is shown?',f.readings),null);
+ assert.equal(await application.answerCurrentVisionInput(f.dependencies,f.question,[...f.readings,...f.readings]),null);
+ f.records[1]={...f.note,mediaSource:undefined,visionText:{...f.note.visionText,original:undefined}};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+ f.records[1]={...f.note,revisions:[{...f.note.revisions[0],body:'Changed after recognition'}]};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+ f.records[1]=f.note;f.records[0]={...f.records[0],state:'withdrawn'};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+});
+
+test('Vision reuse revalidates the source at delivery and observes Stop without generating or writing',async()=>{
+ assert.equal(typeof application.answerCurrentVisionInput,'function');const f=await visionFixture();let reads=0;
+ f.dependencies.store.all=async()=>{if(++reads===2)return [{...f.records[0],state:'withdrawn'},f.note];return f.records;};
+ await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Source changed/);
+ f.dependencies.check=()=>{throw Error('Stopped');};await assert.rejects(application.answerCurrentVisionInput(f.dependencies,f.question,f.readings),/Stopped/);
+});
+
+const context={summary:'',recent:[],refs:[]};
+function fixture(overrides={}){
+ const events=[];
+ const check=()=>{};
+ const engine={loaded:'test',assets:{},manifest:{contextTokens:2048,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{throw Error('Unexpected inference');}};
+ const store={all:async()=>{throw Error('Unexpected Memory enumeration');},search:async query=>{events.push(query);return [];}};
+ const trace=async(tool,input,work)=>work();
+ const registry={identity:async()=>({}),run:(id,args,host)=>id==='memory.search'?host.search(args.query):host.resolve(args.query)};
+ return {events,engine,store,actions:createResolvedActions({store,engine,model:'test',question:'Find meeting',check,trace,registry,snapshot:async()=>[],...overrides})};
+}
+
+test('generated answer activity retains measured inference only and leaves answer bytes in the dialogue result',async()=>{
+ let savedActivity;
+ const trace=async(tool,input,work,project=value=>value)=>{const result=await work();if(tool==='knowledge.answer')savedActivity={input,output:project(result)};return result;};
+ const f=fixture({trace});f.engine.generate=async()=>({text:'A private answer body.',outputTokens:7,metrics:{runtimePromptTokens:44,countMs:2.5,runtimeTtftMs:15,runtimePrefillMs:12,runtimeDecodeMs:30,runtimeCachedTokens:0}});
+ const result=await f.actions.answer({model:'test',question:'Say hello.',mode:'chat',scope:{kind:'conversation'}});
+ assert.equal(result.answer,'A private answer body.');assert.equal('inference' in result,false);
+ assert.equal(savedActivity.output.sourceCount,0);assert.deepEqual(savedActivity.output.inference.measuredModelCalls,1);
+ assert.equal(savedActivity.output.inference.promptTokens,44);assert.equal(savedActivity.output.inference.outputTokens,7);
+ assert.equal(savedActivity.output.inference.runtimeTtftMs,15);assert.equal(savedActivity.output.inference.runtimePrefillMs,12);assert.equal(savedActivity.output.inference.runtimeDecodeMs,30);assert.equal(savedActivity.output.inference.runtimeCachedTokens,0);assert.ok(savedActivity.output.inference.countMs>=2.5);assert.ok(savedActivity.output.inference.generationWallMs>0);
+ assert.equal(JSON.stringify(savedActivity.output).includes(result.answer),false);assert.equal('sources' in savedActivity.output,false);
+});
+
+test('failed answer inference reaches the persisted receipt and activity summary without answer text',async()=>{
+ const receipts=[],error=Error('PRIVATE_RUNTIME_FAILURE_MARKER');
+ const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+ const f=fixture({trace});f.engine.generate=async()=>{throw error;};
+ await assert.rejects(f.actions.answer({model:'test',question:'PRIVATE_QUESTION_MARKER',mode:'chat',scope:{kind:'conversation'}}),/PRIVATE_RUNTIME_FAILURE_MARKER/);
+ const failed=receipts.at(-1);assert.equal(failed.tool,'knowledge.answer');assert.equal(failed.status,'failed');assert.equal(failed.output.inference.measuredModelCalls,1);assert.ok(Number.isFinite(failed.output.inference.generationWallMs));
+ assert.doesNotMatch(JSON.stringify(failed.output),/PRIVATE_RUNTIME_FAILURE_MARKER|PRIVATE_QUESTION_MARKER/);
+ const summary=summarizeTurnWork(receipts);assert.equal(summary.measuredModelCalls,1);assert.equal(summary.generationMs,failed.output.inference.generationWallMs);assert.equal(summary.tokenCountMs,failed.output.inference.countMs);assert.equal(summary.measuredToolCalls,0);
+});
+
+test('Application explicit search preserves fallback and never starts a model or writes',async()=>{
+ const {actions,events}=fixture();const result=await actions.search('meeting');
+ assert.deepEqual(events,['meeting','Find meeting']);assert.equal(result.kind,'search');assert.equal(result.status,'No matching notes');assert.deepEqual(result.files,[]);
+});
+
+test('model-selected search resolves the full requested outcome before ending at a list',async()=>{
+ const hit={noteId:'meeting',revision:3,start:0,end:6,quote:'北口で集合。',title:'Notes/meeting.md',score:1};
+ const {engine}=fixture();let messages;
+ engine.generate=async m=>{messages=m;return {text:'{"completion":"answer"}'};};
+ const {actions}=fixture({engine,question:'集合場所について保存したメモを探して、今の集合場所を教えて。',store:{search:async()=>[hit]}});
+ const result=await actions.search('集合場所',{complete:true});
+ assert.equal(result.kind,'continue');assert.equal(result.action,'answer');assert.equal(result.query,'集合場所');
+ assert.equal(messages.at(-1).content,'集合場所について保存したメモを探して、今の集合場所を教えて。');
+ for(const completion of ['summary','search']){
+  engine.generate=async()=>({text:JSON.stringify({completion})});
+  const next=await actions.search('集合場所',{complete:true});assert.equal(next.kind,completion==='search'?'search':'continue');
+ }
+ engine.generate=async()=>({text:'{"completion":"delete"}'});
+ await assert.rejects(actions.search('集合場所',{complete:true}),/Invalid search completion/);
+ engine.generate=async()=>({text:'{"completion":"answer"}',stopped:true});
+ await assert.rejects(actions.search('集合場所',{complete:true}),/Stopped/);
+});
+
+test('an empty or navigation-only search does not start an answer or reinterpret file metadata as evidence',async()=>{
+ const {engine}=fixture();let generated=0;engine.generate=async()=>{generated++;throw Error('Unexpected classification');};
+ for(const results of [[],[{kind:'file',noteId:'binary',revision:1,path:'Files/video.mp4'}]]){
+  const {actions}=fixture({engine,store:{search:async()=>results},acquireModel:async()=>{throw Error('Unexpected model acquisition for non-passage results');}});
+  assert.equal((await actions.search('video',{complete:true})).kind,'search');
+ }
+ assert.equal(generated,0);
+});
+
+test('Application explicit saved-file read returns navigation data and exact source pins without inference',async()=>{
+ const body='The meeting starts at 14:30.',note={id:'meeting',version:2,path:'Notes/meeting.md',body};
+ const hit={noteId:note.id,revision:2,start:0,end:body.length,quote:body,title:'Meeting',score:1};
+ const {actions}=fixture({store:{search:async()=>[hit]},snapshot:async()=>[note]});
+ const result=await actions.read('meeting',{explicitSavedOpen:true,literalRead:true});
+ assert.equal(result.kind,'open');assert.equal(result.noteId,note.id);assert.equal(result.path,note.path);assert.equal(result.refs[0].revision,2);assert.equal(result.refs[0].quote,body);
+});
+
+test('Application schedule clarification returns data without saving or enabling a task',async()=>{
+ const {engine}=fixture();engine.generate=async()=>({text:JSON.stringify({action:'clarify',question:'What time?'})});
+ const {actions}=fixture({engine});assert.deepEqual(await actions.schedule(context),{kind:'clarify',question:'What time?'});
+});
+
+test('Application conversation answer skips Memory, uses the same generated bytes, and rejects a stopped result',async()=>{
+ const {engine}=fixture();let stopped=false;
+ engine.generate=async()=>({text:'A quiet morning.',finishReason:'stop'});
+ const {actions}=fixture({engine,check:()=>{if(stopped)throw Error('Stopped');}});
+ const request={model:'test',question:'Write a sentence.',mode:'chat',scope:{kind:'conversation'},context};
+ const result=await actions.answer(request);assert.equal(result.kind,'answer');assert.equal(result.answer,'A quiet morning.');assert.deepEqual(result.sources,[]);
+ engine.generate=async()=>{stopped=true;return {text:'Late answer',finishReason:'stop'};};
+ await assert.rejects(actions.answer(request),/Stopped/);
+});
+
+test('Application rejects malformed external scopes before reading Memory or loading a model',async()=>{
+ const {actions}=fixture();
+ await assert.rejects(actions.answer({model:'test',question:'Read this.',mode:'answer',scope:{kind:'file',file:{noteId:'x',revision:1},readings:[]}}),/Conflicting input scopes/);
+ await assert.rejects(actions.answer({model:'test',question:'Read this.',mode:'answer',scope:{kind:'attachments',readings:[]}}),/Conflicting input scopes/);
+});
+
+test('completion classification receipts include successful, failed and stopped inference without raw output',async()=>{
+ const hit={noteId:'meeting',revision:3,start:0,end:6,quote:'北口で集合。',title:'Notes/meeting.md',score:1};
+ for(const mode of ['success','invalid','stopped','runtime-error']){
+  const receipts=[];
+  const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+  const {engine}=fixture();
+  engine.generate=async()=>{
+   if(mode==='runtime-error')throw Error('PRIVATE_RUNTIME_MARKER');
+   return {text:mode==='invalid'?'PRIVATE_OUTPUT_MARKER':'{"completion":"summary"}',stopped:mode==='stopped',outputTokens:6,metrics:{runtimePromptTokens:91}};
+  };
+  const {actions}=fixture({engine,trace,store:{search:async()=>[hit]}});
+  if(mode==='success')assert.equal((await actions.search('meeting',{complete:true})).action,'summary');
+  else await assert.rejects(actions.search('meeting',{complete:true}));
+  const receipt=receipts.findLast(row=>row.tool==='dialogue.plan');
+  assert.equal(receipt.output.inference.measuredModelCalls,1);
+  assert.ok(receipt.output.inference.generationWallMs>=0);
+  assert.ok(receipt.output.inference.countMs>=0);
+  if(mode!=='runtime-error')assert.equal(receipt.output.inference.outputTokens,6);
+  assert.doesNotMatch(JSON.stringify(receipt.output),/PRIVATE_OUTPUT_MARKER|PRIVATE_RUNTIME_MARKER/);
+  assert.equal(summarizeTurnWork(receipts).measuredModelCalls,1);
+ }
+});
+
+test('read completion is measured while literal open performs no classifier inference',async()=>{
+ const receipts=[];
+ const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+ const {engine}=fixture();engine.generate=async()=>({text:'{"completion":"summary"}',outputTokens:5});
+ const registry={identity:async()=>({}),run:()=>[{id:'meeting',path:'Notes/meeting.md',version:1,body:'Saved content.'}]};
+ const {actions}=fixture({engine,trace,registry});
+ await actions.read('meeting',{explicitSavedOpen:false,literalRead:false});
+ assert.equal(summarizeTurnWork(receipts).measuredModelCalls,1);
+ assert.equal(receipts.findLast(row=>row.tool==='dialogue.plan').output.completion,'summary');
+ receipts.length=0;
+ await actions.read('meeting',{explicitSavedOpen:false,literalRead:true});
+ assert.equal(receipts.some(row=>row.tool==='dialogue.plan'),false);
+});
+
+test('schedule and correction proposals retain inference accounting without committing knowledge',async()=>{
+ const {createNote}=await import('../../../dist/core.js');
+ const note=createNote({path:'Notes/meeting.md',body:'Water 3L'}),before=structuredClone(note);
+ for(const kind of ['schedule','correction'])for(const failed of [false,true]){
+  const receipts=[];
+  const trace=(tool,input,work,project,failureOf,failureProject)=>recordOperation(tool,input,work,async receipt=>receipts.push(receipt),project,failureOf,failureProject);
+  const {engine}=fixture();engine.generate=async()=>{
+   if(failed)throw Error('PRIVATE_PROPOSAL_FAILURE');
+   return {text:JSON.stringify(kind==='schedule'?{action:'clarify',question:'What time?'}:{action:'replace',find:'3L',with:'4L'}),outputTokens:12,metrics:{runtimePromptTokens:100}};
+  };
+  const {actions}=fixture({engine,trace,question:'Please correct the amount.',store:{all:async()=>[note]}});
+  const run=()=>kind==='schedule'?actions.schedule(context):actions.correction('meeting',note);
+  if(failed)await assert.rejects(run(),/PRIVATE_PROPOSAL_FAILURE/);else await run();
+  const receipt=receipts.at(-1);
+  assert.equal(receipt.output.inference.measuredModelCalls,1);
+  assert.ok(receipt.output.inference.generationWallMs>=0);
+  assert.equal(summarizeTurnWork(receipts).measuredModelCalls,1);
+  assert.doesNotMatch(JSON.stringify(receipt.output),/PRIVATE_PROPOSAL_FAILURE/);
+  assert.deepEqual(note,before);
+ }
+});
+
+
+test('completion and schedule acquire the text runtime instead of the inactive planning engine',async()=>{
+ const {engine}=fixture();let acquired=0,generated=0;
+ const runtime={...engine,generate:async()=>{generated++;return {text:'{"completion":"answer"}'};}};
+ const {actions}=fixture({acquireModel:async()=>{acquired++;return runtime;}});
+ assert.equal(await actions.completeRead({noteId:'meeting',revision:1}),'answer');
+ runtime.generate=async()=>{generated++;return {text:'{"action":"clarify","question":"What time?"}'};};
+ assert.equal((await actions.schedule(context)).kind,'clarify');
+ assert.equal(acquired,2);assert.equal(generated,2);
+});
+
+test('Stop during runtime acquisition prevents completion and schedule generation',async()=>{
+ for(const action of ['completeRead','schedule']){
+  let stopped=false,generated=0;const {engine}=fixture();
+  engine.generate=async()=>{generated++;throw Error('Unexpected generation');};
+  const {actions}=fixture({check:()=>{if(stopped)throw Error('Stopped');},acquireModel:async()=>{stopped=true;return engine;}});
+  await assert.rejects(action==='completeRead'?actions.completeRead({noteId:'meeting',revision:1}):actions.schedule(context),/Stopped/);
+  assert.equal(generated,0);
+ }
+});

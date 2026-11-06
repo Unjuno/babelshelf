@@ -1,0 +1,29 @@
+import {expect,test} from '@playwright/test';
+import {startActivity,finishActivity} from '../src/harness-activity.ts';
+
+test('activity sheet excludes unmeasured model calls from its saved work summary',async({page})=>{
+ const plan=finishActivity(startActivity('dialogue.plan',{}),{output:{inference:{promptTokens:120,outputTokens:15,countMs:5.5,generationWallMs:700.2}}});
+ const compact=finishActivity(startActivity('dialogue.compact',{priorTurns:5}),{output:{compaction:{through:3,summaryCharacters:72},inference:{measuredModelCalls:2,promptTokens:40,outputTokens:8,countMs:4,generationWallMs:200}}});
+ const answer=finishActivity(startActivity('knowledge.answer',{}),{output:{model:{id:'fixture'},sourceCount:1,inference:{measuredModelCalls:3,promptTokens:80,outputTokens:10,countMs:2.5,generationWallMs:300.4}}});
+ const failed=finishActivity(startActivity('knowledge.answer',{}),{error:Error('Runtime unavailable'),output:{inference:{measuredModelCalls:1,generationWallMs:100}}});
+ const search=finishActivity(startActivity('memory.search',{query:'fixture'}),{output:[]});
+ const decision=finishActivity(startActivity('decision.classify',{model:'fixture'}),{output:{route:{reason:'fixture'}}});
+ await page.goto('/');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();
+ await page.evaluate(({plan,compact,answer,failed,search,decision})=>new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readwrite');tx.objectStore('settings').put({schema:1,revision:1,turns:[{id:'work-summary-turn',user:'Question',answer:'Answer',activity:[plan,compact,answer,failed,search,decision]}],compaction:null},'ui-v1-dialogue');tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}),{plan,compact,answer,failed,search,decision});
+ await page.reload();await page.getByRole('button',{name:'View activity',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Activity',exact:true}),summary=dialog.getByRole('region',{name:'Turn work summary'});
+ await expect(summary).toBeVisible();await expect(summary).toContainText(/Recorded phases only · not total turn time/);await expect(summary).toContainText(/Text model calls · recorded\s*6/);await expect(summary).toContainText(/Decision checks · receipt time\s*1/);await expect(summary).toContainText(/Prompt tokens · observed\s*240/);await expect(summary).toContainText(/Generated tokens · observed\s*33/);await expect(summary).toContainText(/Token counting\s*12 ms/);await expect(summary).toContainText(/Text generation\s*1\.3 s/);await expect(summary).toContainText(/Tool calls · receipt time\s*1/);
+});
+
+test('paged receipts survive backup and restore in isolated browser IndexedDB',async({page})=>{
+ await page.goto('/');
+ const result=await page.evaluate(async()=>{
+  const {KnowledgeStore}=await import('/src/knowledge-store.ts'),{emptyDialogue,appendTurn}=await import('/src/conversation.ts'),{startActivity,finishActivity}=await import('/src/harness-activity.ts');
+  const names=[`qa-activity-${crypto.randomUUID()}`,`qa-activity-${crypto.randomUUID()}`],source=new KnowledgeStore(names[0]),target=new KnowledgeStore(names[1]);
+  try{const dialogue=appendTurn(emptyDialogue(),{id:'turn',user:'fixture'});await source.compareState('dialogue',undefined,dialogue);
+   for(let i=0;i<20;i++){const start=startActivity('memory.search',{query:`fixture-${i}`});await source.recordTurnActivity('turn',start,dialogue);await source.recordTurnActivity('turn',finishActivity(start,{output:[i]}),dialogue);}
+   const text=JSON.stringify(await source.backup()),review=await target.reviewBackup(text);await target.restore(text,review.expected);const entries=await target.turnActivities('turn');return {count:entries.length,last:entries.at(-1)?.output};
+  }finally{source.close();target.close();await Promise.all(names.map(name=>new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);request.onblocked=()=>reject(Error('Temporary database is still open'));})));}
+ });
+ expect(result).toEqual({count:20,last:[19]});
+});

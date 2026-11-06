@@ -1,25 +1,369 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {clearOfflineRestartMarker,formatDeviceDiagnosticReport,readOfflineRestartMarker,runDeviceDiagnostics,writeOfflineRestartMarker} from '../src/device-diagnostics.ts';
+import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,describeDiagnosticEnvironment,formatDeviceDiagnosticReport,inspectWebGpuAdapter,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
+
+test('diagnostic environment uses bounded platform and browser labels without trusting raw strings',()=>{
+ assert.equal(describeDiagnosticEnvironment('iPhone','Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1'),'iPhone · Safari 26.6.1');
+ assert.equal(describeDiagnosticEnvironment('Win32','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0'),'Windows · Edge 156.0.0.0');
+ assert.equal(describeDiagnosticEnvironment('Linux armv8l','Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/137.0.0.0 Mobile Safari/537.36'),'Android · Chrome 137.0.0.0');
+ assert.equal(describeDiagnosticEnvironment('<script>','<script>alert(1)</script>'),'Device unknown · Browser unknown');
+});
 
 function memoryStorage(){const values=new Map();return {values,getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};}
 
+test('a stalled cache write times out and cleans its own cache when the write settles',async()=>{
+ let release,deleted=false;const cache={keys:async()=>[],open:async()=>({put:()=>new Promise(resolve=>{release=resolve;}),match:async()=>{throw Error('must not read after timeout');}}),delete:async()=>{deleted=true;return true;}};
+ const result=await cacheRoundtripProbe(cache,10);assert.equal(result.status,'warning');assert.match(result.detail,/timed out/);assert.equal(deleted,false);
+ release();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(deleted,true);
+});
+
+test('a cache opened after the deadline is removed without starting a write',async()=>{
+ let release,deleted=false,writes=0;const cache={keys:async()=>[],open:()=>new Promise(resolve=>{release=resolve;}),delete:async()=>{deleted=true;return true;}};
+ const result=await cacheRoundtripProbe(cache,10);assert.equal(result.status,'warning');
+ release({put:async()=>{writes++;}});await new Promise(resolve=>setTimeout(resolve,0));assert.equal(writes,0);assert.equal(deleted,true);
+});
+
+test('cache diagnostic detects silent write loss and removes only its temporary cache',async()=>{
+ for(const losesWrites of [false,true]){
+  const names=new Set(['user-cache']);let payload;
+  const cacheStorage={keys:async()=>[...names],open:async name=>{names.add(name);return {put:async(_key,response)=>{if(!losesWrites)payload=await response.text();},match:async()=>payload===undefined?undefined:new Response(payload)};},delete:async name=>names.delete(name)};
+  const report=await runDeviceDiagnostics({cacheStorage,storage:memoryStorage(),indexedDB:null,gpu:null});
+  assert.equal(report.checks.find(c=>c.id==='cache-roundtrip').status,losesWrites?'fail':'pass');
+  assert.deepEqual([...names],['user-cache']);
+ }
+});
+
+test('cache diagnostic reports write and cleanup failures without deleting existing caches',async()=>{
+ for(const failCleanup of [false,true]){
+  const names=new Set(['user-cache']);
+  const cacheStorage={keys:async()=>[...names],open:async name=>{names.add(name);return {put:async()=>{throw Error('private browser error');}};},delete:async name=>failCleanup?false:names.delete(name)};
+  const report=await runDeviceDiagnostics({cacheStorage,storage:memoryStorage(),indexedDB:null,gpu:null});
+  const check=report.checks.find(c=>c.id==='cache-roundtrip');assert.equal(check.status,'fail');assert.doesNotMatch(check.detail,/private browser error/);
+  assert.equal(names.has('user-cache'),true);assert.equal(names.size,failCleanup?2:1);
+  if(failCleanup)assert.match(check.detail,/cleanup not confirmed/);
+ }
+});
+
+test('Home Screen PWA detection accepts both standard display-mode and iOS standalone signals',()=>{
+ assert.equal(isStandalonePwa(true,false),true);
+ assert.equal(isStandalonePwa(false,true),true);
+ assert.equal(isStandalonePwa(false,false),false);
+ assert.equal(isStandalonePwa(false,undefined),false);
+});
+
+test('WASM thread readiness requires isolation, SharedArrayBuffer, and shared WebAssembly memory',()=>{
+ assert.deepEqual(wasmThreadCapability({crossOriginIsolated:true,sharedArrayBuffer:true,sharedWasmMemory:true}),{crossOriginIsolated:true,sharedArrayBuffer:true,sharedWasmMemory:true,prerequisitesReady:true});
+ for(const missing of ['crossOriginIsolated','sharedArrayBuffer','sharedWasmMemory']){
+  const capability={crossOriginIsolated:true,sharedArrayBuffer:true,sharedWasmMemory:true};capability[missing]=false;
+  assert.equal(wasmThreadCapability(capability).prerequisitesReady,false,`${missing} is required`);
+ }
+});
+
+test('selected model diagnostic refuses another resident inference model without unloading it',()=>{
+ const ready={modelSelected:true,filesPresent:true,busy:false,otherModelLoaded:false};
+ assert.equal(canRunSelectedModelDiagnostic(ready),true);
+ assert.equal(canRunSelectedModelDiagnostic({...ready,otherModelLoaded:true}),false);
+ assert.equal(canRunSelectedModelDiagnostic({...ready,filesPresent:false}),false);
+ assert.equal(canRunSelectedModelDiagnostic({...ready,busy:true}),false);
+});
+
+test('selected model smoke counts success only for the exact expected structured answer',()=>{
+ assert.equal(parseDeviceModelSmokeAnswer('{"answer":"READY"}'),'READY');
+ assert.equal(parseDeviceModelSmokeAnswer('{"answer":" READY "}'),'READY');
+ for(const invalid of ['{"answer":"anything"}','{"answer":""}','{"answer":"READY","extra":true}','[]','null','not-json'])assert.throws(()=>parseDeviceModelSmokeAnswer(invalid),/Invalid structured response/);
+});
+
 test('device diagnostics run bounded local probes and distinguish readiness from model execution',async()=>{
  const storage=memoryStorage();
- const report=await runDeviceDiagnostics({now:()=>new Date('2026-10-21T00:00:00.000Z'),isSecureContext:true,platform:'iPhone',userAgent:'Mobile Safari',standalone:true,online:false,serviceWorker:{controller:{}},appBuild:'0123456789abcdef',bundle:'app-abc.js',cacheStorage:{keys:async()=>['app-shell-v1']},storage,indexedDB:null,gpu:null,selectedModel:'local-model',modelFilesPresent:true,modelLoaded:false,connectionMode:'offline'});
+ const report=await runDeviceDiagnostics({now:()=>new Date('2026-10-21T00:00:00.000Z'),isSecureContext:true,platform:'iPhone',userAgent:'Mobile Safari',standalone:false,online:false,serviceWorker:{controller:{}},appBuild:'0123456789abcdef',bundle:'app-abc.js',cacheStorage:{keys:async()=>['babelshelf-product-0123456789abcdef']},storage,indexedDB:null,gpu:null,selectedModel:'local-model',modelFilesPresent:true,modelLoaded:false,connectionMode:'offline'});
  const checks=Object.fromEntries(report.checks.map(check=>[check.id,check]));
  assert.equal(checks['secure-context'].status,'pass');assert.equal(checks['service-worker'].status,'pass');assert.equal(checks['offline-cache'].status,'pass');
  assert.equal(checks['storage-roundtrip'].status,'pass');assert.equal(checks['indexeddb-roundtrip'].status,'fail');
  assert.equal(checks['webgpu'].status,'not-run');assert.equal(checks['selected-model'].status,'warning');
+ assert.equal(checks['home-screen-launch'].status,'warning');assert.match(checks['home-screen-launch'].detail,/browser tab.*installed app/i);
+ assert.match(report.manualSteps[0],/Home Screen icon/i);
+ assert.deepEqual(report.webgpu,{available:false,fallbackAdapter:null,features:[],limits:{}});
  assert.match(checks['offline-cache'].detail,/offline restart not proven/);assert.match(checks['selected-model'].detail,/generation not tested/);
- assert.equal(storage.values.size,0);assert.equal(report.connectionMode,'offline');assert.equal(report.standalone,true);
+ assert.equal(storage.values.size,0);assert.equal(report.connectionMode,'offline');assert.equal(report.standalone,false);
  const output=formatDeviceDiagnosticReport(report);assert.doesNotMatch(output,/PRIVATE_NOTE_SENTINEL|PROMPT_SENTINEL|MODEL_OUTPUT_SENTINEL/);assert.match(output,/successful offline cold launch/);
+});
+
+test('device diagnostics marks Home Screen app launch when the installed PWA is active',async()=>{
+ const report=await runDeviceDiagnostics({standalone:true,isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null});
+ const check=report.checks.find(item=>item.id==='home-screen-launch');
+ assert.equal(check.status,'pass');assert.match(check.detail,/standalone display mode detected/i);assert.match(report.manualSteps[0],/Select Run tests/i);
+ assert.doesNotMatch(report.manualSteps.join(' '),/iPhone|Airplane Mode|Home Screen/i);
+ const ios=await runDeviceDiagnostics({platform:'iPhone',userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',standalone:true,isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null});
+ assert.match(ios.manualSteps.join(' '),/Airplane Mode/);assert.match(ios.manualSteps.join(' '),/Home Screen/);
+});
+
+test('IndexedDB browser exception text is replaced before it enters the diagnostic report',async()=>{
+ const indexedDB={open(){const request={error:new DOMException('PRIVATE_BROWSER_ERROR_SENTINEL','UnknownError')};queueMicrotask(()=>request.onerror());return request;},deleteDatabase(){throw Error('unexpected cleanup');}};
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB,gpu:null});
+ const check=report.checks.find(item=>item.id==='indexeddb-roundtrip');
+ assert.equal(check.status,'fail');
+ assert.equal(check.detail,'Temporary IndexedDB probe failed');
+ assert.doesNotMatch(formatDeviceDiagnosticReport(report),/PRIVATE_BROWSER_ERROR_SENTINEL/);
+});
+
+test('device diagnostics verifies OPFS with a disposable file and refuses name collisions without overwrite',async()=>{
+ const values=new Map(),removed=[];
+ const opfs={async getDirectory(){return {
+  async getFileHandle(name,{create=false}={}){
+   if(values.has(name)){if(create)return makeHandle(name);const error=Error('exists');error.name='TypeMismatchError';throw error;}
+   if(!create){const error=Error('missing');error.name='NotFoundError';throw error;}
+   values.set(name,new Blob([]));return makeHandle(name);
+  },
+  async removeEntry(name){removed.push(name);values.delete(name);}
+ };}};
+ function makeHandle(name){return {async getFile(){return values.get(name);},async createWritable(){let chunks=[];return {async write(chunk){chunks.push(chunk);},async close(){values.set(name,new Blob(chunks));},async abort(){chunks=[];}};}};}
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null,opfs});
+ assert.deepEqual(report.checks.find(check=>check.id==='opfs-roundtrip'),{id:'opfs-roundtrip',status:'pass',detail:'Temporary OPFS file write/read/delete passed'});
+ assert.equal(values.size,0);assert.equal(removed.length,1);
+
+ const collisionFiles=new Map();let collisionName='';const original=new Blob(['untouched']);
+ const collisionPort={async getDirectory(){return {async getFileHandle(name,{create=false}={}){collisionName=name;if(!create){collisionFiles.set(name,original);return makeCollisionHandle(name);}throw Error('must not create over a collision');},async removeEntry(name){collisionFiles.delete(name);}};}};
+ function makeCollisionHandle(name){return {async getFile(){return collisionFiles.get(name);},async createWritable(){throw Error('must not overwrite a collision');}};}
+ const collisionReport=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null,opfs:collisionPort});
+ assert.equal(collisionReport.checks.find(check=>check.id==='opfs-roundtrip').status,'fail');
+ assert.equal(collisionFiles.get(collisionName),original,'pre-existing data must never be overwritten or removed');
+});
+
+test('device diagnostics reports the isolated production-memory smoke outcome without surfacing test content',async()=>{
+ const indexedDB={open(){throw Error('not called');},deleteDatabase(){throw Error('not called');}};
+ const passed=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB,gpu:null,applicationSmoke:async()=>{}});
+ assert.deepEqual(passed.checks.find(check=>check.id==='memory-store-smoke'),{id:'memory-store-smoke',status:'pass',detail:'Isolated production Memory workflow passed · temporary database deleted'});
+ const failed=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB,gpu:null,applicationSmoke:async()=>{const error=Error('PRIVATE_SMOKE_CONTENT');error.stage='search';throw error;}});
+ assert.equal(failed.checks.find(check=>check.id==='memory-store-smoke').status,'fail');
+ assert.equal(failed.checks.find(check=>check.id==='memory-store-smoke').detail,'Memory search check failed');
+ assert.doesNotMatch(JSON.stringify(failed),/PRIVATE_SMOKE_CONTENT/);
+});
+
+test('device report captures bounded WASM threading prerequisites without claiming runtime activation',async()=>{
+ const storage=memoryStorage(),report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage,indexedDB:null,gpu:null,crossOriginIsolated:true,sharedArrayBuffer:true,sharedWasmMemory:true});
+ assert.deepEqual(report.wasmThreads,{crossOriginIsolated:true,sharedArrayBuffer:true,sharedWasmMemory:true,prerequisitesReady:true});
+ assert.equal(report.checks.find(check=>check.id==='wasm-threads').status,'pass');
+ assert.match(report.scope.join(' '),/does not prove a selected engine used a worker pool/);
+ const saved=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,saved);assert.equal(readSavedDeviceTestReport(storage),saved);
+ const forged=JSON.stringify({...report,wasmThreads:{...report.wasmThreads,prerequisitesReady:false}});assert.throws(()=>writeSavedDeviceTestReport(storage,forged),/Invalid/);
+});
+
+test('device report captures browser hardware hints used to interpret cross-platform speed samples',async()=>{
+ const storage=memoryStorage(),base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage,indexedDB:null,gpu:null};
+ const report=await runDeviceDiagnostics({...base,hardwareConcurrency:8,deviceMemoryGiB:5.7});
+ assert.deepEqual(report.hardware,{logicalProcessors:8,memoryGiBEstimate:5.75});
+ assert.match(report.scope.join(' '),/do not prove physical core topology, available memory, runtime utilization, or model fit/);
+ const serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ const memoryOnly=await runDeviceDiagnostics({...base,hardwareConcurrency:4,deviceMemoryGiB:0});assert.deepEqual(memoryOnly.hardware,{logicalProcessors:4});
+ for(const hardware of [{logicalProcessors:0},{logicalProcessors:257},{logicalProcessors:2.5},{logicalProcessors:2,memoryGiBEstimate:Infinity}])assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,hardware})),/Invalid/);
+ const unavailable=await runDeviceDiagnostics({...base,hardwareConcurrency:0,deviceMemoryGiB:8});assert.equal(Object.hasOwn(unavailable,'hardware'),false);
+});
+
+test('device diagnostics warns when cross-tab model coordination is unavailable',async()=>{
+ const base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null};
+ const supported=await runDeviceDiagnostics({...base,inferenceLocks:true});
+ assert.deepEqual(supported.checks.find(check=>check.id==='cross-tab-inference'),{id:'cross-tab-inference',status:'pass',detail:'Web Locks API available for origin-wide model coordination'});
+ const unsupported=await runDeviceDiagnostics({...base,inferenceLocks:false});
+ assert.deepEqual(unsupported.checks.find(check=>check.id==='cross-tab-inference'),{id:'cross-tab-inference',status:'warning',detail:'Web Locks API unavailable · simultaneous BabelShelf tabs may compete for device memory'});
+});
+
+test('device report keeps the selected model, engine and runtime revisions when model files are not ready',async()=>{
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null,selectedModel:'bonsai-9b',selectedModelRevision:'model-r17',selectedModelEngine:'webml-qwen35',runtimeRevision:'webgpu-runtime-r4',modelFilesPresent:false,modelLoaded:false});
+ assert.deepEqual(report.selectedModel,{id:'bonsai-9b',revision:'model-r17',engine:'webml-qwen35',runtimeRevision:'webgpu-runtime-r4',filesPresent:false,loaded:false});
+});
+
+test('device report records the registered backend without presenting it as adapter evidence',async()=>{
+ const storage=memoryStorage(),report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage,indexedDB:null,gpu:null,selectedModel:'smollm-webgpu',selectedModelRevision:'model-r1',selectedModelEngine:'transformers-causal-webgpu',selectedModelBackend:'webgpu',runtimeRevision:'onnx-r3'});
+ assert.deepEqual(report.selectedModel,{id:'smollm-webgpu',revision:'model-r1',engine:'transformers-causal-webgpu',backend:'webgpu',runtimeRevision:'onnx-r3',filesPresent:false,loaded:false});
+ assert.match(report.scope.join(' '),/do not prove which hardware adapter executed/);
+ const serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,selectedModel:{...report.selectedModel,backend:'hardware-inferred'}})),/Invalid/);
+});
+
+test('device report includes only a bounded configured context limit for the selected model',async()=>{
+ const base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:null,selectedModel:'lfm3-q4',selectedModelRevision:'model-r1',selectedModelEngine:'wllama-lfm3',selectedModelBackend:'webgpu',runtimeRevision:'runtime-r1'};
+ const valid=await runDeviceDiagnostics({...base,selectedModelContextTokens:8192});
+ assert.equal(valid.selectedModel.contextTokens,8192);
+ assert.match(valid.scope.join(' '),/does not measure allocated memory/);
+ for(const invalid of [0,1.5,262145,NaN]){
+  const report=await runDeviceDiagnostics({...base,selectedModelContextTokens:invalid});
+  assert.equal(Object.hasOwn(report.selectedModel,'contextTokens'),false,`invalid context limit ${String(invalid)} is omitted`);
+ }
+ const storage=memoryStorage(),serialized=formatDeviceDiagnosticReport(valid);
+ writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...valid,selectedModel:{...valid.selectedModel,contextTokens:262145}})),/Invalid/);
+});
+
+test('device report captures only bounded WebGPU features and selected numeric limits',async()=>{
+ const requests=[];
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async value=>{requests.push(value);return{features:new Set(['shader-f16','timestamp-query']),limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256,unlistedLimit:99},isFallbackAdapter:false,info:{vendor:'Intel',architecture:'Gen-12LP',device:'PRIVATE_DEVICE_NAME'}};}}});
+ assert.deepEqual(requests,[{powerPreference:'high-performance'}]);
+ assert.deepEqual(report.webgpu,{available:true,probeStatus:'available',fallbackAdapter:false,vendor:'intel',architecture:'gen-12lp',features:['shader-f16','timestamp-query'],limits:{maxBufferSize:4294967296,maxStorageBufferBindingSize:2147483647,maxComputeWorkgroupSizeX:256}});
+ assert.doesNotMatch(JSON.stringify(report),/PRIVATE_DEVICE_NAME/);assert.equal(report.checks.find(check=>check.id==='webgpu').status,'pass');assert.match(report.checks.find(check=>check.id==='webgpu').detail,/high-performance preference tried with default-selection fallback/);
+ const storage=memoryStorage(),serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,webgpu:{...report.webgpu,vendor:'private-adapter-vendor'}})),/Invalid/);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,webgpu:{...report.webgpu,architecture:'PRIVATE DEVICE NAME'}})),/Invalid/);
+});
+
+test('device report checks the browser default adapter if the preferred adapter is unavailable',async()=>{
+ const requests=[],report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:async options=>{requests.push(options);return requests.length===1?null:{features:[],limits:{},isFallbackAdapter:true};}}});
+ assert.deepEqual(requests,[{powerPreference:'high-performance'},{}]);
+ assert.equal(report.webgpu.available,true);assert.equal(report.webgpu.fallbackAdapter,true);
+});
+
+test('a timed-out WebGPU diagnostic reports unknown and does not retry the default adapter late',async()=>{
+ let finishPreferred;const requests=[],gpu={requestAdapter:options=>{requests.push(options);return new Promise(resolve=>{finishPreferred=resolve;});}};
+ const result=await inspectWebGpuAdapter(gpu,10);
+ assert.deepEqual(result,{available:false,probeStatus:'timed-out',fallbackAdapter:null,features:[],limits:{}});
+ finishPreferred(null);await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(requests,[{powerPreference:'high-performance'}]);
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null,gpu:{requestAdapter:()=>new Promise(()=>{})},webgpuProbeTimeoutMs:10});
+ assert.equal(report.checks.find(check=>check.id==='webgpu').detail,'WebGPU adapter check timed out · availability unknown · retry');
+ assert.equal(report.webgpu.probeStatus,'timed-out');
+});
+
+test('WebGPU diagnostics distinguish a confirmed missing adapter from probe errors and read old reports',async()=>{
+ const base={isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB:null};
+ const absent=await runDeviceDiagnostics({...base,gpu:{requestAdapter:async()=>null}});
+ assert.equal(absent.webgpu.probeStatus,'unavailable');
+ assert.equal(absent.checks.find(check=>check.id==='webgpu').detail,'No WebGPU adapter available; CPU/WASM may still be supported');
+ const failed=await runDeviceDiagnostics({...base,gpu:{requestAdapter:async()=>{throw Error('private GPU failure');}},webgpuProbeTimeoutMs:10});
+ assert.equal(failed.webgpu.probeStatus,'failed');
+ assert.equal(failed.checks.find(check=>check.id==='webgpu').detail,'WebGPU adapter check failed · availability unknown · retry');
+ assert.doesNotMatch(JSON.stringify(failed),/private GPU failure/);
+ const legacy={schema:1,createdAt:'2026-10-21T00:00:00.000Z',checks:[],webgpu:{available:false,fallbackAdapter:null,features:[],limits:{}}};
+ const storage=memoryStorage();writeSavedDeviceTestReport(storage,JSON.stringify(legacy));
+ assert.equal(readSavedDeviceTestReport(storage),JSON.stringify(legacy),'previous schema-1 reports without probeStatus remain readable');
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...legacy,webgpu:{...legacy.webgpu,probeStatus:'adapter-was-used'}})),/Invalid/);
+});
+
+test('saved device report retains bounded runtime performance counters and rejects raw payloads',async()=>{
+ const storage=memoryStorage(),report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage,indexedDB:null,gpu:null});
+ report.modelGeneration={status:'pass',model:'bonsai',modelRevision:'r1',runtimeRevision:'runtime-r1',durationMs:1200,runtimeMetrics:{visibleTextTtftMs:240,runtimeDecodeTokensPerSecond:8.5,memoryBefore:{gpuBytes:1024},memoryAfter:{gpuBytes:2048}}};
+ const serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ const forged={...report,modelGeneration:{...report.modelGeneration,runtimeMetrics:{...report.modelGeneration.runtimeMetrics,raw:'PRIVATE'}}};
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify(forged)),/Invalid device test report/);
+ const forgedEngine={...report,selectedModel:{id:'m',revision:'r',engine:'PRIVATE NOTE',runtimeRevision:'r',filesPresent:true,loaded:false}};
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify(forgedEngine)),/Invalid device test report/);
+});
+
+test('an IndexedDB probe name collision never deletes an existing database',async()=>{
+ let deleted=false;
+ const database={close(){},transaction(){throw Error('must not use an existing database');}};
+ const indexedDB={open(){const request={result:database};queueMicrotask(()=>request.onsuccess());return request;},deleteDatabase(){deleted=true;throw Error('must not delete a database after a collision');}};
+ const report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage:memoryStorage(),indexedDB,gpu:null});
+ const result=report.checks.find(check=>check.id==='indexeddb-roundtrip');
+ assert.equal(result.status,'fail');assert.match(result.detail,/name collision/);assert.equal(deleted,false);
 });
 
 test('offline restart marker is a small local continuation record and rejects malformed data',()=>{
  const storage=memoryStorage(),marker={schema:1,startedAt:'2026-10-21T00:00:00.000Z',appBuild:'0123456789abcdef',baseline:{checkedAt:'2026-10-21T00:00:00.000Z',appBuild:'0123456789abcdef',standalone:true,onlineSignal:true,checks:[{id:'service-worker',status:'pass',detail:'controlled'}],modelGeneration:{status:'pass',model:'text-small',modelRevision:'rev-a',runtimeRevision:'runtime-a',durationMs:900,outputTokens:4,tokensPerSecond:4.44,answerCharacters:5}}};
- writeOfflineRestartMarker(storage,marker);assert.deepEqual(readOfflineRestartMarker(storage),marker);assert.equal(readOfflineRestartMarker(storage).baseline.modelGeneration.outputTokens,4);
- storage.setItem('babelshelf.device-test.offline-restart.v1','{"schema":1,"startedAt":"bad","appBuild":"x"}');assert.equal(readOfflineRestartMarker(storage),null);
+ writeOfflineRestartMarker(storage,marker);assert.deepEqual(readOfflineRestartMarker(storage,Date.parse('2026-10-21T00:00:00.000Z')),marker);assert.equal(readOfflineRestartMarker(storage,Date.parse('2026-10-21T00:00:00.000Z')).baseline.modelGeneration.outputTokens,4);
+ assert.equal(readOfflineRestartMarker(storage,Date.parse('2026-10-22T00:00:00.001Z')),null,'expired continuation is ignored');assert.equal(storage.getItem('babelshelf.device-test.offline-restart.v1'),null,'expired marker is removed');
+ writeOfflineRestartMarker(storage,marker);assert.equal(readOfflineRestartMarker(storage,Date.parse('2026-10-20T23:59:59.999Z')),null,'future continuation is ignored');assert.equal(storage.getItem('babelshelf.device-test.offline-restart.v1'),null,'future marker is removed');
+ storage.setItem('babelshelf.device-test.offline-restart.v1','{"schema":1,"startedAt":"bad","appBuild":"x"}');assert.equal(readOfflineRestartMarker(storage),null);assert.equal(storage.getItem('babelshelf.device-test.offline-restart.v1'),null,'malformed marker is removed');
  assert.throws(()=>writeOfflineRestartMarker(storage,{...marker,appBuild:'x'.repeat(41)}),/Invalid/);
  clearOfflineRestartMarker(storage);assert.equal(readOfflineRestartMarker(storage),null);
+});
+
+test('offline restart marker binds an optional model test to the model explicitly selected before restart',()=>{
+ const storage=memoryStorage(),now=Date.now(),at=new Date(now).toISOString(),marker={schema:1,startedAt:at,appBuild:'build-a',modelTestRequested:true,modelTestModel:'bonsai-4b',baseline:{checkedAt:at,appBuild:'build-a',standalone:true,onlineSignal:true,checks:[]}};
+ writeOfflineRestartMarker(storage,marker);assert.deepEqual(readOfflineRestartMarker(storage,now),marker);
+ assert.throws(()=>writeOfflineRestartMarker(storage,{...marker,modelTestModel:undefined}),/Invalid/);
+ storage.setItem('babelshelf.device-test.offline-restart.v1',JSON.stringify({...marker,modelTestModel:'x'.repeat(121)}));assert.equal(readOfflineRestartMarker(storage),null,'oversized model identity invalidates the one-shot request');
+});
+
+test('offline return attempt is claimed once before work and cannot auto-run again after interruption',()=>{
+ const storage=memoryStorage(),now=Date.now(),at=new Date(now).toISOString(),marker={schema:1,startedAt:at,appBuild:'build-a',modelTestRequested:true,modelTestModel:'text-local',baseline:{checkedAt:at,appBuild:'build-a',standalone:true,onlineSignal:true,checks:[]}};
+ writeOfflineRestartMarker(storage,marker);
+ const pending=readOfflineRestartMarker(storage,now);
+ assert.ok(pending);assert.equal(claimOfflineRestartAttempt(storage,pending,now),true);
+ const claimed=readOfflineRestartMarker(storage,now);assert.equal(claimed?.returnAttempted,true);
+ assert.equal(claimOfflineRestartAttempt(storage,claimed,now),false,'a relaunch cannot claim and rerun the same physical test');
+});
+
+test('interrupted one-run return produces an honest warning without claiming an offline pass',async()=>{
+ const storage=memoryStorage(),baseline=await runDeviceDiagnostics({isSecureContext:true,standalone:true,online:true,serviceWorker:{controller:{}},appBuild:'build-a',storage,indexedDB:null,gpu:null});
+ const marker={schema:1,startedAt:baseline.createdAt,appBuild:baseline.appBuild,returnAttempted:true,modelTestRequested:true,modelTestModel:'text-local',baseline:{checkedAt:baseline.createdAt,appBuild:baseline.appBuild,standalone:true,onlineSignal:true,checks:baseline.checks}};
+ const interrupted=completeInterruptedOfflineRestartReport(baseline,marker),checks=Object.fromEntries(interrupted.checks.map(item=>[item.id,item]));
+ assert.equal(checks['offline-cold-reopen'].status,'warning');assert.match(checks['offline-cold-reopen'].detail,/interrupted/i);
+ assert.equal(interrupted.modelGeneration.status,'interrupted');assert.equal(interrupted.modelGeneration.model,'text-local');
+ assert.equal(interrupted.offlineRestart?.returnObserved,true);assert.ok(interrupted.scope.some(line=>/not automatically repeated/i.test(line)));
+ assert.equal(interrupted.manualSteps.length,0);
+});
+
+test('offline return report uses browser-observed signals and platform-accurate OS state limits',async()=>{
+ const storage=memoryStorage(),baseline=await runDeviceDiagnostics({isSecureContext:true,standalone:true,online:true,serviceWorker:{controller:{}},appBuild:'before',storage,indexedDB:null,gpu:null});
+ const marker={schema:1,startedAt:baseline.createdAt,appBuild:baseline.appBuild,baseline:{checkedAt:baseline.createdAt,appBuild:baseline.appBuild,standalone:true,onlineSignal:true,checks:baseline.checks}};
+ const returned=await runDeviceDiagnostics({isSecureContext:true,standalone:true,online:false,serviceWorker:{controller:{}},appBuild:'after',storage,indexedDB:null,gpu:null});
+ const report=completeOfflineRestartReport(returned,marker),checks=Object.fromEntries(report.checks.map(item=>[item.id,item]));
+ assert.equal(checks['offline-cold-reopen'].status,'pass');assert.match(checks['offline-cold-reopen'].detail,/cannot be independently verifiable|not independently verifiable/i);assert.equal(checks['os-system-state'].status,'warning');assert.doesNotMatch(JSON.stringify(report),/iOS Airplane Mode|iOS force-close/);assert.equal(report.offlineRestart.returnObserved,true);assert.equal(report.manualSteps.length,0);
+ const iosBase={...returned,platform:'iPhone',userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'};const iosReport=completeOfflineRestartReport(iosBase,marker);assert.equal(iosReport.checks.find(item=>item.id==='ios-system-state')?.status,'warning');assert.match(iosReport.scope.join(' '),/iOS force-closed/);
+});
+
+test('final device report is retained locally for a later one-tap copy and rejects oversized or malformed values',async()=>{
+ const storage=memoryStorage(),report=formatDeviceDiagnosticReport(await runDeviceDiagnostics({isSecureContext:true,standalone:true,online:false,serviceWorker:{controller:{}},appBuild:'build-a',storage,indexedDB:null,gpu:null}));
+ assert.equal(readSavedDeviceTestReport(storage),'');writeSavedDeviceTestReport(storage,report);assert.equal(readSavedDeviceTestReport(storage),report);
+ storage.setItem('babelshelf.device-test.report.v1','{"schema":2}');assert.equal(readSavedDeviceTestReport(storage),'');assert.throws(()=>writeSavedDeviceTestReport(storage,'x'.repeat(40001)),/too large/);
+ writeSavedDeviceTestReport(storage,report);clearSavedDeviceTestReport(storage);assert.equal(readSavedDeviceTestReport(storage),'');
+});
+
+test('saved device report accepts the prior schema and rejects malformed WebGPU metadata',()=>{
+ const storage=memoryStorage(),oldReport=JSON.stringify({schema:1,createdAt:'2026-10-20T00:00:00.000Z',checks:[]});
+ writeSavedDeviceTestReport(storage,oldReport);assert.equal(readSavedDeviceTestReport(storage),oldReport);
+ const malformed=JSON.stringify({schema:1,createdAt:'2026-10-20T00:00:00.000Z',checks:[],webgpu:{available:true,features:['x'.repeat(65)],fallbackAdapter:null,limits:{}}});
+ storage.setItem('babelshelf.device-test.report.v1',malformed);assert.equal(readSavedDeviceTestReport(storage),'');assert.throws(()=>writeSavedDeviceTestReport(storage,malformed),/Invalid/);
+});
+
+test('load phase counters survive local reports and malformed or private fields refuse storage',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt'}};
+ for(const loadMetrics of [{verificationMs:-1},{importMs:'private'},{runtimeLoadMs:Infinity},{device:'PRIVATE'},{runtimeVariant:'untrusted'}])assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,loadMetrics}})),/Invalid/);
+ const value={...base,modelGeneration:{...base.modelGeneration,loadMetrics:{verificationMs:12,importMs:0,runtimeLoadMs:25,totalLoadMs:42,runtimeModuleReused:false,executionBackend:'cpu-wasm',runtimeVariant:'compatibility',gpuFallbackReason:'webgpu-no-layers-offloaded'}}};writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.deepEqual(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.loadMetrics,value.modelGeneration.loadMetrics);
+});
+
+test('bounded CPU runtime thread and prompt counters survive saved performance reports',()=>{
+ const storage=memoryStorage(),value={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'cpu',modelRevision:'rev',runtimeRevision:'runtime',testMode:'performance',runtimeMetrics:{requestedThreads:4,runtimeThreads:4,runtimePromptTokens:100,runtimeCachedTokens:0,runtimePrefillMs:10}}};
+ writeSavedDeviceTestReport(storage,JSON.stringify(value));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics.runtimeThreads,4);
+});
+
+test('selected-model quantization survives the local device report and rejects oversized values',async()=>{
+ const storage=memoryStorage(),report=await runDeviceDiagnostics({selectedModel:'lfm3-1.7b-q8-0',selectedModelQuantization:'Q8_0',modelFilesPresent:true,storage,indexedDB:null,cacheStorage:null,gpu:null});
+ assert.equal(report.selectedModel.quantization,'Q8_0');writeSavedDeviceTestReport(storage,formatDeviceDiagnosticReport(report));assert.equal(JSON.parse(readSavedDeviceTestReport(storage)).selectedModel.quantization,'Q8_0');
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,selectedModel:{...report.selectedModel,quantization:'x'.repeat(101)}})),/Invalid/);
+});
+
+test('model test failures preserve a bounded failure stage without storing exception text',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[]};
+ const value={...base,modelGeneration:{status:'fail',model:'local',modelRevision:'r',runtimeRevision:'rt',testMode:'performance',loadState:'not-loaded',failureStage:'load',failureType:'Error'}};
+ writeSavedDeviceTestReport(storage,JSON.stringify(value));const saved=JSON.parse(readSavedDeviceTestReport(storage));assert.equal(saved.modelGeneration.loadState,'not-loaded');assert.equal(saved.modelGeneration.failureStage,'load');
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...value.modelGeneration,failureStage:'PRIVATE_PROMPT'}})),/Invalid/);
+});
+
+test('full-cycle report preserves bounded runtime bytes read separately from network download bytes',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'fail',model:'local',modelRevision:'r',runtimeRevision:'rt',testMode:'full-cycle',failureStage:'runtime-setup',failureType:'runtime-network-error',runtimeBytesRead:73400320,runtimeDownloadedBytes:67108864}};
+ writeSavedDeviceTestReport(storage,JSON.stringify(base));const saved=JSON.parse(readSavedDeviceTestReport(storage));assert.equal(saved.modelGeneration.runtimeBytesRead,73400320);assert.equal(saved.modelGeneration.runtimeDownloadedBytes,67108864);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,runtimeBytesRead:-1}})),/Invalid/);
+});
+
+test('unrelated and historical cache buckets cannot pass the current-build cache check',async()=>{
+ const env={appBuild:'0123456789abcdef',storage:memoryStorage(),indexedDB:null,gpu:null};
+ const check=async(build,keys)=>(await runDeviceDiagnostics({...env,appBuild:build,cacheStorage:{keys:async()=>keys}})).checks.find(item=>item.id==='offline-cache');
+ const old=['babelshelf-product-fedcba9876543210','babelshelf-product-assets-v1','model-assets','unrelated'];
+ assert.equal((await check(env.appBuild,old)).status,'warning');
+ assert.match((await check(env.appBuild,old)).detail,/Current build cache not listed/);
+ const result=await check(env.appBuild,[...old,'babelshelf-product-'+env.appBuild]);
+ assert.equal(result.status,'pass');assert.match(result.detail,/1 other app build/);assert.match(result.detail,/offline restart not proven/);
+ assert.equal((await check('Unknown',['babelshelf-product-Unknown'])).status,'warning');
+ assert.equal((await check(env.appBuild,[])).status,'warning');
+});
+
+
+test('saved diagnostic counters obey the same integer bounds as runtime metrics',()=>{
+ const storage=memoryStorage(),base={schema:1,createdAt:new Date().toISOString(),checks:[],modelGeneration:{status:'pass',model:'m',modelRevision:'r',runtimeRevision:'rt'}};
+ for(const runtimeMetrics of [{runtimeThreads:0},{requestedThreads:65},{runtimeThreads:1.5},{runtimePromptTokens:.5},{runtimeCachedTokens:.5},{runtimeObservedGpuLayers:1025},{runtimeObservedGpuTotalLayers:.5}]){
+  assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,runtimeMetrics}})),/Invalid/);
+ }
+ const runtimeMetrics={runtimeThreads:64,runtimeObservedGpuLayers:0,runtimeObservedGpuTotalLayers:1024,runtimeCachedTokens:0,runtimePrefillMs:.5};
+ writeSavedDeviceTestReport(storage,JSON.stringify({...base,modelGeneration:{...base.modelGeneration,runtimeMetrics}}));
+ assert.deepEqual(JSON.parse(readSavedDeviceTestReport(storage)).modelGeneration.runtimeMetrics,runtimeMetrics);
 });

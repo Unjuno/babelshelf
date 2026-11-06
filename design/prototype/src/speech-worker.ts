@@ -4,7 +4,7 @@ import {pipeline,env} from '@huggingface/transformers';
 import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
 import {configureLocalTransformerRuntime} from './transformers-runtime';
-import {speechRuntimeResponse,prepareSpeech,speechReady} from './speech-assets';
+import {speechReady,speechRuntimeResponse} from './speech-assets';
 import {getSpeechManifest} from './speech-models';
 import {customSpeechRuntimeResponse,speechModelDescriptor,readCustomSpeechFile} from './custom-speech-assets';
 import type {CustomSpeechModel} from './preference-records.ts';
@@ -18,9 +18,7 @@ self.onmessage=async({data})=>{
  if(busy){self.postMessage({id:data.id,error:'Speech model busy'});return;}busy=true;
  const progress=(text:string)=>self.postMessage({id:data.id,progress:text});
  try{let value:any;const custom=data.custom?data.custom as CustomSpeechModel:undefined,model=custom?speechModelDescriptor(custom).id:String(data.model||'whisper-tiny');activeCustomModels=custom?[custom]:[];
-  if(data.type==='status')value=await speechReady(custom??model);
-  else if(data.type==='prepare'){await prepareSpeech(data.allowNetwork===true,progress,custom??model);value=true;}
-  else if(data.type==='transcribe'){
+  if(data.type==='transcribe'){
    if(!languages.includes(data.language))throw Error('Audio language required');
    if(!(data.samples instanceof Float32Array)||!data.samples.length||data.samples.length>16000*120)throw Error('Audio length invalid · maximum 2 minutes');
    if(!await speechReady(custom??model))throw Error('Speech model not prepared');

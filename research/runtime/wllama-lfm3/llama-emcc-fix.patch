@@ -1,0 +1,83 @@
+diff --git a/src/models/deepseek41.cpp b/src/models/deepseek41.cpp
+index 97b2cba..3204e5c 100644
+--- a/src/models/deepseek41.cpp
++++ b/src/models/deepseek41.cpp
+@@ -551,7 +551,7 @@ ggml_tensor * llama_model_deepseek41::graph::build_attention41(
+             const int64_t n_tok = nt/n_stream;
+             GGML_ASSERT(ci.kq_mask->ne[1] == n_tok);
+             const int64_t chunk = fused_idx ? n_tok :
+-                std::max({ (n_tok + 63)/64, (INT64_C(1) << 26)/(n_idx_head*n_comp*n_stream), INT64_C(1) });
++                std::max<int64_t>({ (n_tok + 63)/64, (INT64_C(1) << 26)/(n_idx_head*n_comp*n_stream), INT64_C(1) });
+ 
+             const int32_t cand_src = hparams.dsv41_cand_src;
+             const bool    pick_blk = cand_src == il && cand_pin;              // level one: pick the candidate blocks
+diff --git a/tools/server/server-context.cpp b/tools/server/server-context.cpp
+index da0d58f..5472c97 100644
+--- a/tools/server/server-context.cpp
++++ b/tools/server/server-context.cpp
+@@ -2700,16 +2700,6 @@ private:
+             ++it;
+         }
+ 
+-        while (slot.prompt.checkpoints.size() >= (size_t) params_base.n_ctx_checkpoints) {
+-            // make room for the new checkpoint, if needed
+-            const auto & cur = slot.prompt.checkpoints.front();
+-
+-            SLT_WRN(slot, "erasing old context checkpoint (pos_min = %d, pos_max = %d, n_tokens = %" PRId64 ", size = %.3f MiB)\n",
+-                    cur.pos_min, cur.pos_max, cur.n_tokens, (float) cur.size() / 1024 / 1024);
+-
+-            slot.prompt.checkpoints.erase(slot.prompt.checkpoints.begin());
+-        }
+-
+         // replace an existing checkpoint at the same n_tokens instead of appending a duplicate
+         {
+             const int64_t n_tokens_new = slot.prompt.n_tokens() - n_tokens_cur;
+@@ -2723,6 +2713,31 @@ private:
+             }
+         }
+ 
++        while (slot.prompt.checkpoints.size() >= (size_t) params_base.n_ctx_checkpoints) {
++            // Preserve an early anchor and spread the bounded checkpoints over
++            // the prefix. FIFO eviction loses every early tool-schema boundary
++            // in a long prompt and forces recurrent models to start from zero.
++            // Remove the point whose neighbours are closest, including the
++            // incoming checkpoint as the right neighbour of the last point.
++            auto victim = slot.prompt.checkpoints.begin();
++            int64_t smallest_span = INT64_MAX;
++            for (auto it = std::next(slot.prompt.checkpoints.begin()); it != slot.prompt.checkpoints.end(); ++it) {
++                const auto right = std::next(it);
++                const int64_t next = right != slot.prompt.checkpoints.end()
++                    ? right->n_tokens
++                    : slot.prompt.n_tokens() - n_tokens_cur;
++                const int64_t span = next - std::prev(it)->n_tokens;
++                // At equal spacing keep the earlier, more widely shared prefix.
++                if (span <= smallest_span) {
++                    smallest_span = span;
++                    victim = it;
++                }
++            }
++            SLT_TRC(slot, "erasing crowded context checkpoint (pos_min = %d, pos_max = %d, n_tokens = %" PRId64 ", size = %.3f MiB)\n",
++                    victim->pos_min, victim->pos_max, victim->n_tokens, (float) victim->size() / 1024 / 1024);
++            slot.prompt.checkpoints.erase(victim);
++        }
++
+         auto & cur = slot.prompt.checkpoints.emplace_back();
+ 
+         cur.id_task = id_task;
+@@ -4460,9 +4475,13 @@ private:
+ 
+                         slot.init_sampler();
+                     } else {
+-                        // skip ordinary mid-prompt checkpoints, unless the batch starts a user
+-                        // message or we are near the end of the prompt
+-                        if (!is_user_start && !near_prompt_end) {
++                        // Tool schemas can change inside a long system message, before
++                        // the first user boundary. Retain periodic checkpoints there
++                        // too, so a hybrid/recurrent model can reuse that exact prefix.
++                        // The common spacing and bounded eviction below still apply.
++                        const bool spaced_checkpoint = slot.prompt.checkpoints.empty() ||
++                            n_tokens_start > slot.prompt.checkpoints.back().n_tokens + params_base.checkpoint_min_step;
++                        if (!is_user_start && !near_prompt_end && !spaced_checkpoint) {
+                             do_checkpoint = false;
+                         }
+                     }

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote,latest} from '../../../dist/core.js';
 import {projectNote,applyKnowledgeChanges,planFolderRename,planMemoryRecovery} from '../src/knowledge-store.ts';
+import {initialPreferenceNotes} from '../src/preference-records.ts';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from 'node:module';
 
@@ -38,6 +39,42 @@ test('legacy projection and unchanged save preserve all bytes, IDs, sources and 
  const view=projectNote(original),result=applyKnowledgeChanges([original],[view],[view]);
  assert.deepEqual(result,[original]);assert.equal(view.id,original.id);assert.match(view.path,/^inbox\//);
 });
+
+test('reviewed generated-note save refuses cited text outside the source excerpt without changing originals',()=>{
+ const source=createNote({path:'Notes/source.md',body:'The access code is 4826.'}),before=structuredClone([source]),sourceView=projectNote(source),excerpt=source.revisions[0].body;
+ const answer={id:'derived-answer',path:'Inbox/answer.md',body:'The access code is 4826.',version:1,history:[],kind:'generated',sources:[{noteId:source.id,revision:1,start:0,end:excerpt.length,quote:excerpt,citedQuote:'access code is 1111'}]};
+ assert.throws(()=>applyKnowledgeChanges([source],[sourceView],[sourceView,answer]),/source reference|review before saving/i);
+ assert.deepEqual([source],before,'rejected review leaves canonical originals untouched');
+});
+
+test('note views retain detached source identities and kind without changing canonical records or edit history',()=>{
+ const original=createNote({path:'Notes/original.md',body:'Water and flashlight.'}),ref={noteId:original.id,revision:1,start:0,end:21,quote:'Water and flashlight.',citedQuote:'flashlight'},saved=createNote({path:'Notes/summary.md',body:'Water and flashlight.',kind:'generated',sources:[ref]}),before=structuredClone([original,saved]);
+ const view=projectNote(saved);assert.equal(view.kind,'generated');assert.deepEqual(view.sources,[ref]);assert.notEqual(view.sources,saved.sources);
+ view.sources[0].quote='Changed only in UI';assert.deepEqual([original,saved],before);
+ const clean=projectNote(saved),next={...clean,body:'Edited summary',version:2,history:[clean.body]};const records=applyKnowledgeChanges(before,[projectNote(original),clean],[projectNote(original),next]);assert.deepEqual(records[1].sources,saved.sources);assert.equal(records[1].revisions[0].body,'Water and flashlight.');
+});
+
+test('saved note provenance distinguishes current, changed chains, removed originals and invalid historical ranges',async()=>{
+ const {noteProvenance}=await import('../src/note-provenance.ts');
+ const source=createNote({path:'Notes/original.md',body:'Water and flashlight.'}),ref={noteId:source.id,revision:1,start:0,end:21,quote:'Water and flashlight.',citedQuote:'flashlight'},saved=createNote({path:'Notes/summary.md',body:'Packed water.',kind:'generated',sources:[ref]}),savedRef={noteId:saved.id,revision:1,start:0,end:13,quote:'Packed water.'},nested=createNote({path:'Notes/nested.md',body:'Packed.',kind:'generated',sources:[savedRef]});
+ const records=[source,saved,nested],before=structuredClone(records),current=noteProvenance(records,saved.id,1);assert.equal(current.status,'current');assert.equal(current.items[0].historicalAvailable,true);assert.deepEqual(current.items[0].ref,ref);
+ const changed=reviseNote(source,{body:'Tea and flashlight.'},1),old=noteProvenance([changed,saved,nested],saved.id,1);assert.equal(old.status,'changed');assert.equal(old.items[0].currentRevision,2);assert.equal(old.items[0].path,'Notes/original.md');assert.equal(old.items[0].historicalAvailable,true);assert.equal(noteProvenance([changed,saved,nested],nested.id,1).status,'changed');
+ const removed=noteProvenance([withdrawNote(source,1),saved],saved.id,1);assert.equal(removed.status,'removed');assert.equal(removed.items[0].historicalAvailable,true);
+ assert.equal(noteProvenance([saved],saved.id,1).status,'unavailable');assert.equal(noteProvenance([saved],saved.id,1).items[0].historicalAvailable,false);
+ const broken={...saved,sources:[{...ref,quote:'Different same range'}]};assert.equal(noteProvenance([source,broken],saved.id,1).status,'unavailable');assert.throws(()=>noteProvenance(records,saved.id,2),/changed|unavailable/i);assert.deepEqual(records,before);
+});
+test('an answer saved without citations reports no sources rather than a missing source',async()=>{
+ const {noteProvenance}=await import('../src/note-provenance.ts');
+ const note=createNote({path:'Inbox/calculation.md',body:'0.3',kind:'generated',sources:[]});
+ const report=noteProvenance([note],note.id,1);assert.equal(report.status,'none');assert.deepEqual(report.items,[]);
+});
+test('source metadata distinguishes outdated originals without returning their text',async()=>{
+ const {noteSourceMetadata}=await import('../src/note-provenance.ts');
+ const source=createNote({path:'Notes/source.md',body:'A private original.'}),ref={noteId:source.id,revision:1,start:0,end:19,quote:'A private original.'},saved=createNote({path:'Notes/summary.md',body:'summary',kind:'generated',sources:[ref]});
+ const result=noteSourceMetadata([reviseNote(source,{body:'Changed original.'},1),saved],saved.id,1);
+ assert.equal(result.items[0].status,'changed');assert.equal(result.items[0].revision,1);assert.equal(result.items[0].currentRevision,2);assert.equal(result.items[0].historicalAvailable,true);assert.ok(!JSON.stringify(result).includes('A private original.'));
+ assert.throws(()=>noteSourceMetadata([source,saved],saved.id,2),/changed|unavailable/i);
+});
 test('edits append one revision; stale concurrent edits cannot overwrite',()=>{
  const original=createNote({title:'Notes',path:'Notes/a.md',body:'v1'}),before=projectNote(original);
  const changed={...before,body:'v2',version:2,history:['v1']};
@@ -60,6 +97,13 @@ test('transaction validation rejects protected edits, invalid preferences and re
  assert.throws(()=>applyKnowledgeChanges([original],[before],[{...before,body:'changed'}]),/protected/i);
  const user=createNote({path:'Notes/b.md',body:'v1'}),projected=projectNote(user);
  assert.throws(()=>applyKnowledgeChanges([user],[projected],[{...projected,body:'bad'}]),/revision/i);
+});
+
+test('a missing canonical setting can be recreated as managed through its validated Memory record',()=>{
+ const ordinary=createNote({path:'Notes/kept.md',body:'Keep this note'}),before=[projectNote(ordinary)],seed=initialPreferenceNotes.find(note=>note.id==='settings-models');
+ const restored=applyKnowledgeChanges([ordinary],before,[...before,structuredClone(seed)]),record=restored.find(note=>note.id==='settings-models');
+ assert.equal(record.ui?.managed,true);assert.equal(projectNote(record).managed,true);
+ assert.equal(latest(record).body,seed.body);assert.equal(restored.find(note=>note.id===ordinary.id).revisions.length,1);
 });
 
 test('saving an existing generated result preserves exact content and rejects stale sources',()=>{
@@ -201,9 +245,9 @@ test('preparation settings use fresh readonly keyed records and refuse malformed
  const rows=new Map(initialPreferenceNotes.filter(n=>['settings-models','settings-connection'].includes(n.id)).map(seed=>[seed.id,{...createNote({title:seed.id,body:seed.body,path:seed.path}),id:seed.id,ui:{managed:true}}]));
  const store=new KnowledgeStore('unused'),calls=[];
  store.transaction=(names,mode,run)=>new Promise((done,fail)=>{assert.deepEqual(names,['notes']);assert.equal(mode,'readonly');run({objectStore(name){assert.equal(name,'notes');return {get(id){calls.push(id);const request={result:structuredClone(rows.get(id))};queueMicrotask(()=>request.onsuccess());return request;},getAll(){throw Error('Must not load every knowledge record');}};}},done,fail);});
- const first=await store.preparationSettings();assert.equal(first.models.textModel,'4B');assert.equal(first.connection.downloads,false);assert.deepEqual(calls,['settings-models','settings-connection']);
+ const first=await store.preparationSettings();assert.equal(first.models.textModel,'lfm3-1.7b-qad-q4-0');assert.equal(first.connection.downloads,false);assert.deepEqual(calls,['settings-models','settings-connection']);
  const original=rows.get('settings-models'),body=JSON.parse(original.revisions.at(-1).body.match(/```json\n([\s\S]+)\n```/)[1]);body.textModel='2B';
- rows.set(original.id,reviseNote(original,{body:'# Models\n\n```json\n'+JSON.stringify(body,null,2)+'\n```\n'},latest(original).version));assert.equal((await store.preparationSettings()).models.textModel,'2B');assert.equal(first.models.textModel,'4B');
+ rows.set(original.id,reviseNote(original,{body:'# Models\n\n```json\n'+JSON.stringify(body,null,2)+'\n```\n'},latest(original).version));assert.equal((await store.preparationSettings()).models.textModel,'2B');assert.equal(first.models.textModel,'lfm3-1.7b-qad-q4-0');
  rows.delete('settings-connection');await assert.rejects(store.preparationSettings(),/Settings unavailable/);
  rows.set('settings-connection',{...createNote({body:'broken',path:'Settings/connection.md'}),id:'settings-connection'});await assert.rejects(store.preparationSettings(),/JSON block/);
 });

@@ -1,8 +1,38 @@
 export type OfflineShellStatus='Not prepared'|'Checking'|'Installing'|'Installed'|'Preparation failed'|'Unavailable';
 let status:OfflineShellStatus='Not prepared';const listeners=new Set<()=>void>();
 export const offlineShellStatus=()=>status;
+/** Verify the active worker's cached shell without fetching or changing data. */
+export async function checkOfflineAppShell(worker:Pick<ServiceWorker,'postMessage'>|null|undefined,timeoutMs=15000):Promise<'ready'|'missing'|'unknown'>{
+ if(!worker||typeof MessageChannel==='undefined')return 'unknown';
+ return new Promise(resolve=>{
+  const channel=new MessageChannel();let done=false;
+  const finish=(value:'ready'|'missing'|'unknown')=>{if(done)return;done=true;clearTimeout(timer);channel.port1.close();channel.port2.close();resolve(value);};
+  const timer=setTimeout(()=>finish('unknown'),Math.max(0,timeoutMs));
+  channel.port1.onmessage=event=>finish(event.data?.status==='ready'?'ready':event.data?.status==='missing'?'missing':'unknown');
+  try{worker.postMessage({type:'check-app-shell'},[channel.port2]);}catch{finish('unknown');}
+ });
+}
+type ShellHealth='ready'|'missing'|'unknown';
+/** Latest check owns the display; late results cannot overwrite a retry or repair. */
+export function createOfflineShellHealthProbe(check:()=>Promise<ShellHealth>,publish:(value:ShellHealth|'checking')=>void){
+ let generation=0;
+ return {async check(){const current=++generation;publish('checking');let value:ShellHealth;try{value=await check();}catch{value='unknown';}if(current===generation)publish(value);return value;},cancel(){generation++;}};
+}
+/** Reacquire missing pinned shell assets only after an explicit user action. */
+export async function repairOfflineAppShell(worker:Pick<ServiceWorker,'postMessage'>|null|undefined,online:boolean,timeoutMs=120000):Promise<void>{
+ if(!worker||typeof MessageChannel==='undefined'||typeof crypto==='undefined'||typeof crypto.randomUUID!=='function')throw Error('App repair unavailable · update app');
+ const operationId=crypto.randomUUID();
+ await new Promise<void>((resolve,reject)=>{
+  const channel=new MessageChannel();let done=false;
+  const finish=(error?:Error)=>{if(done)return;done=true;clearTimeout(timer);channel.port1.close();channel.port2.close();error?reject(error):resolve();};
+  const timer=setTimeout(()=>{try{worker.postMessage({type:'cancel-app-shell-repair',operationId});}catch{}finish(Error('App repair timed out · retry'));},Math.max(0,timeoutMs));
+  channel.port1.onmessage=event=>finish(event.data?.status==='ready'?undefined:Error(event.data?.status==='offline'?'Select Online to repair app':event.data?.status==='disconnected'?'Connect to repair offline app':'App repair failed · update app or retry'));
+  try{worker.postMessage({type:'repair-app-shell',operationId,localOnly:!online},[channel.port2]);}catch{finish(Error('App repair unavailable · update app'));}
+ });
+}
 export function subscribeOfflineShell(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
 function report(next:OfflineShellStatus){status=next;for(const listener of listeners)listener();}
+let initialization=0,stopObserving:(()=>void)|null=null;
 // Installed describes worker lifecycle only, never model readiness or durable
 // offline certification. Failed updates do not invalidate an existing worker.
 export function observeOfflineRegistration(registration:ServiceWorkerRegistration,publish:(status:OfflineShellStatus)=>void){
@@ -13,18 +43,57 @@ export function observeOfflineRegistration(registration:ServiceWorkerRegistratio
   // Keep observing the same new worker instead of treating that handoff as a
   // failed first install.
   const handoff=[...observed].find(candidate=>candidate.state==='activated'||candidate.state==='activating'||candidate.state==='installed');
-  publish(registration.active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff?'Installing':'Preparation failed');
+  const active=registration.active;
+  const failedInstall=[...observed].some(candidate=>candidate.state==='redundant');
+  publish(active?.state==='activated'||handoff?.state==='activated'?'Installed':worker&&worker.state!=='redundant'||handoff||active?.state==='activating'?'Installing':worker?.state==='redundant'||active?.state==='redundant'||failedInstall?'Preparation failed':'Checking');
  };
  registration.addEventListener('updatefound',refresh);refresh();return()=>{stopped=true;registration.removeEventListener('updatefound',refresh);for(const worker of observed)worker.removeEventListener('statechange',refresh);};
 }
-export async function initializeOfflineShell(container:ServiceWorkerContainer|undefined){
+export async function initializeOfflineShell(container:ServiceWorkerContainer|undefined,allowRegister=false){
+ const current=++initialization;stopObserving?.();stopObserving=null;
  if(!container){report('Unavailable');return;}report('Checking');
- try{const registration=await container.getRegistration()??await container.register('./sw.js');observeOfflineRegistration(registration,report);}catch{report('Preparation failed');}
+ try{const existing=await container.getRegistration();if(current!==initialization)return;
+  // A failed first install leaves a registration but no usable worker. A later
+  // explicit Prepare action must ask the browser to retry that exact app shell;
+  // merely observing the same redundant registration would fail immediately.
+  const failedFirstInstall=!!existing&&!existing.active&&!existing.installing&&!existing.waiting;
+  const registration=allowRegister&&(!existing||failedFirstInstall)?await container.register('./sw.js'):existing;
+  if(current!==initialization)return;if(!registration){report('Not prepared');return;}stopObserving=observeOfflineRegistration(registration,report);
+ }catch{if(current===initialization)report('Preparation failed');}
 }
-export async function appUpdateOutcome(registration:ServiceWorkerRegistration):Promise<'Update ready'|'Up to date'>{
+/** Explicitly prepare the app shell while connected, without changing model-download mode. */
+export async function prepareOfflineAppShell(container:ServiceWorkerContainer|undefined,online:boolean,timeoutMs=120000):Promise<void>{
+ if(!container)throw Error('Offline app unavailable');
+ if(!online)throw Error('Connect to prepare offline app');
+ await initializeOfflineShell(container,true);
+ await waitForOfflineShellInstallation(timeoutMs);
+ if(!container.controller)await new Promise<void>((resolve,reject)=>{
+  let done=false;const timer=setTimeout(()=>finish(Error('Offline app is not controlling this page · reopen app')),Math.max(0,timeoutMs));
+  const finish=(error?:Error)=>{if(done)return;done=true;clearTimeout(timer);container.removeEventListener('controllerchange',changed);error?reject(error):resolve();};
+  const changed=()=>{if(container.controller)finish();};
+  container.addEventListener('controllerchange',changed);changed();
+ });
+}
+function waitForOfflineShellInstallation(timeoutMs:number):Promise<void>{
+ return new Promise((resolve,reject)=>{
+  let done=false,stop=()=>{};const timer=setTimeout(()=>finish(Error('App preparation timed out · retry')),Math.max(0,timeoutMs));
+  const finish=(error?:Error)=>{if(done)return;done=true;clearTimeout(timer);stop();error?reject(error):resolve();};
+  const check=()=>{const current=offlineShellStatus();if(current==='Installed')finish();else if(current==='Preparation failed'||current==='Unavailable')finish(Error('App preparation failed · retry'));};
+  stop=subscribeOfflineShell(check);check();
+ });
+}
+const updateTimeout=()=>Error('Update timed out · try again');
+async function boundedUpdateCheck(check:Promise<unknown>,timeoutMs:number){
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{await Promise.race([check,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(updateTimeout()),Math.max(0,timeoutMs));})]);}
+ finally{clearTimeout(timer);}
+}
+export async function appUpdateOutcome(registration:ServiceWorkerRegistration,timeoutMs=120000):Promise<'Update ready'|'Up to date'>{
  const worker=registration.installing;
  if(worker)await new Promise<void>((resolve,reject)=>{
-  const settle=()=>{if(['installed','activated','redundant'].includes(worker.state)){worker.removeEventListener('statechange',settle);if(worker.state==='redundant')reject(Error('Update verification failed'));else resolve();}};
+  const finish=(error?:Error)=>{clearTimeout(timer);worker.removeEventListener('statechange',settle);error?reject(error):resolve();};
+  const settle=()=>{if(['installed','activated','redundant'].includes(worker.state))finish(worker.state==='redundant'?Error('Update verification failed'):undefined);};
+  const timer=setTimeout(()=>finish(updateTimeout()),Math.max(0,timeoutMs));
   worker.addEventListener('statechange',settle);settle();
  });
  if(registration.waiting?.state==='installed')return 'Update ready';
@@ -46,6 +115,17 @@ export async function activateWaitingUpdate(registration:ServiceWorkerRegistrati
   timer=setTimeout(()=>finish(Error('Update activation not confirmed · reopen app to check')),timeoutMs);
   try{worker.postMessage({type:'activate-update'});check();}catch(error){finish(error instanceof Error?error:Error('Update activation failed'));}
  });
+}
+
+export async function refreshAppVersion(registration:ServiceWorkerRegistration,container:ServiceWorkerContainer,timeoutMs=120000):Promise<'Updated'|'Up to date'>{
+ // Timeout releases the UI, not the browser-owned installation. A later
+ // explicit refresh may finish applying that same verified worker.
+ const deadline=Date.now()+timeoutMs,remaining=()=>Math.max(0,deadline-Date.now());
+ // A waiting worker may predate the server. Check once before choosing which verified worker to activate.
+ await boundedUpdateCheck(registration.update(),remaining());
+ const outcome=await appUpdateOutcome(registration,remaining());
+ if(outcome==='Update ready')await activateWaitingUpdate(registration,container,remaining());
+ return outcome==='Update ready'?'Updated':'Up to date';
 }
 
 // This reports the worker controlling the current page, not the newest build

@@ -1,11 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {initialPreferenceNotes,readPreference,readPreferenceWithFallback,restoreDefaultPreferences,updatePreference,parsePreference,formatPreference} from '../src/preference-records.ts';
+import {initialPreferenceNotes,readPreference,readPreferenceWithFallback,recoverPreferenceRecord,restoreDefaultPreferences,updatePreference,parsePreference,formatPreference} from '../src/preference-records.ts';
 import {createNote} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup,planStateRestore} from '../src/backup-state.ts';
 import {settingsPatchResult} from '../src/settings-corrections.ts';
+import {settings} from '../src/app-settings.ts';
 import {deletionContents} from '../src/memory-trash.ts';
+import {setBuiltinToolEnabled} from '../src/builtin-tool-preferences.ts';
+import {runReadOnlyAgentLoop} from '../src/agent-loop.ts';
+
+function legacyPreference(group,value){return formatPreference(group,value).replace(/  "schemaVersion": \d+,\n/,'');}
+
+test('a user-selected speech language persists as a new models settings revision',()=>{
+ const initial=structuredClone(initialPreferenceNotes),before=readPreference('models',initial),changed=updatePreference('models',initial,value=>({...value,transcriptionLanguage:'ja'}));
+ assert.equal(readPreference('models',changed).transcriptionLanguage,'ja');assert.equal(readPreference('models',initial).transcriptionLanguage,before.transcriptionLanguage);
+ const old=initial.find(note=>note.id==='settings-models'),next=changed.find(note=>note.id==='settings-models');assert.equal(next.version,old.version+1);assert.equal(next.history.at(-1),old.body);
+});
+
+test('Settings README is a memory-file index with an explicit extension boundary',()=>{
+ const readme=initialPreferenceNotes.find(note=>note.id==='settings-readme');
+ assert.ok(readme?.protected);
+ for(const path of ['Settings/models.md','Settings/appearance.md','Settings/connection.md','Settings/harness.md','Tools/user.<id>/SKILL.md','tool.js'])assert.ok(readme.body.includes(path),`missing ${path}`);
+ assert.match(readme.body,/local Memory records shared with the Settings screen/i);
+ assert.match(readme.body,/revision history/i);
+ assert.match(readme.body,/named model sets/i);
+ assert.match(readme.body,/New setting types need an app schema, validator and consumer/i);
+ assert.ok(readme.body.includes('Saving a package adds it to the active profile'));
+});
 
 test('view edits produce a canonical settings revision retaining original bytes and ID',()=>{
  const original=structuredClone(initialPreferenceNotes),before=original.find(n=>n.id==='settings-appearance');
@@ -15,18 +37,78 @@ test('view edits produce a canonical settings revision retaining original bytes 
  assert.equal(after.path,before.path);assert.equal(after.version,2);assert.deepEqual(after.history,[before.body]);
  assert.equal(readPreference('appearance',original).background,'paper');
 });
+test('settings files carry a schema version and legacy records migrate only in memory until an explicit save',()=>{
+ for(const group of ['models','appearance','connection','harness'])assert.equal(readPreference(group,initialPreferenceNotes).schemaVersion,5);
+ const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-appearance'),legacy={...readPreference('appearance',records)};delete legacy.paletteRegistry;delete legacy.activePaletteId;
+ target.body=legacyPreference('appearance',legacy);const oldBytes=target.body,projected=readPreference('appearance',records);
+ assert.equal(projected.schemaVersion,5);assert.equal(target.body,oldBytes);assert.equal(target.version,1);
+ const saved=updatePreference('appearance',records,value=>({...value,background:'sand'})),record=saved.find(note=>note.id===target.id);
+ assert.equal(readPreference('appearance',saved).schemaVersion,5);assert.equal(record.history[0],oldBytes);assert.equal(JSON.parse(record.body.match(/```json\n([\s\S]+)\n```/)[1]).schemaVersion,5);
+});
+test('current settings schemas reject missing fields instead of silently applying legacy defaults',()=>{
+ const missing={models:'customModels',appearance:'fonts',connection:'diagnosticLogs',harness:'userGuidance'};
+ for(const [group,field] of Object.entries(missing)){
+  const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-'+group),value=JSON.parse(record.body.match(/```json\n([\s\S]+)\n```/)[1]);
+  delete value[field];record.body=formatPreference(group,value);const stored=record.body,before=structuredClone(records);
+  assert.throws(()=>parsePreference(group,stored),/Unknown or missing setting/);
+  const read=readPreferenceWithFallback(group,records);assert.equal(read.valid,false);
+  assert.throws(()=>updatePreference(group,records,current=>current),/Unknown or missing setting/);
+  assert.deepEqual(records,before,`${group} was changed while rejecting a damaged current schema`);
+ }
+});
+test('appearance settings migrate a single legacy palette in memory and retain a named editable registry',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-appearance'),legacy=readPreference('appearance',notes);
+ delete legacy.paletteRegistry;delete legacy.activePaletteId;
+ const night={name:'Night garden',canvas:'#101820',text:'#f2f5f7',surface:'#203040',surfaceText:'#f2f5f7',accent:'#76e3c1',accentText:'#102018',muted:'#d1dae1',border:'#506070'};
+ legacy.palette=night;record.body=legacyPreference('appearance',legacy);const legacyBytes=record.body;
+ const migrated=readPreference('appearance',notes);
+ assert.equal(migrated.activePaletteId,'palette-legacy');assert.deepEqual(migrated.paletteRegistry,[{id:'palette-legacy',...night}]);
+ assert.equal(record.body,legacyBytes);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
+ const second={id:'palette-daylight',name:'Daylight',canvas:'#ffffff',text:'#101820',surface:'#f4f7f6',surfaceText:'#101820',accent:'#005d3c',accentText:'#ffffff',muted:'#3c4b46',border:'#708078'};
+ const updated=updatePreference('appearance',notes,current=>({...current,paletteRegistry:[...current.paletteRegistry,second],activePaletteId:second.id}));
+ const saved=readPreference('appearance',updated),nextRecord=updated.find(note=>note.id===record.id);
+ assert.equal(saved.activePaletteId,second.id);assert.deepEqual(saved.paletteRegistry,[{id:'palette-legacy',...night},second]);
+ assert.equal(nextRecord.version,2);assert.deepEqual(nextRecord.history,[legacyBytes]);
+ for(const change of [value=>({...value,activePaletteId:'palette-missing'}),value=>({...value,paletteRegistry:[second,{...second,name:'Other'}]}),value=>({...value,paletteRegistry:Array.from({length:13},(_,index)=>({...second,id:`palette-${index}`,name:`Palette ${index}`}))})]){
+  assert.throws(()=>updatePreference('appearance',notes,change),/palette/i);
+ }
+});
+test('harness reply style is finite, versioned and defaults forward for older records',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(n=>n.id==='settings-harness'),value=readPreference('harness',records);
+ assert.equal(value.replyStyle,'balanced');
+ const legacy={...value};delete legacy.replyStyle;delete legacy.userGuidance;record.body=legacyPreference('harness',legacy);
+ assert.equal(readPreference('harness',records).replyStyle,'balanced');assert.equal(readPreference('harness',records).userGuidance,'');
+ const changed=updatePreference('harness',records,current=>({...current,replyStyle:'concise'}));
+ assert.equal(readPreference('harness',changed).replyStyle,'concise');assert.equal(changed.find(n=>n.id===record.id).version,2);
+ assert.throws(()=>updatePreference('harness',records,current=>({...current,replyStyle:'ignore safety'})),/profile registry/);
+});
+test('harness user guidance is bounded, versioned text and remains configuration data',()=>{
+ const original=structuredClone(initialPreferenceNotes),guidance='Prefer short Japanese answers and show the relevant memory path when useful.';
+ const changed=updatePreference('harness',original,current=>({...current,userGuidance:guidance}));
+ assert.equal(readPreference('harness',changed).userGuidance,guidance);assert.equal(changed.find(n=>n.id==='settings-harness').version,2);
+ assert.throws(()=>updatePreference('harness',original,current=>({...current,userGuidance:'x'.repeat(2049)})),/user guidance/i);
+ assert.throws(()=>updatePreference('harness',original,current=>({...current,userGuidance:'x'.repeat(2048)+'日'})),/user guidance/i);
+ assert.throws(()=>updatePreference('harness',original,current=>({...current,userGuidance:'bad\u0000text'})),/user guidance/i);
+});
 test('file edits reject malformed values and execution/readiness fields without changing active records',()=>{
  const original=structuredClone(initialPreferenceNotes);
  assert.throws(()=>updatePreference('appearance',original,p=>({...p,theme:'unknown'})),/appearance/);
- assert.equal(readPreference('appearance',original).theme,'system');
+ assert.equal(readPreference('appearance',original).theme,'light');
  assert.throws(()=>parsePreference('connection','# Connection\n\n```json\n{"downloads":true,"remoteInference":true}\n```'),/Unknown/);
  assert.throws(()=>parsePreference('models',formatPreference('models',{...readPreference('models',original),ready:true})),/Unknown/);
- const edited=formatPreference('connection',{downloads:true,diagnosticLogs:false});assert.equal(parsePreference('connection',edited).downloads,true);assert.equal(parsePreference('connection',edited).diagnosticLogs,false);
+ const edited=formatPreference('connection',{downloads:true,diagnosticLogs:false,rustxngEndpoint:'https://search.example'});assert.equal(parsePreference('connection',edited).downloads,true);assert.equal(parsePreference('connection',edited).diagnosticLogs,false);assert.equal(parsePreference('connection',edited).rustxngEndpoint,'https://search.example');
 });
 test('diagnostic logging defaults off and legacy connection preferences migrate without rewriting their bytes',()=>{
  const records=structuredClone(initialPreferenceNotes),record=records.find(n=>n.id==='settings-connection'),legacy='# Connection\n\n```json\n{"downloads":false}\n```\n';record.body=legacy;
- assert.equal(readPreference('connection',records).diagnosticLogs,false);assert.equal(record.body,legacy);
+ assert.equal(readPreference('connection',records).diagnosticLogs,false);assert.equal(readPreference('connection',records).rustxngEndpoint,'');assert.equal(record.body,legacy);
  const enabled=updatePreference('connection',records,value=>({...value,diagnosticLogs:true}));assert.equal(readPreference('connection',enabled).diagnosticLogs,true);assert.equal(enabled.find(n=>n.id===record.id).history[0],legacy);
+});
+test('connection schema 4 gains an empty RustXNG address in memory and validates configured HTTPS endpoints',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-connection'),current=readPreference('connection',notes);delete current.rustxngEndpoint;record.body=formatPreference('connection',current).replace('"schemaVersion": 5','"schemaVersion": 4');const original=record.body,projected=readPreference('connection',notes);
+ assert.equal(projected.rustxngEndpoint,'');assert.equal(record.body,original);
+ const configured=formatPreference('connection',{...projected,rustxngEndpoint:'https://search.example/rustxng'});assert.equal(parsePreference('connection',configured).rustxngEndpoint,'https://search.example/rustxng');
+ assert.throws(()=>parsePreference('connection',formatPreference('connection',{...projected,rustxngEndpoint:'https://user:secret@search.example'})),/RustXNG address/i);
+ assert.throws(()=>parsePreference('connection',formatPreference('connection',{...projected,rustxngEndpoint:'https://search.example/path/../admin'})),/RustXNG address/i);
 });
 test('model selections reference the library and managed settings cannot be deleted',()=>{
  const original=structuredClone(initialPreferenceNotes);
@@ -36,36 +118,148 @@ test('model selections reference the library and managed settings cannot be dele
  assert.throws(()=>deletionContents({kind:'file',value:'settings-models'},original,['Settings']),/protected/);
 });
 
-test('fresh settings expose three downloadable text choices while selecting only one',()=>{
+test('fresh settings select LFM3 and retain Bonsai alternatives in the library',()=>{
  const models=readPreference('models',initialPreferenceNotes);
- assert.deepEqual(models.textLibrary,['4B','2B','lfm25-230m-qad-q4-0']);
- assert.equal(models.textModel,'4B');
+ assert.deepEqual(models.textLibrary,['lfm3-1.7b-qad-q4-0','2B']);
+ assert.equal(models.textModel,'lfm3-1.7b-qad-q4-0');
  assert.equal(models.decisionModel,'');
  assert.equal(models.customModels.length,0);
+});
+
+test('changing the fresh default never rewrites an existing selected model record',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models');
+ const legacy=readPreference('models',notes);legacy.textModel='4B';legacy.textLibrary=['4B','2B'];
+ record.body=formatPreference('models',legacy);
+ const before=record.body,loaded=readPreference('models',notes);
+ assert.equal(settings.defaults.textModel,'lfm3-1.7b-qad-q4-0');
+ assert.equal(loaded.textModel,'4B');assert.deepEqual(loaded.textLibrary,['4B','2B']);
+ assert.equal(record.body,before);
+});
+
+test('harness profiles live in versioned Memory settings and only reduce registered tool authority',()=>{
+ const records=structuredClone(initialPreferenceNotes),before=readPreference('harness',records);
+ assert.equal(before.activeProfileId,'standard');
+ assert.deepEqual(before.profiles.map(profile=>profile.id),['standard','source-first','conversation']);
+ const standard=before.profiles[0];assert.deepEqual(standard.enabledTools,['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now']);assert.equal(standard.maxToolCalls,null);assert.equal(standard.maxResultChars,8000);
+ const changed=updatePreference('harness',records,value=>({...value,activeProfileId:'source-first',profiles:value.profiles.map(profile=>profile.id==='source-first'?{...profile,enabledTools:['memory.search'],maxToolCalls:1,maxResultChars:1200}:profile)}));
+ const saved=readPreference('harness',changed),record=changed.find(note=>note.id==='settings-harness');
+ assert.equal(saved.activeProfileId,'source-first');assert.deepEqual(saved.profiles.find(profile=>profile.id==='source-first').enabledTools,['memory.search']);
+ assert.equal(saved.profiles.find(profile=>profile.id==='source-first').maxToolCalls,1);assert.equal(saved.profiles.find(profile=>profile.id==='source-first').maxResultChars,1200);
+ assert.equal(record.version,2);assert.equal(record.history[0],records.find(note=>note.id==='settings-harness').body);
+});
+
+test('harness profile accepts only namespaced custom tool IDs for later registry verification',()=>{
+ const records=structuredClone(initialPreferenceNotes),before=readPreference('harness',records);
+ const changed=updatePreference('harness',records,value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,enabledTools:[...profile.enabledTools,'user.lookup']}:profile)}));
+ assert.ok(readPreference('harness',changed).profiles[0].enabledTools.includes('user.lookup'));
+ for(const id of ['user.', 'user.lookup.extra','network.fetch','memory.write'])assert.throws(()=>updatePreference('harness',structuredClone(records),value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,enabledTools:[...profile.enabledTools,id]}:profile)})));
+ assert.equal(before.activeProfileId,'standard');
+});
+
+test('existing standard profile keeps its tool selection after a new tool is added',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness');
+ const old=parsePreference('harness',record.body);old.profiles[0].enabledTools=old.profiles[0].enabledTools.filter(id=>id!=='time.now'&&id!=='memory.sources');
+ record.body=formatPreference('harness',old);const before=record.body;
+ assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('time.now'),false);assert.equal(parsePreference('harness',record.body).profiles[0].enabledTools.includes('memory.sources'),false);assert.equal(record.body,before);
+});
+
+test('source details can be explicitly enabled while preserving other profile selections',()=>{
+ const records=structuredClone(initialPreferenceNotes),old=records.find(note=>note.id==='settings-harness');
+ const legacy=readPreference('harness',records);legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');old.body=formatPreference('harness',legacy);
+ const before=readPreference('harness',records);assert.equal(before.profiles[0].enabledTools.includes('memory.sources'),false);
+ const updated=updatePreference('harness',records,value=>setBuiltinToolEnabled(value,'standard','memory.sources',true)),after=readPreference('harness',updated),saved=updated.find(note=>note.id==='settings-harness');
+ assert.deepEqual(after.profiles[0].enabledTools,[...before.profiles[0].enabledTools,'memory.sources']);assert.deepEqual(after.profiles.slice(1),before.profiles.slice(1));assert.equal(saved.version,old.version+1);assert.equal(saved.history.at(-1),old.body);
+});
+
+test('harness config rejects unknown tools, invalid budgets and non-read-only capabilities',()=>{
+ const initial=readPreference('harness',initialPreferenceNotes);
+ for(const mutate of [
+  value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,enabledTools:['memory.delete']}:profile)}),
+  value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxToolCalls:-1}:profile)}),
+  value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxResultChars:8001}:profile)}),
+  value=>({...value,writeTools:['memory.patch']}),
+ ])assert.throws(()=>parsePreference('harness',formatPreference('harness',mutate(initial))),/Unknown|Unsupported|Invalid|invalid|exceed/);
+});
+
+test('legacy untouched built-in tools and caps migrate additively without changing custom limits',()=>{
+ const current=structuredClone(initialPreferenceNotes),record=current.find(note=>note.id==='settings-harness');
+ const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].enabledTools=['memory.search','memory.list','memory.read'];legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
+ record.body=formatPreference('harness',legacy).replace('"schemaVersion": 5','"schemaVersion": 1');const parsed=parsePreference('harness',record.body);
+ assert.equal(parsed.schemaVersion,5);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
+ legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 5','"schemaVersion": 1');
+ assert.equal(parsePreference('harness',record.body).profiles[0].maxToolCalls,4);
+});
+test('schema-1 custom profile names preserve call caps that match the old built-in defaults',async()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),legacy=parsePreference('harness',record.body);
+ legacy.schemaVersion=1;
+ legacy.profiles[0]={...legacy.profiles[0],label:'My bounded assistant',enabledTools:['math.calculate','memory.read','memory.search','memory.list','time.now'],maxToolCalls:8};
+ legacy.profiles[1]={...legacy.profiles[1],label:'Two-source review',enabledTools:['memory.search','memory.read'],maxToolCalls:2};
+ record.body=formatPreference('harness',legacy).replace('"schemaVersion": 5','"schemaVersion": 1');
+ const stored=record.body,projected=parsePreference('harness',record.body);
+ assert.equal(projected.profiles[0].maxToolCalls,8);assert.deepEqual(projected.profiles[0].enabledTools,['math.calculate','memory.read','memory.search','memory.list','time.now']);
+ assert.equal(projected.profiles[1].maxToolCalls,2);assert.deepEqual(projected.profiles[1].enabledTools,['memory.search','memory.read']);
+ assert.equal(record.body,stored);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
+ const result=await runReadOnlyAgentLoop({allowedTools:[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}],maxToolCalls:projected.profiles[1].maxToolCalls,plan:async history=>({kind:'tool',tool:history.length?'memory.read':'memory.search',arguments:{query:String(history.length)}}),execute:async()=>[],onBudgetExhausted:()=>({partial:true}),check:()=>{}});
+ assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'tool-limit');assert.equal(result.calls.length,2);
+});
+test('schema-2 harness profiles gain unlimited generation budgets in memory without rewriting stored bytes',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),value=parsePreference('harness',record.body);
+ value.schemaVersion=2;value.profiles[0].maxToolCalls=5;for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
+ record.body=formatPreference('harness',value).replace('"schemaVersion": 5','"schemaVersion": 2');const stored=record.body,projected=readPreference('harness',records);
+ assert.equal(projected.schemaVersion,5);assert.equal(projected.profiles[0].maxToolCalls,5);assert.ok(projected.profiles.every(profile=>profile.maxGenerationTokens===null&&profile.maxGenerationMs===null));assert.equal(record.body,stored);assert.equal(record.version,1);
+});
+test('current harness schema preserves an explicitly selected budget equal to an old default',()=>{
+ const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-harness');
+ const updated=updatePreference('harness',records,value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxToolCalls:8}:profile)}));
+ const saved=updated.find(note=>note.id===target.id),bodyValue=JSON.parse(saved.body.match(/```json\n([\s\S]+)\n```/)[1]);
+ assert.equal(bodyValue.schemaVersion,5);assert.equal(readPreference('harness',updated).profiles[0].maxToolCalls,8);
 });
 
 test('all roles require registration; old model records migrate without losing history',()=>{
  const original=structuredClone(initialPreferenceNotes),before=original.find(n=>n.id==='settings-models');
  assert.throws(()=>updatePreference('models',original,m=>({...m,textModel:'smollm2-360m-instruct'})),/before selecting/);
  assert.throws(()=>updatePreference('models',original,m=>({...m,decisionModel:'d1-3B'})),/before selecting/);
- const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'smollm2-360m-instruct'],textModel:'smollm2-360m-instruct',decisionLibrary:['d1-3B'],decisionModel:'d1-3B'}));
- assert.equal(readPreference('models',registered).textModel,'smollm2-360m-instruct');
+ const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'4B'],textModel:'4B',decisionLibrary:['d1-3B'],decisionModel:'d1-3B'}));
+ assert.equal(readPreference('models',registered).textModel,'4B');
  assert.deepEqual(registered.find(n=>n.id===before.id).history,[before.body]);
- const legacy={...readPreference('models',original)};delete legacy.textLibrary;delete legacy.decisionLibrary;
- const body=formatPreference('models',legacy),parsed=parsePreference('models',body);
- assert.deepEqual(parsed.textLibrary,['4B']);assert.deepEqual(parsed.decisionLibrary,[]);
+ const legacy={...readPreference('models',original),textModel:'smollm2-360m-instruct',textLibrary:['lfm3-1.7b-qad-q4-0','smollm2-360m-instruct']};delete legacy.textLibrary;delete legacy.decisionLibrary;
+ const body=legacyPreference('models',legacy),parsed=parsePreference('models',body);
+ assert.deepEqual(parsed.textLibrary,['lfm3-1.7b-qad-q4-0']);assert.equal(parsed.textModel,'lfm3-1.7b-qad-q4-0');assert.deepEqual(parsed.decisionLibrary,[]);
  const older=original.map(n=>n.id===before.id?{...n,body}:n);
- const changed=updatePreference('models',older,m=>({...m,textLibrary:['4B','2B'],textModel:'2B'}));
+ const changed=updatePreference('models',older,m=>({...m,textLibrary:['lfm3-1.7b-qad-q4-0','2B'],textModel:'2B'}));
  assert.deepEqual(changed.find(n=>n.id===before.id).history,[body]);
 });
 
+test('the previous model catalog migrates retired choices without rewriting the stored revision',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models'),value=readPreference('models',notes);
+ value.textLibrary=['lfm3-1.7b-qad-q4-0','smollm2-360m-instruct'];value.textModel='smollm2-360m-instruct';
+ record.body=formatPreference('models',value).replace('"schemaVersion": 5','"schemaVersion": 3');const previousBytes=record.body;
+ const projected=readPreference('models',notes);assert.equal(projected.schemaVersion,5);assert.equal(projected.textModel,'lfm3-1.7b-qad-q4-0');assert.deepEqual(projected.textLibrary,['lfm3-1.7b-qad-q4-0']);
+ assert.equal(record.body,previousBytes);const saved=updatePreference('models',notes,current=>({...current,ocrLanguage:'jpn'}));assert.equal(saved.find(note=>note.id===record.id).history[0],previousBytes);
+});
+
 test('legacy model settings project OCR defaults without rewriting bytes; explicit registration appends history',()=>{
- const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);delete value.ocrModel;delete value.ocrLibrary;delete value.ocrLanguage;old.body=formatPreference('models',value);const bytes=old.body,parsed=readPreference('models',notes);assert.equal(old.body,bytes);assert.equal(parsed.ocrModel,'');assert.deepEqual(parsed.ocrLibrary,[]);assert.equal(parsed.ocrLanguage,'eng+jpn');const next=updatePreference('models',notes,m=>({...m,ocrLibrary:['tesseract-7'],ocrModel:'tesseract-7'}));assert.equal(next.find(n=>n.id===old.id).history[0],bytes);assert.equal(readPreference('models',next).textModel,parsed.textModel);assert.throws(()=>parsePreference('models',formatPreference('models',{...parsed,ocrModel:'remote-ocr'})),/Unsupported/);
+ const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);delete value.ocrModel;delete value.ocrLibrary;delete value.ocrLanguage;old.body=legacyPreference('models',value);const bytes=old.body,parsed=readPreference('models',notes);assert.equal(old.body,bytes);assert.equal(parsed.ocrModel,'');assert.deepEqual(parsed.ocrLibrary,[]);assert.equal(parsed.ocrLanguage,'eng+jpn');const next=updatePreference('models',notes,m=>({...m,ocrLibrary:['tesseract-7'],ocrModel:'tesseract-7'}));assert.equal(next.find(n=>n.id===old.id).history[0],bytes);assert.equal(readPreference('models',next).textModel,parsed.textModel);assert.throws(()=>parsePreference('models',formatPreference('models',{...parsed,ocrModel:'remote-ocr'})),/Unsupported/);
+});
+test('legacy model preferences gain the conservative LFM3 context default without rewriting saved bytes',()=>{
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.lfm3ContextTokens;legacy.textModel='2B';record.body=legacyPreference('models',legacy);const original=record.body;
+ const migrated=readPreference('models',notes);assert.equal(migrated.lfm3ContextTokens,8192);assert.equal(migrated.textModel,'2B');assert.equal(record.body,original);assert.equal(record.version,1);
+ const saved=updatePreference('models',notes,value=>({...value,lfm3ContextTokens:262144}));assert.equal(readPreference('models',saved).lfm3ContextTokens,262144);assert.equal(saved.find(n=>n.id===record.id).history[0],original);
+ assert.throws(()=>updatePreference('models',notes,value=>({...value,lfm3ContextTokens:524288})),/context window/);
+});
+test('schema-1 records gain known additive settings in memory without losing existing selections or rewriting bytes',()=>{
+ const notes=structuredClone(initialPreferenceNotes),modelsRecord=notes.find(n=>n.id==='settings-models'),models=readPreference('models',notes);models.textModel='2B';models.ocrModel='tesseract-7';for(const key of ['textLibrary','decisionLibrary','transcriptionLanguage','ocrLibrary','ocrLanguage','visionModel','visionLibrary','customModels','customDecisionModels','customSpeechModels','customVisionModels','customSets','lfm3ContextTokens'])delete models[key];modelsRecord.body=formatPreference('models',models).replace('"schemaVersion": 5','"schemaVersion": 1');const modelsBytes=modelsRecord.body,projectedModels=readPreference('models',notes);
+ assert.equal(projectedModels.schemaVersion,5);assert.equal(projectedModels.textModel,'2B');assert.deepEqual(projectedModels.textLibrary,['2B']);assert.deepEqual(projectedModels.decisionLibrary,[]);assert.equal(projectedModels.ocrModel,'tesseract-7');assert.deepEqual(projectedModels.ocrLibrary,['tesseract-7']);assert.equal(projectedModels.ocrLanguage,'eng+jpn');assert.deepEqual(projectedModels.customDecisionModels,[]);assert.deepEqual(projectedModels.customVisionModels,[]);assert.deepEqual(projectedModels.customSets,[]);assert.equal(projectedModels.lfm3ContextTokens,8192);assert.equal(modelsRecord.body,modelsBytes);assert.equal(modelsRecord.version,1);
+ const savedModels=updatePreference('models',notes,current=>({...current,transcriptionLanguage:'ja'})),savedModelRecord=savedModels.find(n=>n.id===modelsRecord.id);assert.equal(readPreference('models',savedModels).textModel,'2B');assert.equal(readPreference('models',savedModels).ocrModel,'tesseract-7');assert.equal(savedModelRecord.history.at(-1),modelsBytes);assert.equal(savedModelRecord.version,2);
+ const appearanceRecord=notes.find(n=>n.id==='settings-appearance'),appearance=readPreference('appearance',notes);appearance.palette={name:'Night',canvas:'#101820',text:'#f2f5f7',surface:'#203040',surfaceText:'#f2f5f7',accent:'#76e3c1',accentText:'#102018',muted:'#d1dae1',border:'#506070'};for(const key of ['fontFamily','fonts','paletteRegistry','activePaletteId'])delete appearance[key];appearanceRecord.body=formatPreference('appearance',appearance).replace('"schemaVersion": 5','"schemaVersion": 1');const appearanceBytes=appearanceRecord.body,projectedAppearance=readPreference('appearance',notes);
+ assert.equal(projectedAppearance.fontFamily,'system');assert.deepEqual(projectedAppearance.fonts,[]);assert.equal(projectedAppearance.activePaletteId,'palette-legacy');assert.equal(projectedAppearance.paletteRegistry[0].name,'Night');assert.equal(appearanceRecord.body,appearanceBytes);
+ const connectionRecord=notes.find(n=>n.id==='settings-connection'),connection=readPreference('connection',notes);delete connection.diagnosticLogs;connectionRecord.body=formatPreference('connection',connection).replace('"schemaVersion": 5','"schemaVersion": 1');const connectionBytes=connectionRecord.body;assert.equal(readPreference('connection',notes).diagnosticLogs,false);assert.equal(connectionRecord.body,connectionBytes);
+ const harnessRecord=notes.find(n=>n.id==='settings-harness'),harness=readPreference('harness',notes);delete harness.replyStyle;delete harness.userGuidance;harnessRecord.body=formatPreference('harness',harness).replace('"schemaVersion": 5','"schemaVersion": 1');const harnessBytes=harnessRecord.body,projectedHarness=readPreference('harness',notes);assert.equal(projectedHarness.replyStyle,'balanced');assert.equal(projectedHarness.userGuidance,'');assert.equal(projectedHarness.schemaVersion,5);assert.equal(harnessRecord.body,harnessBytes);
 });
 test('Vision selection is independently registered, defaults off, and legacy settings migrate without rewriting bytes',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);
  assert.equal(value.visionModel,'');assert.deepEqual(value.visionLibrary,[]);
- delete value.visionModel;delete value.visionLibrary;record.body=formatPreference('models',value);const old=record.body;
+ delete value.visionModel;delete value.visionLibrary;record.body=legacyPreference('models',value);const old=record.body;
  const migrated=readPreference('models',notes);assert.equal(migrated.visionModel,'');assert.deepEqual(migrated.visionLibrary,[]);assert.equal(record.body,old);
  assert.throws(()=>updatePreference('models',notes,m=>({...m,visionModel:'lfm25-vl-450m-q4f16'})),/Unsupported vision model/);
  const registered=updatePreference('models',notes,m=>({...m,visionLibrary:['lfm25-vl-450m-q4f16'],visionModel:'lfm25-vl-450m-q4f16'}));
@@ -74,11 +268,12 @@ test('Vision selection is independently registered, defaults off, and legacy set
  assert.throws(()=>parsePreference('models',formatPreference('models',{...migrated,visionLibrary:['unknown']})),/Unsupported vision model/);
 });
 
-const custom=()=>{const sha256='b'.repeat(64);return {id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},inspection:{format:'GGUF',version:3,bytes:1000,name:'Custom',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};};
+const custom=()=>{const sha256='b'.repeat(64);return {id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},contextTokens:2048,inspection:{format:'GGUF',version:3,bytes:1000,name:'Custom',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};};
 const customDecision=()=>{const files=[{path:'config.json',bytes:1000,sha256:'1'.repeat(64)},{path:'tokenizer.json',bytes:1000,sha256:'2'.repeat(64)},{path:'tokenizer_config.json',bytes:1000,sha256:'3'.repeat(64)},{path:'onnx/model_quantized.onnx',bytes:1000,sha256:'4'.repeat(64)},{path:'onnx/model_quantized.onnx_data',bytes:1000,sha256:'5'.repeat(64)}],sha256=createHash('sha256').update(JSON.stringify(files)).digest('hex');return {id:'local-decision-'+sha256,label:'Fine-tuned D1',role:'decision',engine:'onnx-d1-text',revision:'sha256:'+sha256,files,inspection:{format:'D1-ONNX',architecture:'d1_omni',contextTokens:16384,inputLimit:2048,scope:'text-only'}};};
 const customSpeech=()=>{const files=['config.json','generation_config.json','preprocessor_config.json','tokenizer.json','tokenizer_config.json','special_tokens_map.json','onnx/encoder_model_quantized.onnx','onnx/decoder_model_merged_quantized.onnx'].map((path,i)=>({path,bytes:1000,sha256:String(i+1).repeat(64)})),sha256=createHash('sha256').update(JSON.stringify(files)).digest('hex');return {id:'local-speech-'+sha256,label:'Local Whisper',role:'speech',engine:'transformers-whisper-onnx',revision:'sha256:'+sha256,files,inspection:{format:'Whisper-ONNX',architecture:'whisper',device:'wasm',dtype:'q8',maxDurationSeconds:120}};};
+const customVision=()=>{const paths=['chat_template.jinja','config.json','generation_config.json','preprocessor_config.json','processor_config.json','tokenizer.json','tokenizer_config.json','onnx/decoder_model_merged_q4f16.onnx','onnx/decoder_model_merged_q4f16.onnx_data','onnx/embed_tokens_q4f16.onnx','onnx/embed_tokens_q4f16.onnx_data','onnx/vision_encoder_q4f16.onnx','onnx/vision_encoder_q4f16.onnx_data'],files=paths.map((path,i)=>({path,bytes:1000,sha256:'0123456789abcdef'[i].repeat(64)})),sha256=createHash('sha256').update(JSON.stringify(files)).digest('hex');return {id:'local-vision-'+sha256,label:'My LFM2-VL',role:'vision',engine:'transformers-lfm2-vl-onnx',revision:'sha256:'+sha256,files,inspection:{format:'LFM2-VL-ONNX',architecture:'lfm2_vl',device:'webgpu',dtype:'q4f16',maxImageTokens:256,scope:'image-text'}};};
 test('custom model declarations persist through canonical revisions without inventing readiness',()=>{
- const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customModels;old.body=formatPreference('models',legacy);const body=old.body;
+ const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customModels;old.body=legacyPreference('models',legacy);const body=old.body;
  assert.deepEqual(readPreference('models',notes).customModels,[]);assert.equal(old.body,body);
  const model=custom(),updated=updatePreference('models',notes,m=>({...m,customModels:[model],textLibrary:[...m.textLibrary,model.id],textModel:model.id}));
  assert.equal(readPreference('models',updated).textModel,model.id);assert.deepEqual(readPreference('models',updated).customModels,[model]);assert.deepEqual(updated.find(n=>n.id===old.id).history,[body]);
@@ -86,18 +281,29 @@ test('custom model declarations persist through canonical revisions without inve
   const value=structuredClone(readPreference('models',updated));change(value);assert.throws(()=>parsePreference('models',formatPreference('models',value)));
  }
 });
+test('legacy custom GGUF context reads as the safe default without rewriting its stored settings bytes',()=>{
+ const notes=structuredClone(initialPreferenceNotes),model=custom();delete model.contextTokens;const source=notes.find(n=>n.id==='settings-models');const prefs=readPreference('models',notes);prefs.customModels=[model];prefs.textLibrary=[...new Set([...prefs.textLibrary,model.id])];prefs.textModel=model.id;source.body=formatPreference('models',prefs);const original=source.body;
+ assert.equal(readPreference('models',notes).customModels[0].contextTokens,2048);assert.equal(source.body,original);assert.equal(source.version,1);assert.deepEqual(source.history,[]);
+});
 
 test('custom D1 declarations register only in the decision library and preserve old settings',()=>{
- const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customDecisionModels;old.body=formatPreference('models',legacy);const before=old.body;assert.deepEqual(readPreference('models',notes).customDecisionModels,[]);assert.equal(old.body,before);
+ const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customDecisionModels;old.body=legacyPreference('models',legacy);const before=old.body;assert.deepEqual(readPreference('models',notes).customDecisionModels,[]);assert.equal(old.body,before);
  const model=customDecision(),updated=updatePreference('models',notes,m=>({...m,customDecisionModels:[model],decisionLibrary:[model.id],decisionModel:model.id}));
  assert.equal(readPreference('models',updated).decisionModel,model.id);assert.deepEqual(readPreference('models',updated).customDecisionModels,[model]);assert.deepEqual(updated.find(n=>n.id===old.id).history,[before]);
  for(const change of [m=>m.textLibrary.push(model.id),m=>m.customDecisionModels[0].ready=true,m=>m.customDecisionModels[0].files[0].url='https://example.com',m=>m.customModels.push(model)]){const invalid=structuredClone(readPreference('models',updated));change(invalid);assert.throws(()=>parsePreference('models',formatPreference('models',invalid)));}
 });
 
 test('custom Whisper declarations register in Speech library and retain history without readiness',()=>{
- const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customSpeechModels;old.body=formatPreference('models',legacy);const before=old.body;assert.deepEqual(readPreference('models',notes).customSpeechModels,[]);assert.equal(old.body,before);
+ const notes=structuredClone(initialPreferenceNotes),old=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customSpeechModels;old.body=legacyPreference('models',legacy);const before=old.body;assert.deepEqual(readPreference('models',notes).customSpeechModels,[]);assert.equal(old.body,before);
  const model=customSpeech(),updated=updatePreference('models',notes,m=>({...m,customSpeechModels:[model],transcriptionLibrary:[model.id],transcriptionModel:model.id}));assert.equal(readPreference('models',updated).transcriptionModel,model.id);assert.deepEqual(readPreference('models',updated).customSpeechModels,[model]);assert.deepEqual(updated.find(n=>n.id===old.id).history,[before]);
  for(const change of [m=>m.textLibrary.push(model.id),m=>m.customSpeechModels[0].ready=true,m=>m.customSpeechModels[0].files[0].url='https://example.com',m=>m.customSpeechModels[0].engine='custom.js']){const bad=structuredClone(readPreference('models',updated));change(bad);assert.throws(()=>parsePreference('models',formatPreference('models',bad)));}
+});
+test('custom Vision declarations register in the Vision library, preserve revision history, and never claim readiness',()=>{
+ const notes=structuredClone(initialPreferenceNotes),source=notes.find(n=>n.id==='settings-models'),legacy=readPreference('models',notes);delete legacy.customVisionModels;source.body=legacyPreference('models',legacy);const before=source.body;
+ assert.deepEqual(readPreference('models',notes).customVisionModels,[]);
+ const model=customVision(),updated=updatePreference('models',notes,m=>({...m,customVisionModels:[model],visionLibrary:[model.id],visionModel:model.id}));
+ assert.equal(readPreference('models',updated).visionModel,model.id);assert.deepEqual(readPreference('models',updated).customVisionModels,[model]);assert.deepEqual(updated.find(n=>n.id==='settings-models').history,[before]);
+ for(const change of [m=>m.customVisionModels[0].ready=true,m=>m.customVisionModels[0].engine='untrusted',m=>m.customVisionModels[0].files[0].url='https://example.com',m=>m.customVisionModels[0].revision='main',m=>m.textLibrary.push(model.id)]){const bad=structuredClone(readPreference('models',updated));change(bad);assert.throws(()=>parsePreference('models',formatPreference('models',bad)));}
 });
 
 test('custom declarations survive backup without assets and model proposals cannot register them',async()=>{
@@ -111,7 +317,7 @@ test('custom declarations survive backup without assets and model proposals cann
 });
 
 test('appearance adds local font selection without rewriting old records or accepting unverified declarations',()=>{
- const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-appearance'),legacy=readPreference('appearance',notes);delete legacy.fontFamily;delete legacy.fonts;record.body=formatPreference('appearance',legacy);const before=record.body;
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-appearance'),legacy=readPreference('appearance',notes);delete legacy.fontFamily;delete legacy.fonts;record.body=legacyPreference('appearance',legacy);const before=record.body;
  const migrated=readPreference('appearance',notes);assert.equal(migrated.fontFamily,'system');assert.deepEqual(migrated.fonts,[]);assert.equal(record.body,before);
  const font={id:'font-'+'a'.repeat(64),label:'Local Sans',format:'woff2',bytes:4000,sha256:'a'.repeat(64)};
  const updated=updatePreference('appearance',notes,value=>({...value,fontFamily:font.id,fonts:[font]}));assert.equal(readPreference('appearance',updated).fontFamily,font.id);assert.deepEqual(updated.find(n=>n.id===record.id).history,[before]);
@@ -123,14 +329,79 @@ test('corrupt settings fall back safely and restore defaults with a versioned hi
  const notes=structuredClone(initialPreferenceNotes);const appearance=notes.find(n=>n.id==='settings-appearance');appearance.body='not valid settings';
  const read=readPreferenceWithFallback('appearance',notes);assert.equal(read.valid,false);assert.equal(read.value.background,readPreference('appearance',initialPreferenceNotes).background);
  const customized=structuredClone(notes);const models=customized.find(n=>n.id==='settings-models');models.body=formatPreference('models',{...readPreference('models',customized),textModel:'lfm2.5-230m-q4_0',textLibrary:['lfm2.5-230m-q4_0']});models.version=4;models.history=['v1','v2','v3'];models.paths=['Settings/models.md','Settings/models.md','Settings/models.md'];
+ const harness=customized.find(n=>n.id==='settings-harness');harness.body=formatPreference('harness',{...readPreference('harness',customized),activeProfileId:'conversation'});harness.version=2;harness.history=['old harness'];
  const unrelated={id:'user-note',path:'Projects/a.md',body:'keep me',version:2,history:['old'],paths:['Projects/a.md','Projects/a.md']};customized.push(unrelated);
  const before=structuredClone(customized),restored=restoreDefaultPreferences(customized),newModels=restored.find(n=>n.id==='settings-models'),newAppearance=restored.find(n=>n.id==='settings-appearance');
  assert.equal(newModels.version,5);assert.equal(newModels.history.at(-1),before.find(n=>n.id==='settings-models').body);assert.equal(newAppearance.history.at(-1),'not valid settings');
+ assert.equal(readPreference('harness',restored).activeProfileId,'standard');assert.equal(restored.find(n=>n.id==='settings-harness').history.at(-1),before.find(n=>n.id==='settings-harness').body);
  assert.equal(readPreference('models',restored).textModel,readPreference('models',initialPreferenceNotes).textModel);assert.deepEqual(restored.find(n=>n.id==='user-note'),unrelated);
 });
 
-test('settings recovery refuses missing or tampered managed records without changing the input',()=>{
+test('corrupt settings use the newest valid historical value and a user edit preserves the corrupt revision',()=>{
+ const notes=structuredClone(initialPreferenceNotes),original=notes.find(n=>n.id==='settings-harness').body;
+ const first=updatePreference('harness',notes,value=>({...value,replyStyle:'concise'}));
+ const second=updatePreference('harness',first,value=>({...value,replyStyle:'detailed'}));
+ const damaged=structuredClone(second),current=damaged.find(n=>n.id==='settings-harness');current.body='broken current revision';
+ const recovered=readPreferenceWithFallback('harness',damaged);
+ assert.equal(recovered.valid,false);assert.equal(recovered.value.replyStyle,'concise');
+ const before=structuredClone(damaged);
+ assert.throws(()=>updatePreference('harness',damaged,value=>({...value,replyStyle:'balanced'})),/Use one JSON block/);
+ assert.deepEqual(damaged,before);
+ const restored=recoverPreferenceRecord('harness',damaged),restoredRecord=restored.find(n=>n.id==='settings-harness');
+ assert.equal(readPreference('harness',restored).replyStyle,'concise');assert.equal(restoredRecord.version,current.version+1);assert.equal(restoredRecord.history.at(-1),'broken current revision');
+ assert.equal(restoredRecord.paths.at(-1),'Settings/harness.md');
+ const repaired=updatePreference('harness',restored,value=>({...value,replyStyle:'balanced'})),saved=repaired.find(n=>n.id==='settings-harness');
+ assert.equal(saved.version,restoredRecord.version+1);assert.equal(readPreference('harness',repaired).replyStyle,'balanced');
+ assert.equal(readPreferenceWithFallback('harness',repaired).valid,true);assert.equal(notes.find(n=>n.id==='settings-harness').body,original);assert.equal(notes.find(n=>n.id==='settings-harness').version,1);
+});
+
+test('targeted settings recovery restores one last-valid file and retains the broken body as history',()=>{
+ const base=structuredClone(initialPreferenceNotes),appearance=updatePreference('appearance',base,value=>({...value,background:'sand'})),secondAppearance=updatePreference('appearance',appearance,value=>({...value,glass:'frosted'})),harness=updatePreference('harness',secondAppearance,value=>({...value,replyStyle:'concise'}));
+ const damaged=structuredClone(harness),target=damaged.find(n=>n.id==='settings-appearance'),other=damaged.find(n=>n.id==='settings-harness');target.body='broken appearance';
+ const recovered=recoverPreferenceRecord('appearance',damaged),fixed=recovered.find(n=>n.id==='settings-appearance');
+ assert.equal(readPreference('appearance',recovered).background,'sand');assert.equal(fixed.version,target.version+1);assert.equal(fixed.history.at(-1),'broken appearance');
+ assert.deepEqual(recovered.find(n=>n.id==='settings-harness'),other);assert.deepEqual(recovered.find(n=>n.id==='settings-models'),damaged.find(n=>n.id==='settings-models'));
+ const noHistory=structuredClone(initialPreferenceNotes),connection=noHistory.find(n=>n.id==='settings-connection');connection.body='broken connection';
+ const defaulted=recoverPreferenceRecord('connection',noHistory);assert.equal(readPreference('connection',defaulted).downloads,false);assert.equal(defaulted.find(n=>n.id==='settings-connection').history.at(-1),'broken connection');
+ for(const mutate of [records=>{records.find(n=>n.id==='settings-models').path='Elsewhere/models.md';},records=>{records.find(n=>n.id==='settings-models').managed=false;}]){const invalid=structuredClone(initialPreferenceNotes);mutate(invalid);assert.throws(()=>recoverPreferenceRecord('models',invalid),/Settings record unavailable/);}
+ const missing=structuredClone(initialPreferenceNotes).filter(n=>n.id!=='settings-models'),recreated=recoverPreferenceRecord('models',missing);
+ assert.equal(readPreference('models',recreated).textModel,readPreference('models',initialPreferenceNotes).textModel);
+ assert.equal(recreated.find(n=>n.id==='settings-models').managed,true);
+ assert.throws(()=>recoverPreferenceRecord('models',[...missing,{id:'collision',path:'Settings/models.md',body:'user file',version:1,history:[]}]),/path conflict/i);
+});
+
+test('a newer settings schema stays untouched until explicit recovery, which preserves it in history',()=>{
+ const base=structuredClone(initialPreferenceNotes),edited=updatePreference('appearance',base,value=>({...value,background:'sand'})),records=structuredClone(edited),target=records.find(note=>note.id==='settings-appearance'),other=records.find(note=>note.id==='settings-harness');
+ target.body=target.body.replace('"schemaVersion": 5','"schemaVersion": 6');const futureBody=target.body,before=structuredClone(records),read=readPreferenceWithFallback('appearance',records);
+ assert.equal(read.valid,false);assert.equal(read.unsupportedSchema,true);assert.equal(read.value.background,'paper');
+ assert.throws(()=>readPreference('appearance',records),/newer format/i);assert.throws(()=>updatePreference('appearance',records,value=>({...value,background:'sage'})),/newer format/i);assert.deepEqual(records,before);
+ const recovered=recoverPreferenceRecord('appearance',records),saved=recovered.find(note=>note.id===target.id);
+ assert.equal(readPreference('appearance',recovered).background,'paper');assert.equal(saved.version,target.version+1);assert.equal(saved.history.at(-1),futureBody);assert.deepEqual(recovered.find(note=>note.id===other.id),other);
+});
+
+test('restore all defaults refuses missing or tampered managed records without changing the input',()=>{
  for(const mutate of [records=>records.splice(records.findIndex(n=>n.id==='settings-models'),1),records=>{records.find(n=>n.id==='settings-models').path='Elsewhere/models.md';},records=>{records.find(n=>n.id==='settings-models').managed=false;}]){
   const records=structuredClone(initialPreferenceNotes);mutate(records);const before=structuredClone(records);assert.throws(()=>restoreDefaultPreferences(records),/Settings record unavailable/);assert.deepEqual(records,before);
  }
+});
+
+test('schema-2 explicit tools and old-default call caps survive schema-4 projection and save',()=>{
+ const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),value=parsePreference('harness',record.body);
+ value.profiles[0].enabledTools=['memory.search','memory.read','math.calculate'];value.profiles[0].maxToolCalls=8;
+ value.profiles[1].enabledTools=['memory.search','memory.read'];value.profiles[1].maxToolCalls=2;
+ for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
+ record.body=formatPreference('harness',value).replace('"schemaVersion": 5','"schemaVersion": 2');const before=structuredClone(records);
+ const projected=readPreference('harness',records);
+ for(let i=0;i<2;i++){assert.deepEqual(projected.profiles[i].enabledTools,value.profiles[i].enabledTools);assert.equal(projected.profiles[i].maxToolCalls,value.profiles[i].maxToolCalls);}
+ assert.deepEqual(records,before);
+ const updated=updatePreference('harness',records,current=>({...current,replyStyle:'detailed'}));
+ const saved=updated.find(note=>note.id===record.id);assert.equal(saved.history.at(-1),record.body);
+ assert.equal(readPreference('harness',updated).profiles[0].maxToolCalls,8);assert.equal(readPreference('harness',updated).profiles[1].maxToolCalls,2);
+});
+
+
+test('fresh knowledge profiles can navigate source provenance without enabling tools for conversation',()=>{
+ const value=readPreference('harness',initialPreferenceNotes);
+ for(const id of ['standard','source-first'])assert.ok(value.profiles.find(p=>p.id===id).enabledTools.includes('memory.sources'));
+ assert.deepEqual(value.profiles.find(p=>p.id==='conversation').enabledTools,[]);
 });
