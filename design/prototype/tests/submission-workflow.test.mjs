@@ -3,6 +3,7 @@ import {originalNote} from '../src/original-assets.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {executeSubmission} from '../src/submission-workflow.ts';
+import {MAX_AGENT_RESULT_CHARS} from '../src/agent-limits.ts';
 import {createSubmissionController} from '../src/submission-controller.ts';
 import {createToolRegistry} from '../src/tools/tool-registry.ts';
 import {definition,run as calculate} from '../src/tools/math.calculate/tool.ts';
@@ -21,7 +22,7 @@ function fixture(){
   knowledge:{},builtinToolPackages:[],builtinToolRegistry:createToolRegistry([{definition,entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate locally.'},{path:'Tools/math.calculate/tool.ts',body:'Bounded calculator'}],run:calculate}]),bonsai:{manifest:{models:[],runtime:{revision:'test-runtime'}},loaded:'',assets:{},load:async()=>{modelCalls++;throw Error('Unexpected model');}},
   decision:{identity:{model:'',revision:'test-decision'},enabled:false,ready:false},ocr:{ready:false},speech:{ready:false,transcribe:async()=>{throw Error('Unexpected speech');}},vision:{describe:async()=>{throw Error('Unexpected vision');}},
   ocrModel:'',ocrLanguage:'eng',speechModel:'',visionModel:'',visionAvailable:false,model:'',decisionModel:'',
-  modelPreferences:{transcriptionLanguage:'auto',customSpeechModels:[],customVisionModels:[],customDecisionModels:[]},harnessPreferences:{replyStyle:'balanced',userGuidance:''},activeHarnessProfile:{id:'test-profile',label:'Test',enabledTools:[],maxToolCalls:4,maxResultChars:10000},settingsRevisions:{models:12,harness:8},connectionPreferences:{diagnosticLogs:false},
+  modelPreferences:{transcriptionLanguage:'auto',customSpeechModels:[],customVisionModels:[],customDecisionModels:[]},harnessPreferences:{replyStyle:'balanced',userGuidance:''},activeHarnessProfile:{id:'test-profile',label:'Test',enabledTools:[],maxToolCalls:4,maxResultChars:MAX_AGENT_RESULT_CHARS},settingsRevisions:{models:12,harness:8},connectionPreferences:{diagnosticLogs:false},
   diagnostics:{getItem:()=>null,setItem:()=>{}},
   currentDialogue:()=>dialogue,storedDialogue:()=>dialogue,settled:async()=>{},flushStorage:async()=>{},refreshStorage:async()=>{},refreshSnapshot:async()=>[],
   saveDialogue:async next=>{validateDialogue(next);dialogue=next;events.push('save');},finishTurn:async(id,result)=>{dialogue=completeTurn(dialogue,id,result);},
