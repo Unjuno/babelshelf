@@ -35,3 +35,21 @@ test('keeps ordinary HTTPS subpaths and the existing slash traversal rejection',
   assert.throws(()=>validateRustXngEndpoint(endpoint),invalidEndpoint,endpoint);
  }
 });
+
+test('rejects non-authority URL spellings before normalized traversal can bypass validation',async()=>{
+ let requests=0;
+ const fetcher=async()=>{requests++;return new Response('{"results":[]}');};
+ for(const endpoint of ['https:search.example/base/../other','https:/search.example/base/../other']){
+  await assert.rejects(searchRustXng({endpoint,query:'private query',onlineMode:true,onlineSignal:true,fetcher}),invalidEndpoint,endpoint);
+ }
+ assert.equal(requests,0);
+});
+
+test('rejects empty query and fragment delimiters instead of corrupting the search path',async()=>{
+ let requests=0;
+ const fetcher=async()=>{requests++;return new Response('{"results":[]}');};
+ for(const endpoint of ['https://search.example/?','https://search.example/#','https://search.example/base?','https://search.example/base#']){
+  await assert.rejects(searchRustXng({endpoint,query:'private query',onlineMode:true,onlineSignal:true,fetcher}),invalidEndpoint,endpoint);
+ }
+ assert.equal(requests,0);
+});
