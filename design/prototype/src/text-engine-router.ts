@@ -110,6 +110,19 @@ export class TextEngineRouter{
    if(native&&error?.diagnostic){const d=error.diagnostic,e=new PlannerOutputError(error.message,d.raw,d.reason);e.diagnostic.truncated=d.truncated===true||e.diagnostic.truncated;throw e;}throw error;
   }).finally(()=>{finished=true;});
  }
- abort(){this.epoch++;this.residentIdentity='';this.residentLoadMetrics=undefined;const pending:Promise<void>[]=[Promise.resolve(this.webml.abort())];for(const r of this.registrations)if(r.instance){const old=r.instance;r.instance=null;if(this.active===old)this.active=null;pending.push(Promise.resolve(old.abort()));old.worker.terminate();}return Promise.all(pending).then(()=>{});}
+ abort(){
+  this.epoch++;this.residentIdentity='';this.residentLoadMetrics=undefined;
+  // A synchronous error in one backend must not prevent stopping the others.
+  // Keep errors in the awaited cleanup barrier rather than dropping them.
+  const pending:Promise<unknown>[]=[];
+  const attempt=(work:()=>unknown)=>{try{pending.push(Promise.resolve(work()));}catch(error){pending.push(Promise.reject(error));}};
+  attempt(()=>this.webml.abort());
+  for(const r of this.registrations)if(r.instance){
+   const old=r.instance;r.instance=null;if(this.active===old)this.active=null;
+   attempt(()=>old.abort());
+   attempt(()=>old.worker.terminate());
+  }
+  return Promise.all(pending).then(()=>{});
+ }
  worker={terminate:()=>{this.generationSession++;this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
 }

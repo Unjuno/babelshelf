@@ -415,3 +415,25 @@ test('structured generation callbacks retire on stop and terminal completion',as
   emit('progress',2);emit('answer-preview','late');assert.deepEqual(seen,['progress']);
  }
 });
+
+test('Stop retires optional workers even when base backend abort throws synchronously',async()=>{
+ const f=setup(),loading=f.router.load(onnxTextModels[0].id);
+ f.finish();await loading;
+ const failure=Error('Base abort failed synchronously');
+ f.webml.abort=()=>{f.calls.push('webml:abort-error');throw failure;};
+ await assert.rejects(f.router.abort(),error=>error===failure);
+ assert.ok(f.calls.includes('onnx:abort'),'Optional backend must still receive Stop');
+ assert.ok(f.calls.includes('onnx:terminate'),'Optional worker must still be retired');
+ assert.equal(f.router.loaded,null);
+});
+
+test('Stop still attempts worker termination if optional backend abort fails',async()=>{
+ const f=setup(),loading=f.router.load(onnxTextModels[0].id);
+ f.finish();await loading;
+ const failure=Error('Optional abort failed synchronously');
+ f.onnx.abort=()=>{f.calls.push('onnx:abort-error');throw failure;};
+ await assert.rejects(f.router.abort(),error=>error===failure);
+ assert.ok(f.calls.includes('webml:abort'));
+ assert.ok(f.calls.includes('onnx:terminate'),'Worker termination must not be skipped after an abort exception');
+ assert.equal(f.router.loaded,null);
+});
