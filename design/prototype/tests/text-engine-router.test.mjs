@@ -437,3 +437,24 @@ test('Stop still attempts worker termination if optional backend abort fails',as
  assert.ok(f.calls.includes('onnx:terminate'),'Worker termination must not be skipped after an abort exception');
  assert.equal(f.router.loaded,null);
 });
+
+test('Stop waits for remaining worker cleanup before reporting an earlier backend error',async()=>{
+ for(const kind of ['synchronous','asynchronous']){
+  const f=setup(),loading=f.router.load(onnxTextModels[0].id);f.finish();await loading;
+  const failure=Error('Base cleanup rejected'),events=[];let finishOptional;
+  f.webml.abort=()=>{events.push('base:abort');if(kind==='synchronous')throw failure;return Promise.reject(failure);};
+  f.onnx.abort=()=>{events.push('optional:abort');return new Promise(resolve=>{finishOptional=()=>{events.push('optional:disposed');resolve();};});};
+  let state='pending',reportedError;
+  const stopped=f.router.abort().then(()=>{state='completed';},error=>{state='failed';reportedError=error;});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(state,'pending',kind+' must wait for the other worker after a failure');
+  assert.equal(f.router.loaded,null);
+  assert.ok(f.calls.includes('onnx:terminate'));
+  assert.deepEqual(events.slice(0,2),['base:abort','optional:abort']);
+  finishOptional();
+  await stopped;
+  assert.equal(state,'failed');
+  assert.equal(reportedError,failure,'preserve the original cleanup error after all workers settle');
+  assert.ok(events.includes('optional:disposed'));
+ }
+});

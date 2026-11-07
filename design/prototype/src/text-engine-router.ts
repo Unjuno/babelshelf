@@ -122,7 +122,13 @@ export class TextEngineRouter{
    attempt(()=>old.abort());
    attempt(()=>old.worker.terminate());
   }
-  return Promise.all(pending).then(()=>{});
+  // Promise.all rejects as soon as one backend fails, while another Worker
+  // may still be releasing GPU/WASM resources. Do not resolve the Stop barrier
+  // (including its error path) until every attempted cleanup has settled.
+  return Promise.allSettled(pending).then(results=>{
+   const failure=results.find(result=>result.status==='rejected');
+   if(failure?.status==='rejected')throw failure.reason;
+  });
  }
  worker={terminate:()=>{this.generationSession++;this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
 }
