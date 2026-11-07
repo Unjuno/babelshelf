@@ -43,3 +43,23 @@ test('Stop wins before completion and prevents claiming a terminal result', () =
   assert.equal(task.signal.aborted, true);
   assert.equal(inferenceStops, 1);
 });
+
+test('asynchronous inference-stop failure is observed without corrupting the cancellation state', async () => {
+  let stops = 0;
+  const task = createTaskCancellation(() => { stops++; return Promise.reject(Error('Worker shutdown failed')); });
+  assert.equal(task.stop(), true);
+  assert.equal(task.signal.aborted, true);
+  assert.equal(task.stop(), false);
+  assert.equal(stops, 1);
+  assert.throws(() => task.check(), /Stopped/);
+  assert.equal(task.claimCompletion(), false);
+  // node:test fails when the rejected stop promise is left unhandled.
+  await new Promise(resolve => setImmediate(resolve));
+});
+
+test('synchronous shutdown errors remain observable after Stop has aborted the signal', () => {
+  const task = createTaskCancellation(() => { throw Error('Synchronous shutdown failure'); });
+  assert.throws(() => task.stop(), /Synchronous shutdown failure/);
+  assert.equal(task.signal.aborted, true);
+  assert.equal(task.claimCompletion(), false);
+});
