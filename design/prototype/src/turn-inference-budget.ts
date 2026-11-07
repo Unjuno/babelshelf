@@ -44,7 +44,12 @@ export function createTurnInferenceBudget(options:{maxGenerationTokens:number|nu
     if(remainingMs!==undefined&&remainingMs<=0)throw new TurnInferenceBudgetError('time');
     active=true;expired=false;const generation=++generationSequence;activeGeneration=generation;let elapsedRecorded=false,tokensRecorded=false,timer:unknown;
     try{
-     if(remainingMs!==undefined)timer=timers.set(()=>{if(activeGeneration!==generation)return;expired=true;try{(target as TextEngine&{stop?:()=>void}).stop?.();}catch{/* The generation rejection below remains authoritative. */}},remainingMs);
+     if(remainingMs!==undefined)timer=timers.set(()=>{if(activeGeneration!==generation)return;expired=true;try{
+      // Stop may return a promise (e.g. a worker-disposal handshake). A rejected
+      // best-effort stop must not become an unhandled rejection; the timed-out
+      // generation still rejects with its authoritative budget error.
+      void Promise.resolve((target as TextEngine&{stop?:()=>void|Promise<void>}).stop?.()).catch(()=>{});
+     }catch{/* A synchronous stop failure cannot override the timeout. */}},remainingMs);
      const result=await target.generate(messages,remaining,format,onPreview?preview=>{if(!expired&&(remainingMs===undefined||now()-started<=remainingMs))onPreview(preview);}:undefined);
      generationMs+=Math.max(0,now()-started);elapsedRecorded=true;
      const used=result.outputTokens??remaining;if(!Number.isSafeInteger(used)||used<0)throw Error('Invalid generated token count');generatedTokens+=used;tokensRecorded=true;

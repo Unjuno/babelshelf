@@ -110,3 +110,18 @@ test('the generation slot is released after a runtime failure without losing its
  const result=await budget.wrap(engine(async(_messages,maxTokens)=>{limits.push(maxTokens);return {text:'retry',outputTokens:10};})).generate([],100);
  assert.equal(result.text,'retry');assert.deepEqual(limits,[56]);assert.equal(budget.generatedTokens,210);
 });
+
+test('an asynchronous stop failure is handled while the timed-out generation remains rejected',async()=>{
+ let expire,finish;
+ const wrapped=createTurnInferenceBudget({maxGenerationTokens:null,maxGenerationMs:1000,timers:{
+  set(callback){expire=callback;return 1;},clear(){},
+ }}).wrap(engine(()=>new Promise(resolve=>{finish=resolve;}),{
+  stop(){return Promise.reject(Error('Worker shutdown failed asynchronously'));}
+ }));
+ const pending=wrapped.generate([],64);
+ expire();
+ finish({text:'Late model reply',outputTokens:1});
+ await assert.rejects(pending,error=>error instanceof TurnInferenceBudgetError&&error.cause==='time');
+ // Let the stop promise settle; node:test will fail on an unhandled rejection.
+ await new Promise(resolve=>setImmediate(resolve));
+});

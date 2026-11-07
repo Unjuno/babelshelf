@@ -367,3 +367,22 @@ test('skipped batch members do not spend execution slots; actual repeated calls 
  assert.deepEqual(result.final,{partial:true,usableResults:3});
  assert.deepEqual(result.attempts.map(item=>item.error?.code??'success'),['success','success','no_progress_loop','batch_not_executed','success']);
 });
+
+test('non-finite tool observations fail explicitly instead of being converted to null',async()=>{
+ const invalid=[NaN,Infinity,-Infinity,{value:NaN},{values:[1,Infinity]}];
+ for(const resultValue of invalid){
+  let calls=0;
+  await assert.rejects(runReadOnlyAgentLoop({
+   allowedTools:[memoryTools[0]],check:()=>{},
+   plan:async()=>({kind:'tool',tool:'memory.search',arguments:{query:'number'}}),
+   execute:async()=>{calls++;return resultValue;},
+  }),/Tool result is not serializable/);
+  assert.equal(calls,1,'Invalid numeric observations cannot enter tool history');
+ }
+ const valid=await runReadOnlyAgentLoop({
+  allowedTools:[memoryTools[0]],check:()=>{},
+  plan:async history=>history.length?{kind:'final',value:'done'}:{kind:'tool',tool:'memory.search',arguments:{query:'finite'}},
+  execute:async()=>({zero:0,ratio:0.5,items:[-5,6]}),
+ });
+ assert.deepEqual(valid.calls[0].result,{zero:0,ratio:0.5,items:[-5,6]});
+});

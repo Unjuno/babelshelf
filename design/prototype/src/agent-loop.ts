@@ -67,7 +67,14 @@ function sameSuccessfulOutcome(call:AgentToolCall,result:unknown,item:AgentToolA
 }
 function snapshotBoundedResult(result:unknown,maxChars=MAX_AGENT_RESULT_CHARS):unknown{
  let serialized:string;
- try{serialized=JSON.stringify(result);}catch{throw new AgentProtocolError('Tool result is not serializable');}
+ try{
+  // JSON.stringify converts NaN and Infinity into null. Reject rather than
+  // handing the model a fabricated numerical observation.
+  serialized=JSON.stringify(result,(_key,value)=>{
+   if(typeof value==='number'&&!Number.isFinite(value))throw new AgentProtocolError('Non-finite tool result');
+   return value;
+  });
+ }catch{throw new AgentProtocolError('Tool result is not serializable');}
  if(typeof serialized!=='string')throw new AgentProtocolError('Tool result is not serializable');
  if(serialized.length>maxChars)throw new AgentToolResultTooLargeError();
  return JSON.parse(serialized);
