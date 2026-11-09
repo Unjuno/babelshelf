@@ -1011,3 +1011,11 @@ The Online/Offline pill sits higher in the chat header and names the next state;
 Site-source commit `31fd0e03bd7d586736ac3e8544a9122f8e17731c` packages app build `76913ce02dccb567` /129 verified assets. Saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_4dc17e6104a881919ce5005829c63d8d` deployed successfully as `appgdep_6ad99d23d4cc8191b04555672db17a6a`. The public build manifest returned 66 install-time assets whose byte counts and SHA-256 hashes were verified against the live URLs from the PC.
 
 One supplied device report was from v145 with `standalone:false`, so it came from a browser tab and did not represent a Home Screen app launch. v148 adds an explicit warning and Home Screen guidance. On the existing Codex sidebar PC tab, Refresh app returned “Update verification failed” and Developer still showed the v147 active worker. Public asset verification passed; adoption of v148 by that existing client is unresolved and must not be represented as successful. No storage was cleared. No additional physical iPhone run has been performed.
+
+## Public Site v329 — bounded LFM3 diagnostic context (2026-11-10)
+
+The public Site packages app source commit `3f659f1e4cfead4233475cb48bcfb1034bfb7a34`, build `c1c03d10e7ebec85`, with 163 verified assets. Site source commit `82ed98d7f38d0e0e733f14a1d96b253d69b9977b`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_ab502609eeec8191a1389ea8d3eff612`; production deployment `appgdep_6af23aceea488191b806542c037646cb` succeeded. The existing public audience and `https://babelshelf.com/` were retained.
+
+The update applies the bounded 8K context only to an unloaded LFM3 model in Developer model checks. It records the saved context separately and leaves normal chat settings unchanged. The public sidebar's new verification tab reported active worker build `c1c03d10e7ebec85` and bundle `index-9n0tia0c.js`; the app was returned to Offline. The original tab and its open model-set selection were left untouched. The test tab showed model files and runtime as Not prepared; no weights or runtime were downloaded and no model was run.
+
+This is PC browser update evidence only. It does not establish iPhone loading, model memory fit, inference, speed, or quality. An iPhone test is still needed to evaluate the 8K diagnostic against the prior prolonged model-load report.
