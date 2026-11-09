@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {chunkSemanticText,bindSemanticHits} from '../src/semantic-search-core.ts';
+import {chunkSemanticText,rankSemanticVectors,bindSemanticHits} from '../src/semantic-search-core.ts';
 
 test('semantic chunks retain exact UTF-16 source ranges and bounded overlap',()=>{
  const body='Alpha paragraph.\n'+('A useful 🌱 fact appears here. '.repeat(24))+'\nLast line.';
@@ -29,6 +29,27 @@ test('semantic hits bind only to exact text from the current canonical revision'
   {noteId:'missing',revision:1,start:0,end:4,quote:'fake',score:0.97},
  ],{limit:5});
  assert.deepEqual(result,[{kind:'passage',noteId:'note-a',revision:2,title:'Garden',path:'Notes/garden.md',start:0,end:33,quote:'A seedling needs light and water.',score:0.92}]);
+});
+
+test('semantic ranking uses only the selected embedding revision and normalized cosine order',()=>{
+ const ranked=rankSemanticVectors([8,0],[
+  {modelRevision:'embed-r1',noteId:'related',revision:2,start:0,end:7,quote:'Related',vector:[4,0]},
+  {modelRevision:'embed-r1',noteId:'partial',revision:1,start:0,end:7,quote:'Partial',vector:[1,1]},
+  {modelRevision:'embed-r0',noteId:'stale-model',revision:1,start:0,end:10,quote:'Stale model',vector:[1,0]},
+  {modelRevision:'embed-r1',noteId:'invalid',revision:1,start:0,end:7,quote:'Invalid',vector:[Infinity,0]},
+  {modelRevision:'embed-r1',noteId:'zero',revision:1,start:0,end:4,quote:'Zero',vector:[0,0]},
+  {modelRevision:'embed-r1',noteId:'wrong-dimensions',revision:1,start:0,end:5,quote:'Wrong',vector:[1]},
+ ],'embed-r1',{limit:4});
+ assert.deepEqual(ranked.map(hit=>hit.noteId),['related','partial']);
+ assert.equal(ranked[0].score,1);
+ assert.ok(Math.abs(ranked[1].score-Math.SQRT1_2)<1e-12);
+});
+
+test('semantic ranking rejects unusable query vectors and invalid limits',()=>{
+ const record={modelRevision:'embed-r1',noteId:'a',revision:1,start:0,end:4,quote:'Fact',vector:[1,0]};
+ assert.deepEqual(rankSemanticVectors([0,0],[record],'embed-r1'),[]);
+ assert.deepEqual(rankSemanticVectors([Infinity,0],[record],'embed-r1'),[]);
+ assert.throws(()=>rankSemanticVectors([1,0],[record],'embed-r1',{limit:21}),/Invalid semantic ranking options/);
 });
 
 test('semantic hit scores, ranges and result budgets are validated before binding',()=>{

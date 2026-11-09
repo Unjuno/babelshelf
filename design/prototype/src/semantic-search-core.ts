@@ -4,6 +4,7 @@ export type SemanticChunk={noteId:string;revision:number;title:string;path:strin
 type CanonicalNote={id:string;state?:string;path?:string;revisions?:Array<{version:number;title:string;body:string}>};
 type ProjectedNote={id:string;version?:number;revision?:number;title:string;path?:string;body:string};
 type SemanticHit={noteId:string;revision:number;start:number;end:number;quote:string;score:number};
+export type SemanticVectorRecord={modelRevision:string;noteId:string;revision:number;start:number;end:number;quote:string;vector:readonly number[]};
 
 const isRecord=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const safeBoundary=(text:string,index:number,direction:'left'|'right')=>{
@@ -41,6 +42,28 @@ export function chunkSemanticText(note:ProjectedNote,{maxChars=480,overlapChars=
   start=next;
  }
  return chunks;
+}
+
+/** Rank only vectors made by the selected embedding revision; revalidate quotes later. */
+export function rankSemanticVectors(query:readonly number[],records:readonly SemanticVectorRecord[],modelRevision:string,{limit=12}:{limit?:number}={}):SemanticHit[]{
+ if(typeof modelRevision!=='string'||!modelRevision||modelRevision.length>512||!Number.isInteger(limit)||limit<1||limit>20)throw Error('Invalid semantic ranking options');
+ if(!Array.isArray(query)||query.length<1||query.length>4096||!Array.isArray(records))return [];
+ const normalize=(vector:readonly number[])=>{
+  if(!Array.isArray(vector)||vector.length!==query.length)return null;
+  let magnitude=0;for(const value of vector){if(typeof value!=='number'||!Number.isFinite(value))return null;magnitude+=value*value;}
+  if(!Number.isFinite(magnitude)||magnitude<=0)return null;
+  const scale=1/Math.sqrt(magnitude);return vector.map(value=>value*scale);
+ };
+ const normalizedQuery=normalize(query);if(!normalizedQuery)return [];
+ const ranked:SemanticHit[]=[];
+ for(const record of records){
+  if(!isRecord(record))continue;const candidate=record as unknown as SemanticVectorRecord;
+  if(candidate.modelRevision!==modelRevision||typeof candidate.noteId!=='string'||!candidate.noteId||candidate.noteId.length>512||!Number.isSafeInteger(candidate.revision)||candidate.revision<1||!Number.isSafeInteger(candidate.start)||candidate.start<0||!Number.isSafeInteger(candidate.end)||candidate.end<=candidate.start||typeof candidate.quote!=='string'||!candidate.quote.trim()||candidate.end-candidate.start>4096)continue;
+  const vector=normalize(candidate.vector);if(!vector)continue;
+  let cosine=0;for(let i=0;i<normalizedQuery.length;i++)cosine+=normalizedQuery[i]*vector[i];
+  const score=Math.max(0,Math.min(1,cosine));if(score>0)ranked.push({noteId:candidate.noteId,revision:candidate.revision,start:candidate.start,end:candidate.end,quote:candidate.quote,score});
+ }
+ return ranked.sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,limit);
 }
 
 /** Rebind candidate passages to current canonical revisions; candidate text/metadata is never trusted. */
