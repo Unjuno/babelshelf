@@ -27,8 +27,9 @@ test('media and Decision catalogs offer only registered local adapters',async({p
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Models',exact:true}).click();
- await page.locator('summary').filter({hasText:'More decision options'}).click();
- await page.getByRole('button',{name:'Browse decision models',exact:true}).click();
+ const browseDecision=page.getByRole('button',{name:'Browse decision models',exact:true});
+ await expect(browseDecision).toBeVisible();
+ await browseDecision.click();
  await expect(page.getByRole('button',{name:/Add Open d1.*600M/})).toBeVisible();
  await expect(page.getByRole('button',{name:/3B/})).toHaveCount(0);
  await page.getByRole('button',{name:/Add Open d1.*600M/}).click();

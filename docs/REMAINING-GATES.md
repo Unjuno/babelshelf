@@ -1,4 +1,29 @@
-## Current status · 2026-11-04
+## Current status · 2026-11-10
+
+### 2026-11-10 · expose Decision model discovery and reconcile the deployed build
+
+The Decision model catalog was only reachable inside the collapsed “More” section,
+while the Text, OCR and Vision catalogs had visible entry points. The standard
+Decision catalog action now sits beside its role heading; adding a custom ONNX
+model and file-management details remain in More. The public app’s current active
+worker is build `e17e92a9db1a5984`, and the Site release source records GitHub
+commit `ff152bf95499c44c2bddc8bef910f255e1235c37` with that same build. This
+reconciles the public shell with the latest pre-change GitHub commit; it was not
+an outdated deployment. The current browser profile has LFM3 Q4 selected but
+neither its weights nor runtime prepared. IQ3_M is listed as a community
+candidate and explicitly untested on this device; model listing is not runtime
+acceptance. Role/catalog regressions passed 71/71 Node tests and 2/2 browser tests;
+`npm run check` passed; local app build `1e9173b97ab3cd7e` verified 163 assets.
+That candidate changes catalog discoverability only. No model was downloaded,
+no Memory content was changed, and no physical-device inference was tested.
+
+### 2026-11-09 · hard-stop model-count and worker-session invalidation
+
+The current GitHub head merged the verified Worker termination guard. Its latest
+GitHub quality workflow passed all stages on `ff152bf95499c44c2bddc8bef910f255e1235c37`
+([run 42633357328](https://github.com/Unjuno/babelshelf/actions/runs/42633357328)).
+The Decision-catalog visibility change above is a new local candidate; it still
+needs its own CI run and deployment before it is present on the public site.
 
 ### 2026-11-04 · make LFM3 runtime preparation visible on its own
 
