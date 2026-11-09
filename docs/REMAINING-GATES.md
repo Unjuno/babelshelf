@@ -30,6 +30,14 @@ path. Do not deploy this as a completed Search feature. The next step is the
 explicit/resumable embedding asset and inference adapter, then the user flow
 with deterministic fallback and exact-source citation validation.
 
+2026-11-10 follow-up: the app-owned pinned asset store now downloads any
+manifest asset larger than 16 MiB in durable OPFS HTTP ranges, rather than
+limiting resumable acquisition to `.gguf` files. The interrupted-range
+regression now uses a large ONNX asset and confirms retry requests only the
+uncommitted final bytes. This is store-level fault-injection coverage; it does
+not yet prove CDN range behavior, the embedding candidate's acquisition, or
+Search integration on a browser/device.
+
 ### 2026-11-10 · reconcile model roles before expanding the catalog
 
 At this earlier checkpoint, GitHub branch `codex/ui-design-handoff` was at
