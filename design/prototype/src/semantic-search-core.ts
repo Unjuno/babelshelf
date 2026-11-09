@@ -49,7 +49,10 @@ export function bindSemanticHits(notes:CanonicalNote[],hits:SemanticHit[],{limit
  if(!Array.isArray(notes)||!Array.isArray(hits))return [];
  const latestById=new Map<string,{note:CanonicalNote;revision:number;title:string;body:string}>();
  for(const note of notes){
-  if(!isRecord(note)||note.state==='deleted'||typeof note.id!=='string'||!Array.isArray(note.revisions))continue;
+  // Only active canonical records may contribute retrieval evidence. Treat
+  // withdrawn, deleted, and unknown states as ineligible rather than relying
+  // on a consumer to remember to filter them before semantic ranking.
+  if(!isRecord(note)||note.state!=='active'||typeof note.id!=='string'||!Array.isArray(note.revisions))continue;
   const latest=note.revisions.at(-1);
   if(!isRecord(latest)||!Number.isSafeInteger(latest.version)||latest.version<1||typeof latest.title!=='string'||typeof latest.body!=='string')continue;
   latestById.set(note.id,{note,revision:latest.version,title:latest.title,body:latest.body});

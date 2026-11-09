@@ -19,11 +19,13 @@ test('semantic chunks retain exact UTF-16 source ranges and bounded overlap',()=
 });
 
 test('semantic hits bind only to exact text from the current canonical revision',()=>{
- const notes=[{id:'note-a',state:'active',path:'Notes/garden.md',revisions:[{version:1,title:'Old',body:'old text'},{version:2,title:'Garden',body:'A seedling needs light and water.'}]}];
+ const notes=[{id:'note-a',state:'active',path:'Notes/garden.md',revisions:[{version:1,title:'Old',body:'old text'},{version:2,title:'Garden',body:'A seedling needs light and water.'}]},{id:'withdrawn',state:'withdrawn',revisions:[{version:1,title:'Withdrawn',body:'Withdrawn source.'}]},{id:'unknown-state',revisions:[{version:1,title:'Unknown state',body:'Unverified source.'}]}];
  const result=bindSemanticHits(notes,[
   {noteId:'note-a',revision:2,start:0,end:33,quote:'A seedling needs light and water.',score:0.92},
   {noteId:'note-a',revision:2,start:0,end:33,quote:'A seedling needs light and water!',score:0.99},
   {noteId:'note-a',revision:1,start:0,end:8,quote:'old text',score:0.98},
+  {noteId:'withdrawn',revision:1,start:0,end:17,quote:'Withdrawn source.',score:0.99},
+  {noteId:'unknown-state',revision:1,start:0,end:18,quote:'Unverified source.',score:0.98},
   {noteId:'missing',revision:1,start:0,end:4,quote:'fake',score:0.97},
  ],{limit:5});
  assert.deepEqual(result,[{kind:'passage',noteId:'note-a',revision:2,title:'Garden',path:'Notes/garden.md',start:0,end:33,quote:'A seedling needs light and water.',score:0.92}]);
