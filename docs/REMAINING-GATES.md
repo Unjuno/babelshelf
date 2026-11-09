@@ -9,6 +9,14 @@ latest code commit `1c28ecd` passed the complete quality workflow
 in 12m 50s, including offline and installed-PWA acceptance. The local
 untracked QA/model benchmark artifacts were preserved.
 
+The current local follow-up bounds only an unloaded LFM3 model's Developer
+smoke/performance load to an 8K context. The user's saved context and normal
+model-load route remain unchanged; an already-resident model is measured at its
+resident context. Local prototype regression and build checks are required
+before publishing this follow-up. A device run is still needed to confirm that
+the iPhone load stall is reduced; the earlier 18-minute stopped run does not
+prove that context size was the only cause.
+
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a
 separate IndexedDB for rebuildable vectors keyed by model and note revision.
