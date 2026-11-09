@@ -247,6 +247,13 @@ test('saved device report retains bounded runtime performance counters and rejec
  assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify(forgedEngine)),/Invalid device test report/);
 });
 
+test('saved device report distinguishes the configured LFM3 context from its bounded test context',async()=>{
+ const storage=memoryStorage(),report=await runDeviceDiagnostics({isSecureContext:true,serviceWorker:{controller:{}},cacheStorage:{keys:async()=>[]},storage,indexedDB:null,gpu:null});
+ report.modelGeneration={status:'pass',model:'lfm3-1.7b-qad-q4-0',modelRevision:'r1',runtimeRevision:'runtime-r1',configuredContextTokens:262144,testContextTokens:8192};
+ const serialized=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(storage,serialized);assert.equal(readSavedDeviceTestReport(storage),serialized);
+ assert.throws(()=>writeSavedDeviceTestReport(storage,JSON.stringify({...report,modelGeneration:{...report.modelGeneration,testContextTokens:524288}})),/Invalid/);
+});
+
 test('an IndexedDB probe name collision never deletes an existing database',async()=>{
  let deleted=false;
  const database={close(){},transaction(){throw Error('must not use an existing database');}};

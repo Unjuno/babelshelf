@@ -44,7 +44,7 @@ import {ModelLoadFeedback} from './ModelLoadFeedback';
 import {LfmContextSettings} from './LfmContextSettings';
 import {requiresLargeContextLoadConfirmation} from './large-context-load';
 import {LfmContextNotice} from './LfmContextNotice';
-import {textExecutionIdentity,textExecutionQuantization} from './text-execution-route';
+import {textExecutionIdentity,textExecutionQuantization,textExecutionRoute} from './text-execution-route';
 import type {CustomDecisionModel,CustomLocalModel,CustomVisionModel} from './preference-records';
 import type {CustomSpeechModel} from './preference-records';
 import type {HuggingFaceModelFile,HuggingFaceRepository} from './huggingface-models';
@@ -232,7 +232,6 @@ export default function Prototype() {
  useEffect(()=>{const worker=navigator.serviceWorker,invalidate=()=>setRuntimeAssetsReady({});worker?.addEventListener('controllerchange',invalidate);return()=>worker?.removeEventListener('controllerchange',invalidate);},[]);
  const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false),deviceModelTestAbort=useRef<AbortController|null>(null);
  const deviceSuiteLock=useRef(false);const [deviceTestMode,setDeviceTestMode]=useState<DeviceTestMode>(()=>typeof navigator!=='undefined'&&isStandalonePwa(typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches,(navigator as Navigator&{standalone?:boolean}).standalone)?'quick':'app');
- const [deviceLargeContextTestConfirm,setDeviceLargeContextTestConfirm]=useState(false);
  const [deviceTestStage,setDeviceTestStage]=useState('');
  const [deviceTestElapsedMs,setDeviceTestElapsedMs]=useState(0),deviceTestStartedAt=useRef<number|null>(null);
  useEffect(()=>{if(!deviceTestRunning&&!deviceModelTesting)return;const started=deviceTestStartedAt.current??Date.now();const tick=()=>setDeviceTestElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[deviceTestRunning,deviceModelTesting]);
@@ -528,9 +527,8 @@ export default function Prototype() {
    const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);if(marker){clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);}
   }catch(error){toast((error as Error).message||'Device test failed');}finally{setDeviceTestRunning(false);}
  }
- async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceModelTestMode='quick',runStartedAt=performance.now(),largeContextConfirmed=false):Promise<DeviceDiagnosticReport|null>{
+ async function runDeviceModelTest(baseReport?:DeviceDiagnosticReport,testMode:DeviceModelTestMode='quick',runStartedAt=performance.now()):Promise<DeviceDiagnosticReport|null>{
   if(deviceModelTesting||!model)return null;
-  if(requiresLargeContextLoadConfirmation(model,modelPreferences.customModels.some(item=>item.id===model),modelPreferences.lfm3ContextTokens)&&!largeContextConfirmed){toast('Large context test not started · confirm in Developer');return null;}
   if(decision.loaded){toast('Unload the Decision model before testing the selected Text model');return null;}
   const fullCycle=testMode==='full-cycle',filesPresentAtStart=!!bonsai.assets[model]?.filesPresent;
   if(!filesPresentAtStart&&!fullCycle){toast('Prepare the selected model before testing it');return null;}
@@ -538,7 +536,7 @@ export default function Prototype() {
   if(deviceTestStartedAt.current===null){deviceTestStartedAt.current=Date.now();setDeviceTestElapsedMs(0);}const testController=new AbortController();deviceModelTestAbort.current=testController;setDeviceModelTesting(true);setDeviceTestStage(fullCycle?'Checking model files…':'Loading selected model…');
   const profile=deviceModelTestProfile(testMode),warmProfile=fullCycle?deviceWarmModelTestProfile():null,loadedAtStart=bonsai.loaded===model;
   let loadMetrics:import('./text-inference.ts').RuntimeLoadMetrics|undefined,inputTokens:number|undefined,loadedByTest=false,loadDurationMs=0,durationMs=0,outputTokens:number|undefined,answerCharacters=0,runtimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined;
-  let assetState:'reused'|'prepared'|'not-run'='not-run',preparationDurationMs=0,downloadedBytes:number|undefined,expectedModelBytes:number|undefined,runtimePreparationDurationMs=0,runtimeBytesRead:number|undefined,runtimeDownloadedBytes:number|undefined,modelStartToFirstTextMs:number|undefined,warmDurationMs:number|undefined,warmOutputTokens:number|undefined,warmTokensPerSecond:number|undefined,warmRuntimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined;
+  let assetState:'reused'|'prepared'|'not-run'='not-run',preparationDurationMs=0,downloadedBytes:number|undefined,expectedModelBytes:number|undefined,runtimePreparationDurationMs=0,runtimeBytesRead:number|undefined,runtimeDownloadedBytes:number|undefined,modelStartToFirstTextMs:number|undefined,warmDurationMs:number|undefined,warmOutputTokens:number|undefined,warmTokensPerSecond:number|undefined,warmRuntimeMetrics:import('./text-inference.ts').RuntimeGenerationMetrics|undefined,testContextTokens:number|undefined;
   let failure:unknown=null,failureStage:DeviceModelTestFailureStage='runtime-setup',stage:DeviceModelTestFailureStage='runtime-setup';
   try{await assetGate.current.run(async()=>{try{
    if(fullCycle){
@@ -569,16 +567,18 @@ export default function Prototype() {
      return true;
     });
    }
-   if(bonsai.loaded!==model){stage='runtime-setup';if(!fullCycle){const role=selectedTextRuntimeRole(model);if(role)await ensureProductRuntime(role,false);}stage='model-load';setDeviceTestStage('Loading model…');setAssetAction('model.load');const loadStarted=performance.now();try{loadMetrics=(await bonsai.load(model))??undefined;loadedByTest=true;}finally{loadDurationMs=Math.round(performance.now()-loadStarted);}}else{loadMetrics=(await bonsai.load(model))??undefined;}
+   if(bonsai.loaded!==model){stage='runtime-setup';if(!fullCycle){const role=selectedTextRuntimeRole(model);if(role)await ensureProductRuntime(role,false);}stage='model-load';setDeviceTestStage('Loading model…');setAssetAction('model.load');const loadStarted=performance.now();try{const compactLfm3Context=textExecutionRoute(model,modelPreferences.customModels)?.engine==='wllama-lfm3'?8192:undefined;testContextTokens=compactLfm3Context??(bonsai.manifest.models as any[]).find(item=>item.id===model)?.contextTokens;loadMetrics=(await bonsai.load(model,compactLfm3Context?{testContextTokens:compactLfm3Context}:undefined))??undefined;loadedByTest=true;}finally{loadDurationMs=Math.round(performance.now()-loadStarted);}}else{testContextTokens=(bonsai.manifest.models as any[]).find(item=>item.id===model)?.contextTokens;loadMetrics=(await bonsai.load(model))??undefined;}
    stage='count';setDeviceTestStage('Preparing test input…');setAssetAction('model.load');inputTokens=(await bonsai.count(profile.messages,profile.format)).prompt_tokens;
    stage='generation';setDeviceTestStage('Generating first answer…');const generationStarted=performance.now();const generated=await bonsai.generate(profile.messages,profile.maxTokens,profile.format,()=>{if(modelStartToFirstTextMs===undefined)modelStartToFirstTextMs=Math.round(performance.now()-runStartedAt);});durationMs=Math.round(performance.now()-generationStarted);outputTokens=generated.outputTokens;runtimeMetrics=generated.metrics;stage='output-validation';answerCharacters=validateDeviceModelTest(testMode==='full-cycle'?'performance':testMode,generated);
    if(warmProfile){stage='warm-generation';setDeviceTestStage('Running warm sample…');const warmStarted=performance.now(),warm=await bonsai.generate(warmProfile.messages,warmProfile.maxTokens,warmProfile.format);warmDurationMs=Math.round(performance.now()-warmStarted);warmOutputTokens=warm.outputTokens;warmRuntimeMetrics=warm.metrics;validateDeviceModelTest('performance',warm);warmTokensPerSecond=warmDurationMs>0?Math.round((warm.outputTokens??0)*100000/warmDurationMs)/100:0;}
   }catch(error){failure=error;failureStage=stage;if(fullCycle&&error&&typeof error==='object'&&Number.isSafeInteger((error as {downloadedBytes?:unknown}).downloadedBytes)){const received=(error as {downloadedBytes:number}).downloadedBytes;if(stage==='runtime-setup')runtimeDownloadedBytes=received;else if(stage==='model-preparation')downloadedBytes=received;}}finally{if(loadedByTest){try{setDeviceTestStage('Closing test model…');setAssetAction('model.load');await bonsai.unload();}catch(error){if(!failure){failure=error;failureStage='unload';}}}setAssetAction(null);}});
   }catch(error){if(!failure){failure=error;failureStage=stage;}}
   try{const report=baseReport??await collectDeviceReport(),modelIdentity=textExecutionIdentity(model,modelPreferences.customModels),failureType=failure?deviceModelTestFailureType(failure,failureStage):undefined,stopped=failureType==='stopped';
-   report.modelGeneration={status:failure?(stopped?'stopped':'fail'):'pass',testMode,quantization:textExecutionQuantization(model,modelPreferences.customModels),workload:profile.workload,maxOutputTokens:profile.maxTokens,loadState:loadedByTest?'loaded-for-test':loadedAtStart?'already-loaded':'not-loaded',...(fullCycle?{assetState,...(expectedModelBytes!==undefined?{expectedModelBytes}:{}),...(downloadedBytes!==undefined?{downloadedBytes}:{}),...(preparationDurationMs?{preparationDurationMs}:{}),...(runtimePreparationDurationMs?{runtimePreparationDurationMs}:{}),...(runtimeBytesRead!==undefined?{runtimeBytesRead}:{}),...(runtimeDownloadedBytes!==undefined?{runtimeDownloadedBytes}:{}),...(modelStartToFirstTextMs!==undefined?{modelStartToFirstTextMs}:{}),...(warmDurationMs!==undefined?{warmDurationMs}:{}),...(warmOutputTokens!==undefined?{warmOutputTokens}:{}),...(warmTokensPerSecond!==undefined?{warmTokensPerSecond}:{}),...(warmRuntimeMetrics?{warmRuntimeMetrics}:{})}:{}),...(failure?{failureStage}:{}),...(inputTokens!==undefined?{inputTokens}:{}),model,modelRevision:modelIdentity?.revision??'custom',runtimeRevision:modelIdentity?.runtimeRevision??'unknown',...(loadDurationMs?{loadDurationMs}:{}),...(loadMetrics?{loadMetrics}:{}),...(durationMs?{durationMs}:{}),...(outputTokens!==undefined?{outputTokens,tokensPerSecond:durationMs>0?Math.round(outputTokens*100000/durationMs)/100:0}:{}),...(answerCharacters?{answerCharacters}:{}),...(runtimeMetrics?{runtimeMetrics}:{}),...(failureType?{failureType}:{})};
+   const reportedContext=Number.isSafeInteger(testContextTokens)?testContextTokens:undefined;
+   report.modelGeneration={status:failure?(stopped?'stopped':'fail'):'pass',testMode,quantization:textExecutionQuantization(model,modelPreferences.customModels),workload:profile.workload,maxOutputTokens:profile.maxTokens,loadState:loadedByTest?'loaded-for-test':loadedAtStart?'already-loaded':'not-loaded',...(reportedContext!==undefined?{testContextTokens:reportedContext}:{}),...(textExecutionRoute(model,modelPreferences.customModels)?.engine==='wllama-lfm3'?{configuredContextTokens:modelPreferences.lfm3ContextTokens}:{}),...(fullCycle?{assetState,...(expectedModelBytes!==undefined?{expectedModelBytes}:{}),...(downloadedBytes!==undefined?{downloadedBytes}:{}),...(preparationDurationMs?{preparationDurationMs}:{}),...(runtimePreparationDurationMs?{runtimePreparationDurationMs}:{}),...(runtimeBytesRead!==undefined?{runtimeBytesRead}:{}),...(runtimeDownloadedBytes!==undefined?{runtimeDownloadedBytes}:{}),...(modelStartToFirstTextMs!==undefined?{modelStartToFirstTextMs}:{}),...(warmDurationMs!==undefined?{warmDurationMs}:{}),...(warmOutputTokens!==undefined?{warmOutputTokens}:{}),...(warmTokensPerSecond!==undefined?{warmTokensPerSecond}:{}),...(warmRuntimeMetrics?{warmRuntimeMetrics}:{})}:{}),...(failure?{failureStage}:{}),...(inputTokens!==undefined?{inputTokens}:{}),model,modelRevision:modelIdentity?.revision??'custom',runtimeRevision:modelIdentity?.runtimeRevision??'unknown',...(loadDurationMs?{loadDurationMs}:{}),...(loadMetrics?{loadMetrics}:{}),...(durationMs?{durationMs}:{}),...(outputTokens!==undefined?{outputTokens,tokensPerSecond:durationMs>0?Math.round(outputTokens*100000/durationMs)/100:0}:{}),...(answerCharacters?{answerCharacters}:{}),...(runtimeMetrics?{runtimeMetrics}:{}),...(failureType?{failureType}:{})};
    const modelCheck=report.checks.find(check=>check.id==='selected-model');if(modelCheck){modelCheck.status=failure?(stopped?'warning':'fail'):'pass';modelCheck.detail=failure?(stopped?`${model}: test stopped`:`${model}: test failed · ${report.modelGeneration.failureType}`):`${model}: local ${testMode==='full-cycle'?'full-cycle':testMode==='performance'?'timing':'structured'} test completed`;}
    report.scope.push(testMode==='full-cycle'?'Full-cycle sample covers model asset verification/preparation, runtime readiness, model load, first visible text, one bounded generation and one warm generation. Exact downloaded bytes are reported only when the selected adapter exposes them; expected model bytes are manifest metadata. Output text is discarded. One run is not a sustained, thermal or answer-quality test.':`One ${testMode==='performance'?'bounded prose timing sample (up to 128 output tokens)':'short structured generation'} was run locally; output text was discarded and not saved. Prepared models are loaded from local assets only, and a model loaded by this test is unloaded afterward. Timings are a single sample, not a sustained benchmark.`);
+   if(textExecutionRoute(model,modelPreferences.customModels)?.engine==='wllama-lfm3')report.scope.push('When a device test loads an unloaded LFM3 model, it uses an 8K test context to bound startup time; the saved context setting is unchanged. A model already loaded before the test is measured at its resident context. Both configured and effective test contexts are recorded.');
    setDiagnosticBuild(report.appBuild);const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);toast(failure?(stopped?'Model test stopped':'Local generation test failed'):'Device and model test complete');return report;
   }catch(error){toast((error as Error).message||'Could not create model test report');return null;}
   finally{if(deviceModelTestAbort.current===testController)deviceModelTestAbort.current=null;setDeviceModelTesting(false);setDeviceTestStage('');}
@@ -589,16 +589,14 @@ export default function Prototype() {
   try{const saved=readSavedDeviceTestReport(localStorage);if(!saved)throw Error('Baseline report unavailable');const report=completeInterruptedOfflineRestartReport(JSON.parse(saved),marker),text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);clearOfflineRestartMarker(localStorage);setOfflineRestartMarker(null);toast('Device test interrupted · not repeated');}
   catch{try{clearOfflineRestartMarker(localStorage);}catch{}setOfflineRestartMarker(null);toast('Device test interrupted · start a new check when ready');}
  }
- async function runAllDeviceTests(largeContextConfirmed=false){
+ async function runAllDeviceTests(){
   if(deviceSuiteLock.current||deviceTestRunning||deviceModelTesting)return;
-  if(['quick','performance','full-cycle'].includes(deviceTestMode)&&requiresLargeContextLoadConfirmation(model,modelPreferences.customModels.some(item=>item.id===model),modelPreferences.lfm3ContextTokens)&&!largeContextConfirmed){setDeviceLargeContextTestConfirm(true);return;}
-  setDeviceLargeContextTestConfirm(false);
   deviceSuiteLock.current=true;setDeviceTestReport('');setDeviceTestRunning(true);setDeviceTestStage('Checking device…');const runStartedAt=performance.now();
   try{
    const result=await startDeviceTestSuite({collect:collectDeviceReport,
     save:async report=>{const text=formatDeviceDiagnosticReport(report);writeSavedDeviceTestReport(localStorage,text);setDeviceTestReport(text);},
     arm:async marker=>{writeOfflineRestartMarker(localStorage,marker);offlineRestartStartedInPage.current=true;setOfflineRestartMarker(marker);},
-    testModel:(report,mode)=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report,mode,runStartedAt,largeContextConfirmed),
+    testModel:(report,mode)=>decision.loaded?Promise.resolve(null):runDeviceModelTest(report,mode,runStartedAt),
    },deviceTestMode);
    toast(result.marker?'Checks saved · restart the Home Screen app':'Tests complete · copy report');
   }catch(error){toast((error as Error).message||'Device test failed');}
@@ -1363,11 +1361,6 @@ export default function Prototype() {
  onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
  deviceTestElapsedMs={deviceTestElapsedMs}
- largeContextTestConfirm={deviceLargeContextTestConfirm}
- largeContextTestTokens={modelPreferences.lfm3ContextTokens}
- onCancelLargeContextTest={()=>setDeviceLargeContextTestConfirm(false)}
- onOpenModelSettings={()=>{setDeviceLargeContextTestConfirm(false);openModelSettings('text');}}
- onContinueLargeContextTest={()=>void runAllDeviceTests(true)}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={stopAssets}
  offlineRestartMarker={offlineRestartMarker}
@@ -1405,11 +1398,6 @@ export default function Prototype() {
  onTestModeChange={setDeviceTestMode}
  deviceModelTesting={deviceModelTesting}
  deviceTestElapsedMs={deviceTestElapsedMs}
- largeContextTestConfirm={deviceLargeContextTestConfirm}
- largeContextTestTokens={modelPreferences.lfm3ContextTokens}
- onCancelLargeContextTest={()=>setDeviceLargeContextTestConfirm(false)}
- onOpenModelSettings={()=>{setDeviceLargeContextTestConfirm(false);openModelSettings('text');}}
- onContinueLargeContextTest={()=>void runAllDeviceTests(true)}
  onRunDeviceTest={()=>void runAllDeviceTests()}
  onStopModelTest={stopDeviceModelTest}
  offlineRestartMarker={offlineRestartMarker}
