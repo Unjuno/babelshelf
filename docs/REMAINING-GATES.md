@@ -1,5 +1,21 @@
 ## Current status · 2026-11-10
 
+### 2026-11-10 · keep grounded citation records typed through finalization
+
+The grounded-answer adapter previously represented parsed source references as
+`any[]` and cast them again at its return boundary. It now keeps the host's
+`SourceRef[]` contract through normal parsing, citation repair, source freshness
+checks and result construction. The verbatim recovery parser treats model JSON
+as `unknown` and validates object shape and answer/status fields before binding
+the returned phrase to an exact excerpt. This is a type/data-shape integrity
+improvement; it does not prove that a cited passage semantically entails every
+claim. The existing narrow consistency guards and their explicit limits remain.
+Focused answer-consistency, citation-presentation, conversation and verbatim
+recovery suites passed 249/249; `npm run check`, the 163-asset app build
+(`50a5094377aebc7a`), product acceptance 9/9 and `git diff --check` passed.
+No Memory data or model files were read or changed. Cross-device inference
+remains open.
+
 ### 2026-11-10 · expose Decision model discovery and reconcile the deployed build
 
 The Decision model catalog was only reachable inside the collapsed “More” section,

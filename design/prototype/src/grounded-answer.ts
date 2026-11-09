@@ -289,21 +289,23 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  replyTokens=Math.min(mode==='chat'?replyTokens:requestedReplyTokens,engine.manifest.contextTokens-finalPromptTokens);
  if(replyTokens<1)throw Error('Answer context limit · narrow the request and retry');
  if(!dialogueOnly&&!evidence.length&&!operationalEvidence)throw Error(hits.length?'Context limit':'No matching notes');
- type ParsedAnswer={answer:string;sources:any[];status?:'insufficient_evidence'};
+ type ParsedAnswer={answer:string;sources:SourceRef[];status?:'insufficient_evidence'};
  const bindLabels=(labels:unknown)=>bindEvidenceLabels(labels,evidence);
  const validateUserFacingAnswer=(answer:ParsedAnswer):ParsedAnswer=>{if(hasInternalImplementationLeak(answer.answer,question,answer.sources))throw new InternalImplementationLeakError();return answer;};
  const parseLabelBindings=(text:string):ParsedAnswer=>validateUserFacingAnswer(bindSourceLabelAnswer(JSON.parse(text),evidence,{userText:question}));
  const parse=(text:string):ParsedAnswer=>{
-  const value=JSON.parse(text);
-  if(value&&Object.hasOwn(value,'sources'))return parseLabelBindings(text);
+  const value:unknown=JSON.parse(text);
+  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid answer or sources');
+  const row=value as Record<string,unknown>;
+  if(Object.hasOwn(row,'sources'))return parseLabelBindings(text);
   // Existing runtimes may still emit quote citations. Validate them exactly;
   // never infer a source label from a paraphrased or missing quotation.
-  if(value?.status==='insufficient_evidence'){
+  if(row.status==='insufficient_evidence'){
    const parsed=parseAnswer(text,evidence);
    return validateUserFacingAnswer({answer:parsed.answer,sources:[],status:'insufficient_evidence'});
   }
   if(answerContext||operationalEvidence&&!evidence.length)return validateUserFacingAnswer(parseChatAnswer(text,evidence));
-  const parsed=parseAnswer(text,evidence);return validateUserFacingAnswer({answer:parsed.answer,sources:parsed.refs});
+  const parsed=parseAnswer(text,evidence);return validateUserFacingAnswer({answer:parsed.answer,sources:parsed.refs as SourceRef[]});
  };
  const parseSingleLabelSummary=parseLabelBindings;
  // A citation repair changes the serialization request, not the task contract.
@@ -338,9 +340,11 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   check();
   const safe=await engine.generate(fallback,budget,fallbackFormat);check();if(safe.stopped)throw Error('Stopped');checkRepeatedOutput(safe.text);if(outputLimited(safe,budget))throw Error('Response exceeded model output limit');
   let value:unknown;try{value=JSON.parse(safe.text);}catch{throw Error('Invalid model JSON · retry');}
-  if(value&&typeof value==='object'&&!Array.isArray(value)&&(value as any).status==='insufficient_evidence'&&typeof (value as any).answer==='string'&&(value as any).answer.trim()&&Object.keys(value).every(key=>key==='status'||key==='answer'))return {answer:(value as {answer:string}).answer.trim(),sources:[],status:'insufficient_evidence' as const};
-  if(!value||typeof value!=='object'||Array.isArray(value)||typeof (value as any).answer!=='string'||!(value as any).answer.trim()||Object.keys(value).some(key=>key!=='answer'))throw Error('Invalid model JSON · retry');
-  const answer=(value as any).answer.trim(),source=evidence.find(ref=>ref.quote.includes(answer));if(!source)throw Error('Answer needs a verified quote · retry');
+  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid model JSON · retry');
+  const row=value as Record<string,unknown>;
+  if(row.status==='insufficient_evidence'&&typeof row.answer==='string'&&row.answer.trim()&&Object.keys(row).every(key=>key==='status'||key==='answer'))return {answer:row.answer.trim(),sources:[],status:'insufficient_evidence' as const};
+  if(typeof row.answer!=='string'||!row.answer.trim()||Object.keys(row).some(key=>key!=='answer'))throw Error('Invalid model JSON · retry');
+  const answer=row.answer.trim(),source=evidence.find(ref=>ref.quote.includes(answer));if(!source)throw Error('Answer needs a verified quote · retry');
   recovery='verbatim-source';
   const {noteId,revision,start,end,quote,title}=source;return {answer,sources:[{noteId,revision,start,end,quote,...(title?{title}:{})}]};
  };
@@ -449,5 +453,5 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if(!validateGroundingRefs(current,parsed.status==='insufficient_evidence'?evidence:parsed.sources).ok)throw Error('Source changed · retry');
  }
  check();
- return {answer:parsed.answer as string,sources:parsed.sources as any[],...(replyTokens<requestedReplyTokens?{answerBudget:{requestedTokens:requestedReplyTokens,allocatedTokens:replyTokens,reason:'required-evidence' as const}}:{}),...(parsed.status==='insufficient_evidence'?{status:parsed.status,checkedSources:bindLabels(evidence.map(ref=>ref.label))}:{}),...(recovery?{recovery}:{}),...(recovery==='verbatim-source'&&recoveryReason?{recoveryReason}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference}:{})};
+ return {answer:parsed.answer,sources:parsed.sources,...(replyTokens<requestedReplyTokens?{answerBudget:{requestedTokens:requestedReplyTokens,allocatedTokens:replyTokens,reason:'required-evidence' as const}}:{}),...(parsed.status==='insufficient_evidence'?{status:parsed.status,checkedSources:bindLabels(evidence.map(ref=>ref.label))}:{}),...(recovery?{recovery}:{}),...(recovery==='verbatim-source'&&recoveryReason?{recoveryReason}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference}:{})};
 }
