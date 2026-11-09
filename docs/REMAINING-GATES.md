@@ -1,5 +1,23 @@
 ## Current status · 2026-11-10
 
+### 2026-11-10 · surface observed GPU layer placement during model load
+
+Pinned Wllama 3.12.0 does not define a model-load percentage callback in
+`LoadModelParams`; its documented byte progress applies to download APIs. The
+app previously showed only “Loading model” after file verification. The LFM
+adapter now forwards its existing selected-runtime log `load_tensors: offloaded
+N/T layers to GPU` while `loadModel` is pending. The UI shows “GPU layer
+placement · N/T” and keeps the overall bar indeterminate. This is runtime log
+evidence of layer placement, not a completion percentage, total load progress or
+proof that every device uses the same GPU. CPU routes and runtime builds that do
+not emit this log remain indeterminate.
+
+The focused LFM adapter suite passed 41/41; large-context Developer UI passed
+1/1; product acceptance passed 9/9; `npm run check` passed; build
+`d18ac58c757bff40` verified 163 assets. These checks validate log forwarding and
+packaging, not real-model timing or iPhone/Android GPU execution. Device/model
+performance evidence remains open.
+
 ### 2026-11-10 · publish the current app build and verify the installed update path
 
 The exact app source at `98f2b669f6653b5da741f01771df4506368c15d3` passed clean-checkout

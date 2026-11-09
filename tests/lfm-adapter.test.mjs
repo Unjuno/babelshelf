@@ -81,9 +81,9 @@ test('LFM3 native tools reject malformed schemas, incompatible JSON mode and mal
  }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
 });
 test('WebGPU layer evidence is reported only from the selected runtime offload log',async()=>{
- const {Lfm3Adapter}=await import('../dist/lfm-adapter.js');const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');let runtimeLogger;
+ const {Lfm3Adapter}=await import('../dist/lfm-adapter.js');const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');let runtimeLogger;const progress=[];
  try{Object.defineProperty(globalThis,'navigator',{configurable:true,value:{gpu:{async requestAdapter(){return {};}}}});class Runtime{static getLibllamaVersion(){return 'lfm3-fixture'}constructor(_paths,config){runtimeLogger=config.logger;}setCompat(){}async loadModel(){runtimeLogger.debug('load_tensors: offloaded 24/28 layers to GPU');}getChatTemplate(){return 'template'}getLoadedContextInfo(){return {metadata:{'general.architecture':'lfm3'},n_ctx:8192}}getWorkerResources(){return {compat:true,wasmPath:'/lfm3.wasm'}}async exit(){}}
-  const lfm3Model={...model,contextTokens:8192},adapter=new Lfm3Adapter({Wllama:Runtime,paths:{default:'/lfm3.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[lfm3Model],logger:{debug(){}}});const info=await adapter.load(file,lfm3Model.id,{backend:'webgpu'});assert.equal(info.actualGpuLayers,24);assert.equal(info.totalModelLayers,28);assert.equal(info.gpuLayerEvidence,'runtime-offload-log');await adapter.unload();
+  const lfm3Model={...model,contextTokens:8192},adapter=new Lfm3Adapter({Wllama:Runtime,paths:{default:'/lfm3.wasm'},compat:{wasm:'/compat.wasm',worker:{code:'local'}},models:[lfm3Model],logger:{debug(){}},onProgress:value=>progress.push(value)});const info=await adapter.load(file,lfm3Model.id,{backend:'webgpu'});assert.equal(info.actualGpuLayers,24);assert.equal(info.totalModelLayers,28);assert.equal(info.gpuLayerEvidence,'runtime-offload-log');assert.ok(progress.includes('Loading model · GPU layers 24/28'));await adapter.unload();
  }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
 });
 test('GPU placement is not inferred from arbitrary model or metadata text',async()=>{
