@@ -15,7 +15,7 @@ export function createSemanticSearchRuntime(knowledge:KnowledgeReader,createWork
   check();const views=await knowledge.views(signal);signal?.throwIfAborted();
   return views.map(note=>({id:note.id,state:'active',revision:note.version,title:note.path.split('/').at(-1)??note.path,body:note.body,path:note.path,protected:note.protected,recordType:note.recordType}));
  };
- const options=(signal?:AbortSignal,events?:Events)=>({modelRevision,store,signal,batchSize:4,maxChunks:10000,embed:(texts:readonly string[],activeSignal?:AbortSignal)=>backend.embed(texts,activeSignal??signal,events)});
+ const options=(signal?:AbortSignal,events?:Events)=>({modelRevision,store,signal,batchSize:4,maxChunks:10000,progress:(completed:number,total:number)=>events?.('index-progress',{completed,total}),embed:(texts:readonly string[],activeSignal?:AbortSignal)=>backend.embed(texts,activeSignal??signal,events)});
  return {
   modelRevision,
   get loaded(){return backend.loaded;},

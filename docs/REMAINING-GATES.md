@@ -12,29 +12,30 @@ untracked QA/model benchmark artifacts were preserved.
 The current local follow-up bounds only an unloaded LFM3 model's Developer
 smoke/performance load to an 8K context. The user's saved context and normal
 model-load route remain unchanged; an already-resident model is measured at its
-resident context. It also adds an optional app-owned semantic Search adapter
-behind an explicit `KnowledgeStore.createSemanticSearchRuntime()` boundary.
-The pinned embedding files and ONNX WASM runtime prepare separately, use
-resumable OPFS storage, and remain outside the install shell; `memory.search`
-still uses deterministic lexical search. The 554.79 KB Search Worker is
-packaged as a separately prepared runtime role. No Search model selector or
-user-facing setup/indexing flow exists yet, and actual model load, indexing,
-semantic ranking, iPhone behavior and retrieval-quality acceptance remain
-unverified. Do not describe semantic Search as available or deploy this as a
-finished feature. The existing 18-minute stopped iPhone run does not prove that
-the 8K diagnostic context alone resolves the load stall.
+resident context. The optional app-owned semantic Search role now has an
+explicit Settings opt-in, explicit runtime/model preparation, verification,
+load/index/unload controls, progress and Stop. The agent merges semantic hits
+with lexical results only when that Search runtime is already loaded; absent
+or unloaded Search continues through deterministic lexical retrieval. The
+pinned embedding files and ONNX WASM runtime prepare separately, use resumable
+OPFS storage and remain outside the install shell. Prototype build, all 1,933
+prototype tests, focused semantic retrieval tests (2/2), Search Settings UI
+(1/1), submission tests (100/100), and `npm run check` pass. The UI test
+confirms opt-in does not download or index. No actual embedding model has yet
+been downloaded, loaded, indexed or used for a real browser retrieval; retrieval
+quality and iPhone behavior remain unverified. The existing 18-minute stopped
+iPhone run does not prove that the 8K diagnostic context alone resolves the
+load stall.
 
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a
 separate IndexedDB for rebuildable vectors keyed by model and note revision.
 The derived-store tests confirm revision replacement/removal and isolation
-from canonical Memory records. The local follow-up now exposes explicit model
-and runtime preparation, verification, dedicated Worker load/embed/Stop, and
-index/search orchestration without changing normal retrieval. `memory.search`
-remains the working deterministic local path. The adapter is not yet surfaced
-in Settings or tool execution and has not been exercised with the actual model
-in the packaged browser Worker. The local product shell candidate is
-`f880ce5e7a7ed589`; it has not been published.
+from canonical Memory records. The local follow-up surfaces the optional role
+in Settings and connects loaded semantic Search to the existing agent search
+path, preserving exact source binding and lexical fallback. It has not been
+exercised with actual model weights in the packaged browser Worker. The local
+product shell candidate is not published.
 
 2026-11-10 follow-up: the app-owned pinned asset store now downloads any
 manifest asset larger than 16 MiB in durable OPFS HTTP ranges, rather than
