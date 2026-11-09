@@ -2,12 +2,12 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `5206fd3` (PR #10). The active work branch is
-`codex/semantic-search-foundation` at `fd29a2a`, six commits ahead of `main`,
-with Draft PR [#11](https://github.com/Unjuno/babelshelf/pull/11). Code commit
-`fd29a2a` passed clean quality run
-[42684218103](https://github.com/Unjuno/babelshelf/actions/runs/42684218103)
-in 12m 20s. The local untracked QA/model benchmark artifacts were preserved.
+GitHub `main` is `5206fd3` (PR #10). Draft PR
+[#11](https://github.com/Unjuno/babelshelf/pull/11) has clean merge status. Its
+latest code commit `1c28ecd` passed the complete quality workflow
+[42687489188](https://github.com/Unjuno/babelshelf/actions/runs/42687489188)
+in 12m 50s, including offline and installed-PWA acceptance. The local
+untracked QA/model benchmark artifacts were preserved.
 
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a
