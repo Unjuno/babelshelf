@@ -1,5 +1,37 @@
 ## Current status · 2026-11-10
 
+### 2026-11-10 · reconcile model roles before expanding the catalog
+
+The current GitHub branch `codex/ui-design-handoff` is at `2c57bcf` and was
+clean for tracked files; the retained untracked QA directories and benchmark
+artifacts were left untouched. The preceding release already includes the
+LFM3 IQ3_M model, its selection-only compact media set, and discoverable Text,
+Decision, Speech, OCR and Vision model catalogs. IQ3_M is pinned to a community
+GGUF revision and remains an unverified runtime/device candidate; selection or
+download metadata is not proof that it loads or generates on a phone.
+
+The actual role gap is Search: `memory.search` is a deterministic local tool,
+not a model slot. Do not label it a model or silently require inference for
+ordinary retrieval. If semantic search is added, it should be an optional,
+separately prepared embedding/reranking route; retain deterministic local search
+as the offline and not-prepared fallback. Any stored vectors must be derived
+data keyed to exact note revision and embedding-model revision, rebuildable or
+discardable without changing original Memory files, and excluded from citations
+unless the host independently reads and binds the source revision. Search
+results must continue through existing exact source-reference validation.
+
+Transformers.js supports feature-extraction models, and the current model
+research surfaced multilingual embedding candidates. The largest repository
+listing is not a usable package-size estimate: before cataloging one, pin the
+specific ONNX/tokenizer files and hashes, confirm Japanese retrieval support,
+test the chosen provider in the existing worker boundary, and measure a small
+real query/index workload. Keep model acquisition explicit and resumable. This
+is a design gate, not a claim that semantic search has been implemented or
+tested. Current capability boundary: no Search model selector, embedding index,
+or semantic-ranking path exists. The next code milestone is a measured optional
+search adapter with lexical fallback and revision-safe derived storage; it must
+not change normal search or saved content when unprepared.
+
 ### 2026-11-10 · publish and verify compact IQ3_M model set
 
 The model-set sheet previously omitted the `Compact local set` group even though
