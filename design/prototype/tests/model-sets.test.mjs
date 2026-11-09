@@ -37,19 +37,19 @@ test('model set grouping separates text choices, the complete local set and save
 
 test('task presets expose connected text choices without implying device verification or downloading assets',()=>{
  const expected={
-  'lfm3-1.7b-qad-q4-0':['lfm3-1.7b-qad-q4-0','','','',''],
-  'lfm3-1.7b-iq3m':['lfm3-1.7b-iq3m','','','',''],
-  'lfm3-1.7b-q8-0':['lfm3-1.7b-q8-0','','','',''],
-  'bonsai-2b-text':['2B','','','',''],
-  'bonsai-4b-text':['4B','','','',''],
-  'bonsai-9b-text':['9B','','','',''],
-  'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
-  'lfm3-iq3m-media':['lfm3-1.7b-iq3m','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
-  'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16'],
+  'lfm3-1.7b-qad-q4-0':['lfm3-1.7b-qad-q4-0','','','','',''],
+  'lfm3-1.7b-iq3m':['lfm3-1.7b-iq3m','','','','',''],
+  'lfm3-1.7b-q8-0':['lfm3-1.7b-q8-0','','','','',''],
+  'bonsai-2b-text':['2B','','','','',''],
+  'bonsai-4b-text':['4B','','','','',''],
+  'bonsai-9b-text':['9B','','','','',''],
+  'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16',''],
+  'lfm3-iq3m-media':['lfm3-1.7b-iq3m','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16',''],
+  'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16',''],
  };
  for(const set of modelSets){
   const model=set.models;
-  assert.deepEqual([model.textModel,model.decisionModel,model.transcriptionModel,model.ocrModel,model.visionModel],expected[set.id]);
+  assert.deepEqual([model.textModel,model.decisionModel,model.transcriptionModel,model.ocrModel,model.visionModel,model.searchModel],expected[set.id]);
   assert.ok(set.detail.length>0);
   assert.equal('deviceVerified' in set,false);
   const before=readPreference('models',initialPreferenceNotes),after=applyModelSet(before,set.id);
@@ -100,7 +100,7 @@ test('Bonsai alternatives remain preserved when another preset is applied',()=>{
 });
 
 test('user model sets are validated in Memory and join the same reviewed selection catalog',()=>{
- const set={id:'user-reading',label:'Reading',detail:'Small local text model',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}};
+ const set={id:'user-reading',label:'Reading',detail:'Small local text model',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'',searchModel:''}};
  const notes=updatePreference('models',structuredClone(initialPreferenceNotes),value=>({...value,customSets:[set]}));
  const value=readPreference('models',notes);
  assert.deepEqual(value.customSets,[set]);
@@ -118,7 +118,7 @@ test('saving current model choices creates a stable Memory ID without preparing 
  const value=readPreference('models',initialPreferenceNotes),before=structuredClone(value);
  const first=createUserModelSet(value,'Local Reader','A local reader profile');
  assert.equal(first.id,'user-localreader');
- assert.deepEqual(first.models,{textModel:value.textModel,decisionModel:value.decisionModel,transcriptionModel:value.transcriptionModel,ocrModel:value.ocrModel,visionModel:value.visionModel});
+ assert.deepEqual(first.models,{textModel:value.textModel,decisionModel:value.decisionModel,transcriptionModel:value.transcriptionModel,ocrModel:value.ocrModel,visionModel:value.visionModel,searchModel:''});
  const second=createUserModelSet({...value,customSets:[first]},'Local Reader','A second saved profile');
  assert.equal(second.id,'user-localreader-2');
  assert.deepEqual(value,before);
@@ -128,13 +128,13 @@ test('saving current model choices creates a stable Memory ID without preparing 
 
 test('legacy model Memory records read an empty set list without rewriting their stored revision',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models'),legacy=readPreference('models',notes);
- delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 5,\n','');const storedBytes=record.body;
+ delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 6,\n','');const storedBytes=record.body;
  assert.deepEqual(readPreference('models',notes).customSets,[]);
  assert.equal(record.body,storedBytes);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
 });
 
 test('Memory model sets reject unregistered roles, unsafe IDs, collisions and malformed records',()=>{
- const base=readPreference('models',initialPreferenceNotes),set={id:'user-reading',label:'Reading',detail:'A local profile',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}};
+ const base=readPreference('models',initialPreferenceNotes),set={id:'user-reading',label:'Reading',detail:'A local profile',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'',searchModel:''}};
  const invalid=[
   {...set,id:'bonsai-4b-text'},
   {...set,id:'user-unsafe/path'},
