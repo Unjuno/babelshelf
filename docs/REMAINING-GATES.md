@@ -1,5 +1,34 @@
 ## Current status · 2026-11-10
 
+### 2026-11-10 · publish and verify compact IQ3_M model set
+
+The model-set sheet previously omitted the `Compact local set` group even though
+the registered LFM3 IQ3_M media preset was available. Added the group to the
+rendered model-set list and covered both its visibility and selection-only
+behavior. Local regression checks passed: model-set unit tests 13/13, focused
+browser checks 2/2, `npm run check`, app packaging (build
+`830a89c6832b09e4`, 163 assets), and app acceptance 9/9. GitHub clean-checkout
+quality workflow [42658884497](https://github.com/Unjuno/babelshelf/actions/runs/42658884497)
+passed all stages. Public Site v328 was deployed from Site source commit
+`27fa1d32f5870ca2165303824611f7e63406112b`, carrying app source commit
+`0c7e392dddd5d3d3374cc20fdb138a084460a1ea`. In the sidebar browser, Developer
+reported active worker build `830a89c6832b09e4` / bundle `index-Cej1lY_B.js`,
+and the model-set sheet displayed the Compact local set with LFM3 IQ3_M,
+Whisper tiny, Tesseract 7, and LFM2.5-VL 450M. The selected QAD Q4_0 model
+remained selected; the set was not applied and no model/runtime assets were
+downloaded. The in-app refresh action remained busy until a normal reload; that
+reload applied the new worker. This observation is recorded for follow-up if it
+reproduces, not treated as a proven refresh-path regression.
+
+### 2026-11-10 · publish observed GPU layer placement (v327)
+
+App build `d18ac58c757bff40` was deployed as Site v327 from source commit
+`4a4df7ab001773e3c93c2751e98264f0ff0f0e5c` after GitHub quality workflow
+[42655817920](https://github.com/Unjuno/babelshelf/actions/runs/42655817920)
+passed. The sidebar browser applied and verified that build, then restored
+Offline mode. GPU layer placement remains runtime-log evidence, not a model-load
+percentage or proof of device performance.
+
 ### 2026-11-10 · surface observed GPU layer placement during model load
 
 Pinned Wllama 3.12.0 does not define a model-load percentage callback in
