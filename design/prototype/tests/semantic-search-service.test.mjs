@@ -62,3 +62,10 @@ test('invalid embeddings and aborted work do not replace prior note vectors',asy
   assert.deepEqual((await store.list('embed-r1')).map(item=>[item.revision,item.start,item.end,'quote' in item]),[[1,0,old.body.length,false]]);
  }finally{await store.close();await removeDatabase(name);}
 });
+
+test('semantic indexing checks the work budget before embedding or replacing records',async()=>{
+ const name='semantic-service-budget-'+crypto.randomUUID(),store=createSemanticIndexStore({name}),large=source({body:'A seed needs light and water. '.repeat(80)});let calls=0;try{
+  await assert.rejects(indexSemanticSources([large],{modelRevision:'embed-r1',store,embed:async texts=>{calls++;return texts.map(vector);},maxChunks:1}),/work limit/);
+  assert.equal(calls,0);assert.deepEqual(await store.list('embed-r1'),[]);
+ }finally{await store.close();await removeDatabase(name);}
+});

@@ -29,10 +29,11 @@ export async function indexSemanticSources(sources:readonly SemanticSearchSource
  validateOptions(options);if(!Array.isArray(sources))throw Error('Invalid semantic sources');check(options.signal);
  const current=new Map<string,SemanticSearchSource>();
  for(const source of sources){if(!source||!identity(source.id)||!Number.isSafeInteger(source.revision)||source.revision<1||typeof source.title!=='string'||typeof source.body!=='string'||current.has(source.id))throw Error('Invalid semantic source');current.set(source.id,source);}
- const targets=[...current.values()].filter(eligible),planned=targets.map(source=>({source,chunks:chunkSemanticText({id:source.id,version:source.revision,title:source.title,path:source.path,body:source.body})}));
- const total=planned.reduce((count,item)=>count+item.chunks.length,0);if(total>(options.maxChunks??10000))throw Error('Semantic indexing work limit reached');
+ const targets=[...current.values()].filter(eligible),planned=targets.map(source=>({source,chunks:chunkSemanticText({id:source.id,version:source.revision,title:source.title,path:source.path,body:source.body}).length}));
+ const total=planned.reduce((count,item)=>count+item.chunks,0);if(total>(options.maxChunks??10000))throw Error('Semantic indexing work limit reached');
  let completed=0;options.progress?.(completed,total);
- for(const {source,chunks} of planned){
+ for(const {source} of planned){
+  const chunks=chunkSemanticText({id:source.id,version:source.revision,title:source.title,path:source.path,body:source.body});
   check(options.signal);const records:SemanticVectorRecord[]=[];
   for(let offset=0;offset<chunks.length;offset+=options.batchSize??8){
    check(options.signal);const batch=chunks.slice(offset,offset+(options.batchSize??8)),vectors=checkedVectors(await options.embed(batch.map(chunk=>chunk.text),options.signal),batch.length);check(options.signal);
