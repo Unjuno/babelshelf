@@ -61,6 +61,11 @@ export function createSemanticIndexStore({name=DATABASE}:{name?:string}={}){
    const db=await database(),transaction=db.transaction(STORE,'readwrite'),done=transactionDone(transaction),store=transaction.objectStore(STORE),request=store.index('by-model').getAllKeys(modelRevision);
    request.onsuccess=()=>{for(const key of request.result)store.delete(key);};request.onerror=()=>{try{transaction.abort();}catch{}};await done;
   },
+  async removeNote(modelRevision:string,noteId:string){
+   if(!validIdentity(modelRevision,512)||!validIdentity(noteId,512))throw Error('Invalid semantic index source');
+   const db=await database(),transaction=db.transaction(STORE,'readwrite'),done=transactionDone(transaction),store=transaction.objectStore(STORE),request=store.index('by-source').getAllKeys([modelRevision,noteId].join('\u0000'));
+   request.onsuccess=()=>{for(const key of request.result)store.delete(key);};request.onerror=()=>{try{transaction.abort();}catch{}};await done;return request.result?.length??0;
+  },
   async close(){closed=true;const pending=databasePromise;if(pending){try{(await pending).close();}catch{}}databasePromise=undefined;},
  };
 }
