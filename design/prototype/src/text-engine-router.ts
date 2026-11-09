@@ -81,7 +81,7 @@ export class TextEngineRouter{
  async call(cmd:string,args:any={},events?:any):Promise<any>{
   if(cmd==='status')return this.status(args.model);
   if(cmd==='configure'){const selected=this.selectedRegistrations(args.statusModel,args.models),epoch=this.epoch,assets=await this.webml.call(cmd,args,events);this.check(epoch);const extra:Record<string,any>={};for(const r of selected){Object.assign(extra,await this.optionalStatus(r,epoch));this.check(epoch);}return {...assets,...extra};}
-  if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');const counted={...args,messages:templateMessages(args.messages,this.active===this.webml)};return this.active.call(cmd,this.active===this.webml&&this.nativeStructuredOutput?this.nativeArgs(counted):counted,events);}
+  if(cmd==='count'){if(!this.active?.loaded)throw Error('Model not loaded');const backend=this.active,epoch=this.epoch,counted={...args,messages:templateMessages(args.messages,backend===this.webml)};const result=await backend.call(cmd,backend===this.webml&&this.nativeStructuredOutput?this.nativeArgs(counted):counted,events);this.check(epoch);if(this.active!==backend)throw Error('Stopped');return result;}
   if(cmd==='prepare'||cmd==='verify'){if(this.cleanupFailure)throw this.cleanupFailure;try{return await this.backend(args.model).call(cmd,args,events);}catch(error){if((error as {cleanupUnconfirmed?:boolean})?.cleanupUnconfirmed===true)this.cleanupFailure=error as Error;throw error;}}
   throw Error('Unknown text operation');
  }
@@ -130,5 +130,17 @@ export class TextEngineRouter{
    if(failure?.status==='rejected')throw failure.reason;
   });
  }
- worker={terminate:()=>{this.generationSession++;this.webml.worker.terminate();for(const r of this.registrations){r.instance?.worker.terminate();r.instance=null;}this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;}};
+ worker={terminate:()=>{
+  // Hard termination is also a Stop boundary: an old load or token count
+  // must never be reported as successful if its Worker later replies.
+  this.epoch++;this.generationSession++;this.active=null;this.residentIdentity='';this.residentLoadMetrics=undefined;
+  const errors:unknown[]=[];
+  const terminate=(worker:TextBackend['worker'])=>{try{worker.terminate();}catch(error){errors.push(error);}};
+  terminate(this.webml.worker);
+  for(const registration of this.registrations){
+   const old=registration.instance;registration.instance=null;
+   if(old)terminate(old.worker);
+  }
+  if(errors.length)throw errors[0];
+ }};
 }
