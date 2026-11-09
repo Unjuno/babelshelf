@@ -36,7 +36,7 @@ export async function indexSemanticSources(sources:readonly SemanticSearchSource
   check(options.signal);const records:SemanticVectorRecord[]=[];
   for(let offset=0;offset<chunks.length;offset+=options.batchSize??8){
    check(options.signal);const batch=chunks.slice(offset,offset+(options.batchSize??8)),vectors=checkedVectors(await options.embed(batch.map(chunk=>chunk.text),options.signal),batch.length);check(options.signal);
-   for(let i=0;i<batch.length;i++){const chunk=batch[i];records.push({modelRevision:options.modelRevision,noteId:source.id,revision:source.revision,start:chunk.start,end:chunk.end,quote:source.body.slice(chunk.start,chunk.end),vector:vectors[i]});}
+   for(let i=0;i<batch.length;i++){const chunk=batch[i];records.push({modelRevision:options.modelRevision,noteId:source.id,revision:source.revision,start:chunk.start,end:chunk.end,vector:vectors[i]});}
    completed+=batch.length;options.progress?.(completed,total);
   }
   // Replace only after the complete note has embedded successfully. A failed

@@ -3,8 +3,8 @@ import type {MemoryPassageResult} from './memory-search-types.ts';
 export type SemanticChunk={noteId:string;revision:number;title:string;path:string;text:string;start:number;end:number};
 type CanonicalNote={id:string;state?:string;path?:string;revisions?:Array<{version:number;title:string;body:string}>};
 type ProjectedNote={id:string;version?:number;revision?:number;title:string;path?:string;body:string};
-type SemanticHit={noteId:string;revision:number;start:number;end:number;quote:string;score:number};
-export type SemanticVectorRecord={modelRevision:string;noteId:string;revision:number;start:number;end:number;quote:string;vector:readonly number[]|Float32Array};
+type SemanticHit={noteId:string;revision:number;start:number;end:number;quote?:string;score:number};
+export type SemanticVectorRecord={modelRevision:string;noteId:string;revision:number;start:number;end:number;quote?:string;vector:readonly number[]|Float32Array};
 
 const isRecord=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const safeBoundary=(text:string,index:number,direction:'left'|'right')=>{
@@ -58,10 +58,10 @@ export function rankSemanticVectors(query:readonly number[]|Float32Array,records
  const ranked:SemanticHit[]=[];
  for(const record of records){
   if(!isRecord(record))continue;const candidate=record as unknown as SemanticVectorRecord;
-  if(candidate.modelRevision!==modelRevision||typeof candidate.noteId!=='string'||!candidate.noteId||candidate.noteId.length>512||!Number.isSafeInteger(candidate.revision)||candidate.revision<1||!Number.isSafeInteger(candidate.start)||candidate.start<0||!Number.isSafeInteger(candidate.end)||candidate.end<=candidate.start||typeof candidate.quote!=='string'||!candidate.quote.trim()||candidate.end-candidate.start>4096)continue;
+  if(candidate.modelRevision!==modelRevision||typeof candidate.noteId!=='string'||!candidate.noteId||candidate.noteId.length>512||!Number.isSafeInteger(candidate.revision)||candidate.revision<1||!Number.isSafeInteger(candidate.start)||candidate.start<0||!Number.isSafeInteger(candidate.end)||candidate.end<=candidate.start||candidate.quote!==undefined&&(typeof candidate.quote!=='string'||!candidate.quote.trim()||candidate.quote.length!==candidate.end-candidate.start)||candidate.end-candidate.start>4096)continue;
   const vector=normalize(candidate.vector);if(!vector)continue;
   let cosine=0;for(let i=0;i<normalizedQuery.length;i++)cosine+=normalizedQuery[i]*vector[i];
-  const score=Math.max(0,Math.min(1,cosine));if(score>0)ranked.push({noteId:candidate.noteId,revision:candidate.revision,start:candidate.start,end:candidate.end,quote:candidate.quote,score});
+  const score=Math.max(0,Math.min(1,cosine));if(score>0)ranked.push({noteId:candidate.noteId,revision:candidate.revision,start:candidate.start,end:candidate.end,...(candidate.quote!==undefined?{quote:candidate.quote}:{}),score});
  }
  return ranked.sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,limit);
 }
@@ -82,11 +82,11 @@ export function bindSemanticHits(notes:CanonicalNote[],hits:SemanticHit[],{limit
  }
  const best=new Map<string,MemoryPassageResult>();
  for(const hit of hits){
-  if(!isRecord(hit)||typeof hit.noteId!=='string'||hit.noteId.length>160||!Number.isSafeInteger(hit.revision)||!Number.isSafeInteger(hit.start)||!Number.isSafeInteger(hit.end)||typeof hit.quote!=='string'||!Number.isFinite(hit.score)||hit.score<=0||hit.score>1)continue;
+  if(!isRecord(hit)||typeof hit.noteId!=='string'||hit.noteId.length>512||!Number.isSafeInteger(hit.revision)||!Number.isSafeInteger(hit.start)||!Number.isSafeInteger(hit.end)||hit.quote!==undefined&&typeof hit.quote!=='string'||!Number.isFinite(hit.score)||hit.score<=0||hit.score>1)continue;
   const source=latestById.get(hit.noteId);
   if(!source||source.revision!==hit.revision||hit.start<0||hit.end<=hit.start||hit.end>source.body.length||hit.end-hit.start>4096)continue;
   const quote=source.body.slice(hit.start,hit.end);
-  if(!quote.trim()||quote!==hit.quote)continue;
+  if(!quote.trim()||hit.quote!==undefined&&quote!==hit.quote)continue;
   const key=`${hit.noteId}\u0000${hit.revision}\u0000${hit.start}\u0000${hit.end}`;
   const path=typeof source.note.path==='string'?source.note.path:undefined;
   const result:MemoryPassageResult={kind:'passage',noteId:hit.noteId,revision:hit.revision,title:source.title,...(path?{path}:{}),start:hit.start,end:hit.end,quote,score:hit.score};

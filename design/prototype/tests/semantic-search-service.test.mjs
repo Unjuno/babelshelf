@@ -13,6 +13,7 @@ test('indexing and retrieval preserve exact current quotes and leave canonical s
  const name='semantic-service-'+crypto.randomUUID(),store=createSemanticIndexStore({name}),events=[];try{
   const canonical=source();const indexed=await indexSemanticSources([canonical],{modelRevision:'embed-r1',store,embed,batchSize:1,progress:(done,total)=>events.push([done,total])});
   assert.equal(indexed.chunks,1);assert.deepEqual(events,[[0,1],[1,1]]);
+  const stored=await store.list('embed-r1');assert.equal(Object.hasOwn(stored[0],'quote'),false);assert.equal(stored[0].end-stored[0].start,canonical.body.length);
   const hits=await searchSemanticSources('How do I grow a seed?', async()=>[canonical],{modelRevision:'embed-r1',store,embed});
   assert.equal(hits.length,1);assert.equal(hits[0].quote,canonical.body);assert.equal(hits[0].end,canonical.body.length);assert.equal(hits[0].revision,1);
   assert.equal(canonical.body,'A seed needs light. 🌱 A seed needs water.');
@@ -58,6 +59,6 @@ test('invalid embeddings and aborted work do not replace prior note vectors',asy
   const next=source({revision:2,body:'A seed can grow.'});
   await assert.rejects(indexSemanticSources([next],{modelRevision:'embed-r1',store,embed:async()=>[[NaN,0]]}),/Invalid embedding vector/);
   const controller=new AbortController();controller.abort();await assert.rejects(indexSemanticSources([next],{modelRevision:'embed-r1',store,embed,signal:controller.signal}),/Stopped/);
-  assert.deepEqual((await store.list('embed-r1')).map(item=>[item.revision,item.quote]),[[1,old.body]]);
+  assert.deepEqual((await store.list('embed-r1')).map(item=>[item.revision,item.start,item.end,'quote' in item]),[[1,0,old.body.length,false]]);
  }finally{await store.close();await removeDatabase(name);}
 });

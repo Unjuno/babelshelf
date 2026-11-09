@@ -31,6 +31,11 @@ test('semantic hits bind only to exact text from the current canonical revision'
  assert.deepEqual(result,[{kind:'passage',noteId:'note-a',revision:2,title:'Garden',path:'Notes/garden.md',start:0,end:33,quote:'A seedling needs light and water.',score:0.92}]);
 });
 
+test('range-only semantic hits re-create citation text from canonical Memory',()=>{
+ const notes=[{id:'note-a',state:'active',revisions:[{version:4,title:'Garden',body:'A seed needs light and water.'}]}];
+ assert.deepEqual(bindSemanticHits(notes,[{noteId:'note-a',revision:4,start:0,end:29,score:0.9}]),[{kind:'passage',noteId:'note-a',revision:4,title:'Garden',start:0,end:29,quote:'A seed needs light and water.',score:0.9}]);
+});
+
 test('semantic ranking uses only the selected embedding revision and normalized cosine order',()=>{
  const ranked=rankSemanticVectors(new Float32Array([8,0]),[
   {modelRevision:'embed-r1',noteId:'related',revision:2,start:0,end:7,quote:'Related',vector:new Float32Array([4,0])},
