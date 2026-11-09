@@ -26,6 +26,17 @@ candidate is [Granite Embedding 97M Multilingual R2 ONNX](https://huggingface.co
 
 PC preflight used the exact revision/int8 file and the Transformers.js tokenizer. Direct ONNX Runtime Node CPU and ONNX Runtime Web WASM CPU sessions both loaded the verified file bytes and produced 384-dimensional CLS-pooled, normalized embeddings; the same small Japanese query ranked its related passage above an unrelated passage (cosines 0.916/0.737 and 0.913/0.740 respectively). One run including tokenizer/session setup took 1.847 s for Node CPU and 1.938 s for ONNX Runtime Web WASM. This is a smoke sample, not a retrieval-quality benchmark. Transformers.js `pipeline('feature-extraction', ... device:'cpu')` on Node still fails when ONNX Runtime Node loads the cached model by path, even though that file exists and its SHA-256 matches; direct session-from-bytes succeeds. Since the PWA uses ONNX Runtime Web, the direct WASM pass reduces concern about the candidate graph but does not validate the app's browser Worker, Vite packaging, GPU provider, cancellation, cache or indexing path. Keep model acquisition explicit and resumable. No Search selector, embedding index, or semantic-ranking path has been implemented; the next code milestone remains a measured optional search adapter with lexical fallback and revision-safe derived storage that leaves normal search and saved content unchanged when unprepared.
 
+After that reconciliation, the IQ3_M selection path was rechecked on the
+current branch: 80 focused model/catalog/runtime unit cases passed, and 17
+Settings/model-discovery browser cases passed, including selecting the compact
+media set without preparing weights. `npm run check`, the 163-asset production
+package (`830a89c6832b09e4`), and app acceptance (9/9) also passed. The app
+package matches the one already recorded for public Site v328, so this check
+found no new application code to deploy. These are Windows/Chromium checks;
+they do not establish model loading, generation, or runtime speed on iPhone.
+The branch is now at `fc14995`; the next implementation task remains the
+optional Search adapter described above, not another model catalog entry.
+
 ### 2026-11-10 · publish and verify compact IQ3_M model set
 
 The model-set sheet previously omitted the `Compact local set` group even though
