@@ -21,6 +21,7 @@ function optionalRoles(file){
  if(name.startsWith('decision-worker-'))return ['decision'];
  if(name.startsWith('speech-worker-')||name.startsWith('speech-assets-worker-'))return ['speech'];
  if(name.startsWith('vision-worker-'))return ['vision'];
+ if(name.startsWith('semantic-embedding-worker-'))return ['search'];
  if(name.startsWith('lfm3-text-worker-')||name.startsWith('lfm3-')&&name.endsWith('.wasm'))return ['text-lfm3'];
  if(name.startsWith('lfm-text-worker-')||name.startsWith('qwen3-text-worker-'))return ['text-wllama'];
  // The application imports this lightweight text helper during startup.
@@ -29,7 +30,7 @@ function optionalRoles(file){
  // worker/fonts/cmaps so an ordinary shell update does not force a large
  // parser into every first load.
  if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return ['pdf'];
- if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['decision','speech','vision'];
+ if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['decision','speech','vision','search'];
  if(/^(default|compat)-.*\.wasm$/.test(name))return ['text-wllama'];
  if(/^wllama-.*\.wasm$/.test(name))return ['text-lfm-check'];
  if(/^(bridge|worker|lstm|simd-lstm|relaxedsimd-lstm)-.*\.bin$/.test(name))return ['ocr'];
@@ -56,12 +57,13 @@ const vision=JSON.parse(await readFile('design/prototype/src/vision-manifest.jso
 const decision=JSON.parse(await readFile('design/prototype/src/decision-manifest.json','utf8'));
 const ocr=JSON.parse(await readFile('design/prototype/src/ocr-manifest.json','utf8'));
 const onnxText=JSON.parse(await readFile('design/prototype/src/onnx-text-manifest.json','utf8'));
+const semanticEmbedding=JSON.parse(await readFile('design/prototype/src/semantic-embedding-manifest.json','utf8'));
 const qwenText=JSON.parse(await readFile('design/prototype/src/qwen-text-manifest.json','utf8'));
 const lfm=JSON.parse(await readFile('dist/lfm-model-manifest.json','utf8'));
 const lfm3=JSON.parse(await readFile('design/prototype/src/lfm3-manifest.json','utf8'));
 const lfm3Q8=JSON.parse(await readFile('design/prototype/src/lfm3-q8-manifest.json','utf8'));
 const lfm3IQ3M=JSON.parse(await readFile('design/prototype/src/lfm3-iq3m-manifest.json','utf8'));
-const remote=[lfm3.file.url,lfm3IQ3M.file.url,lfm3Q8.file.url,...lfm.models.filter(m=>['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'].includes(m.id)).map(m=>m.file.url),...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...(onnxText.variants??[]).map(variant=>variant.weight.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url),...speechBase.files.map(f=>f.url),...vision.files.map(f=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${f.path}`)];
+const remote=[lfm3.file.url,lfm3IQ3M.file.url,lfm3Q8.file.url,...lfm.models.filter(m=>['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0'].includes(m.id)).map(m=>m.file.url),...qwenText.files.map(f=>f.url),...onnxText.files.map(f=>f.url),...semanticEmbedding.files.map(f=>f.url),...(onnxText.variants??[]).map(variant=>variant.weight.url),...decision.files.map(f=>f.url),...ocr.data.map(f=>f.url),models.runtime.file.url,...models.models.map(m=>m.file.url),...speech.files.map(f=>f.url),...speechBase.files.map(f=>f.url),...vision.files.map(f=>`https://huggingface.co/${vision.repository}/resolve/${vision.revision}/${f.path}`)];
 // The remote allowlist is part of the worker's behavior even when emitted app
 // assets and the worker template source are unchanged. Give that change a new
 // build ID so existing PWA registrations can receive the reviewed update.

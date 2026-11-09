@@ -12,23 +12,29 @@ untracked QA/model benchmark artifacts were preserved.
 The current local follow-up bounds only an unloaded LFM3 model's Developer
 smoke/performance load to an 8K context. The user's saved context and normal
 model-load route remain unchanged; an already-resident model is measured at its
-resident context. Local prototype regression and build checks are required
-before publishing this follow-up. A device run is still needed to confirm that
-the iPhone load stall is reduced; the earlier 18-minute stopped run does not
-prove that context size was the only cause. The existing large-context
-confirmation UI acceptance was updated to assert the bounded test behavior;
-the 15-case Settings browser suite passes locally.
+resident context. It also adds an optional app-owned semantic Search adapter
+behind an explicit `KnowledgeStore.createSemanticSearchRuntime()` boundary.
+The pinned embedding files and ONNX WASM runtime prepare separately, use
+resumable OPFS storage, and remain outside the install shell; `memory.search`
+still uses deterministic lexical search. The 554.79 KB Search Worker is
+packaged as a separately prepared runtime role. No Search model selector or
+user-facing setup/indexing flow exists yet, and actual model load, indexing,
+semantic ranking, iPhone behavior and retrieval-quality acceptance remain
+unverified. Do not describe semantic Search as available or deploy this as a
+finished feature. The existing 18-minute stopped iPhone run does not prove that
+the 8K diagnostic context alone resolves the load stall.
 
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a
 separate IndexedDB for rebuildable vectors keyed by model and note revision.
 The derived-store tests confirm revision replacement/removal and isolation
-from canonical Memory records. It does not yet include a Search selector,
-embedding-model preparation, a local inference worker, or integration into
-normal retrieval. `memory.search` remains the working deterministic local
-path. Do not deploy this as a completed Search feature. The next step is the
-explicit/resumable embedding asset and inference adapter, then the user flow
-with deterministic fallback and exact-source citation validation.
+from canonical Memory records. The local follow-up now exposes explicit model
+and runtime preparation, verification, dedicated Worker load/embed/Stop, and
+index/search orchestration without changing normal retrieval. `memory.search`
+remains the working deterministic local path. The adapter is not yet surfaced
+in Settings or tool execution and has not been exercised with the actual model
+in the packaged browser Worker. The local product shell candidate is
+`f880ce5e7a7ed589`; it has not been published.
 
 2026-11-10 follow-up: the app-owned pinned asset store now downloads any
 manifest asset larger than 16 MiB in durable OPFS HTTP ranges, rather than
@@ -37,6 +43,18 @@ regression now uses a large ONNX asset and confirms retry requests only the
 uncommitted final bytes. This is store-level fault-injection coverage; it does
 not yet prove CDN range behavior, the embedding candidate's acquisition, or
 Search integration on a browser/device.
+
+2026-11-10 adapter preflight: `semantic-embedding-worker.ts` and its client
+use the exact pinned Granite package, verified OPFS reads, local-only
+Transformers.js/ONNX WASM execution, CLS pooling, L2 normalization, bounded
+8-text batches, a five-minute model-load deadline with retryable Worker
+termination, and progress during asset verification. `semantic-search-runtime.ts`
+coordinates explicit runtime/model preparation with revision-keyed derived
+indexing and live-source citation rebinding. Prototype build, app build
+(166 verified assets), `npm run check`, all 1,931 prototype tests and product
+acceptance (9/9) pass. This is packaging and orchestration evidence only; no
+actual model was downloaded or loaded through the app Worker, and no UI or
+normal `memory.search` connection has been enabled.
 
 ### 2026-11-10 · reconcile model roles before expanding the catalog
 

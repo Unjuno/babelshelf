@@ -134,6 +134,7 @@ test('maps each preparation action to its exact optional runtime role',()=>{
  assert.equal(runtimeRoleForPreparation('decision'),'decision');
  assert.equal(runtimeRoleForPreparation('speech'),'speech');
  assert.equal(runtimeRoleForPreparation('vision'),'vision');
+ assert.equal(runtimeRoleForPreparation('search'),'search');
  assert.equal(runtimeRoleForPreparation('ocr'),'ocr');
  assert.equal(runtimeRoleForPreparation('pdf'),'pdf');
  assert.equal(productRuntimeAssetInput('custom-tools',false).feature,'custom-tools');assert.equal(productRuntimeAssetInput('custom-tools',false).allowNetwork,false);
