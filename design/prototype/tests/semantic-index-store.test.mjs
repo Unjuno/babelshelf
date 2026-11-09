@@ -25,6 +25,7 @@ test('semantic derived index rejects mismatched source identity and malformed ve
  try{
   await store.replaceNote('embed-r1','note-a',1,[make('embed-r1','note-a',1,0,[1,0])]);
   await assert.rejects(store.replaceNote('embed-r1','note-a',2,[make('embed-r1','note-a',1,0,[0,1])]),/Invalid semantic index record/);
+  await assert.rejects(store.replaceNote('embed-r1','note-a',2,[{...make('embed-r1','note-a',2,0,[0,1]),end:6}]),/Invalid semantic index record/);
   await assert.rejects(store.replaceNote('embed-r1','note-a',2,[make('embed-r1','note-a',2,0,[Infinity,0])]),/Invalid semantic index record/);
   assert.deepEqual((await store.list('embed-r1')).map(value=>[value.revision,value.start]),[[1,0]]);
  }finally{await store.close();await removeDatabase(name);}
