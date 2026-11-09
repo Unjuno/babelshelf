@@ -20,17 +20,11 @@ discardable without changing original Memory files, and excluded from citations
 unless the host independently reads and binds the source revision. Search
 results must continue through existing exact source-reference validation.
 
-Transformers.js supports feature-extraction models, and the current model
-research surfaced multilingual embedding candidates. The largest repository
-listing is not a usable package-size estimate: before cataloging one, pin the
-specific ONNX/tokenizer files and hashes, confirm Japanese retrieval support,
-test the chosen provider in the existing worker boundary, and measure a small
-real query/index workload. Keep model acquisition explicit and resumable. This
-is a design gate, not a claim that semantic search has been implemented or
-tested. Current capability boundary: no Search model selector, embedding index,
-or semantic-ranking path exists. The next code milestone is a measured optional
-search adapter with lexical fallback and revision-safe derived storage; it must
-not change normal search or saved content when unprepared.
+Transformers.js supports feature-extraction models. A concrete compact
+candidate is [Granite Embedding 97M Multilingual R2 ONNX](https://huggingface.co/onnx-community/granite-embedding-97m-multilingual-r2-ONNX): its card lists 97M parameters, 384-dimensional output, Apache-2.0, 52 explicitly enhanced languages including Japanese, and describes 200+ language pretraining. The card's retrieval scores and throughput are upstream benchmark claims, not BabelShelf or target-device measurements. At inspected revision
+`536a9f241cb3f02a9c5995a1e708c784bd274859`, the selected `onnx/model_int8.onnx` is 97,858,099 bytes (LFS SHA-256 `704c1ebca5fbb7cd83ced41827658ac4c9990c64f7f2874d22b78044e5022e22`) and `tokenizer.json` is 25,301,671 bytes (LFS SHA-256 `51947676cae1f991fa51c6b9a24e14ee5460e5f0b9f692f13bb3159829d1592a`); adding config and tokenizer metadata gives an approximately 123 MB package. The repository contains other larger variants, so preparation must pin only the selected files rather than acquire the full repository.
+
+Before cataloging it, verify the int8 graph with pinned Transformers.js 4.3.0 on the actual supported execution providers, verify the exact tokenizer/pooling contract, and measure a bounded multilingual query against revision-bound note excerpts. Keep model acquisition explicit and resumable. This remains a candidate, not an implemented or device-tested feature. Current capability boundary: no Search model selector, embedding index, or semantic-ranking path exists. The next code milestone is a measured optional search adapter with lexical fallback and revision-safe derived storage; it must not change normal search or saved content when unprepared.
 
 ### 2026-11-10 · publish and verify compact IQ3_M model set
 
