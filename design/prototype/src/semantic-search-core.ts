@@ -4,7 +4,7 @@ export type SemanticChunk={noteId:string;revision:number;title:string;path:strin
 type CanonicalNote={id:string;state?:string;path?:string;revisions?:Array<{version:number;title:string;body:string}>};
 type ProjectedNote={id:string;version?:number;revision?:number;title:string;path?:string;body:string};
 type SemanticHit={noteId:string;revision:number;start:number;end:number;quote:string;score:number};
-export type SemanticVectorRecord={modelRevision:string;noteId:string;revision:number;start:number;end:number;quote:string;vector:readonly number[]};
+export type SemanticVectorRecord={modelRevision:string;noteId:string;revision:number;start:number;end:number;quote:string;vector:readonly number[]|Float32Array};
 
 const isRecord=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const safeBoundary=(text:string,index:number,direction:'left'|'right')=>{
@@ -45,11 +45,11 @@ export function chunkSemanticText(note:ProjectedNote,{maxChars=480,overlapChars=
 }
 
 /** Rank only vectors made by the selected embedding revision; revalidate quotes later. */
-export function rankSemanticVectors(query:readonly number[],records:readonly SemanticVectorRecord[],modelRevision:string,{limit=12}:{limit?:number}={}):SemanticHit[]{
+export function rankSemanticVectors(query:readonly number[]|Float32Array,records:readonly SemanticVectorRecord[],modelRevision:string,{limit=12}:{limit?:number}={}):SemanticHit[]{
  if(typeof modelRevision!=='string'||!modelRevision||modelRevision.length>512||!Number.isInteger(limit)||limit<1||limit>20)throw Error('Invalid semantic ranking options');
- if(!Array.isArray(query)||query.length<1||query.length>4096||!Array.isArray(records))return [];
- const normalize=(vector:readonly number[])=>{
-  if(!Array.isArray(vector)||vector.length!==query.length)return null;
+ if((!Array.isArray(query)&&!(query instanceof Float32Array))||query.length<1||query.length>4096||!Array.isArray(records))return [];
+ const normalize=(vector:readonly number[]|Float32Array)=>{
+  if((!Array.isArray(vector)&&!(vector instanceof Float32Array))||vector.length!==query.length)return null;
   let magnitude=0;for(const value of vector){if(typeof value!=='number'||!Number.isFinite(value))return null;magnitude+=value*value;}
   if(!Number.isFinite(magnitude)||magnitude<=0)return null;
   const scale=1/Math.sqrt(magnitude);return vector.map(value=>value*scale);

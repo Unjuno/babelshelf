@@ -9,14 +9,16 @@ with Draft PR [#11](https://github.com/Unjuno/babelshelf/pull/11). Code commit
 [42684218103](https://github.com/Unjuno/babelshelf/actions/runs/42684218103)
 in 12m 20s. The local untracked QA/model benchmark artifacts were preserved.
 
-PR #11 contains the semantic chunk/citation boundary and a schema migration
-for an optional Search model slot. It does not yet include a Search selector,
-model preparation flow, local embedding worker, revision-keyed derived index,
-or semantic ranking connected to normal retrieval. `memory.search` remains the
-working deterministic local path. Do not deploy this foundation as a completed
-Search feature. The next implementation milestone is the optional, cancellable
-local embedding/index adapter with deterministic fallback, followed by an
-end-to-end user flow and exact-source citation validation.
+PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
+embedding-model revision, exact active-source citation rebinding, and a
+separate IndexedDB for rebuildable vectors keyed by model and note revision.
+The derived-store tests confirm revision replacement/removal and isolation
+from canonical Memory records. It does not yet include a Search selector,
+embedding-model preparation, a local inference worker, or integration into
+normal retrieval. `memory.search` remains the working deterministic local
+path. Do not deploy this as a completed Search feature. The next step is the
+explicit/resumable embedding asset and inference adapter, then the user flow
+with deterministic fallback and exact-source citation validation.
 
 ### 2026-11-10 · reconcile model roles before expanding the catalog
 
@@ -48,7 +50,9 @@ PC preflight used the exact revision/int8 file and the Transformers.js tokenizer
 
 Citation-boundary follow-up: `bindSemanticHits` now admits only canonical records whose state is exactly `active`. A regression first reproduced that a higher-ranked `withdrawn` note could otherwise win semantic retrieval; withdrawn and state-unknown records are now excluded before citation binding. The primitive remains unconnected to production Search, so this does not imply an end-user feature or repair the existing deterministic search path.
 
-Semantic ranking preflight: `rankSemanticVectors` now normalizes query and candidate vectors, ranks by cosine similarity, filters stale embedding-model revisions and malformed vectors, and caps the returned candidates. The focused six-case suite, full prototype suite (1,913/1,913), `npm run check`, protected-runtime integrity check, and production prototype build pass. The function is still a disconnected primitive: embedding inference, resumable model preparation, revision-keyed derived storage, query integration, UI and device performance remain unimplemented/unverified.
+Semantic ranking preflight: `rankSemanticVectors` normalizes array and Float32 query/candidate vectors, ranks by cosine similarity, filters stale embedding-model revisions and malformed vectors, and caps candidates. The focused semantic suite passed 6/6 and the full prototype suite passed 1,913/1,913 at that checkpoint. The function is not connected to inference or production retrieval.
+
+Derived-index storage preflight: added a separate versioned IndexedDB for vectors keyed by model revision and note revision. Per-note replacement is atomic, stale model data can be removed, and malformed records fail before the existing snapshot can be replaced. Tests cover revision replacement, model isolation, cancellation before write, and unchanged canonical Memory data (3/3). At this checkpoint the combined prototype suite passed 1,916/1,916; `npm run check`, protected-runtime integrity (28 files), and the prototype production build passed. The store is not connected to an embedding worker, preparation flow, or `memory.search`.
 
 Search-role schema preflight on `codex/semantic-search-foundation`: the code change adds empty `searchModel`/`searchLibrary` fields through an in-memory schema migration and extends saved model-set records. The root PWA connection-policy reader now accepts schema 6 while still failing closed on unknown schemas and malformed values. Migration/model-set/settings-correction tests pass (74/74), root tests pass (271/271), the complete prototype suite passes (1,911/1,911), `npm run check` passes, the production app packages 163 verified assets, and product acceptance passes (9/9). This is configuration compatibility only: there is no selector, package preparation, inference adapter or ranking consumer, so it must not be treated or released as an available Search feature. Keep this change out of public deployment until it is connected end-to-end or removed in favor of the existing deterministic-search contract.
 

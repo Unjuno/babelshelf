@@ -32,8 +32,8 @@ test('semantic hits bind only to exact text from the current canonical revision'
 });
 
 test('semantic ranking uses only the selected embedding revision and normalized cosine order',()=>{
- const ranked=rankSemanticVectors([8,0],[
-  {modelRevision:'embed-r1',noteId:'related',revision:2,start:0,end:7,quote:'Related',vector:[4,0]},
+ const ranked=rankSemanticVectors(new Float32Array([8,0]),[
+  {modelRevision:'embed-r1',noteId:'related',revision:2,start:0,end:7,quote:'Related',vector:new Float32Array([4,0])},
   {modelRevision:'embed-r1',noteId:'partial',revision:1,start:0,end:7,quote:'Partial',vector:[1,1]},
   {modelRevision:'embed-r0',noteId:'stale-model',revision:1,start:0,end:10,quote:'Stale model',vector:[1,0]},
   {modelRevision:'embed-r1',noteId:'invalid',revision:1,start:0,end:7,quote:'Invalid',vector:[Infinity,0]},
