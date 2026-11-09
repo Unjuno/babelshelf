@@ -14,16 +14,25 @@ neither its weights nor runtime prepared. IQ3_M is listed as a community
 candidate and explicitly untested on this device; model listing is not runtime
 acceptance. Role/catalog regressions passed 71/71 Node tests and 2/2 browser tests;
 `npm run check` passed; local app build `1e9173b97ab3cd7e` verified 163 assets.
-That candidate changes catalog discoverability only. No model was downloaded,
-no Memory content was changed, and no physical-device inference was tested.
+The exact app commit `a2f167a0974ed8c11193842ba4efa7348dbb1883` passed all
+stages of clean-checkout GitHub quality workflow
+[42642015536](https://github.com/Unjuno/babelshelf/actions/runs/42642015536).
+Public Site v324 was then deployed from that app commit. A read-only request to
+`https://babelshelf.com/build.json` returned HTTP 200, build
+`1e9173b97ab3cd7e`, and 163 assets. The sidebar browser observation above was
+the pre-deployment baseline; it was not reloaded after deployment. No model was
+downloaded, no Memory content was changed, and no physical-device inference was
+tested.
 
 ### 2026-11-09 · hard-stop model-count and worker-session invalidation
 
 The current GitHub head merged the verified Worker termination guard. Its latest
 GitHub quality workflow passed all stages on `ff152bf95499c44c2bddc8bef910f255e1235c37`
 ([run 42633357328](https://github.com/Unjuno/babelshelf/actions/runs/42633357328)).
-The Decision-catalog visibility change above is a new local candidate; it still
-needs its own CI run and deployment before it is present on the public site.
+The Decision-catalog visibility change above is now covered by its own passing
+CI run and is included in public Site v324. The unresolved product gate is
+model/runtime preparation and real inference on supported devices; listing a
+catalog item or serving a build does not establish that gate.
 
 ### 2026-11-04 · make LFM3 runtime preparation visible on its own
 
