@@ -1,10 +1,28 @@
 ## Current status · 2026-11-10
 
+### Checked now · 2026-11-10
+
+GitHub `main` is `5206fd3` (PR #10). The active work branch is
+`codex/semantic-search-foundation` at `854ab7d`, four commits ahead of `main`,
+with Draft PR [#11](https://github.com/Unjuno/babelshelf/pull/11). Its clean
+quality run [42678983108](https://github.com/Unjuno/babelshelf/actions/runs/42678983108)
+passed on attempt 2 (17m 8s). The local untracked QA/model benchmark artifacts
+were preserved.
+
+PR #11 contains the semantic chunk/citation boundary and a schema migration
+for an optional Search model slot. It does not yet include a Search selector,
+model preparation flow, local embedding worker, revision-keyed derived index,
+or semantic ranking connected to normal retrieval. `memory.search` remains the
+working deterministic local path. Do not deploy this foundation as a completed
+Search feature. The next implementation milestone is the optional, cancellable
+local embedding/index adapter with deterministic fallback, followed by an
+end-to-end user flow and exact-source citation validation.
+
 ### 2026-11-10 · reconcile model roles before expanding the catalog
 
-The current GitHub branch `codex/ui-design-handoff` is at `2c57bcf` and was
-clean for tracked files; the retained untracked QA directories and benchmark
-artifacts were left untouched. The preceding release already includes the
+At this earlier checkpoint, GitHub branch `codex/ui-design-handoff` was at
+`2c57bcf`; the retained untracked QA directories and benchmark artifacts were
+left untouched. The preceding release already includes the
 LFM3 IQ3_M model, its selection-only compact media set, and discoverable Text,
 Decision, Speech, OCR and Vision model catalogs. IQ3_M is pinned to a community
 GGUF revision and remains an unverified runtime/device candidate; selection or
@@ -40,8 +58,9 @@ package (`830a89c6832b09e4`), and app acceptance (9/9) also passed. The app
 package matches the one already recorded for public Site v328, so this check
 found no new application code to deploy. These are Windows/Chromium checks;
 they do not establish model loading, generation, or runtime speed on iPhone.
-The branch is now at `fc14995`; the next implementation task remains the
-optional Search adapter described above, not another model catalog entry.
+At that checkpoint the branch was at `fc14995`; the next implementation task
+remained the optional Search adapter described above, not another model
+catalog entry.
 
 ### 2026-11-10 · publish and verify compact IQ3_M model set
 
