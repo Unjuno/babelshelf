@@ -15,7 +15,9 @@ model-load route remain unchanged; an already-resident model is measured at its
 resident context. Local prototype regression and build checks are required
 before publishing this follow-up. A device run is still needed to confirm that
 the iPhone load stall is reduced; the earlier 18-minute stopped run does not
-prove that context size was the only cause.
+prove that context size was the only cause. The existing large-context
+confirmation UI acceptance was updated to assert the bounded test behavior;
+the 15-case Settings browser suite passes locally.
 
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a

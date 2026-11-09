@@ -96,7 +96,7 @@ test('pinned LFM3 context window is selectable and persists without loading mode
  await expect(page.getByText('Loaded',{exact:true})).toHaveCount(0);
 });
 
-test('Developer model tests require confirmation before loading LFM3 at a large context',async({page})=>{
+test('Developer model tests use a bounded LFM3 context without changing the saved context',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
@@ -110,13 +110,9 @@ test('Developer model tests require confirmation before loading LFM3 at a large 
  await page.locator('.device-test-steps').first().locator('summary').click();
  await page.getByRole('button',{name:'Performance',exact:true}).click();
  const run=page.getByRole('button',{name:'Run speed sample',exact:true});
+ await expect(page.getByText(/unloaded LFM3 uses an 8K test context; your saved context stays unchanged/i)).toBeVisible();
  await run.click();
- const warning=page.getByRole('group',{name:'Large context test options',exact:true});
- await expect(warning).toContainText('256K context selected');
- await expect(warning).toContainText('can take a long time or fail');
- await expect(page.getByText('Checking device…',{exact:true})).toHaveCount(0);
- await warning.getByRole('button',{name:/Continue at 256K/}).click();
- await expect(warning).toHaveCount(0);
+ await expect(page.getByRole('group',{name:'Large context test options',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Run speed sample',exact:true})).toBeVisible();
 });
 
