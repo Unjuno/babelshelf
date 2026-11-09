@@ -24,6 +24,17 @@ is no separate Search-text model role (local retrieval is deterministic).
 No model assets were downloaded, Memory data was not changed, Offline mode was
 restored, and physical-device inference remains unverified.
 
+The supplied iPhone Performance report used a configured 262,144-token context;
+its model test was stopped during `model-load`, and the accompanying screen
+showed 18m23s elapsed without runtime progress. This proves a long, unreported
+load was experienced at that setting; it does not distinguish slow context
+initialization, device memory pressure, runtime behavior or user Stop. Local
+preflight passed 42 LFM3-adapter/context cases and one browser test confirming
+the large-context warning and explicit confirmation. The adapter suite proves
+selected context forwarding at 16K/32K only, not successful model load or 256K
+fit. A single same-device 16K Performance run is the targeted evidence needed
+to determine whether the 256K setting materially contributes.
+
 ### 2026-11-10 · keep grounded citation records typed through finalization
 
 The grounded-answer adapter previously represented parsed source references as
