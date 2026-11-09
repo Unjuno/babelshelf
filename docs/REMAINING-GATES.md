@@ -1,5 +1,29 @@
 ## Current status · 2026-11-10
 
+### 2026-11-10 · publish the current app build and verify the installed update path
+
+The exact app source at `98f2b669f6653b5da741f01771df4506368c15d3` passed clean-checkout
+GitHub quality workflow [42646089873](https://github.com/Unjuno/babelshelf/actions/runs/42646089873).
+Site v325 served a stale prior build despite the newer release source. Updated the
+Site Worker cache policy for mutable shell routes and deployed Site v326 from
+source commit `070dadfa9bb88e2c4953432b7d7f7ce3b6043d9e`, carrying app build
+`50a5094377aebc7a` and 163 assets. Both public domains returned HTTP 200 and the
+expected build manifest; the public JavaScript bundle SHA-256 matched the local
+build. In the sidebar browser, the app Update action applied the new worker and
+bundle; after switching back to Offline, Developer still reported active worker
+`50a5094377aebc7a` and page bundle `index-B9_FUZkj.js`.
+
+The Worker requests `no-store` on mutable shell routes, while the public edge
+normalized the observed response to `Cache-Control: public, must-revalidate,
+max-age=0` and reported `CF-Cache-Status: HIT`. The update path worked in this
+run; the edge’s effective cache behavior remains a delivery check to retain.
+The model catalog shows LFM3 IQ3_M as an 869 MB community candidate that must be
+added before it appears in the active Text selector; it remains untested on this
+device. Open d1 and LFM2.5-VL are discoverable; OCR is Tesseract-only, and there
+is no separate Search-text model role (local retrieval is deterministic).
+No model assets were downloaded, Memory data was not changed, Offline mode was
+restored, and physical-device inference remains unverified.
+
 ### 2026-11-10 · keep grounded citation records typed through finalization
 
 The grounded-answer adapter previously represented parsed source references as
