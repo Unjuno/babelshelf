@@ -9,6 +9,8 @@ function elapsedLabel(milliseconds:number){
 
 /** Keep the once-per-second timer isolated so the full application does not rerender while a model initializes. */
 function stageLabel(stage=''){
+ const gpuLayers=/^Loading model · GPU layers (\d+)\/(\d+)$/i.exec(stage);
+ if(gpuLayers)return `GPU layer placement · ${gpuLayers[1]}/${gpuLayers[2]}`;
  if(/verif|check/i.test(stage))return 'Checking model file';
  if(/stream.*weight|reading.*weight/i.test(stage))return 'Reading model weights';
  if(/kernel|warmup|compile|context/i.test(stage))return 'Preparing model';

@@ -218,6 +218,8 @@ test('current model choices can be saved as a Memory-backed model set and remain
  await page.getByRole('button',{name:/Model set ·/}).click();
  await expect(page.getByRole('heading',{name:'Model set'})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Text models',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Compact local set',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/Compact local media set LFM3 IQ3_M/})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Complete local set',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Save current as set'}).click();
  await page.getByRole('textbox',{name:'Model set name'}).fill('My reading setup');
@@ -231,6 +233,23 @@ test('current model choices can be saved as a Memory-backed model set and remain
  await page.getByRole('button',{name:/Model set ·/}).click();
  await expect(page.getByRole('button',{name:/My reading setup/})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Saved by you',exact:true})).toBeVisible();
+});
+
+test('compact LFM3 IQ3_M media set is selectable without preparing model files',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.getByRole('button',{name:/Model set ·/}).click();
+ await page.getByRole('button',{name:/Compact local media set LFM3 IQ3_M/}).click();
+ await expect(page.getByRole('heading',{name:'Review model set'})).toBeVisible();
+ await expect(page.getByText(/Applying a set does not prepare files/)).toBeVisible();
+ await page.getByRole('button',{name:'Apply set'}).click();
+ await expect(page.getByText('Set selected · files are prepared separately')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Prepare models'})).toBeVisible();
+ await page.getByRole('button',{name:'Done'}).click();
+ await expect(page.getByRole('button',{name:'Text model',exact:true})).toContainText('IQ3_M');
+ await expect(page.getByRole('button',{name:'Vision model',exact:true})).toContainText(/LFM2\.5-VL.*450M/);
 });
 
 test('a model set reviews role changes before applying and never prepares files implicitly',async({page})=>{

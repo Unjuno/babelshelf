@@ -61,7 +61,7 @@ export function ModelSetSheets({ view }: { view: ModelSetSheetsView }) {
     return (
       <div className="model-choice-sheet">
         <div className="model-options" role="group" aria-label="Model set">
-          {(['Text models', 'Complete local set', 'Saved by you'] as const)
+          {(['Text models', 'Compact local set', 'Complete local set', 'Saved by you'] as const)
             .filter(group => view.items.some(item => item.group === group))
             .map(group => (
             <section className="model-set-group" key={group} aria-label={group}>

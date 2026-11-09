@@ -1,4 +1,173 @@
-## Current status · 2026-11-04
+## Current status · 2026-11-10
+
+### 2026-11-10 · reconcile model roles before expanding the catalog
+
+The current GitHub branch `codex/ui-design-handoff` is at `2c57bcf` and was
+clean for tracked files; the retained untracked QA directories and benchmark
+artifacts were left untouched. The preceding release already includes the
+LFM3 IQ3_M model, its selection-only compact media set, and discoverable Text,
+Decision, Speech, OCR and Vision model catalogs. IQ3_M is pinned to a community
+GGUF revision and remains an unverified runtime/device candidate; selection or
+download metadata is not proof that it loads or generates on a phone.
+
+The actual role gap is Search: `memory.search` is a deterministic local tool,
+not a model slot. Do not label it a model or silently require inference for
+ordinary retrieval. If semantic search is added, it should be an optional,
+separately prepared embedding/reranking route; retain deterministic local search
+as the offline and not-prepared fallback. Any stored vectors must be derived
+data keyed to exact note revision and embedding-model revision, rebuildable or
+discardable without changing original Memory files, and excluded from citations
+unless the host independently reads and binds the source revision. Search
+results must continue through existing exact source-reference validation.
+
+Transformers.js supports feature-extraction models. A concrete compact
+candidate is [Granite Embedding 97M Multilingual R2 ONNX](https://huggingface.co/onnx-community/granite-embedding-97m-multilingual-r2-ONNX): its card lists 97M parameters, 384-dimensional output, Apache-2.0, 52 explicitly enhanced languages including Japanese, and describes 200+ language pretraining. The card's retrieval scores and throughput are upstream benchmark claims, not BabelShelf or target-device measurements. At inspected revision
+`536a9f241cb3f02a9c5995a1e708c784bd274859`, the selected `onnx/model_int8.onnx` is 97,858,099 bytes (LFS SHA-256 `704c1ebca5fbb7cd83ced41827658ac4c9990c64f7f2874d22b78044e5022e22`) and `tokenizer.json` is 25,301,671 bytes (LFS SHA-256 `51947676cae1f991fa51c6b9a24e14ee5460e5f0b9f692f13bb3159829d1592a`); adding config and tokenizer metadata gives an approximately 123 MB package. The repository contains other larger variants, so preparation must pin only the selected files rather than acquire the full repository.
+
+PC preflight used the exact revision/int8 file and the Transformers.js tokenizer. Direct ONNX Runtime Node CPU and ONNX Runtime Web WASM CPU sessions both loaded the verified file bytes and produced 384-dimensional CLS-pooled, normalized embeddings; the same small Japanese query ranked its related passage above an unrelated passage (cosines 0.916/0.737 and 0.913/0.740 respectively). One run including tokenizer/session setup took 1.847 s for Node CPU and 1.938 s for ONNX Runtime Web WASM. This is a smoke sample, not a retrieval-quality benchmark. Transformers.js `pipeline('feature-extraction', ... device:'cpu')` on Node still fails when ONNX Runtime Node loads the cached model by path, even though that file exists and its SHA-256 matches; direct session-from-bytes succeeds. Since the PWA uses ONNX Runtime Web, the direct WASM pass reduces concern about the candidate graph but does not validate the app's browser Worker, Vite packaging, GPU provider, cancellation, cache or indexing path. Keep model acquisition explicit and resumable. No Search selector, embedding index, or semantic-ranking path has been implemented; the next code milestone remains a measured optional search adapter with lexical fallback and revision-safe derived storage that leaves normal search and saved content unchanged when unprepared.
+
+After that reconciliation, the IQ3_M selection path was rechecked on the
+current branch: 80 focused model/catalog/runtime unit cases passed, and 17
+Settings/model-discovery browser cases passed, including selecting the compact
+media set without preparing weights. `npm run check`, the 163-asset production
+package (`830a89c6832b09e4`), and app acceptance (9/9) also passed. The app
+package matches the one already recorded for public Site v328, so this check
+found no new application code to deploy. These are Windows/Chromium checks;
+they do not establish model loading, generation, or runtime speed on iPhone.
+The branch is now at `fc14995`; the next implementation task remains the
+optional Search adapter described above, not another model catalog entry.
+
+### 2026-11-10 · publish and verify compact IQ3_M model set
+
+The model-set sheet previously omitted the `Compact local set` group even though
+the registered LFM3 IQ3_M media preset was available. Added the group to the
+rendered model-set list and covered both its visibility and selection-only
+behavior. Local regression checks passed: model-set unit tests 13/13, focused
+browser checks 2/2, `npm run check`, app packaging (build
+`830a89c6832b09e4`, 163 assets), and app acceptance 9/9. GitHub clean-checkout
+quality workflow [42658884497](https://github.com/Unjuno/babelshelf/actions/runs/42658884497)
+passed all stages. Public Site v328 was deployed from Site source commit
+`27fa1d32f5870ca2165303824611f7e63406112b`, carrying app source commit
+`0c7e392dddd5d3d3374cc20fdb138a084460a1ea`. In the sidebar browser, Developer
+reported active worker build `830a89c6832b09e4` / bundle `index-Cej1lY_B.js`,
+and the model-set sheet displayed the Compact local set with LFM3 IQ3_M,
+Whisper tiny, Tesseract 7, and LFM2.5-VL 450M. The selected QAD Q4_0 model
+remained selected; the set was not applied and no model/runtime assets were
+downloaded. The in-app refresh action remained busy until a normal reload; that
+reload applied the new worker. This observation is recorded for follow-up if it
+reproduces, not treated as a proven refresh-path regression.
+
+### 2026-11-10 · publish observed GPU layer placement (v327)
+
+App build `d18ac58c757bff40` was deployed as Site v327 from source commit
+`4a4df7ab001773e3c93c2751e98264f0ff0f0e5c` after GitHub quality workflow
+[42655817920](https://github.com/Unjuno/babelshelf/actions/runs/42655817920)
+passed. The sidebar browser applied and verified that build, then restored
+Offline mode. GPU layer placement remains runtime-log evidence, not a model-load
+percentage or proof of device performance.
+
+### 2026-11-10 · surface observed GPU layer placement during model load
+
+Pinned Wllama 3.12.0 does not define a model-load percentage callback in
+`LoadModelParams`; its documented byte progress applies to download APIs. The
+app previously showed only “Loading model” after file verification. The LFM
+adapter now forwards its existing selected-runtime log `load_tensors: offloaded
+N/T layers to GPU` while `loadModel` is pending. The UI shows “GPU layer
+placement · N/T” and keeps the overall bar indeterminate. This is runtime log
+evidence of layer placement, not a completion percentage, total load progress or
+proof that every device uses the same GPU. CPU routes and runtime builds that do
+not emit this log remain indeterminate.
+
+The focused LFM adapter suite passed 41/41; large-context Developer UI passed
+1/1; product acceptance passed 9/9; `npm run check` passed; build
+`d18ac58c757bff40` verified 163 assets. These checks validate log forwarding and
+packaging, not real-model timing or iPhone/Android GPU execution. Device/model
+performance evidence remains open.
+
+### 2026-11-10 · publish the current app build and verify the installed update path
+
+The exact app source at `98f2b669f6653b5da741f01771df4506368c15d3` passed clean-checkout
+GitHub quality workflow [42646089873](https://github.com/Unjuno/babelshelf/actions/runs/42646089873).
+Site v325 served a stale prior build despite the newer release source. Updated the
+Site Worker cache policy for mutable shell routes and deployed Site v326 from
+source commit `070dadfa9bb88e2c4953432b7d7f7ce3b6043d9e`, carrying app build
+`50a5094377aebc7a` and 163 assets. Both public domains returned HTTP 200 and the
+expected build manifest; the public JavaScript bundle SHA-256 matched the local
+build. In the sidebar browser, the app Update action applied the new worker and
+bundle; after switching back to Offline, Developer still reported active worker
+`50a5094377aebc7a` and page bundle `index-B9_FUZkj.js`.
+
+The Worker requests `no-store` on mutable shell routes, while the public edge
+normalized the observed response to `Cache-Control: public, must-revalidate,
+max-age=0` and reported `CF-Cache-Status: HIT`. The update path worked in this
+run; the edge’s effective cache behavior remains a delivery check to retain.
+The model catalog shows LFM3 IQ3_M as an 869 MB community candidate that must be
+added before it appears in the active Text selector; it remains untested on this
+device. Open d1 and LFM2.5-VL are discoverable; OCR is Tesseract-only, and there
+is no separate Search-text model role (local retrieval is deterministic).
+No model assets were downloaded, Memory data was not changed, Offline mode was
+restored, and physical-device inference remains unverified.
+
+The supplied iPhone Performance report used a configured 262,144-token context;
+its model test was stopped during `model-load`, and the accompanying screen
+showed 18m23s elapsed without runtime progress. This proves a long, unreported
+load was experienced at that setting; it does not distinguish slow context
+initialization, device memory pressure, runtime behavior or user Stop. Local
+preflight passed 42 LFM3-adapter/context cases and one browser test confirming
+the large-context warning and explicit confirmation. The adapter suite proves
+selected context forwarding at 16K/32K only, not successful model load or 256K
+fit. A single same-device 16K Performance run is the targeted evidence needed
+to determine whether the 256K setting materially contributes.
+
+### 2026-11-10 · keep grounded citation records typed through finalization
+
+The grounded-answer adapter previously represented parsed source references as
+`any[]` and cast them again at its return boundary. It now keeps the host's
+`SourceRef[]` contract through normal parsing, citation repair, source freshness
+checks and result construction. The verbatim recovery parser treats model JSON
+as `unknown` and validates object shape and answer/status fields before binding
+the returned phrase to an exact excerpt. This is a type/data-shape integrity
+improvement; it does not prove that a cited passage semantically entails every
+claim. The existing narrow consistency guards and their explicit limits remain.
+Focused answer-consistency, citation-presentation, conversation and verbatim
+recovery suites passed 249/249; `npm run check`, the 163-asset app build
+(`50a5094377aebc7a`), product acceptance 9/9 and `git diff --check` passed.
+No Memory data or model files were read or changed. Cross-device inference
+remains open.
+
+### 2026-11-10 · expose Decision model discovery and reconcile the deployed build
+
+The Decision model catalog was only reachable inside the collapsed “More” section,
+while the Text, OCR and Vision catalogs had visible entry points. The standard
+Decision catalog action now sits beside its role heading; adding a custom ONNX
+model and file-management details remain in More. The public app’s current active
+worker is build `e17e92a9db1a5984`, and the Site release source records GitHub
+commit `ff152bf95499c44c2bddc8bef910f255e1235c37` with that same build. This
+reconciles the public shell with the latest pre-change GitHub commit; it was not
+an outdated deployment. The current browser profile has LFM3 Q4 selected but
+neither its weights nor runtime prepared. IQ3_M is listed as a community
+candidate and explicitly untested on this device; model listing is not runtime
+acceptance. Role/catalog regressions passed 71/71 Node tests and 2/2 browser tests;
+`npm run check` passed; local app build `1e9173b97ab3cd7e` verified 163 assets.
+The exact app commit `a2f167a0974ed8c11193842ba4efa7348dbb1883` passed all
+stages of clean-checkout GitHub quality workflow
+[42642015536](https://github.com/Unjuno/babelshelf/actions/runs/42642015536).
+Public Site v324 was then deployed from that app commit. A read-only request to
+`https://babelshelf.com/build.json` returned HTTP 200, build
+`1e9173b97ab3cd7e`, and 163 assets. The sidebar browser observation above was
+the pre-deployment baseline; it was not reloaded after deployment. No model was
+downloaded, no Memory content was changed, and no physical-device inference was
+tested.
+
+### 2026-11-09 · hard-stop model-count and worker-session invalidation
+
+The current GitHub head merged the verified Worker termination guard. Its latest
+GitHub quality workflow passed all stages on `ff152bf95499c44c2bddc8bef910f255e1235c37`
+([run 42633357328](https://github.com/Unjuno/babelshelf/actions/runs/42633357328)).
+The Decision-catalog visibility change above is now covered by its own passing
+CI run and is included in public Site v324. The unresolved product gate is
+model/runtime preparation and real inference on supported devices; listing a
+catalog item or serving a build does not establish that gate.
 
 ### 2026-11-04 · make LFM3 runtime preparation visible on its own
 
