@@ -458,3 +458,34 @@ test('Stop waits for remaining worker cleanup before reporting an earlier backen
   assert.ok(events.includes('optional:disposed'));
  }
 });
+
+test('hard Worker termination rejects a delayed model load and never revives the old instance',async()=>{
+ const f=setup(),model=onnxTextModels[0].id,first=f.router.load(model);
+ f.router.worker.terminate();
+ f.finish();
+ await assert.rejects(first,/Stopped/,'A finished but terminated worker must not report load success');
+ assert.equal(f.router.loaded,null);
+ const second=f.router.load(model);f.finish();await second;
+ assert.equal(f.router.loaded,model);
+ assert.equal(f.calls.filter(value=>value==='onnx:load').length,2,'Only an explicit new Load can restart the model');
+});
+
+test('hard Worker termination invalidates delayed token counting',async()=>{
+ const f=setup();await f.router.load('4B');
+ let resolveCount;
+ f.webml.call=()=>new Promise(resolve=>{resolveCount=resolve;});
+ const count=f.router.call('count',{messages:[]});
+ f.router.worker.terminate();
+ resolveCount({prompt_tokens:18});
+ await assert.rejects(count,/Stopped/);
+ assert.equal(f.router.loaded,null);
+});
+
+test('hard Worker termination still retires optional workers after a base terminate error',async()=>{
+ const f=setup(),load=f.router.load(onnxTextModels[0].id);f.finish();await load;
+ const failure=Error('Base Worker terminate failed');
+ f.webml.worker.terminate=()=>{f.calls.push('webml:terminate-error');throw failure;};
+ assert.throws(()=>f.router.worker.terminate(),error=>error===failure);
+ assert.ok(f.calls.includes('onnx:terminate'));
+ assert.equal(f.router.loaded,null);
+});
