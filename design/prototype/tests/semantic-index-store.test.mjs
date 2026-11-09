@@ -11,7 +11,7 @@ test('semantic derived index replaces one note revision without touching other m
  try{
   await store.replaceNote('embed-r1','note-a',1,[make('embed-r1','note-a',1,0,[1,0]),make('embed-r1','note-a',1,10,[0,1])]);
   await store.replaceNote('embed-r1','note-b',1,[make('embed-r1','note-b',1,0,[1,1])]);
-  await store.replaceNote('embed-r2','note-a',1,[make('embed-r2','note-a',1,0,new Float32Array([2,0]))]);
+  await store.replaceNote('embed-r2','note-a',1,[make('embed-r2','note-a',1,0,[2,0])]);
   await store.replaceNote('embed-r1','note-a',2,[make('embed-r1','note-a',2,20,[1,1])]);
   const first=await store.list('embed-r1');assert.deepEqual(first.map(value=>[value.noteId,value.revision,value.start]).sort(),[['note-a',2,20],['note-b',1,0]]);
   const typed=await store.list('embed-r2');assert.equal(typed[0].modelRevision,'embed-r2');assert.ok(typed[0].vector instanceof Float32Array);
