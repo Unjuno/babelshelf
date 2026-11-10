@@ -55,7 +55,8 @@ export function textModelChoiceHint(id:string,customModels:readonly CustomLocalM
   const route=textExecutionRoute(id,customModels),execution=route?.backend==='webgpu'?'GPU path':route?.backend==='cpu-wasm'?'CPU path':'Runtime unavailable';
   return size+' · '+execution+' · not tested on this device';
  }
- if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-iq3m'||id==='lfm3-1.7b-q8-0')return size+' · '+lfm3BackendHint+' · not tested on this device';
+ if(id==='lfm3-1.7b-iq3m')return size+' · IQ3_M ~3.66 bits/weight · '+lfm3BackendHint+' · not tested on this device';
+ if(id==='lfm3-1.7b-qad-q4-0'||id==='lfm3-1.7b-q8-0')return size+' · '+lfm3BackendHint+' · not tested on this device';
  if(id==='9B')return size+' · experimental · PC prose unstable';
  if(id==='lfm25-230m-qad-q4-0'||id==='lfm25-350m-qad-q4-0')return size+' · experimental · diagnostic generation only';
  return size+' · model files';

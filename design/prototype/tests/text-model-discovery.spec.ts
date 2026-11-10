@@ -6,13 +6,14 @@ test('text model catalog is directly accessible from model settings',async({page
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Models',exact:true}).click();
  await page.getByRole('button',{name:'Browse text models',exact:true}).click();
- const iq3=page.getByRole('button',{name:/Add LFM3.*IQ3_M.*Community/});
+ const iq3=page.getByRole('button',{name:/Add LFM3.*3-bit IQ3_M.*Community/});
  await expect(iq3).toBeVisible();
  await expect(iq3).toContainText('869 MB');
+ await expect(iq3).toContainText('3.66 bits/weight');
  await iq3.click();
  await expect(page.getByRole('button',{name:'Text model',exact:true})).toContainText('IQ3_M');
  await page.getByRole('button',{name:'Text model',exact:true}).click();
- const selectIq3=page.getByRole('button',{name:/Select LFM3.*IQ3_M.*Community/});
+ const selectIq3=page.getByRole('button',{name:/Select LFM3.*3-bit IQ3_M.*Community/});
  await expect(selectIq3).toBeVisible();
  await selectIq3.click();
  await page.getByRole('button',{name:'Browse text models',exact:true}).click();

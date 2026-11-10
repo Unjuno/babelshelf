@@ -2,7 +2,7 @@
   "schema": 1,
   "status": "experimental-community-candidate",
   "id": "lfm3-1.7b-iq3m",
-  "name": "LFM3 · 1.7B · IQ3_M · Community",
+  "name": "LFM3 · 1.7B · 3-bit IQ3_M · Community",
   "repository": "ngquocvinh/LFM3-1.7B-GGUF",
   "revision": "830c73d6f8461a536cec9217a9ae41956848761c",
   "license": "LFM Open License v1.0",

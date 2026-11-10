@@ -2,13 +2,14 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `2e6f670` after PR #27. CI [42776970035](https://github.com/Unjuno/babelshelf/actions/runs/42776970035)
-passed all stages before merge. Public Site v334 serves app build
-`443a34209a1462e3` /166 assets from product source `2e6f670`. The sidebar PWA
-applied the current worker `443a34209a1462e3` and bundle
-`index-CGIr1-9U.js`; Offline mode was restored. Site packaging and deployment
-evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md). Existing
-untracked QA/model artifacts remain preserved.
+GitHub `main` is `479fed4` after PR #28. Its post-merge quality workflow
+[42781945216](https://github.com/Unjuno/babelshelf/actions/runs/42781945216)
+passed. PR #28 reconciles delivery and current-state documentation; the
+product code in public Site v334 remains app build `443a34209a1462e3` /166
+assets from product source `2e6f670`. The sidebar PWA applied that worker and
+bundle `index-CGIr1-9U.js`; Offline mode was restored. Site packaging and
+deployment evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
+Existing untracked QA/model artifacts remain preserved.
 
 The persistent Developer operation toast now keeps elapsed time visible after
 navigation, exposes Copy snapshot during app/model checks, and exposes Stop
@@ -21,13 +22,26 @@ the iPhone's reported 18m23s model load. Physical-device timing remains open.
 Sidebar browser check on 2026-11-10: the live Models page showed LFM3 QAD Q4_0
 selected but `Not prepared`; Decision, Speech, Image text, and Image
 understanding were `Not configured`; semantic Search was `Off`. Browsing the
-text catalog showed LFM3 IQ3_M (869 MB) as an addable candidate with an explicit
-not-tested-on-device label. The Decision catalog showed Open d1 600M and a
-custom D1 import path. This is consistent with the fresh-install profile and
-does not demonstrate a failed deployment: models must be selected/prepared,
-and none were changed in this inspection. It also does not establish physical
-device compatibility or prove the displayed selection matches a separate
-installed PWA's stored state.
+text catalog showed LFM3 IQ3_M (869 MB) as an addable community candidate with
+an explicit not-tested-on-device label. Its selectable route was already
+registered, but the UI only exposed the quantization name. The current local
+candidate labels it as 3-bit IQ3_M and discloses approximately 3.66
+bits/weight, matching [llama.cpp's quantization table](https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/quantize.cpp);
+this is still community quantization, not a quality or device-fit claim. The
+Decision catalog showed
+Open d1 600M and a custom D1 import path. The fresh-install profile leaves
+those roles unconfigured and no optional weights are prepared by default;
+that is an intentional explicit-download policy, but the distinction between
+“available to select” and “ready to run” needs to stay visible. No browser
+selection or data was changed during that inspection.
+
+Local candidate build `eab907c5290f44b8` packages 166 verified assets. The
+focused model/catalog tests passed 37/37, `npm run check` passed, Settings UI
+regressions passed 3/3 after preserving the existing model-set accessible name,
+and product acceptance passed 9/9. The change is in PR #29; its full quality
+workflow is running. It is not merged or deployed; the public Site remains
+v334 until the exact PR candidate passes CI, merges, and is separately
+published and checked in the sidebar browser.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only

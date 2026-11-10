@@ -58,7 +58,7 @@ test('task presets expose connected text choices without implying device verific
  }
  assert.equal(modelSets.find(set=>set.id==='lfm3-1.7b-qad-q4-0').detail,'Text · WebGPU first');
  assert.equal(modelSets.find(set=>set.id==='lfm3-1.7b-q8-0').detail,'Text · WebGPU first · 1.85 GB');
- assert.ok(modelSets.find(set=>set.id==='lfm3-1.7b-iq3m').detail.includes('869 MB'));
+ assert.match(modelSets.find(set=>set.id==='lfm3-1.7b-iq3m').detail,/869 MB · about 3\.66 bits\/weight/);
  const d1=settings.models.decision.find(model=>model.value==='d1-omni-600M');
  assert.equal(d1.label,'Open d1 · 600M · Text decision');
  assert.equal(modelSets.find(set=>set.id==='local-full').label,'Full local set');
