@@ -8,10 +8,16 @@ other arbitrary text remains a byte-count summary. This keeps the offline
 calculator receipt usable without reopening general prompt/query retention.
 Local targeted and full regressions passed, and GitHub Quality run
 [42805551555](https://github.com/Unjuno/babelshelf/actions/runs/42805551555)
-passed every gate on PR #31. PR #31 is merged; GitHub `main` is now
-`d4bdbee`. The public Site is v336 with app build `1effe00c90b651b8` /166
-verified assets. Detailed evidence is in [TEST-RESULTS.txt](TEST-RESULTS.txt)
-and [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
+passed every gate on PR #31. PR #32 then corrected browser dependency setup
+timeouts in CI and was merged with documentation-only changes. Both its full
+PR run [42812616863](https://github.com/Unjuno/babelshelf/actions/runs/42812616863)
+and post-merge main run
+[42814319175](https://github.com/Unjuno/babelshelf/actions/runs/42814319175)
+passed every gate. GitHub `main` is now `b748a7ff`. The public Site remains
+v336 with app build `1effe00c90b651b8` /166 verified assets, whose product code
+is identical to the merged main code; PR #32 changed only docs and CI timing.
+Detailed evidence is in [TEST-RESULTS.txt](TEST-RESULTS.txt) and
+[SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
 
 The title-bound water comparison guard now checks explicit strict and
 non-strict relations instead of reducing every comparison to a greater/not-
