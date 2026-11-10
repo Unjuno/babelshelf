@@ -560,6 +560,34 @@ test('coordinator hides Web search without a live Online adapter and keeps query
  }
 });
 
+test('JSON planner can use explicitly enabled Web search and returns host-bound page snapshots for grounded answering',async()=>{
+ const property=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true}});
+ try{
+  const query='JSON_WEB_QUERY_SENTINEL',pageText='JSON_WEB_PAGE_SENTINEL';
+  const {value}=input([
+   JSON.stringify({action:'tool',query:'web.search',body:JSON.stringify({query})}),
+   JSON.stringify({action:'answer',query:'current release date',target:'knowledge'})
+  ],{enabledTools:['web.search'],builtinPackages:[webSearchPackage],question:'Search the web for the current release date and answer with a citation.',webSearch:async sent=>{
+   assert.equal(sent,query);
+   return {provider:'RustXNG',retrievedAt:'2026-11-11T00:00:00.000Z',results:[{title:'Example',url:'https://example.org/release',snippet:'Discovery only',rawContentStatus:'ok',rawContentTruncated:false,pageText}]};
+  }});
+  value.engine.plannerProtocol='json';
+  const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...args)=>{prompts.push(messages);return generate(messages,...args);};
+  const receipts=[];value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+  const result=await coordinateAgentTurn(value);
+  assert.equal(result.final.action,'answer');
+  assert.deepEqual(result.calls.map(call=>call.tool),['web.search']);
+  assert.equal(result.webSnapshots.length,1);
+  assert.equal(result.webSnapshots[0].text,pageText);
+  assert.match(JSON.stringify(prompts[0]),/web\.search/);
+  assert.match(JSON.stringify(prompts[0]),/configured RustXNG service/);
+  assert.doesNotMatch(JSON.stringify(receipts),/JSON_WEB_QUERY_SENTINEL|JSON_WEB_PAGE_SENTINEL|Discovery only|example\.org/);
+ }finally{
+  if(property)Object.defineProperty(globalThis,'navigator',property);else delete globalThis.navigator;
+ }
+});
+
 test('coordinator uses the frozen send-time tools even if the caller changes its live profile object',async()=>{
  const {value,calls}=input([
   '{"action":"tool","query":"memory.search","body":"{\\"query\\":\\"meeting\\"}"}',
