@@ -4,7 +4,7 @@ import {PlannerOutputError} from './planner-error.ts';
 import {parseJSON} from '../../../dist/core.js';
 import {validHarnessAction} from './harness-actions.ts';
 import {builtinTools,builtinToolIds} from './tools/builtin-tools.ts';
-import {validateDecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
+import {makeDecimalReceipt,validateDecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 
 // Retain only protocol categories, never model-authored strings or key names.
 function queryFailureShape(error:PlannerOutputError){
@@ -106,6 +106,13 @@ export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()
  const safeFailureMessage=(code:string)=>({stopped:'Stopped',source_changed:'Source changed',context_limit:'Context limit reached',generation_budget_exhausted:'Generation budget exhausted',result_too_large:'Result too large',not_prepared:'Not prepared',invalid_model_output:'Invalid model output',not_found:'Not found',operation_failed:'Operation failed',planner_protocol:'Planner response invalid',agent_protocol:'Agent response invalid',invalid_tool_input:'Tool input invalid',tool_execution:'Tool failed',model_runtime:'Model runtime failed',persistence_failure:'Activity record unavailable'} as Record<string,string>)[code]??'Operation failed';
  const safeActivity=(activity:Activity):Activity=>{
   const input=safeValue(activity.input) as Json,rawOutput=activity.output;
+  // Keep only calculator expressions accepted by its closed arithmetic parser.
+  // The offline calculation receipt UI and verified follow-up both read this
+  // exact field; arbitrary text still becomes a byte-count summary.
+  if(activity.tool==='math.calculate'&&activity.input&&typeof activity.input==='object'&&!Array.isArray(activity.input)){
+   const expression=(activity.input as Record<string,unknown>).expression;
+   if(typeof expression==='string'&&expression.length<=200)try{if(makeDecimalReceipt(expression).expression===expression)(input as Record<string,Json>).expression=expression;}catch{/* Unrecognized expression content remains omitted. */}
+  }
   // Calculation continuation binds to this exact, validated local receipt.
   // Preserve its numeric expression contract; all other free text is reduced
   // to byte counts for diagnostics.

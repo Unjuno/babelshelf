@@ -114,6 +114,17 @@ test('production turn tracer replaces private runtime errors with stable diagnos
  assert.equal(current.at(-1).error.message,'Operation failed');
 });
 
+test('production turn tracer preserves only validated calculator expressions required by offline receipts',async()=>{
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');let current=[];
+ const trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;},onFailureRecorded:()=>{},diagnosticsEnabled:false,writeDiagnostic:()=>{}});
+ const {makeDecimalReceipt}=await import('../src/tools/math.calculate/decimal-receipt.ts');
+ await trace('math.calculate',{expression:'(12 × 3) + 5',package:'math.calculate'},async()=>[makeDecimalReceipt('(12 × 3) + 5')]);
+ assert.equal(current.length,1);assert.equal(current[0].status,'succeeded');assert.equal(current[0].input.expression,'(12 × 3) + 5');
+ await trace('math.calculate',{expression:'PRIVATE_MATH_SENTINEL',package:'math.calculate'},async()=>({ok:false}));
+ assert.equal(current.length,2);assert.deepEqual(current[1].input.expression,{textBytes:new TextEncoder().encode('PRIVATE_MATH_SENTINEL').byteLength});
+ assert.doesNotMatch(JSON.stringify(current),/PRIVATE_MATH_SENTINEL/);
+});
+
 test('turn activity trace records cancellation once and emits only the enabled failure diagnostic',async()=>{
  const {createTurnActivityTracer}=await import('../src/harness-activity.ts');assert.equal(typeof createTurnActivityTracer,'function');
  let current=[],checks=0,failed=0;const commits=[],diagnostics=[],steps=[];
