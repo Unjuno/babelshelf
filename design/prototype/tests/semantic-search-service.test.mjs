@@ -20,6 +20,13 @@ test('indexing and retrieval preserve exact current quotes and leave canonical s
  }finally{await store.close();await removeDatabase(name);}
 });
 
+test('an empty derived index skips query inference and source reads',async()=>{
+ const name='semantic-service-empty-'+crypto.randomUUID(),store=createSemanticIndexStore({name});let embeddingCalls=0,sourceReads=0;try{
+  const results=await searchSemanticSources('seed',async()=>{sourceReads++;return [source()];},{modelRevision:'embed-r1',store,embed:async texts=>{embeddingCalls++;return texts.map(vector);}});
+  assert.deepEqual(results,[]);assert.equal(embeddingCalls,0);assert.equal(sourceReads,0);
+ }finally{await store.close();await removeDatabase(name);}
+});
+
 test('failed replacement preserves prior revision vectors and search never returns stale citations',async()=>{
  const name='semantic-service-revision-'+crypto.randomUUID(),store=createSemanticIndexStore({name});try{
   const old=source();await indexSemanticSources([old],{modelRevision:'embed-r1',store,embed});
