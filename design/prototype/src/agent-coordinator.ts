@@ -130,7 +130,7 @@ export async function coordinateAgentTurn(input:{
  const activityLimit=input.activityEventCount===undefined?null:activityBoundedToolBudget(input.activityEventCount,null);
  const maxToolCalls=activityLimit===null?profileLimit:profileLimit===null?activityLimit:Math.min(activityLimit,profileLimit);
  const excludedTools=new Set(input.excludedTools??[]);
- const webSearchAvailable=!!input.webSearch&&navigator.onLine&&input.engine.plannerProtocol==='native-tool-calls';
+ const webSearchAvailable=!!input.webSearch&&navigator.onLine;
  const configuredTools=input.snapshot.harness.enabledTools.filter(id=>!excludedTools.has(id)&&(id!=='web.search'||webSearchAvailable));
  const sources=await input.readToolSources();
  const selected=await buildActiveToolRegistry(sources,configuredTools,[...input.builtinPackages]);
