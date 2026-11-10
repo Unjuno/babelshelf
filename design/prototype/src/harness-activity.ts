@@ -4,6 +4,7 @@ import {PlannerOutputError} from './planner-error.ts';
 import {parseJSON} from '../../../dist/core.js';
 import {validHarnessAction} from './harness-actions.ts';
 import {builtinTools,builtinToolIds} from './tools/builtin-tools.ts';
+import {validateDecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 
 // Retain only protocol categories, never model-authored strings or key names.
 function queryFailureShape(error:PlannerOutputError){
@@ -88,13 +89,40 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
  try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
 }
 export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;onStepStarted?:(tool:ActivityTool)=>void;onStepCompleted?:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
+ // Turn receipts are durable, user-visible diagnostics. Keep useful shape and
+ // measurements, but never persist arbitrary prompt, query, source or answer
+ // strings passed through operation inputs and results.
+ const safeStringKeys=new Set(['kind','model','engine','backend','revision','runtime','package','entry','action','target','mode','stage','status','reason','execution','binding','choice','precision','quantization','sourceType','format','scope','completion','budgetReason','noteId']);
+ const safeValue=(value:unknown,key=''):Json=>{
+  if(value===null||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))return value as Json;
+  if(typeof value==='string'){
+   if(safeStringKeys.has(key)&&value.length<=160&&/^[\p{L}\p{N} ._:/-]*$/u.test(value))return value;
+   return {textBytes:new TextEncoder().encode(value).byteLength};
+  }
+  if(Array.isArray(value))return value.map(item=>safeValue(item));
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value as Record<string,unknown>).map(([child,item])=>[child,safeValue(item,child)]));
+  return null;
+ };
+ const safeFailureMessage=(code:string)=>({stopped:'Stopped',source_changed:'Source changed',context_limit:'Context limit reached',generation_budget_exhausted:'Generation budget exhausted',result_too_large:'Result too large',not_prepared:'Not prepared',invalid_model_output:'Invalid model output',not_found:'Not found',operation_failed:'Operation failed',planner_protocol:'Planner response invalid',agent_protocol:'Agent response invalid',invalid_tool_input:'Tool input invalid',tool_execution:'Tool failed',model_runtime:'Model runtime failed',persistence_failure:'Activity record unavailable'} as Record<string,string>)[code]??'Operation failed';
+ const safeActivity=(activity:Activity):Activity=>{
+  const input=safeValue(activity.input) as Json,rawOutput=activity.output;
+  // Calculation continuation binds to this exact, validated local receipt.
+  // Preserve its numeric expression contract; all other free text is reduced
+  // to byte counts for diagnostics.
+  let output=rawOutput===undefined?undefined:safeValue(rawOutput) as Json;
+  if(activity.tool==='math.calculate'&&activity.status==='succeeded'&&Array.isArray(rawOutput)){
+   try{output=rawOutput.map(item=>validateDecimalReceipt(item) as unknown as Json);}catch{/* Invalid receipts are never privileged. */}
+  }
+  return {...activity,input,...(output!==undefined?{output}:{}),...(activity.error?{error:{code:activity.error.code,message:safeFailureMessage(activity.error.code)}}:{})};
+ };
  return function trace<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined){
   return recordOperation(tool,input,async()=>{ports.check();const result=await work();ports.check();return result;},async activity=>{
-   if(ports.persistActivity)await ports.persistActivity(activity);
-   else{const previous=ports.readActivities();if(!previous)throw Error('Input unavailable');await ports.persistActivities(updateActivity(previous,activity));}
+   const persisted=safeActivity(activity);
+   if(ports.persistActivity)await ports.persistActivity(persisted);
+   else{const previous=ports.readActivities();if(!previous)throw Error('Input unavailable');await ports.persistActivities(updateActivity(previous,persisted));}
    if(activity.status==='succeeded')try{ports.onStepCompleted?.();}catch{/* Progress display cannot change a committed activity result. */}
    if(activity.status==='failed'||activity.status==='stopped'){
-    ports.onFailureRecorded();if(ports.diagnosticsEnabled)try{ports.writeDiagnostic({tool:activity.tool,status:activity.status,code:activity.error?.code??activity.status,message:activity.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}
+    ports.onFailureRecorded();if(ports.diagnosticsEnabled)try{ports.writeDiagnostic({tool:activity.tool,status:activity.status,code:persisted.error?.code??activity.status,message:persisted.error?.message??activity.status});}catch{/* Diagnostics must never change the operation result. */}
    }
   },project,failureOf,failureProject,ports.onStepStarted);
  };
