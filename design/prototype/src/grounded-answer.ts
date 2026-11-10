@@ -14,6 +14,7 @@ import {groundingQuery,audioOnlySuffix} from './current-input-scope.ts';
 import type {GenerationFormat,GenerationResult} from './text-inference.ts';
 import type {AgentCalculation} from './agent-evidence.ts';
 import {checkedCalculation,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindEvidenceLabels,bindSourceLabelAnswer,hasInternalImplementationLeak,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer} from './agent-evidence.ts';
+import {validateWebCitation,type WebCitation,type WebSnapshot} from './web-evidence.ts';
 import {validateClockReading,type ClockReading} from './tools/time.now/tool.ts';
 import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONTEXT_SOURCE_REFS,MAX_PLANNER_AGENT_TOOLS} from './agent-limits.ts';
 import {builtinToolIds} from './tools/builtin-tools.ts';
@@ -81,7 +82,7 @@ export type AnswerScope =
  | {kind:'knowledge';file?:never;readings?:never}
  | {kind:'file';file:WorkingFile;readings?:never}
  | {kind:'attachments';readings:CurrentInputRef[];file?:never};
-export type AnswerToolEvidence={used:true;refs:SourceRef[];calculations?:AgentCalculation[];clockReadings?:ClockReading[];customResults?:import('./agent-loop.ts').AgentToolResult[];toolInfo?:import('./agent-loop.ts').AgentToolResult[];completedToolIds?:string[];memoryUsed?:boolean;budgetExhausted?:boolean};
+export type AnswerToolEvidence={used:true;refs:SourceRef[];webSnapshots?:WebSnapshot[];calculations?:AgentCalculation[];clockReadings?:ClockReading[];customResults?:import('./agent-loop.ts').AgentToolResult[];toolInfo?:import('./agent-loop.ts').AgentToolResult[];completedToolIds?:string[];memoryUsed?:boolean;budgetExhausted?:boolean};
 export type GroundedAnswerRequest={
  model:string;question:string;query?:string;mode?:'answer'|'summary'|'chat';scope:AnswerScope;
  context?:DialogueContext;check?:()=>void;prepareContext?:()=>Promise<DialogueContext>;
@@ -146,7 +147,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  if(toolInfo.length!==(toolEvidence?.toolInfo??[]).length)throw Error('Invalid tool descriptions');
  const completedToolIds=toolEvidence?.completedToolIds??[];
  if(!Array.isArray(completedToolIds)||completedToolIds.length>MAX_PLANNER_AGENT_TOOLS||completedToolIds.some(id=>typeof id!=='string'||![...builtinToolIds,...AGENT_DISCOVERY_TOOL_IDS].some(known=>known===id)&&!/^user\.[a-z][a-z0-9-]{0,47}$/.test(id)))throw Error('Invalid completed tool receipts');
- const operationalEvidence=calculations.length>0||clockReadings.length>0||customResults.length>0||toolInfo.length>0;
+ const operationalEvidence=calculations.length>0||clockReadings.length>0||customResults.length>0||toolInfo.length>0||!!toolEvidence?.webSnapshots?.length;
  for(const reading of clockReadings)validateClockReading(reading);
  for(const item of calculations)checkedCalculation(item);
  const calculationOnlyScope=!!(workingFile||inputReadings.length)&&!!toolEvidence?.used&&toolEvidence.refs.length===0&&operationalEvidence&&!toolEvidence.memoryUsed;
@@ -178,7 +179,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // selected ranges against the actual tool evidence and current originals;
  // do not ask another generation to paraphrase it before review or display.
  if(request.reply!==undefined){
-  if(!request.reply||!Array.isArray(request.reply.sources)||Object.keys(request.reply).some(key=>!['answer','sources','status'].includes(key)))throw Error('Invalid answer or sources');
+  if(!request.reply||!Array.isArray(request.reply.sources)||Object.keys(request.reply).some(key=>!['answer','sources','webSources','status'].includes(key))||request.reply.webSources!==undefined&&(!Array.isArray(request.reply.webSources)||request.reply.webSources.some(source=>!validateWebCitation(source,toolEvidence?.webSnapshots??[]))))throw Error('Invalid answer or sources');
   if(!toolEvidence?.used||!toolEvidence.refs.length&&!operationalEvidence&&request.reply.status!=='insufficient_evidence'||inputReadings.length||mode==='chat')throw Error('Conflicting terminal reply scope');
   const labelled=hits.map((ref,index)=>({...ref,label:'S'+(index+1)}));
   const labels=request.reply.sources.map(ref=>ref&&labelled.find(item=>item.noteId===ref.noteId&&item.revision===ref.revision&&item.start===ref.start&&item.end===ref.end&&item.quote===ref.quote)?.label);
@@ -192,14 +193,14 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const fresh=await store.all();check();
   if(workingFile)workingFileNote(fresh,workingFile);
   if(!validateGroundingRefs(fresh,hits).ok)throw Error('Source changed · retry');
-  return {...parsed,...(parsed.status==='insufficient_evidence'?{checkedSources:bindEvidenceLabels(labelled.map(ref=>ref.label),labelled)}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+  return {...parsed,...(request.reply.webSources?.length?{webSources:request.reply.webSources as WebCitation[]} :{}),...(parsed.status==='insufficient_evidence'?{checkedSources:bindEvidenceLabels(labelled.map(ref=>ref.label),labelled)}:{}),model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
  }
  if(mode==='answer'&&!workingFile&&!inputReadings.length&&hits.length===1){
   const exact=exactMinutesBefore(question,hits[0].quote);
   if(exact){
    const fresh=await store.all();check();
    if(!validateGroundingRefs(fresh,hits).ok)throw Error('Source changed · retry');
-   return {answer:exact,sources:[hits[0]],model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+   return {answer:exact,sources:[hits[0]],webSources:undefined,status:undefined,checkedSources:undefined,recovery:undefined,answerBudget:undefined,inference:undefined,model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
   }
  }
  // The planner already resolved the search query using dialogue. A new top source

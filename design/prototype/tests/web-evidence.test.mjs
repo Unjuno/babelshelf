@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createWebCitation,createWebSnapshot,validateWebCitation,bindWebCitationLabels,bindMixedEvidenceLabels} from '../src/web-evidence.ts';
+import {bindMixedSourceLabelAnswer} from '../src/agent-evidence.ts';
+import {groundedAnswer} from '../src/grounded-answer.ts';
 
 const timestamp='2026-11-11T12:00:00.000Z';
 const snapshot=()=>createWebSnapshot({id:'a14e399e-4248-4fba-a899-6311126bd211',sessionId:'f64a73f8-854e-468e-97bd-41107ad11f96',provider:'RustXNG',url:'https://docs.example.test/guide',title:'Guide',retrievedAt:timestamp,text:'Alpha source text. Beta source text.'});
@@ -33,8 +35,22 @@ test('mixed source labels bind separately to verified Memory refs and live Web c
  assert.deepEqual(bindMixedEvidenceLabels(['S2','S1'],[{label:'S1',source:memory}],[{label:'S2',citation}],[page]),[
   {kind:'web',source:citation},{kind:'memory',source:memory},
  ]);
- assert.throws(()=>bindMixedEvidenceLabels(['S1'],[{label:'S1',source:memory}],[{label:'S1',citation}],[page]),/answer evidence labels/);
- assert.throws(()=>bindMixedEvidenceLabels(['S2'],[{label:'S1',source:memory}],[{label:'S2',citation}],[createWebSnapshot({...page,sessionId:'83d05445-6d8f-4ca1-a3f9-a83c38d05f6d'})]),/answer evidence labels/);
- assert.throws(()=>bindMixedEvidenceLabels(['S1'],[{label:'S1',source:{...memory,quote:'forged'}}],[],[]),/answer evidence labels/);
- assert.throws(()=>bindMixedEvidenceLabels(['S3'],[{label:'S1',source:memory}],[{label:'S2',citation}],[page]),/answer evidence labels/);
+ assert.throws(()=>bindMixedEvidenceLabels(['S1'],[{label:'S1',source:memory}],[{label:'S1',citation}],[page]),/Invalid answer evidence labels/);
+ assert.throws(()=>bindMixedEvidenceLabels(['S2'],[{label:'S1',source:memory}],[{label:'S2',citation}],[createWebSnapshot({...page,sessionId:'83d05445-6d8f-4ca1-a3f9-a83c38d05f6d'})]),/Invalid answer evidence labels/);
+ assert.throws(()=>bindMixedEvidenceLabels(['S1'],[{label:'S1',source:{...memory,quote:'forged'}}],[],[]),/Invalid answer evidence labels/);
+ assert.throws(()=>bindMixedEvidenceLabels(['S3'],[{label:'S1',source:memory}],[{label:'S2',citation}],[page]),/Invalid answer evidence labels/);
+});
+
+test('terminal answer returns exact host-bound Web citations and strips internal labels from Memory refs',()=>{
+ const page=snapshot(),citation=createWebCitation(page,{start:0,end:18}),memory={noteId:'memory-record',revision:3,start:7,end:18,quote:'source text',title:'Local note'};
+ const answer=bindMixedSourceLabelAnswer({answer:'The source confirms it.',sources:['S2','S1']},[{...memory,label:'S1'}],[{label:'S2',citation}],[page]);
+ assert.deepEqual(answer.sources,[memory]);assert.deepEqual(answer.webSources,[citation]);
+ assert.throws(()=>bindMixedSourceLabelAnswer({answer:'The source confirms it.',sources:['S2']},[],[{label:'S2',citation}],[]),/Invalid Web source labels/);
+});
+
+test('grounded answer revalidates session citations without persisting Web snapshots as Memory refs',async()=>{
+ const page=snapshot(),citation=createWebCitation(page,{start:0,end:18}),engine={loaded:'test',assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'r1'}],runtime:{revision:'runtime-r1'}}};
+ const answer=await groundedAnswer({store:{all:async()=>[],search:async()=>[]},engine},{model:'test',question:'What did the source page report?',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],webSnapshots:[page]},reply:{answer:'The source page contains supporting text.',sources:[],webSources:[citation]}});
+ assert.deepEqual(answer.sources,[]);assert.deepEqual(answer.webSources,[citation]);
+ await assert.rejects(groundedAnswer({store:{all:async()=>[],search:async()=>[]},engine},{model:'test',question:'What did the source page report?',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs:[],webSnapshots:[]},reply:{answer:'The source page contains supporting text.',sources:[],webSources:[citation]}}),/Invalid answer or sources|No matching notes/);
 });

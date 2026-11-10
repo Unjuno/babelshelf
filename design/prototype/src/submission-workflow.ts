@@ -22,6 +22,7 @@ import {appendDiagnosticLog} from './diagnostic-logs.ts';
 import {recordUnclassifiedTurnFailure} from './turn-failure-log.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
 import {searchRustXng} from './rustxng-search-client.ts';
+import type {WebCitation,WebSnapshot} from './web-evidence.ts';
 import {boundedPrefix} from './utf8-text.ts';
 import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
 import {activityLabel,createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
@@ -75,6 +76,7 @@ export type SubmissionView={
  reviewSchedule:(task:Task,turnId:string)=>void;
  startToolPackageFromChat:(idea:string)=>void;
  activityChanged?:(turnId:string)=>void;
+ showWebCitations?:(turnId:string,citations:readonly WebCitation[])=>void;
 };
 export type SubmissionServices={
  knowledge:KnowledgeStore;
@@ -184,7 +186,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    context=planningContextForInputs({...context,refs:[...context.refs,...importedRefs]},inputReadings.length>0);
    const descriptors=sent.filter(a=>a.reading||a.status==='Text available').map(({name,kind,status})=>({name,kind,status}));
-   let agentToolCalls:{tool:string;arguments:Record<string,unknown>;result:unknown}[]=[],customAccessEvidence:ReturnType<typeof agentEvidenceFromCalls>=[],agentBudgetExhausted=false,agentBudgetReason:AgentBudgetReason|undefined;
+   let agentToolCalls:{tool:string;arguments:Record<string,unknown>;result:unknown}[]=[],customAccessEvidence:ReturnType<typeof agentEvidenceFromCalls>=[],agentWebSnapshots:WebSnapshot[]=[],agentBudgetExhausted=false,agentBudgetReason:AgentBudgetReason|undefined;
    run.progress('','planning');
    const resolution=await resolveTurnRoute({current:request,question:text,check:checkSend,
     prepareContinuation:decisionFirst?async source=>{
@@ -212,7 +214,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       ...(connectionPreferences.downloads&&connectionPreferences.rustxngEndpoint.trim()&&navigator.onLine?{webSearch:async(query:string,signal?:AbortSignal)=>{checkSend();if(!connectionPreferences.downloads||!navigator.onLine)throw Error('Web search is unavailable while Offline');const result=await searchRustXng({endpoint:connectionPreferences.rustxngEndpoint,query,onlineMode:connectionPreferences.downloads,onlineSignal:navigator.onLine,signal});checkSend();return {provider:result.provider,retrievedAt:result.retrievedAt,results:result.results.map(row=>({title:row.title,url:row.url,snippet:row.snippet,rawContentStatus:row.rawContentStatus,rawContentTruncated:row.rawContentTruncated,...(row.rawContentStatus==='ok'&&row.pageText?{pageText:boundedPrefix(row.pageText,2_500)}:{})}))};}}:{}),
       ensureCustomRuntime:()=>ensureProductRuntime('custom-tools',false),check:checkSend,signal:run.signal,trace,
       activityEventCount:pagingAvailable?undefined:currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??activityEventCount,
-       });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentBudgetExhausted=coordinated.budgetExhausted;agentBudgetReason=coordinated.budgetReason;return coordinated.final;
+       });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentWebSnapshots=[...coordinated.webSnapshots];agentBudgetExhausted=coordinated.budgetExhausted;agentBudgetReason=coordinated.budgetReason;return coordinated.final;
     }
    });
    request=resolution.request;if(resolution.source==='decision'||resolution.source==='planner')setChatProgress('');
@@ -285,7 +287,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
    // A native reply may cite an exact search range even after a longer read.
    // Preserve the observed ranges; only legacy generation reselects evidence.
-   const toolEvidence=agentToolCalls.length?{used:true as const,refs:agentBudgetReason==='source-capacity'?agentAnswerEvidenceFromCalls(agentToolCalls,customAccessEvidence,true):(request?.reply?agentEvidenceFromCalls:agentAnswerEvidenceFromCalls)(agentToolCalls,customAccessEvidence),calculations:agentCalculationsFromCalls(agentToolCalls),clockReadings:agentClockReadingsFromCalls(agentToolCalls),customResults:agentCustomResultsFromCalls(agentToolCalls),toolInfo:agentToolInfoFromCalls(agentToolCalls),completedToolIds:[...new Set(agentToolCalls.map(call=>call.tool))],memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0,...(agentBudgetExhausted?{budgetExhausted:true}:{})}:undefined;
+   const toolEvidence=agentToolCalls.length?{used:true as const,refs:agentBudgetReason==='source-capacity'?agentAnswerEvidenceFromCalls(agentToolCalls,customAccessEvidence,true):(request?.reply?agentEvidenceFromCalls:agentAnswerEvidenceFromCalls)(agentToolCalls,customAccessEvidence),...(agentWebSnapshots.length?{webSnapshots:agentWebSnapshots}:{}),calculations:agentCalculationsFromCalls(agentToolCalls),clockReadings:agentClockReadingsFromCalls(agentToolCalls),customResults:agentCustomResultsFromCalls(agentToolCalls),toolInfo:agentToolInfoFromCalls(agentToolCalls),completedToolIds:[...new Set(agentToolCalls.map(call=>call.tool))],memoryUsed:agentToolCalls.some(call=>call.tool.startsWith('memory.'))||customAccessEvidence.length>0,...(agentBudgetExhausted?{budgetExhausted:true}:{})}:undefined;
    const metadataGuards=distinctSourceMetadataGuards(agentToolCalls.filter(call=>call.tool==='memory.sources').map(call=>{const page=call.result as {noteId:string;revision:number;snapshot:string};return {noteId:page.noteId,revision:page.revision,snapshot:page.snapshot};}));
    if(request?.action==='capture'){
     const previous=request.historyIndex!=null&&request.historyPart==='assistant'?prior.turns[request.historyIndex]:undefined;
@@ -307,6 +309,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources,metadataGuards);
       return {kind:'needsInput',reason:'insufficient-evidence'};
      }
+     if(parsed.webSources?.length){view.showWebCitations?.(id,parsed.webSources);await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:'Web sources need a reviewed save flow'});return {kind:'needsInput',reason:'web-source-save'};}
      request.body=parsed.answer;sources=parsed.sources.map(source=>({noteId:source.noteId,revision:source.revision,start:source.start,end:source.end,quote:source.quote,...(source.citedQuote?{citedQuote:source.citedQuote}:{})}));kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Saving note',refs:sources},undefined,metadataGuards);
     }else await finishTurn(id,{status:'Saving note',refs:importedRefs});
     await view.saveCapture({turnId:id,source:captureSource,body:request.body!,sources,kind});return captureSource||kind==='generated'?{kind:'awaitingApproval'}:{kind:'answered'};
@@ -335,7 +338,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources,metadataGuards);
      return {kind:'needsInput',reason:'insufficient-evidence'};
     }
-    const guard=parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':'answerBudget' in parsed&&parsed.answerBudget?'Limited answer space':request.action==='summary'?'Summary · selected excerpts':undefined},guard,metadataGuards);return {kind:'answered'};}
+    const guard=parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;if(parsed.webSources?.length)view.showWebCitations?.(id,parsed.webSources);await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':'answerBudget' in parsed&&parsed.answerBudget?'Limited answer space':request.action==='summary'?'Summary · selected excerpts':undefined},guard,metadataGuards);return {kind:'answered'};}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
    return items.length?(sent.every(a=>a.reading||a.voice||a.status==='Text available')?{kind:'imported'}:{kind:'partial',reason:'unread-input'}):{kind:'needsPreparation',reason:'model-unavailable'};
   }catch(e){try{recordUnclassifiedTurnFailure(diagnostics,connectionPreferences.diagnosticLogs,activityFailureRecorded,e);}catch{/* Diagnostics must never change the operation result. */}recoverDraft();try{if(currentDialogue().turns.some(t=>t.id===id))await finishTurn(id,{status:searchScopeFailure((e as Error).message,text,!!prior.currentFile,items.length>0)});else view.toast((e as Error).message);}catch(failure){view.failure((failure as Error).message);view.toast((failure as Error).message);}throw e;}

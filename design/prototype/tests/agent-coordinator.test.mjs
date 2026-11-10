@@ -519,13 +519,18 @@ test('coordinator hides Web search without a live Online adapter and keeps query
   const query='PRIVATE_WEB_QUERY_SENTINEL',pageText='PRIVATE_WEB_PAGE_SENTINEL';
   const {value}=input([
    JSON.stringify({action:'tool',query:'web.search',body:JSON.stringify({query})}),
-   JSON.stringify({action:'answer',query:'Current web result',target:'knowledge'})
+   JSON.stringify({action:'answer',query:'',reply:{status:'answered',answer:'The page contains the requested information.',sources:['S1']}})
   ],{...webOnly,webSearch:async sent=>{assert.equal(sent,query);return {provider:'RustXNG',retrievedAt:'2026-11-11T00:00:00.000Z',results:[{title:'Example',url:'https://example.org/article',snippet:'Discovery only',rawContentStatus:'ok',rawContentTruncated:false,pageText}]};}});
+  value.engine.plannerProtocol='native-tool-calls';
+  const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...args)=>{prompts.push(messages);return generate(messages,...args);};
   const records=[];
   value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>records.push(row),project,failureOf,failureProject);
   const result=await coordinateAgentTurn(value);
   assert.deepEqual(result.calls.map(call=>call.tool),['web.search']);
   assert.equal(result.calls[0].result.results[0].pageText,pageText);
+  assert.equal(result.final.reply.webSources.length,1);assert.equal(result.final.reply.webSources[0].quote,pageText);assert.equal(result.webSnapshots.length,1);
+  const webResult=JSON.parse(prompts[1].find(message=>message.role==='tool'&&message.name==='web.search').content);
+  assert.equal(webResult.results[0].source,'S1');assert.equal(webResult.results[0].pageText,pageText);
   assert.doesNotMatch(JSON.stringify(records),/PRIVATE_WEB_QUERY_SENTINEL|PRIVATE_WEB_PAGE_SENTINEL|Discovery only|example\.org/);
   assert.ok(records.some(row=>row.tool==='web.search'&&row.status==='succeeded'&&row.output.kind==='web_search_result'));
   assert.ok(records.some(row=>row.tool==='dialogue.plan'&&row.status==='succeeded'));

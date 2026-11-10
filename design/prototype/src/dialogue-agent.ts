@@ -6,7 +6,7 @@ import {DEFERRED_TOOL_SEARCH_ID} from './deferred-tool-search.ts';
 import {requestsImplicitSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {validAgentResultAction} from './harness-actions.ts';
 import type {ReplyStyle} from './reply-style.ts';
-export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
+export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];readObservedWebSources?:()=>AgentPlannerContext['observedWebSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
  let historyRepairUsed=false,deferredToolRepairUsed=false,protocolRepairUsed=false;
  const loop=await runReadOnlyAgentLoop({allowedTools:input.allowedTools,maxToolCalls:input.maxToolCalls,maxResultChars:input.maxResultChars,check:input.check,
   plan:async history=>{
@@ -14,7 +14,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
    const attempt=(historySelectorRejected=false,deferredToolRejected=false,nativeCallRejected:boolean|'mixed-final'|'source-label-leak'|'implementation-leak'=false,queryRejected=false,targetRejected=false)=>{
     inference=undefined;
     input.onPreview?.('');
-    const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,queryRejected,targetRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
+    const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),observedWebSources:input.readObservedWebSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,queryRejected,targetRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
     return input.tracePlan?input.tracePlan(history.length,work,()=>inference):work();
    };
    let raw:DialoguePlan;
@@ -52,7 +52,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
    }
    return {kind:'final' as const,value:raw};
   },
-  execute:(call,attemptIndex)=>input.traceTool?input.traceTool(call,()=>input.execute(call),attemptIndex):input.execute(call),
+  execute:(call,attemptIndex)=>input.traceTool?input.traceTool(call,()=>input.execute(call,attemptIndex),attemptIndex):input.execute(call,attemptIndex),
   onBudgetExhausted:history=>{
    const useful=input.hasUsefulEvidence?input.hasUsefulEvidence(history):history.some(item=>{
     if(item.error||item.result==null)return false;

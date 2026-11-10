@@ -1,6 +1,7 @@
 import {AgentSourceCapacityError,type AgentToolResult} from './agent-loop.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import type {SourceRef} from './conversation.ts';
+import {bindWebCitationLabels,type WebCitation,type WebSnapshot} from './web-evidence.ts';
 import type {FileResult} from './file-discovery.ts';
 import type {ToolHost} from './tools/tool-host.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
@@ -13,8 +14,9 @@ import {validateSourcePage} from './tools/memory.sources/tool.ts';
 import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 
 export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
-export type SourceLabelAnswer={answer:string;sources:SourceRef[];status?:'insufficient_evidence'};
+export type SourceLabelAnswer={answer:string;sources:SourceRef[];webSources?:WebCitation[];status?:'insufficient_evidence'};
 export type LabelledSource=SourceRef&{label:string};
+export type LabelledWebSource={label:string;citation:WebCitation};
 export class InternalSourceLabelLeakError extends Error {
  constructor(){super('Answer contains an internal source label');this.name='InternalSourceLabelLeakError';}
 }
@@ -64,23 +66,35 @@ export function bindEvidenceLabels(labels:unknown,evidence:readonly LabelledSour
  return selected.map(ref=>{const {noteId,revision,start,end,quote,title}=ref!;return {noteId,revision,start,end,quote,...(title?{title}:{})};});
 }
 export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],options:{userText?:string}={ }):SourceLabelAnswer{
+ return bindMixedSourceLabelAnswer(raw,evidence,[],[],options);
+}
+/** Bind mixed Memory/Web labels to host-owned sources; Web text remains session-only. */
+export function bindMixedSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],webEvidence:readonly LabelledWebSource[],snapshots:readonly WebSnapshot[],options:{userText?:string}={ }):SourceLabelAnswer{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid answer or sources');
  const value=raw as Record<string,unknown>;
  if(typeof value.answer!=='string'||!value.answer.trim()||Object.keys(value).some(key=>!['answer','sources','status'].includes(key))||value.status!==undefined&&!['answered','insufficient_evidence'].includes(value.status as string))throw Error('Invalid answer or sources');
- const sources=bindEvidenceLabels(value.sources,evidence);
- for(const ref of evidence){
+ if(!Array.isArray(value.sources)||value.sources.some(label=>typeof label!=='string')||new Set(value.sources).size!==value.sources.length||
+  new Set([...evidence.map(item=>item.label),...webEvidence.map(item=>item.label)]).size!==evidence.length+webEvidence.length)throw Error('Invalid answer or sources');
+ const selectedLabels=value.sources as string[];
+ // Preserve the established Memory citation contract and projection exactly.
+ // Web citations have a separate stricter binder against live session snapshots.
+ const sources=bindEvidenceLabels(selectedLabels.filter(label=>evidence.some(item=>item.label===label)),evidence);
+ const webLabels=selectedLabels.filter(label=>webEvidence.some(item=>item.label===label));
+ if(sources.length+webLabels.length!==selectedLabels.length)throw Error('Invalid answer or sources');
+ const webSources=bindWebCitationLabels(webLabels,webEvidence,snapshots);
+ for(const ref of [...evidence,...webEvidence]){
   if(!mentionsLabel(value.answer,ref.label))continue;
   const explicitlyNamed=typeof options.userText==='string'&&mentionsLabel(options.userText,ref.label);
-  const literalInCitedSource=sources.some(source=>source.noteId===ref.noteId&&source.revision===ref.revision&&source.start===ref.start&&source.end===ref.end&&mentionsLabel(source.quote,ref.label));
+  const literalInCitedSource=evidence.some(item=>item.label===ref.label&&selectedLabels.includes(item.label)&&mentionsLabel(item.quote,ref.label))||webEvidence.some(item=>item.label===ref.label&&selectedLabels.includes(item.label)&&mentionsLabel(item.citation.quote,ref.label));
   if(!explicitlyNamed&&!literalInCitedSource)throw new InternalSourceLabelLeakError();
  }
  if(hasInternalImplementationLeak(value.answer,options.userText??'',sources))throw new InternalImplementationLeakError();
  if(value.status==='insufficient_evidence'){
-  if(sources.length)throw Error('Insufficient evidence cannot carry citations');
+  if(sources.length||webSources.length)throw Error('Insufficient evidence cannot carry citations');
   return {answer:value.answer.trim(),sources:[],status:'insufficient_evidence'};
  }
- if(!sources.length&&evidence.length)throw Error('Invalid answer or sources');
- return {answer:value.answer.trim(),sources};
+ if(!selectedLabels.length&&(evidence.length||webEvidence.length))throw Error('Invalid answer or sources');
+ return {answer:value.answer.trim(),sources,...(webSources.length?{webSources}:{})};
 }
 export function agentClockReadingsFromCalls(calls:readonly AgentToolResult[]):ClockReading[]{
  const readings=calls.filter(call=>call.tool==='time.now').map(call=>validateClockReading(call.result));

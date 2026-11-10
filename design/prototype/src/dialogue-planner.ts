@@ -7,7 +7,8 @@ import {ModelRuntimeError,PlannerOutputError} from './planner-error.ts';
 import {safeRuntimeMetrics,type RuntimeGenerationMetrics} from './text-inference.ts';
 import {DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOOL_SEARCH_ID,deferredToolReferences} from './deferred-tool-search.ts';
 import {nativeFinalPlanTools} from './native-output-format.ts';
-import {agentEvidenceFromCalls,agentCalculationsFromCalls,agentClockReadingsFromCalls,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindSourceLabelAnswer,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer,type LabelledSource} from './agent-evidence.ts';
+import {agentEvidenceFromCalls,agentCalculationsFromCalls,agentClockReadingsFromCalls,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindMixedSourceLabelAnswer,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer,type LabelledSource,type LabelledWebSource} from './agent-evidence.ts';
+import {createWebCitation,type WebSnapshot} from './web-evidence.ts';
 import {answerLanguageInstruction,groundedOutputTokens,replyStyleInstruction,requestsExtendedReply,type ReplyStyle} from './reply-style.ts';
 import {AgentContextCapacityError,type AgentToolCapability} from './agent-loop.ts';
 import {historyPayload,historyMessages,type DialogueContext,type ChatEngine,type SourceRef} from './conversation.ts';
@@ -55,7 +56,7 @@ export function plannerScope(context:DialogueContext,inputs=false,question=''):P
 export type AgentPlannerHistoryEntry={tool:string;arguments:Record<string,unknown>;result?:unknown;resultOmitted?:string;batchId?:string;assistantContent?:string;error?:{code:'invalid_tool_input'|'tool_execution'|'search_snapshot_changed'|'result_too_large'|'no_progress_loop'|'batch_not_executed'|'tool_limit'}};
 const plannerMetricNames=['visibleTextTtftMs','generationMs','generationTokensPerSecond','runtimeTtftMs','runtimePrefillMs','runtimeDecodeMs','runtimeDecodeTokensPerSecond','runtimePromptTokens','runtimeCachedTokens','requestedThreads','runtimeThreads','runtimeObservedGpuLayers','runtimeObservedGpuTotalLayers'] as const;
 export type PlannerInferenceMetrics={measuredModelCalls:number;promptTokens:number;maxOutputTokens:number;countMs:number;generationWallMs:number;outputTokens?:number}&Pick<RuntimeGenerationMetrics,typeof plannerMetricNames[number]>;
-export type AgentPlannerContext={allowedTools:readonly AgentToolCapability[];history:readonly AgentPlannerHistoryEntry[];observedSources?:ReadonlyMap<number,readonly SourceRef[]>;maxToolCalls?:number|null;userGuidance?:string;replyStyle?:ReplyStyle;queryRejected?:boolean;targetRejected?:boolean;historySelectorRejected?:boolean;deferredToolRejected?:boolean;nativeCallRejected?:boolean|'mixed-final'|'source-label-leak'|'implementation-leak';onPreview?:(text:string)=>void;onInference?:(metrics:PlannerInferenceMetrics)=>void};
+export type AgentPlannerContext={allowedTools:readonly AgentToolCapability[];history:readonly AgentPlannerHistoryEntry[];observedSources?:ReadonlyMap<number,readonly SourceRef[]>;observedWebSources?:ReadonlyMap<number,readonly WebSnapshot[]>;maxToolCalls?:number|null;userGuidance?:string;replyStyle?:ReplyStyle;queryRejected?:boolean;targetRejected?:boolean;historySelectorRejected?:boolean;deferredToolRejected?:boolean;nativeCallRejected?:boolean|'mixed-final'|'source-label-leak'|'implementation-leak';onPreview?:(text:string)=>void;onInference?:(metrics:PlannerInferenceMetrics)=>void};
 function plannerVisibleTools(agent:AgentPlannerContext|undefined){
  if(!agent)return [];
  // The pinned runtime rejects tool_reference content and drops defer_loading.
@@ -116,7 +117,18 @@ function plannerReplySources(agent:AgentPlannerContext|undefined,inputs:boolean,
   return label?[{...ref,label}]:[];
  });
 }
-function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledSource[],observed:readonly SourceRef[]=[]):unknown{
+function plannerReplyWebSources(agent:AgentPlannerContext|undefined,inputs:boolean,native:boolean,memorySources:readonly LabelledSource[]):LabelledWebSource[]{
+ if(!native||inputs||!agent||memorySources.length>=64)return [];
+ const out:LabelledWebSource[]=[];
+ for(let index=0;index<agent.history.length;index++){
+  const item=agent.history[index];if(item.tool!=='web.search'||item.error||item.resultOmitted||item.result===undefined)continue;
+  for(const snapshot of agent.observedWebSources?.get(index)??[]){
+   try{out.push({label:'S'+(memorySources.length+out.length+1),citation:createWebCitation(snapshot,{start:0,end:snapshot.text.length})});}catch{/* Invalid or empty page text is not citable. */}
+  }
+ }
+ return out;
+}
+function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledSource[],webSources:readonly LabelledWebSource[]=[],observed:readonly SourceRef[]=[]):unknown{
  const matchSource=(ref:SourceRef|undefined)=>ref&&sources.find(item=>item.noteId===ref.noteId&&item.revision===ref.revision&&item.start===ref.start&&item.end===ref.end&&item.quote===ref.quote);
  if(tool==='memory.search'&&result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as {hits?:unknown[]}).hits)){
   const page=result as Record<string,unknown> & {hits:unknown[]};
@@ -127,6 +139,14 @@ function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledS
   // This envelope is application-owned. A package's own source-like fields
   // remain inside result and can never create a trusted original or label.
   return originals.length?{result,originals}:result;
+ }
+ if(tool==='web.search'&&result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as {results?:unknown[]}).results)){
+  const page=result as Record<string,unknown>&{results:unknown[]};
+  return {...page,results:page.results.map(row=>{
+   if(!row||typeof row!=='object'||Array.isArray(row))return row;const value=row as Record<string,unknown>;
+   const match=webSources.find(item=>item.citation.url===value.url&&item.citation.title===value.title);
+   return match?{...value,source:match.label}:value;
+  })};
  }
  if(!sources.length||!Array.isArray(result)||!['memory.search','memory.read'].includes(tool))return result;
  return result.map(row=>{
@@ -171,7 +191,7 @@ function nativePlannerInstructions(scope:PlannerScope,agent:AgentPlannerContext|
   'Answer with finish_answer. Propose creating, editing or saving only when the CURRENT request asks for it; those functions open review and do not commit a write. Saving existing dialogue uses its original selector and bytes, never a rewritten copy.',
  ];
  if(scope.toolIds?.includes(DEFERRED_TOOL_SEARCH_ID)&&agent)instructions.push(customToolGuideInstruction(agent));
- if(!scope.inputs)instructions.push('Put the complete response in reply.answer. Cite only offered original labels in reply.sources; no labels means sources=[]. Source labels belong only in sources, not answer prose. Keep storage IDs and tool-call syntax out of answer prose unless explicitly requested or literal source content; the app renders citations separately. Cite only supporting originals actually returned by tools. Successful calculation, clock and custom operation results may support an answer with no original-file citations. State absent details as unknown; if the request cannot be answered from available evidence, use status=insufficient_evidence with sources=[]. '+sourceComparisonInstruction+' '+replyStyleInstruction(agent?.replyStyle??'balanced'));
+ if(!scope.inputs)instructions.push('Put the complete response in reply.answer. Cite only offered source labels in reply.sources; no labels means sources=[]. Source labels belong only in sources, not answer prose. Keep storage IDs and tool-call syntax out of answer prose unless explicitly requested or literal source content; the app renders citations separately. Cite only supporting Memory excerpts or Web page text returned by tools. Web labels refer to exact text from the current search attempt; never invent a URL, quotation or source. Successful calculation, clock and custom operation results may support an answer with no source citations. State absent details as unknown; if the request cannot be answered from available evidence, use status=insufficient_evidence with sources=[]. '+sourceComparisonInstruction+' '+replyStyleInstruction(agent?.replyStyle??'balanced'));
  if(scope.inputs)instructions.push('Current attachments have priority: use target=inputs for the final answer or summary. For mixed requests first retrieve the saved evidence with Memory tools. The app combines both source sets. Attachment descriptors alone are not evidence.');
  if(scope.file)instructions.push('Use target=file only for the currently opened file. To edit another file use target=path with its exact known path.');
  if(scope.current||scope.historyCount>0)instructions.push('Use offered current/history selectors only for requests about existing dialogue. History indices are zero-based and need the original speaker (user or assistant). A follow-up about saved facts still needs original evidence.');
@@ -180,6 +200,7 @@ function nativePlannerInstructions(scope:PlannerScope,agent:AgentPlannerContext|
 export function planDialogueMessages(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext,nativeToolProtocol=false,sourceCatalog?:readonly LabelledSource[]){
  context=planningContextForRequest(context,attachments.length>0,question);const {scope,toolBudgetExhausted,visibleTools}=agentPlannerScope(question,context,attachments,agent,nativeToolProtocol);
  const replySources=plannerReplySources(agent,scope.inputs,nativeToolProtocol,sourceCatalog);
+ const replyWebSources=plannerReplyWebSources(agent,scope.inputs,nativeToolProtocol,replySources);
  const instructions=nativeToolProtocol?nativePlannerInstructions(scope,agent):[plannerRoutingInstruction(scope)];
  if(scope.toolIds?.includes('memory.sources'))instructions.push('To verify a saved note against its sources, find the note, use memory.sources for its source links, then read the originals. Repeating dialogue or a saved answer does not verify its sources.');
  const stepInstructions:string[]=[];
@@ -276,7 +297,7 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
    messages.push({role:'assistant',content:first.assistantContent??'',tool_calls:calls.map(({item,id})=>({id,type:'function',function:{name:item.tool,arguments:item.arguments}}))});
    for(const {item,id,historyIndex} of calls){
     const discovery=item.resultOmitted?compactDiscoveryResult(item,agent.allowedTools):undefined;
-    const result=item.error?{error:{code:item.error.code}}:item.resultOmitted?{omitted:'Result not included in this prompt.',...(discovery?{discovery}:{})}:labelToolEvidence(item.tool,item.result,replySources,visibleCustomSources(agent,historyIndex));
+    const result=item.error?{error:{code:item.error.code}}:item.resultOmitted?{omitted:'Result not included in this prompt.',...(discovery?{discovery}:{})}:labelToolEvidence(item.tool,item.result,replySources,replyWebSources,visibleCustomSources(agent,historyIndex));
     let content:string;try{content=JSON.stringify(result);}catch{content='{"error":{"code":"tool_execution"}}';}
     messages.push({role:'tool',tool_call_id:id,name:item.tool,content});
    }
@@ -329,11 +350,12 @@ function plannerInput(question:string,context:DialogueContext,attachments:{name:
   const present=agentCustomResultsFromCalls([call]).length+agentCalculationsFromCalls([call]).length+agentClockReadingsFromCalls([call]).length+agentToolInfoFromCalls([call]).length;
   if(present)operationalEvidence=true;
  }
- if(!nativeToolProtocol)return {operationalEvidence,messages:planDialogueMessages(question,context,attachments,agent),format,scope,replySources:[] as LabelledSource[]};
+ if(!nativeToolProtocol)return {operationalEvidence,messages:planDialogueMessages(question,context,attachments,agent),format,scope,replySources:[] as LabelledSource[],replyWebSources:[] as LabelledWebSource[]};
  const replySources=plannerReplySources(agent,scope.inputs,true,sourceCatalog);
+ const replyWebSources=plannerReplyWebSources(agent,scope.inputs,true,replySources);
  const nativeToolIds=toolBudgetExhausted?[]:scope.toolIds;
- const tools=[...(agent?.allowedTools.filter(tool=>nativeToolIds?.includes(tool.id)).map(tool=>({type:'function' as const,function:{name:tool.id,description:(tool.usage||`Use ${tool.id}.`).slice(0,1000),parameters:tool.inputSchema?plannerInputSchema(tool.inputSchema):{type:'object',properties:{},additionalProperties:false}}}))??[]),...nativeFinalPlanTools(scope,replySources.map(source=>source.label),!!agent?.history.length)];
- return {operationalEvidence,messages:planDialogueMessages(question,context,attachments,agent,true,replySources),format:{type:'native-tool-plan' as const,tools},scope,replySources};
+ const tools=[...(agent?.allowedTools.filter(tool=>nativeToolIds?.includes(tool.id)).map(tool=>({type:'function' as const,function:{name:tool.id,description:(tool.usage||`Use ${tool.id}.`).slice(0,1000),parameters:tool.inputSchema?plannerInputSchema(tool.inputSchema):{type:'object',properties:{},additionalProperties:false}}}))??[]),...nativeFinalPlanTools(scope,[...replySources,...replyWebSources].map(source=>source.label),!!agent?.history.length)];
+ return {operationalEvidence,messages:planDialogueMessages(question,context,attachments,agent,true,replySources),format:{type:'native-tool-plan' as const,tools},scope,replySources,replyWebSources};
 }
 export async function plannerContextFits(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext){
  const {messages,format}=plannerInput(question,context,attachments,agent,engine.plannerProtocol==='native-tool-calls'),count=await engine.count(messages,format);
@@ -361,7 +383,7 @@ export async function plannerContextFits(engine:ChatEngine,question:string,conte
 export async function planDialogue(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext):Promise<DialoguePlan>{
  const direct=plainConversationRoute(question,attachments,context);if(direct)return direct as DialoguePlan;
  engine=engine.pin?.()??engine;
- const input=plannerInput(question,context,attachments,agent,engine.plannerProtocol==='native-tool-calls'),{scope}=input;let {messages,format,replySources,operationalEvidence}=input;
+ const input=plannerInput(question,context,attachments,agent,engine.plannerProtocol==='native-tool-calls'),{scope}=input;let {messages,format,replySources,replyWebSources,operationalEvidence}=input;
  let promptTokens=0,countMs=0;
  const countPrompt=async(current:typeof messages)=>{const start=performance.now();try{const result=await engine.count(current,format);promptTokens=result.prompt_tokens;return result;}catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;throw new ModelRuntimeError(error);}finally{countMs+=performance.now()-start;}};
  // Native generation includes hidden reasoning, tool syntax and the visible
@@ -383,7 +405,7 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
    const {result:_result,...entry}=history[index];
    const discovery=compactDiscoveryResult(history[index],agent.allowedTools);
    history[index]={...entry,...(discovery?{result:discovery}:{}),resultOmitted:'omitted from this planner prompt to fit the selected model context'};
-   ({messages,format,replySources,operationalEvidence}=plannerInput(question,context,attachments,{...agent,history},engine.plannerProtocol==='native-tool-calls',input.replySources));
+   ({messages,format,replySources,replyWebSources,operationalEvidence}=plannerInput(question,context,attachments,{...agent,history},engine.plannerProtocol==='native-tool-calls',input.replySources));
    await countPrompt(messages);maxOutputTokens=outputBudget();
    if(maxOutputTokens){fits=true;break;}
   }
@@ -422,14 +444,15 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  if(agent?.history.length&&!validAgentResultAction(value.action))invalid('agent final action');
  let terminalReply:SourceLabelAnswer|undefined;
  const replyAction=['answer','summary'].includes(value.action)||value.action==='capture'&&value.target===undefined&&value.historyIndex==null;
- if(Object.hasOwn(value,'reply')||replySources.length&&replyAction){
+ if(Object.hasOwn(value,'reply')||(replySources.length||replyWebSources.length)&&replyAction){
   if(!replyAction||scope.inputs)invalid('terminal reply scope');
   if(['length','max_tokens','max_new_tokens'].includes(generated.finishReason??'')||!['stop','eos_token'].includes(generated.finishReason??'')&&generated.outputTokens!==undefined&&generated.outputTokens>=(generated.outputTokenLimit??maxOutputTokens))invalid('terminal reply incomplete','Response exceeded model output limit');
   let parsedReply:SourceLabelAnswer;
-  try{parsedReply=bindSourceLabelAnswer(value.reply,replySources,{userText:question});}catch(error){invalid(error instanceof InternalSourceLabelLeakError?'terminal answer source-label leak':error instanceof InternalImplementationLeakError?'terminal answer implementation leak':'terminal reply sources','Invalid answer or sources');}
-  const originalNote=!replySources.length&&value.action==='capture'&&!agent?.history.length;
+  const snapshots=[...(agent?.observedWebSources?.values()??[])].flat();
+  try{parsedReply=bindMixedSourceLabelAnswer(value.reply,replySources,replyWebSources,snapshots,{userText:question});}catch(error){invalid(error instanceof InternalSourceLabelLeakError?'terminal answer source-label leak':error instanceof InternalImplementationLeakError?'terminal answer implementation leak':'terminal reply sources','Invalid answer or sources');}
+  const originalNote=!replySources.length&&!replyWebSources.length&&value.action==='capture'&&!agent?.history.length;
   if(originalNote&&parsedReply!.status==='insufficient_evidence')invalid('terminal reply scope');
-  if(!replySources.length&&!originalNote&&!operationalEvidence&&(!agent?.history.length||parsedReply!.status!=='insufficient_evidence'))invalid('terminal reply scope');
+  if(!replySources.length&&!replyWebSources.length&&!originalNote&&!operationalEvidence&&(!agent?.history.length||parsedReply!.status!=='insufficient_evidence'))invalid('terminal reply scope');
   if(!originalNote)terminalReply=parsedReply!;
   const {reply,...plan}=value;
   if(value.action==='capture'&&Object.hasOwn(plan,'body'))invalid('competing terminal bodies');
