@@ -38,8 +38,10 @@ selection or data was changed during that inspection.
 Local candidate build `eab907c5290f44b8` packages 166 verified assets. The
 focused model/catalog tests passed 37/37, `npm run check` passed, Settings UI
 regressions passed 3/3 after preserving the existing model-set accessible name,
-and product acceptance passed 9/9. It has not been pushed, merged or deployed;
-the public Site remains v334 until a focused PR completes the full CI workflow.
+and product acceptance passed 9/9. The change is in PR #29; its full quality
+workflow is running. It is not merged or deployed; the public Site remains
+v334 until the exact PR candidate passes CI, merges, and is separately
+published and checked in the sidebar browser.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only
