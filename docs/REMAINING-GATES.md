@@ -2,15 +2,16 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `4a1bab7`, which merges PR #14; that PR reconciled release
-documentation and did not change the app bundle. The local
-`codex/ui-design-handoff` branch is fast-forwarded to that merge. Its remote
-feature ref still points to the pre-merge commit and will be advanced with the
-next verified change. The public Site v330 was verified with app build
-`53c14c67df540122` from source `b9d066c`; it already contains the registered
-LFM3 IQ3_M candidate and optional Search UI. The current semantic-agent wiring
-change is local and not yet built, pushed, CI-verified or deployed. Untracked
-QA/model artifacts remain preserved.
+GitHub `main` is `44d7824`, which merges PR #15. PR #15 connects a selected and
+loaded semantic Search runtime to the normal agent `memory.search` path while
+retaining lexical fallback. Both the PR quality workflow and main's post-merge
+full quality run [42744216106](https://github.com/Unjuno/babelshelf/actions/runs/42744216106)
+passed all stages. The
+local `codex/ui-design-handoff` branch contains the merged code commit; its
+remote feature ref will be advanced with the next verified change. Public Site
+v331 serves app build `46dc9d2ee209691a` from full source commit
+`44d782477e02d4319aff567e9d55189e8cec9f60`; live `build.json` and service
+worker report that build. Untracked QA/model artifacts remain preserved.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only
@@ -19,18 +20,17 @@ and must not be described as phone-compatible. Existing text/decision/model-set
 selectors and separate model role catalogs are present in source. Their code
 presence alone does not prove the current browser has refreshed its app shell.
 
-Semantic Search was implemented as an optional local embedding role with
-explicit asset/runtime preparation, revision-keyed derived storage, and
-deterministic lexical fallback. Review found that the normal Send/agent path
-still passed only lexical search, despite the standalone resolved-search path
-supporting semantic hits. The local fix now routes a selected, loaded Search
-runtime through the same bounded merge before the agent's registered
-`memory.search`; the added coordinator integration test then reads the current
-note revision and checks exact citation evidence. Focused local results:
-77/77 coordinator tests, 65/65 semantic/settings/model-set tests, and
-`npm run check` pass. This is controlled integration evidence; actual Granite
-inference over saved Memory and a public-build/browser citation flow remain
-open until the full quality workflow and deployment complete.
+Semantic Search is an optional local embedding role with explicit
+asset/runtime preparation, revision-keyed derived storage, and deterministic
+lexical fallback. PR #15 connected the selected, loaded Search runtime to the
+normal Send/agent path before its registered `memory.search`. Its coordinator
+integration regression retrieves a semantic hit, reads the current note
+revision and checks exact citation evidence. Focused local results: 77/77
+coordinator tests, 65/65 semantic/settings/model-set tests, and `npm run check`
+pass; PR quality passed and the app is included in public Site v331. These are
+controlled integration and delivery checks, not evidence that Granite was
+downloaded or run, that public-browser semantic retrieval/citations work, or
+that the role fits a phone. Those end-to-end/runtime gates remain open.
 
 The current text-model load path has a five-minute no-progress deadline and a
 30-minute absolute deadline, retires its inference Worker on timeout, and
@@ -88,7 +88,7 @@ candidate is [Granite Embedding 97M Multilingual R2 ONNX](https://huggingface.co
 
 PC preflight used the exact revision/int8 file and the Transformers.js tokenizer. Direct ONNX Runtime Node CPU and ONNX Runtime Web WASM CPU sessions both loaded the verified file bytes and produced 384-dimensional CLS-pooled, normalized embeddings; the same small Japanese query ranked its related passage above an unrelated passage (cosines 0.916/0.737 and 0.913/0.740 respectively). One run including tokenizer/session setup took 1.847 s for Node CPU and 1.938 s for ONNX Runtime Web WASM. This is a smoke sample, not a retrieval-quality benchmark. Transformers.js `pipeline('feature-extraction', ... device:'cpu')` on Node still fails when ONNX Runtime Node loads the cached model by path, even though that file exists and its SHA-256 matches; direct session-from-bytes succeeds. Since the PWA uses ONNX Runtime Web, the direct WASM pass reduces concern about the candidate graph but does not validate the app's browser Worker, Vite packaging, GPU provider, cancellation, cache or indexing path. Keep model acquisition explicit and resumable. No Search selector, embedding index, or semantic-ranking path has been implemented; the next code milestone remains a measured optional search adapter with lexical fallback and revision-safe derived storage that leaves normal search and saved content unchanged when unprepared.
 
-2026-11-10 implementation preflight: added `semantic-search-core.ts` as a small, runtime-independent boundary. It creates exact UTF-16 source ranges with bounded overlap and binds proposed semantic hits only when note ID, current revision, range and exact quoted text match the current canonical note; result metadata comes from that note and results are capped. The focused four-case suite and full prototype suite (1,909/1,909 before the added configuration case) passed, `npm run check` passed, and the prototype TypeScript/Vite/Sites build passed with the protected mobile runtime integrity check. This is only the citation/chunking primitive: there is still no model preparation UI, browser inference worker, derived embedding index, semantic ranking integration, or user-visible Search role. Do not publish or describe semantic search as available yet.
+2026-11-10 implementation preflight (historical stage before PR #15): added `semantic-search-core.ts` as a small, runtime-independent boundary. It creates exact UTF-16 source ranges with bounded overlap and binds proposed semantic hits only when note ID, current revision, range and exact quoted text match the current canonical note; result metadata comes from that note and results are capped. The focused four-case suite and full prototype suite (1,909/1,909 before the added configuration case) passed, `npm run check` passed, and the prototype TypeScript/Vite/Sites build passed with the protected mobile runtime integrity check. At that stage the model preparation UI, browser inference worker, derived embedding index, semantic ranking and Search role were absent. PR #15 subsequently connected these pieces to normal agent `memory.search`; see the current status at the top of this file. Do not treat this earlier snapshot as the current feature state.
 
 Citation-boundary follow-up: `bindSemanticHits` now admits only canonical records whose state is exactly `active`. A regression first reproduced that a higher-ranked `withdrawn` note could otherwise win semantic retrieval; withdrawn and state-unknown records are now excluded before citation binding. The primitive remains unconnected to production Search, so this does not imply an end-user feature or repair the existing deterministic search path.
 
@@ -100,9 +100,9 @@ Search-role schema preflight on `codex/semantic-search-foundation`: the code cha
 
 Semantic-search orchestration preflight on `codex/semantic-search-foundation` (2026-11-10): `semantic-search-service.ts` now batches caller-provided embeddings, atomically replaces per-note derived vectors only after successful embedding, prunes derived vectors for deleted/withdrawn/protected/system notes, and reloads the current source list after query embedding before binding ranked hits. New derived entries store ranges and vectors, not duplicate passage text; citations are reconstructed from current Memory. Indexing preflights its chunk budget before embedding and materializes text for one note at a time. Service/store/core tests pass (16/16), the complete prototype suite passes (1,924/1,924), `npm run check`, TypeScript and prototype production builds pass.
 
-Embedding-package pin preflight (2026-11-10): `semantic-embedding-manifest.json` now freezes only the inspected Granite multilingual revision's config, tokenizer, and int8 ONNX files, with exact byte counts and SHA-256 values. A runtime guard verifies ModernBERT, CLS pooling, and 384-dimensional output metadata before a future adapter can load it. The package totals 123,174,716 bytes (about 123 MB decimal); this is transfer size only, not memory use or device fit. Manifest/config tests pass (2/2). This is not yet an app-owned asset download, inference worker, GPU route, Search UI, or retrieval integration; do not offer or claim it is runnable.
+Embedding-package pin preflight (2026-11-10; historical stage before the app adapter): `semantic-embedding-manifest.json` freezes the inspected Granite multilingual revision's config, tokenizer, and int8 ONNX files, with exact byte counts and SHA-256 values. A runtime guard verifies ModernBERT, CLS pooling, and 384-dimensional output metadata. The package totals 123,174,716 bytes (about 123 MB decimal); this is transfer size only, not memory use or device fit. Manifest/config tests passed (2/2). The app-owned asset/runtime adapter and Search settings were added after this snapshot; actual app asset acquisition and inference remain unverified.
 
-This still has no registered embedding adapter, model-preparation UI, background indexing trigger, or `memory.search` integration. The feature remains unavailable to users; only an end-to-end product acceptance flow can change that status.
+Historical preflight notes above describe stages before the PR #15 integration. Current code now registers the embedding adapter, exposes model/runtime preparation and connects prepared semantic retrieval to normal `memory.search`; do not use those older “not available” statements as current status. Still unverified: actual app-owned Granite asset acquisition and inference, background/explicit indexing behavior in a live product flow, semantic retrieval and citation in an installed browser, and physical-device memory/performance. The optional role should remain unprepared by default until those flows are accepted.
 
 After that reconciliation, the IQ3_M selection path was rechecked on the
 current branch: 80 focused model/catalog/runtime unit cases passed, and 17
