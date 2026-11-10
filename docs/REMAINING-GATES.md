@@ -2,6 +2,16 @@
 
 ### Checked now · 2026-11-10
 
+The development branch's Activity privacy projection now retains only
+calculator expressions accepted unchanged by the closed arithmetic parser;
+other arbitrary text remains a byte-count summary. This keeps the offline
+calculator receipt usable without reopening general prompt/query retention.
+Local targeted and full regressions passed, and GitHub Quality run
+[42802252746](https://github.com/Unjuno/babelshelf/actions/runs/42802252746)
+passed all gates on candidate `5566e4c`. The change is pushed to
+`codex/ui-design-handoff` but is not yet in `main` or the public Site. Detailed
+evidence and the earlier failing run are in [TEST-RESULTS.txt](TEST-RESULTS.txt).
+
 The title-bound water comparison guard now checks explicit strict and
 non-strict relations instead of reducing every comparison to a greater/not-
 greater boolean. It covers a narrow set of English and Japanese comparative
