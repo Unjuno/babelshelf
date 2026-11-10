@@ -14,6 +14,21 @@ test('browser storage estimates warn only when known free space is below selecte
  assert.equal(preparationEstimateMayBeTooLarge(-1,10),false);
 });
 
+test('Search is part of reviewed preparation, estimates only missing pinned files and can be stopped safely',async()=>{
+ const {semanticEmbeddingManifest,semanticEmbeddingAssetBytes}=await import('../src/semantic-embedding-manifest.ts');
+ const prefs=initial();prefs.searchModel=semanticEmbeddingManifest.id;prefs.searchLibrary=[semanticEmbeddingManifest.id];
+ const missing=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false,search:false},'search');
+ assert.deepEqual(missing.steps,[{role:'search',label:semanticEmbeddingManifest.name,readyLabel:'Files verified',ready:false,bytes:semanticEmbeddingAssetBytes}]);
+ assert.equal(missing.bytes,semanticEmbeddingAssetBytes);
+ const present=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false,search:true},'search');
+ assert.equal(present.bytes,0);assert.equal(present.steps[0].ready,true);
+ const calls=[];await runInitialPreparation(present,async role=>calls.push(role),async()=>calls.push('commit'));
+ assert.deepEqual(calls,['search','commit']);
+ await assert.rejects(runInitialPreparation(missing,async role=>calls.push(role),async()=>calls.push('unexpected commit'),()=>{},async()=>{throw Error('Stopped');}),/Stopped/);
+ assert.deepEqual(calls,['search','commit']);
+ assert.throws(()=>initialPreparationPlan({...prefs,searchModel:'unregistered-search'},{text:false,speech:false,ocr:false,search:false},'search'),/Search runtime not connected/);
+});
+
 test('pinned LFM3 Q8 preparation budgets only its verified weights and shared LFM3 runtime',async()=>{
  const {lfm3RuntimeBytes}=await import('../src/lfm3-text-manifest.ts');
  const prefs=initial();prefs.textModel='lfm3-1.7b-q8-0';prefs.textLibrary.push(prefs.textModel);

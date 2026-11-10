@@ -22,7 +22,7 @@ function queryFailureShape(error:PlannerOutputError){
 const lifecycleActivityLabels={
  'tools.search':'Find tool','tools.read-skill':'Read tool guide',
  'decision.prepare':'Prepare decision model','decision.load':'Load decision model','decision.unload':'Unload decision model','decision.classify':'Decide',
- 'image.read':'Read image','image.describe':'Describe image','ocr.prepare':'Prepare image reader','vision.prepare':'Prepare vision model',
+ 'image.read':'Read image','image.describe':'Describe image','ocr.prepare':'Prepare image reader','vision.prepare':'Prepare vision model','search.prepare':'Prepare Search model',
  'runtime.prepare':'Prepare local runtime','model.prepare':'Prepare text model','model.unload':'Unload model','model.test':'Test model generation',
  'speech.prepare':'Prepare speech model','pdf.read':'Read PDF','speech.transcribe':'Transcribe','model.load':'Load model',
  'dialogue.plan':'Select action','dialogue.subject':'Resolve speaker','dialogue.compact':'Context','dialogue.read':'Read earlier message',

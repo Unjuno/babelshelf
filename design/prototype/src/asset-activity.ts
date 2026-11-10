@@ -15,7 +15,8 @@ import {getSpeechManifest,speechModelLabel} from './speech-models.ts';
 import {visionManifest} from './vision-assets.ts';
 import type {CustomVisionModel} from './preference-records.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
-export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'vision.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare'|'runtime.prepare';
+import {semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
+export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'vision.prepare'|'search.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare'|'runtime.prepare';
 type FileDescriptor={name:string;size:number;type:string};
 const filePin=(f:{name?:string;path?:string;bytes:number;sha256:string})=>({name:f.name??f.path!,bytes:f.bytes,sha256:f.sha256});
 export function textAssetInput(id:string,allowNetwork=false,files?:FileDescriptor[],customModels:CustomLocalModel[]=[]){
@@ -30,6 +31,7 @@ export function speechAssetInput(allowNetwork:boolean,custom?:CustomSpeechModel,
  const model=getSpeechManifest(id);if(!model)throw Error('Speech runtime not connected');
  return {source:{name:speechModelLabel(id)},role:'speech',model:{id:model.id,revision:model.revision,dtype:model.dtype},runtime:model.runtime,device:model.device,files:model.files.map(filePin),allowNetwork,method:'explicit-preparation'};
 }
+export function searchAssetInput(allowNetwork:boolean){return {source:{name:semanticEmbeddingManifest.name},role:'search',model:{id:semanticEmbeddingManifest.id,repository:semanticEmbeddingManifest.repository,revision:semanticEmbeddingManifest.revision,license:semanticEmbeddingManifest.license,dtype:semanticEmbeddingManifest.dtype,files:semanticEmbeddingManifest.files.map(filePin)},runtime:semanticEmbeddingManifest.runtime,device:semanticEmbeddingManifest.device,allowNetwork,method:allowNetwork?'explicit-preparation':'local-only'};}
 // Acquired synchronously before the first audit write: clicks cannot race the worker's busy state.
 export class AssetOperationGate{
  private held=false;
