@@ -1,3 +1,30 @@
+# Public Site v341 — include Search in selected model-set preparation (2026-11-11 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`0e2be9077f805c173db6db0009f345a69353cd2c`; PR #39 passed the exact-candidate
+Local PWA quality workflow [42875405317](https://github.com/Unjuno/babelshelf/actions/runs/42875405317)
+before merge. Product app build `22b6ac0a34f1dcea` contains 166 verified
+assets. Site source commit `4017cf02571b115bdc0be54e6abc4ae771af2c0f`; saved
+version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f251d1149acc819188df61c46bad8ae8`
+(v341); production deployment `appgdep_6af36796f6808191968d5557fe790614`
+succeeded. The public Site remains at `https://babelshelf.com`.
+
+The existing sidebar PWA applied the deployment: Settings → Developer showed
+active worker `22b6ac0a34f1dcea` / bundle `index-PNo-3Zm4.js`. Settings → Models
+showed LFM3 Q4_0, community IQ3_M 3-bit, and Q8_0 candidates; Compact media,
+Text + image + audio Q8, and Full local sets each identify Search. Selecting
+Initial setup for the default text-only set summarized the model and runtime
+together as 1,077.2 MB; Search remains optional in this set. The app was
+returned to Offline. No model or runtime was downloaded or loaded, so this
+confirms deployment and preparation-plan presentation, not model execution or
+device performance.
+
+The Site archive has SHA-256
+`914cece22d8c25e6b9891adb353ea01d0b99f4ac5ae5b22bac217a0790b92958`
+(110,970,880 bytes /205 files). Delivery checks verified exact ONNX WASM bytes
+through gzip and identity responses, offline-shell transport, and mutable
+shell cache policy. No user knowledge or model weights are included.
+
 # Public Site v340 — deploy latest verified main (2026-11-11 JST)
 
 Product source: `Unjuno/babelshelf` `main` at

@@ -30,8 +30,11 @@ Connection settings remain Memory-backed. Chat may propose toggling `diagnosticL
 
 ## Next work and limits
 
-The LFM3 IQ3_M catalog label and disclosure are now merged and deployed. The
-next model-specific gate is a real-device load/generation measurement; do not
+The LFM3 IQ3_M catalog label and disclosure are deployed. PR #39 also puts the
+selected Search model into the relevant media/full model-set preparation plan;
+Site v341 shows those choices in the sidebar. Search stays optional in the
+default text-only set, and no model assets were downloaded during that release.
+The next model-specific gate is a real-device load/generation measurement; do not
 infer compatibility from the selectable route, browser GPU hints, or model
 metadata. The public PWA may continue to hold an old worker after a host
 deployment; use the app's Update action, then verify the active build in
