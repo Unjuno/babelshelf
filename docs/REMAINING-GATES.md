@@ -24,6 +24,11 @@ percentage when Wllama emits no progress. The remaining iPhone gate is one
 current-build Home Screen PWA run of the selected model. A WebGPU adapter probe
 is not proof the model ran on that adapter or fits memory.
 
+The Developer test limit is enforced for custom LFM3 registrations inside the
+Worker too; it uses the lower of the selected model's configured context and
+2K/4K/8K test context. PC regressions pass (1,948 prototype tests); the
+physical iPhone runtime gate is still open.
+
 ### Previously verified implementation milestones · 2026-11-10
 
 The development branch's Activity privacy projection now retains only

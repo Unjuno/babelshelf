@@ -8480,3 +8480,14 @@ browser tests (including bounded test context, separate runtime preparation,
 Q8 selection and IQ3_M model-set selection), `npm run check`, and
 `git diff --check`. These checks validate application behavior, not an actual
 LFM3 load or generation on the iPhone.
+
+2026-11-11 — Fixed a diagnostic mismatch for custom LFM3 models: unloaded
+Developer tests now pass the same bounded effective context into the main
+thread manifest and inference Worker, taking the lower of the model's
+configured context and 2K/4K/8K test context. The report records the selected
+model's own configured context separately; ordinary model loads and saved
+settings are unchanged. Regression: 85/85 LFM3/runtime and large-context tests,
+15/15 Settings browser tests, and 1,948/1,948 prototype tests passed. `npm run
+check`, `npm run build:app` (166 verified assets; build `ed965b009644e4b0`), and
+`git diff --check` passed. These PC checks prove bounded test configuration and
+build behavior only; no iPhone model load/generation was performed.
