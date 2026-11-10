@@ -1,3 +1,25 @@
+# Public Site v336 — merge Activity privacy and receipt fixes (2026-11-10 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`d4bdbee8dd882ca9c4fb789bcffb26b40c140cc2`; PR #31 and full Quality workflow
+[42805551555](https://github.com/Unjuno/babelshelf/actions/runs/42805551555)
+passed. Product build `1effe00c90b651b8` contains 166 verified assets. Site
+source commit `1ff995b00cb80c2eec00e27768c28994fc4aa58b`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_b676ee7c38c4819198b48de5a518418c`
+(v336); deployment `appgdep_6af301a43fcc8191b926e4210d1cc169` succeeded.
+The Site remains public at `https://babelshelf.com`. Saved archive content hash
+is `sha256:814392ef51d84f4298234b1452cfcbaaed4e6590a480880bb0ef6a5989a13bdc`
+(110,970,880 bytes /205 files).
+
+Site staging retained current and previous app-build assets and pruned 27 older
+hashed assets. Delivery checks passed exact ONNX WASM bytes over gzip and
+identity responses, offline-shell transport, mutable-shell caching and HTTP
+method handling. In the existing sidebar PWA, the old bundle initially remained
+active; switching Online and using Update applied `index-DMIP4Ijk.js`. The app
+was returned to Offline. No model was added, downloaded, prepared or run. This
+verifies public delivery and code adoption, not iPhone model compatibility or
+performance.
+
 # Public Site v335 — clarify LFM3 IQ3_M quantization (2026-11-10 JST)
 
 Product source: `Unjuno/babelshelf` `main` at

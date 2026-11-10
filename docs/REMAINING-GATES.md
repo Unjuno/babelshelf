@@ -7,10 +7,11 @@ calculator expressions accepted unchanged by the closed arithmetic parser;
 other arbitrary text remains a byte-count summary. This keeps the offline
 calculator receipt usable without reopening general prompt/query retention.
 Local targeted and full regressions passed, and GitHub Quality run
-[42802252746](https://github.com/Unjuno/babelshelf/actions/runs/42802252746)
-passed all gates on candidate `5566e4c`. The change is pushed to
-`codex/ui-design-handoff` but is not yet in `main` or the public Site. Detailed
-evidence and the earlier failing run are in [TEST-RESULTS.txt](TEST-RESULTS.txt).
+[42805551555](https://github.com/Unjuno/babelshelf/actions/runs/42805551555)
+passed every gate on PR #31. PR #31 is merged; GitHub `main` is now
+`d4bdbee`. The public Site is v336 with app build `1effe00c90b651b8` /166
+verified assets. Detailed evidence is in [TEST-RESULTS.txt](TEST-RESULTS.txt)
+and [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
 
 The title-bound water comparison guard now checks explicit strict and
 non-strict relations instead of reducing every comparison to a greater/not-
@@ -31,15 +32,11 @@ attachment names/statuses and full probability distribution. This fixes a
 local audit-retention leak without changing model routing. Historical Activity
 records are not rewritten; future Decision receipts use the bounded projection.
 
-GitHub `main` is `46c6c33` after PR #30; PR #29's full quality workflow
-[42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
-passed, and PR #30 reconciles the v335 release evidence. Public Site v335
-serves app build `eab907c5290f44b8` /166 assets from product source `33b713a`.
-The public domain and Site hostname both returned
-that build. In the existing sidebar PWA, Update applied worker `eab907c5290f44b8`
-and bundle `index-C1XD0SK5.js`; Offline mode was restored. Site packaging and
-deployment evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
-Existing untracked QA/model artifacts remain preserved.
+PR #31 integrates the receipt projection and Activity privacy fixes. Public
+v336 was built from that main state and delivered to `https://babelshelf.com`.
+The existing sidebar PWA applied bundle `index-DMIP4Ijk.js`; Offline mode was
+restored. No model was added, downloaded, loaded or run. Existing model assets,
+runtime sources and QA browser data remain preserved.
 
 The first PR #30 CI run timed out while waiting for the `beforeunload` dialog
 after an attachment was shown. The component registered its guard in a passive
