@@ -2,8 +2,9 @@
 
 ### Main integration and public release · 2026-11-11
 
-GitHub `main` is `0e2be9077f805c173db6db0009f345a69353cd2c`; PR #39 is merged.
-Its exact candidate passed the full `Local PWA quality` workflow
+The v341 product source tree came from PR #39 merge commit
+`0e2be9077f805c173db6db0009f345a69353cd2c`. Its exact candidate passed the
+full `Local PWA quality` workflow
 [42875405317](https://github.com/Unjuno/babelshelf/actions/runs/42875405317).
 Public Site v341 serves app build `22b6ac0a34f1dcea` with 166 verified assets,
 built from the same product tree as main. Deployment and live sidebar adoption
