@@ -28,7 +28,7 @@ export function textPreparationStatus(assets:Record<string,{filesPresent?:boolea
  const status=assets[model];
  return {text:status?.filesPresent===true&&status?.statusError!==true,textStatusError:status?.statusError===true};
 }
-export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
+export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;runtime?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
  const models=structuredClone(value),roles=preparationRoles(value,onlyRole),text=roles.includes('text')?combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel):undefined;
  if(roles.includes('text')&&!text)throw Error('Text runtime not connected');
  const selectedSpeech=value.customSpeechModels.find(model=>model.id===value.transcriptionModel);
@@ -43,8 +43,14 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  // A reviewed model set may deliberately select text alone. Preparation must
  // never add readers or spend storage on roles that were left unselected.
  // Custom packages are imported locally and contribute no network bytes.
- const steps:{role:Role;label:string;readyLabel:string;ready:boolean;bytes:number}[]=[];
- if(text)steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,bytes:text.file.bytes+(getLfm3TextManifest(text.id,value.customModels)?lfm3RuntimeBytes:(isOnnxText(text.id)||isLfmText(text.id,value.customModels)||getQwen3TextManifest(text.id,value.customModels))?0:textManifest.runtime.file.bytes)});
+ const steps:{role:Role;label:string;readyLabel:string;ready:boolean;bytes:number;modelReady?:boolean;runtimeReady?:boolean;modelBytes?:number;runtimeBytes?:number}[]=[];
+ if(text){
+  const lfm3=!!getLfm3TextManifest(text.id,value.customModels);
+  if(lfm3){
+   const modelBytes=text.localModel?0:text.file.bytes,runtimeBytes=lfm3RuntimeBytes,runtimeReady=ready.runtime??ready.text,modelReady=ready.text;
+   steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:modelReady&&runtimeReady,bytes:(modelReady?0:modelBytes)+(runtimeReady?0:runtimeBytes),modelReady,runtimeReady,modelBytes,runtimeBytes});
+  }else steps.push({role:'text',label:text.name,readyLabel:'Files present',ready:ready.text,modelReady:ready.text,bytes:text.file.bytes+(isOnnxText(text.id)||isLfmText(text.id,value.customModels)||getQwen3TextManifest(text.id,value.customModels)?0:textManifest.runtime.file.bytes)});
+ }
  if(roles.includes('speech'))steps.push({role:'speech',label:selectedSpeech?.label??speechModelLabel(models.transcriptionModel),readyLabel:'Files verified',ready:ready.speech,bytes:selectedSpeech?0:builtinSpeech?.files.reduce((n,f)=>n+f.bytes,0)??0});
  if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Files verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
  if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Files verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
