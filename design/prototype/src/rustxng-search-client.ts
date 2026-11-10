@@ -1,10 +1,12 @@
-export type RustXngSearchResult={title:string;url:string;snippet:string;engine?:string};
+export type RustXngRawContentStatus='ok'|'not_requested'|'too_large'|'fetch_failed'|'robots_blocked'|'extract_failed'|'render_failed'|'unknown';
+export type RustXngSearchResult={title:string;url:string;snippet:string;engine?:string;rawContentStatus:RustXngRawContentStatus;pageText?:string};
 export type RustXngSearchResponse={provider:'RustXNG';query:string;retrievedAt:string;results:RustXngSearchResult[]};
 
 const MAX_RESPONSE_BYTES=96*1024;
 const MAX_RESULTS=5;
 const MAX_TITLE_CHARS=240;
 const MAX_SNIPPET_CHARS=1200;
+const MAX_PAGE_TEXT_BYTES=12_000;
 const REQUEST_TIMEOUT_MS=12_000;
 
 export class RustXngSearchError extends Error{
@@ -44,6 +46,16 @@ function safeResultUrl(value:unknown):string|undefined{
  try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)return;return url.href;}catch{return;}
 }
 
+function rawContentStatus(value:unknown):RustXngRawContentStatus{
+ return value==='ok'||value==='not_requested'||value==='too_large'||value==='fetch_failed'||value==='robots_blocked'||value==='extract_failed'||value==='render_failed'?value:'unknown';
+}
+
+function boundedPageText(value:unknown):string|undefined{
+ if(typeof value!=='string'||!value.trim())return;
+ const bytes=new TextEncoder().encode(value);
+ return new TextDecoder().decode(bytes.subarray(0,MAX_PAGE_TEXT_BYTES)).trim()||undefined;
+}
+
 async function readBoundedBody(response:Response){
  const advertised=Number(response.headers.get('content-length'));
  if(Number.isFinite(advertised)&&advertised>MAX_RESPONSE_BYTES)throw new RustXngSearchError('invalid_response');
@@ -67,7 +79,7 @@ export async function searchRustXng(input:{endpoint:string;query:string;onlineMo
  input.signal?.addEventListener('abort',abort,{once:true});
  const timeout=setTimeout(()=>controller.abort(new DOMException('Timed out','TimeoutError')),REQUEST_TIMEOUT_MS);
  try{
-  const target=new URL(endpoint.href.replace(/\/$/, '')+'/search');target.searchParams.set('q',input.query.trim());target.searchParams.set('format','json');target.searchParams.set('max_results',String(maxResults));
+  const target=new URL(endpoint.href.replace(/\/$/, '')+'/search');target.searchParams.set('q',input.query.trim());target.searchParams.set('format','json');target.searchParams.set('max_results',String(maxResults));target.searchParams.set('include_raw_content','1');
   const response=await fetcher(target,{method:'GET',signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',redirect:'error',headers:{Accept:'application/json'}});
   // A caller may cancel even when the transport resolves despite its signal.
   if(controller.signal.aborted)throw new RustXngSearchError('unavailable');
@@ -83,7 +95,8 @@ export async function searchRustXng(input:{endpoint:string;query:string;onlineMo
    const row=value as Record<string,unknown>,url=safeResultUrl(row.url),title=boundedText(row.title,MAX_TITLE_CHARS);
    if(!url||!title)continue;
    const snippet=boundedText(row.content,MAX_SNIPPET_CHARS),engine=boundedText(row.engine,80);
-   result.push({title,url,snippet,...(engine?{engine}:{})});
+   const rawStatus=rawContentStatus(row.raw_content_status),pageText=rawStatus==='ok'?boundedPageText(row.raw_content):undefined;
+   result.push({title,url,snippet,rawContentStatus:rawStatus,...(pageText?{pageText}:{}),...(engine?{engine}:{})});
   }
   return {provider:'RustXNG',query:input.query.trim(),retrievedAt:(input.now?.()??new Date()).toISOString(),results:result};
  }catch(error){
