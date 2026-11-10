@@ -17,6 +17,13 @@ and model sets recorded for v341 below; no model/runtime was downloaded or
 loaded during v343 verification. This verifies source delivery and active
 worker adoption, not model generation or iPhone compatibility/performance.
 
+Post-deployment PC regressions verified the user-facing LFM3 IQ3_M add/select
+path and that the Compact local set requires a separate explicit preparation
+action (3 Playwright checks passed). Settings migration/recovery tests passed
+44/44; model catalog, set and execution-route tests passed 30/30. These confirm
+preservation of old settings bytes/history and registered adapter routing;
+they do not verify actual IQ3_M inference, GPU placement or device fit.
+
 PR #39's v341 product tree came from merge commit
 `0e2be9077f805c173db6db0009f345a69353cd2c`. Its exact candidate passed the
 full `Local PWA quality` workflow
