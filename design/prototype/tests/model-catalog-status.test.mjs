@@ -50,7 +50,7 @@ test('text choices expose pinned download size without claiming device readiness
  assert.match(textModelChoiceHint('lfm3-1.7b-qad-q4-0',[],desktop),/GPU preferred · CPU fallback · not tested on this device/);
  assert.equal(textModelFileSize('lfm3-1.7b-q8-0'),1846238496);
  assert.equal(textModelFileSize('lfm3-1.7b-iq3m'),868803392);
- assert.match(textModelChoiceHint('lfm3-1.7b-iq3m'),/869 MB · GPU preferred · CPU fallback · not tested on this device/);
+ assert.match(textModelChoiceHint('lfm3-1.7b-iq3m'),/869 MB · IQ3_M ~3\.66 bits\/weight · GPU preferred · CPU fallback · not tested on this device/);
  assert.match(textModelChoiceHint('lfm3-1.7b-q8-0'),/1\.85 GB · GPU preferred · CPU fallback · not tested on this device/);
  assert.match(textModelChoiceHint('lfm3-1.7b-q8-0',[],iphone),/GPU route required on mobile · not tested on this device/);
  assert.equal(textModelFileSize('unknown'),null);
