@@ -2,16 +2,15 @@
 
 ### Main integration and public release · 2026-11-11
 
-GitHub `main` is `70526c0bd25efaa3b5d02756ae80da579b631b31`. PR #34 exposed the
-Vision import route and PR #35 aligned preparation sizing and bounded custom
-LFM3 Developer-test context; PR #35's post-merge Quality workflow
-[42850878864](https://github.com/Unjuno/babelshelf/actions/runs/42850878864)
-passed all gates. Public Site v339 still serves app build `1ff8951205bf764d`
-with 166 verified assets; PR #35 has not been published. The current main
+GitHub `main` is `ac73f46b89605f17b21a00d66af4aba505c23cc6`; PRs #34–#36 are
+merged. Main-target Quality workflow
+[42855494413](https://github.com/Unjuno/babelshelf/actions/runs/42855494413)
+passed all gates on this exact commit. Public Site v340 serves app build
+`ed965b009644e4b0` with 166 verified assets, built from this main state. Its
 catalog exposes LFM3 QAD Q4_0, community IQ3_M 3-bit (869 MB), and Q8_0 as
 separate selectable candidates. This proves catalog availability only; no
-LFM3 weight was downloaded or run in this work, and iPhone model execution
-remains unverified.
+LFM3 weight was downloaded or run in this deployment, and iPhone model
+execution remains unverified.
 
 The supplied iPhone report was created on 2026-11-04 by older build
 `bae57d2542fed742` in a Safari tab (`standalone:false`). Its selected model was
