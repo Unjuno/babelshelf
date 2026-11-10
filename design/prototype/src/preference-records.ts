@@ -116,7 +116,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
    if(profile?.id==='source-first'&&profile.label==='Source first'&&profile.maxResultChars===6000&&Array.isArray(profile.enabledTools)&&['memory.read|memory.search','memory.list|memory.read|memory.search'].includes(profile.enabledTools.slice().sort().join('|'))&&(profile.maxToolCalls===null||profile.maxToolCalls===2)){
     profile.enabledTools=['memory.search','memory.list','memory.read'];profile.maxToolCalls=null;
    }
-   if(profile?.id==='standard'&&profile.label==='Standard'&&profile.maxToolCalls===8&&profile.maxResultChars===MAX_AGENT_RESULT_CHARS&&Array.isArray(profile.enabledTools)&&[...SAFE_AGENT_TOOL_IDS].filter(id=>id!=='memory.sources').sort().join('|')===profile.enabledTools.slice().sort().join('|'))profile.maxToolCalls=null;
+   if(profile?.id==='standard'&&profile.label==='Standard'&&profile.maxToolCalls===8&&profile.maxResultChars===MAX_AGENT_RESULT_CHARS&&Array.isArray(profile.enabledTools)&&['math.calculate','memory.list','memory.read','memory.search','time.now'].sort().join('|')===profile.enabledTools.slice().sort().join('|'))profile.maxToolCalls=null;
    if(profile?.id==='source-first'&&profile.label==='Source first'&&profile.maxToolCalls===2&&profile.maxResultChars===6000&&Array.isArray(profile.enabledTools)&&profile.enabledTools.slice().sort().join('|')==='memory.read|memory.search')profile.maxToolCalls=null;
   }
  }
