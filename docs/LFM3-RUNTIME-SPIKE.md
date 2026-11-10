@@ -2,6 +2,10 @@
 
 Current implementation notes are below; the original spike and dated attribution sections preserve historical evidence. For current release status use [REMAINING-GATES.md](REMAINING-GATES.md).
 
+## Long-context SWA memory policy · 2026-11-11
+
+The adapter now keeps full-size SWA storage and exact-prefix checkpoint reuse only for LFM3 contexts up to 8K, the largest context covered by the recorded reuse measurement. Above 8K, the selected `n_ctx` is preserved, but `swa_full` and inter-turn `cache_prompt` are disabled so the 256-token SWA layers keep bounded sliding-window storage. This trades prompt-prefill reuse for lower cache reservation while retaining the configured context; it does not guarantee that the overall model fits a phone. The 8K PC measurement is not phone evidence, and no 16K–256K runtime or memory benchmark exists yet. The [llama.cpp SWA cache implementation](https://github.com/ggml-org/llama.cpp/blob/master/src/llama-kv-cache-iswa.cpp) sets the SWA cache to the full base cache when `swa_full` is enabled; Liquid AI documents LFM3's 256-token SWA layers in its [architecture overview](https://www.liquid.ai/blog/lfm3).
+
 ## Native agent reasoning · 2026-10-30
 
 Native LFM3 tool generation now enables the model's thinking template; ordinary non-native operations retain their prior setting. Count and generation share the same template options. Current-call reasoning is bounded transient context for subsequent tool steps, excluded from displayed answers and durable receipts. The native generation allowance follows the selected engine and remaining context (up to 3,072 tokens for this adapter), rather than applying the short visible-reply budget to reasoning and tool syntax together.
