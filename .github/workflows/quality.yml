@@ -2,9 +2,8 @@ name: Local PWA quality
 
 on:
   push:
-    # Pull requests from the development branch already run the full suite.
-    # Keep push verification for main after merge without duplicating PR work.
-    branches: [main]
+    # Validate merges on main and direct pushes to the active integration branch.
+    branches: [main, codex/rustxng-agent-search]
     # Evidence-only updates must not cancel an in-flight code verification.
     # Keep PR checks unfiltered; SKILL.md and other packaged Markdown still run.
     paths-ignore:
