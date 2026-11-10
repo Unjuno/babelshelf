@@ -1074,3 +1074,32 @@ The public Site packages app source commit `3f659f1e4cfead4233475cb48bcfb1034bfb
 The update applies the bounded 8K context only to an unloaded LFM3 model in Developer model checks. It records the saved context separately and leaves normal chat settings unchanged. The public sidebar's new verification tab reported active worker build `c1c03d10e7ebec85` and bundle `index-9n0tia0c.js`; the app was returned to Offline. The original tab and its open model-set selection were left untouched. The test tab showed model files and runtime as Not prepared; no weights or runtime were downloaded and no model was run.
 
 This is PC browser update evidence only. It does not establish iPhone loading, model memory fit, inference, speed, or quality. An iPhone test is still needed to evaluate the 8K diagnostic against the prior prolonged model-load report.
+
+## Public Site v334 — persistent device-test controls (2026-11-10 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`2e6f670b17cc81ffcde2f2ce416d7ceeb83f9b89`; PR #27 passed all CI stages in
+[workflow 42776970035](https://github.com/Unjuno/babelshelf/actions/runs/42776970035)
+and was merged. App build `443a34209a1462e3` contains 166 verified assets.
+Site source commit `adc74fde778f7732b02eb9f68faea4116d508ea9`; saved Site
+version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_1294c84063c08191b0fcf303f5bdb8c2`;
+production deployment `appgdep_6af2cf7dda0c81918fe56225aacf372b` succeeded.
+The public audience and `https://babelshelf.com/` were retained.
+
+The app keeps the running Developer test's elapsed time visible after screen
+navigation, provides Copy snapshot during app/model checks, and provides Stop
+test during model execution. Focused Developer UI tests passed 35/35,
+diagnostic/report/suite tests passed 60/60, `npm run check` passed, and the
+app production build passed. Delivery checks verified compressed WASM bytes
+through gzip and identity, offline shell transport, and cache policy. The
+staged archive has content hash
+`sha256:345c28b1a1204abd11d1d8783e724430718c98c01d23247ac1e6db44a50a0c14`
+(111,042,560 bytes / 206 files).
+
+In the existing Codex sidebar tab, after applying the update, Settings →
+Developer showed active worker `443a34209a1462e3` and bundle
+`index-CGIr1-9U.js`. Connection was restored to Offline. This verifies the
+public PC app shell and diagnostic controls' release build; it does not prove
+real LFM3 loading, iPhone performance, or phone compatibility. No model/runtime
+was downloaded, no model was loaded, and no app storage was cleared.
