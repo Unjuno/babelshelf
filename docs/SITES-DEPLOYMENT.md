@@ -1,3 +1,30 @@
+# Public Site v344 — merge planner fallback and validate offline LFM3 Q4 (2026-11-11 JST)
+
+Application source: `Unjuno/babelshelf` `main` at
+`597bfd3d0bc746267ef0950cf51eb4c7648a0c9c`; PR #42's exact candidate passed
+full Local PWA quality workflow [42916481371](https://github.com/Unjuno/babelshelf/actions/runs/42916481371).
+App build `0af7a307c3ec79d6` contains 166 verified assets. Site source commit
+`0e97c7dc7634f1cc65de59ebb0c6028dd63b850f`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_540153e2703481918247a9b8ef882096`
+(v344); deployment succeeded at `https://babelshelf.com`.
+
+The existing sidebar PWA applied the new build: Developer reported active
+worker `0af7a307c3ec79d6` / bundle `index-CgcxseBR.js`. Settings → Models
+showed LFM3 IQ3_M 3-bit (869 MB), Q8_0 and Bonsai 4B/9B as catalog candidates.
+The text model and runtime remained not prepared; no weights were downloaded
+or loaded in the public browser. Connection mode was restored to Offline.
+
+An isolated Windows Chrome 157 PC run imported the pinned local LFM3 QAD Q4_0
+GGUF and verified one cold offline restart, exact cited answer, reviewed save,
+and multi-step Memory search/read/answer. The bounded 8K-context performance
+sample reported 12,894 ms load and 11.37 generated tokens/s overall (runtime
+decode 13.44 tokens/s, 84 output tokens); runtime reported 25/25 GPU layers.
+These are one-run PC results only, not sustained performance or iPhone/Android
+compatibility. Archive SHA-256 is
+`afdebabd554f5decaa7ab79d4a5579c0966bd08e9d131029da01475256ceff83`
+(111,011,840 bytes /205 files). User knowledge, backups, credentials and model
+weights are excluded.
+
 # Public Site v341 — include Search in selected model-set preparation (2026-11-11 JST)
 
 Product source: `Unjuno/babelshelf` `main` at

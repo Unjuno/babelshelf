@@ -1,5 +1,28 @@
 ## Current status · 2026-11-11
 
+### Latest integration and model evidence · 2026-11-11
+
+PR #42 was merged as `597bfd3d0bc746267ef0950cf51eb4c7648a0c9c` after its
+exact candidate (`132acce9f2d03fef5aaa2cfa5082b7ccbec9ece0`) passed the full
+Local PWA quality workflow [42916481371](https://github.com/Unjuno/babelshelf/actions/runs/42916481371).
+It includes attempt-bound Web citations and a narrow planner presentation-leak
+fallback that reuses completed retrieval evidence through the normal grounded
+answer validator. Invalid planner text is not returned or saved.
+
+Public Site v344 is deployed at `https://babelshelf.com`, serving app build
+`0af7a307c3ec79d6` (166 verified assets). The existing sidebar PWA applied
+that exact worker. Settings showed LFM3 IQ3_M 3-bit (869 MB) as a selectable
+candidate; it was not selected, downloaded or run in the live browser.
+
+Windows Chrome 157 PC validation loaded the pinned local LFM3 QAD Q4_0 GGUF,
+then passed an offline cold browser restart, local answer, exact citation,
+reviewed save, and multi-step Memory search/read/answer. The one Performance
+sample reported 12.9 s model load, 84 output tokens in 7.39 s (11.37 tok/s;
+runtime decode 13.44 tok/s), with runtime-reported 25/25 GPU layers. These are
+single-run PC measurements; they do not establish sustained performance or
+iPhone/Android execution. The next device gate remains a current-build iPhone
+Home Screen run. Detailed scope and timings are in `TEST-RESULTS.txt`.
+
 ### Development branch and public release · 2026-11-11
 
 The focused development branch `codex/rustxng-agent-search` is pushed at

@@ -8533,3 +8533,39 @@ prototype tests 1,963/1,963, `npm run check`, and `npm run build:app` (166
 verified assets; build `074714f8e10de7a4`). This ensures snapshot provenance and
 protocol bounds; it does not verify semantic entailment or real-model citation
 quality. No device storage, model files, or settings were touched.
+
+2026-11-11 — PR #42 merged as `597bfd3d0bc746267ef0950cf51eb4c7648a0c9c`
+after full candidate workflow [42916481371](https://github.com/Unjuno/babelshelf/actions/runs/42916481371)
+passed. In addition to attempt-bound Web citation snapshots, a narrow agent
+fallback now converts a repeated planner presentation leak into the existing
+grounded-answer path only when retrieval evidence already succeeded. The raw
+planner draft is rejected. The focused agent/coordinator regression group
+passed 216/216, `npm run check`, and the 166-asset product build passed.
+
+Live local-model product flow: isolated Windows Chrome 157 profile, offline
+browser networking disabled after local import, app build `0af7a307c3ec79d6`,
+LFM3-1.7B-QAD-Q4_0 revision `b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf`,
+GGUF SHA-256 `43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452`,
+runtime `wllama-3.12.0-llama-19cce6919992fdffd92e0ac152caaf1e2b8f254e`.
+After cold offline restart, the model answered the synthetic exact fact, retained
+an exact source quote/range, saved the reviewed answer byte-for-byte, then
+completed `memory.search` → `memory.read` → `knowledge.answer` without reload.
+The offline browser run made no external requests and had no page errors.
+
+The one Developer Performance sample ran on Windows/Chrome 157, Intel Gen12LP
+browser adapter hint, reported 12 logical processors and 16 GiB coarse memory
+estimate. Configured/effective context was 8,192; 50 input tokens; 84 output
+tokens; model load 12,894 ms (verification 9,673 ms, runtime load 3,181 ms);
+generation 7,389 ms /11.37 tok/s; first visible text 1,210 ms; runtime decode
+13.44 tok/s; runtime-reported threads 4 and GPU layers 25/25. GPU/adapter
+selection remains a runtime report plus separate browser hint, not independent
+hardware proof. This was one bounded sample, not a sustained or thermal test.
+It does not verify IQ3_M inference, physical iPhone, Android, or macOS behavior.
+
+Public Site v344 was published at `https://babelshelf.com` with app build
+`0af7a307c3ec79d6` /166 assets. The existing sidebar PWA reported that exact
+active worker, showed selectable LFM3 IQ3_M (~3.66 bits/weight, 869 MB), and
+was returned to Offline. The Site archive (`sha256:afdebabd554f5decaa7ab79d4a5579c0966bd08e9d131029da01475256ceff83`,
+111,011,840 bytes /205 files) contains app assets only, not user data or model
+weights. Deployment and catalog availability do not establish IQ3_M execution
+or phone compatibility.
