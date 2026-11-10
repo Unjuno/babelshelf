@@ -17,6 +17,11 @@ test('device-clock activity displays a plain action label instead of an internal
  assert.equal(activityLabel(entries.at(-1).tool),'Read time');
 });
 
+test('Search model preparation is recorded as a named lifecycle action',()=>{
+ const started=startActivity('search.prepare',{role:'search'}),done=finishActivity(started,{output:{completed:true,effect:'verified-assets'}});
+ assert.equal(activityLabel(done.tool),'Prepare Search model');
+});
+
 test('compatibility agent budget reflects receipt costs and reserves completion plus repairs',async()=>{
  const {activityBoundedToolBudget,MAX_ACTIVITY_EVENTS_PER_TURN,ACTIVITY_EVENTS_PER_AGENT_TOOL,RESERVED_AGENT_REPAIR_EVENTS}=await import('../src/harness-activity.ts');
  assert.equal(MAX_ACTIVITY_EVENTS_PER_TURN,128);

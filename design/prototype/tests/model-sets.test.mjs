@@ -44,9 +44,9 @@ test('task presets expose connected text choices without implying device verific
   'bonsai-2b-text':['2B','','','','',''],
   'bonsai-4b-text':['4B','','','','',''],
   'bonsai-9b-text':['9B','','','','',''],
-  'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16',''],
-  'lfm3-iq3m-media':['lfm3-1.7b-iq3m','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16',''],
-  'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16',''],
+  'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-97m-multilingual-r2-onnx'],
+  'lfm3-iq3m-media':['lfm3-1.7b-iq3m','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-97m-multilingual-r2-onnx'],
+  'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-97m-multilingual-r2-onnx'],
  };
  for(const set of modelSets){
   const model=set.models;
@@ -62,6 +62,7 @@ test('task presets expose connected text choices without implying device verific
  const d1=settings.models.decision.find(model=>model.value==='d1-omni-600M');
  assert.equal(d1.label,'Open d1 · 600M · Text decision');
  assert.equal(modelSets.find(set=>set.id==='local-full').label,'Full local set');
+  assert.equal(modelSets.find(set=>set.id==='local-full').detail,'LFM3 · Decision · Speech · OCR · Vision · Search');
  assert.equal(modelSets.find(set=>set.id==='local-full').models.visionModel,'lfm25-vl-450m-q4f16');
  assert.ok(modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'lfm3-iq3m-media')<modelSetAssetBytes(readPreference('models',initialPreferenceNotes),'text-image-audio-q8'));
  assert.equal(modelSets.some(set=>set.models.decisionModel==='d1-3B'),false);
@@ -73,10 +74,10 @@ test('applying a set changes only model selections and adds their registered cat
  const original=structuredClone(initialPreferenceNotes),before=readPreference('models',original);
  const next=updatePreference('models',original,current=>applyModelSet(current,'local-full'));
  const after=readPreference('models',next);
- assert.deepEqual({text:after.textModel,decision:after.decisionModel,speech:after.transcriptionModel,ocr:after.ocrModel,vision:after.visionModel},{text:'lfm3-1.7b-qad-q4-0',decision:'d1-omni-600M',speech:'whisper-tiny',ocr:'tesseract-7',vision:'lfm25-vl-450m-q4f16'});
+ assert.deepEqual({text:after.textModel,decision:after.decisionModel,speech:after.transcriptionModel,ocr:after.ocrModel,vision:after.visionModel,search:after.searchModel},{text:'lfm3-1.7b-qad-q4-0',decision:'d1-omni-600M',speech:'whisper-tiny',ocr:'tesseract-7',vision:'lfm25-vl-450m-q4f16',search:'granite-embedding-97m-multilingual-r2-onnx'});
  assert.ok(after.textLibrary.includes('lfm3-1.7b-qad-q4-0'));assert.ok(after.decisionLibrary.includes('d1-omni-600M'));
- assert.ok(after.transcriptionLibrary.includes('whisper-tiny'));assert.ok(after.ocrLibrary.includes('tesseract-7'));assert.ok(after.visionLibrary.includes('lfm25-vl-450m-q4f16'));
- for(const key of Object.keys(before))if(!['textModel','decisionModel','transcriptionModel','ocrModel','visionModel','textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary','visionLibrary'].includes(key))assert.deepEqual(after[key],before[key],key);
+ assert.ok(after.transcriptionLibrary.includes('whisper-tiny'));assert.ok(after.ocrLibrary.includes('tesseract-7'));assert.ok(after.visionLibrary.includes('lfm25-vl-450m-q4f16'));assert.ok(after.searchLibrary.includes('granite-embedding-97m-multilingual-r2-onnx'));
+ for(const key of Object.keys(before))if(!['textModel','decisionModel','transcriptionModel','ocrModel','visionModel','searchModel','textLibrary','decisionLibrary','transcriptionLibrary','ocrLibrary','visionLibrary','searchLibrary'].includes(key))assert.deepEqual(after[key],before[key],key);
  assert.equal(next.find(n=>n.id==='settings-models').version,2);
  assert.equal(matchingModelSet(after)?.id,'local-full');
 });
@@ -193,11 +194,11 @@ test('Q8 combined and Q4 complete sets prepare only their selected readers',()=>
  const before=readPreference('models',initialPreferenceNotes),q8=applyModelSet(before,'text-image-audio-q8');
  assert.equal(matchingModelSet(q8)?.id,'text-image-audio-q8');
  const q8Plan=initialPreparationPlan(q8,{text:false,speech:false,ocr:false,vision:false});
- assert.deepEqual(q8Plan.steps.map(step=>step.role),['text','speech','ocr','vision']);
+ assert.deepEqual(q8Plan.steps.map(step=>step.role),['text','speech','ocr','vision','search']);
  assert.equal(q8Plan.bytes,modelSetAssetBytes(before,'text-image-audio-q8'));
  const selected=applyModelSet(readPreference('models',initialPreferenceNotes),'local-full');
  assert.equal(matchingModelSet(selected)?.id,'local-full');
  const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,vision:false});
- assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','decision','vision']);
+ assert.deepEqual(plan.steps.map(step=>step.role),['text','speech','ocr','decision','vision','search']);
  assert.equal(plan.bytes,modelSetAssetBytes(before,'local-full'));
 });

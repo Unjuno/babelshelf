@@ -11,14 +11,15 @@ import {withLocalModels} from '../../../dist/local-model-manifest.js';
 import {getSpeechManifest,speechModelLabel} from './speech-models.ts';
 import {ocrFiles} from './ocr-assets.ts';
 import {visionManifest} from './vision-assets.ts';
-export type PreparationRole='text'|'speech'|'ocr'|'decision'|'vision';
+import {semanticEmbeddingManifest,semanticEmbeddingAssetBytes} from './semantic-embedding-manifest.ts';
+export type PreparationRole='text'|'speech'|'ocr'|'decision'|'vision'|'search';
 type Role=PreparationRole;
 /** Browser quota estimates are advisory; they are not a hard install gate. */
 export function preparationEstimateMayBeTooLarge(requiredBytes:number,availableBytes:number|null|undefined){
  return Number.isSafeInteger(requiredBytes)&&requiredBytes>0&&typeof availableBytes==='number'&&Number.isFinite(availableBytes)&&availableBytes>=0&&availableBytes<requiredBytes;
 }
 export function preparationRoles(value:Preferences['models'],onlyRole?:PreparationRole):PreparationRole[]{
- const selections=[['text','textModel'],['speech','transcriptionModel'],['ocr','ocrModel'],['decision','decisionModel'],['vision','visionModel']] as const;
+ const selections=[['text','textModel'],['speech','transcriptionModel'],['ocr','ocrModel'],['decision','decisionModel'],['vision','visionModel'],['search','searchModel']] as const;
  return selections.filter(([role,key])=>(!onlyRole||role===onlyRole)&&!!value[key]).map(([role])=>role);
 }
 export function textPreparationStatus(assets:Record<string,{filesPresent?:boolean;statusError?:boolean}|null>,model:string){
@@ -28,7 +29,7 @@ export function textPreparationStatus(assets:Record<string,{filesPresent?:boolea
  const status=assets[model];
  return {text:status?.filesPresent===true&&status?.statusError!==true,textStatusError:status?.statusError===true};
 }
-export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;runtime?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
+export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;search?:boolean;runtime?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
  const models=structuredClone(value),roles=preparationRoles(value,onlyRole),text=roles.includes('text')?combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel):undefined;
  if(roles.includes('text')&&!text)throw Error('Text runtime not connected');
  const selectedSpeech=value.customSpeechModels.find(model=>model.id===value.transcriptionModel);
@@ -39,6 +40,7 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  const selectedVision=value.customVisionModels.find(model=>model.id===value.visionModel);
  if(roles.includes('vision')&&value.visionModel&&capabilityState('image.describe',value.visionModel,false,[],[],value.customVisionModels).status==='Unsupported')throw Error('Vision runtime not connected');
  if(roles.includes('vision')&&selectedVision&&!ready.vision)throw Error('Import local Vision files first');
+ if(roles.includes('search')&&value.searchModel!==semanticEmbeddingManifest.id)throw Error('Search runtime not connected');
  if(text?.localModel&&!ready.text)throw Error('Import local text model files first');
  // A reviewed model set may deliberately select text alone. Preparation must
  // never add readers or spend storage on roles that were left unselected.
@@ -55,6 +57,7 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
  if(roles.includes('ocr'))steps.push({role:'ocr',label:'Tesseract 7 · '+models.ocrLanguage,readyLabel:'Files verified',ready:ready.ocr,bytes:ocrFiles(models.ocrLanguage).reduce((n,f)=>n+f.bytes,0)});
  if(roles.includes('decision')){const custom=models.customDecisionModels.find(m=>m.id===models.decisionModel);steps.push({role:'decision',label:custom?custom.label+' · text decisions':'Open d1 · text decisions',readyLabel:'Files verified',ready:ready.decision===true,bytes:custom?0:decisionManifest.files.reduce((n,f)=>n+f.bytes,0)});}
  if(roles.includes('vision'))steps.push({role:'vision',label:selectedVision?.label??'LFM2.5-VL 450M · image understanding',readyLabel:'Files verified',ready:ready.vision===true,bytes:selectedVision?0:visionManifest.files.reduce((n,f)=>n+f.bytes,0)});
+ if(roles.includes('search'))steps.push({role:'search',label:semanticEmbeddingManifest.name,readyLabel:'Files verified',ready:ready.search===true,bytes:ready.search?0:semanticEmbeddingAssetBytes});
  const selected=steps;
  if(!selected.length)throw Error(onlyRole?'Choose a '+onlyRole+' model':'Choose a model');
  return {expected:JSON.stringify(value),models,steps:selected,bytes:selected.filter(s=>!s.ready).reduce((n,s)=>n+s.bytes,0),textStatusError:roles.includes('text')&&ready.textStatusError===true};
