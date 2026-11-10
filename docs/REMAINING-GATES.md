@@ -1,21 +1,35 @@
-## Current status · 2026-11-10
+## Current status · 2026-11-11
 
-### Latest branch and public release · 2026-11-10
+### Main and public release · 2026-11-11
 
-GitHub `main` is `20e3e914`. The focused Vision catalog fix is on
-`codex/ui-design-handoff` at `a43ac41e275ecb741d03b93f5c9f5d2546204dcd`;
-PR #34 remains open and its full quality workflow
-[42826425370](https://github.com/Unjuno/babelshelf/actions/runs/42826425370)
-passed. Public Site v338 packages app build `04f76abf91fd65da` (166 verified
-assets). The existing sidebar PWA applied that worker and showed both the
-built-in Vision model and the local LFM2-VL ONNX import action with consistent
-copy; the app was returned to Offline. No model files or runtime were
-downloaded or loaded. This does not verify phone inference or physical iOS
-compatibility. Custom OCR import remains unavailable, and the local Vision
-import path was verified as an entry point, not by installing or running a
-user model.
+GitHub `main` is `f50ebc6b4b4f35fb5caf8420ecfa830d0e62e758`. PR #34 is merged;
+post-merge Quality workflow [42837307748](https://github.com/Unjuno/babelshelf/actions/runs/42837307748)
+passed. Public Site v339 serves app build `1ff8951205bf764d` with 166 verified
+assets. In the existing sidebar browser, Update applied the build and Offline
+mode was restored. The current app catalog exposes LFM3 QAD Q4_0, community
+IQ3_M 3-bit (869 MB), and Q8_0 as separate selectable candidates. This proves
+catalog availability only; no LFM3 weight was downloaded or run during the
+release check, and iPhone model execution remains unverified.
 
-### Checked now · 2026-11-10
+The supplied iPhone report was created on 2026-11-04 by older build
+`bae57d2542fed742` in a Safari tab (`standalone:false`). Its selected model was
+LFM3 QAD Q4_0 with a saved 262,144-token context; the run stopped during model
+load. That report does not include the effective test context and cannot
+establish whether the phone is defective or whether the current build fails.
+Current code bounds an unloaded LFM3 Developer test to 8,192 tokens, leaves the
+saved model setting unchanged, and reports configured and effective contexts
+separately. The load-feedback UI identifies unavailable runtime percentages,
+elapsed time, navigation-safe progress and Stop; it cannot invent an exact
+percentage when Wllama emits no progress. The remaining iPhone gate is one
+current-build Home Screen PWA run of the selected model. A WebGPU adapter probe
+is not proof the model ran on that adapter or fits memory.
+
+The Developer test limit is enforced for custom LFM3 registrations inside the
+Worker too; it uses the lower of the selected model's configured context and
+2K/4K/8K test context. PC regressions pass (1,948 prototype tests); the
+physical iPhone runtime gate is still open.
+
+### Previously verified implementation milestones · 2026-11-10
 
 The development branch's Activity privacy projection now retains only
 calculator expressions accepted unchanged by the closed arithmetic parser;

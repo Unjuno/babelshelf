@@ -110,7 +110,7 @@ test('Developer model tests use a bounded LFM3 context without changing the save
  await page.locator('.device-test-steps').first().locator('summary').click();
  await page.getByRole('button',{name:'Performance',exact:true}).click();
  const run=page.getByRole('button',{name:'Run speed sample',exact:true});
- await expect(page.getByText(/unloaded LFM3 uses an 8K test context; your saved context stays unchanged/i)).toBeVisible();
+ await expect(page.getByText(/unloaded LFM3 tests use at most an 8K context, or the model’s lower configured context/i)).toBeVisible();
  await run.click();
  await expect(page.getByRole('group',{name:'Large context test options',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Run speed sample',exact:true})).toBeVisible();

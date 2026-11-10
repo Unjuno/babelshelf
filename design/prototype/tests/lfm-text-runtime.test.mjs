@@ -88,6 +88,14 @@ test('pinned LFM3 context is explicitly selectable while custom model context st
  assert.equal(describeLfm3Text([custom],custom.id,32768).maxOutputTokens,4096);
  assert.throws(()=>describeLfm3Text([], '', 524288),/context window/);
 });
+test('bounded LFM3 test context applies to custom registrations without raising their configured limit',async()=>{
+ const {describeLfm3Text}=await import('../src/lfm3-text-manifest.ts'),sha='b'.repeat(64),custom={id:'local-'+sha,label:'Local LFM3',role:'text',engine:'wllama-lfm3',revision:'sha256:'+sha,file:{bytes:1000,sha256:sha},contextTokens:262144,inspection:{format:'GGUF',version:3,bytes:1000,name:'Local LFM3',architecture:'lfm3',contextLength:262144,tokenizer:'gpt2',chatTemplate:true,tokenCount:128000,tensorCount:1,tensorTypes:[0],tensorExtentsChecked:true,dataOffset:512}};
+ const bounded=describeLfm3Text([custom],custom.id,262144,8192);
+ assert.equal(bounded.contextTokens,8192);assert.equal(bounded.maxOutputTokens,8192);assert.equal(bounded.models.find(model=>model.id===custom.id).contextTokens,8192);
+ const smaller={...custom,contextTokens:4096};assert.equal(describeLfm3Text([smaller],smaller.id,262144,8192).contextTokens,4096);
+ assert.equal(describeLfm3Text([custom],custom.id,262144).contextTokens,262144,'ordinary loads retain the configured context');
+ assert.throws(()=>describeLfm3Text([custom],custom.id,262144,16384),/test context/i);
+});
 test('LFM2.5 230M and 350M are distinct pinned text choices on the same local runtime',()=>{
  const ids=lfmTextModels.map(m=>m.id);assert.deepEqual(ids,['lfm25-350m-qad-q4-0','lfm25-230m-qad-q4-0']);
  const models=describeLfmText().models;const smaller=models[1],larger=models[0];

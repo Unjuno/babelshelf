@@ -1,3 +1,21 @@
+# Public Site v339 — expose model catalogs and Vision imports (2026-11-11 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`f50ebc6b4b4f35fb5caf8420ecfa830d0e62e758`; PR #34 and post-merge Quality
+workflow [42837307748](https://github.com/Unjuno/babelshelf/actions/runs/42837307748)
+passed. App build `1ff8951205bf764d` contains 166 verified assets. Site source
+commit `b3386f27a6f9c501645f94f23fc0ae1c6046fa9d`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_14c55349c32c8191bcadeb34505ef5be`
+(v339); deployment succeeded. The Site remains public at
+`https://babelshelf.com`.
+
+In the existing sidebar PWA, the explicit Update action applied the new build
+and Offline mode was restored. The model catalog exposed LFM3 IQ3_M as a
+selectable 3-bit community candidate (869 MB), alongside LFM3 QAD Q4_0 and
+Q8_0. No model or runtime was downloaded or loaded. This verifies deployment
+and catalog visibility, not model generation, GPU use, iPhone fit, or
+performance.
+
 # Public Site v336 — merge Activity privacy and receipt fixes (2026-11-10 JST)
 
 Product source: `Unjuno/babelshelf` `main` at

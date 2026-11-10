@@ -32,7 +32,7 @@ self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  const custom=supplied.map((value:unknown)=>validateLocalModel(value));
  if(custom.some((model:any)=>model.engine!=='wllama-lfm3'))throw Error('Unexpected LFM3 model registry');
  const pinnedContextTokens=configuration?.pinnedContextTokens??8192;
- const manifest=describeLfm3Text(custom,'',pinnedContextTokens),byId=new Map(manifest.models.map((model:any)=>[model.id,model]));
+ const manifest=describeLfm3Text(custom,'',pinnedContextTokens,configuration?.testContextTokens),byId=new Map(manifest.models.map((model:any)=>[model.id,model]));
  const readFile=createRecentPreparedFileReader(async(id:string)=>{
   const model=byId.get(id) as any;if(!model)throw Error('Unknown LFM3 model');
   const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-text-lfm3-v1');
