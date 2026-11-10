@@ -21,11 +21,16 @@ pinned embedding files and ONNX WASM runtime prepare separately, use resumable
 OPFS storage and remain outside the install shell. Prototype build, all 1,933
 prototype tests, focused semantic retrieval tests (2/2), Search Settings UI
 (1/1), submission tests (100/100), and `npm run check` pass. The UI test
-confirms opt-in does not download or index. No actual embedding model has yet
-been downloaded, loaded, indexed or used for a real browser retrieval; retrieval
-quality and iPhone behavior remain unverified. The existing 18-minute stopped
-iPhone run does not prove that the 8K diagnostic context alone resolves the
-load stall.
+confirms opt-in does not download or index. In the Codex sidebar browser on the
+local Windows product build, the separate 27.4 MB Search runtime and pinned
+123 MB Granite package were prepared, verified and the model reached `Model
+loaded`; moving to Chat and back retained that live state. Turning Search off
+closed the worker. The later product-shell refresh showed the persisted assets
+as verified while Search remained off, and the app was returned to Offline.
+No note was indexed and no real semantic query or agent citation was exercised;
+retrieval quality and iPhone behavior remain unverified. The existing 18-minute
+stopped iPhone run does not prove that the 8K diagnostic context alone resolves
+the load stall.
 
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a

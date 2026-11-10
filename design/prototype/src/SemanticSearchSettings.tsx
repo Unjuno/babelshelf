@@ -1,15 +1,27 @@
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {CaretRight} from '@phosphor-icons/react';
 import {semanticEmbeddingAssetBytes,semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
-import {getSemanticSearchRuntime} from './semantic-search-session.ts';
+import {closeSemanticSearchRuntime,getSemanticSearchRuntime} from './semantic-search-session.ts';
 
 const modelId=semanticEmbeddingManifest.id;
 
 export function SemanticSearchSettings({selected,downloads,disabled,onSelect}:{selected:boolean;downloads:boolean;disabled?:boolean;onSelect:(enabled:boolean)=>void}){
- const [status,setStatus]=useState('Not checked'),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number}|null>(null),[error,setError]=useState('');
+ const [status,setStatus]=useState(selected?'Not checked':'Off'),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number}|null>(null),[error,setError]=useState('');
  const operation=useRef<AbortController|null>(null);
  const blocked=!!disabled||busy;
  const canLoad=status==='Files prepared'||status==='Files verified';
+ const select=(enabled:boolean)=>{if(!enabled){void closeSemanticSearchRuntime();setStatus('Off');setProgress('');}else setStatus('Checking local Search status');onSelect(enabled);};
+ useEffect(()=>{
+  if(!selected){setStatus('Off');return;}
+  setStatus('Checking local Search status');
+  let active=true;const controller=new AbortController();
+  void getSemanticSearchRuntime().then(async runtime=>{
+   if(runtime.loaded){if(active)setStatus('Model loaded');return;}
+   const state=await runtime.status(controller.signal);
+   if(active)setStatus(state.filesPresent?'Files verified':'Files not prepared');
+  }).catch(cause=>{if(active)setError(cause instanceof Error?cause.message:'Search status unavailable');});
+  return()=>{active=false;controller.abort();};
+ },[selected]);
  const run=async(label:string,work:(runtime:Awaited<ReturnType<typeof getSemanticSearchRuntime>>,signal:AbortSignal)=>Promise<unknown>)=>{
   if(operation.current)return;const controller=new AbortController();operation.current=controller;setBusy(true);setError('');setProgress(label);
   try{const runtime=await getSemanticSearchRuntime(),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();if(label==='Checking local Search files')setStatus(result&&typeof result==='object'&&'filesPresent'in result&&(result as {filesPresent:boolean}).filesPresent?'Files verified':'Files not prepared');else if(label==='Preparing Search runtime')setStatus('Runtime prepared');else if(label==='Preparing Search model')setStatus('Files prepared');else if(label==='Loading Search model')setStatus('Model loaded');else if(label==='Building Search index'&&result&&typeof result==='object')setIndexed({sources:Number((result as {sources:number}).sources)||0,chunks:Number((result as {chunks:number}).chunks)||0});else if(label==='Unloading Search model')setStatus('Model unloaded');setProgress('');}
@@ -22,7 +34,7 @@ export function SemanticSearchSettings({selected,downloads,disabled,onSelect}:{s
   <div className="speech-heading"><h2>Search model</h2><CaretRight size={18} aria-hidden="true"/></div>
   <div className="model-picker" aria-label="Search model"><span>{semanticEmbeddingManifest.name}</span></div>
   <div className="source-revision">Multilingual local embeddings · {(semanticEmbeddingAssetBytes/1_000_000).toFixed(0)} MB · Apache-2.0</div>
-  <div className="model-preparation"><span>{status}</span><button className="quiet-button" disabled={blocked} onClick={()=>onSelect(!selected)}>{selected?'Turn off':'Use for Search'}</button></div>
+  <div className="model-preparation"><span>{status}</span><button className="quiet-button" disabled={blocked} onClick={()=>select(!selected)}>{selected?'Turn off':'Use for Search'}</button></div>
   {selected&&<>
    <div className="source-revision">When loaded and indexed, the agent can use semantic matches. Local word search remains available as fallback. No download or indexing starts automatically.</div>
    <div className="action-row">

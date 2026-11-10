@@ -9,6 +9,7 @@ test('Search model selection is explicit and does not download or index files',a
  await page.getByRole('button',{name:'Models',exact:true}).click();
  const section=page.locator('[data-model-role="search"]');
  await expect(section).toContainText('Granite Embedding');
+ await expect(section).toContainText('Off');
  await expect(section.getByRole('button',{name:'Use for Search',exact:true})).toBeVisible();
  await section.getByRole('button',{name:'Use for Search',exact:true}).click();
  await expect(section).toContainText('No download or indexing starts automatically');
@@ -16,5 +17,6 @@ test('Search model selection is explicit and does not download or index files',a
  expect(external).toEqual([]);
  await section.getByRole('button',{name:'Turn off',exact:true}).click();
  await expect(section.getByRole('button',{name:'Use for Search',exact:true})).toBeVisible();
+ await expect(section).toContainText('Off');
  expect(external).toEqual([]);
 });
