@@ -2,14 +2,16 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `f89af32` (PRs #19–24 merged). PR #24 reconciled status
-documentation and did not change application source. The clean-checkout
-quality run for this main push is [42766023601](https://github.com/Unjuno/babelshelf/actions/runs/42766023601);
-the full clean-checkout workflow passed all groups in 11m14s.
-Public Site v332 serves app build `00aeca0a0b576e46` from app source commit
-`39e96129b362c1a65a1400ec9f0657c5350c3b98`; live `/build.json` returns the
-same 166-asset manifest. The app and source have not diverged because the
-latest merge is documentation-only. Untracked QA/model artifacts remain
+GitHub `main` is `1eec2f9` (PR #26 merged). CI [42772375064](https://github.com/Unjuno/babelshelf/actions/runs/42772375064)
+passed after merge. PR #26 fixes model-set storage estimates to include the
+selected Search model package; unknown Search model IDs fail closed. Its new
+regression verifies both behaviors. Public Site v333 serves app build
+`e36a284460869a61` /166 assets from product source `1eec2f9`. The public custom
+domain and Site hostname return this same build. The deployment archive and
+Site delivery checks are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
+The sidebar PWA applied v333 through its Online refresh, showed active worker
+`e36a284460869a61`, and was returned to Offline. No model or runtime was
+downloaded or prepared. Existing untracked QA/model artifacts remain
 preserved.
 
 Sidebar browser check on 2026-11-10: the live Models page showed LFM3 QAD Q4_0

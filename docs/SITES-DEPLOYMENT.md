@@ -1,3 +1,36 @@
+# Public Site v333 — include Search assets in model-set capacity (2026-11-10 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`1eec2f9ef78e02936ec6c8d2417b4b2b396a465f`; app build
+`e36a284460869a61` /166 verified assets. Site source commit
+`5023231902fe813aecd90070832c39be046e56d6`; saved Site version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_43738ebd0e508191b8e9714e5b5224c2`
+(v333); deployment `appgdep_6af2c477ac18819182403e2b71b71b45` succeeded.
+The Site remains public at `https://babelshelf.com`. Both the custom domain
+and Site hostname return build `e36a284460869a61` /166 assets. The local
+archive SHA-256 is
+`b0dcf52a0cc775a452831b3b4b527d47812ba2a584b1eceb799183e2abb1b9aa`
+(110,960,640 uncompressed bytes /205 files); the saved Site content hash is
+`sha256:6815f27be6f9b5227522b0d279450c73ac106b0a05e28b57f88a5eeb014877b5`.
+
+PR #26 corrects model-set storage estimates by adding the selected local Search
+model package and rejecting unregistered Search model IDs. Its size regression
+passed locally (14/14 model-set tests), as did the prototype suite (1,942),
+`npm run check`, TypeScript, app build, app acceptance (9/9), and settings UI
+acceptance (23/23). Clean-checkout CI passed before merge in workflow
+[42769292331](https://github.com/Unjuno/babelshelf/actions/runs/42769292331)
+and after merge in [42772375064](https://github.com/Unjuno/babelshelf/actions/runs/42772375064).
+
+Site packaging retained current and previous app-version assets and pruned 25
+older unused assets. Verification confirmed the exact pinned ONNX WASM bytes
+through identity and gzip delivery (SHA-256
+`49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082`), plus
+the offline shell transport and no-store response headers. The sidebar PWA
+refreshed to the active v333 worker and was returned to Offline. This is a PC
+sidebar update/offline-toggle check only. No model/runtime was downloaded or
+prepared; iOS cold-offline, model-generation, and physical-device behavior
+remain unverified. No model weights or user data are part of the Site archive.
+
 # Public Site v332 — skip query inference for empty semantic index (2026-11-10 JST)
 
 Product source: `Unjuno/babelshelf` `main` at
