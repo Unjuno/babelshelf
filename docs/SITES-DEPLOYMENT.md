@@ -1155,3 +1155,25 @@ Developer showed active worker `443a34209a1462e3` and bundle
 public PC app shell and diagnostic controls' release build; it does not prove
 real LFM3 loading, iPhone performance, or phone compatibility. No model/runtime
 was downloaded, no model was loaded, and no app storage was cleared.
+
+## Public Site v338 — Vision catalog local import clarity (2026-11-10 JST)
+
+Product source `Unjuno/babelshelf` branch `codex/ui-design-handoff`, commit
+`a43ac41e275ecb741d03b93f5c9f5d2546204dcd`; app build `04f76abf91fd65da`
+with 166 verified assets. The full GitHub quality workflow
+[42826425370](https://github.com/Unjuno/babelshelf/actions/runs/42826425370)
+passed. Site source commit `bf26cf7c0447c062d0a99d61fd8a3cfc3fb0fb77`;
+saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_c6fa102fef5081918d95e13b2eb460b9`;
+production deployment `appgdep_6af31ef8655c8191bd4de167b3ce0d7c` succeeded.
+The existing public audience and custom domain `https://babelshelf.com/` were
+retained. Archive content hash was
+`sha256:c54493f97e2f63d2870d2ab25c6e85794775c9aae47091d21ae6548016956cdb`
+(110,970,880 bytes / 205 files).
+
+The Vision catalog now offers the built-in model and direct local LFM2-VL ONNX
+import, and its helper text accurately describes both paths. The PC sidebar
+PWA applied worker build `04f76abf91fd65da`, showed the import action and
+corrected label, and was returned to Offline. Staged delivery verification
+passed WASM identity/gzip bytes and offline-shell transport. No model was
+imported, downloaded, loaded, or run; no physical iPhone validation was done.

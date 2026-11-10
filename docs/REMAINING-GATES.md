@@ -1,5 +1,20 @@
 ## Current status · 2026-11-10
 
+### Latest branch and public release · 2026-11-10
+
+GitHub `main` is `20e3e914`. The focused Vision catalog fix is on
+`codex/ui-design-handoff` at `a43ac41e275ecb741d03b93f5c9f5d2546204dcd`;
+PR #34 remains open and its full quality workflow
+[42826425370](https://github.com/Unjuno/babelshelf/actions/runs/42826425370)
+passed. Public Site v338 packages app build `04f76abf91fd65da` (166 verified
+assets). The existing sidebar PWA applied that worker and showed both the
+built-in Vision model and the local LFM2-VL ONNX import action with consistent
+copy; the app was returned to Offline. No model files or runtime were
+downloaded or loaded. This does not verify phone inference or physical iOS
+compatibility. Custom OCR import remains unavailable, and the local Vision
+import path was verified as an entry point, not by installing or running a
+user model.
+
 ### Checked now · 2026-11-10
 
 The development branch's Activity privacy projection now retains only
