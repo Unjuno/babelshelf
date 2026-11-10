@@ -2,16 +2,16 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `44d7824`, which merges PR #15. PR #15 connects a selected and
-loaded semantic Search runtime to the normal agent `memory.search` path while
-retaining lexical fallback. Both the PR quality workflow and main's post-merge
-full quality run [42744216106](https://github.com/Unjuno/babelshelf/actions/runs/42744216106)
-passed all stages. The
-local `codex/ui-design-handoff` branch contains the merged code commit; its
-remote feature ref will be advanced with the next verified change. Public Site
-v331 serves app build `46dc9d2ee209691a` from full source commit
-`44d782477e02d4319aff567e9d55189e8cec9f60`; live `build.json` and service
-worker report that build. Untracked QA/model artifacts remain preserved.
+GitHub `main` is `acf107b`; PR #15 connects a selected and loaded semantic
+Search runtime to the normal agent `memory.search` path while retaining lexical
+fallback, and PR #17 reconciles historical Search notes. The full quality runs
+[42744216106](https://github.com/Unjuno/babelshelf/actions/runs/42744216106)
+and [42747324915](https://github.com/Unjuno/babelshelf/actions/runs/42747324915)
+passed all stages. Local `codex/ui-design-handoff` is fast-forwarded to main;
+untracked QA/model artifacts remain preserved. Public Site v331 serves app
+build `46dc9d2ee209691a` from app source commit
+`44d782477e02d4319aff567e9d55189e8cec9f60`, confirmed by the live `build.json`
+and the refreshed sidebar app bundle.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only
@@ -29,8 +29,22 @@ revision and checks exact citation evidence. Focused local results: 77/77
 coordinator tests, 65/65 semantic/settings/model-set tests, and `npm run check`
 pass; PR quality passed and the app is included in public Site v331. These are
 controlled integration and delivery checks, not evidence that Granite was
-downloaded or run, that public-browser semantic retrieval/citations work, or
-that the role fits a phone. Those end-to-end/runtime gates remain open.
+used on a physical phone, that semantic ranking over indexed canonical Memory
+works in a live turn, or that the normal agent produces a correctly cited
+answer from those ranked results. Those product-flow/device gates remain open.
+
+2026-11-10 public app smoke: the sidebar browser initially ran old bundle
+`index-9n0tia0c.js`; the Site served build `46dc9d2ee209691a`. The app's
+Online refresh applied `index-BaMBGDee.js` and exposed the Search model setup.
+The app-owned flow downloaded and verified its 27.4 MB runtime and 123 MB
+Granite int8 model, then loaded the model Worker. “Test Search” ranked the
+matching synthetic passage first. After switching the app to Offline, the
+same already-loaded model passed the smoke test again. Settings were restored
+to the original LFM3 model set and Offline mode; Search was turned off, and a
+subsequent local-file check reported “Files verified.” No canonical Memory
+notes were indexed or changed. This is real browser/runtime inference evidence,
+not an offline cold load, canonical-Memory search, agent answer/citation,
+phone-fit, or sustained-performance result.
 
 The current text-model load path has a five-minute no-progress deadline and a
 30-minute absolute deadline, retires its inference Worker on timeout, and
@@ -42,13 +56,12 @@ stopped during model load after 18m, and later readiness runs did not generate.
 They do not establish current-build LFM3 failure or success. A targeted current
 installed-PWA run remains required for iPhone behavior.
 
-2026-11-10 follow-up: the app-owned pinned asset store now downloads any
+Historical store follow-up (before the public app smoke above): the app-owned pinned asset store now downloads any
 manifest asset larger than 16 MiB in durable OPFS HTTP ranges, rather than
 limiting resumable acquisition to `.gguf` files. The interrupted-range
 regression now uses a large ONNX asset and confirms retry requests only the
 uncommitted final bytes. This is store-level fault-injection coverage; it does
-not yet prove CDN range behavior, the embedding candidate's acquisition, or
-Search integration on a browser/device.
+not prove CDN range behavior under interruption or indexed-Memory integration.
 
 2026-11-10 adapter preflight: `semantic-embedding-worker.ts` and its client
 use the exact pinned Granite package, verified OPFS reads, local-only
@@ -58,9 +71,9 @@ termination, and progress during asset verification. `semantic-search-runtime.ts
 coordinates explicit runtime/model preparation with revision-keyed derived
 indexing and live-source citation rebinding. Prototype build, app build
 (166 verified assets), `npm run check`, all 1,931 prototype tests and product
-acceptance (9/9) pass. This is packaging and orchestration evidence only; no
-actual model was downloaded or loaded through the app Worker, and no UI or
-normal `memory.search` connection has been enabled.
+acceptance (9/9) passed at that preflight checkpoint. The public app smoke above
+later downloaded and loaded the model in its Worker, while canonical Memory
+indexing and normal agent answer/citation remain unverified.
 
 ### 2026-11-10 · reconcile model roles before expanding the catalog
 
