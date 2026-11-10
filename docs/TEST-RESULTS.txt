@@ -8491,3 +8491,14 @@ settings are unchanged. Regression: 85/85 LFM3/runtime and large-context tests,
 check`, `npm run build:app` (166 verified assets; build `ed965b009644e4b0`), and
 `git diff --check` passed. These PC checks prove bounded test configuration and
 build behavior only; no iPhone model load/generation was performed.
+
+2026-11-11 — PR #35 merged after its exact rebased candidate passed the full
+Quality workflow [42848607957](https://github.com/Unjuno/babelshelf/actions/runs/42848607957).
+The post-merge main workflow
+[42850878864](https://github.com/Unjuno/babelshelf/actions/runs/42850878864)
+also passed all gates on `70526c0bd25efaa3b5d02756ae80da579b631b31`. The
+candidate first incorporated the already-merged PR #34 from current main; a
+documentation conflict was resolved by keeping the newer 2026-11-11 release
+snapshot. Public Site v339 was not updated in this task. CI acceptance is PC
+Chromium/WebKit and installed-PWA evidence; no physical iPhone model test was
+run, and the known local model/report limitations remain open.
