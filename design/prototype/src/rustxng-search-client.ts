@@ -1,5 +1,5 @@
 export type RustXngRawContentStatus='ok'|'not_requested'|'too_large'|'fetch_failed'|'robots_blocked'|'extract_failed'|'render_failed'|'unknown';
-export type RustXngSearchResult={title:string;url:string;snippet:string;engine?:string;rawContentStatus:RustXngRawContentStatus;pageText?:string};
+export type RustXngSearchResult={title:string;url:string;snippet:string;engine?:string;rawContentStatus:RustXngRawContentStatus;rawContentTruncated:boolean;pageText?:string};
 export type RustXngSearchResponse={provider:'RustXNG';query:string;retrievedAt:string;results:RustXngSearchResult[]};
 
 const MAX_RESPONSE_BYTES=96*1024;
@@ -50,10 +50,19 @@ function rawContentStatus(value:unknown):RustXngRawContentStatus{
  return value==='ok'||value==='not_requested'||value==='too_large'||value==='fetch_failed'||value==='robots_blocked'||value==='extract_failed'||value==='render_failed'?value:'unknown';
 }
 
-function boundedPageText(value:unknown):string|undefined{
+function boundedPageText(value:unknown):{text:string;truncated:boolean}|undefined{
  if(typeof value!=='string'||!value.trim())return;
  const bytes=new TextEncoder().encode(value);
- return new TextDecoder().decode(bytes.subarray(0,MAX_PAGE_TEXT_BYTES)).trim()||undefined;
+ let length=Math.min(bytes.byteLength,MAX_PAGE_TEXT_BYTES);
+ const truncated=length<bytes.byteLength;
+ if(truncated){
+  let start=length-1;
+  while(start>=0&&(bytes[start]&0xc0)===0x80)start--;
+  const lead=bytes[start],width=lead<0x80?1:lead<0xe0?2:lead<0xf0?3:4;
+  if(start+width>length)length=start;
+ }
+ const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(0,length)).trim();
+ return text?{text,truncated}:undefined;
 }
 
 async function readBoundedBody(response:Response){
@@ -96,7 +105,7 @@ export async function searchRustXng(input:{endpoint:string;query:string;onlineMo
    if(!url||!title)continue;
    const snippet=boundedText(row.content,MAX_SNIPPET_CHARS),engine=boundedText(row.engine,80);
    const rawStatus=rawContentStatus(row.raw_content_status),pageText=rawStatus==='ok'?boundedPageText(row.raw_content):undefined;
-   result.push({title,url,snippet,rawContentStatus:rawStatus,...(pageText?{pageText}:{}),...(engine?{engine}:{})});
+   result.push({title,url,snippet,rawContentStatus:rawStatus,rawContentTruncated:row.raw_content_truncated===true||pageText?.truncated===true,...(pageText?{pageText:pageText.text}:{}),...(engine?{engine}:{})});
   }
   return {provider:'RustXNG',query:input.query.trim(),retrievedAt:(input.now?.()??new Date()).toISOString(),results:result};
  }catch(error){

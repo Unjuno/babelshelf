@@ -21,7 +21,7 @@ test('calls the configured RustXNG endpoint without credentials and projects bou
  const results=Array.from({length:9},(_,i)=>({title:`Result ${i}`,url:`https://example.com/${i}`,content:'x'.repeat(1400),engine:'public-engine',raw_content:'do not cite snippet',raw_content_status:'fetch_failed'}));
  const value=await searchRustXng({endpoint:'https://search.example/rx',query:'  local query  ',onlineMode:true,onlineSignal:true,now:()=>new Date('2026-11-05T00:00:00.000Z'),fetcher:async(url,init)=>{request={url:String(url),init};return response({results});}});
  assert.equal(request.url,'https://search.example/rx/search?q=local+query&format=json&max_results=5&include_raw_content=1');assert.equal(request.init.credentials,'omit');assert.equal(request.init.referrerPolicy,'no-referrer');
- assert.equal(value.provider,'RustXNG');assert.equal(value.query,'local query');assert.equal(value.retrievedAt,'2026-11-05T00:00:00.000Z');assert.equal(value.results.length,5);assert.equal(value.results[0].snippet.length,1200);assert.equal(value.results[0].rawContentStatus,'fetch_failed');assert.equal('pageText' in value.results[0],false);assert.equal('raw_content' in value.results[0],false);
+ assert.equal(value.provider,'RustXNG');assert.equal(value.query,'local query');assert.equal(value.retrievedAt,'2026-11-05T00:00:00.000Z');assert.equal(value.results.length,5);assert.equal(value.results[0].snippet.length,1200);assert.equal(value.results[0].rawContentStatus,'fetch_failed');assert.equal(value.results[0].rawContentTruncated,false);assert.equal('pageText' in value.results[0],false);assert.equal('raw_content' in value.results[0],false);
 });
 
 test('only successful page text is exposed, with strict byte bounds for citations',async()=>{
@@ -29,13 +29,17 @@ test('only successful page text is exposed, with strict byte bounds for citation
   {title:'Fetched',url:'https://example.com/a',content:'snippet',raw_content_status:'ok',raw_content:'Page body: 引用できます。'},
   {title:'Blocked',url:'https://example.com/b',content:'snippet',raw_content_status:'robots_blocked',raw_content:'must not cite'},
   {title:'Unknown status',url:'https://example.com/c',content:'snippet',raw_content_status:'surprise',raw_content:'must not cite'},
-  {title:'Large',url:'https://example.com/d',content:'snippet',raw_content_status:'ok',raw_content:'界'.repeat(5_000)},
+  {title:'Large',url:'https://example.com/d',content:'snippet',raw_content_status:'ok',raw_content:'x'.repeat(11_999)+'界'},
+  {title:'Server truncated',url:'https://example.com/e',content:'snippet',raw_content_status:'ok',raw_content:'partial text…',raw_content_truncated:true},
  ]};
  const value=await searchRustXng({endpoint:'https://search.example',query:'q',onlineMode:true,onlineSignal:true,fetcher:async()=>response(payload)});
  assert.equal(value.results[0].pageText,'Page body: 引用できます。');
  assert.equal(value.results[1].pageText,undefined);
  assert.equal(value.results[2].rawContentStatus,'unknown');assert.equal(value.results[2].pageText,undefined);
+ assert.equal(value.results[3].pageText,'x'.repeat(11_999));
  assert.ok(new TextEncoder().encode(value.results[3].pageText).byteLength<=12_000);
+ assert.equal(value.results[3].rawContentTruncated,true);
+ assert.equal(value.results[4].rawContentTruncated,true);
 });
 
 test('rejects invalid URLs and sanitizes provider-controlled fields',async()=>{
