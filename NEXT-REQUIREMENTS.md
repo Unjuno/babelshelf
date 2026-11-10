@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-10-28 JST. The accepted mobile UI and the bounded 2026-10-19 input-submission refactor are milestones, not completion of the broader local-first PWA goal. Preserve local data and distinguish code, PC/browser, installed-PWA, physical-device, and model evidence. Continue from a concrete unmet requirement; do not repeat broad model comparisons or successful samples without a specific reason. The short current release snapshot is at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md); detailed dated evidence lives in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt).
+Updated 2026-11-10 JST. The accepted mobile UI and the bounded 2026-10-19 input-submission refactor are milestones, not completion of the broader local-first PWA goal. Preserve local data and distinguish code, PC/browser, installed-PWA, physical-device, and model evidence. Continue from a concrete unmet requirement; do not repeat broad model comparisons or successful samples without a specific reason. The short current release snapshot is at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md); detailed dated evidence lives in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). GitHub main is b9d066c with PR #11 merged. The public v330 build was verified against that commit; exact current delivery status and uncompleted device/runtime gates are maintained in REMAINING-GATES.md.
 
 ## Read in this order
 
