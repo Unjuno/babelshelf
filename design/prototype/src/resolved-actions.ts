@@ -12,7 +12,7 @@ import {runBuiltinTool} from './tools/builtin-tool-results.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
 import {openUniqueSavedMemory} from './saved-memory-open.ts';
 import {isMemoryPassageResult,type MemoryPassageResult,type MemorySearchResult} from './memory-search-types.ts';
-import {mergeStoredSearchResults} from './file-discovery.ts';
+import {combineMemorySearchResults} from './memory-search-combine.ts';
 import {searchMemoryWithQuestionFallback} from './memory-search-fallback.ts';
 import {resolveReadCompletion,resolveSearchCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
@@ -56,11 +56,7 @@ export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependen
 export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel,onPreview,signal,semanticSearch}:Dependencies){
  const combineSearch=async(query:string,activeSignal?:AbortSignal)=>{
   check();const lexical=await store.search(query,true,activeSignal);check();
-  if(!semanticSearch)return lexical;
-  const semantic=await semanticSearch(query,activeSignal);check();if(!semantic?.length)return lexical;
-  const files=lexical.filter((item):item is Extract<MemorySearchResult,{kind:'file'}>=>item.kind==='file');
-  const passages=lexical.filter(isMemoryPassageResult);
-  return mergeStoredSearchResults(files,[...semantic,...passages],12,query);
+  const combined=await combineMemorySearchResults(query,lexical,semanticSearch,activeSignal);check();return combined;
  };
  const host={search:(query:string)=>store.search(query),resolve:(query:string)=>snapshot().then(notes=>resolveToolNotes(notes,query)),check,signal};
  const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search'),...(semanticSearch?{optionalSemanticRoute:true}:{})},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:(q,s)=>combineSearch(q,s)}));
