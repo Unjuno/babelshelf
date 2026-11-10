@@ -4,10 +4,10 @@
 
 GitHub `main` is `5206fd3` (PR #10). Draft PR
 [#11](https://github.com/Unjuno/babelshelf/pull/11) has clean merge status. Its
-latest code commit `1c28ecd` passed the complete quality workflow
-[42687489188](https://github.com/Unjuno/babelshelf/actions/runs/42687489188)
-in 12m 50s, including offline and installed-PWA acceptance. The local
-untracked QA/model benchmark artifacts were preserved.
+latest remote code commit `60d77f4` passed the complete quality workflow
+[42725071216](https://github.com/Unjuno/babelshelf/actions/runs/42725071216).
+This follow-up is based on that updated remote branch. The local untracked
+QA/model benchmark artifacts were preserved.
 
 The current local follow-up bounds only an unloaded LFM3 model's Developer
 smoke/performance load to an 8K context. The user's saved context and normal
@@ -18,19 +18,19 @@ load/index/unload controls, progress and Stop. The agent merges semantic hits
 with lexical results only when that Search runtime is already loaded; absent
 or unloaded Search continues through deterministic lexical retrieval. The
 pinned embedding files and ONNX WASM runtime prepare separately, use resumable
-OPFS storage and remain outside the install shell. Prototype build, all 1,933
-prototype tests, focused semantic retrieval tests (2/2), Search Settings UI
-(1/1), submission tests (100/100), and `npm run check` pass. The UI test
-confirms opt-in does not download or index. In the Codex sidebar browser on the
-local Windows product build, the separate 27.4 MB Search runtime and pinned
-123 MB Granite package were prepared, verified and the model reached `Model
-loaded`; moving to Chat and back retained that live state. Turning Search off
-closed the worker. The later product-shell refresh showed the persisted assets
-as verified while Search remained off, and the app was returned to Offline.
-No note was indexed and no real semantic query or agent citation was exercised;
-retrieval quality and iPhone behavior remain unverified. The existing 18-minute
-stopped iPhone run does not prove that the 8K diagnostic context alone resolves
-the load stall.
+OPFS storage and remain outside the install shell. A bounded Settings smoke
+check embeds one fixed Japanese query and two fixed passages in memory,
+compares cosine scores, and reports whether the relevant passage ranks first;
+it reads no Memory data and writes no index. Focused semantic tests (16/16),
+the full prototype suite (1,936/1,936), `npm run check`, app build (166
+verified assets), and product acceptance (9/9) pass. In the Codex sidebar
+browser against the local Windows product build, with app mode Offline, the
+already prepared Granite model loaded from local assets and the new Test Search
+action passed: the matching synthetic passage ranked first. No note was
+indexed, and Search was turned off afterwards. This establishes local embedding
+and ranking in that PC browser, not retrieval over real Memory, agent citations,
+model quality, or iPhone compatibility. The existing 18-minute stopped iPhone
+run does not prove that the 8K diagnostic context alone resolves the load stall.
 
 PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a
@@ -38,9 +38,10 @@ separate IndexedDB for rebuildable vectors keyed by model and note revision.
 The derived-store tests confirm revision replacement/removal and isolation
 from canonical Memory records. The local follow-up surfaces the optional role
 in Settings and connects loaded semantic Search to the existing agent search
-path, preserving exact source binding and lexical fallback. It has not been
-exercised with actual model weights in the packaged browser Worker. The local
-product shell candidate is not published.
+path, preserving exact source binding and lexical fallback. Packaged browser
+Worker inference was exercised with the fixed smoke fixture, but not with
+saved Memory or end-to-end agent citations. The local product shell candidate
+is not published.
 
 2026-11-10 follow-up: the app-owned pinned asset store now downloads any
 manifest asset larger than 16 MiB in durable OPFS HTTP ranges, rather than

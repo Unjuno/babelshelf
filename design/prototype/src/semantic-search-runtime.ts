@@ -2,6 +2,7 @@ import {createSemanticEmbeddingBackend} from './semantic-embedding-backend.ts';
 import {createSemanticIndexStore} from './semantic-index-store.ts';
 import {indexSemanticSources,searchSemanticSources,type SemanticSearchSource} from './semantic-search-service.ts';
 import {semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
+import {runSemanticSearchSmoke} from './semantic-search-smoke.ts';
 
 type KnowledgeReader={views:(signal?:AbortSignal)=>Promise<Array<{id:string;path:string;body:string;version:number;protected?:boolean;recordType?:string}>>};
 type Events=(type:string,value:unknown)=>void;
@@ -25,6 +26,7 @@ export function createSemanticSearchRuntime(knowledge:KnowledgeReader,createWork
   prepareModel:(allowNetwork:boolean,localFiles:File[]=[],signal?:AbortSignal,events?:Events)=>backend.prepare(allowNetwork,localFiles,signal,events),
   verifyModel:(signal?:AbortSignal,events?:Events)=>backend.verify(signal,events),
   async load(signal?:AbortSignal,events?:Events){check();return backend.load(signal,events);},
+  async smokeTest(signal?:AbortSignal,events?:Events){check();if(!backend.loaded)throw Error('Load the Search model first');return runSemanticSearchSmoke((texts,activeSignal)=>backend.embed(texts,activeSignal??signal,events),signal);},
   async index(signal?:AbortSignal,events?:Events){check();if(!backend.loaded)throw Error('Prepare and load the Search model first');const current=await sources(signal);return indexSemanticSources(current,options(signal,events));},
   async search(query:string,limit=12,signal?:AbortSignal,events?:Events){check();if(!backend.loaded)throw Error('Prepare and load the Search model first');return searchSemanticSources(query,()=>sources(signal),options(signal,events),{limit});},
   async unload(signal?:AbortSignal){check();return backend.unload(signal);},
