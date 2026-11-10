@@ -116,6 +116,27 @@ test('a native final answer that exposes tool syntax gets one user-facing repair
  assert.match(prompts[2].at(-1).content,/internal implementation details.*omit tool calls/i);
 });
 
+test('native answer presentation leak falls back to grounded answer after one bounded repair',async()=>{
+ const action=(tool,args)=>JSON.stringify({action:'tool',query:tool,body:JSON.stringify(args)});
+ const leaked=JSON.stringify({action:'answer',reply:{status:'answered',answer:'I used memory.read(query="meeting-1") and sourceReferences[0] to find Monday at 10.',sources:['S1']}});
+ const {value,calls}=input([
+  action('memory.search',{query:'meeting'}),
+  action('memory.read',{query:'meeting-1'}),
+  leaked,
+  leaked,
+ ],{question:'Search the saved meeting note and tell me when it is.',enabledTools:['memory.search','memory.read'],builtinPackages:[...builtinPackages,readPackage],maxToolCalls:4,
+   search:async()=>[{noteId:'meeting-1',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.',title:'Notes/meeting.md'}],
+   views:async()=>[{id:'meeting-1',path:'Notes/meeting.md',version:1,body:'The meeting is Monday at 10.'}]});
+ value.engine.plannerProtocol='native-tool-calls';const receipts=[];
+ value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.final.action,'answer');assert.equal(result.final.target,'knowledge');
+ assert.deepEqual(result.calls.map(call=>call.tool),['memory.search','memory.read']);
+ assert.equal(receipts.filter(row=>row.error?.code==='planner_protocol').length,2);
+ assert.equal(receipts.at(-1).status,'succeeded');assert.equal(receipts.at(-1).output.action,'answer');
+ assert.doesNotMatch(JSON.stringify(receipts),/I used memory\.read|sourceReferences\[0\]/);
+});
+
 test('an invalid history selector gets one audited replan without guessing an original or executing a tool',async()=>{
  const {value,calls}=input([
   '{"action":"recall","target":"history","query":"その集合の持ち物は何？"}',

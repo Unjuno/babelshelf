@@ -30,7 +30,20 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
      if(!(error instanceof PlannerOutputError))throw error;
      if(!historyRepairUsed&&error.diagnostic.reason==='history target'){historyRepairUsed=true;raw=await attempt(true);}
      else if(!deferredToolRepairUsed&&error.diagnostic.reason==='tool call'&&input.allowedTools.some(tool=>tool.id.startsWith('user.'))&&input.allowedTools.some(tool=>tool.id===DEFERRED_TOOL_SEARCH_ID)){deferredToolRepairUsed=true;raw=await attempt(false,true);}
-     else if(!protocolRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak','terminal answer implementation leak'].includes(error.diagnostic.reason)){protocolRepairUsed=true;raw=await attempt(false,false,error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':error.diagnostic.reason==='terminal answer implementation leak'?'implementation-leak':true);}
+     else if(!protocolRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak','terminal answer implementation leak'].includes(error.diagnostic.reason)){
+      protocolRepairUsed=true;
+      const repairKind=error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':error.diagnostic.reason==='terminal answer implementation leak'?'implementation-leak':true;
+      try{raw=await attempt(false,false,repairKind);}
+      catch(repairError){
+       if(!(repairError instanceof PlannerOutputError)||!['terminal answer source-label leak','terminal answer implementation leak'].includes(repairError.diagnostic.reason)||!history.some(item=>!item.error&&['memory.search','memory.read','memory.sources','web.search'].includes(item.tool)))throw repairError;
+       // A repeated presentation-only failure must not discard verified tool
+       // work. Hand the evidence to the ordinary grounded-answer stage, which
+       // independently validates citations and user-facing text.
+       const fallback:DialoguePlan={action:'answer',query:input.question,target:'knowledge'};
+       input.onPreview?.('');
+       raw=input.tracePlan?await input.tracePlan(history.length,async()=>fallback,()=>undefined):fallback;
+      }
+     }
      else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&error.diagnostic.reason==='query'){protocolRepairUsed=true;raw=await attempt(false,false,false,true);}
      else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&['target','target action','file scope','current scope','input scope','explicit scope'].includes(error.diagnostic.reason)){protocolRepairUsed=true;raw=await attempt(false,false,false,false,true);}
      else throw error;
