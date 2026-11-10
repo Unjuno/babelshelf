@@ -2,23 +2,19 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `1eec2f9` (PR #26 merged). CI [42772375064](https://github.com/Unjuno/babelshelf/actions/runs/42772375064)
-passed after merge. PR #26 fixes model-set storage estimates to include the
-selected Search model package; unknown Search model IDs fail closed. Its new
-regression verifies both behaviors. Public Site v333 serves app build
-`e36a284460869a61` /166 assets from product source `1eec2f9`. The public custom
-domain and Site hostname return this same build. The deployment archive and
-Site delivery checks are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
-The sidebar PWA applied v333 through its Online refresh, showed active worker
-`e36a284460869a61`, and was returned to Offline. No model or runtime was
-downloaded or prepared. Existing untracked QA/model artifacts remain
-preserved.
+GitHub `main` is `2e6f670` after PR #27. CI [42776970035](https://github.com/Unjuno/babelshelf/actions/runs/42776970035)
+passed all stages before merge. Public Site v334 serves app build
+`443a34209a1462e3` /166 assets from product source `2e6f670`. The sidebar PWA
+applied the current worker `443a34209a1462e3` and bundle
+`index-CGIr1-9U.js`; Offline mode was restored. Site packaging and deployment
+evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md). Existing
+untracked QA/model artifacts remain preserved.
 
-PC fix in progress: a running device model check now keeps stage and elapsed
-time visible after navigation, exposes Copy snapshot and Stop test from the
-persistent operation toast, and still uses the existing abort/report path.
-Focused Developer UI coverage passed 35/35, diagnostic logic passed 60/60,
-`npm run check` passed, and `npm run build:app` produced 166 verified assets.
+The persistent Developer operation toast now keeps elapsed time visible after
+navigation, exposes Copy snapshot during app/model checks, and exposes Stop
+test during model execution through the existing abort/report path. Focused
+Developer UI coverage passed 35/35, diagnostic logic passed 60/60,
+`npm run check` passed, and `npm run build:app` produced the deployed build.
 This improves recoverability and report access; it does not explain or reduce
 the iPhone's reported 18m23s model load. Physical-device timing remains open.
 
@@ -991,7 +987,7 @@ The post-fix Q8 named-note offline answer/citation/reviewed-save flow and one lo
 - **Offline:** verify explicit preparation, force-closed installed-PWA cold restart, model generation, imports, source review, saving, and backup/restore under physical device network isolation. PC emulation does not establish iOS Airplane Mode or force-close.
 - **Agent and tools:** validate live-model multi-step tool selection, source provenance, bounded failure/retry and configured prompt handling. New built-in Memory Activity receipts retain source IDs/versions/ranges and counts but omit query/path/title/quote/excerpt text; existing historical receipts remain byte-for-byte unchanged and may contain the older verbose payloads. Activity detail exposes available planner and final-answer inference measurements plus registered-tool receipt intervals; final-answer activity omits answer/citation content. The normal production route pages receipts after the 128 inline-event threshold; a controlled IndexedDB integration test completed 70 distinct search selections, crossed 128 receipts and produced a cited answer. A new isolated fake-indexeddb fault-injection test verifies rollback when receipt writes hit a quota exception before tool start, and verifies a completed operation is not replayed if finish-receipt persistence fails. This is not real-browser storage exhaustion. There is no arbitrary default call limit when the profile limit is unset, but an optional user-profile limit, cumulative per-Send text-generation token/time budgets, context/source capacity, cancellation, result bounds and no-progress checks remain. The generation limits default to unlimited; live-model behavior when either configured limit is reached remains unverified. Storage quota/persistence failure can also end work, and actual quota failure is unverified. Custom tools currently use constrained local read-only/compute capabilities; external MCP transport is not established.
 - **Data and UX:** preserve original content, IDs, revisions, attachments, conflict checks and approval contracts. Final prompts discourage internal tool names and record metadata in ordinary prose; host validation now detects protocol-shaped leakage and allows one answer-only rewrite against unchanged evidence. Tests verify citation identity and literal quotations survive; explicit implementation questions remain answerable. Live-model correction quality still needs confirmation. Verify binary-original backup/restore and touch navigation on device. Review navigation, preparation, diagnostics and accessibility as real user flows.
-- **Delivery:** verify the exact built artifact and source state, review the mixed worktree, resolve runtime distribution requirements, then push the authorized branch and publish. Confirm active build without clearing user storage.
+- **Delivery:** current GitHub and public Site build are verified for v334. Continue with the remaining runtime distribution review and physical-device gates; confirm active build without clearing user storage.
 
 2026-11-01: Added optional cumulative text-generation token and wall-time budgets per Send in commit `e375dd0357b4679a957e1fd62f58193286cd6bdb`. Defaults remain unlimited. Legacy schema-2 profiles are projected without rewriting their stored bytes; the Settings panel and proposal review display limits. Local PC checks passed: root 250/250, prototype 1,676/1,676, Settings UI 16/16, custom-tool runtime/UI 38/38, production shell 163 verified assets and app acceptance 8/8. Clean-checkout GitHub Actions run [41282977095](https://github.com/Unjuno/babelshelf/actions/runs/41282977095) passed all workflow stages in 9m41s. No model files were downloaded and no public deployment was made. This verifies configured budget accounting and release packaging on PC/CI; real-model limit-hit behavior, iPhone/Android behavior and physical offline execution remain unverified.
 
