@@ -2,12 +2,23 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `5206fd3` (PR #10). Draft PR
-[#11](https://github.com/Unjuno/babelshelf/pull/11) has clean merge status. Its
-latest remote code commit `60d77f4` passed the complete quality workflow
-[42725071216](https://github.com/Unjuno/babelshelf/actions/runs/42725071216).
-This follow-up is based on that updated remote branch. The local untracked
-QA/model benchmark artifacts were preserved.
+GitHub `main` is `fedb77f` (PR #13). Draft PR
+[#11](https://github.com/Unjuno/babelshelf/pull/11) is open with clean merge
+status. Its remote code commit `4a8c074` passed the complete quality workflow
+[42727513430](https://github.com/Unjuno/babelshelf/actions/runs/42727513430).
+This local follow-up uses that exact PR head. The local untracked QA/model
+benchmark artifacts were preserved.
+
+Local follow-up on `codex/semantic-search-foundation`: text model loading now
+has a five-minute no-progress deadline that retires the inference Worker and a
+30-minute absolute deadline. Runtime progress renews the no-progress deadline;
+late Worker replies cannot mark a timed-out model loaded. Device diagnostics
+classify both timeout conditions without copying raw error text. Focused worker
+tests pass (19/19); full prototype tests pass (1,939/1,939), repository check
+passes, the app builds with 166 verified assets, and product acceptance passes
+(9/9; shell `53c14c67df540122`). This prevents indefinite waiting when load
+progress stops; it does not prove the iPhone LFM3 load bottleneck itself is
+fixed. The change has not been pushed or deployed.
 
 The current local follow-up bounds only an unloaded LFM3 model's Developer
 smoke/performance load to an 8K context. The user's saved context and normal

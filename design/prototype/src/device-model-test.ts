@@ -9,7 +9,7 @@ export async function prepareFullCycleAssets<TModel,TRuntime>(prepareModel:()=>P
  const model=await prepareModel();
  return {runtime,model};
 }
-const knownFailureCodes=new Set(['stopped','incomplete-output','empty-output','model-files-not-ready','restart-pending','return-attempt-interrupted','another-model-loaded','model-test-not-run','no-model-selected','selected-model-changed','downloads-off','offline-signal','runtime-unavailable','runtime-messaging-unavailable','runtime-invalid-response','runtime-timeout','runtime-assets-unavailable','runtime-not-prepared','runtime-http-error','runtime-network-error','runtime-integrity-error','runtime-storage-error','runtime-setup-error']);
+const knownFailureCodes=new Set(['stopped','incomplete-output','empty-output','model-files-not-ready','restart-pending','return-attempt-interrupted','another-model-loaded','model-test-not-run','no-model-selected','selected-model-changed','downloads-off','offline-signal','runtime-unavailable','runtime-messaging-unavailable','runtime-invalid-response','runtime-timeout','runtime-assets-unavailable','runtime-not-prepared','runtime-http-error','runtime-network-error','runtime-integrity-error','runtime-storage-error','runtime-setup-error','text_model_load_timeout','text_model_load_stalled']);
 /** Keep device reports useful without retaining raw exception text or user data. */
 export function deviceModelTestFailureType(error:unknown,stage:DeviceModelTestFailureStage){
  const value=error&&typeof error==='object'?error as {code?:unknown;message?:unknown;name?:unknown}:{};

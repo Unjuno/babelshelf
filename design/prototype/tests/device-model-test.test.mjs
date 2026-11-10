@@ -10,5 +10,7 @@ test('device failure reports use safe actionable codes and never preserve raw ex
  assert.equal(deviceModelTestFailureType(Error('Runtime not prepared · switch Online to prepare'),'runtime-setup'),'runtime-not-prepared');
  assert.equal(deviceModelTestFailureType(TypeError('https://private.example/path?token=secret'),'runtime-setup'),'runtime-network-error');
  assert.equal(deviceModelTestFailureType(Error('PRIVATE_PROMPT_AND_DATA'),'runtime-setup'),'runtime-setup-error');
+ assert.equal(deviceModelTestFailureType(Object.assign(Error('No model-load progress for 5 minutes · worker stopped'),{code:'text_model_load_stalled'}),'model-load'),'text_model_load_stalled');
+ assert.equal(deviceModelTestFailureType(Object.assign(Error('Model load exceeded 30 minutes · worker stopped'),{code:'text_model_load_timeout'}),'model-load'),'text_model_load_timeout');
  assert.equal(deviceModelTestFailureType(Object.assign(Error('PRIVATE'),{code:'untrusted-code'}),'model-load'),'model-load-error');
 });
