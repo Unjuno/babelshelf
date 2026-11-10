@@ -8428,3 +8428,19 @@ device use or model-quality impact.
 2026-11-10: Clean-checkout GitHub Actions run [42799394362](https://github.com/Unjuno/babelshelf/actions/runs/42799394362) took 9m9s at `Install browser system dependencies`, compared with 50s in the previous successful run. It then proceeded to `Install pinned Chromium and WebKit`; no logs were available while the run remained active, so the cause of the variance is unknown. Added 15-minute per-step timeouts for both environment setup steps and raised the whole-job ceiling from 30 to 45 minutes, preserving room for the observed 9m9s delay plus the full existing suite. This makes unusually stalled setup fail with its named step rather than consuming an unbounded wait; it does not claim to fix the GitHub-hosted runner delay. The active run predates this workflow edit; run the updated workflow after the active run reaches a terminal state. GitHub documents per-step timeout syntax in its [workflow reference](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 
 2026-11-10: The same GitHub run [42799394362](https://github.com/Unjuno/babelshelf/actions/runs/42799394362) completed with a failure in `Review store and offline calculation`: the real browser flow requires the exact calculator expression in its durable Activity receipt, while the privacy projection had reduced it to `{textBytes:...}`. Updated the persistence-only projection to retain an expression only when the closed decimal parser accepts it unchanged (length ≤200); arbitrary or invalid text remains a byte count. Added a regression for accepted expressions and private invalid text, corrected the architecture review, and preserved the Activity lifecycle update contract. Local checks on app build `1effe00c90b651b8` (166 verified assets): root 271/271, prototype 1,946/1,946, static check passed, app acceptance 9/9, focused Activity/decimal tests 35/35, real offline calculator browser flow 1/1, and review-store browser flows 6/6. `git diff --check` passed. The clean GitHub rerun [42802252746](https://github.com/Unjuno/babelshelf/actions/runs/42802252746) passed all workflow gates in 18m15s on commit `5566e4c`, including the real offline calculator, tool/MCP, iOS handoff and cold offline/installed-PWA acceptance. These PC/CI checks do not establish physical-device or model behavior.
+
+2026-11-10 — PR #31 (`46c4c2f`) merged to main as `d4bdbee` after full GitHub
+Quality run [42805551555](https://github.com/Unjuno/babelshelf/actions/runs/42805551555)
+passed all stages. Rebuilt main as `1effe00c90b651b8` with 166 verified assets.
+Site v336 was saved from Site source `1ff995b00cb80c2eec00e27768c28994fc4aa58b`
+and deployed successfully to the existing public Site. The staged package
+retained current and previous app assets, pruning 27 older hashed assets;
+ONNX WASM gzip/identity bytes, HTTP method behavior, offline-shell transport
+and mutable-shell caching checks passed. In the existing sidebar PWA, Update
+applied bundle `index-DMIP4Ijk.js`, then the app was returned to Offline. No
+model was downloaded or run; physical iPhone model compatibility remains
+unverified. Four older Site checkouts and their superseded archives were
+verified as duplicate, clean snapshots whose Site commits remain ancestors of
+the current checkout or saved Site versions. Their local deletion was blocked
+by the execution policy; no local artifacts were removed. Model assets, runtime
+toolchain, current Site checkout/archive and browser test profiles were kept.
