@@ -2,28 +2,26 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `4ccb18c` (PRs #19–23 merged). PR #15 connects a selected and
-loaded semantic Search runtime to the normal agent `memory.search` path while
-retaining lexical fallback, and PR #17 reconciles historical Search notes.
-PR #19 skips embedding inference when the derived index has no vectors; 86
-focused semantic/coordinator/action tests, `npm run check`, app packaging, and
-clean-checkout quality CI [42752303874](https://github.com/Unjuno/babelshelf/actions/runs/42752303874)
-and [42752309053](https://github.com/Unjuno/babelshelf/actions/runs/42752309053)
-passed. PR #21 removes the duplicate push-triggered full check on the
-development branch while retaining PR, main-push and manual checks. Its single
-PR quality run [42756205706](https://github.com/Unjuno/babelshelf/actions/runs/42756205706)
-passed. PR #22 reconciles release and requirement records; its full quality run
-[42757826908](https://github.com/Unjuno/babelshelf/actions/runs/42757826908)
-passed. PR #23 reconciles the current release status. Public Site v332 now serves app build `00aeca0a0b576e46` from app
-source commit `39e96129b362c1a65a1400ec9f0657c5350c3b98`; both the custom domain
-and Site hostname return the same 166-asset manifest. Site delivery checks
-confirmed exact WASM bytes for gzip/identity, offline-shell transport and
-no-store app-shell headers. The archive excludes model weights and user data.
-Local `main` matches `origin/main`. The existing sidebar tab showed Active
-worker `46dc9d2ee209691a` and bundle `index-BaMBGDee.js`; the app was Offline,
-so its Update control was disabled. The connection mode, model selection,
-knowledge and saved data were left unchanged. Untracked QA/model artifacts
-remain preserved.
+GitHub `main` is `f89af32` (PRs #19–24 merged). PR #24 reconciled status
+documentation and did not change application source. The clean-checkout
+quality run for this main push is [42766023601](https://github.com/Unjuno/babelshelf/actions/runs/42766023601);
+the full clean-checkout workflow passed all groups in 11m14s.
+Public Site v332 serves app build `00aeca0a0b576e46` from app source commit
+`39e96129b362c1a65a1400ec9f0657c5350c3b98`; live `/build.json` returns the
+same 166-asset manifest. The app and source have not diverged because the
+latest merge is documentation-only. Untracked QA/model artifacts remain
+preserved.
+
+Sidebar browser check on 2026-11-10: the live Models page showed LFM3 QAD Q4_0
+selected but `Not prepared`; Decision, Speech, Image text, and Image
+understanding were `Not configured`; semantic Search was `Off`. Browsing the
+text catalog showed LFM3 IQ3_M (869 MB) as an addable candidate with an explicit
+not-tested-on-device label. The Decision catalog showed Open d1 600M and a
+custom D1 import path. This is consistent with the fresh-install profile and
+does not demonstrate a failed deployment: models must be selected/prepared,
+and none were changed in this inspection. It also does not establish physical
+device compatibility or prove the displayed selection matches a separate
+installed PWA's stored state.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only
