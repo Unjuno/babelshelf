@@ -6,6 +6,7 @@ import {modelSets,modelSetsFor,createUserModelSet,applyModelSet,matchingModelSet
 import {localAdapters} from '../src/local-capabilities.ts';
 import {initialPreparationPlan} from '../src/initial-preparation.ts';
 import {settings} from '../src/app-settings.ts';
+import {semanticEmbeddingAssetBytes} from '../src/semantic-embedding-manifest.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
  assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-image-audio-q8','lfm3-iq3m-media','local-full']);
@@ -112,6 +113,15 @@ test('user model sets are validated in Memory and join the same reviewed selecti
  assert.equal(modelSetAssetBytes(value,set.id),modelSetAssetBytes(value,'bonsai-2b-text'));
  assert.equal(notes.find(note=>note.id==='settings-models').version,2);
  assert.deepEqual(notes.find(note=>note.id==='settings-models').history,[initialPreferenceNotes.find(note=>note.id==='settings-models').body]);
+});
+
+test('model set cold asset estimate includes a selected local Search model',()=>{
+ const base=readPreference('models',initialPreferenceNotes),searchModel='granite-embedding-97m-multilingual-r2-onnx';
+ const withSearch={...base,textModel:'2B',searchModel,searchLibrary:[...base.searchLibrary,searchModel]};
+ const set=createUserModelSet(withSearch,'Search set','Text and local semantic search');
+ const value={...withSearch,customSets:[set]};
+ assert.equal(modelSetAssetBytes(value,set.id),modelSetAssetBytes(base,'bonsai-2b-text')+semanticEmbeddingAssetBytes);
+ assert.equal(modelSetAssetBytes(value,'bonsai-2b-text'),modelSetAssetBytes(base,'bonsai-2b-text'));
 });
 
 test('saving current model choices creates a stable Memory ID without preparing or selecting anything',()=>{
