@@ -151,6 +151,7 @@ const builtinPackages=[{definition:{id:'memory.search',version:1,effect:'read',n
 const calculatorPackage={definition:{id:'math.calculate',version:1,effect:'read',network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string'}}}},entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate explicit arithmetic.'},{path:'Tools/math.calculate/tool.ts',body:'Trusted pure calculator.'}],run:calculate};
 const readPackage={definition:{id:'memory.read',version:3,effect:'read',network:'none',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string'},start:{type:'integer',minimum:0,maximum:10_000_000},length:{type:'integer',minimum:1,maximum:3_000}}}},entry:'Tools/memory.read/tool.ts',sources:[{path:'Tools/memory.read/SKILL.md',body:'Read exact local record.'},{path:'Tools/memory.read/tool.ts',body:'Trusted exact reader.'}],run:readNotes};
 const listPackage={definition:{id:'memory.list',version:1,effect:'read',network:'none',inputSchema:{type:'object',required:[],additionalProperties:false,properties:{path:{type:'string',maxLength:500},offset:{type:'integer',minimum:0,maximum:1_000_000},limit:{type:'integer',minimum:1,maximum:25}}}},entry:'Tools/memory.list/tool.ts',sources:[{path:'Tools/memory.list/SKILL.md',body:'List immediate Memory children.'},{path:'Tools/memory.list/tool.ts',body:'Trusted folder projection.'}],run:listNotes};
+const webSearchPackage={definition:{id:'web.search',version:1,effect:'external',network:'explicit-online',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string',minLength:1,maxLength:2000}}}},entry:'Tools/web.search/tool.ts',sources:[{path:'Tools/web.search/SKILL.md',body:'Search web only when Online.'},{path:'Tools/web.search/tool.ts',body:'Trusted web adapter.'}],run:async(args,host)=>{host.check();if(!host.webSearch)throw Error('Web search unavailable');const result=await host.webSearch(args.query,host.signal);host.check();return result;}};
 
 function engine(plans){
  const queue=[...plans];
@@ -505,6 +506,32 @@ test('coordinator executes only the profile-selected registered tool and records
  assert.equal(operations[1].details.package,'memory.search');assert.ok(operations[1].details.packageSha256);
  assert.equal(result.snapshot,value.snapshot);assert.equal(operations[0].details.execution.turnId,value.snapshot.turnId);assert.equal(operations[1].details.execution.textRevision,'model-r1');assert.equal(operations[1].details.execution.harnessProfileId,'test-profile');
  assert.deepEqual(result.customEvidence,[]);
+});
+
+test('coordinator hides Web search without a live Online adapter and keeps query and page text out of receipts',async()=>{
+ const property=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true}});
+ try{
+  const webOnly={enabledTools:['web.search'],builtinPackages:[webSearchPackage],question:'Search the web for a private phrase.'};
+  const noAdapter=input(['{"action":"chat","query":""}'],{...webOnly,prepareContext:async tools=>{assert.equal(tools.some(tool=>tool.id==='web.search'),false);return context();}});
+  assert.equal((await coordinateAgentTurn(noAdapter.value)).final.action,'chat');
+
+  const query='PRIVATE_WEB_QUERY_SENTINEL',pageText='PRIVATE_WEB_PAGE_SENTINEL';
+  const {value}=input([
+   JSON.stringify({action:'tool',query:'web.search',body:JSON.stringify({query})}),
+   JSON.stringify({action:'answer',query:'Current web result',target:'knowledge'})
+  ],{...webOnly,webSearch:async sent=>{assert.equal(sent,query);return {provider:'RustXNG',retrievedAt:'2026-11-11T00:00:00.000Z',results:[{title:'Example',url:'https://example.org/article',snippet:'Discovery only',rawContentStatus:'ok',rawContentTruncated:false,pageText}]};}});
+  const records=[];
+  value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>records.push(row),project,failureOf,failureProject);
+  const result=await coordinateAgentTurn(value);
+  assert.deepEqual(result.calls.map(call=>call.tool),['web.search']);
+  assert.equal(result.calls[0].result.results[0].pageText,pageText);
+  assert.doesNotMatch(JSON.stringify(records),/PRIVATE_WEB_QUERY_SENTINEL|PRIVATE_WEB_PAGE_SENTINEL|Discovery only|example\.org/);
+  assert.ok(records.some(row=>row.tool==='web.search'&&row.status==='succeeded'&&row.output.kind==='web_search_result'));
+  assert.ok(records.some(row=>row.tool==='dialogue.plan'&&row.status==='succeeded'));
+ }finally{
+  if(property)Object.defineProperty(globalThis,'navigator',property);else delete globalThis.navigator;
+ }
 });
 
 test('coordinator uses the frozen send-time tools even if the caller changes its live profile object',async()=>{
