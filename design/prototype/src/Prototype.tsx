@@ -1118,6 +1118,7 @@ export default function Prototype() {
 
  function openAnswerCopy(turnId:string,expectedBody:string){
   if(fileSaver.current.busy)return;
+  if(webCitations[turnId]?.length){toast('Web citations are temporary and cannot be saved with this note yet');return;}
   try{const review=makeAnswerCopyReview(dialogue.current,turnId,expectedBody);setDialogueCopyReview(review);setFileKind('generated');setFileSources(review.source.refs);setFileBody(review.source.quote);setFileName('Answer-'+localDate());setActiveFolder('Inbox');setMemoryScope('folder');setCreationError('');keyboard.hide();setSheet('file');}catch(error){toast((error as Error).message);}
  }
  function chooseCopySource(index:number,speaker:'user'|'assistant'){
