@@ -2,23 +2,34 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `fedb77f` (PR #13). Draft PR
-[#11](https://github.com/Unjuno/babelshelf/pull/11) is open with clean merge
-status. Its remote code commit `4a8c074` passed the complete quality workflow
-[42727513430](https://github.com/Unjuno/babelshelf/actions/runs/42727513430).
-This local follow-up uses that exact PR head. The local untracked QA/model
-benchmark artifacts were preserved.
+GitHub `main` is `b9d066c`, which includes merged PR #11. The local
+`codex/ui-design-handoff` branch was fast-forwarded to that exact tree; the
+remote feature branch is still behind and is not yet updated by this follow-up.
+The public Site v330 was previously verified against app build
+`53c14c67df540122` and GitHub commit `b9d066c`. Local untracked QA/model
+benchmark artifacts remain preserved. This status was reconciled against the
+current checkout and the completed GitHub/Site checks; dated notes below remain
+historical evidence and should not be read as current release status.
 
-Local follow-up on `codex/semantic-search-foundation`: text model loading now
-has a five-minute no-progress deadline that retires the inference Worker and a
-30-minute absolute deadline. Runtime progress renews the no-progress deadline;
-late Worker replies cannot mark a timed-out model loaded. Device diagnostics
-classify both timeout conditions without copying raw error text. Focused worker
-tests pass (19/19); full prototype tests pass (1,939/1,939), repository check
-passes, the app builds with 166 verified assets, and product acceptance passes
-(9/9; shell `53c14c67df540122`). This prevents indefinite waiting when load
-progress stops; it does not prove the iPhone LFM3 load bottleneck itself is
-fixed. The change has not been pushed or deployed.
+The merged implementation bounds a stalled text-model load with a five-minute
+no-progress deadline and a 30-minute absolute deadline, retires its inference
+Worker on timeout, and ignores late replies. Device diagnostics classify these
+timeouts without copying raw runtime errors. The completed Windows checks were
+19 focused worker tests, 1,939 prototype tests, `npm run check`, an app build
+with 166 verified assets, and product acceptance (9/9). These results prevent
+an indefinite wait when progress stops; they do not establish that LFM3's long
+initialization on iPhone is solved or that its configured WebGPU route is the
+backend actually used.
+
+The supplied iPhone reports were generated on 2026-11-04 with app build
+`bae57d2542fed742`, before the currently verified public app build
+`53c14c67df540122`. They were Safari-tab runs (`standalone:false`): the 18m
+performance run was explicitly stopped during model load, while later
+readiness-only runs reported files present but did not load or generate. This
+evidence does not identify faulty iPhone hardware and cannot verify the current
+build's installed-PWA behavior. It also does not prove successful LFM3
+inference. A targeted run on the current installed build is still required to
+distinguish a stale app shell from a current runtime failure.
 
 The current local follow-up bounds only an unloaded LFM3 model's Developer
 smoke/performance load to an 8K context. The user's saved context and normal
@@ -43,16 +54,16 @@ and ranking in that PC browser, not retrieval over real Memory, agent citations,
 model quality, or iPhone compatibility. The existing 18-minute stopped iPhone
 run does not prove that the 8K diagnostic context alone resolves the load stall.
 
-PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
+Merged PR #11 contains UTF-16 semantic chunking, cosine ranking limited to a pinned
 embedding-model revision, exact active-source citation rebinding, and a
 separate IndexedDB for rebuildable vectors keyed by model and note revision.
 The derived-store tests confirm revision replacement/removal and isolation
-from canonical Memory records. The local follow-up surfaces the optional role
-in Settings and connects loaded semantic Search to the existing agent search
+from canonical Memory records. The merged app surfaces the optional role in
+Settings and connects loaded semantic Search to the existing agent search
 path, preserving exact source binding and lexical fallback. Packaged browser
 Worker inference was exercised with the fixed smoke fixture, but not with
-saved Memory or end-to-end agent citations. The local product shell candidate
-is not published.
+saved Memory or end-to-end agent citations. Public build v330 contains the
+merged app; this does not count as end-to-end citation acceptance.
 
 2026-11-10 follow-up: the app-owned pinned asset store now downloads any
 manifest asset larger than 16 MiB in durable OPFS HTTP ranges, rather than
