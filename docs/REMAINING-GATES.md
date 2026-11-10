@@ -2,12 +2,13 @@
 
 ### Main integration and public release · 2026-11-11
 
-GitHub `main` is `ac73f46b89605f17b21a00d66af4aba505c23cc6`; PRs #34–#36 are
-merged. Main-target Quality workflow
-[42855494413](https://github.com/Unjuno/babelshelf/actions/runs/42855494413)
+GitHub `main` is `44f9c75a40ae0b715d24f49badbb812285815361`; PRs #34–#37 are
+merged. Post-merge main Quality workflow
+[42863097217](https://github.com/Unjuno/babelshelf/actions/runs/42863097217)
 passed all gates on this exact commit. Public Site v340 serves app build
-`ed965b009644e4b0` with 166 verified assets, built from this main state. Its
-catalog exposes LFM3 QAD Q4_0, community IQ3_M 3-bit (869 MB), and Q8_0 as
+`ed965b009644e4b0` with 166 verified assets, built from product code at
+`ac73f46b89605f17b21a00d66af4aba505c23cc6`; PR #37 added release evidence
+only. Its catalog exposes LFM3 QAD Q4_0, community IQ3_M 3-bit (869 MB), and Q8_0 as
 separate selectable candidates. This proves catalog availability only; no
 LFM3 weight was downloaded or run in this deployment, and iPhone model
 execution remains unverified.
