@@ -9,6 +9,7 @@ import {AgentToolExecutionError,AgentToolInputError,AgentSearchSnapshotChangedEr
 import {SearchSnapshotChangedError} from './file-discovery.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import {validateToolArguments,type ToolInputSchema} from './tools/tool-input.ts';
+import {createWebSnapshot,type WebSnapshot} from './web-evidence.ts';
 import type {ActivityTool} from './harness-activity.ts';
 import {activityBoundedToolBudget} from './harness-activity.ts';
 import type {ToolHost,ToolNote} from './tools/tool-host.ts';
@@ -110,6 +111,7 @@ export async function coordinateAgentTurn(input:{
  builtinPackages:readonly ToolPackage[];
  readToolSources:()=>Promise<ToolSourceRecord[]>;
  search:(query:string,signal?:AbortSignal)=>Promise<MemorySearchResult[]>;
+ webSearch?:(query:string,signal?:AbortSignal)=>Promise<unknown>;
  semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<MemoryPassageResult[]|null>;
  searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal)=>Promise<unknown>;
  views:(signal?:AbortSignal)=>Promise<ToolNote[]>;
@@ -121,14 +123,15 @@ export async function coordinateAgentTurn(input:{
  signal:AbortSignal;
  trace:Trace;
  activityEventCount?:number;
-}) : Promise<{final:DialoguePlan;calls:readonly AgentToolResult[];customEvidence:ReturnType<typeof agentEvidenceFromCalls>;context:DialogueContext;budgetExhausted:boolean;budgetReason?:AgentBudgetReason;snapshot:TurnExecutionSnapshot}> {
+}) : Promise<{final:DialoguePlan;calls:readonly AgentToolResult[];customEvidence:ReturnType<typeof agentEvidenceFromCalls>;webSnapshots:WebSnapshot[];context:DialogueContext;budgetExhausted:boolean;budgetReason?:AgentBudgetReason;snapshot:TurnExecutionSnapshot}> {
  if(input.snapshot.models.text.id!==input.model)throw Error('Execution snapshot model mismatch');
  const execution=turnExecutionReceipt(input.snapshot);
  const profileLimit=input.snapshot.harness.maxToolCalls;
  const activityLimit=input.activityEventCount===undefined?null:activityBoundedToolBudget(input.activityEventCount,null);
  const maxToolCalls=activityLimit===null?profileLimit:profileLimit===null?activityLimit:Math.min(activityLimit,profileLimit);
  const excludedTools=new Set(input.excludedTools??[]);
- const configuredTools=input.snapshot.harness.enabledTools.filter(id=>!excludedTools.has(id));
+ const webSearchAvailable=!!input.webSearch&&navigator.onLine&&input.engine.plannerProtocol==='native-tool-calls';
+ const configuredTools=input.snapshot.harness.enabledTools.filter(id=>!excludedTools.has(id)&&(id!=='web.search'||webSearchAvailable));
  const sources=await input.readToolSources();
  const selected=await buildActiveToolRegistry(sources,configuredTools,[...input.builtinPackages]);
  const registry=selected.registry,registeredTools=selected.capabilities;
@@ -147,6 +150,8 @@ export async function coordinateAgentTurn(input:{
  // Host observations are scoped to an exact attempt, outside custom JSON.
  // Failed, skipped or omitted calls cannot inherit another call's sources.
  const customSourcesByAttempt=new Map<number,typeof customEvidence>();
+ const webSourcesByAttempt=new Map<number,WebSnapshot[]>();
+ const webSessionId=crypto.randomUUID();
  const exactReadTargets=new Set<string>();
  let searchedMemory=false;
  let latestSearchNoteIds:string[]=[];
@@ -163,12 +168,18 @@ export async function coordinateAgentTurn(input:{
   onPreview:input.onPreview,engine:input.engine,question:input.question,context,attachments:input.attachments,
   allowedTools,maxToolCalls,maxResultChars:input.snapshot.harness.maxResultChars,userGuidance:input.snapshot.response.userGuidance,replyStyle:input.snapshot.response.style,check:input.check,
   readObservedSources:()=>customSourcesByAttempt,
+  readObservedWebSources:()=>webSourcesByAttempt,
   tracePlan:(step,work,readMetrics)=>input.trace('dialogue.plan',{execution,activeToolIds:allowedTools.map(tool=>tool.id),effectiveToolBudget:maxToolCalls,model:input.model,step},work,plan=>{
-   const inference=readMetrics();let receipt=plan;
-   if(plan.action==='tool'||plan.action==='tool_batch'){
+   const inference=readMetrics();let receipt:Record<string,unknown>=plan;
+    if(plan.action==='tool'||plan.action==='tool_batch'){
     // Native assistant content is required for the current tool round trip,
     // not for durable action receipts or the next conversation's context.
-    const {assistantContent:_transient,...operation}=plan;receipt=operation;
+    const redact=(call:{tool:string;arguments:Record<string,unknown>})=>call.tool==='web.search'?{...call,arguments:{kind:'web_search',queryBytes:new TextEncoder().encode(typeof call.arguments.query==='string'?call.arguments.query:'').byteLength}}:call;
+    if(plan.action==='tool'){const {assistantContent:_transient,...operation}=plan;receipt={...redact(operation),action:'tool'};}
+    else{const {assistantContent:_transient,...operation}=plan;receipt={...operation,calls:operation.calls.map(redact),action:'tool_batch'};}
+   }else if(plan.reply){
+    const {reply,...operation}=plan;
+    receipt={...operation,reply:{answerBytes:new TextEncoder().encode(reply.answer).byteLength,memorySourceCount:reply.sources.length,webSourceCount:reply.webSources?.length??0,...(reply.status?{status:reply.status}:{})}};
    }
    return {...receipt,...(inference?{inference}:{})};
   },undefined,()=>{const inference=readMetrics();return inference?{inference}:undefined;}),
@@ -277,7 +288,7 @@ export async function coordinateAgentTurn(input:{
    // round trip without providing transport.
    return audited();
   },
-  execute:async(call:AgentToolCall)=>{
+  execute:async(call:AgentToolCall,attemptIndex:number)=>{
    input.check();
    const schema=allowedTools.find(tool=>tool.id===call.tool)?.inputSchema;
    if(schema){
@@ -300,6 +311,7 @@ export async function coordinateAgentTurn(input:{
     if(isCustom)await input.ensureCustomRuntime();
     const host:ToolHost={
      search:async(query,signal)=>{input.check();const lexical=await input.search(query,signal);input.check();const combined=await combineMemorySearchResults(query,lexical,input.semanticSearch,signal);input.check();return combined;},
+     webSearch:input.webSearch?async(query,signal)=>{input.check();const result=await input.webSearch!(query,signal);input.check();return result;}:undefined,
      searchPage:input.searchPage?async(query,options,signal)=>{try{return await input.searchPage!(query,options,signal);}catch(error){if(call.tool==='memory.search'&&error instanceof SearchSnapshotChangedError)throw new AgentSearchSnapshotChangedError();throw error;}}:undefined,
      resolve:async(query,signal)=>{const direct=await input.resolveById?.(query,signal);signal?.throwIfAborted();if(direct)return [direct];const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
      list:async(path,offset,limit,signal)=>{const [notes,folders]=await Promise.all([input.views(signal),input.listFolders?.()??Promise.resolve([])]);signal?.throwIfAborted();return listMemoryEntries(path,notes,[...SYSTEM_FOLDERS,...folders],offset,limit);},
@@ -308,6 +320,17 @@ export async function coordinateAgentTurn(input:{
     };
     const transaction=isCustom?beginCustomEvidence(host,customEvidence):null;
     const result=await registry.run(call.tool,call.arguments,transaction?.host??host);
+    if(call.tool==='web.search'&&result&&typeof result==='object'&&!Array.isArray(result)){
+     const value=result as Record<string,unknown>,rows=Array.isArray(value.results)?value.results:[],retrievedAt=value.retrievedAt;
+     if(value.provider==='RustXNG'&&typeof retrievedAt==='string'){
+      const snapshots=rows.flatMap(row=>{
+       if(!row||typeof row!=='object'||Array.isArray(row))return [];const item=row as Record<string,unknown>;
+       if(item.rawContentStatus!=='ok'||typeof item.pageText!=='string')return [];
+       try{return [createWebSnapshot({id:crypto.randomUUID(),sessionId:webSessionId,provider:'RustXNG',url:item.url,title:item.title,retrievedAt,text:item.pageText})];}catch{return [];}
+      });
+      if(snapshots.length)webSourcesByAttempt.set(attemptIndex,snapshots);
+     }
+    }
     if(transaction){input.check();pendingCustomCommit=transaction.commit;pendingCustomSources=transaction.observed;}
     return result;
    }catch(error){if(error instanceof Error&&error.message==='Stopped')throw error;if(input.signal.aborted){input.check();throw Error('Stopped');}if(error instanceof AgentToolResultTooLargeError||error instanceof AgentSearchSnapshotChangedError)throw error;throw new AgentToolExecutionError(call.tool,error);}
@@ -323,5 +346,5 @@ export async function coordinateAgentTurn(input:{
   }
  }
  const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='source-capacity'?'source-capacity':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
- return {final:loop.final,calls:loop.calls,customEvidence,context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
+ return {final:loop.final,calls:loop.calls,customEvidence,webSnapshots:[...webSourcesByAttempt.values()].flat(),context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
 }

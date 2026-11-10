@@ -4,6 +4,7 @@ import * as read from './memory.read/tool.ts';
 import * as calculate from './math.calculate/tool.ts';
 import * as clock from './time.now/tool.ts';
 import * as sources from './memory.sources/tool.ts';
+import * as webSearch from './web.search/tool.ts';
 
 // App-owned modules are the common source for registration, profile choices
 // and activity presentation. Stored skill text cannot add an executable entry.
@@ -14,6 +15,7 @@ export const builtinTools = Object.freeze([
  Object.freeze({tool:calculate,settingsLabel:'Calculator',activityLabel:'Calculate'}),
  Object.freeze({tool:clock,settingsLabel:'Clock',activityLabel:'Read time'}),
  Object.freeze({tool:sources,settingsLabel:'Source details',activityLabel:'Inspect sources'}),
+ Object.freeze({tool:webSearch,settingsLabel:'Web search',activityLabel:'Search web'}),
 ] as const);
 
 export const builtinToolIds = Object.freeze(builtinTools.map(({tool})=>tool.definition.id));

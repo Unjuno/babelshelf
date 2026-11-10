@@ -2462,3 +2462,28 @@ test('invalid token counts during evidence packing or citation repair stop befor
   assert.equal(calls,phase==='repair'?1:0);
  }
 });
+
+import {createWebSnapshot} from '../src/web-evidence.ts';
+test('repeated Web searches bind each result to its own session citation label',()=>{
+ const url='https://example.org/page',title='Same page',firstAt='2026-11-11T12:00:00.000Z',secondAt='2026-11-11T12:01:00.000Z';
+ const first=createWebSnapshot({id:'c351ef6e-8b52-4f0a-97a6-464cd56f0378',sessionId:'491d426b-ec62-47a8-a6ce-a50628a7028a',provider:'RustXNG',url,title,retrievedAt:firstAt,text:'First fetched version.'});
+ const second=createWebSnapshot({id:'7fd66fc4-47ae-4692-bf1d-d3dd0a75a285',sessionId:'491d426b-ec62-47a8-a6ce-a50628a7028a',provider:'RustXNG',url,title,retrievedAt:secondAt,text:'Second fetched version.'});
+ const result=(retrievedAt,pageText)=>({provider:'RustXNG',query:'example',retrievedAt,results:[{title,url,snippet:'same snippet',rawContentStatus:'ok',rawContentTruncated:false,pageText}]});
+ const messages=planDialogueMessages('Compare the page results.',{summary:'',recent:[],refs:[],turnCount:0},[],{
+  allowedTools:[{id:'web.search',effect:'external',network:'explicit-online'}],
+  history:[{tool:'web.search',arguments:{query:'example'},result:result(firstAt,first.text)},{tool:'web.search',arguments:{query:'example'},result:result(secondAt,second.text)}],
+  observedWebSources:new Map([[0,[first]],[1,[second]]]),
+ },true);
+ const toolResults=messages.filter(message=>message.role==='tool'&&message.name==='web.search').map(message=>JSON.parse(message.content));
+ assert.deepEqual(toolResults.map(value=>value.results[0].source),['S1','S2']);
+});
+
+test('mixed Memory and Web citations stay within the shared 64-label protocol',()=>{
+ const url='https://example.org/page',title='Page',retrievedAt='2026-11-11T12:00:00.000Z';
+ const page=createWebSnapshot({id:'c351ef6e-8b52-4f0a-97a6-464cd56f0378',sessionId:'491d426b-ec62-47a8-a6ce-a50628a7028a',provider:'RustXNG',url,title,retrievedAt,text:'Current page.'});
+ const history=[{tool:'memory.search',arguments:{query:'records'},result:Array.from({length:63},(_,index)=>{const quote=`value ${index}`;return {noteId:`note-${index}`,revision:1,start:0,end:quote.length,quote};})},{tool:'web.search',arguments:{query:'page'},result:{provider:'RustXNG',query:'page',retrievedAt,results:[{title,url,snippet:'Page',rawContentStatus:'ok',rawContentTruncated:false,pageText:page.text}]}}];
+ const messages=planDialogueMessages('Compare these sources.',{summary:'',recent:[],refs:[],turnCount:0},[],{allowedTools:[{id:'memory.search',effect:'read',network:'none'},{id:'web.search',effect:'external',network:'explicit-online'}],history,observedWebSources:new Map([[1,[page]]])},true);
+ const webResult=JSON.parse(messages.find(message=>message.role==='tool'&&message.name==='web.search').content);
+ assert.equal(webResult.results[0].source,'S64');
+ assert.doesNotMatch(JSON.stringify(messages),/S65/);
+});

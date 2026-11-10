@@ -8502,3 +8502,70 @@ documentation conflict was resolved by keeping the newer 2026-11-11 release
 snapshot. Public Site v339 was not updated in this task. CI acceptance is PC
 Chromium/WebKit and installed-PWA evidence; no physical iPhone model test was
 run, and the known local model/report limitations remain open.
+
+2026-11-11 — Published the current integration branch `codex/rustxng-agent-search`
+at application commit `e46ec26735a8191adf76cfd47f4e18deb0fcee78` as public Site
+v342. The product build is `cdc705c107053bc3` (166 verified assets); Site source
+commit `31b56da1af27659b447ec128f3936ce89596806b` deployed successfully to
+`https://babelshelf.com`. Staging retained the current and previous build assets
+and pruned 25 superseded hashed assets. Delivery verification passed compressed
+WASM byte identity for gzip/identity, offline-shell transport, mutable-shell
+cache headers, and method handling. Local checks: root 272/272, prototype
+1,961/1,961, `npm run check`, `npm run build:app`, and Settings/model catalog
+browser tests 17/17. In the existing sidebar PWA, Developer showed active worker
+`cdc705c107053bc3` and bundle `index-D076H07p.js`; Text model settings retained
+LFM3 QAD Q4_0 as the selected model and exposed LFM3 IQ3_M (3-bit, 869 MB) as an
+available candidate. Decision, Speech, Image text, Vision and Search roles were
+visible. The browser connection was restored to Offline. No model/runtime was
+downloaded or loaded, model settings were not changed, and no physical iPhone
+inference was performed. This confirms delivery and catalog availability; it
+does not establish iPhone model loading, memory fit, or generation performance.
+
+2026-11-11 — Fixed Web citation labels across repeated searches. Previously,
+two searches returning the same URL and title could both be labeled with the
+first snapshot, even when the second fetch had different text. Tool results now
+resolve labels against snapshots observed by that exact search attempt; results
+without a matching observation remain unlabeled. Mixed Memory/Web citations
+also stop at the binder's 64-source limit, avoiding invalid S65+ references.
+Regression reproduced the stale-label case before the change and now verifies
+distinct labels per fetch and the 64-label boundary. Root tests passed 272/272,
+prototype tests 1,963/1,963, `npm run check`, and `npm run build:app` (166
+verified assets; build `074714f8e10de7a4`). This ensures snapshot provenance and
+protocol bounds; it does not verify semantic entailment or real-model citation
+quality. No device storage, model files, or settings were touched.
+
+2026-11-11 — PR #42 merged as `597bfd3d0bc746267ef0950cf51eb4c7648a0c9c`
+after full candidate workflow [42916481371](https://github.com/Unjuno/babelshelf/actions/runs/42916481371)
+passed. In addition to attempt-bound Web citation snapshots, a narrow agent
+fallback now converts a repeated planner presentation leak into the existing
+grounded-answer path only when retrieval evidence already succeeded. The raw
+planner draft is rejected. The focused agent/coordinator regression group
+passed 216/216, `npm run check`, and the 166-asset product build passed.
+
+Live local-model product flow: isolated Windows Chrome 157 profile, offline
+browser networking disabled after local import, app build `0af7a307c3ec79d6`,
+LFM3-1.7B-QAD-Q4_0 revision `b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf`,
+GGUF SHA-256 `43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452`,
+runtime `wllama-3.12.0-llama-19cce6919992fdffd92e0ac152caaf1e2b8f254e`.
+After cold offline restart, the model answered the synthetic exact fact, retained
+an exact source quote/range, saved the reviewed answer byte-for-byte, then
+completed `memory.search` → `memory.read` → `knowledge.answer` without reload.
+The offline browser run made no external requests and had no page errors.
+
+The one Developer Performance sample ran on Windows/Chrome 157, Intel Gen12LP
+browser adapter hint, reported 12 logical processors and 16 GiB coarse memory
+estimate. Configured/effective context was 8,192; 50 input tokens; 84 output
+tokens; model load 12,894 ms (verification 9,673 ms, runtime load 3,181 ms);
+generation 7,389 ms /11.37 tok/s; first visible text 1,210 ms; runtime decode
+13.44 tok/s; runtime-reported threads 4 and GPU layers 25/25. GPU/adapter
+selection remains a runtime report plus separate browser hint, not independent
+hardware proof. This was one bounded sample, not a sustained or thermal test.
+It does not verify IQ3_M inference, physical iPhone, Android, or macOS behavior.
+
+Public Site v344 was published at `https://babelshelf.com` with app build
+`0af7a307c3ec79d6` /166 assets. The existing sidebar PWA reported that exact
+active worker, showed selectable LFM3 IQ3_M (~3.66 bits/weight, 869 MB), and
+was returned to Offline. The Site archive (`sha256:afdebabd554f5decaa7ab79d4a5579c0966bd08e9d131029da01475256ceff83`,
+111,011,840 bytes /205 files) contains app assets only, not user data or model
+weights. Deployment and catalog availability do not establish IQ3_M execution
+or phone compatibility.
