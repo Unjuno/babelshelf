@@ -14,6 +14,14 @@ The sidebar PWA applied v333 through its Online refresh, showed active worker
 downloaded or prepared. Existing untracked QA/model artifacts remain
 preserved.
 
+PC fix in progress: a running device model check now keeps stage and elapsed
+time visible after navigation, exposes Copy snapshot and Stop test from the
+persistent operation toast, and still uses the existing abort/report path.
+Focused Developer UI coverage passed 35/35, diagnostic logic passed 60/60,
+`npm run check` passed, and `npm run build:app` produced 166 verified assets.
+This improves recoverability and report access; it does not explain or reduce
+the iPhone's reported 18m23s model load. Physical-device timing remains open.
+
 Sidebar browser check on 2026-11-10: the live Models page showed LFM3 QAD Q4_0
 selected but `Not prepared`; Decision, Speech, Image text, and Image
 understanding were `Not configured`; semantic Search was `Off`. Browsing the

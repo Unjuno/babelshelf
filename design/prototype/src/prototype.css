@@ -698,7 +698,8 @@ button.model-picker svg{flex-shrink:0}
    can be minimized without cancelling the underlying operation. */
 .preview-toast.is-operation{z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px 8px;text-align:left;pointer-events:none}
 .preview-toast.is-operation .preview-toast-message{flex:1 1 100%;max-height:4.5em;text-align:left;font-weight:600}
-.preview-toast.is-operation button{margin-left:auto;min-height:40px}
+.preview-toast.is-operation button{margin-left:0;min-height:40px}
+.preview-toast-elapsed{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;opacity:.78}
 @media(max-width:420px){.preview-toast.is-operation{left:10px;right:10px;padding:9px 11px;gap:0 4px;font-size:.8125rem}.preview-toast.is-operation button{padding:0 7px;font-size:.8125rem}}
 
 .runtime-inline-form{display:grid;gap:10px;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px}.runtime-inline-form label{display:grid;gap:8px}.runtime-inline-form input{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}.runtime-inline-form p{margin:0}

@@ -82,6 +82,7 @@ test('an active diagnostic keeps running and visible while moving to another app
  await page.getByRole('button',{name:'Run app checks',exact:true}).click();await page.waitForFunction(()=>typeof (window as any).__releaseDiagnosticCacheKeys==='function');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();
  await expect(page.getByRole('status').filter({hasText:'Device check'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Copy current device test snapshot'})).toBeVisible();
  await page.evaluate(()=>(window as any).__releaseDiagnosticCacheKeys());
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await expect(page.getByRole('button',{name:'Run app checks',exact:true})).toBeEnabled({timeout:30_000});
