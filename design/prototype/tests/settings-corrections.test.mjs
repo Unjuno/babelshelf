@@ -46,7 +46,7 @@ test('chat can propose a supported LFM3 context setting while preserving its def
 });
 
 test('chat can add a named model set through Settings/models.md review, revision history and Undo',async()=>{
- const n=fixture('models'),before=parsePreference('models',latest(n).body),set={id:'user-compact-reading',label:'Compact reading',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}},response=patch({customSets:[set]});let context,prompt;
+ const n=fixture('models'),before=parsePreference('models',latest(n).body),set={id:'user-compact-reading',label:'Compact reading',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'',searchModel:''}},response=patch({customSets:[set]});let context,prompt;
  const proposal=await proposeCorrection({manifest:{contextTokens:4096},count:async messages=>{context=JSON.parse(messages[1].content);prompt=messages[0].content;return {prompt_tokens:120};},generate:async()=>({text:response})},'Save a compact reading model set',n);
  assert.equal(proposal.operation.name,'settings.patch');assert.deepEqual(proposal.operation.arguments.fields,['customSets']);
  assert.ok(context.allowedFields.includes('customSets'));assert.deepEqual(context.settings.customSets,[]);assert.ok(context.choices.textModel.some(choice=>choice.id==='2B'));
@@ -73,7 +73,7 @@ test('chat may change sanitized local diagnostic logging through review but cann
 });
 
 test('chat-proposed model sets cannot grant unknown models or fields',async()=>{
- const n=fixture('models'),base={id:'user-reader',label:'Reader',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}};
+ const n=fixture('models'),base={id:'user-reader',label:'Reader',detail:'Text only',models:{textModel:'2B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:'',searchModel:''}};
  for(const set of [{...base,models:{...base.models,textModel:'remote-model'}},{...base,models:{...base.models,decisionModel:'d1-omni-600M'}},{...base,script:'fetch()'},{...base,id:'unsafe/path'}]){
   await assert.rejects(proposeCorrection({manifest:{contextTokens:2048},count:async()=>({prompt_tokens:20}),generate:async()=>({text:patch({customSets:[set]})})},'Add a set',n),/settings|model|set|registry/i);
  }

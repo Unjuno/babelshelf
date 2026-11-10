@@ -13,13 +13,13 @@
     },
     {
       "path": "./connection-policy.js",
-      "bytes": 2046,
-      "sha256": "c985f51b42a0e1c426974ba0ce442126406d498e014bac9516d4850e5362db20"
+      "bytes": 2048,
+      "sha256": "078b0d33d688e6ca733b72f9716772d63ff8badb67f55d812152a03651f8f04e"
     },
     {
       "path": "./core.js",
-      "bytes": 21023,
-      "sha256": "dff51e7a0ff0b4f0e3313c144e03a68473a8a598687fcdbc4ba002514a0743ab"
+      "bytes": 20782,
+      "sha256": "c89e17208ee15f3927c14a8d6f6825a0b302ac195ab9b77fb5470b0a9b96f159"
     },
     {
       "path": "./diagnostics.js",
@@ -123,13 +123,13 @@
     },
     {
       "path": "./model-worker.js",
-      "bytes": 16410,
-      "sha256": "fcb42819f5d827a7239ee91886d9cb54df83ed17a8e89a47c8b1e83b22a2d267"
+      "bytes": 16294,
+      "sha256": "7cf6179cb29bdc97643b4af67d675b366ba21d0f9fbcf780248d3acdeb5a85b3"
     },
     {
       "path": "./native-answer-preview.js",
-      "bytes": 2008,
-      "sha256": "8db636e5164f8fddafe069e36441758d815605b624384428f67cadd6568c8061"
+      "bytes": 1983,
+      "sha256": "26701e42ac861e83bf7dcacb6253c93721d6017902bfc66868d7481be897a454"
     },
     {
       "path": "./native-response.js",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "1da5e634326361c0e8adf1d218b2f877a400128d0989fe8bd3f88f27fba1eb5e"
+      "sha256": "e83e8b760e3accddd77ef2d022ba3183c4c81ae1dcf46a3b9d1ee88e638483b5"
     },
     {
       "path": "./ui.js",

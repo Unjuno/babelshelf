@@ -11,7 +11,8 @@ import type {builtinToolRegistry} from './tool-package-records.ts';
 import {runBuiltinTool} from './tools/builtin-tool-results.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
 import {openUniqueSavedMemory} from './saved-memory-open.ts';
-import {isMemoryPassageResult,type MemorySearchResult} from './memory-search-types.ts';
+import {isMemoryPassageResult,type MemoryPassageResult,type MemorySearchResult} from './memory-search-types.ts';
+import {mergeStoredSearchResults} from './file-discovery.ts';
 import {searchMemoryWithQuestionFallback} from './memory-search-fallback.ts';
 import {resolveReadCompletion,resolveSearchCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
@@ -26,6 +27,8 @@ type Dependencies={
  snapshot:()=>Promise<NoteView[]>;
  acquireModel?:()=>Promise<TextRuntime>;
  onPreview?:(text:string)=>void;
+ signal?:AbortSignal;
+ semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<MemoryPassageResult[]|null>;
 };
 
 /** A reader may already have answered the exact current question. Reuse only
@@ -50,9 +53,17 @@ export async function answerCurrentVisionInput({store,check,trace}:Pick<Dependen
 
 // Application execution returns data. The caller owns turn persistence,
 // navigation and explicit review/approval; these methods cannot commit edits.
-export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel,onPreview}:Dependencies){
- const host={search:(query:string)=>store.search(query),resolve:(query:string)=>snapshot().then(notes=>resolveToolNotes(notes,query)),check};
- const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search')},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:q=>store.search(q,true)}));
+export function createResolvedActions({store,engine,model,question,check,trace,snapshot,registry:builtinToolRegistry,acquireModel,onPreview,signal,semanticSearch}:Dependencies){
+ const combineSearch=async(query:string,activeSignal?:AbortSignal)=>{
+  check();const lexical=await store.search(query,true,activeSignal);check();
+  if(!semanticSearch)return lexical;
+  const semantic=await semanticSearch(query,activeSignal);check();if(!semantic?.length)return lexical;
+  const files=lexical.filter((item):item is Extract<MemorySearchResult,{kind:'file'}>=>item.kind==='file');
+  const passages=lexical.filter(isMemoryPassageResult);
+  return mergeStoredSearchResults(files,[...semantic,...passages],12,query);
+ };
+ const host={search:(query:string)=>store.search(query),resolve:(query:string)=>snapshot().then(notes=>resolveToolNotes(notes,query)),check,signal};
+ const search=async(query:string)=>trace('memory.search',{query,...await builtinToolRegistry.identity('memory.search'),...(semanticSearch?{optionalSemanticRoute:true}:{})},()=>runBuiltinTool(builtinToolRegistry,'memory.search',{query},{...host,search:(q,s)=>combineSearch(q,s)}));
  const completion=async<T extends string>(stage:'read-completion'|'search-completion',work:(runtime:TextRuntime)=>Promise<T>,source:Record<string,unknown>={})=>{
   const inference:InferenceMeasurements={measuredModelCalls:0};
   return trace('dialogue.plan',{stage,model,question,...source},async()=>{check();const runtime=acquireModel?await acquireModel():engine;check();return work(observeInference(runtime,inference));},value=>({completion:value,inference:{...inference}}),undefined,()=>({inference:{...inference}}));

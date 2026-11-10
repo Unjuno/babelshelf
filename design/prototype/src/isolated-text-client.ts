@@ -1,6 +1,9 @@
 import {PlannerOutputError} from './planner-error.ts';
 // A dedicated client for hard-stoppable WASM inference. No automatic replay after Stop.
-export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={}}:{disposeHandshake?:boolean;initArgs?:any}={}){
+const DEFAULT_LOAD_TIMEOUT_MS=30*60*1000;
+const DEFAULT_LOAD_IDLE_TIMEOUT_MS=5*60*1000;
+export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={},loadTimeoutMs=DEFAULT_LOAD_TIMEOUT_MS,loadIdleTimeoutMs=DEFAULT_LOAD_IDLE_TIMEOUT_MS}:{disposeHandshake?:boolean;initArgs?:any;loadTimeoutMs?:number;loadIdleTimeoutMs?:number}={}){
+ if(!Number.isSafeInteger(loadTimeoutMs)||loadTimeoutMs<1000||loadTimeoutMs>60*60*1000||!Number.isSafeInteger(loadIdleTimeoutMs)||loadIdleTimeoutMs<1000||loadIdleTimeoutMs>loadTimeoutMs)throw Error('Invalid text model load timeout');
  let seq=0,loaded:string|null=null,fault:Error|null=null;
  let disposeTimer:ReturnType<typeof setTimeout>|undefined,disposing=false,terminated=false;
  let finishDisposal:(()=>void)|undefined,rejectDisposal:((error:Error)=>void)|undefined,disposal:Promise<void>|undefined,cleanupConfirmed=true;
@@ -15,6 +18,20 @@ export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,i
  };
  function abort(){if(disposal)return disposal;disposal=new Promise<void>((resolve,reject)=>{finishDisposal=resolve;rejectDisposal=reject;});void disposal.catch(()=>{});if(terminated){terminate(cleanupConfirmed);return disposal;}if(!fault)fail(Error('Stopped'));if(disposeHandshake){disposing=true;disposeTimer=setTimeout(()=>terminate(false),1000);try{worker.postMessage({id:0,cmd:'dispose'});}catch{terminate(false);}}else terminate();return disposal;}
  return {manifest:{},worker:{terminate:abort},get failed(){return !!fault;},get loaded(){return loaded;},init:()=>call('init',initArgs),call,
- async load(id:string,events?:any){loaded=null;const metrics=await call('load',{model:id},events);if(fault)throw fault;loaded=id;return metrics;},
+ async load(id:string,events?:any){
+  loaded=null;let hardTimer:ReturnType<typeof setTimeout>|undefined,idleTimer:ReturnType<typeof setTimeout>|undefined,rejectTimeout:(error:Error)=>void=()=>{};
+  const timeout=new Promise<never>((_resolve,reject)=>{rejectTimeout=reject;});
+  const failLoad=(message:string,code:'text_model_load_timeout'|'text_model_load_stalled')=>{const error=Object.assign(Error(message),{code});rejectTimeout(error);};
+  const minutes=(value:number)=>Math.max(1,Math.ceil(value/60000));
+  const resetIdle=()=>{if(idleTimer)clearTimeout(idleTimer);const limit=minutes(loadIdleTimeoutMs);idleTimer=setTimeout(()=>failLoad(`No model-load progress for ${limit} minute${limit===1?'':'s'} · worker stopped`, 'text_model_load_stalled'),loadIdleTimeoutMs);};
+  const hardLimit=minutes(loadTimeoutMs);hardTimer=setTimeout(()=>failLoad(`Model load exceeded ${hardLimit} minute${hardLimit===1?'':'s'} · worker stopped`,'text_model_load_timeout'),loadTimeoutMs);resetIdle();
+  try{
+   const loading=call('load',{model:id},(type:string,value:unknown)=>{if(type==='progress')resetIdle();events?.(type,value);});
+   const metrics=await Promise.race([loading,timeout]);if(fault)throw fault;loaded=id;return metrics;
+  }catch(error){
+   if(error&&typeof error==='object'&&((error as {code?:unknown}).code==='text_model_load_timeout'||(error as {code?:unknown}).code==='text_model_load_stalled')){fail(error as Error);void abort();}
+   throw error;
+  }finally{if(hardTimer)clearTimeout(hardTimer);if(idleTimer)clearTimeout(idleTimer);}
+ },
  async unload(){await call('unload');loaded=null;},abort};
 }

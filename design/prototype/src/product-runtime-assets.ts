@@ -1,5 +1,5 @@
-export type ProductRuntimeRole='text-wllama'|'text-lfm3'|'text-lfm-check'|'decision'|'speech'|'vision'|'ocr'|'pdf'|'custom-tools';
-const runtimeLabels:Record<ProductRuntimeRole,string>={'text-wllama':'GGUF text runtime','text-lfm3':'LFM3 WebGPU runtime','text-lfm-check':'LFM text checker',decision:'Decision runtime',speech:'Speech runtime',vision:'Vision runtime',ocr:'OCR runtime',pdf:'PDF reader runtime','custom-tools':'Custom tool runtime'};
+export type ProductRuntimeRole='text-wllama'|'text-lfm3'|'text-lfm-check'|'decision'|'speech'|'vision'|'search'|'ocr'|'pdf'|'custom-tools';
+const runtimeLabels:Record<ProductRuntimeRole,string>={'text-wllama':'GGUF text runtime','text-lfm3':'LFM3 WebGPU runtime','text-lfm-check':'LFM text checker',decision:'Decision runtime',speech:'Speech runtime',vision:'Vision runtime',search:'Semantic Search runtime',ocr:'OCR runtime',pdf:'PDF reader runtime','custom-tools':'Custom tool runtime'};
 export type ProductRuntimeProgress={status:'progress';role:ProductRuntimeRole;completed:number;total:number;bytes:number;totalBytes?:number};
 export type ProductRuntimeResult={status:'prepared';role:ProductRuntimeRole;assets:number;bytes:number;downloadedBytes?:number};
 /** Show useful movement while one large runtime asset is still streaming. */
@@ -38,7 +38,7 @@ export function runtimeRoleForModelEngine(engine:string|undefined|null):ProductR
  if(engine==='wllama-lfm3')return 'text-lfm3';
  return null;
 }
-export function runtimeRoleForPreparation(role:'text'|'decision'|'speech'|'vision'|'ocr'|'pdf'):ProductRuntimeRole|null{
+export function runtimeRoleForPreparation(role:'text'|'decision'|'speech'|'vision'|'search'|'ocr'|'pdf'):ProductRuntimeRole|null{
  return role==='text'?null:role;
 }
 

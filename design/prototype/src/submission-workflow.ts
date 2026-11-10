@@ -84,6 +84,7 @@ export type SubmissionServices={
  vision:AutomaticReadingAdapterPorts['vision'];
  model:string;ocrModel:string;ocrLanguage:AutomaticReadingAdapterPorts['ocrLanguage'];speechModel:string;visionModel:string;visionAvailable:boolean;decisionModel:string;
  modelPreferences:Preferences['models'];harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;settingsRevisions?:{models:number|null;harness:number|null};connectionPreferences:Pick<Preferences['connection'],'diagnosticLogs'>;
+ semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<import('./memory-search-types.ts').MemoryPassageResult[]|null>;
  diagnostics:Pick<Storage,'getItem'|'setItem'>;
  currentDialogue:()=>Dialogue;storedDialogue:()=>Dialogue|undefined;settled:()=>Promise<void>;
  saveDialogue:(next:Dialogue)=>Promise<void>;finishTurn:(id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:NonNullable<DialogueTurn['refs']>,metadata?:import('./note-provenance.ts').SourceMetadataGuard[])=>Promise<void>;
@@ -224,7 +225,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
     const scoped=scopeResolvedTurnRequest({request,question:text,literal:!!literalRequest,literalAction:literalRequest?.action,inputs:inputReadings,currentFile:sourceFile??prior.currentFile});
     request=scoped.request;inputReadings=scoped.inputs;const fileBinding=scoped.fileBinding;
-   const actions=()=>createResolvedActions({onPreview:run.preview,store:knowledge,engine:inference,model,question:text,check:checkSend,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;}});
+   const actions=()=>createResolvedActions({onPreview:run.preview,store:knowledge,engine:inference,model,question:text,check:checkSend,signal:run.signal,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;},...(modelPreferences.searchModel&&services.semanticSearch?{semanticSearch:services.semanticSearch}:{})});
    let selectedFile:any;let workingFile=request?.target==='file'?(sourceFile??prior.currentFile):undefined;
    if(request?.target==='file'){
     if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;

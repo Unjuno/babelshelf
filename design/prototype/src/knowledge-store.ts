@@ -421,6 +421,8 @@ export class KnowledgeStore {
  search(query:string,stored:true,signal?:AbortSignal):Promise<MemorySearchResult[]>;
  search(query:string,stored?:false,signal?:AbortSignal):Promise<MemoryPassageResult[]>;
  async search(query:string,stored=false,signal?:AbortSignal):Promise<MemorySearchResult[]>{const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query);if(!stored)return searchNotes(records,query,12) as MemoryPassageResult[];const text=searchStoredNotes(records,query,12) as MemoryPassageResult[];return mergeStoredSearchResults(findStoredFiles(records,query),text,12,query);}
+ /** Explicit opt-in local semantic route; deterministic search remains unchanged. */
+ async createSemanticSearchRuntime(){const {createSemanticSearchRuntime}=await import('./semantic-search-runtime.ts');return createSemanticSearchRuntime(this);}
  async searchPage(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal){const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query,options.pathPrefix);if(typeof Worker==='undefined')return this.searchCache.search(records,query,options);this.searchWorker??=createPagedSearchClient();return this.searchWorker.search(records,query,options,signal);}
  async processingHistory():Promise<Activity[]>{
   const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
