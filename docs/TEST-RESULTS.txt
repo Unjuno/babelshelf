@@ -8520,3 +8520,16 @@ visible. The browser connection was restored to Offline. No model/runtime was
 downloaded or loaded, model settings were not changed, and no physical iPhone
 inference was performed. This confirms delivery and catalog availability; it
 does not establish iPhone model loading, memory fit, or generation performance.
+
+2026-11-11 — Fixed Web citation labels across repeated searches. Previously,
+two searches returning the same URL and title could both be labeled with the
+first snapshot, even when the second fetch had different text. Tool results now
+resolve labels against snapshots observed by that exact search attempt; results
+without a matching observation remain unlabeled. Mixed Memory/Web citations
+also stop at the binder's 64-source limit, avoiding invalid S65+ references.
+Regression reproduced the stale-label case before the change and now verifies
+distinct labels per fetch and the 64-label boundary. Root tests passed 272/272,
+prototype tests 1,963/1,963, `npm run check`, and `npm run build:app` (166
+verified assets; build `074714f8e10de7a4`). This ensures snapshot provenance and
+protocol bounds; it does not verify semantic entailment or real-model citation
+quality. No device storage, model files, or settings were touched.

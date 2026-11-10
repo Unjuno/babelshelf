@@ -123,12 +123,13 @@ function plannerReplyWebSources(agent:AgentPlannerContext|undefined,inputs:boole
  for(let index=0;index<agent.history.length;index++){
   const item=agent.history[index];if(item.tool!=='web.search'||item.error||item.resultOmitted||item.result===undefined)continue;
   for(const snapshot of agent.observedWebSources?.get(index)??[]){
+   if(memorySources.length+out.length>=64)return out;
    try{out.push({label:'S'+(memorySources.length+out.length+1),citation:createWebCitation(snapshot,{start:0,end:snapshot.text.length})});}catch{/* Invalid or empty page text is not citable. */}
   }
  }
  return out;
 }
-function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledSource[],webSources:readonly LabelledWebSource[]=[],observed:readonly SourceRef[]=[]):unknown{
+function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledSource[],webSources:readonly LabelledWebSource[]=[],observed:readonly SourceRef[]=[],observedWeb:readonly WebSnapshot[]=[]):unknown{
  const matchSource=(ref:SourceRef|undefined)=>ref&&sources.find(item=>item.noteId===ref.noteId&&item.revision===ref.revision&&item.start===ref.start&&item.end===ref.end&&item.quote===ref.quote);
  if(tool==='memory.search'&&result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as {hits?:unknown[]}).hits)){
   const page=result as Record<string,unknown> & {hits:unknown[]};
@@ -142,9 +143,13 @@ function labelToolEvidence(tool:string,result:unknown,sources:readonly LabelledS
  }
  if(tool==='web.search'&&result&&typeof result==='object'&&!Array.isArray(result)&&Array.isArray((result as {results?:unknown[]}).results)){
   const page=result as Record<string,unknown>&{results:unknown[]};
+  const remainingSnapshots=[...observedWeb];
   return {...page,results:page.results.map(row=>{
    if(!row||typeof row!=='object'||Array.isArray(row))return row;const value=row as Record<string,unknown>;
-   const match=webSources.find(item=>item.citation.url===value.url&&item.citation.title===value.title);
+   const snapshotIndex=remainingSnapshots.findIndex(snapshot=>snapshot.url===value.url&&snapshot.title===(typeof value.title==='string'?value.title.trim():''));
+   if(snapshotIndex<0)return value;
+   const [snapshot]=remainingSnapshots.splice(snapshotIndex,1);
+   const match=webSources.find(item=>item.citation.snapshotId===snapshot.id);
    return match?{...value,source:match.label}:value;
   })};
  }
@@ -297,7 +302,7 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
    messages.push({role:'assistant',content:first.assistantContent??'',tool_calls:calls.map(({item,id})=>({id,type:'function',function:{name:item.tool,arguments:item.arguments}}))});
    for(const {item,id,historyIndex} of calls){
     const discovery=item.resultOmitted?compactDiscoveryResult(item,agent.allowedTools):undefined;
-    const result=item.error?{error:{code:item.error.code}}:item.resultOmitted?{omitted:'Result not included in this prompt.',...(discovery?{discovery}:{})}:labelToolEvidence(item.tool,item.result,replySources,replyWebSources,visibleCustomSources(agent,historyIndex));
+    const result=item.error?{error:{code:item.error.code}}:item.resultOmitted?{omitted:'Result not included in this prompt.',...(discovery?{discovery}:{})}:labelToolEvidence(item.tool,item.result,replySources,replyWebSources,visibleCustomSources(agent,historyIndex),agent.observedWebSources?.get(historyIndex)??[]);
     let content:string;try{content=JSON.stringify(result);}catch{content='{"error":{"code":"tool_execution"}}';}
     messages.push({role:'tool',tool_call_id:id,name:item.tool,content});
    }
