@@ -1,3 +1,29 @@
+# Public Site v335 — clarify LFM3 IQ3_M quantization (2026-11-10 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`33b713a09e31f09be7af14e6dec88e9df835ced8`; PR #29 and full quality workflow
+[42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
+passed. App build `eab907c5290f44b8` contains 166 verified assets. Site source
+commit `aa79f9c932a138e56861604e8a26eda79f50f57e`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_2dbbcbb608f08191b877c6960882dc3c`
+(v335); production deployment `appgdep_6af2dff26b2c81918beb8242f81084b5`
+succeeded. Public audience retained at `https://babelshelf.com`.
+
+The Site host returned build `eab907c5290f44b8` /166 assets. In the existing
+Codex sidebar browser, the PWA first showed the previous worker; its Update
+action then applied worker `eab907c5290f44b8` and bundle
+`index-C1XD0SK5.js`. Settings → Models showed the selectable LFM3 1.7B IQ3_M
+community entry as 869 MB, approximately 3.66 bits/weight, GPU preferred with
+CPU fallback, and not tested on this device. Offline mode was restored.
+No model was added, downloaded, loaded or run. This confirms release delivery
+and catalog visibility, not iPhone model compatibility or performance.
+
+The local archive content hash is
+`sha256:a205ea9addbd572099fde18bd720c673039f9b16574409c8e5a77b8ba1ce96d0`
+(207 files). Staging retained current and previous app builds; delivery checks
+passed exact compressed/identity ONNX WASM bytes, offline shell transport and
+mutable-shell cache policy.
+
 # Public Site v333 — include Search assets in model-set capacity (2026-11-10 JST)
 
 Product source: `Unjuno/babelshelf` `main` at

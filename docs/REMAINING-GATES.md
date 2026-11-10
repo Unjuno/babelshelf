@@ -2,12 +2,12 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `479fed4` after PR #28. Its post-merge quality workflow
-[42781945216](https://github.com/Unjuno/babelshelf/actions/runs/42781945216)
-passed. PR #28 reconciles delivery and current-state documentation; the
-product code in public Site v334 remains app build `443a34209a1462e3` /166
-assets from product source `2e6f670`. The sidebar PWA applied that worker and
-bundle `index-CGIr1-9U.js`; Offline mode was restored. Site packaging and
+GitHub `main` is `33b713a` after PR #29; its full quality workflow
+[42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
+passed. Public Site v335 serves app build `eab907c5290f44b8` /166 assets from
+product source `33b713a`. The public domain and Site hostname both returned
+that build. In the existing sidebar PWA, Update applied worker `eab907c5290f44b8`
+and bundle `index-C1XD0SK5.js`; Offline mode was restored. Site packaging and
 deployment evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
 Existing untracked QA/model artifacts remain preserved.
 
@@ -19,29 +19,22 @@ Developer UI coverage passed 35/35, diagnostic logic passed 60/60,
 This improves recoverability and report access; it does not explain or reduce
 the iPhone's reported 18m23s model load. Physical-device timing remains open.
 
-Sidebar browser check on 2026-11-10: the live Models page showed LFM3 QAD Q4_0
+Sidebar browser check after v335: the live Models page showed LFM3 QAD Q4_0
 selected but `Not prepared`; Decision, Speech, Image text, and Image
-understanding were `Not configured`; semantic Search was `Off`. Browsing the
-text catalog showed LFM3 IQ3_M (869 MB) as an addable community candidate with
-an explicit not-tested-on-device label. Its selectable route was already
-registered, but the UI only exposed the quantization name. The current local
-candidate labels it as 3-bit IQ3_M and discloses approximately 3.66
-bits/weight, matching [llama.cpp's quantization table](https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/quantize.cpp);
-this is still community quantization, not a quality or device-fit claim. The
-Decision catalog showed
-Open d1 600M and a custom D1 import path. The fresh-install profile leaves
-those roles unconfigured and no optional weights are prepared by default;
-that is an intentional explicit-download policy, but the distinction between
-“available to select” and “ready to run” needs to stay visible. No browser
-selection or data was changed during that inspection.
+understanding were `Not configured`; semantic Search was `Off`. The Add model
+dialog showed LFM3 IQ3_M as `3-bit IQ3_M · Community · 869 MB`, with the
+approximately 3.66 bits/weight note, GPU preferred/CPU fallback, and
+not-tested-on-this-device status. The Decision catalog showed Open D1 600M and
+a custom D1 import path. No model was added or prepared; optional role weights
+remain explicit downloads. This establishes catalog visibility only, not
+quality or device fit.
 
-Local candidate build `eab907c5290f44b8` packages 166 verified assets. The
-focused model/catalog tests passed 37/37, `npm run check` passed, Settings UI
-regressions passed 3/3 after preserving the existing model-set accessible name,
-and product acceptance passed 9/9. The change is in PR #29; its full quality
-workflow is running. It is not merged or deployed; the public Site remains
-v334 until the exact PR candidate passes CI, merges, and is separately
-published and checked in the sidebar browser.
+The deployed text catalog exposes `LFM3 · 1.7B · 3-bit IQ3_M · Community · 869 MB`,
+with the `~3.66 bits/weight` note and `not tested on this device` status. It is
+addable but remains unprepared and untested; no model weights were downloaded
+or run during release verification. iPhone compatibility and generation
+performance remain unverified. The PWA initially retained its old worker after
+the host deployment; using its explicit Update action applied the new worker.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only

@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-11-10 JST. The accepted mobile UI and the bounded 2026-10-19 input-submission refactor are milestones, not completion of the broader local-first PWA goal. Preserve local data and distinguish code, PC/browser, installed-PWA, physical-device, and model evidence. Continue from a concrete unmet requirement; do not repeat broad model comparisons or successful samples without a specific reason. Keep the single current release snapshot at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md); detailed dated evidence lives in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). At the latest sync, GitHub `main` is `479fed4` (PR #28 merged) and its post-merge quality workflow [42781945216](https://github.com/Unjuno/babelshelf/actions/runs/42781945216) passed. Public Site v334 remains the deployed app build `443a34209a1462e3`, from product source commit `2e6f670`; PR #28 only reconciles repository documentation. Current product gaps and scope-matched evidence are maintained in `REMAINING-GATES.md`.
+Updated 2026-11-10 JST. The accepted mobile UI and the bounded 2026-10-19 input-submission refactor are milestones, not completion of the broader local-first PWA goal. Preserve local data and distinguish code, PC/browser, installed-PWA, physical-device, and model evidence. Continue from a concrete unmet requirement; do not repeat broad model comparisons or successful samples without a specific reason. Keep the single current release snapshot at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md); detailed dated evidence lives in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). GitHub `main` is `33b713a` after PR #29; workflow [42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013) passed. Public Site v335 serves app build `eab907c5290f44b8` from that commit, and the existing sidebar PWA applied its worker and was returned to Offline. LFM3 IQ3_M is selectable as an 869 MB community candidate, but has not been prepared or run on the iPhone. Current product gaps and scope-matched evidence are maintained in `REMAINING-GATES.md`.
 
 ## Read in this order
 
@@ -30,12 +30,12 @@ Connection settings remain Memory-backed. Chat may propose toggling `diagnosticL
 
 ## Next work and limits
 
-The current local candidate improves discovery of the selectable LFM3 IQ3_M
-community variant by stating its 3-bit class and approximate 3.66
-bits/weight. It does not change model selection, preparation or download
-policy. Next: complete full PR CI, then update the public app and verify the
-new model choice and its not-tested-on-device status in the existing sidebar
-browser. Do not load or download model weights to prove catalog labeling.
+The LFM3 IQ3_M catalog label and disclosure are now merged and deployed. The
+next model-specific gate is a real-device load/generation measurement; do not
+infer compatibility from the selectable route, browser GPU hints, or model
+metadata. The public PWA may continue to hold an old worker after a host
+deployment; use the app's Update action, then verify the active build in
+Settings → Developer.
 
 - The Settings > Developer one-run iOS handoff stores a local continuation marker, resumes checks after relaunch, and copies a privacy-bounded report plus a request to implement report-supported fixes and finish PC regression checks first. One explicit Run tests action includes app/storage checks and selected-model generation when prepared. Test options defaults to Quick; Performance is one fixed prose-128-v1 timing sample capped at128 output tokens. The mode survives the one-shot restart continuation. Results remain local and manually copyable, with input/output tokens, model/runtime/format identity and available timing/runtime-memory counters; no reply text is retained. In the Home Screen app, generation is deferred to the one-shot restart continuation and bound to the selected model; a browser-tab run finishes locally without arming a different storage context. Missing/blocked models are recorded as not-run; no downloads, model substitutions or automatic retries occur. Only Airplane Mode, force-close and Home Screen relaunch remain manual. Do the iPhone sequence once after the intended build is available; request another device run only for a concrete iOS-only verification. PC mobile Chromium passing is not iOS acceptance. The repeatable quality gate now also runs an actual Chromium-installed PWA from a fresh profile after shutting down the fixture server, with networking blocked and two separate cold browser processes. This narrows the PC offline gap but does not substitute for iOS OS network isolation. Android physical PWA remains a separate evidence gate.
 - Resolve the pinned WebML runtime's own redistribution provenance. Model Apache-2.0 and dependency MIT are not a runtime grant. User-authorized public Sites publication is recorded in SITES-DEPLOYMENT.md; the WebML runtime itself is excluded and acquired directly only through explicit preparation.
