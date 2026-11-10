@@ -24,6 +24,15 @@ action (3 Playwright checks passed). Settings migration/recovery tests passed
 preservation of old settings bytes/history and registered adapter routing;
 they do not verify actual IQ3_M inference, GPU placement or device fit.
 
+The Send/agent orchestration regression group then passed 215/215 across the
+read-only tool loop, coordinator, model execution, submission controller and
+submission workflow. Coverage includes hiding Web search without an explicitly
+available Online adapter, freezing the send-time tool/profile snapshot,
+distinguishing profile and receipt-capacity exhaustion, retaining useful
+partial evidence, stopping late model results, and keeping generated note/save
+actions behind review. These are controlled PC regressions, not a live-model
+search-and-save quality result.
+
 PR #39's v341 product tree came from merge commit
 `0e2be9077f805c173db6db0009f345a69353cd2c`. Its exact candidate passed the
 full `Local PWA quality` workflow
