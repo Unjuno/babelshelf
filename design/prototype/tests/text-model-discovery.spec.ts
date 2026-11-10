@@ -43,6 +43,8 @@ test('media and Decision catalogs offer only registered local adapters',async({p
  await expect(page.getByRole('button',{name:/Add LFM2\.5-VL.*450M/})).toBeVisible();
  const addLocalVision=page.getByRole('button',{name:'Add local LFM2-VL ONNX model',exact:true});
  await expect(addLocalVision).toBeVisible();
+ await expect(page.getByText('Built-in and local Vision models', {exact:true})).toBeVisible();
+ await expect(page.getByText(/custom import unavailable/i)).toHaveCount(0);
  const [chooser]=await Promise.all([page.waitForEvent('filechooser'),addLocalVision.click()]);
  expect(chooser.isMultiple()).toBe(true);
 });
