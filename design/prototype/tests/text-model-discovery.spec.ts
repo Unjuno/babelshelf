@@ -41,4 +41,8 @@ test('media and Decision catalogs offer only registered local adapters',async({p
  await expect(page.getByRole('button',{name:'Image text model',exact:true})).toContainText('Tesseract 7');
  await page.getByRole('button',{name:'Browse vision models',exact:true}).click();
  await expect(page.getByRole('button',{name:/Add LFM2\.5-VL.*450M/})).toBeVisible();
+ const addLocalVision=page.getByRole('button',{name:'Add local LFM2-VL ONNX model',exact:true});
+ await expect(addLocalVision).toBeVisible();
+ const [chooser]=await Promise.all([page.waitForEvent('filechooser'),addLocalVision.click()]);
+ expect(chooser.isMultiple()).toBe(true);
 });
