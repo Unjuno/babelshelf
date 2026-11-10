@@ -23,6 +23,19 @@ test('pinned LFM3 Q8 preparation budgets only its verified weights and shared LF
  assert.equal(plan.models.textModel,'lfm3-1.7b-q8-0');
 });
 
+test('initial LFM3 setup estimates only missing model and runtime files independently',async()=>{
+ const {lfm3RuntimeBytes}=await import('../src/lfm3-text-manifest.ts');
+ const prefs=initial();prefs.textModel='lfm3-1.7b-qad-q4-0';prefs.textLibrary.push(prefs.textModel);
+ const plan=(text,runtime)=>initialPreparationPlan(prefs,{text,speech:false,ocr:false,runtime},'text');
+ const missingBoth=plan(false,false).steps[0];
+ assert.equal(missingBoth.modelReady,false);assert.equal(missingBoth.runtimeReady,false);
+ assert.equal(missingBoth.modelBytes,1049615680);assert.equal(missingBoth.runtimeBytes,lfm3RuntimeBytes);
+ assert.equal(missingBoth.bytes,1049615680+lfm3RuntimeBytes);
+ const modelOnly=plan(false,true).steps[0];assert.equal(modelOnly.bytes,1049615680);
+ const runtimeOnly=plan(true,false).steps[0];assert.equal(runtimeOnly.bytes,lfm3RuntimeBytes);
+ const bothReady=plan(true,true);assert.equal(bothReady.bytes,0);assert.equal(bothReady.steps[0].ready,true);
+});
+
 test('custom Vision setup verifies the selected local package and never budgets a builtin-model download',async()=>{
  const {visionManifest}=await import('../src/vision-assets.ts');const {validateCustomVisionModel}=await import('../src/custom-vision-assets.ts');
  const files=visionManifest.files.map(({path,bytes,sha256})=>({path,bytes,sha256}));
