@@ -1,5 +1,7 @@
+import type {SourceRef} from './conversation.ts';
 const MAX_SNAPSHOT_BYTES=12_000;
 const MAX_QUOTE_CHARS=4_000;
+const MAX_MEMORY_QUOTE_CHARS=24_000;
 
 export type WebSnapshot={
  id:string;
@@ -24,6 +26,8 @@ export type WebCitation={
  end:number;
  quote:string;
 };
+
+export type BoundAnswerEvidence={kind:'memory';source:SourceRef}|{kind:'web';source:WebCitation};
 
 function record(value:unknown):value is Record<string,unknown>{
  return !!value&&typeof value==='object'&&!Array.isArray(value)&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null);
@@ -76,4 +80,19 @@ export function bindWebCitationLabels(labels:unknown,offered:readonly {label:str
  const selected=labels.map(label=>offered.find(item=>item.label===label));
  if(selected.some(item=>!item))throw Error('Invalid Web source labels');
  return selected.map(item=>item!.citation);
+}
+
+function validMemorySource(value:unknown):value is SourceRef{
+ if(!record(value)||typeof value.noteId!=='string'||!value.noteId||value.noteId.length>160||!Number.isSafeInteger(value.revision)||Number(value.revision)<1||!Number.isSafeInteger(value.start)||Number(value.start)<0||!Number.isSafeInteger(value.end)||Number(value.end)<Number(value.start)||typeof value.quote!=='string'||Number(value.end)-Number(value.start)!==value.quote.length||!value.quote.length||value.quote.length>MAX_MEMORY_QUOTE_CHARS)return false;
+ return (value.title===undefined||typeof value.title==='string'&&value.title.length<=240)&&(value.citedQuote===undefined||typeof value.citedQuote==='string'&&value.citedQuote.length<=MAX_QUOTE_CHARS)&&(value.groundingEligible===undefined||typeof value.groundingEligible==='boolean');
+}
+
+/** Bind the shared answer labels to either an already-verified Memory ref or a live Web snapshot citation. */
+export function bindMixedEvidenceLabels(labels:unknown,memory:readonly {label:string;source:SourceRef}[],web:readonly {label:string;citation:WebCitation}[],snapshots:readonly WebSnapshot[]):BoundAnswerEvidence[]{
+ const offered=[...memory.map(item=>({label:item.label,kind:'memory' as const,source:item.source})),...web.map(item=>({label:item.label,kind:'web' as const,source:item.citation}))];
+ if(!Array.isArray(labels)||labels.some(label=>typeof label!=='string')||new Set(labels).size!==labels.length||
+  new Set(offered.map(item=>item.label)).size!==offered.length||offered.some(item=>!/^S(?:[1-9]|[1-5][0-9]|6[0-4])$/.test(item.label)||(item.kind==='memory'?!validMemorySource(item.source):!validateWebCitation(item.source,snapshots))))throw Error('Invalid answer evidence labels');
+ const selected=labels.map(label=>offered.find(item=>item.label===label));
+ if(selected.some(item=>!item))throw Error('Invalid answer evidence labels');
+ return selected.map(item=>item!.kind==='memory'?{kind:'memory',source:item!.source as SourceRef}:{kind:'web',source:item!.source as WebCitation});
 }
