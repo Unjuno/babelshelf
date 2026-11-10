@@ -1,6 +1,7 @@
 import {AgentSourceCapacityError,type AgentToolResult} from './agent-loop.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
 import type {SourceRef} from './conversation.ts';
+import {bindWebCitationLabels,type WebCitation,type WebSnapshot} from './web-evidence.ts';
 import type {FileResult} from './file-discovery.ts';
 import type {ToolHost} from './tools/tool-host.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
@@ -13,8 +14,9 @@ import {validateSourcePage} from './tools/memory.sources/tool.ts';
 import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 
 export type AgentCalculation={expression:string;result:number;precision:'IEEE-754 binary64'}|DecimalReceipt;
-export type SourceLabelAnswer={answer:string;sources:SourceRef[];status?:'insufficient_evidence'};
+export type SourceLabelAnswer={answer:string;sources:SourceRef[];webSources?:WebCitation[];status?:'insufficient_evidence'};
 export type LabelledSource=SourceRef&{label:string};
+export type LabelledWebSource={label:string;citation:WebCitation};
 export class InternalSourceLabelLeakError extends Error {
  constructor(){super('Answer contains an internal source label');this.name='InternalSourceLabelLeakError';}
 }
@@ -64,23 +66,35 @@ export function bindEvidenceLabels(labels:unknown,evidence:readonly LabelledSour
  return selected.map(ref=>{const {noteId,revision,start,end,quote,title}=ref!;return {noteId,revision,start,end,quote,...(title?{title}:{})};});
 }
 export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],options:{userText?:string}={ }):SourceLabelAnswer{
+ return bindMixedSourceLabelAnswer(raw,evidence,[],[],options);
+}
+/** Bind mixed Memory/Web labels to host-owned sources; Web text remains session-only. */
+export function bindMixedSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],webEvidence:readonly LabelledWebSource[],snapshots:readonly WebSnapshot[],options:{userText?:string}={ }):SourceLabelAnswer{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid answer or sources');
  const value=raw as Record<string,unknown>;
  if(typeof value.answer!=='string'||!value.answer.trim()||Object.keys(value).some(key=>!['answer','sources','status'].includes(key))||value.status!==undefined&&!['answered','insufficient_evidence'].includes(value.status as string))throw Error('Invalid answer or sources');
- const sources=bindEvidenceLabels(value.sources,evidence);
- for(const ref of evidence){
+ if(!Array.isArray(value.sources)||value.sources.some(label=>typeof label!=='string')||new Set(value.sources).size!==value.sources.length||
+  new Set([...evidence.map(item=>item.label),...webEvidence.map(item=>item.label)]).size!==evidence.length+webEvidence.length)throw Error('Invalid answer or sources');
+ const selectedLabels=value.sources as string[];
+ // Preserve the established Memory citation contract and projection exactly.
+ // Web citations have a separate stricter binder against live session snapshots.
+ const sources=bindEvidenceLabels(selectedLabels.filter(label=>evidence.some(item=>item.label===label)),evidence);
+ const webLabels=selectedLabels.filter(label=>webEvidence.some(item=>item.label===label));
+ if(sources.length+webLabels.length!==selectedLabels.length)throw Error('Invalid answer or sources');
+ const webSources=bindWebCitationLabels(webLabels,webEvidence,snapshots);
+ for(const ref of [...evidence,...webEvidence]){
   if(!mentionsLabel(value.answer,ref.label))continue;
   const explicitlyNamed=typeof options.userText==='string'&&mentionsLabel(options.userText,ref.label);
-  const literalInCitedSource=sources.some(source=>source.noteId===ref.noteId&&source.revision===ref.revision&&source.start===ref.start&&source.end===ref.end&&mentionsLabel(source.quote,ref.label));
+  const literalInCitedSource=evidence.some(item=>item.label===ref.label&&selectedLabels.includes(item.label)&&mentionsLabel(item.quote,ref.label))||webEvidence.some(item=>item.label===ref.label&&selectedLabels.includes(item.label)&&mentionsLabel(item.citation.quote,ref.label));
   if(!explicitlyNamed&&!literalInCitedSource)throw new InternalSourceLabelLeakError();
  }
  if(hasInternalImplementationLeak(value.answer,options.userText??'',sources))throw new InternalImplementationLeakError();
  if(value.status==='insufficient_evidence'){
-  if(sources.length)throw Error('Insufficient evidence cannot carry citations');
+  if(sources.length||webSources.length)throw Error('Insufficient evidence cannot carry citations');
   return {answer:value.answer.trim(),sources:[],status:'insufficient_evidence'};
  }
- if(!sources.length&&evidence.length)throw Error('Invalid answer or sources');
- return {answer:value.answer.trim(),sources};
+ if(!selectedLabels.length&&(evidence.length||webEvidence.length))throw Error('Invalid answer or sources');
+ return {answer:value.answer.trim(),sources,...(webSources.length?{webSources}:{})};
 }
 export function agentClockReadingsFromCalls(calls:readonly AgentToolResult[]):ClockReading[]{
  const readings=calls.filter(call=>call.tool==='time.now').map(call=>validateClockReading(call.result));
@@ -183,6 +197,21 @@ export function agentToolInfoFromCalls(calls:readonly {tool:string;arguments:Rec
 // Model-facing tool payloads are deliberately smaller than the canonical tool
 // result and preserve source offsets only for exact original substrings.
 export function projectAgentToolResult(tool:string,result:unknown,maxChars?:number):unknown{
+ if(tool==='web.search'){
+  if(!result||typeof result!=='object'||Array.isArray(result))throw Error('Invalid web search result');
+  const value=result as Record<string,unknown>;
+  if(Object.keys(value).some(key=>!['provider','retrievedAt','results','query'].includes(key))||value.provider!=='RustXNG'||typeof value.retrievedAt!=='string'||!Number.isFinite(Date.parse(value.retrievedAt))||value.query!==undefined&&(typeof value.query!=='string'||value.query.length>2000)||!Array.isArray(value.results)||value.results.length>5)throw Error('Invalid web search result');
+  const results=value.results.map((item:any)=>{
+   if(!item||typeof item!=='object'||Array.isArray(item)||Object.keys(item).some(key=>!['title','url','snippet','rawContentStatus','rawContentTruncated','pageText'].includes(key))||typeof item.title!=='string'||!item.title||item.title.length>240||typeof item.url!=='string'||item.url.length>4096||typeof item.snippet!=='string'||item.snippet.length>1200||typeof item.rawContentStatus!=='string'||typeof item.rawContentTruncated!=='boolean'||item.pageText!==undefined&&typeof item.pageText!=='string'||item.pageText!==undefined&&item.rawContentStatus!=='ok')throw Error('Invalid web search result');
+   let url:URL;try{url=new URL(item.url);}catch{throw Error('Invalid web search result');}
+   if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('Invalid web search result');
+   const pageText=typeof item.pageText==='string'?boundedPrefix(item.pageText,2_500):undefined;
+   return {title:item.title,url:url.href,snippet:item.snippet,rawContentStatus:item.rawContentStatus,rawContentTruncated:item.rawContentTruncated,...(pageText?{pageText}:{})};
+  });
+  const projected={provider:'RustXNG',retrievedAt:value.retrievedAt,results};
+  if(maxChars!==undefined&&JSON.stringify(projected).length>maxChars)throw new AgentToolResultTooLargeError();
+  return projected;
+ }
  if(tool==='memory.sources')return validateSourcePage(result);
  if(tool==='time.now')return validateClockReading(result);
  if(tool==='memory.list'){
@@ -259,6 +288,10 @@ function serializeCustomToolResult(result:unknown,recoverableResultOverflow=fals
 
 /** Keep custom call arguments transient; receipts retain only package identity and payload size. */
 export function projectAgentActivityInput(tool:string,args:unknown,identity:unknown):unknown{
+ if(tool==='web.search'){
+  if(!args||typeof args!=='object'||Array.isArray(args)||typeof (args as Record<string,unknown>).query!=='string'||!identity||typeof identity!=='object'||Array.isArray(identity))throw Error('Invalid web search activity');
+  return {kind:'web_search',queryBytes:new TextEncoder().encode((args as Record<string,string>).query).byteLength,builtin:tool,...identity as Record<string,unknown>};
+ }
  if(tool===DEFERRED_TOOL_SEARCH_ID){
   if(!args||typeof args!=='object'||Array.isArray(args)||typeof (args as Record<string,unknown>).query!=='string'||!identity||typeof identity!=='object'||Array.isArray(identity))throw Error('Invalid tool search activity');
   return {kind:'local_tool_discovery',queryBytes:new TextEncoder().encode((args as Record<string,string>).query).byteLength,...identity as Record<string,unknown>};
@@ -292,6 +325,11 @@ export function projectAgentActivityInput(tool:string,args:unknown,identity:unkn
 
 /** Keep custom output transient for the agent; durable activity stores metadata only. */
 export function projectAgentActivityResult(tool:string,result:unknown,maxChars?:number):unknown{
+ if(tool==='web.search'){
+  if(!result||typeof result!=='object'||Array.isArray(result))throw Error('Invalid web search activity result');
+  const value=result as Record<string,unknown>,rows=Array.isArray(value.results)?value.results:[];
+  return {kind:'web_search_result',provider:value.provider==='RustXNG'?'RustXNG':'unknown',resultCount:rows.length,items:rows.slice(0,5).map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))return {invalid:true};const row=item as Record<string,unknown>;return {rawContentStatus:typeof row.rawContentStatus==='string'?row.rawContentStatus:'unknown',rawContentTruncated:row.rawContentTruncated===true,...(typeof row.title==='string'?{titleBytes:new TextEncoder().encode(row.title).byteLength}:{}),...(typeof row.url==='string'?{urlBytes:new TextEncoder().encode(row.url).byteLength}:{}),...(typeof row.pageText==='string'?{pageTextBytes:new TextEncoder().encode(row.pageText).byteLength}:{})};})};
+ }
  if(tool===DEFERRED_TOOL_READ_SKILL_ID){const skill=projectAgentToolResult(tool,result) as {id:string;instructions:string};return {kind:'local_tool_skill_read',id:skill.id,instructionBytes:new TextEncoder().encode(skill.instructions).byteLength};}
  if(tool===DEFERRED_TOOL_SEARCH_ID){const matches=projectAgentToolResult(tool,result) as {id:string;usage:string}[];return {kind:'local_tool_discovery',matches:matches.length};}
  if(/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool)){

@@ -116,6 +116,27 @@ test('a native final answer that exposes tool syntax gets one user-facing repair
  assert.match(prompts[2].at(-1).content,/internal implementation details.*omit tool calls/i);
 });
 
+test('native answer presentation leak falls back to grounded answer after one bounded repair',async()=>{
+ const action=(tool,args)=>JSON.stringify({action:'tool',query:tool,body:JSON.stringify(args)});
+ const leaked=JSON.stringify({action:'answer',reply:{status:'answered',answer:'I used memory.read(query="meeting-1") and sourceReferences[0] to find Monday at 10.',sources:['S1']}});
+ const {value,calls}=input([
+  action('memory.search',{query:'meeting'}),
+  action('memory.read',{query:'meeting-1'}),
+  leaked,
+  leaked,
+ ],{question:'Search the saved meeting note and tell me when it is.',enabledTools:['memory.search','memory.read'],builtinPackages:[...builtinPackages,readPackage],maxToolCalls:4,
+   search:async()=>[{noteId:'meeting-1',revision:1,start:0,end:28,quote:'The meeting is Monday at 10.',title:'Notes/meeting.md'}],
+   views:async()=>[{id:'meeting-1',path:'Notes/meeting.md',version:1,body:'The meeting is Monday at 10.'}]});
+ value.engine.plannerProtocol='native-tool-calls';const receipts=[];
+ value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+ const result=await coordinateAgentTurn(value);
+ assert.equal(result.final.action,'answer');assert.equal(result.final.target,'knowledge');
+ assert.deepEqual(result.calls.map(call=>call.tool),['memory.search','memory.read']);
+ assert.equal(receipts.filter(row=>row.error?.code==='planner_protocol').length,2);
+ assert.equal(receipts.at(-1).status,'succeeded');assert.equal(receipts.at(-1).output.action,'answer');
+ assert.doesNotMatch(JSON.stringify(receipts),/I used memory\.read|sourceReferences\[0\]/);
+});
+
 test('an invalid history selector gets one audited replan without guessing an original or executing a tool',async()=>{
  const {value,calls}=input([
   '{"action":"recall","target":"history","query":"その集合の持ち物は何？"}',
@@ -151,6 +172,7 @@ const builtinPackages=[{definition:{id:'memory.search',version:1,effect:'read',n
 const calculatorPackage={definition:{id:'math.calculate',version:1,effect:'read',network:'none',inputSchema:{type:'object',required:['expression'],additionalProperties:false,properties:{expression:{type:'string'}}}},entry:'Tools/math.calculate/tool.ts',sources:[{path:'Tools/math.calculate/SKILL.md',body:'Calculate explicit arithmetic.'},{path:'Tools/math.calculate/tool.ts',body:'Trusted pure calculator.'}],run:calculate};
 const readPackage={definition:{id:'memory.read',version:3,effect:'read',network:'none',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string'},start:{type:'integer',minimum:0,maximum:10_000_000},length:{type:'integer',minimum:1,maximum:3_000}}}},entry:'Tools/memory.read/tool.ts',sources:[{path:'Tools/memory.read/SKILL.md',body:'Read exact local record.'},{path:'Tools/memory.read/tool.ts',body:'Trusted exact reader.'}],run:readNotes};
 const listPackage={definition:{id:'memory.list',version:1,effect:'read',network:'none',inputSchema:{type:'object',required:[],additionalProperties:false,properties:{path:{type:'string',maxLength:500},offset:{type:'integer',minimum:0,maximum:1_000_000},limit:{type:'integer',minimum:1,maximum:25}}}},entry:'Tools/memory.list/tool.ts',sources:[{path:'Tools/memory.list/SKILL.md',body:'List immediate Memory children.'},{path:'Tools/memory.list/tool.ts',body:'Trusted folder projection.'}],run:listNotes};
+const webSearchPackage={definition:{id:'web.search',version:1,effect:'external',network:'explicit-online',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string',minLength:1,maxLength:2000}}}},entry:'Tools/web.search/tool.ts',sources:[{path:'Tools/web.search/SKILL.md',body:'Search web only when Online.'},{path:'Tools/web.search/tool.ts',body:'Trusted web adapter.'}],run:async(args,host)=>{host.check();if(!host.webSearch)throw Error('Web search unavailable');const result=await host.webSearch(args.query,host.signal);host.check();return result;}};
 
 function engine(plans){
  const queue=[...plans];
@@ -505,6 +527,37 @@ test('coordinator executes only the profile-selected registered tool and records
  assert.equal(operations[1].details.package,'memory.search');assert.ok(operations[1].details.packageSha256);
  assert.equal(result.snapshot,value.snapshot);assert.equal(operations[0].details.execution.turnId,value.snapshot.turnId);assert.equal(operations[1].details.execution.textRevision,'model-r1');assert.equal(operations[1].details.execution.harnessProfileId,'test-profile');
  assert.deepEqual(result.customEvidence,[]);
+});
+
+test('coordinator hides Web search without a live Online adapter and keeps query and page text out of receipts',async()=>{
+ const property=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true}});
+ try{
+  const webOnly={enabledTools:['web.search'],builtinPackages:[webSearchPackage],question:'Search the web for a private phrase.'};
+  const noAdapter=input(['{"action":"chat","query":""}'],{...webOnly,prepareContext:async tools=>{assert.equal(tools.some(tool=>tool.id==='web.search'),false);return context();}});
+  assert.equal((await coordinateAgentTurn(noAdapter.value)).final.action,'chat');
+
+  const query='PRIVATE_WEB_QUERY_SENTINEL',pageText='PRIVATE_WEB_PAGE_SENTINEL';
+  const {value}=input([
+   JSON.stringify({action:'tool',query:'web.search',body:JSON.stringify({query})}),
+   JSON.stringify({action:'answer',query:'',reply:{status:'answered',answer:'The page contains the requested information.',sources:['S1']}})
+  ],{...webOnly,webSearch:async sent=>{assert.equal(sent,query);return {provider:'RustXNG',retrievedAt:'2026-11-11T00:00:00.000Z',results:[{title:'Example',url:'https://example.org/article',snippet:'Discovery only',rawContentStatus:'ok',rawContentTruncated:false,pageText}]};}});
+  value.engine.plannerProtocol='native-tool-calls';
+  const prompts=[],generate=value.engine.generate;value.engine.generate=async(messages,...args)=>{prompts.push(messages);return generate(messages,...args);};
+  const records=[];
+  value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>records.push(row),project,failureOf,failureProject);
+  const result=await coordinateAgentTurn(value);
+  assert.deepEqual(result.calls.map(call=>call.tool),['web.search']);
+  assert.equal(result.calls[0].result.results[0].pageText,pageText);
+  assert.equal(result.final.reply.webSources.length,1);assert.equal(result.final.reply.webSources[0].quote,pageText);assert.equal(result.webSnapshots.length,1);
+  const webResult=JSON.parse(prompts[1].find(message=>message.role==='tool'&&message.name==='web.search').content);
+  assert.equal(webResult.results[0].source,'S1');assert.equal(webResult.results[0].pageText,pageText);
+  assert.doesNotMatch(JSON.stringify(records),/PRIVATE_WEB_QUERY_SENTINEL|PRIVATE_WEB_PAGE_SENTINEL|Discovery only|example\.org/);
+  assert.ok(records.some(row=>row.tool==='web.search'&&row.status==='succeeded'&&row.output.kind==='web_search_result'));
+  assert.ok(records.some(row=>row.tool==='dialogue.plan'&&row.status==='succeeded'));
+ }finally{
+  if(property)Object.defineProperty(globalThis,'navigator',property);else delete globalThis.navigator;
+ }
 });
 
 test('coordinator uses the frozen send-time tools even if the caller changes its live profile object',async()=>{

@@ -6,7 +6,7 @@ import {DEFERRED_TOOL_SEARCH_ID} from './deferred-tool-search.ts';
 import {requestsImplicitSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {validAgentResultAction} from './harness-actions.ts';
 import type {ReplyStyle} from './reply-style.ts';
-export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
+export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];readObservedWebSources?:()=>AgentPlannerContext['observedWebSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
  let historyRepairUsed=false,deferredToolRepairUsed=false,protocolRepairUsed=false;
  const loop=await runReadOnlyAgentLoop({allowedTools:input.allowedTools,maxToolCalls:input.maxToolCalls,maxResultChars:input.maxResultChars,check:input.check,
   plan:async history=>{
@@ -14,7 +14,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
    const attempt=(historySelectorRejected=false,deferredToolRejected=false,nativeCallRejected:boolean|'mixed-final'|'source-label-leak'|'implementation-leak'=false,queryRejected=false,targetRejected=false)=>{
     inference=undefined;
     input.onPreview?.('');
-    const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,queryRejected,targetRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
+    const work=()=>planDialogue(input.engine,input.question,input.context,input.attachments,{allowedTools:input.allowedTools,history,observedSources:input.readObservedSources?.(),observedWebSources:input.readObservedWebSources?.(),maxToolCalls:input.maxToolCalls,userGuidance:input.userGuidance,replyStyle:input.replyStyle,historySelectorRejected,deferredToolRejected,nativeCallRejected,queryRejected,targetRejected,onPreview:input.onPreview,onInference:value=>{inference=value;}});
     return input.tracePlan?input.tracePlan(history.length,work,()=>inference):work();
    };
    let raw:DialoguePlan;
@@ -30,7 +30,20 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
      if(!(error instanceof PlannerOutputError))throw error;
      if(!historyRepairUsed&&error.diagnostic.reason==='history target'){historyRepairUsed=true;raw=await attempt(true);}
      else if(!deferredToolRepairUsed&&error.diagnostic.reason==='tool call'&&input.allowedTools.some(tool=>tool.id.startsWith('user.'))&&input.allowedTools.some(tool=>tool.id===DEFERRED_TOOL_SEARCH_ID)){deferredToolRepairUsed=true;raw=await attempt(false,true);}
-     else if(!protocolRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak','terminal answer implementation leak'].includes(error.diagnostic.reason)){protocolRepairUsed=true;raw=await attempt(false,false,error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':error.diagnostic.reason==='terminal answer implementation leak'?'implementation-leak':true);}
+     else if(!protocolRepairUsed&&input.engine.plannerProtocol==='native-tool-calls'&&['native-tool-call','native-final-mixed','agent final action','terminal answer source-label leak','terminal answer implementation leak'].includes(error.diagnostic.reason)){
+      protocolRepairUsed=true;
+      const repairKind=error.diagnostic.reason==='native-final-mixed'?'mixed-final':error.diagnostic.reason==='terminal answer source-label leak'?'source-label-leak':error.diagnostic.reason==='terminal answer implementation leak'?'implementation-leak':true;
+      try{raw=await attempt(false,false,repairKind);}
+      catch(repairError){
+       if(!(repairError instanceof PlannerOutputError)||!['terminal answer source-label leak','terminal answer implementation leak'].includes(repairError.diagnostic.reason)||!history.some(item=>!item.error&&['memory.search','memory.read','memory.sources','web.search'].includes(item.tool)))throw repairError;
+       // A repeated presentation-only failure must not discard verified tool
+       // work. Hand the evidence to the ordinary grounded-answer stage, which
+       // independently validates citations and user-facing text.
+       const fallback:DialoguePlan={action:'answer',query:input.question,target:'knowledge'};
+       input.onPreview?.('');
+       raw=input.tracePlan?await input.tracePlan(history.length,async()=>fallback,()=>undefined):fallback;
+      }
+     }
      else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&error.diagnostic.reason==='query'){protocolRepairUsed=true;raw=await attempt(false,false,false,true);}
      else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&['target','target action','file scope','current scope','input scope','explicit scope'].includes(error.diagnostic.reason)){protocolRepairUsed=true;raw=await attempt(false,false,false,false,true);}
      else throw error;
@@ -52,7 +65,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
    }
    return {kind:'final' as const,value:raw};
   },
-  execute:(call,attemptIndex)=>input.traceTool?input.traceTool(call,()=>input.execute(call),attemptIndex):input.execute(call),
+  execute:(call,attemptIndex)=>input.traceTool?input.traceTool(call,()=>input.execute(call,attemptIndex),attemptIndex):input.execute(call,attemptIndex),
   onBudgetExhausted:history=>{
    const useful=input.hasUsefulEvidence?input.hasUsefulEvidence(history):history.some(item=>{
     if(item.error||item.result==null)return false;

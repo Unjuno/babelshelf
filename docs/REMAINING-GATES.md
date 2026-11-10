@@ -1,20 +1,48 @@
 ## Current status · 2026-11-11
 
-### Main integration and public release · 2026-11-11
+### Development branch and public release · 2026-11-11
 
-The v341 product source tree came from PR #39 merge commit
+The focused development branch `codex/rustxng-agent-search` is pushed at
+`ec246b745b8b85ce2a48bd47d389593a1ec06b79`. GitHub's full quality workflow
+[42907548465](https://github.com/Unjuno/babelshelf/actions/runs/42907548465)
+passed. The change binds each Web citation to snapshots observed by the same
+search attempt, avoiding attribution to stale fetched text when a URL/title is
+repeated. See the matching dated entry in [TEST-RESULTS.txt](TEST-RESULTS.txt).
+
+Public Site v343 serves app build `074714f8e10de7a4` with 166 verified app
+assets. Deployment succeeded; the existing sidebar PWA refreshed and its
+Developer panel reported that build as the active worker. Connection mode was
+restored to Offline after this check. The release inherits the model catalog
+and model sets recorded for v341 below; no model/runtime was downloaded or
+loaded during v343 verification. This verifies source delivery and active
+worker adoption, not model generation or iPhone compatibility/performance.
+
+Post-deployment PC regressions verified the user-facing LFM3 IQ3_M add/select
+path and that the Compact local set requires a separate explicit preparation
+action (3 Playwright checks passed). Settings migration/recovery tests passed
+44/44; model catalog, set and execution-route tests passed 30/30. These confirm
+preservation of old settings bytes/history and registered adapter routing;
+they do not verify actual IQ3_M inference, GPU placement or device fit.
+
+The Send/agent orchestration regression group then passed 215/215 across the
+read-only tool loop, coordinator, model execution, submission controller and
+submission workflow. Coverage includes hiding Web search without an explicitly
+available Online adapter, freezing the send-time tool/profile snapshot,
+distinguishing profile and receipt-capacity exhaustion, retaining useful
+partial evidence, stopping late model results, and keeping generated note/save
+actions behind review. These are controlled PC regressions, not a live-model
+search-and-save quality result.
+
+PR #39's v341 product tree came from merge commit
 `0e2be9077f805c173db6db0009f345a69353cd2c`. Its exact candidate passed the
 full `Local PWA quality` workflow
 [42875405317](https://github.com/Unjuno/babelshelf/actions/runs/42875405317).
-Public Site v341 serves app build `22b6ac0a34f1dcea` with 166 verified assets,
-built from the same product tree as main. Deployment and live sidebar adoption
-were verified on 2026-11-11. Settings → Models lists LFM3 Q4_0, community
-IQ3_M 3-bit, Q8_0, and model sets that include local Search (Compact media,
-Text + image + audio Q8, and Full local). The selected default LFM3 text-only
-set remains Search-free; Initial setup estimated its model plus runtime at
-1,077.2 MB. No model or runtime was downloaded or loaded. This verifies the
-catalog, selected preparation plan, public delivery, and active worker, not
-model generation or iPhone compatibility/performance.
+Settings → Models lists LFM3 Q4_0, community IQ3_M 3-bit, Q8_0, and model sets
+that include local Search (Compact media, Text + image + audio Q8, and Full
+local). The selected default LFM3 text-only set remains Search-free; Initial
+setup estimated its model plus runtime at 1,077.2 MB. No model/runtime was
+downloaded or loaded. This verifies selectable catalog and preparation-plan
+metadata, not model execution or device fit.
 
 The supplied iPhone report was created on 2026-11-04 by older build
 `bae57d2542fed742` in a Safari tab (`standalone:false`). Its selected model was

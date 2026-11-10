@@ -15,6 +15,8 @@ import readCode from './tools/memory.read/tool.ts?raw';
 import listSkill from './tools/memory.list/SKILL.md?raw';
 import listCode from './tools/memory.list/tool.ts?raw';
 import hostCode from './tools/tool-host.ts?raw';
+import webSearchSkill from './tools/web.search/SKILL.md?raw';
+import webSearchCode from './tools/web.search/tool.ts?raw';
 // Read-only canonical text projections of bundled sources. Never evaluated.
 export const builtinPackageNotes = [
  ['memory.search/SKILL.md',searchSkill],['memory.search/tool.ts',searchCode],
@@ -25,6 +27,7 @@ export const builtinPackageNotes = [
  ['math.calculate/SKILL.md',calculateSkill],['math.calculate/tool.ts',calculateCode],
  ['math.calculate/decimal-calculation.ts',decimalCode],['math.calculate/decimal-receipt.ts',receiptCode],
  ['tool-host.ts',hostCode],
+ ['web.search/SKILL.md',webSearchSkill],['web.search/tool.ts',webSearchCode],
 ].map(([relative,body])=>({id:'builtin-package-'+relative,path:'Tools/'+relative,body,version:1,history:[] as string[],protected:true}));
 
 // Trusted module references are app-owned; stored text cannot add an entry.

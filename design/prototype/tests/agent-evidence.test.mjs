@@ -89,6 +89,19 @@ test('custom-tool activity inputs retain package identity and byte count, never 
  assert.throws(()=>projectAgentActivityInput('user.lookup',{query:'x'.repeat(9000)},identity),/context limit/);
 });
 
+test('web search is projected for the model but durable receipts retain only bounded metadata',()=>{
+ const query='PRIVATE_WEB_QUERY_SENTINEL',pageText='PRIVATE_PAGE_TEXT_SENTINEL';
+ const input=projectAgentActivityInput('web.search',{query},{builtin:'web.search',version:1});
+ assert.deepEqual(input,{kind:'web_search',queryBytes:new TextEncoder().encode(query).byteLength,builtin:'web.search',version:1});
+ const raw={provider:'RustXNG',retrievedAt:'2026-11-11T00:00:00.000Z',query,results:[{title:'Example',url:'https://example.org/page',snippet:'Hint only',rawContentStatus:'ok',rawContentTruncated:false,pageText}]};
+ const projected=projectAgentToolResult('web.search',raw);
+ assert.deepEqual(projected,{provider:'RustXNG',retrievedAt:raw.retrievedAt,results:raw.results.map(({title,url,snippet,rawContentStatus,rawContentTruncated,pageText})=>({title,url,snippet,rawContentStatus,rawContentTruncated,pageText}))});
+ const receipt=projectAgentActivityResult('web.search',projected);
+ assert.doesNotMatch(JSON.stringify(receipt),/PRIVATE_WEB_QUERY_SENTINEL|PRIVATE_PAGE_TEXT_SENTINEL|Hint only|example\.org/);
+ assert.deepEqual(receipt,{kind:'web_search_result',provider:'RustXNG',resultCount:1,items:[{rawContentStatus:'ok',rawContentTruncated:false,titleBytes:7,urlBytes:24,pageTextBytes:26}]});
+ assert.throws(()=>projectAgentToolResult('web.search',{...raw,results:[{...raw.results[0],url:'javascript:alert(1)'}]}),/Invalid web search result/);
+});
+
 test('Memory activity receipts keep target and range metadata without retaining query, path or source text',()=>{
  const privateText='PRIVATE_MEMORY_SENTINEL',identity={version:4};
  const searchInput=projectAgentActivityInput('memory.search',{query:privateText,pathPrefix:'Notes/private',offset:0,limit:12},{builtin:'memory.search',...identity});
