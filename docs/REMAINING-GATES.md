@@ -2,14 +2,54 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `33b713a` after PR #29; its full quality workflow
+The development branch's Activity privacy projection now retains only
+calculator expressions accepted unchanged by the closed arithmetic parser;
+other arbitrary text remains a byte-count summary. This keeps the offline
+calculator receipt usable without reopening general prompt/query retention.
+Local targeted and full regressions passed, and GitHub Quality run
+[42802252746](https://github.com/Unjuno/babelshelf/actions/runs/42802252746)
+passed all gates on candidate `5566e4c`. The change is pushed to
+`codex/ui-design-handoff` but is not yet in `main` or the public Site. Detailed
+evidence and the earlier failing run are in [TEST-RESULTS.txt](TEST-RESULTS.txt).
+
+The title-bound water comparison guard now checks explicit strict and
+non-strict relations instead of reducing every comparison to a greater/not-
+greater boolean. It covers a narrow set of English and Japanese comparative
+forms, their supported negations, and equal amounts. This fixes cases such as
+17 L `does not contain more than` 29 L and prevents 17 L from being described
+as `less than` an equal 17 L. It remains a lexical contradiction check, not
+general semantic verification. Local answer-consistency, complete prototype,
+root, static, production acceptance, and full GitHub quality workflow passed;
+no model or Memory data was read or changed. Current iPhone inference and
+model quality remain unverified.
+
+Decision routing now sends the exact current request to the selected local
+classifier as before, but its persisted Activity receipt stores only the
+UTF-8 input size, attachment count, prior-context flag, finite routing label,
+confidence, device route, token count and elapsed time. It omits the question,
+attachment names/statuses and full probability distribution. This fixes a
+local audit-retention leak without changing model routing. Historical Activity
+records are not rewritten; future Decision receipts use the bounded projection.
+
+GitHub `main` is `46c6c33` after PR #30; PR #29's full quality workflow
 [42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
-passed. Public Site v335 serves app build `eab907c5290f44b8` /166 assets from
-product source `33b713a`. The public domain and Site hostname both returned
+passed, and PR #30 reconciles the v335 release evidence. Public Site v335
+serves app build `eab907c5290f44b8` /166 assets from product source `33b713a`.
+The public domain and Site hostname both returned
 that build. In the existing sidebar PWA, Update applied worker `eab907c5290f44b8`
 and bundle `index-C1XD0SK5.js`; Offline mode was restored. Site packaging and
 deployment evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
 Existing untracked QA/model artifacts remain preserved.
+
+The first PR #30 CI run timed out while waiting for the `beforeunload` dialog
+after an attachment was shown. The component registered its guard in a passive
+effect, which can run after the committed UI is visible. Registration now runs
+in the commit phase, closing that lifecycle window. Root
+tests (271/271), prototype tests (1,942/1,942), static checks, app acceptance
+(9/9), production build (166 verified assets), and built editor acceptance
+(28/28) passed locally; the targeted regression passed three consecutive
+runs. GitHub workflow [42789509707](https://github.com/Unjuno/babelshelf/actions/runs/42789509707)
+passed on rerun after an initial one-off timeout in the same browser test.
 
 The persistent Developer operation toast now keeps elapsed time visible after
 navigation, exposes Copy snapshot during app/model checks, and exposes Stop

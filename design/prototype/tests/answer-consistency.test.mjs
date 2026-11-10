@@ -101,6 +101,16 @@ test('explicit title-bound water comparisons must agree with unique cited amount
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alpha reserve contains less water than Beta reserve.',evidence));
  assert.throws(()=>checkAnswerConsistency(question,'Beta reserve contains less water than Alpha reserve.',evidence),/comparison conflicts/i);
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'Beta reserve contains more water than Alpha reserve.',evidence));
+ // Negated strict comparisons are non-strict: 17 <= 29 is true, while
+ // 29 <= 17 is false. Equal quantities also must not be called "less".
+ assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alpha reserve does not contain more water than Beta reserve.',evidence));
+ assert.throws(()=>checkAnswerConsistency(question,'Beta reserve does not contain more water than Alpha reserve.',evidence),/comparison conflicts/i);
+ const equal=[
+  {noteId:'alpha',title:'Alpha reserve',quote:'Alpha reserve contains 17 litres of water.'},
+  {noteId:'beta',title:'Beta reserve',quote:'Beta reserve contains 17 litres of water.'},
+ ];
+ assert.throws(()=>checkAnswerConsistency('Compare the water volumes in Alpha reserve and Beta reserve.','Alpha reserve contains less water than Beta reserve.',equal),/comparison conflicts/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('Compare the water volumes in Alpha reserve and Beta reserve.','Alpha reserve does not contain more water than Beta reserve.',equal));
  const japanese=[
   {noteId:'aoba',title:'青葉備蓄',quote:'青葉備蓄の飲料水は17リットルです。'},
   {noteId:'midorikawa',title:'緑川備蓄',quote:'緑川備蓄の飲料水は29リットルです。'},
@@ -108,6 +118,13 @@ test('explicit title-bound water comparisons must agree with unique cited amount
  assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','緑川備蓄の方が青葉備蓄より多いです。',japanese));
  assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄の方が緑川備蓄より多いです。',japanese),/comparison conflicts/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','緑川備蓄より青葉備蓄の方が少ないです。',japanese));
+ assert.doesNotThrow(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄の方が緑川備蓄より水が多いわけではありません。',japanese));
+ assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','緑川備蓄の方が青葉備蓄より水が多いわけではありません。',japanese),/comparison conflicts/i);
+ const equalJapanese=[
+  {noteId:'aoba',title:'青葉備蓄',quote:'青葉備蓄の飲料水は17リットルです。'},
+  {noteId:'midorikawa',title:'緑川備蓄',quote:'緑川備蓄の飲料水は17リットルです。'},
+ ];
+ assert.throws(()=>checkAnswerConsistency('青葉備蓄と緑川備蓄の水量を比較してください。','青葉備蓄の方が緑川備蓄より少ないです。',equalJapanese),/comparison conflicts/i);
  // Do not guess when either source has multiple distinct cited amounts.
  assert.doesNotThrow(()=>checkAnswerConsistency(question,'Alpha reserve contains more water than Beta reserve.',[
   evidence[0],{...evidence[1],quote:'Beta reserve contains 29 litres and later 31 litres of water.'},

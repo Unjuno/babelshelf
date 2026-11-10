@@ -25,7 +25,7 @@ jobs:
   local-quality:
     # Pin the OS family while ubuntu-latest transitions from 24.04 to 26.04.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -48,8 +48,10 @@ jobs:
       - name: Install root test dependencies
         run: npm ci
       - name: Install browser system dependencies
+        timeout-minutes: 15
         run: npm --prefix design/prototype exec -- playwright install-deps chromium webkit
       - name: Install pinned Chromium and WebKit
+        timeout-minutes: 15
         run: npm --prefix design/prototype exec -- playwright install chromium webkit
       - name: App update protocol acceptance
         # This fixture uses production source and synthetic assets, not a build.

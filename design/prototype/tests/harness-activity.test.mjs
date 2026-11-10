@@ -96,6 +96,35 @@ test('turn activity trace commits its current receipt around work and projects o
  assert.deepEqual(commits,[['running'],['succeeded']]);assert.deepEqual(started,['memory.search']);assert.deepEqual(steps,['succeeded']);assert.deepEqual(current[0].output,{count:1});assert.deepEqual(result,{count:1,privateResult:'do not persist'});
 });
 
+test('production turn tracer stores metadata summaries while returning exact private values to the caller',async()=>{
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');let current=[];
+ const trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;},onFailureRecorded:()=>{},diagnosticsEnabled:false,writeDiagnostic:()=>{}});
+ const query='PRIVATE_QUERY_SENTINEL',excerpt='PRIVATE_SAVED_NOTE_SENTINEL',answer='PRIVATE_ANSWER_SENTINEL';
+ const result=await trace('memory.read',{query,model:'lfm3-1.7b-qad-q4-0'},async()=>({body:excerpt,answer}),value=>({excerpt:value.body,answer:value.answer,sourceCount:1,inference:{measuredModelCalls:1,generationWallMs:12.5}}));
+ assert.deepEqual(result,{body:excerpt,answer});
+ const persisted=JSON.stringify(current);assert.doesNotMatch(persisted,/PRIVATE_QUERY_SENTINEL|PRIVATE_SAVED_NOTE_SENTINEL|PRIVATE_ANSWER_SENTINEL/);
+ assert.match(persisted,/"query":\{"textBytes":/);assert.match(persisted,/"excerpt":\{"textBytes":/);assert.match(persisted,/"generationWallMs":12.5/);
+});
+
+test('production turn tracer replaces private runtime errors with stable diagnostic labels',async()=>{
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');let current=[];
+ const trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;},onFailureRecorded:()=>{},diagnosticsEnabled:false,writeDiagnostic:()=>{}});
+ await assert.rejects(trace('knowledge.answer',{question:'PRIVATE_USER_QUERY_SENTINEL'},async()=>{throw Error('PRIVATE_MODEL_OR_SOURCE_TEXT_SENTINEL');}),/PRIVATE_MODEL_OR_SOURCE_TEXT_SENTINEL/);
+ assert.doesNotMatch(JSON.stringify(current),/PRIVATE_USER_QUERY_SENTINEL|PRIVATE_MODEL_OR_SOURCE_TEXT_SENTINEL/);
+ assert.equal(current.at(-1).error.message,'Operation failed');
+});
+
+test('production turn tracer preserves only validated calculator expressions required by offline receipts',async()=>{
+ const {createTurnActivityTracer}=await import('../src/harness-activity.ts');let current=[];
+ const trace=createTurnActivityTracer({check:()=>{},readActivities:()=>current,persistActivities:async value=>{current=value;},onFailureRecorded:()=>{},diagnosticsEnabled:false,writeDiagnostic:()=>{}});
+ const {makeDecimalReceipt}=await import('../src/tools/math.calculate/decimal-receipt.ts');
+ await trace('math.calculate',{expression:'(12 × 3) + 5',package:'math.calculate'},async()=>[makeDecimalReceipt('(12 × 3) + 5')]);
+ assert.equal(current.length,1);assert.equal(current[0].status,'succeeded');assert.equal(current[0].input.expression,'(12 × 3) + 5');
+ await trace('math.calculate',{expression:'PRIVATE_MATH_SENTINEL',package:'math.calculate'},async()=>({ok:false}));
+ assert.equal(current.length,2);assert.deepEqual(current[1].input.expression,{textBytes:new TextEncoder().encode('PRIVATE_MATH_SENTINEL').byteLength});
+ assert.doesNotMatch(JSON.stringify(current),/PRIVATE_MATH_SENTINEL/);
+});
+
 test('turn activity trace records cancellation once and emits only the enabled failure diagnostic',async()=>{
  const {createTurnActivityTracer}=await import('../src/harness-activity.ts');assert.equal(typeof createTurnActivityTracer,'function');
  let current=[],checks=0,failed=0;const commits=[],diagnostics=[],steps=[];
