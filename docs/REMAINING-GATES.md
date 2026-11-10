@@ -2,7 +2,7 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `82d93d2` (PRs #19–22 merged). PR #15 connects a selected and
+GitHub `main` is `4ccb18c` (PRs #19–23 merged). PR #15 connects a selected and
 loaded semantic Search runtime to the normal agent `memory.search` path while
 retaining lexical fallback, and PR #17 reconciles historical Search notes.
 PR #19 skips embedding inference when the derived index has no vectors; 86
@@ -14,7 +14,7 @@ development branch while retaining PR, main-push and manual checks. Its single
 PR quality run [42756205706](https://github.com/Unjuno/babelshelf/actions/runs/42756205706)
 passed. PR #22 reconciles release and requirement records; its full quality run
 [42757826908](https://github.com/Unjuno/babelshelf/actions/runs/42757826908)
-passed. Public Site v332 now serves app build `00aeca0a0b576e46` from app
+passed. PR #23 reconciles the current release status. Public Site v332 now serves app build `00aeca0a0b576e46` from app
 source commit `39e96129b362c1a65a1400ec9f0657c5350c3b98`; both the custom domain
 and Site hostname return the same 166-asset manifest. Site delivery checks
 confirmed exact WASM bytes for gzip/identity, offline-shell transport and
