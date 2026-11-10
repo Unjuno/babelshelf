@@ -787,7 +787,10 @@ export default function Prototype() {
  useEffect(()=>{if(sheet)keyboard.hide();},[sheet]);
  const current=notes.find(n=>n.id===opened);
  const editorDirty=editing&&(!editBase.current||editBody!==editBase.current.body||editPath!==editBase.current.path);
- useEffect(()=>{if(!editing&&!attachments.length&&!['file','folder','schedule','schedule-repeat'].includes(sheet??''))return;const protect=(event:BeforeUnloadEvent)=>{if(!editorDirty&&!attachments.length&&!creationIsDirty()&&!scheduleIsDirty())return;event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',protect);return()=>window.removeEventListener('beforeunload',protect);});
+ // Register unsaved-file protection in the commit phase. A passive effect can
+ // run after the new attachment is already visible, leaving a short window in
+ // which an immediate reload loses it without showing the browser warning.
+ useLayoutEffect(()=>{if(!editing&&!attachments.length&&!['file','folder','schedule','schedule-repeat'].includes(sheet??''))return;const protect=(event:BeforeUnloadEvent)=>{if(!editorDirty&&!attachments.length&&!creationIsDirty()&&!scheduleIsDirty())return;event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',protect);return()=>window.removeEventListener('beforeunload',protect);});
  function requestEditorExit(action:()=>void){
   if(directSaveLock.current){toast('Saving · wait');return;}
   if(editorDirty){reviewDiscard(editBase.current?.path??'File',action);return;}

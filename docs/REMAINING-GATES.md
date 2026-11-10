@@ -2,14 +2,25 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `33b713a` after PR #29; its full quality workflow
+GitHub `main` is `46c6c33` after PR #30; PR #29's full quality workflow
 [42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
-passed. Public Site v335 serves app build `eab907c5290f44b8` /166 assets from
-product source `33b713a`. The public domain and Site hostname both returned
+passed, and PR #30 reconciles the v335 release evidence. Public Site v335
+serves app build `eab907c5290f44b8` /166 assets from product source `33b713a`.
+The public domain and Site hostname both returned
 that build. In the existing sidebar PWA, Update applied worker `eab907c5290f44b8`
 and bundle `index-C1XD0SK5.js`; Offline mode was restored. Site packaging and
 deployment evidence are recorded in [SITES-DEPLOYMENT.md](SITES-DEPLOYMENT.md).
 Existing untracked QA/model artifacts remain preserved.
+
+The first PR #30 CI run timed out while waiting for the `beforeunload` dialog
+after an attachment was shown. The component registered its guard in a passive
+effect, which can run after the committed UI is visible. Registration now runs
+in the commit phase, closing that lifecycle window. Root
+tests (271/271), prototype tests (1,942/1,942), static checks, app acceptance
+(9/9), production build (166 verified assets), and built editor acceptance
+(28/28) passed locally; the targeted regression passed three consecutive
+runs. GitHub workflow [42789509707](https://github.com/Unjuno/babelshelf/actions/runs/42789509707)
+passed on rerun after an initial one-off timeout in the same browser test.
 
 The persistent Developer operation toast now keeps elapsed time visible after
 navigation, exposes Copy snapshot during app/model checks, and exposes Stop
