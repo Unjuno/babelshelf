@@ -2,16 +2,18 @@
 
 ### Main integration and public release · 2026-11-11
 
-GitHub `main` is `44f9c75a40ae0b715d24f49badbb812285815361`; PRs #34–#37 are
-merged. Post-merge main Quality workflow
-[42863097217](https://github.com/Unjuno/babelshelf/actions/runs/42863097217)
-passed all gates on this exact commit. Public Site v340 serves app build
-`ed965b009644e4b0` with 166 verified assets, built from product code at
-`ac73f46b89605f17b21a00d66af4aba505c23cc6`; PR #37 added release evidence
-only. Its catalog exposes LFM3 QAD Q4_0, community IQ3_M 3-bit (869 MB), and Q8_0 as
-separate selectable candidates. This proves catalog availability only; no
-LFM3 weight was downloaded or run in this deployment, and iPhone model
-execution remains unverified.
+GitHub `main` is `0e2be9077f805c173db6db0009f345a69353cd2c`; PR #39 is merged.
+Its exact candidate passed the full `Local PWA quality` workflow
+[42875405317](https://github.com/Unjuno/babelshelf/actions/runs/42875405317).
+Public Site v341 serves app build `22b6ac0a34f1dcea` with 166 verified assets,
+built from the same product tree as main. Deployment and live sidebar adoption
+were verified on 2026-11-11. Settings → Models lists LFM3 Q4_0, community
+IQ3_M 3-bit, Q8_0, and model sets that include local Search (Compact media,
+Text + image + audio Q8, and Full local). The selected default LFM3 text-only
+set remains Search-free; Initial setup estimated its model plus runtime at
+1,077.2 MB. No model or runtime was downloaded or loaded. This verifies the
+catalog, selected preparation plan, public delivery, and active worker, not
+model generation or iPhone compatibility/performance.
 
 The supplied iPhone report was created on 2026-11-04 by older build
 `bae57d2542fed742` in a Safari tab (`standalone:false`). Its selected model was
