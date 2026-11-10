@@ -1,5 +1,6 @@
 import {localAdapters} from './local-capabilities.ts';
 import {initialPreparationPlan} from './initial-preparation.ts';
+import {semanticEmbeddingAssetBytes,semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
 import type {Preferences,ModelSetSelection,UserModelSet} from './preference-records.ts';
 
 export type ModelSetId=string;
@@ -73,5 +74,8 @@ export function applyModelSet(value:Preferences['models'],id:string):Preferences
 // cache is considered. This is a manifest byte count, not a device-fit claim.
 export function modelSetAssetBytes(value:Preferences['models'],id:string):number{
  const selected=applyModelSet(value,id);
- return initialPreparationPlan(selected,{text:false,speech:false,ocr:false,decision:false,vision:false}).bytes;
+ let searchBytes=0;
+ if(selected.searchModel){if(selected.searchModel!==semanticEmbeddingManifest.id)throw Error('Search model runtime not connected');searchBytes=semanticEmbeddingAssetBytes;}
+ const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,decision:false,vision:false});
+ return plan.bytes+searchBytes;
 }
