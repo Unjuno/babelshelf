@@ -1,3 +1,27 @@
+# Public Site v340 — deploy latest verified main (2026-11-11 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`ac73f46b89605f17b21a00d66af4aba505c23cc6`; main-target Quality workflow
+[42855494413](https://github.com/Unjuno/babelshelf/actions/runs/42855494413)
+passed all gates on this exact commit. Product app build
+`ed965b009644e4b0` contains 166 verified assets. Site source commit
+`e6859cbaf2e70491730915bb9c8422ec6772c58f`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_49a88e4a46b88191ab6a922cce1dadb4`
+(v340); production deployment
+`appgdep_6af34c2390f0819191d912d12f346b16` succeeded. The Site remains public
+at `https://babelshelf.com`. Live `/build.json` returned build
+`ed965b009644e4b0` /166 assets. The existing sidebar browser showed the
+LFM3 IQ3_M community model candidate (869 MB); current active Service Worker
+adoption was not independently confirmed in that tab.
+
+Delivery checks passed exact ONNX WASM bytes through gzip and identity
+responses, offline-shell transport, and mutable-shell cache policy. The
+archive content hash is
+`sha256:9e499447056926463781bcbbe868273b7c522e73b7a70a2c4b830421ad5d3470`
+(111,534,080 bytes /206 files). No model weights or user data were included.
+No model was downloaded, loaded, or run; this release does not establish
+iPhone/Android model compatibility or performance.
+
 # Public Site v339 — expose model catalogs and Vision imports (2026-11-11 JST)
 
 Product source: `Unjuno/babelshelf` `main` at
