@@ -8502,3 +8502,21 @@ documentation conflict was resolved by keeping the newer 2026-11-11 release
 snapshot. Public Site v339 was not updated in this task. CI acceptance is PC
 Chromium/WebKit and installed-PWA evidence; no physical iPhone model test was
 run, and the known local model/report limitations remain open.
+
+2026-11-11 — Published the current integration branch `codex/rustxng-agent-search`
+at application commit `e46ec26735a8191adf76cfd47f4e18deb0fcee78` as public Site
+v342. The product build is `cdc705c107053bc3` (166 verified assets); Site source
+commit `31b56da1af27659b447ec128f3936ce89596806b` deployed successfully to
+`https://babelshelf.com`. Staging retained the current and previous build assets
+and pruned 25 superseded hashed assets. Delivery verification passed compressed
+WASM byte identity for gzip/identity, offline-shell transport, mutable-shell
+cache headers, and method handling. Local checks: root 272/272, prototype
+1,961/1,961, `npm run check`, `npm run build:app`, and Settings/model catalog
+browser tests 17/17. In the existing sidebar PWA, Developer showed active worker
+`cdc705c107053bc3` and bundle `index-D076H07p.js`; Text model settings retained
+LFM3 QAD Q4_0 as the selected model and exposed LFM3 IQ3_M (3-bit, 869 MB) as an
+available candidate. Decision, Speech, Image text, Vision and Search roles were
+visible. The browser connection was restored to Offline. No model/runtime was
+downloaded or loaded, model settings were not changed, and no physical iPhone
+inference was performed. This confirms delivery and catalog availability; it
+does not establish iPhone model loading, memory fit, or generation performance.
