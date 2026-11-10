@@ -8458,3 +8458,25 @@ passed in 11m39s, including browser setup and offline installed-PWA checks. PR
 passed in 10m46s. This improves setup timeout tolerance; it does not guarantee
 GitHub-hosted apt mirror latency or change application behavior. The app source
 did not change, so public Site v336 required no new deployment.
+
+2026-11-11 — Reconciled the current release snapshot after PR #34 merged. GitHub
+`main` is `f50ebc6b4b4f35fb5caf8420ecfa830d0e62e758`; post-merge Quality run
+[42837307748](https://github.com/Unjuno/babelshelf/actions/runs/42837307748)
+passed. Public Site v339 serves app build `1ff8951205bf764d` (166 verified
+assets); the sidebar PWA applied Update and was returned to Offline. Settings
+showed LFM3 IQ3_M (3-bit, 869 MB) as a selectable candidate alongside QAD Q4_0
+and Q8_0. No model or runtime was downloaded or loaded, so this records release
+and catalog evidence only.
+
+The supplied iPhone test report is from 2026-11-04 build `bae57d2542fed742`,
+opened in a Safari tab (`standalone:false`), and records configured LFM3 context
+262,144 with the test stopped in model load. It predates the current Developer
+test path, which loads an unloaded LFM3 model at 8,192 tokens without rewriting
+the saved setting and records configured and effective contexts separately.
+This report therefore cannot diagnose the current build or establish physical
+iPhone compatibility. Relevant PC regression checks on current source passed:
+42/42 `large-context-load` + device diagnostics tests, 15/15 `settings-home`
+browser tests (including bounded test context, separate runtime preparation,
+Q8 selection and IQ3_M model-set selection), `npm run check`, and
+`git diff --check`. These checks validate application behavior, not an actual
+LFM3 load or generation on the iPhone.
