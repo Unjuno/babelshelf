@@ -8444,3 +8444,15 @@ verified as duplicate, clean snapshots whose Site commits remain ancestors of
 the current checkout or saved Site versions. Their local deletion was blocked
 by the execution policy; no local artifacts were removed. Model assets, runtime
 toolchain, current Site checkout/archive and browser test profiles were kept.
+
+2026-11-10 — PR #32 updated the browser system-dependency install timeout from
+15 to 25 minutes and the quality job ceiling from 45 to 60 minutes after run
+[42810019779](https://github.com/Unjuno/babelshelf/actions/runs/42810019779)
+expired during Playwright's Ubuntu apt dependency installation. The full PR
+quality run [42812616863](https://github.com/Unjuno/babelshelf/actions/runs/42812616863)
+passed in 11m39s, including browser setup and offline installed-PWA checks. PR
+#32 merged as `b748a7ff`; post-merge main quality run
+[42814319175](https://github.com/Unjuno/babelshelf/actions/runs/42814319175)
+passed in 10m46s. This improves setup timeout tolerance; it does not guarantee
+GitHub-hosted apt mirror latency or change application behavior. The app source
+did not change, so public Site v336 required no new deployment.

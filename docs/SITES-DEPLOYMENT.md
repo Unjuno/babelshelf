@@ -11,6 +11,10 @@ The Site remains public at `https://babelshelf.com`. Saved archive content hash
 is `sha256:814392ef51d84f4298234b1452cfcbaaed4e6590a480880bb0ef6a5989a13bdc`
 (110,970,880 bytes /205 files).
 
+Current repository `main` is `b748a7ff` after documentation/CI PR #32. That
+merge changed no product code, so the v336 app bundle remains the same product
+source state; no redeployment was needed.
+
 Site staging retained current and previous app-build assets and pruned 27 older
 hashed assets. Delivery checks passed exact ONNX WASM bytes over gzip and
 identity responses, offline-shell transport, mutable-shell caching and HTTP
