@@ -1,3 +1,25 @@
+# Public Site v332 — skip query inference for empty semantic index (2026-11-10 JST)
+
+Product source: `Unjuno/babelshelf` `main` at
+`39e96129b362c1a65a1400ec9f0657c5350c3b98`; app build
+`00aeca0a0b576e46` /166 verified assets. Site source commit
+`06de74b6f0f574be17a837f22b724602c12a7c1d`; saved Site version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_4919a17768808191ac3fa86da81f8de7`
+(v332); deployment `appgdep_6af2a098b528819189b2090583a0dc38` succeeded.
+The Site remains public at `https://babelshelf.com`. Both the custom domain
+and Site hostname return build `00aeca0a0b576e46` /166 assets. The archive
+SHA-256 is `054bee23021fadd1e67cba3da9076800d106a35f1ed9ea4af16529a5549bf890`
+(110,981,120 bytes /206 files).
+
+This app source contains PR #19's fix to skip semantic embedding inference
+when the local derived index is empty. The product shell build and acceptance
+passed (`npm run test:app`, 9/9). Site delivery verification confirmed exact
+WASM bytes through gzip and identity responses, the offline-shell transport,
+and no-store shell headers. Only verified app-shell assets were packaged; no
+model weights or user data are included. This does not establish indexed
+canonical Memory search, answer/citation quality, offline cold model load, or
+phone model compatibility.
+
 # Public Site v322 — visible LFM3 context guidance (2026-11-05 JST)
 
 Product source: `codex/ui-design-handoff` at

@@ -2,22 +2,23 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `d89f45f` (PR #19 merged). PR #15 connects a selected and loaded semantic
-Search runtime to the normal agent `memory.search` path while retaining lexical
-fallback, and PR #17 reconciles historical Search notes. The full quality runs
-[42744216106](https://github.com/Unjuno/babelshelf/actions/runs/42744216106)
-and [42747324915](https://github.com/Unjuno/babelshelf/actions/runs/42747324915)
-passed all stages. PR #19 avoids an unnecessary embedding inference when the
-derived index has no vectors; 86 focused semantic/coordinator/action tests,
-`npm run check`, app packaging, and clean-checkout quality CI
-[42752303874](https://github.com/Unjuno/babelshelf/actions/runs/42752303874)
+GitHub `main` is `9f48ee8` (PRs #19–21 merged). PR #15 connects a selected and
+loaded semantic Search runtime to the normal agent `memory.search` path while
+retaining lexical fallback, and PR #17 reconciles historical Search notes.
+PR #19 skips embedding inference when the derived index has no vectors; 86
+focused semantic/coordinator/action tests, `npm run check`, app packaging, and
+clean-checkout quality CI [42752303874](https://github.com/Unjuno/babelshelf/actions/runs/42752303874)
 and [42752309053](https://github.com/Unjuno/babelshelf/actions/runs/42752309053)
-passed. Public Site v331 has not yet been updated with this app-source change.
-Local `codex/ui-design-handoff` is fast-forwarded to main;
-untracked QA/model artifacts remain preserved. Public Site v331 serves app
-build `46dc9d2ee209691a` from app source commit
-`44d782477e02d4319aff567e9d55189e8cec9f60`, confirmed by the live `build.json`
-and the refreshed sidebar app bundle.
+passed. PR #21 removes the duplicate push-triggered full check on the
+development branch while retaining PR, main-push and manual checks. Its single
+PR quality run [42756205706](https://github.com/Unjuno/babelshelf/actions/runs/42756205706)
+passed. Public Site v332 now serves app build `00aeca0a0b576e46` from app
+source commit `39e96129b362c1a65a1400ec9f0657c5350c3b98`; both the custom domain
+and Site hostname return the same 166-asset manifest. Site delivery checks
+confirmed exact WASM bytes for gzip/identity, offline-shell transport and
+no-store app-shell headers. The archive excludes model weights and user data.
+Local `codex/ui-design-handoff` is fast-forwarded to main; untracked QA/model
+artifacts remain preserved.
 
 The current product catalog exposes Text, Decision, Speech, OCR, Vision and
 optional semantic Search roles. LFM3 IQ3_M is a built-in, selection-only
