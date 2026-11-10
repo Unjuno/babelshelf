@@ -2,6 +2,17 @@
 
 ### Checked now · 2026-11-10
 
+The title-bound water comparison guard now checks explicit strict and
+non-strict relations instead of reducing every comparison to a greater/not-
+greater boolean. It covers a narrow set of English and Japanese comparative
+forms, their supported negations, and equal amounts. This fixes cases such as
+17 L `does not contain more than` 29 L and prevents 17 L from being described
+as `less than` an equal 17 L. It remains a lexical contradiction check, not
+general semantic verification. Local answer-consistency, complete prototype,
+root, static, and production acceptance checks passed; no model or Memory data
+was read or changed. Current iPhone inference and model quality remain
+unverified.
+
 GitHub `main` is `46c6c33` after PR #30; PR #29's full quality workflow
 [42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
 passed, and PR #30 reconciles the v335 release evidence. Public Site v335

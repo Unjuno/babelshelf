@@ -176,22 +176,28 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
     if(firstVolume!==undefined&&secondVolume!==undefined&&first.end<=second.start){
      const between=sentence.text.slice(first.end,second.start).toLocaleLowerCase();
      const english=between.match(/\b(more|greater|higher|larger|less|fewer|lower|smaller)\b.{0,36}\b(?:water|liquid|amount|volume|quantity)\b.{0,16}\bthan\b/iu);
-     let assertedFirstGreater:boolean|undefined;
+     type VolumeRelation='gt'|'lt'|'ge'|'le';
+     let assertedRelation:VolumeRelation|undefined;
      if(english){
       const saysMore=/^(?:more|greater|higher|larger)$/iu.test(english[1]);
-      assertedFirstGreater=saysMore;
+      const negated=/(?:\b(?:do|does|did|is|are|was|were|has|have|had)\s+not\b|\bnot\b|\bnever\b|n't)/iu.test(between.slice(0,english.index));
+      assertedRelation=saysMore?(negated?'le':'gt'):(negated?'ge':'lt');
      }else{
       const afterSecond=sentence.text.slice(second.end);
       const firstThenSecond=/の方が\s*$/u.test(between)&&/^より/u.test(afterSecond);
       const secondThenFirst=/より.{0,32}の方が\s*$/u.test(between);
       const endsGreater=/(?:多い|多く|上回る|大きい)/u.test(afterSecond);
       const endsLess=/(?:少ない|少なく|下回る|小さい)/u.test(afterSecond);
-      if(endsGreater&&(firstThenSecond||secondThenFirst))assertedFirstGreater=firstThenSecond;
-      else if(endsLess&&(firstThenSecond||secondThenFirst))assertedFirstGreater=!firstThenSecond;
+      const negated=/(?:わけではありません|わけではない|ではありません|ではない|くありません|くない(?:です)?)/u.test(afterSecond);
+      if((endsGreater||endsLess)&&(firstThenSecond||secondThenFirst)){
+       const saysFirstGreater=endsGreater===firstThenSecond;
+       assertedRelation=saysFirstGreater?(negated?'le':'gt'):(negated?'ge':'lt');
+      }
      }
-     if(assertedFirstGreater!==undefined){
-      const actualFirstGreater=firstVolume>secondVolume;
-      if(actualFirstGreater!==assertedFirstGreater)throw Error('Answer quantity comparison conflicts with cited quantities · try again');
+     if(assertedRelation!==undefined){
+      const equal=sameVolume(firstVolume,secondVolume),actualFirstGreater=firstVolume>secondVolume&&!equal,actualFirstLess=firstVolume<secondVolume&&!equal;
+      const matches=assertedRelation==='gt'?actualFirstGreater:assertedRelation==='lt'?actualFirstLess:assertedRelation==='ge'?actualFirstGreater||equal:actualFirstLess||equal;
+      if(!matches)throw Error('Answer quantity comparison conflicts with cited quantities · try again');
      }
     }
    }
