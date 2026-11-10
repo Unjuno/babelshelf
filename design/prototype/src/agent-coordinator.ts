@@ -110,6 +110,7 @@ export async function coordinateAgentTurn(input:{
  builtinPackages:readonly ToolPackage[];
  readToolSources:()=>Promise<ToolSourceRecord[]>;
  search:(query:string,signal?:AbortSignal)=>Promise<MemorySearchResult[]>;
+ webSearch?:(query:string,signal?:AbortSignal)=>Promise<unknown>;
  semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<MemoryPassageResult[]|null>;
  searchPage?:(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal)=>Promise<unknown>;
  views:(signal?:AbortSignal)=>Promise<ToolNote[]>;
@@ -128,7 +129,8 @@ export async function coordinateAgentTurn(input:{
  const activityLimit=input.activityEventCount===undefined?null:activityBoundedToolBudget(input.activityEventCount,null);
  const maxToolCalls=activityLimit===null?profileLimit:profileLimit===null?activityLimit:Math.min(activityLimit,profileLimit);
  const excludedTools=new Set(input.excludedTools??[]);
- const configuredTools=input.snapshot.harness.enabledTools.filter(id=>!excludedTools.has(id));
+ const webSearchAvailable=!!input.webSearch&&navigator.onLine;
+ const configuredTools=input.snapshot.harness.enabledTools.filter(id=>!excludedTools.has(id)&&(id!=='web.search'||webSearchAvailable));
  const sources=await input.readToolSources();
  const selected=await buildActiveToolRegistry(sources,configuredTools,[...input.builtinPackages]);
  const registry=selected.registry,registeredTools=selected.capabilities;
@@ -168,7 +170,9 @@ export async function coordinateAgentTurn(input:{
    if(plan.action==='tool'||plan.action==='tool_batch'){
     // Native assistant content is required for the current tool round trip,
     // not for durable action receipts or the next conversation's context.
-    const {assistantContent:_transient,...operation}=plan;receipt=operation;
+    const redact=(call:{tool:string;arguments:Record<string,unknown>})=>call.tool==='web.search'?{...call,arguments:{kind:'web_search',queryBytes:new TextEncoder().encode(typeof call.arguments.query==='string'?call.arguments.query:'').byteLength}}:call;
+    if(plan.action==='tool'){const {assistantContent:_transient,...operation}=plan;receipt={...redact(operation),action:'tool'};}
+    else{const {assistantContent:_transient,...operation}=plan;receipt={...operation,calls:operation.calls.map(redact),action:'tool_batch'};}
    }
    return {...receipt,...(inference?{inference}:{})};
   },undefined,()=>{const inference=readMetrics();return inference?{inference}:undefined;}),
@@ -300,6 +304,7 @@ export async function coordinateAgentTurn(input:{
     if(isCustom)await input.ensureCustomRuntime();
     const host:ToolHost={
      search:async(query,signal)=>{input.check();const lexical=await input.search(query,signal);input.check();const combined=await combineMemorySearchResults(query,lexical,input.semanticSearch,signal);input.check();return combined;},
+     webSearch:input.webSearch?async(query,signal)=>{input.check();const result=await input.webSearch!(query,signal);input.check();return result;}:undefined,
      searchPage:input.searchPage?async(query,options,signal)=>{try{return await input.searchPage!(query,options,signal);}catch(error){if(call.tool==='memory.search'&&error instanceof SearchSnapshotChangedError)throw new AgentSearchSnapshotChangedError();throw error;}}:undefined,
      resolve:async(query,signal)=>{const direct=await input.resolveById?.(query,signal);signal?.throwIfAborted();if(direct)return [direct];const notes=await input.views(signal);signal?.throwIfAborted();return resolveToolNotes(notes,query);},
      list:async(path,offset,limit,signal)=>{const [notes,folders]=await Promise.all([input.views(signal),input.listFolders?.()??Promise.resolve([])]);signal?.throwIfAborted();return listMemoryEntries(path,notes,[...SYSTEM_FOLDERS,...folders],offset,limit);},

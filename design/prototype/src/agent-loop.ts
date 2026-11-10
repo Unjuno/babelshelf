@@ -115,7 +115,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  // This loop currently executes read-only local tools. Other effects have
  // explicit types but cannot enter this executor until their review/network
  // adapters enforce their commit/connection boundaries.
- if(!Array.isArray(input.allowedTools)||new Set(input.allowedTools.map(tool=>tool.id)).size!==input.allowedTools.length||input.allowedTools.some(tool=>!tool||typeof tool.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(tool.id)||tool.effect!=='read'||tool.network!=='none'))throw new AgentProtocolError('Invalid agent tool allowlist');
+ if(!Array.isArray(input.allowedTools)||new Set(input.allowedTools.map(tool=>tool.id)).size!==input.allowedTools.length||input.allowedTools.some(tool=>!tool||typeof tool.id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(tool.id)||!(tool.effect==='read'&&tool.network==='none'||tool.id==='web.search'&&tool.effect==='external'&&tool.network==='explicit-online')))throw new AgentProtocolError('Invalid agent tool allowlist');
  const maxToolCalls=input.maxToolCalls??null,maxResultChars=input.maxResultChars??MAX_AGENT_RESULT_CHARS;
  if(maxToolCalls!==null&&(!Number.isSafeInteger(maxToolCalls)||maxToolCalls<0)||!Number.isSafeInteger(maxResultChars)||maxResultChars<256||maxResultChars>MAX_AGENT_RESULT_CHARS)throw new AgentProtocolError('Invalid agent profile budget');
  const allowed=new Set(input.allowedTools.map(tool=>tool.id)),history:AgentToolAttempt[]=[];let budgetExhausted=false,budgetCause:'tool-limit'|undefined;

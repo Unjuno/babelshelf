@@ -183,6 +183,21 @@ export function agentToolInfoFromCalls(calls:readonly {tool:string;arguments:Rec
 // Model-facing tool payloads are deliberately smaller than the canonical tool
 // result and preserve source offsets only for exact original substrings.
 export function projectAgentToolResult(tool:string,result:unknown,maxChars?:number):unknown{
+ if(tool==='web.search'){
+  if(!result||typeof result!=='object'||Array.isArray(result))throw Error('Invalid web search result');
+  const value=result as Record<string,unknown>;
+  if(Object.keys(value).some(key=>!['provider','retrievedAt','results','query'].includes(key))||value.provider!=='RustXNG'||typeof value.retrievedAt!=='string'||!Number.isFinite(Date.parse(value.retrievedAt))||value.query!==undefined&&(typeof value.query!=='string'||value.query.length>2000)||!Array.isArray(value.results)||value.results.length>5)throw Error('Invalid web search result');
+  const results=value.results.map((item:any)=>{
+   if(!item||typeof item!=='object'||Array.isArray(item)||Object.keys(item).some(key=>!['title','url','snippet','rawContentStatus','rawContentTruncated','pageText'].includes(key))||typeof item.title!=='string'||!item.title||item.title.length>240||typeof item.url!=='string'||item.url.length>4096||typeof item.snippet!=='string'||item.snippet.length>1200||typeof item.rawContentStatus!=='string'||typeof item.rawContentTruncated!=='boolean'||item.pageText!==undefined&&typeof item.pageText!=='string'||item.pageText!==undefined&&item.rawContentStatus!=='ok')throw Error('Invalid web search result');
+   let url:URL;try{url=new URL(item.url);}catch{throw Error('Invalid web search result');}
+   if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('Invalid web search result');
+   const pageText=typeof item.pageText==='string'?boundedPrefix(item.pageText,2_500):undefined;
+   return {title:item.title,url:url.href,snippet:item.snippet,rawContentStatus:item.rawContentStatus,rawContentTruncated:item.rawContentTruncated,...(pageText?{pageText}:{})};
+  });
+  const projected={provider:'RustXNG',retrievedAt:value.retrievedAt,results};
+  if(maxChars!==undefined&&JSON.stringify(projected).length>maxChars)throw new AgentToolResultTooLargeError();
+  return projected;
+ }
  if(tool==='memory.sources')return validateSourcePage(result);
  if(tool==='time.now')return validateClockReading(result);
  if(tool==='memory.list'){
@@ -259,6 +274,10 @@ function serializeCustomToolResult(result:unknown,recoverableResultOverflow=fals
 
 /** Keep custom call arguments transient; receipts retain only package identity and payload size. */
 export function projectAgentActivityInput(tool:string,args:unknown,identity:unknown):unknown{
+ if(tool==='web.search'){
+  if(!args||typeof args!=='object'||Array.isArray(args)||typeof (args as Record<string,unknown>).query!=='string'||!identity||typeof identity!=='object'||Array.isArray(identity))throw Error('Invalid web search activity');
+  return {kind:'web_search',queryBytes:new TextEncoder().encode((args as Record<string,string>).query).byteLength,builtin:tool,...identity as Record<string,unknown>};
+ }
  if(tool===DEFERRED_TOOL_SEARCH_ID){
   if(!args||typeof args!=='object'||Array.isArray(args)||typeof (args as Record<string,unknown>).query!=='string'||!identity||typeof identity!=='object'||Array.isArray(identity))throw Error('Invalid tool search activity');
   return {kind:'local_tool_discovery',queryBytes:new TextEncoder().encode((args as Record<string,string>).query).byteLength,...identity as Record<string,unknown>};
@@ -292,6 +311,11 @@ export function projectAgentActivityInput(tool:string,args:unknown,identity:unkn
 
 /** Keep custom output transient for the agent; durable activity stores metadata only. */
 export function projectAgentActivityResult(tool:string,result:unknown,maxChars?:number):unknown{
+ if(tool==='web.search'){
+  if(!result||typeof result!=='object'||Array.isArray(result))throw Error('Invalid web search activity result');
+  const value=result as Record<string,unknown>,rows=Array.isArray(value.results)?value.results:[];
+  return {kind:'web_search_result',provider:value.provider==='RustXNG'?'RustXNG':'unknown',resultCount:rows.length,items:rows.slice(0,5).map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))return {invalid:true};const row=item as Record<string,unknown>;return {rawContentStatus:typeof row.rawContentStatus==='string'?row.rawContentStatus:'unknown',rawContentTruncated:row.rawContentTruncated===true,...(typeof row.title==='string'?{titleBytes:new TextEncoder().encode(row.title).byteLength}:{}),...(typeof row.url==='string'?{urlBytes:new TextEncoder().encode(row.url).byteLength}:{}),...(typeof row.pageText==='string'?{pageTextBytes:new TextEncoder().encode(row.pageText).byteLength}:{})};})};
+ }
  if(tool===DEFERRED_TOOL_READ_SKILL_ID){const skill=projectAgentToolResult(tool,result) as {id:string;instructions:string};return {kind:'local_tool_skill_read',id:skill.id,instructionBytes:new TextEncoder().encode(skill.instructions).byteLength};}
  if(tool===DEFERRED_TOOL_SEARCH_ID){const matches=projectAgentToolResult(tool,result) as {id:string;usage:string}[];return {kind:'local_tool_discovery',matches:matches.length};}
  if(/^user\.[a-z][a-z0-9-]{0,47}$/.test(tool)){

@@ -148,7 +148,7 @@ function plannerInputSchema(schema:Readonly<Record<string,unknown>>):Record<stri
 }
 function agentPlannerScope(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[],agent:AgentPlannerContext|undefined,nativeToolProtocol:boolean){
  const scope=plannerScope(context,attachments.length>0,question),toolBudgetExhausted=agent?.maxToolCalls!==null&&agent?.maxToolCalls!==undefined&&agent.history.length>=agent.maxToolCalls,visibleTools=plannerVisibleTools(agent);
- if(agent)scope.toolIds=visibleTools.filter(tool=>tool.effect==='read'&&tool.network==='none').map(tool=>tool.id);
+ if(agent)scope.toolIds=visibleTools.filter(tool=>tool.effect==='read'&&tool.network==='none'||tool.id==='web.search'&&tool.effect==='external'&&tool.network==='explicit-online').map(tool=>tool.id);
  // Keep the selected local tool surface stable for the whole turn. The model
  // chooses which tool to call and when; the runtime enforces registration,
  // schemas, exact read selectors, cancellation, provenance and work budgets.

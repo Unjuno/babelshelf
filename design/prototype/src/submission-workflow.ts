@@ -21,6 +21,8 @@ import {decisionAssetInput} from './asset-activity.ts';
 import {appendDiagnosticLog} from './diagnostic-logs.ts';
 import {recordUnclassifiedTurnFailure} from './turn-failure-log.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
+import {searchRustXng} from './rustxng-search-client.ts';
+import {boundedPrefix} from './utf8-text.ts';
 import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
 import {activityLabel,createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
 import {inspectDialogueText} from './text-transform.ts';
@@ -83,7 +85,7 @@ export type SubmissionServices={
  speech:{ready:boolean;transcribe:AutomaticReadingAdapterPorts['transcribe']};
  vision:AutomaticReadingAdapterPorts['vision'];
  model:string;ocrModel:string;ocrLanguage:AutomaticReadingAdapterPorts['ocrLanguage'];speechModel:string;visionModel:string;visionAvailable:boolean;decisionModel:string;
- modelPreferences:Preferences['models'];harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;settingsRevisions?:{models:number|null;harness:number|null};connectionPreferences:Pick<Preferences['connection'],'diagnosticLogs'>;
+ modelPreferences:Preferences['models'];harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;settingsRevisions?:{models:number|null;harness:number|null};connectionPreferences:Pick<Preferences['connection'],'diagnosticLogs'|'downloads'|'rustxngEndpoint'>;
  semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<import('./memory-search-types.ts').MemoryPassageResult[]|null>;
  diagnostics:Pick<Storage,'getItem'|'setItem'>;
  currentDialogue:()=>Dialogue;storedDialogue:()=>Dialogue|undefined;settled:()=>Promise<void>;
@@ -207,6 +209,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       // Tool discovery includes exact file metadata. Citable passages are
       // separately validated when evidence is selected for the final answer.
       search:(query,signal)=>knowledge.search(query,true,signal),...(modelPreferences.searchModel&&services.semanticSearch?{semanticSearch:services.semanticSearch}:{}),searchPage:(query,options,signal)=>knowledge.searchPage(query,options,signal),views:signal=>knowledge.views(signal),resolveById:async(id,signal)=>knowledge.viewById?knowledge.viewById(id,signal):null,records:signal=>knowledge.all(signal),listFolders:async()=>await knowledge.getState<string[]>('folders')??[],
+      ...(connectionPreferences.downloads&&connectionPreferences.rustxngEndpoint.trim()&&navigator.onLine?{webSearch:async(query:string,signal?:AbortSignal)=>{checkSend();if(!connectionPreferences.downloads||!navigator.onLine)throw Error('Web search is unavailable while Offline');const result=await searchRustXng({endpoint:connectionPreferences.rustxngEndpoint,query,onlineMode:connectionPreferences.downloads,onlineSignal:navigator.onLine,signal});checkSend();return {provider:result.provider,retrievedAt:result.retrievedAt,results:result.results.map(row=>({title:row.title,url:row.url,snippet:row.snippet,rawContentStatus:row.rawContentStatus,rawContentTruncated:row.rawContentTruncated,...(row.rawContentStatus==='ok'&&row.pageText?{pageText:boundedPrefix(row.pageText,2_500)}:{})}))};}}:{}),
       ensureCustomRuntime:()=>ensureProductRuntime('custom-tools',false),check:checkSend,signal:run.signal,trace,
       activityEventCount:pagingAvailable?undefined:currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??activityEventCount,
        });context=coordinated.context;agentToolCalls=[...coordinated.calls];customAccessEvidence=coordinated.customEvidence;agentBudgetExhausted=coordinated.budgetExhausted;agentBudgetReason=coordinated.budgetReason;return coordinated.final;
