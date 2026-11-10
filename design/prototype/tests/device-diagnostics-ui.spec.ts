@@ -78,7 +78,7 @@ test('browser starts with a report-only App & storage check; every test type has
 
 test('an active diagnostic keeps running and visible while moving to another app screen',async({page})=>{
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
- await page.evaluate(()=>{const cache=caches,keys=cache.keys.bind(cache);Object.defineProperty(cache,'keys',{configurable:true,value:()=>new Promise<string[]>(resolve=>{(window as any).__releaseDiagnosticCacheKeys=()=>void keys().then(resolve);})});});
+ await page.evaluate(()=>{let stored:Response|undefined;Object.defineProperty(window,'caches',{configurable:true,value:{keys:()=>new Promise<string[]>(resolve=>{(window as any).__releaseDiagnosticCacheKeys=()=>resolve([]);}),open:async()=>({put:async(_key:string,value:Response)=>{stored=value;},match:async()=>stored}),delete:async()=>true}});});
  await page.getByRole('button',{name:'Run app checks',exact:true}).click();await page.waitForFunction(()=>typeof (window as any).__releaseDiagnosticCacheKeys==='function');
  await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();
  await expect(page.getByRole('status').filter({hasText:'Device check'})).toBeVisible();

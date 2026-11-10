@@ -191,6 +191,30 @@ test('agent executes paged search and retains original evidence from later pages
  for(const ref of refs){const note=notes.find(note=>note.id===ref.noteId);assert.equal(note.revisions.at(-1).body.slice(ref.start,ref.end),ref.quote);}
 });
 
+test('selected semantic Memory search reaches the normal agent read and exact citation path',async()=>{
+ const first=createNote({path:'Inbox/model-memory.md',body:'The local model needs 8 GB of memory.'});
+ const current=reviseNote(first,{body:'The local model needs 12 GB of memory.'},1);
+ const currentBody=current.revisions.at(-1).body,semanticCalls=[];
+ const semanticHit={kind:'passage',noteId:current.id,revision:current.revisions.at(-1).version,title:'model-memory.md',path:'Inbox/model-memory.md',start:0,end:currentBody.length,quote:currentBody,score:0.93};
+ const searchPackage={definition:pagedSearch.definition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search local Memory.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search adapter.'}],run:pagedSearch.run};
+ const {value}=input([
+  JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'model memory requirement'})}),
+  JSON.stringify({action:'tool',query:'memory.read',body:JSON.stringify({query:current.id})}),
+  JSON.stringify({action:'answer',query:'current model memory requirement',target:'knowledge'}),
+ ],{
+  question:'Search local Memory for my saved model memory note, read it, then tell me the current requirement.',
+  enabledTools:['memory.search','memory.read'],builtinPackages:[searchPackage,{...readPackage,definition:readDefinition}],
+  search:async()=>[],semanticSearch:async(query,signal)=>{semanticCalls.push({query,signal});return [semanticHit];},
+  views:async()=>[projectNote(current)],
+ });
+ const result=await coordinateAgentTurn(value),refs=agentEvidenceFromCalls(result.calls);
+ assert.equal(result.final.action,'answer');
+ assert.deepEqual(result.calls.map(call=>call.tool),['memory.search','memory.read']);
+ assert.equal(semanticCalls.length,1);assert.equal(semanticCalls[0].query,'model memory requirement');
+ assert.equal(semanticCalls[0].signal,value.signal);
+ assert.deepEqual(refs,[{noteId:current.id,revision:2,start:0,end:currentBody.length,quote:currentBody,title:'model-memory.md'}]);
+});
+
 test('agent keeps scoped search evidence inside the chosen folder across pages',async()=>{
  const notes=[...Array.from({length:14},(_,i)=>createNote({title:`water ${i}`,body:`water reserve ${i}`,path:`Inbox/travel/${i}.md`})),createNote({title:'water outside',body:'water secret outside',path:'Inbox/travelling/outside.md'})];
  const first=searchStoredPageChecked(notes,'water',{offset:0,limit:12,pathPrefix:'Inbox/travel'});
