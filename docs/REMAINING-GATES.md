@@ -2,12 +2,18 @@
 
 ### Checked now · 2026-11-10
 
-GitHub `main` is `acf107b`; PR #15 connects a selected and loaded semantic
+GitHub `main` is `d89f45f` (PR #19 merged). PR #15 connects a selected and loaded semantic
 Search runtime to the normal agent `memory.search` path while retaining lexical
 fallback, and PR #17 reconciles historical Search notes. The full quality runs
 [42744216106](https://github.com/Unjuno/babelshelf/actions/runs/42744216106)
 and [42747324915](https://github.com/Unjuno/babelshelf/actions/runs/42747324915)
-passed all stages. Local `codex/ui-design-handoff` is fast-forwarded to main;
+passed all stages. PR #19 avoids an unnecessary embedding inference when the
+derived index has no vectors; 86 focused semantic/coordinator/action tests,
+`npm run check`, app packaging, and clean-checkout quality CI
+[42752303874](https://github.com/Unjuno/babelshelf/actions/runs/42752303874)
+and [42752309053](https://github.com/Unjuno/babelshelf/actions/runs/42752309053)
+passed. Public Site v331 has not yet been updated with this app-source change.
+Local `codex/ui-design-handoff` is fast-forwarded to main;
 untracked QA/model artifacts remain preserved. Public Site v331 serves app
 build `46dc9d2ee209691a` from app source commit
 `44d782477e02d4319aff567e9d55189e8cec9f60`, confirmed by the live `build.json`
