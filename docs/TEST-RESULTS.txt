@@ -8408,3 +8408,18 @@ does not establish general entailment or model quality. No model or Memory data
 was loaded or changed. GitHub full quality workflow
 [42795479064](https://github.com/Unjuno/babelshelf/actions/runs/42795479064)
 passed all stages in 13m1s. Physical iPhone behavior is not verified.
+
+2026-11-10 — Decision Activity privacy: persisted `decision.classify` receipts
+previously contained the full classification state (the user's current
+question and attachment metadata) and the complete probability distribution.
+The local model still receives the same input, but the receipt now stores only
+input byte count, attachment count, prior-context flag, validated finite
+choice/confidence, selected action/reason, configured model identity, device,
+input tokens and elapsed time. Added a regression proving the exact request
+still reaches the model while question text, attachment name/status and raw
+probabilities do not reach Activity. Decision routing tests passed 11/11, full
+prototype suite 1,943/1,943, root suite 271/271, `npm run check`, production
+build `44fc5437ecab7447` (166 verified assets), app acceptance 9/9, and
+`git diff --check`. Existing Activity records were not rewritten. This
+validates the PC code path and deterministic receipt projection, not physical
+device use or model-quality impact.

@@ -13,6 +13,14 @@ root, static, production acceptance, and full GitHub quality workflow passed;
 no model or Memory data was read or changed. Current iPhone inference and
 model quality remain unverified.
 
+Decision routing now sends the exact current request to the selected local
+classifier as before, but its persisted Activity receipt stores only the
+UTF-8 input size, attachment count, prior-context flag, finite routing label,
+confidence, device route, token count and elapsed time. It omits the question,
+attachment names/statuses and full probability distribution. This fixes a
+local audit-retention leak without changing model routing. Historical Activity
+records are not rewritten; future Decision receipts use the bounded projection.
+
 GitHub `main` is `46c6c33` after PR #30; PR #29's full quality workflow
 [42786193013](https://github.com/Unjuno/babelshelf/actions/runs/42786193013)
 passed, and PR #30 reconciles the v335 release evidence. Public Site v335

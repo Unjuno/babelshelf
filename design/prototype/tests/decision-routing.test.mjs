@@ -45,6 +45,21 @@ test('routing uses the pinned adapter identity independently of D1 or media role
  assert.throws(()=>route(answer,'q',empty,{...other,inputLimit:0}),/runtime identity/);assert.throws(()=>route({...answer,scope:'omni'},'q',empty,other),/Invalid decision route/);
 });
 
+test('decision activity keeps routing inputs and free-form classification private while preserving the exact routing request',async()=>{
+ const query='private phrase: orchid-5821',attachments=[{name:'confidential-brief.md',kind:'file',status:'Private extracted text'}];let seenState;const receipts=[];
+ const engine={identity,classify:async(state,prompt)=>{seenState=state;assert.equal(prompt,decisionRoutingQuestion);return result('answer');}};
+ const trace=async(tool,input,work,project)=>{const value=await work();receipts.push({tool,input,output:project(value)});return value;};
+ const route=await routeWithDecision(engine,query,empty,attachments,trace,()=>{});
+ assert.equal(route.request.query,query);assert.equal(JSON.parse(seenState).currentRequest,query);
+ assert.equal(receipts.length,1);assert.equal(receipts[0].tool,'decision.classify');
+ assert.equal(receipts[0].input.inputBytes,new TextEncoder().encode(seenState).byteLength);
+ assert.equal(receipts[0].input.contextScope.currentInputs,1);
+ assert.equal(receipts[0].output.route.action,'answer');assert.equal(receipts[0].output.route.reason,'confident-read-only');
+ for(const privateValue of [query,attachments[0].name,attachments[0].status])assert.ok(!JSON.stringify(receipts).includes(privateValue));
+ assert.equal(receipts[0].input.state,undefined);
+ assert.ok(!JSON.stringify(receipts).includes('probabilities'));
+});
+
 test('explicit local requests bypass both optional decision routing and text planning',async()=>{
  const calls=[];const explicit={action:'read',query:'Notes/one.md'};
  const result=await resolveTurnRoute({current:explicit,question:'Open Notes/one.md',select:async()=>{calls.push('decision');return {request:null,reason:'structured-request'};},plan:async()=>{calls.push('planner');return {action:'chat',query:'wrong'};},check:()=>calls.push('check')});
