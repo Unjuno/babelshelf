@@ -173,8 +173,8 @@
     },
     {
       "path": "./storage.js",
-      "bytes": 2396,
-      "sha256": "efff6ceca589175a64132f34d4d3a59f0743a7fc1520f5beef5a80bd87f16a17"
+      "bytes": 2989,
+      "sha256": "922b9e7ba616e3330b3b72212cfea38c9eb1033149664117f2efae5943bce2d2"
     },
     {
       "path": "./streaming-sha256.js",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "e3ee0a66675c4492b3b7049e3d5979034dbaba2bca2fb0841a171882459da9c1"
+      "sha256": "0dabf23d9f322ac8f18eefd5a888d35931214ddbc3c47ce50d1cf61c5ec1ca25"
     },
     {
       "path": "./ui.js",
