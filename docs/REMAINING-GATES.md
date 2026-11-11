@@ -2,23 +2,30 @@
 
 ### Latest integration and deployment · 2026-11-11
 
-PR #50 (`40bfed17`) merged as `0c31cf0a0351282e21701f522da7729b3cc47cdc`.
-It adds a selectable local Granite Embedding 311M Search profile while keeping
-the 97M profile and keyword-only mode available. Selecting a profile does not
-download model files or rebuild the index. Existing settings are projected
-through the current schema without rewriting stored preferences. Main passed
-the full GitHub `Local PWA quality` workflow
-[42952224733](https://github.com/Unjuno/babelshelf/actions/runs/42952224733).
+PR #54 (`65ddcce6`) merged as `07dd29817963d3b445438bd66a11ec316ffe9ffa`.
+It separates total model-load time from time since the last visible stage
+update. When the runtime does not report a reliable overall percentage, the UI
+now says so; its long-idle message no longer equates a static UI stage with no
+runtime progress. The exact candidate passed the full GitHub `Local PWA
+quality` workflow [42987533321](https://github.com/Unjuno/babelshelf/actions/runs/42987533321).
 
-Public Site v348 serves app build `47ab430e4c500b76` and bundle
-`index-B8dAQvmm.js`; deployment `appgdep_6af3e3fdb3608191b4a18fc1f1b8e8a2`
-succeeded. In the existing sidebar browser, Settings → Developer reported the
-active worker build, and Settings → Models exposed Granite Embedding 311M
-alongside 97M and keyword search. Connection mode was restored to Offline. No
-311M model weights were downloaded or run. This verifies delivery, current
-worker adoption and model-choice presentation, not embedding quality, device
-performance, or physical-phone compatibility. The Site package excludes user
-data and model weights.
+Public Site v350 serves app build `f67c08d029cd7b0f` / 167 assets. Site source
+commit `c766900a53625a77c07f89f68503912cdf838313`, saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_cfefeedb6f2481919ff215cae65cbf1f`,
+and deployment `appgdep_6af42c3c574881918f223c500f938771` succeeded. The public
+manifest returned HTTP 200 with the expected build. In the existing sidebar
+browser, Update completed and the app remained on the chat screen; connection
+mode was returned to Offline. No model/runtime was downloaded or loaded, and
+no app storage was cleared. This verifies packaged delivery and a browser
+update action, not active-worker identity, model inference, or phone behavior.
+
+The product is not yet release-complete: real-model loading and sustained
+performance on target phones, iOS offline cold restart, cross-device data
+recovery, and broader answer/tool quality acceptance remain open. PC/CI and
+public-shell evidence should not be read as device or model-runtime acceptance.
+
+The Site archive contains application assets only, not user data or model
+weights.
 
 ### Previous integration · 2026-11-11
 

@@ -1340,3 +1340,25 @@ PWA applied worker build `04f76abf91fd65da`, showed the import action and
 corrected label, and was returned to Offline. Staged delivery verification
 passed WASM identity/gzip bytes and offline-shell transport. No model was
 imported, downloaded, loaded, or run; no physical iPhone validation was done.
+# Public Site v350 — model-load status feedback (2026-11-11 JST)
+
+The product change is PR #54, merged to `main` as
+`07dd29817963d3b445438bd66a11ec316ffe9ffa`; its candidate passed the full
+GitHub `Local PWA quality` workflow [42987533321](https://github.com/Unjuno/babelshelf/actions/runs/42987533321).
+App build `f67c08d029cd7b0f` contains 167 verified assets. Site source commit
+`c766900a53625a77c07f89f68503912cdf838313` records the product commit and build.
+Saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_cfefeedb6f2481919ff215cae65cbf1f`
+deployed successfully as `appgdep_6af42c3c574881918f223c500f938771`. The
+public audience and `https://babelshelf.com/` were preserved. The 110,499,840
+byte archive contains 207 files; SHA-256 is
+`2b8f2d3320af7ff71a75dbbccabf47fa086102093d9b8e0b288e6e5ca437786c`.
+
+Delivery checks passed ONNX WASM gzip/identity byte equivalence, offline-shell
+transport bytes and headers, mutable shell cache policy, and method handling.
+The public `/build.json` returned HTTP 200 with build `f67c08d029cd7b0f` and
+167 file entries. In the existing sidebar browser, the app's Update action
+completed and the connection mode was returned to Offline. This confirms the
+public artifact and browser update path, not an independently read active
+worker build ID, model inference, device compatibility, or sustained loading.
+No model/runtime was downloaded or run; no app data was cleared.
