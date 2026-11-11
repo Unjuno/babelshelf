@@ -2,6 +2,30 @@
 
 ### Latest integration and deployment · 2026-11-11
 
+PR #52 merged as `bbdecf78f42e34b8cff97689dfd4bdba38c22190` after its full
+candidate workflow and post-merge main workflow passed
+([42958990196](https://github.com/Unjuno/babelshelf/actions/runs/42958990196),
+[42960411229](https://github.com/Unjuno/babelshelf/actions/runs/42960411229)).
+The change caps a local text-model load at 10 minutes by default, retaining the
+5-minute no-progress stop. It retires the inference worker on timeout while
+keeping the prepared model file. This checks bounded waiting; it does not prove
+that a phone model load completes or establish model compatibility.
+
+Public Site v349 serves app build `6f888cdfd547b9f3` with 167 verified assets.
+Site source commit `3f3fb71bbf8cccda843a9a05af4cad55dba83ebe`, saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_dfb4999d91488191af35107a3055b9da`,
+and deployment `appgdep_6af421fc6348819190c9ab2143d279bf` succeeded at
+`https://babelshelf.com`. Delivery checks passed for compressed/identity ONNX
+WASM bytes, offline shell transport and mutable-shell cache policy. The
+existing sidebar tab reported active worker build `6f888cdfd547b9f3` and bundle
+`index-BwvnQddk.js`; a no-cache request to the public manifest returned the
+same build and 167 assets. The tab's connection mode remained Online after
+computer-control input timed out, so return to Offline was not verified. No
+model was loaded or run and no app data was cleared. This is PC PWA deployment
+evidence, not phone or inference acceptance.
+
+### Previous integration and deployment · 2026-11-11
+
 PR #50 (`40bfed17`) merged as `0c31cf0a0351282e21701f522da7729b3cc47cdc`.
 It adds a selectable local Granite Embedding 311M Search profile while keeping
 the 97M profile and keyword-only mode available. Selecting a profile does not
