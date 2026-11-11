@@ -1,5 +1,19 @@
 ## Current status · 2026-11-11
 
+### Latest integration and deployment · 2026-11-11
+
+PR #44 (`a7fa2c0e`) merged as `53c832ca54f294ac6d71505683909c88492c399e`.
+The JSON planner can now call the explicitly enabled `web.search` tool when
+Online mode and the search endpoint are available; tool execution rechecks the
+network signal, and results stay attached to the active answer as citations.
+The exact PR candidate and merged main revision both passed the full
+local-quality workflow.
+
+Public Site v345 serves app build `3abccd8a21db2a9e` (166 assets). The existing
+sidebar PWA adopted the matching worker and was returned to Offline mode.
+This confirms deployment/update behavior, not model inference or live search.
+No model assets were downloaded during this release.
+
 ### Latest integration and model evidence · 2026-11-11
 
 PR #42 was merged as `597bfd3d0bc746267ef0950cf51eb4c7648a0c9c` after its

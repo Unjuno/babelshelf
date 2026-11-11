@@ -1,3 +1,22 @@
+# Public Site v345 — deploy merged JSON planner web search (2026-11-11 JST)
+
+Application source: `Unjuno/babelshelf` `main` at
+`53c832ca54f294ac6d71505683909c88492c399e`; PR #44 enabled explicitly
+configured `web.search` for the JSON planner. Its exact candidate and merged
+main revision both passed the full local-quality workflow. App build
+`3abccd8a21db2a9e` contains 166 assets.
+Site source commit `46a1b91afbc6762cd2ececfd0835d78d911a847b`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_174dce1b23b48191abae5049613ee17f`
+(v345); deployment `appgdep_6af3b08e3fdc8191b4aaf09ee332859c` succeeded at
+`https://babelshelf.com`.
+
+The public build manifest returned build `3abccd8a21db2a9e` and 166 assets.
+The existing sidebar PWA adopted worker `3abccd8a21db2a9e` / bundle
+`index-so1TIJvZ.js`; connection mode was restored to Offline. This verifies
+delivery and worker adoption only. No model was downloaded or loaded, and the
+live Web Search workflow was not exercised. Web citations remain scoped to the
+current answer; they are not persisted as knowledge records.
+
 # Public Site v344 — merge planner fallback and validate offline LFM3 Q4 (2026-11-11 JST)
 
 Application source: `Unjuno/babelshelf` `main` at
