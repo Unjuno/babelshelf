@@ -8569,3 +8569,5 @@ was returned to Offline. The Site archive (`sha256:afdebabd554f5decaa7ab79d4a557
 111,011,840 bytes /205 files) contains app assets only, not user data or model
 weights. Deployment and catalog availability do not establish IQ3_M execution
 or phone compatibility.
+
+2026-11-11 — PR #46 Web-citation reviewed save merged as `90d1a8eedc1fad1f386ce194d18093a48dfc2cc9`. The PR candidate's full GitHub `Local PWA quality` run [42932297785](https://github.com/Unjuno/babelshelf/actions/runs/42932297785) and post-merge main run [42933873619](https://github.com/Unjuno/babelshelf/actions/runs/42933873619) passed. Site v346 deployed app build `84c7d71818b7cfdb` /166 verified assets. In the existing sidebar PWA, Refresh applied that active worker build; Offline mode was restored afterward. No model assets were downloaded or loaded. Web-cited new-note drafts now freeze the validated title, URL, excerpt and retrieval timestamp into a Markdown-fenced appendix and retain the existing review-before-commit path. This is readable saved provenance, not a canonical Web-source record, live-search/model acceptance or physical-device result.
