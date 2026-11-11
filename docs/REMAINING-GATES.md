@@ -2,27 +2,27 @@
 
 ### Latest integration and deployment · 2026-11-11
 
-PR #52 merged as `bbdecf78f42e34b8cff97689dfd4bdba38c22190` after its full
-candidate workflow and post-merge main workflow passed
-([42958990196](https://github.com/Unjuno/babelshelf/actions/runs/42958990196),
-[42960411229](https://github.com/Unjuno/babelshelf/actions/runs/42960411229)).
-The change caps a local text-model load at 10 minutes by default, retaining the
-5-minute no-progress stop. It retires the inference worker on timeout while
-keeping the prepared model file. This checks bounded waiting; it does not prove
-that a phone model load completes or establish model compatibility.
+PR #54 (`65ddcce6`) merged as `07dd29817963d3b445438bd66a11ec316ffe9ffa`.
+It separates total model-load time from time since the last visible stage
+update. If the runtime does not report a reliable overall percentage, the UI
+says so; a static UI stage is no longer described as proof of no runtime
+progress. Its exact candidate passed the full GitHub `Local PWA quality`
+workflow [42987533321](https://github.com/Unjuno/babelshelf/actions/runs/42987533321).
 
-Public Site v349 serves app build `6f888cdfd547b9f3` with 167 verified assets.
-Site source commit `3f3fb71bbf8cccda843a9a05af4cad55dba83ebe`, saved version
-`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_dfb4999d91488191af35107a3055b9da`,
-and deployment `appgdep_6af421fc6348819190c9ab2143d279bf` succeeded at
-`https://babelshelf.com`. Delivery checks passed for compressed/identity ONNX
-WASM bytes, offline shell transport and mutable-shell cache policy. The
-existing sidebar tab reported active worker build `6f888cdfd547b9f3` and bundle
-`index-BwvnQddk.js`; a no-cache request to the public manifest returned the
-same build and 167 assets. The tab's connection mode remained Online after
-computer-control input timed out, so return to Offline was not verified. No
-model was loaded or run and no app data was cleared. This is PC PWA deployment
-evidence, not phone or inference acceptance.
+Public Site v350 serves app build `f67c08d029cd7b0f` /167 assets. Site source
+commit `c766900a53625a77c07f89f68503912cdf838313`, saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_cfefeedb6f2481919ff215cae65cbf1f`,
+and deployment `appgdep_6af42c3c574881918f223c500f938771` succeeded. The public
+manifest returned HTTP 200 with the expected build. In the existing sidebar
+browser, Update completed and the app remained on the chat screen; connection
+mode was returned to Offline. No model/runtime was downloaded or loaded, and
+no app storage was cleared. This verifies public delivery and the browser
+update action, not active-worker identity, model inference, or phone behavior.
+
+The product is not yet release-complete. Real-model loading and sustained
+performance on target phones, iOS offline cold restart, cross-device data
+recovery, and broader answer/tool quality acceptance remain open. PC/CI and
+public-shell evidence are not device or model-runtime acceptance.
 
 ### Previous integration and deployment · 2026-11-11
 
