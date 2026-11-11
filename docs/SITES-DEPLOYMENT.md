@@ -1,3 +1,27 @@
+# Public Site v348 — selectable local Search profiles (2026-11-11 JST)
+
+Application source: `Unjuno/babelshelf` `main` at
+`0c31cf0a0351282e21701f522da7729b3cc47cdc` (PR #50). App build
+`47ab430e4c500b76`; the sidebar bundle was `index-B8dAQvmm.js`. GitHub's full
+`Local PWA quality` workflow [42952224733](https://github.com/Unjuno/babelshelf/actions/runs/42952224733)
+passed.
+
+Site source was updated from the merged product source; saved Site version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_695d6cc0521081919aa23e38353511ff`
+(v348); deployment `appgdep_6af3e3fdb3608191b4a18fc1f1b8e8a2` succeeded.
+The public audience and `https://babelshelf.com/` were retained. The existing
+Codex sidebar browser reported active worker build `47ab430e4c500b76` and the
+Models settings showed keyword search, Granite Embedding 97M, and Granite
+Embedding 311M. Connection mode was restored to Offline. The delivery archive
+contained 209 files (111,052,800 unpacked bytes); its compressed archive was
+37,369,886 bytes. Delivery checks verified identity/gzip ONNX WASM bytes,
+offline-shell transport, and cache policy.
+
+No 311M weights were downloaded or executed. This verifies deployment,
+worker adoption, and option presentation only; it does not establish model
+quality, runtime performance, or physical-device compatibility. User data,
+credentials, and model weights are excluded from the Site package.
+
 # Public Site v347 — remove unconnected Decision choice (2026-11-11 JST)
 
 Application source: `Unjuno/babelshelf` `main` at

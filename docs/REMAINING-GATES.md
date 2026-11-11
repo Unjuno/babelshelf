@@ -2,25 +2,23 @@
 
 ### Latest integration and deployment · 2026-11-11
 
-PR #48 (`197fc2f3`) merged as `32e3e52dd04c6d95e1ffdf23d86cdf1cf053d7f3`.
-The selectable D1 3B decision entry, which had no connected execution adapter,
-was removed. Existing invalid selections are cleared in the in-memory schema-7
-projection; saved knowledge, dialogue and preference bodies are not rewritten.
-The service worker now accepts schema 7 so network setup is not blocked by the
-settings migration. LFM3 IQ3_M remains a catalog option; this does not prove
-that model can run on a given device.
+PR #50 (`40bfed17`) merged as `0c31cf0a0351282e21701f522da7729b3cc47cdc`.
+It adds a selectable local Granite Embedding 311M Search profile while keeping
+the 97M profile and keyword-only mode available. Selecting a profile does not
+download model files or rebuild the index. Existing settings are projected
+through the current schema without rewriting stored preferences. Main passed
+the full GitHub `Local PWA quality` workflow
+[42952224733](https://github.com/Unjuno/babelshelf/actions/runs/42952224733).
 
-The PR candidate and merged main passed the full GitHub `Local PWA quality`
-workflow [42942063032](https://github.com/Unjuno/babelshelf/actions/runs/42942063032)
-and [42943286139](https://github.com/Unjuno/babelshelf/actions/runs/42943286139).
-
-Public Site v347 serves app build `4e5ad43db1fd6622` (166 verified assets).
-Site source is commit `1c406adf20ee37390feceb0a1e9ff20ad7b84171`; the public
-deployment succeeded. The existing sidebar tab was refreshed and rendered the
-BabelShelf app. The public build manifest reports the same build hash and 166
-assets; `/sw.js` returned HTTP 200. No model assets were downloaded or loaded.
-This verifies published shell delivery, not model generation or phone runtime
-compatibility. The Site package excludes user data and model weights.
+Public Site v348 serves app build `47ab430e4c500b76` and bundle
+`index-B8dAQvmm.js`; deployment `appgdep_6af3e3fdb3608191b4a18fc1f1b8e8a2`
+succeeded. In the existing sidebar browser, Settings → Developer reported the
+active worker build, and Settings → Models exposed Granite Embedding 311M
+alongside 97M and keyword search. Connection mode was restored to Offline. No
+311M model weights were downloaded or run. This verifies delivery, current
+worker adoption and model-choice presentation, not embedding quality, device
+performance, or physical-phone compatibility. The Site package excludes user
+data and model weights.
 
 ### Previous integration · 2026-11-11
 
