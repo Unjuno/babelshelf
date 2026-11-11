@@ -5,7 +5,7 @@ const roots = ['Inbox','Notes','Schedule','Notifications','Attachments','Tools',
 // The JSON registry is the single source of truth; avoid maintaining a second
 // copy of the model list here.
 const allowedText = defaults.models.text.map(model=>model.value);
-const allowedDecision = ['', 'd1-omni-600M','d1-3B'];
+const allowedDecision = defaults.models.decision.map(model=>model.value);
 
 function record(value:unknown):asserts value is Record<string,unknown> {
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid settings object');

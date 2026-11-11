@@ -21,7 +21,7 @@ export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';
 export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number;maxGenerationTokens?:number|null;maxGenerationMs?:number|null};
 export type HarnessPreferences={replyStyle:ReplyStyle;userGuidance:string;activeProfileId:string;profiles:HarnessProfile[]};
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
-export const PREFERENCE_SCHEMA_VERSION=6 as const;
+export const PREFERENCE_SCHEMA_VERSION=7 as const;
 export class UnsupportedPreferenceSchemaError extends Error{
  readonly group:PreferenceGroup;readonly version:number;
  constructor(group:PreferenceGroup,version:number){super('Settings use a newer format · update the app');this.name='UnsupportedPreferenceSchemaError';this.group=group;this.version=version;}
@@ -85,6 +85,13 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
   if(Array.isArray(models.customSets))for(const set of models.customSets){
    if(set?.models&&typeof set.models.textModel==='string'&&!valid(set.models.textModel))set.models.textModel=models.textModel;
   }
+ }
+ if(schemaVersion<7&&group==='models'){
+  // D1 3B was shown as selectable without a matching pinned browser adapter.
+  // Retire that unusable selection while preserving other models and history.
+  if(value.decisionModel==='d1-3B')value.decisionModel='';
+  if(Array.isArray(value.decisionLibrary))value.decisionLibrary=value.decisionLibrary.filter((id:unknown)=>id!=='d1-3B');
+  if(Array.isArray(value.customSets))for(const set of value.customSets){if(set?.models?.decisionModel==='d1-3B')set.models.decisionModel='';}
  }
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='appearance'){
   if(!('fontFamily' in value))value.fontFamily='system';

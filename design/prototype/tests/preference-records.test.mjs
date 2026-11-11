@@ -38,23 +38,32 @@ test('view edits produce a canonical settings revision retaining original bytes 
  assert.equal(readPreference('appearance',original).background,'paper');
 });
 test('settings files carry a schema version and legacy records migrate only in memory until an explicit save',()=>{
- for(const group of ['models','appearance','connection','harness'])assert.equal(readPreference(group,initialPreferenceNotes).schemaVersion,6);
+ for(const group of ['models','appearance','connection','harness'])assert.equal(readPreference(group,initialPreferenceNotes).schemaVersion,7);
  const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-appearance'),legacy={...readPreference('appearance',records)};delete legacy.paletteRegistry;delete legacy.activePaletteId;
  target.body=legacyPreference('appearance',legacy);const oldBytes=target.body,projected=readPreference('appearance',records);
- assert.equal(projected.schemaVersion,6);assert.equal(target.body,oldBytes);assert.equal(target.version,1);
+ assert.equal(projected.schemaVersion,7);assert.equal(target.body,oldBytes);assert.equal(target.version,1);
  const saved=updatePreference('appearance',records,value=>({...value,background:'sand'})),record=saved.find(note=>note.id===target.id);
- assert.equal(readPreference('appearance',saved).schemaVersion,6);assert.equal(record.history[0],oldBytes);assert.equal(JSON.parse(record.body.match(/```json\n([\s\S]+)\n```/)[1]).schemaVersion,6);
+ assert.equal(readPreference('appearance',saved).schemaVersion,7);assert.equal(record.history[0],oldBytes);assert.equal(JSON.parse(record.body.match(/```json\n([\s\S]+)\n```/)[1]).schemaVersion,7);
 });
 
 test('models schema 5 migrates Search selection fields in memory while retaining original stored bytes',()=>{
  const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-models');
  const legacy=readPreference('models',records);legacy.textLibrary.push('4B');legacy.searchModel=undefined;delete legacy.searchModel;delete legacy.searchLibrary;legacy.customSets=[{id:'user-reading',label:'Reading',detail:'Old five-role preset',models:{textModel:'4B',decisionModel:'',transcriptionModel:'',ocrModel:'',visionModel:''}}];
- target.body=formatPreference('models',legacy).replace('"schemaVersion": 6','"schemaVersion": 5');const stored=target.body,projected=readPreference('models',records);
- assert.equal(projected.schemaVersion,6);assert.equal(projected.searchModel,'');assert.deepEqual(projected.searchLibrary,[]);
+ target.body=formatPreference('models',legacy).replace('"schemaVersion": 7','"schemaVersion": 5');const stored=target.body,projected=readPreference('models',records);
+ assert.equal(projected.schemaVersion,7);assert.equal(projected.searchModel,'');assert.deepEqual(projected.searchLibrary,[]);
  assert.equal(projected.customSets[0].models.searchModel,'');assert.equal(target.body,stored);assert.equal(target.version,1);
  const saved=updatePreference('models',records,value=>({...value,textModel:value.textModel}));
  assert.equal(saved.find(note=>note.id===target.id).history[0],stored);
- assert.equal(readPreference('models',saved).schemaVersion,6);
+ assert.equal(readPreference('models',saved).schemaVersion,7);
+});
+
+test('models schema 6 retires the unconnected D1 3B choice without rewriting settings or saved history',()=>{
+ const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-models'),before=readPreference('models',records);
+ const legacy={...before,decisionModel:'d1-3B',decisionLibrary:['d1-omni-600M','d1-3B'],customSets:[{id:'user-legacy-d1',label:'Legacy D1',detail:'Keeps the supported roles',models:{textModel:before.textModel,decisionModel:'d1-3B',transcriptionModel:'',ocrModel:'',visionModel:'',searchModel:''}}]};
+ target.body=formatPreference('models',legacy).replace('"schemaVersion": 7','"schemaVersion": 6');const originalBody=target.body,originalHistory=[...target.history],projected=readPreference('models',records);
+ assert.equal(projected.schemaVersion,7);assert.equal(projected.decisionModel,'');assert.deepEqual(projected.decisionLibrary,['d1-omni-600M']);
+ assert.equal(projected.customSets[0].models.decisionModel,'');assert.equal(projected.customSets[0].models.textModel,before.textModel);
+ assert.equal(projected.textModel,before.textModel);assert.deepEqual(projected.customModels,before.customModels);assert.equal(target.body,originalBody);assert.deepEqual(target.history,originalHistory);
 });
 test('current settings schemas reject missing fields instead of silently applying legacy defaults',()=>{
  const missing={models:'customModels',appearance:'fonts',connection:'diagnosticLogs',harness:'userGuidance'};
@@ -115,7 +124,7 @@ test('diagnostic logging defaults off and legacy connection preferences migrate 
  const enabled=updatePreference('connection',records,value=>({...value,diagnosticLogs:true}));assert.equal(readPreference('connection',enabled).diagnosticLogs,true);assert.equal(enabled.find(n=>n.id===record.id).history[0],legacy);
 });
 test('connection schema 4 gains an empty RustXNG address in memory and validates configured HTTPS endpoints',()=>{
- const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-connection'),current=readPreference('connection',notes);delete current.rustxngEndpoint;record.body=formatPreference('connection',current).replace('"schemaVersion": 6','"schemaVersion": 4');const original=record.body,projected=readPreference('connection',notes);
+ const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-connection'),current=readPreference('connection',notes);delete current.rustxngEndpoint;record.body=formatPreference('connection',current).replace('"schemaVersion": 7','"schemaVersion": 4');const original=record.body,projected=readPreference('connection',notes);
  assert.equal(projected.rustxngEndpoint,'');assert.equal(record.body,original);
  const configured=formatPreference('connection',{...projected,rustxngEndpoint:'https://search.example/rustxng'});assert.equal(parsePreference('connection',configured).rustxngEndpoint,'https://search.example/rustxng');
  assert.throws(()=>parsePreference('connection',formatPreference('connection',{...projected,rustxngEndpoint:'https://user:secret@search.example'})),/RustXNG address/i);
@@ -195,9 +204,9 @@ test('harness config rejects unknown tools, invalid budgets and non-read-only ca
 test('legacy untouched built-in tools and caps migrate additively without changing custom limits',()=>{
  const current=structuredClone(initialPreferenceNotes),record=current.find(note=>note.id==='settings-harness');
  const legacy=parsePreference('harness',record.body);legacy.schemaVersion=1;legacy.profiles[0].enabledTools=legacy.profiles[0].enabledTools.filter(id=>id!=='memory.sources');legacy.profiles[0].maxToolCalls=8;legacy.profiles[1].enabledTools=['memory.search','memory.list','memory.read'];legacy.profiles[1].maxToolCalls=2;legacy.profiles[2].maxToolCalls=0;
- record.body=formatPreference('harness',legacy).replace('"schemaVersion": 6','"schemaVersion": 1');const parsed=parsePreference('harness',record.body);
- assert.equal(parsed.schemaVersion,6);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
- legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 6','"schemaVersion": 1');
+ record.body=formatPreference('harness',legacy).replace('"schemaVersion": 7','"schemaVersion": 1');const parsed=parsePreference('harness',record.body);
+ assert.equal(parsed.schemaVersion,7);assert.deepEqual(parsed.profiles[0].enabledTools,['memory.search','memory.list','memory.read','math.calculate','time.now']);assert.deepEqual(parsed.profiles[1].enabledTools,['memory.search','memory.list','memory.read']);assert.equal(parsed.profiles[0].maxToolCalls,null);assert.equal(parsed.profiles[1].maxToolCalls,null);assert.equal(parsed.profiles[2].maxToolCalls,0);
+ legacy.schemaVersion=1;legacy.profiles[0].maxToolCalls=4;record.body=formatPreference('harness',legacy).replace('"schemaVersion": 7','"schemaVersion": 1');
  assert.equal(parsePreference('harness',record.body).profiles[0].maxToolCalls,4);
 });
 test('schema-1 custom profile names preserve call caps that match the old built-in defaults',async()=>{
@@ -205,7 +214,7 @@ test('schema-1 custom profile names preserve call caps that match the old built-
  legacy.schemaVersion=1;
  legacy.profiles[0]={...legacy.profiles[0],label:'My bounded assistant',enabledTools:['math.calculate','memory.read','memory.search','memory.list','time.now'],maxToolCalls:8};
  legacy.profiles[1]={...legacy.profiles[1],label:'Two-source review',enabledTools:['memory.search','memory.read'],maxToolCalls:2};
- record.body=formatPreference('harness',legacy).replace('"schemaVersion": 6','"schemaVersion": 1');
+ record.body=formatPreference('harness',legacy).replace('"schemaVersion": 7','"schemaVersion": 1');
  const stored=record.body,projected=parsePreference('harness',record.body);
  assert.equal(projected.profiles[0].maxToolCalls,8);assert.deepEqual(projected.profiles[0].enabledTools,['math.calculate','memory.read','memory.search','memory.list','time.now']);
  assert.equal(projected.profiles[1].maxToolCalls,2);assert.deepEqual(projected.profiles[1].enabledTools,['memory.search','memory.read']);
@@ -216,21 +225,21 @@ test('schema-1 custom profile names preserve call caps that match the old built-
 test('schema-2 harness profiles gain unlimited generation budgets in memory without rewriting stored bytes',()=>{
  const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),value=parsePreference('harness',record.body);
  value.schemaVersion=2;value.profiles[0].maxToolCalls=5;for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
- record.body=formatPreference('harness',value).replace('"schemaVersion": 6','"schemaVersion": 2');const stored=record.body,projected=readPreference('harness',records);
- assert.equal(projected.schemaVersion,6);assert.equal(projected.profiles[0].maxToolCalls,5);assert.ok(projected.profiles.every(profile=>profile.maxGenerationTokens===null&&profile.maxGenerationMs===null));assert.equal(record.body,stored);assert.equal(record.version,1);
+ record.body=formatPreference('harness',value).replace('"schemaVersion": 7','"schemaVersion": 2');const stored=record.body,projected=readPreference('harness',records);
+ assert.equal(projected.schemaVersion,7);assert.equal(projected.profiles[0].maxToolCalls,5);assert.ok(projected.profiles.every(profile=>profile.maxGenerationTokens===null&&profile.maxGenerationMs===null));assert.equal(record.body,stored);assert.equal(record.version,1);
 });
 test('current harness schema preserves an explicitly selected budget equal to an old default',()=>{
  const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-harness');
  const updated=updatePreference('harness',records,value=>({...value,profiles:value.profiles.map(profile=>profile.id==='standard'?{...profile,maxToolCalls:8}:profile)}));
  const saved=updated.find(note=>note.id===target.id),bodyValue=JSON.parse(saved.body.match(/```json\n([\s\S]+)\n```/)[1]);
- assert.equal(bodyValue.schemaVersion,6);assert.equal(readPreference('harness',updated).profiles[0].maxToolCalls,8);
+ assert.equal(bodyValue.schemaVersion,7);assert.equal(readPreference('harness',updated).profiles[0].maxToolCalls,8);
 });
 
 test('all roles require registration; old model records migrate without losing history',()=>{
  const original=structuredClone(initialPreferenceNotes),before=original.find(n=>n.id==='settings-models');
  assert.throws(()=>updatePreference('models',original,m=>({...m,textModel:'smollm2-360m-instruct'})),/before selecting/);
  assert.throws(()=>updatePreference('models',original,m=>({...m,decisionModel:'d1-3B'})),/before selecting/);
- const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'4B'],textModel:'4B',decisionLibrary:['d1-3B'],decisionModel:'d1-3B'}));
+ const registered=updatePreference('models',original,m=>({...m,textLibrary:[...m.textLibrary,'4B'],textModel:'4B',decisionLibrary:['d1-omni-600M'],decisionModel:'d1-omni-600M'}));
  assert.equal(readPreference('models',registered).textModel,'4B');
  assert.deepEqual(registered.find(n=>n.id===before.id).history,[before.body]);
  const legacy={...readPreference('models',original),textModel:'smollm2-360m-instruct',textLibrary:['lfm3-1.7b-qad-q4-0','smollm2-360m-instruct']};delete legacy.textLibrary;delete legacy.decisionLibrary;
@@ -244,8 +253,8 @@ test('all roles require registration; old model records migrate without losing h
 test('the previous model catalog migrates retired choices without rewriting the stored revision',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models'),value=readPreference('models',notes);
  value.textLibrary=['lfm3-1.7b-qad-q4-0','smollm2-360m-instruct'];value.textModel='smollm2-360m-instruct';
- record.body=formatPreference('models',value).replace('"schemaVersion": 6','"schemaVersion": 3');const previousBytes=record.body;
- const projected=readPreference('models',notes);assert.equal(projected.schemaVersion,6);assert.equal(projected.textModel,'lfm3-1.7b-qad-q4-0');assert.deepEqual(projected.textLibrary,['lfm3-1.7b-qad-q4-0']);
+ record.body=formatPreference('models',value).replace('"schemaVersion": 7','"schemaVersion": 3');const previousBytes=record.body;
+ const projected=readPreference('models',notes);assert.equal(projected.schemaVersion,7);assert.equal(projected.textModel,'lfm3-1.7b-qad-q4-0');assert.deepEqual(projected.textLibrary,['lfm3-1.7b-qad-q4-0']);
  assert.equal(record.body,previousBytes);const saved=updatePreference('models',notes,current=>({...current,ocrLanguage:'jpn'}));assert.equal(saved.find(note=>note.id===record.id).history[0],previousBytes);
 });
 
@@ -259,13 +268,13 @@ test('legacy model preferences gain the conservative LFM3 context default withou
  assert.throws(()=>updatePreference('models',notes,value=>({...value,lfm3ContextTokens:524288})),/context window/);
 });
 test('schema-1 records gain known additive settings in memory without losing existing selections or rewriting bytes',()=>{
- const notes=structuredClone(initialPreferenceNotes),modelsRecord=notes.find(n=>n.id==='settings-models'),models=readPreference('models',notes);models.textModel='2B';models.ocrModel='tesseract-7';for(const key of ['textLibrary','decisionLibrary','transcriptionLanguage','ocrLibrary','ocrLanguage','visionModel','visionLibrary','customModels','customDecisionModels','customSpeechModels','customVisionModels','customSets','lfm3ContextTokens','searchModel','searchLibrary'])delete models[key];modelsRecord.body=formatPreference('models',models).replace('"schemaVersion": 6','"schemaVersion": 1');const modelsBytes=modelsRecord.body,projectedModels=readPreference('models',notes);
- assert.equal(projectedModels.schemaVersion,6);assert.equal(projectedModels.textModel,'2B');assert.deepEqual(projectedModels.textLibrary,['2B']);assert.deepEqual(projectedModels.decisionLibrary,[]);assert.equal(projectedModels.ocrModel,'tesseract-7');assert.deepEqual(projectedModels.ocrLibrary,['tesseract-7']);assert.equal(projectedModels.ocrLanguage,'eng+jpn');assert.deepEqual(projectedModels.customDecisionModels,[]);assert.deepEqual(projectedModels.customVisionModels,[]);assert.deepEqual(projectedModels.customSets,[]);assert.equal(projectedModels.lfm3ContextTokens,8192);assert.equal(modelsRecord.body,modelsBytes);assert.equal(modelsRecord.version,1);
+ const notes=structuredClone(initialPreferenceNotes),modelsRecord=notes.find(n=>n.id==='settings-models'),models=readPreference('models',notes);models.textModel='2B';models.ocrModel='tesseract-7';for(const key of ['textLibrary','decisionLibrary','transcriptionLanguage','ocrLibrary','ocrLanguage','visionModel','visionLibrary','customModels','customDecisionModels','customSpeechModels','customVisionModels','customSets','lfm3ContextTokens','searchModel','searchLibrary'])delete models[key];modelsRecord.body=formatPreference('models',models).replace('"schemaVersion": 7','"schemaVersion": 1');const modelsBytes=modelsRecord.body,projectedModels=readPreference('models',notes);
+ assert.equal(projectedModels.schemaVersion,7);assert.equal(projectedModels.textModel,'2B');assert.deepEqual(projectedModels.textLibrary,['2B']);assert.deepEqual(projectedModels.decisionLibrary,[]);assert.equal(projectedModels.ocrModel,'tesseract-7');assert.deepEqual(projectedModels.ocrLibrary,['tesseract-7']);assert.equal(projectedModels.ocrLanguage,'eng+jpn');assert.deepEqual(projectedModels.customDecisionModels,[]);assert.deepEqual(projectedModels.customVisionModels,[]);assert.deepEqual(projectedModels.customSets,[]);assert.equal(projectedModels.lfm3ContextTokens,8192);assert.equal(modelsRecord.body,modelsBytes);assert.equal(modelsRecord.version,1);
  const savedModels=updatePreference('models',notes,current=>({...current,transcriptionLanguage:'ja'})),savedModelRecord=savedModels.find(n=>n.id===modelsRecord.id);assert.equal(readPreference('models',savedModels).textModel,'2B');assert.equal(readPreference('models',savedModels).ocrModel,'tesseract-7');assert.equal(savedModelRecord.history.at(-1),modelsBytes);assert.equal(savedModelRecord.version,2);
- const appearanceRecord=notes.find(n=>n.id==='settings-appearance'),appearance=readPreference('appearance',notes);appearance.palette={name:'Night',canvas:'#101820',text:'#f2f5f7',surface:'#203040',surfaceText:'#f2f5f7',accent:'#76e3c1',accentText:'#102018',muted:'#d1dae1',border:'#506070'};for(const key of ['fontFamily','fonts','paletteRegistry','activePaletteId'])delete appearance[key];appearanceRecord.body=formatPreference('appearance',appearance).replace('"schemaVersion": 6','"schemaVersion": 1');const appearanceBytes=appearanceRecord.body,projectedAppearance=readPreference('appearance',notes);
+ const appearanceRecord=notes.find(n=>n.id==='settings-appearance'),appearance=readPreference('appearance',notes);appearance.palette={name:'Night',canvas:'#101820',text:'#f2f5f7',surface:'#203040',surfaceText:'#f2f5f7',accent:'#76e3c1',accentText:'#102018',muted:'#d1dae1',border:'#506070'};for(const key of ['fontFamily','fonts','paletteRegistry','activePaletteId'])delete appearance[key];appearanceRecord.body=formatPreference('appearance',appearance).replace('"schemaVersion": 7','"schemaVersion": 1');const appearanceBytes=appearanceRecord.body,projectedAppearance=readPreference('appearance',notes);
  assert.equal(projectedAppearance.fontFamily,'system');assert.deepEqual(projectedAppearance.fonts,[]);assert.equal(projectedAppearance.activePaletteId,'palette-legacy');assert.equal(projectedAppearance.paletteRegistry[0].name,'Night');assert.equal(appearanceRecord.body,appearanceBytes);
- const connectionRecord=notes.find(n=>n.id==='settings-connection'),connection=readPreference('connection',notes);delete connection.diagnosticLogs;connectionRecord.body=formatPreference('connection',connection).replace('"schemaVersion": 6','"schemaVersion": 1');const connectionBytes=connectionRecord.body;assert.equal(readPreference('connection',notes).diagnosticLogs,false);assert.equal(connectionRecord.body,connectionBytes);
- const harnessRecord=notes.find(n=>n.id==='settings-harness'),harness=readPreference('harness',notes);delete harness.replyStyle;delete harness.userGuidance;harnessRecord.body=formatPreference('harness',harness).replace('"schemaVersion": 6','"schemaVersion": 1');const harnessBytes=harnessRecord.body,projectedHarness=readPreference('harness',notes);assert.equal(projectedHarness.replyStyle,'balanced');assert.equal(projectedHarness.userGuidance,'');assert.equal(projectedHarness.schemaVersion,6);assert.equal(harnessRecord.body,harnessBytes);
+ const connectionRecord=notes.find(n=>n.id==='settings-connection'),connection=readPreference('connection',notes);delete connection.diagnosticLogs;connectionRecord.body=formatPreference('connection',connection).replace('"schemaVersion": 7','"schemaVersion": 1');const connectionBytes=connectionRecord.body;assert.equal(readPreference('connection',notes).diagnosticLogs,false);assert.equal(connectionRecord.body,connectionBytes);
+ const harnessRecord=notes.find(n=>n.id==='settings-harness'),harness=readPreference('harness',notes);delete harness.replyStyle;delete harness.userGuidance;harnessRecord.body=formatPreference('harness',harness).replace('"schemaVersion": 7','"schemaVersion": 1');const harnessBytes=harnessRecord.body,projectedHarness=readPreference('harness',notes);assert.equal(projectedHarness.replyStyle,'balanced');assert.equal(projectedHarness.userGuidance,'');assert.equal(projectedHarness.schemaVersion,7);assert.equal(harnessRecord.body,harnessBytes);
 });
 test('Vision selection is independently registered, defaults off, and legacy settings migrate without rewriting bytes',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(n=>n.id==='settings-models'),value=readPreference('models',notes);
@@ -383,7 +392,7 @@ test('targeted settings recovery restores one last-valid file and retains the br
 
 test('a newer settings schema stays untouched until explicit recovery, which preserves it in history',()=>{
  const base=structuredClone(initialPreferenceNotes),edited=updatePreference('appearance',base,value=>({...value,background:'sand'})),records=structuredClone(edited),target=records.find(note=>note.id==='settings-appearance'),other=records.find(note=>note.id==='settings-harness');
- target.body=target.body.replace('"schemaVersion": 6','"schemaVersion": 7');const futureBody=target.body,before=structuredClone(records),read=readPreferenceWithFallback('appearance',records);
+ target.body=target.body.replace('"schemaVersion": 7','"schemaVersion": 8');const futureBody=target.body,before=structuredClone(records),read=readPreferenceWithFallback('appearance',records);
  assert.equal(read.valid,false);assert.equal(read.unsupportedSchema,true);assert.equal(read.value.background,'paper');
  assert.throws(()=>readPreference('appearance',records),/newer format/i);assert.throws(()=>updatePreference('appearance',records,value=>({...value,background:'sage'})),/newer format/i);assert.deepEqual(records,before);
  const recovered=recoverPreferenceRecord('appearance',records),saved=recovered.find(note=>note.id===target.id);
@@ -401,7 +410,7 @@ test('schema-2 explicit tools and old-default call caps survive schema-4 project
  value.profiles[0].enabledTools=['memory.search','memory.read','math.calculate'];value.profiles[0].maxToolCalls=8;
  value.profiles[1].enabledTools=['memory.search','memory.read'];value.profiles[1].maxToolCalls=2;
  for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
- record.body=formatPreference('harness',value).replace('"schemaVersion": 6','"schemaVersion": 2');const before=structuredClone(records);
+ record.body=formatPreference('harness',value).replace('"schemaVersion": 7','"schemaVersion": 2');const before=structuredClone(records);
  const projected=readPreference('harness',records);
  for(let i=0;i<2;i++){assert.deepEqual(projected.profiles[i].enabledTools,value.profiles[i].enabledTools);assert.equal(projected.profiles[i].maxToolCalls,value.profiles[i].maxToolCalls);}
  assert.deepEqual(records,before);
