@@ -2,26 +2,25 @@
 
 ### Latest integration and deployment · 2026-11-11
 
-PR #46 (`277d6490`) merged as `90d1a8eedc1fad1f386ce194d18093a48dfc2cc9`.
-When a user requests a new note from a Web-cited answer, the app now carries
-the host-validated citations into a review draft as a fenced, human-readable
-Web sources appendix. The exact page excerpt, URL, title and retrieval time
-are included; page text is escaped from Markdown structure. The existing
-reviewed-save path remains the only commit route. This preserves a readable
-source snapshot in the note, not a canonical live Web source record or a
-general semantic entailment guarantee.
+PR #48 (`197fc2f3`) merged as `32e3e52dd04c6d95e1ffdf23d86cdf1cf053d7f3`.
+The selectable D1 3B decision entry, which had no connected execution adapter,
+was removed. Existing invalid selections are cleared in the in-memory schema-7
+projection; saved knowledge, dialogue and preference bodies are not rewritten.
+The service worker now accepts schema 7 so network setup is not blocked by the
+settings migration. LFM3 IQ3_M remains a catalog option; this does not prove
+that model can run on a given device.
 
-The exact PR candidate passed GitHub's full `Local PWA quality` workflow
-[42932297785](https://github.com/Unjuno/babelshelf/actions/runs/42932297785),
-and the post-merge main run
-[42933873619](https://github.com/Unjuno/babelshelf/actions/runs/42933873619)
-also passed.
+The PR candidate and merged main passed the full GitHub `Local PWA quality`
+workflow [42942063032](https://github.com/Unjuno/babelshelf/actions/runs/42942063032)
+and [42943286139](https://github.com/Unjuno/babelshelf/actions/runs/42943286139).
 
-Public Site v346 serves app build `84c7d71818b7cfdb` (166 verified assets).
-The existing sidebar PWA applied that worker; Settings → Developer showed the
-same active worker build. Connection mode was restored to Offline. No model
-assets were downloaded or loaded. This verifies source delivery and worker
-adoption, not live Web search, model inference or phone compatibility.
+Public Site v347 serves app build `4e5ad43db1fd6622` (166 verified assets).
+Site source is commit `1c406adf20ee37390feceb0a1e9ff20ad7b84171`; the public
+deployment succeeded. The existing sidebar tab was refreshed and rendered the
+BabelShelf app. The public build manifest reports the same build hash and 166
+assets; `/sw.js` returned HTTP 200. No model assets were downloaded or loaded.
+This verifies published shell delivery, not model generation or phone runtime
+compatibility. The Site package excludes user data and model weights.
 
 ### Previous integration · 2026-11-11
 
