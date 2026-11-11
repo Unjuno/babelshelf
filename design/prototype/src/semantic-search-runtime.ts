@@ -1,16 +1,16 @@
 import {createSemanticEmbeddingBackend} from './semantic-embedding-backend.ts';
 import {createSemanticIndexStore} from './semantic-index-store.ts';
 import {indexSemanticSources,searchSemanticSources,type SemanticSearchSource} from './semantic-search-service.ts';
-import {semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
+import {semanticEmbeddingManifestFor} from './semantic-embedding-manifest.ts';
 import {runSemanticSearchSmoke} from './semantic-search-smoke.ts';
 
 type KnowledgeReader={views:(signal?:AbortSignal)=>Promise<Array<{id:string;path:string;body:string;version:number;protected?:boolean;recordType?:string}>>};
 type Events=(type:string,value:unknown)=>void;
-const modelRevision=[semanticEmbeddingManifest.id,semanticEmbeddingManifest.revision,semanticEmbeddingManifest.runtime.revision,semanticEmbeddingManifest.dtype].join('@');
 
 /** App-owned optional semantic path. Deterministic search remains the caller's fallback. */
-export function createSemanticSearchRuntime(knowledge:KnowledgeReader,createWorker?:()=>Worker){
- const backend=createSemanticEmbeddingBackend(createWorker),store=createSemanticIndexStore();let closed=false;
+export function createSemanticSearchRuntime(knowledge:KnowledgeReader,modelId:string,createWorker?:()=>Worker){
+ const manifest=semanticEmbeddingManifestFor(modelId),modelRevision=[manifest.id,manifest.revision,manifest.runtime.revision,manifest.dtype].join('@');
+ const backend=createSemanticEmbeddingBackend(modelId,createWorker),store=createSemanticIndexStore();let closed=false;
  const check=()=>{if(closed)throw Error('Semantic Search runtime closed');};
  const sources=async(signal?:AbortSignal):Promise<SemanticSearchSource[]>=>{
   check();const views=await knowledge.views(signal);signal?.throwIfAborted();

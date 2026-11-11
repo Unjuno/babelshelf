@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "id": "granite-embedding-311m-multilingual-r2-onnx",
+  "name": "Granite Embedding 311M Multilingual R2 · ONNX int8",
+  "engine": "transformers-feature-extraction-wasm",
+  "repository": "onnx-community/granite-embedding-311m-multilingual-r2-ONNX",
+  "revision": "8f039f21d4181327268271bea4b11ddcc7eef88d",
+  "license": "Apache-2.0",
+  "architecture": "modernbert",
+  "device": "wasm",
+  "dtype": "q8",
+  "pooling": "cls",
+  "normalize": true,
+  "dimensions": 768,
+  "hiddenSize": 768,
+  "contextTokens": 32768,
+  "runtime": {
+    "name": "Transformers.js / ONNX Runtime Web",
+    "revision": "@huggingface/transformers@4.3.0 + onnxruntime-web@1.31.0-dev.20260914-8d85527a0"
+  },
+  "files": [
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/onnx-community/granite-embedding-311m-multilingual-r2-ONNX/resolve/8f039f21d4181327268271bea4b11ddcc7eef88d/config.json",
+      "bytes": 1190,
+      "sha256": "f0a7f93beca7d6ba8728759b9ad5defa80b3e6a4a289a111aec99e1567f2bb18"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "url": "https://huggingface.co/onnx-community/granite-embedding-311m-multilingual-r2-ONNX/resolve/8f039f21d4181327268271bea4b11ddcc7eef88d/special_tokens_map.json",
+      "bytes": 694,
+      "sha256": "cb9e60dcf4d8d314315cb3e761fe4c2e664fda8dbf66d7815372b2639e381182"
+    },
+    {
+      "path": "tokenizer.json",
+      "url": "https://huggingface.co/onnx-community/granite-embedding-311m-multilingual-r2-ONNX/resolve/8f039f21d4181327268271bea4b11ddcc7eef88d/tokenizer.json",
+      "bytes": 33384821,
+      "sha256": "0087c868b33bad550a78a08d19798cfd7f713cde4f020803b8f51f405503e15f"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "url": "https://huggingface.co/onnx-community/granite-embedding-311m-multilingual-r2-ONNX/resolve/8f039f21d4181327268271bea4b11ddcc7eef88d/tokenizer_config.json",
+      "bytes": 1155500,
+      "sha256": "7947bdf0378520e69ca412b8c4dacd1cffa8aef099f851fdd5c65aa27c6b36a0"
+    },
+    {
+      "path": "onnx/model_quantized.onnx",
+      "url": "https://huggingface.co/onnx-community/granite-embedding-311m-multilingual-r2-ONNX/resolve/8f039f21d4181327268271bea4b11ddcc7eef88d/onnx/model_quantized.onnx",
+      "bytes": 312556945,
+      "sha256": "54d33d10f865516eda6770d7b0bbf5eaece861058907da0ad095c62e52958c3d"
+    }
+  ]
+}
