@@ -139,7 +139,7 @@ test('saving current model choices creates a stable Memory ID without preparing 
 
 test('legacy model Memory records read an empty set list without rewriting their stored revision',()=>{
  const notes=structuredClone(initialPreferenceNotes),record=notes.find(note=>note.id==='settings-models'),legacy=readPreference('models',notes);
- delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 6,\n','');const storedBytes=record.body;
+ delete legacy.customSets;record.body=formatPreference('models',legacy).replace('  "schemaVersion": 7,\n','');const storedBytes=record.body;
  assert.deepEqual(readPreference('models',notes).customSets,[]);
  assert.equal(record.body,storedBytes);assert.equal(record.version,1);assert.deepEqual(record.history,[]);
 });

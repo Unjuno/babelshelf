@@ -45,6 +45,14 @@ test('Vision catalog separates image understanding from OCR and remains unprepar
  assert.throws(()=>validateSettings(candidate),/Unknown/);
 });
 
+test('Decision catalog contains only models with a connected runtime',()=>{
+ assert.deepEqual(settings.models.decision.map(model=>model.value),['','d1-omni-600M']);
+ assert.equal(capabilityState('decision.classify','d1-omni-600M',false).status,'Not prepared');
+ assert.equal(settings.models.decision.some(model=>model.value==='d1-3B'),false);
+ const candidate=structuredClone(settings);candidate.models.decision.push({value:'d1-3B',label:'Open d1 · 3B'});
+ assert.throws(()=>validateSettings(candidate),/model registry/);
+});
+
 test('LFM3 Q8 is a registered local WebGPU candidate while QAD Q4 stays the fresh default',()=>{
  assert.ok(settings.models.text.some(model=>model.value==='lfm3-1.7b-q8-0'));
  assert.ok(settings.models.text.some(model=>model.value==='lfm3-1.7b-iq3m'));

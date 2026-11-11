@@ -47,12 +47,12 @@ test('explicit settings updates append the exact previous body and preserve exis
 test('a future settings schema is not silently rewritten by current application updates',()=>{
  const current=initialPreferenceNotes.find(note=>note.id==='settings-harness');
  const value=JSON.parse(current.body.match(/```json\n([\s\S]+)\n```/)[1]);
- value.schemaVersion=7;
+ value.schemaVersion=8;
  const body='# Harness\n\n```json\n'+JSON.stringify(value,null,2)+'\n```\n';
- const note=setting('harness',body,{version:7,history:['prior body']});
+ const note=setting('harness',body,{version:8,history:['prior body']});
  assert.throws(()=>updatePreference('harness',[note],value=>({...value,userGuidance:'new'})),UnsupportedPreferenceSchemaError);
  assert.equal(note.body,body);
- assert.equal(note.version,7);
+ assert.equal(note.version,8);
  assert.deepEqual(note.history,['prior body']);
 });
 
