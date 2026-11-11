@@ -1,8 +1,11 @@
 import {PlannerOutputError} from './planner-error.ts';
 // A dedicated client for hard-stoppable WASM inference. No automatic replay after Stop.
-const DEFAULT_LOAD_TIMEOUT_MS=30*60*1000;
+// A responsive load may legitimately take longer on a large local model, but
+// a single foreground load should not leave users waiting for half an hour.
+// The worker is retired on expiry; the separately stored model file is kept.
+export const DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS=10*60*1000;
 const DEFAULT_LOAD_IDLE_TIMEOUT_MS=5*60*1000;
-export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={},loadTimeoutMs=DEFAULT_LOAD_TIMEOUT_MS,loadIdleTimeoutMs=DEFAULT_LOAD_IDLE_TIMEOUT_MS}:{disposeHandshake?:boolean;initArgs?:any;loadTimeoutMs?:number;loadIdleTimeoutMs?:number}={}){
+export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={},loadTimeoutMs=DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,loadIdleTimeoutMs=DEFAULT_LOAD_IDLE_TIMEOUT_MS}:{disposeHandshake?:boolean;initArgs?:any;loadTimeoutMs?:number;loadIdleTimeoutMs?:number}={}){
  if(!Number.isSafeInteger(loadTimeoutMs)||loadTimeoutMs<1000||loadTimeoutMs>60*60*1000||!Number.isSafeInteger(loadIdleTimeoutMs)||loadIdleTimeoutMs<1000||loadIdleTimeoutMs>loadTimeoutMs)throw Error('Invalid text model load timeout');
  let seq=0,loaded:string|null=null,fault:Error|null=null;
  let disposeTimer:ReturnType<typeof setTimeout>|undefined,disposing=false,terminated=false;
