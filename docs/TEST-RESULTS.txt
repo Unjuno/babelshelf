@@ -8598,3 +8598,16 @@ policy. During sidebar verification the app remained Online because computer
 input timed out during restoration. No model generation, phone run, data clear,
 or model download was performed. This verifies the timeout behavior contract,
 release delivery, and PC PWA worker adoption only.
+
+2026-11-11 — PR #54 model-load status UX merged to main as
+`07dd29817963d3b445438bd66a11ec316ffe9ffa`; GitHub `Local PWA quality`
+[42987533321](https://github.com/Unjuno/babelshelf/actions/runs/42987533321)
+passed. Local build `f67c08d029cd7b0f` /167 verified assets passed
+`npm run build:app`, `npm run check`, and focused worker-host tests (20/20).
+Public Site v350 deployed successfully; the public manifest returned HTTP 200
+with the expected build. Sidebar browser Update completed and Offline mode was
+restored. The change distinguishes total load duration from time since the
+last visible stage update and avoids presenting an unknown exact percentage as
+proof of no progress. No model/runtime was downloaded or run; no user data was
+cleared. This is PC/CI and public-shell verification, not physical-device or
+actual-model loading acceptance.

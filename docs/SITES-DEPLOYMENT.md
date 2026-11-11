@@ -1,3 +1,26 @@
+# Public Site v350 — model-load status feedback (2026-11-11 JST)
+
+Product PR #54 merged to `main` as
+`07dd29817963d3b445438bd66a11ec316ffe9ffa`; full GitHub quality workflow
+[42987533321](https://github.com/Unjuno/babelshelf/actions/runs/42987533321)
+passed. App build `f67c08d029cd7b0f` contains 167 verified assets. Site source
+commit `c766900a53625a77c07f89f68503912cdf838313` records the product commit
+and build. Saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_cfefeedb6f2481919ff215cae65cbf1f`
+deployed successfully as `appgdep_6af42c3c574881918f223c500f938771`. The
+public audience and `https://babelshelf.com/` were preserved. The archive was
+110,499,840 bytes /207 files with SHA-256
+`2b8f2d3320af7ff71a75dbbccabf47fa086102093d9b8e0b288e6e5ca437786c`.
+
+Delivery checks passed ONNX WASM gzip/identity byte equivalence, offline-shell
+transport bytes and headers, mutable shell cache policy and method handling.
+The public `/build.json` returned HTTP 200 with build `f67c08d029cd7b0f` and
+167 file entries. In the existing sidebar browser, the Update action completed
+and connection mode was returned to Offline. This verifies public delivery
+and the browser update path, not a separately read active worker ID, actual
+model inference, phone compatibility or sustained loading. No model/runtime
+was downloaded or run, and no app data was cleared.
+
 # Public Site v349 — bound the local model-load wait (2026-11-11 JST)
 
 Application source: `Unjuno/babelshelf` `main` at
