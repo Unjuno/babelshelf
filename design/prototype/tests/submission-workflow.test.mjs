@@ -15,6 +15,7 @@ import {KnowledgeStore,projectNote} from '../src/knowledge-store.ts';
 import {createLfmTextRuntime} from '../src/lfm-text-runtime.ts';
 import * as clock from '../src/tools/time.now/tool.ts';
 import * as sourceTool from '../src/tools/memory.sources/tool.ts';
+import * as webSearchTool from '../src/tools/web.search/tool.ts';
 import {searchStoredPageChecked} from '../src/file-discovery.ts';
 function fixture(){
  let dialogue=emptyDialogue();const events=[],reviews=[];let modelCalls=0;
@@ -293,6 +294,35 @@ test('an agent can search saved Memory, ground a new note, and retain the exact 
  const saved=createNewNoteView({id:'new',path:'Inbox/workshop-summary.md',body:draft.body,kind:draft.kind,sources:draft.sources});
  assert.equal(saved.body,draft.body);assert.deepEqual(saved.sources,draft.sources);assert.notEqual(saved.sources,draft.sources);
  assert.ok(JSON.stringify(prompts.at(-1)).includes(full));assert.equal(records[0].revisions.length,1);
+});
+
+test('a Web-cited answer requested as a new note reaches review with its source snapshot',async()=>{
+ const navigatorDescriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator'),originalFetch=globalThis.fetch;
+ const pageText='The release date is 12 June 2026.';let calls=0;
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true}});
+ globalThis.fetch=async(input,options)=>{
+  calls++;const target=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
+  assert.equal(target.pathname,'/search');assert.equal(target.searchParams.get('q'),'BabelShelf release date');assert.equal(options.credentials,'omit');
+  return new Response(JSON.stringify({results:[{title:'Release notes',url:'https://docs.example.test/releases',content:'A release update.',raw_content_status:'ok',raw_content:pageText,raw_content_truncated:false}]}),{status:200,headers:{'content-type':'application/json'}});
+ };
+ try{
+  const f=fixture(),c=createSubmissionController(),pkg={definition:webSearchTool.definition,entry:'Tools/web.search/tool.ts',sources:[{path:'Tools/web.search/SKILL.md',body:'Search only when Online.'},{path:'Tools/web.search/tool.ts',body:'Trusted Web search adapter.'}],run:webSearchTool.run};
+  const shownCitations=[];f.view.showWebCitations=(_turnId,citations)=>shownCitations.push(...citations);
+  f.services.connectionPreferences={diagnosticLogs:false,downloads:true,rustxngEndpoint:'http://127.0.0.1:8787'};
+  f.services.model='test';f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>++calls===1?{text:JSON.stringify({action:'tool',query:'web.search',body:JSON.stringify({query:'BabelShelf release date'})}),finishReason:'stop'}:{text:JSON.stringify({action:'capture',query:'',reply:{answer:'The release date is 12 June 2026.',sources:['S1']}}),finishReason:'stop'},load:async()=>{throw Error('Already loaded');}};
+  f.services.knowledge={all:async()=>[],getState:async()=>undefined,views:async()=>[],search:async()=>[]};f.services.refreshSnapshot=async()=>[];
+  f.services.builtinToolPackages=[pkg];f.services.builtinToolRegistry=createToolRegistry([pkg]);
+  f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:['web.search'],maxToolCalls:null,maxResultChars:8000};
+  const outcome=await c.run(run=>executeSubmission({text:'Search the web for the release date and save a new note.',attachments:[]},f.services,f.view,run));
+  assert.equal(outcome,'awaitingApproval',JSON.stringify({error:c.state.error,turn:f.current().turns.at(-1)}));
+  assert.equal(calls,3,'two planner calls and one configured RustXNG request');assert.equal(f.reviews.length,1);
+  assert.equal(f.current().turns.at(-1).answer,'The release date is 12 June 2026.');
+  assert.equal(shownCitations.length,1);assert.equal(shownCitations[0].url,'https://docs.example.test/releases');assert.equal(shownCitations[0].quote,pageText);
+  assert.match(f.reviews[0].body,/## Web sources/);assert.match(f.reviews[0].body,/Release notes/);assert.match(f.reviews[0].body,/https:\/\/docs\.example\.test\/releases/);assert.match(f.reviews[0].body,/Retrieved: /);assert.match(f.reviews[0].body,/The release date is 12 June 2026\./);
+  assert.deepEqual(f.reviews[0].sources,[]);assert.equal(f.current().turns.at(-1).status,'Review new note');
+ }finally{
+  globalThis.fetch=originalFetch;if(navigatorDescriptor)Object.defineProperty(globalThis,'navigator',navigatorDescriptor);else delete globalThis.navigator;
+ }
 });
 
 test('agent file lookup uses canonical discovery instead of reciting an earlier comparison',async()=>{

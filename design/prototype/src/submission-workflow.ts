@@ -22,7 +22,7 @@ import {appendDiagnosticLog} from './diagnostic-logs.ts';
 import {recordUnclassifiedTurnFailure} from './turn-failure-log.ts';
 import {resolveToolNotes} from './tools/tool-host.ts';
 import {searchRustXng} from './rustxng-search-client.ts';
-import type {WebCitation,WebSnapshot} from './web-evidence.ts';
+import {formatWebCitationAppendix,type WebCitation,type WebSnapshot} from './web-evidence.ts';
 import {boundedPrefix} from './utf8-text.ts';
 import {coordinateAgentTurn,type AgentBudgetReason} from './agent-coordinator.ts';
 import {activityLabel,createTurnActivityTracer,persistTurnActivity,MAX_ACTIVITY_EVENTS_PER_TURN,RESERVED_AGENT_COMPLETION_EVENTS} from './harness-activity.ts';
@@ -309,8 +309,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
       await finishTurn(id,{answer:parsed.answer,refs:[],status:'Not enough evidence'},parsed.checkedSources,metadataGuards);
       return {kind:'needsInput',reason:'insufficient-evidence'};
      }
-     if(parsed.webSources?.length){view.showWebCitations?.(id,parsed.webSources);await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:'Web sources need a reviewed save flow'});return {kind:'needsInput',reason:'web-source-save'};}
-     request.body=parsed.answer;sources=parsed.sources.map(source=>({noteId:source.noteId,revision:source.revision,start:source.start,end:source.end,quote:source.quote,...(source.citedQuote?{citedQuote:source.citedQuote}:{})}));kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Saving note',refs:sources},undefined,metadataGuards);
+     view.showWebCitations?.(id,parsed.webSources??[]);request.body=parsed.answer+formatWebCitationAppendix(parsed.webSources??[],agentWebSnapshots);sources=parsed.sources.map(source=>({noteId:source.noteId,revision:source.revision,start:source.start,end:source.end,quote:source.quote,...(source.citedQuote?{citedQuote:source.citedQuote}:{})}));kind='generated';await finishTurn(id,{answer:parsed.answer,status:'Saving note',refs:sources},undefined,metadataGuards);
     }else await finishTurn(id,{status:'Saving note',refs:importedRefs});
     await view.saveCapture({turnId:id,source:captureSource,body:request.body!,sources,kind});return captureSource||kind==='generated'?{kind:'awaitingApproval'}:{kind:'answered'};
    }
