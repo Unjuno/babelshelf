@@ -1,6 +1,6 @@
 import {localAdapters} from './local-capabilities.ts';
 import {initialPreparationPlan} from './initial-preparation.ts';
-import {semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
+import {semanticEmbeddingManifest,semanticEmbeddingManifests} from './semantic-embedding-manifest.ts';
 import type {Preferences,ModelSetSelection,UserModelSet} from './preference-records.ts';
 
 export type ModelSetId=string;
@@ -13,7 +13,7 @@ const textModelSetIds=new Set(['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-
 export function modelSetGroup(id:string):ModelSetGroup{
  if(textModelSetIds.has(id))return 'Text models';
  if(id==='lfm3-iq3m-media')return 'Compact local set';
- if(id==='local-full'||id==='text-image-audio-q8')return 'Complete local set';
+ if(id==='local-full'||id==='local-full-search-311m'||id==='text-image-audio-q8')return 'Complete local set';
  if(/^user-[a-z0-9-]+$/.test(id))return 'Saved by you';
  throw Error('Unknown model set');
 }
@@ -30,12 +30,13 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'text-image-audio-q8',label:'Text + image + audio · Q8',detail:'LFM3 Q8_0 · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · Search',models:{textModel:'lfm3-1.7b-q8-0',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16',searchModel:semanticEmbeddingManifest.id}},
  {id:'lfm3-iq3m-media',label:'Compact local media set',detail:'LFM3 IQ3_M · 3-bit class · Whisper tiny · Tesseract 7 · LFM2.5-VL 450M · Search',models:{textModel:'lfm3-1.7b-iq3m',decisionModel:'',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16',searchModel:semanticEmbeddingManifest.id}},
  {id:'local-full',label:'Full local set',detail:'LFM3 · Decision · Speech · OCR · Vision · Search',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16',searchModel:semanticEmbeddingManifest.id}},
+ {id:'local-full-search-311m',label:'Full local · higher quality Search',detail:'Adds Granite Embedding 311M multilingual · 346 MB · not benchmarked on device',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16',searchModel:'granite-embedding-311m-multilingual-r2-onnx'}},
 ]);
 
 const connected=(set:ModelSet,value?:Preferences['models'])=>{
  const roles=[['textModel','text','text.generate'],['decisionModel','decision','decision.classify'],['transcriptionModel','transcription','audio.transcribe'],['ocrModel','ocr','image.ocr'],['visionModel','vision','image.describe']] as const;
  for(const [selection,role,capability] of roles){const id=set.models[selection];if(!id)continue;const adapter=localAdapters.some(item=>item.models.includes(id)&&item.capabilities.includes(capability));const custom=role==='text'?value?.customModels.some(model=>model.id===id&&model.role==='text'&&['webml-qwen35','wllama-lfm2','wllama-lfm3','wllama-qwen3'].includes(model.engine)):role==='decision'?value?.customDecisionModels.some(model=>model.id===id&&model.role==='decision'&&model.engine==='onnx-d1-text'):role==='transcription'?value?.customSpeechModels.some(model=>model.id===id&&model.role==='speech'&&model.engine==='transformers-whisper-onnx'):role==='vision'?value?.customVisionModels.some(model=>model.id===id&&model.role==='vision'&&model.engine==='transformers-lfm2-vl-onnx'):false;if(!adapter&&!custom)throw Error('Model set contains a model without a connected role adapter');}
- const searchId=set.models.searchModel;if(searchId&&searchId!==semanticEmbeddingManifest.id)throw Error('Model set contains a Search model without a connected adapter');
+ const searchId=set.models.searchModel;if(searchId&&!semanticEmbeddingManifests.some(item=>item.id===searchId))throw Error('Model set contains a Search model without a connected adapter');
 };
 for(const set of modelSets)connected(set);
 

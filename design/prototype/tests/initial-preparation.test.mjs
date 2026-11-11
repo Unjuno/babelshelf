@@ -26,7 +26,14 @@ test('Search is part of reviewed preparation, estimates only missing pinned file
  assert.deepEqual(calls,['search','commit']);
  await assert.rejects(runInitialPreparation(missing,async role=>calls.push(role),async()=>calls.push('unexpected commit'),()=>{},async()=>{throw Error('Stopped');}),/Stopped/);
  assert.deepEqual(calls,['search','commit']);
- assert.throws(()=>initialPreparationPlan({...prefs,searchModel:'unregistered-search'},{text:false,speech:false,ocr:false,search:false},'search'),/Search runtime not connected/);
+ assert.throws(()=>initialPreparationPlan({...prefs,searchModel:'unregistered-search'},{text:false,speech:false,ocr:false,search:false},'search'),/Search model is not supported/);
+});
+
+test('Search model preparation estimates the selected quality profile independently',async()=>{
+ const {semanticEmbeddingManifestFor,semanticEmbeddingAssetBytesFor}=await import('../src/semantic-embedding-manifest.ts');
+ const prefs=initial(),manifest=semanticEmbeddingManifestFor('granite-embedding-311m-multilingual-r2-onnx');prefs.searchModel=manifest.id;prefs.searchLibrary=[manifest.id];
+ const plan=initialPreparationPlan(prefs,{text:false,speech:false,ocr:false,search:false},'search');
+ assert.equal(plan.steps[0].label,manifest.name);assert.equal(plan.bytes,semanticEmbeddingAssetBytesFor(manifest));
 });
 
 test('pinned LFM3 Q8 preparation budgets only its verified weights and shared LFM3 runtime',async()=>{

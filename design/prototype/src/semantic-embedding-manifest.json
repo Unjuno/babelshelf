@@ -12,6 +12,7 @@
   "pooling": "cls",
   "normalize": true,
   "dimensions": 384,
+  "hiddenSize": 384,
   "contextTokens": 32768,
   "runtime": {
     "name": "Transformers.js / ONNX Runtime Web",

@@ -1,30 +1,29 @@
 import {useEffect,useRef,useState} from 'react';
 import {CaretRight} from '@phosphor-icons/react';
-import {semanticEmbeddingAssetBytes,semanticEmbeddingManifest} from './semantic-embedding-manifest.ts';
+import {semanticEmbeddingAssetBytesFor,semanticEmbeddingManifests,semanticEmbeddingManifest,semanticEmbeddingManifestFor} from './semantic-embedding-manifest.ts';
 import {closeSemanticSearchRuntime,getSemanticSearchRuntime} from './semantic-search-session.ts';
 
-const modelId=semanticEmbeddingManifest.id;
-
-export function SemanticSearchSettings({selected,downloads,disabled,onSelect}:{selected:boolean;downloads:boolean;disabled?:boolean;onSelect:(enabled:boolean)=>void}){
+export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{modelId:string;downloads:boolean;disabled?:boolean;onSelect:(modelId:string)=>void}){
+ const selected=!!modelId,manifest=semanticEmbeddingManifestFor(selected?modelId:semanticEmbeddingManifest.id),assetBytes=semanticEmbeddingAssetBytesFor(manifest);
  const [status,setStatus]=useState(selected?'Not checked':'Off'),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number}|null>(null),[testResult,setTestResult]=useState(''),[error,setError]=useState('');
  const operation=useRef<AbortController|null>(null);
  const blocked=!!disabled||busy;
  const canLoad=status==='Files prepared'||status==='Files verified';
- const select=(enabled:boolean)=>{if(!enabled){void closeSemanticSearchRuntime();setStatus('Off');setProgress('');}else setStatus('Checking local Search status');onSelect(enabled);};
+ const select=(next:string)=>{void closeSemanticSearchRuntime();setTestResult('');setIndexed(null);setProgress('');setStatus(next?'Checking local Search status':'Off');onSelect(next);};
  useEffect(()=>{
   if(!selected){setStatus('Off');return;}
   setStatus('Checking local Search status');
   let active=true;const controller=new AbortController();
-  void getSemanticSearchRuntime().then(async runtime=>{
+  void getSemanticSearchRuntime(modelId).then(async runtime=>{
    if(runtime.loaded){if(active)setStatus('Model loaded');return;}
    const state=await runtime.status(controller.signal);
    if(active)setStatus(state.filesPresent?'Files verified':'Files not prepared');
   }).catch(cause=>{if(active)setError(cause instanceof Error?cause.message:'Search status unavailable');});
   return()=>{active=false;controller.abort();};
- },[selected]);
+ },[selected,modelId]);
  const run=async(label:string,work:(runtime:Awaited<ReturnType<typeof getSemanticSearchRuntime>>,signal:AbortSignal)=>Promise<unknown>)=>{
   if(operation.current)return;const controller=new AbortController();operation.current=controller;setBusy(true);setError('');setProgress(label);
-  try{const runtime=await getSemanticSearchRuntime(),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();if(label==='Checking local Search files')setStatus(result&&typeof result==='object'&&'filesPresent'in result&&(result as {filesPresent:boolean}).filesPresent?'Files verified':'Files not prepared');else if(label==='Preparing Search runtime')setStatus('Runtime prepared');else if(label==='Preparing Search model')setStatus('Files prepared');else if(label==='Loading Search model')setStatus('Model loaded');else if(label==='Building Search index'&&result&&typeof result==='object')setIndexed({sources:Number((result as {sources:number}).sources)||0,chunks:Number((result as {chunks:number}).chunks)||0});else if(label==='Testing Search model'&&result&&typeof result==='object'){const receipt=result as {passed:boolean;matchRank:number};setTestResult(receipt.passed?`Local embedding check passed · matching passage ranked ${receipt.matchRank}${receipt.matchRank===1?'st':'nd'}`:'Local embedding check failed · matching passage ranked below the distractor');}else if(label==='Unloading Search model')setStatus('Model unloaded');setProgress('');}
+  try{const runtime=await getSemanticSearchRuntime(modelId),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();if(label==='Checking local Search files')setStatus(result&&typeof result==='object'&&'filesPresent'in result&&(result as {filesPresent:boolean}).filesPresent?'Files verified':'Files not prepared');else if(label==='Preparing Search runtime')setStatus('Runtime prepared');else if(label==='Preparing Search model')setStatus('Files prepared');else if(label==='Loading Search model')setStatus('Model loaded');else if(label==='Building Search index'&&result&&typeof result==='object')setIndexed({sources:Number((result as {sources:number}).sources)||0,chunks:Number((result as {chunks:number}).chunks)||0});else if(label==='Testing Search model'&&result&&typeof result==='object'){const receipt=result as {passed:boolean;matchRank:number};setTestResult(receipt.passed?`Local embedding check passed · matching passage ranked ${receipt.matchRank}${receipt.matchRank===1?'st':'nd'}`:'Local embedding check failed · matching passage ranked below the distractor');}else if(label==='Unloading Search model')setStatus('Model unloaded');setProgress('');}
   catch(cause){const message=cause instanceof Error?cause.message:'Search operation failed';setError(controller.signal.aborted?'Stopped':message);setProgress('');}
   finally{if(operation.current===controller)operation.current=null;setBusy(false);}
  };
@@ -32,11 +31,14 @@ export function SemanticSearchSettings({selected,downloads,disabled,onSelect}:{s
  const cancel=()=>operation.current?.abort();
  return <section className="model-settings" data-model-role="search" tabIndex={-1}>
   <div className="speech-heading"><h2>Search model</h2><CaretRight size={18} aria-hidden="true"/></div>
-  <div className="model-picker" aria-label="Search model"><span>{semanticEmbeddingManifest.name}</span></div>
-  <div className="source-revision">Multilingual local embeddings · {(semanticEmbeddingAssetBytes/1_000_000).toFixed(0)} MB · Apache-2.0</div>
-  <div className="model-preparation"><span>{status}</span><button className="quiet-button" disabled={blocked} onClick={()=>select(!selected)}>{selected?'Turn off':'Use for Search'}</button></div>
+  <select className="model-picker" aria-label="Search model" value={selected?modelId:''} disabled={blocked} onChange={event=>select(event.currentTarget.value)}>
+   <option value="">Off · keyword search</option>
+   {semanticEmbeddingManifests.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
+  </select>
+  <div className="source-revision">Local multilingual embeddings · {(assetBytes/1_000_000).toFixed(0)} MB · Apache-2.0{manifest.id.includes('311m')?' · higher quality, slower on some devices':''}</div>
+  <div className="model-preparation"><span>{status}</span>{selected&&<button className="quiet-button" disabled={blocked} onClick={()=>select('')}>Turn off</button>}</div>
   {selected&&<>
-   <div className="source-revision">When loaded and indexed, the agent can use semantic matches. Local word search remains available as fallback. No download or indexing starts automatically.</div>
+   <div className="source-revision">Prepare and load to use semantic matches. Word search remains available. Model change keeps the previous derived index; each model has a separate index.</div>
    <div className="action-row">
     <button className="quiet-button" disabled={blocked} onClick={()=>void run('Checking local Search files',async(runtime,signal)=>{await runtime.verifyRuntime(signal,events);const files=await runtime.status(signal);if(files.filesPresent)await runtime.verifyModel(signal,events);return files;})}>Check files</button>
     <button className="quiet-button" disabled={blocked} onClick={()=>void run(downloads?'Preparing Search runtime':'Checking local Search runtime',downloads?(runtime,signal)=>runtime.prepareRuntime(true,signal,events):(runtime,signal)=>runtime.verifyRuntime(signal,events))}>{downloads?'Prepare runtime':'Check runtime'}</button>

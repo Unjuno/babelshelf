@@ -9,7 +9,7 @@ import {settings} from '../src/app-settings.ts';
 import {semanticEmbeddingAssetBytes} from '../src/semantic-embedding-manifest.ts';
 
 test('model sets only reference adapters already connected to app-owned local runtimes',()=>{
- assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-image-audio-q8','lfm3-iq3m-media','local-full']);
+ assert.deepEqual(modelSets.map(set=>set.id),['lfm3-1.7b-qad-q4-0','lfm3-1.7b-iq3m','lfm3-1.7b-q8-0','bonsai-2b-text','bonsai-4b-text','bonsai-9b-text','text-image-audio-q8','lfm3-iq3m-media','local-full','local-full-search-311m']);
  for(const set of modelSets){
   assert.ok(set.models.textModel);
   assert.ok(['','d1-omni-600M'].includes(set.models.decisionModel));
@@ -47,6 +47,7 @@ test('task presets expose connected text choices without implying device verific
   'text-image-audio-q8':['lfm3-1.7b-q8-0','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-97m-multilingual-r2-onnx'],
   'lfm3-iq3m-media':['lfm3-1.7b-iq3m','','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-97m-multilingual-r2-onnx'],
   'local-full':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-97m-multilingual-r2-onnx'],
+  'local-full-search-311m':['lfm3-1.7b-qad-q4-0','d1-omni-600M','whisper-tiny','tesseract-7','lfm25-vl-450m-q4f16','granite-embedding-311m-multilingual-r2-onnx'],
  };
  for(const set of modelSets){
   const model=set.models;
