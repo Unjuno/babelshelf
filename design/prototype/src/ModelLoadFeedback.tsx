@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 
 type Props={percent?:number;stage?:string;contextTokens?:number;isLfm3?:boolean};
 
@@ -21,16 +21,17 @@ function stageLabel(stage=''){
 function contextLabel(tokens:number){return tokens>=1024?`${tokens/1024}K`:`${tokens}`;}
 
 export function ModelLoadFeedback({percent,stage,contextTokens,isLfm3=false}:Props){
- const [elapsedMs,setElapsedMs]=useState(0);
- useEffect(()=>{const started=Date.now(),tick=()=>setElapsedMs(Date.now()-started);tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[]);
- const elapsed=elapsedLabel(elapsedMs),takingLong=elapsedMs>=60_000,veryLong=elapsedMs>=300_000;
+ const startedAt=useRef(Date.now()),[now,setNow]=useState(startedAt.current),[stageUpdatedAt,setStageUpdatedAt]=useState(startedAt.current);
+ useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+ useEffect(()=>{setStageUpdatedAt(Date.now());},[stage]);
+ const elapsedMs=now-startedAt.current,stageIdleMs=now-stageUpdatedAt,elapsed=elapsedLabel(elapsedMs),takingLong=elapsedMs>=60_000,veryLong=stageIdleMs>=300_000;
  const label=stageLabel(stage);
  return <div className="model-load-feedback">
   <div className="model-load-feedback-heading">
-   <span>{percent===undefined?`${label} · progress not reported${veryLong?' · taking longer than expected':takingLong?' · still in progress':''}`:`${label} · ${percent}%`}</span>
+   <span>{percent===undefined?`${label} · percentage unavailable${veryLong?' · no new stage update for 5+ min':takingLong?' · still in progress':''}`:`${label} · ${percent}%`}</span>
    <time aria-label={`Elapsed ${elapsed}`} aria-live="off">{elapsed}</time>
   </div>
   <progress max={100} {...(percent===undefined?{}:{value:percent})} aria-label={percent===undefined?`${label}; runtime progress is unavailable`:`${label} ${percent}%`}/>
-  {percent===undefined&&<span className="model-load-guidance">The model file is already saved. The runtime is loading it into memory and does not report an exact percentage. You can move to another BabelShelf screen; this load continues and its status stays visible.{isLfm3&&contextTokens&&contextTokens>8192?` ${contextLabel(contextTokens)} context is selected. Larger windows need more memory and may load more slowly; RAG retrieves relevant notes so routine questions can use a smaller window.`:''}{veryLong?' No load progress has been reported for over 5 minutes. You can stop and retry if you choose; the model file and notes stay saved. If retrying with a large LFM3 context, select 8K or 16K in Models to check whether context initialization is the cause.':takingLong?' The load is still running.':''}</span>}
+  {percent===undefined&&<span className="model-load-guidance">The model file is saved. The runtime does not report a reliable overall percentage; the current step can still change as loading continues. You can move to another BabelShelf screen; this load continues and its status stays visible.{isLfm3&&contextTokens&&contextTokens>8192?` ${contextLabel(contextTokens)} context is selected. Larger windows need more memory and may load more slowly; RAG retrieves relevant notes so routine questions can use a smaller window.`:''}{veryLong?` No new visible step has appeared for ${elapsedLabel(stageIdleMs)}. The runtime may still be busy without reporting a step. Stop and retry only if you choose; the saved model file and notes stay in place. If retrying with a large LFM3 context, select 8K or 16K in Models to check whether context initialization is the cause.`:takingLong?' The load is still running.':''}</span>}
  </div>;
 }
