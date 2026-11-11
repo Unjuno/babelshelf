@@ -8583,3 +8583,18 @@ reports the same build and `/sw.js` returns HTTP 200. Sidebar refresh rendered
 the app. No model was downloaded or executed. LFM3 IQ3_M availability is
 catalog-level only; actual phone inference, fit and sustained performance
 remain unverified.
+
+2026-11-11 — PR #52 / Public Site v349. Default local text-model load timeout
+is now 10 minutes; the existing 5-minute no-progress watchdog remains. Timeout
+retires the inference worker but preserves prepared model files. Focused worker
+and device diagnostic tests passed 68/68; `npm run check`, production app build
+(build `6f888cdfd547b9f3`, 167 verified assets), and app acceptance (9/9) passed.
+GitHub PR and post-merge main quality workflows 42958990196 and 42960411229
+passed. Site v349 at https://babelshelf.com serves the same build. The existing
+sidebar Developer panel reported that active worker and bundle
+`index-BwvnQddk.js`; the public no-cache manifest agreed. Site package delivery
+checks passed WASM gzip/identity bytes, offline-shell transport, and cache
+policy. During sidebar verification the app remained Online because computer
+input timed out during restoration. No model generation, phone run, data clear,
+or model download was performed. This verifies the timeout behavior contract,
+release delivery, and PC PWA worker adoption only.

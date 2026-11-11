@@ -1340,3 +1340,32 @@ PWA applied worker build `04f76abf91fd65da`, showed the import action and
 corrected label, and was returned to Offline. Staged delivery verification
 passed WASM identity/gzip bytes and offline-shell transport. No model was
 imported, downloaded, loaded, or run; no physical iPhone validation was done.
+# Public Site v349 — bound the local model-load wait (2026-11-11 JST)
+
+Application source: `Unjuno/babelshelf` `main` at
+`bbdecf78f42e34b8cff97689dfd4bdba38c22190` (PR #52). App build
+`6f888cdfd547b9f3` contains 167 verified assets. The PR workflow
+[42958990196](https://github.com/Unjuno/babelshelf/actions/runs/42958990196)
+and post-merge main workflow
+[42960411229](https://github.com/Unjuno/babelshelf/actions/runs/42960411229)
+passed.
+
+Site source commit `3f3fb71bbf8cccda843a9a05af4cad55dba83ebe`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_dfb4999d91488191af35107a3055b9da`
+(v349); deployment `appgdep_6af421fc6348819190c9ab2143d279bf` succeeded. The
+public audience and `https://babelshelf.com/` were retained. The archive
+contained 207 files /110,499,840 bytes. Delivery checks verified compressed
+and identity ONNX WASM bytes, offline-shell transport and shell cache policy.
+
+The change reduces the default maximum text-model load wait from 30 to 10
+minutes while retaining the 5-minute no-progress watchdog. Timeout stops the
+worker and preserves prepared model assets. In the existing sidebar browser,
+Developer reported active worker build `6f888cdfd547b9f3` and bundle
+`index-BwvnQddk.js`; a no-cache public manifest request returned that build and
+167 assets. The Online/Offline control remained Online because browser input
+timed out during restoration; its final state was observed as Online. No model
+was loaded or run and no app storage was cleared. This establishes release
+delivery and current worker adoption on PC, not model-load completion, phone
+compatibility or model inference.
+
+# Public Site v348 — selectable local Search profiles (2026-11-11 JST)
