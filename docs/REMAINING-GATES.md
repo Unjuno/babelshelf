@@ -2,17 +2,39 @@
 
 ### Latest integration and deployment · 2026-11-11
 
-PR #44 (`a7fa2c0e`) merged as `53c832ca54f294ac6d71505683909c88492c399e`.
-The JSON planner can now call the explicitly enabled `web.search` tool when
-Online mode and the search endpoint are available; tool execution rechecks the
-network signal, and results stay attached to the active answer as citations.
-The exact PR candidate and merged main revision both passed the full
-local-quality workflow.
+PR #46 (`277d6490`) merged as `90d1a8eedc1fad1f386ce194d18093a48dfc2cc9`.
+When a user requests a new note from a Web-cited answer, the app now carries
+the host-validated citations into a review draft as a fenced, human-readable
+Web sources appendix. The exact page excerpt, URL, title and retrieval time
+are included; page text is escaped from Markdown structure. The existing
+reviewed-save path remains the only commit route. This preserves a readable
+source snapshot in the note, not a canonical live Web source record or a
+general semantic entailment guarantee.
 
-Public Site v345 serves app build `3abccd8a21db2a9e` (166 assets). The existing
-sidebar PWA adopted the matching worker and was returned to Offline mode.
-This confirms deployment/update behavior, not model inference or live search.
-No model assets were downloaded during this release.
+The exact PR candidate passed GitHub's full `Local PWA quality` workflow
+[42932297785](https://github.com/Unjuno/babelshelf/actions/runs/42932297785),
+and the post-merge main run
+[42933873619](https://github.com/Unjuno/babelshelf/actions/runs/42933873619)
+also passed.
+
+Public Site v346 serves app build `84c7d71818b7cfdb` (166 verified assets).
+The existing sidebar PWA applied that worker; Settings → Developer showed the
+same active worker build. Connection mode was restored to Offline. No model
+assets were downloaded or loaded. This verifies source delivery and worker
+adoption, not live Web search, model inference or phone compatibility.
+
+### Previous integration · 2026-11-11
+
+PR #44 (`a7fa2c0e`) merged as `53c832ca54f294ac6d71505683909c88492c399e`.
+The JSON planner can call the explicitly enabled `web.search` tool when Online
+mode and a search endpoint are available; tool execution rechecks the network
+signal, and results stay attached to the active answer as citations. The exact
+PR candidate and merged main revision passed the full local-quality workflow.
+
+Public Site v345 served app build `3abccd8a21db2a9e` (166 assets). The existing
+sidebar PWA adopted the matching worker and was returned to Offline mode. This
+confirmed deployment/update behavior, not model inference or live search. No
+model assets were downloaded during that release.
 
 ### Latest integration and model evidence · 2026-11-11
 
