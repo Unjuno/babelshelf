@@ -73,6 +73,20 @@ export function validateWebCitation(value:unknown,snapshots:readonly WebSnapshot
  return !!snapshot&&snapshot.provider===value.provider&&snapshot.url===value.url&&snapshot.title===value.title&&snapshot.retrievedAt===value.retrievedAt&&snapshot.text.slice(Number(value.start),Number(value.end))===value.quote;
 }
 
+function escapeMarkdownLabel(value:string){return value.replace(/[\\`*_{}\[\]()#+.!|>]/g,'\\$&').replace(/[\r\n]+/g,' ');}
+function textFence(value:string){let longest=0;for(const match of value.matchAll(/`+/g))longest=Math.max(longest,match[0].length);return '`'.repeat(Math.max(3,longest+1));}
+
+/** Freeze cited Web excerpts into a human-readable note draft, without treating page text as Markdown. */
+export function formatWebCitationAppendix(citations:readonly WebCitation[],snapshots:readonly WebSnapshot[]):string{
+ if(!Array.isArray(citations)||citations.length>64||citations.some(citation=>!validateWebCitation(citation,snapshots)))throw Error('Invalid Web citations for note');
+ if(!citations.length)return '';
+ const entries=citations.map((citation,index)=>{
+  const fence=textFence(citation.quote);
+  return `### ${index+1}. ${escapeMarkdownLabel(citation.title)}\n\nURL: <${citation.url}>\n\nRetrieved: ${citation.retrievedAt}\n\n${fence}text\n${citation.quote}\n${fence}`;
+ });
+ return `\n\n## Web sources\n\n${entries.join('\n\n')}`;
+}
+
 /** Resolve only host-offered labels; the model cannot mint URLs, text or offsets. */
 export function bindWebCitationLabels(labels:unknown,offered:readonly {label:string;citation:WebCitation}[],snapshots:readonly WebSnapshot[]):WebCitation[]{
  if(!Array.isArray(labels)||labels.some(label=>typeof label!=='string')||new Set(labels).size!==labels.length||

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createWebCitation,createWebSnapshot,validateWebCitation,bindWebCitationLabels,bindMixedEvidenceLabels} from '../src/web-evidence.ts';
+import {createWebCitation,createWebSnapshot,validateWebCitation,bindWebCitationLabels,bindMixedEvidenceLabels,formatWebCitationAppendix} from '../src/web-evidence.ts';
 import {bindMixedSourceLabelAnswer} from '../src/agent-evidence.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 
@@ -12,6 +12,15 @@ test('Web citation binds an exact range to a host-owned snapshot',()=>{
  assert.equal(citation.quote,'Alpha source text.');
  assert.equal(validateWebCitation(citation,[page]),true);
  assert.equal(validateWebCitation(citation,[createWebSnapshot({...page,id:'83d05445-6d8f-4ca1-a3f9-a83c38d05f6d'})]),false);
+});
+
+test('reviewed note appendix preserves the citation excerpt and keeps page text inert',()=>{
+ const page=createWebSnapshot({id:'a14e399e-4248-4fba-a899-6311126bd211',sessionId:'f64a73f8-854e-468e-97bd-41107ad11f96',provider:'RustXNG',url:'https://docs.example.test/guide',title:'Guide [read me]',retrievedAt:timestamp,text:'Quoted text with ```code``` and <script>.'});
+ const citation=createWebCitation(page,{start:0,end:page.text.length}),appendix=formatWebCitationAppendix([citation],[page]);
+ assert.match(appendix,/## Web sources/);assert.match(appendix,/URL: <https:\/\/docs\.example\.test\/guide>/);assert.match(appendix,/Retrieved: 2026-11-11T12:00:00\.000Z/);assert.match(appendix,/````text/);assert.match(appendix,/Quoted text with ```code``` and <script>\./);assert.ok(appendix.includes(String.raw`Guide \[read me\]`));
+ assert.equal(formatWebCitationAppendix([],[]),'');
+ assert.throws(()=>formatWebCitationAppendix([citation],[]),/Invalid Web citations/);
+ assert.throws(()=>formatWebCitationAppendix(Array.from({length:65},()=>citation),[page]),/Invalid Web citations/);
 });
 
 test('Web snapshots reject unsafe identities, URLs, timestamps and oversized page text',()=>{
