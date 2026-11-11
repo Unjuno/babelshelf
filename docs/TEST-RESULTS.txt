@@ -8571,3 +8571,15 @@ weights. Deployment and catalog availability do not establish IQ3_M execution
 or phone compatibility.
 
 2026-11-11 — PR #46 Web-citation reviewed save merged as `90d1a8eedc1fad1f386ce194d18093a48dfc2cc9`. The PR candidate's full GitHub `Local PWA quality` run [42932297785](https://github.com/Unjuno/babelshelf/actions/runs/42932297785) and post-merge main run [42933873619](https://github.com/Unjuno/babelshelf/actions/runs/42933873619) passed. Site v346 deployed app build `84c7d71818b7cfdb` /166 verified assets. In the existing sidebar PWA, Refresh applied that active worker build; Offline mode was restored afterward. No model assets were downloaded or loaded. Web-cited new-note drafts now freeze the validated title, URL, excerpt and retrieval timestamp into a Markdown-fenced appendix and retain the existing review-before-commit path. This is readable saved provenance, not a canonical Web-source record, live-search/model acceptance or physical-device result.
+
+2026-11-11 — PR #48 / Public Site v347. Removed the selectable D1 3B Decision
+model because no local adapter is registered. Schema-7 preference projection
+clears the unsupported saved selection in memory and leaves stored knowledge,
+dialogue, and preference bodies intact; the service worker accepts schema 7.
+Focused tests: 111/111. `npm run test:quality`, GitHub PR run 42942063032,
+and merged-main run 42943286139 passed. App build `4e5ad43db1fd6622` /166
+assets is live at https://babelshelf.com as Site v347; the public manifest
+reports the same build and `/sw.js` returns HTTP 200. Sidebar refresh rendered
+the app. No model was downloaded or executed. LFM3 IQ3_M availability is
+catalog-level only; actual phone inference, fit and sustained performance
+remain unverified.

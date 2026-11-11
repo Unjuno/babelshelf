@@ -1,3 +1,27 @@
+# Public Site v347 — remove unconnected Decision choice (2026-11-11 JST)
+
+Application source: `Unjuno/babelshelf` `main` at
+`32e3e52dd04c6d95e1ffdf23d86cdf1cf053d7f3` (PR #48). App build
+`4e5ad43db1fd6622` contains 166 verified assets. GitHub quality runs
+[42942063032](https://github.com/Unjuno/babelshelf/actions/runs/42942063032)
+and [42943286139](https://github.com/Unjuno/babelshelf/actions/runs/42943286139)
+passed. Focused model/settings checks passed 111/111; the full local quality
+workflow passed before merge.
+
+Site source commit `1c406adf20ee37390feceb0a1e9ff20ad7b84171`; saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f0de937ca60481919c389a92f1b4c311`
+(v347); deployment `appgdep_6af3d0caf0c0819180924945bb40ad3f` succeeded at
+`https://babelshelf.com`. Archive hash `sha256:4606876460b775840418438f2076edea88a7c86129f53cd86e376388734e0bd5`
+(111,011,840 bytes /205 files). The existing sidebar tab was refreshed and
+rendered the app; the public manifest returned the matching build hash and
+166 assets. No model weights or user data are in the package. This verifies
+shell delivery, not phone inference or model fit.
+
+The unsupported D1 3B decision option was removed, schema-7 preferences now
+clear that invalid selection in memory, and the service-worker policy accepts
+schema 7. LFM3 IQ3_M remains available as a catalog choice but was not run in
+this release. Site audience remains public.
+
 # Public Site v345 — deploy merged JSON planner web search (2026-11-11 JST)
 
 Application source: `Unjuno/babelshelf` `main` at
