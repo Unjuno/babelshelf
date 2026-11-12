@@ -2,10 +2,10 @@
 
 ### Third-audit candidate · 2026-11-13
 
-Candidate build f25a7d4357776237 addresses live generation progress, bounded
+Candidate build 3ea813a61b69552a addresses live generation progress, bounded
 inactivity recovery, one-call native chat replies, Back to chat, inline schedule
 validation, device checks, draft-safe updating, Trash purge and narrow headers.
-Local root277/prototype2020, UI32/editorial37 and built-assets9 checks passed.
+Local root277/prototype2020, UI32/editorial37/device35 and built-assets9 checks passed.
 Real LFM3 returned Hello! offline on both Intel WebGPU and CPU/WASM. The GPU
 greeting took6.9s; general GPU chat120.4s; CPU greeting123.2s, mostly prefill.
 These are PC observations, not phone or sustained performance acceptance.

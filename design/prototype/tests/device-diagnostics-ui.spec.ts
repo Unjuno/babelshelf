@@ -24,8 +24,14 @@ for(const action of ['type','offline'] as const)test(`working during app update:
  else await expect(page.getByRole('button',{name:'Offline · Tap to switch Online'})).toBeVisible();
  const update=page.getByRole('button',{name:'Update app'});
  await expect(update).toHaveText('Update');
- if(action==='type')await expect(update).toHaveAttribute('data-blocked','true');
- else await expect(update).toBeDisabled();
+ if(action==='type'){
+  await expect(update).not.toHaveAttribute('data-blocked','true');
+  await page.evaluate(()=>{(window as any).__releaseUpdate=undefined;});await update.click();
+  await page.waitForFunction(()=>typeof (window as any).__releaseUpdate==='function');
+  const reloaded=page.waitForEvent('framenavigated',{predicate:frame=>frame===page.mainFrame()});
+  await page.evaluate(()=>(window as any).__releaseUpdate());await reloaded;
+  await expect(message).toHaveValue('Keep the new draft written during update');
+ }else await expect(update).toBeDisabled();
 });
 
 async function openSettingsItem(page:Page,name:string){
@@ -298,13 +304,13 @@ test('chat exposes an explicit app refresh beside the online/offline control',as
  await expect(refresh).toHaveAttribute('title','Check for and apply app updates');
  const message=page.getByRole('textbox',{name:'Message'});
  await message.fill('Keep this unsent note');
- await expect(refresh).toBeEnabled();await expect(refresh).toHaveAttribute('title','Finish or save current work before updating');
- await refresh.click();await expect(page.getByRole('status').filter({hasText:'Send or clear the draft before updating'})).toBeVisible();await expect(message).toHaveValue('Keep this unsent note');
- await message.fill('');
- await expect(refresh).toBeEnabled();
+ await expect(refresh).toBeEnabled();await expect(refresh).not.toHaveAttribute('data-blocked','true');
+ expect(await page.evaluate(()=>sessionStorage.getItem('babelshelf.composer-draft.v1'))).toBe('Keep this unsent note');
+ await page.reload();await expect(message).toHaveValue('Keep this unsent note');
 });
 
 test('app refresh is available online and blocked while a draft could be lost',async({page})=>{
+ await page.addInitScript(()=>{const write=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(this===sessionStorage&&key==='babelshelf.composer-draft.v1')throw new DOMException('Draft storage unavailable','QuotaExceededError');return write.call(this,key,value);};});
  await openApp(page);
  await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
  await page.getByRole('button',{name:'Input',exact:true}).click();

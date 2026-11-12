@@ -498,6 +498,7 @@ export default function Prototype() {
   if(appRefreshLock.current||appRefreshBlocked())return toast(draftError&&draft.length?'Save or copy the draft before updating':attachments.length?'Remove attachments before updating':'Finish or save current work before updating');
   if(!downloads)return toast('Select Online to refresh app');
   appRefreshLock.current=true;
+  const draftAtStart=composerSnapshot.current.text;
   setAppRefreshing(true);
   try{
    const registration=await navigator.serviceWorker.getRegistration();
@@ -512,7 +513,7 @@ export default function Prototype() {
    const outcome=await refreshAppVersion(registration,navigator.serviceWorker);
    // Read current render state: the user may type, start work or select Offline
    // while the browser verifies assets. Never reload using the click's snapshot.
-   if(appRefreshState.current.blocked||!appRefreshState.current.online)return toast('Update checked · save current work, then update again');
+   if(appRefreshState.current.blocked||!appRefreshState.current.online||composerSnapshot.current.text!==draftAtStart)return toast('Update checked · save current work, then update again');
    toast(outcome==='Updated'?'Update applied · reopening':'App refreshed');
    window.location.reload();
   }catch(error){toast((error as Error).message||'Could not refresh app');}
