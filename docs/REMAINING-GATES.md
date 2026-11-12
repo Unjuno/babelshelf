@@ -1,4 +1,32 @@
-## Current status · 2026-11-12
+## Current status · 2026-11-13
+
+### Real-model verification · 2026-11-13 (release in progress)
+
+The public v352 app has now completed a real LFM3 1.7B QAD Q4_0 chat in a
+dedicated persistent Windows Chrome 157 profile with browser networking
+disabled and the app set Offline. The Decision role was unconfigured. The
+pinned 1,049,615,680-byte model loaded all 25 layers on Intel WebGPU; the
+ordinary sky-color question completed with two model calls and 167.0 seconds
+of recorded generation. This establishes PC inference, not acceptable speed
+on every device or physical iOS/Android acceptance.
+
+The follow-up exposed a software error: semantic rewriting of the current
+answer went through a literal replacement classifier and could replace the
+answer with the user's instruction. The fix preserves the exact dialogue
+source and sends semantic rewrites directly to generation. The same Japanese
+request returned a Japanese sentence with one model call /5.5 seconds on the
+local candidate. Stop retained the prompt; Edit & resend completed another
+actual reply without downloading weights. Missing-model guidance retained the
+draft and offered Settings.
+
+Also fixed: distinguish model download progress from verification, retain a
+safe capacity explanation when a quota error prevents recording Activity,
+and briefly await the existing app worker during an explicit preparation
+started immediately after first launch. No implicit registration, acquisition
+retry, model substitution or data reset was added. Local checks passed 275
+root tests, 1,994 prototype tests, nine built-asset checks and the protected
+runtime check. Full candidate CI, main integration and public update follow.
+See the dated real-model entry in `docs/TEST-RESULTS.txt` for scope and limits.
 
 ### Latest integration and deployment · 2026-11-12
 
@@ -32,8 +60,9 @@ predecessor's pinned assets and shell transport for existing clients.
 The reported entrance regression is fixed and released. Prior schedule
 validation/deletion/paused guidance and secondary header controls passed
 built-app/CI checks. Model routing, deadlines and resident-model reuse have
-code-level regression evidence; actual model inference, phone performance
-and physical iOS/Android acceptance remain unverified by this release.
+code-level regression evidence. The later real-model check above verifies PC
+inference on this public build; phone performance and physical iOS/Android
+acceptance remain unverified.
 
 ### Previous integration and deployment · 2026-11-12
 

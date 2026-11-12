@@ -1,5 +1,6 @@
 import type {TextBackend} from './text-engine-router.ts';
-type Store={status:(signal:AbortSignal)=>Promise<any>;verify:(signal:AbortSignal)=>Promise<void>;prepare:(allowNetwork:boolean,signal:AbortSignal,progress:(done:number,total:number)=>void,files:File[])=>Promise<unknown>};
+import type {PinnedAssetProgress} from './pinned-text-assets.ts';
+type Store={status:(signal:AbortSignal)=>Promise<any>;verify:(signal:AbortSignal)=>Promise<void>;prepare:(allowNetwork:boolean,signal:AbortSignal,progress:PinnedAssetProgress,files:File[])=>Promise<unknown>};
 export async function collectPreparedTextStatuses(stores:Iterable<[string,Pick<Store,'status'>]>,signal:AbortSignal){const result:Record<string,any>={};for(const [id,store]of stores){try{result[id]={...await store.status(signal),presenceOnly:true};}catch{signal.throwIfAborted();result[id]={filesPresent:false,presenceOnly:true,statusError:true};}signal.throwIfAborted();}return result;}
 // Asset authority belongs to this app-owned controller, never the inference worker.
 export function createPreparedTextBackend({manifest,stores,createClient}:{manifest:any;stores:ReadonlyMap<string,Store>;createClient:()=>TextBackend}):TextBackend{
@@ -16,7 +17,7 @@ export function createPreparedTextBackend({manifest,stores,createClient}:{manife
   call(cmd,args={},events){return operation(async(signal,check)=>{
    if(cmd==='status')return status(signal);
    if(cmd==='verify'){await storeFor(args.model).verify(signal);return true;}
-   if(cmd==='prepare'){const store=storeFor(args.model);if(client?.loaded)throw Error('Unload model first');try{const result=await store.prepare(args.allowNetwork===true,signal,(done,total)=>{check();events?.('progress','Verifying '+Math.round(done/total*100)+'%');},args.localFiles??[]);check();return result&&typeof result==='object'?result:{downloadedBytes:0,downloadedAssets:0,assetCount:1};}finally{const old=client;if(old)await disposeFailedClient(old);}}
+   if(cmd==='prepare'){const store=storeFor(args.model);if(client?.loaded)throw Error('Unload model first');try{const result=await store.prepare(args.allowNetwork===true,signal,(done,total,phase)=>{check();events?.('progress',phase==='downloading'?'Downloading · '+Math.round(done/total*100)+'% · '+(done/1e6).toFixed(1)+' / '+(total/1e6).toFixed(1)+' MB':'Verifying '+Math.round(done/total*100)+'%');},args.localFiles??[]);check();return result&&typeof result==='object'?result:{downloadedBytes:0,downloadedAssets:0,assetCount:1};}finally{const old=client;if(old)await disposeFailedClient(old);}}
    if(!['count','generate'].includes(cmd))throw Error('Unknown text operation');
    if(!client?.loaded)throw Error('Model not loaded');return client.call(cmd,args,events);
   });},

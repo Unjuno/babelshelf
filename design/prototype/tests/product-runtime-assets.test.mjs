@@ -119,6 +119,90 @@ test('load-time runtime verification can use the active app service worker witho
  finally{Object.defineProperty(globalThis,'navigator',{configurable:true,value:original});}
 });
 
+function pendingController(t){
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator'),events=new EventTarget(),listeners=new Set();
+ const container={controller:null,subscribed:0,
+  addEventListener(type,listener){assert.equal(type,'controllerchange');this.subscribed++;listeners.add(listener);events.addEventListener(type,listener);},
+  removeEventListener(type,listener){listeners.delete(listener);events.removeEventListener(type,listener);},
+  register(){assert.fail('runtime requests must not register a worker');},
+  get ready(){assert.fail('controller waiting must be bounded, not serviceWorker.ready');},
+ };
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{serviceWorker:container}});
+ t.after(()=>{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;});
+ return {container,listeners,arrive(worker){container.controller=worker;events.dispatchEvent(new Event('controllerchange'));}};
+}
+function preparedWorker(channel){return fakeWorker(channel,(message,_transfer,state)=>{if(message.type==='prepare-product-assets')queueMicrotask(()=>state.channel.port1.onmessage({data:{status:'prepared',role:'pdf',assets:1,bytes:40}}));});}
+
+test('explicit runtime preparation waits for the initial controller, then sends one acquisition request',async t=>{
+ const f=pendingController(t),channel=fakeChannel(),worker=preparedWorker(channel);let channels=0;
+ const pending=prepareProductRuntimeAssets('pdf',{operationId:'initial-worker-01',controllerTimeoutMs:100,makeChannel:()=>{channels++;return channel.channel;}});
+ assert.equal(channels,0);assert.equal(f.listeners.size,1);assert.deepEqual(worker.messages,[]);
+ f.arrive(worker);assert.equal((await pending).bytes,40);
+ assert.equal(channels,1);assert.equal(worker.messages.length,1);assert.equal(worker.messages[0].acquire,true);assert.equal(f.listeners.size,0);
+});
+
+test('a controller arriving during listener installation is observed without another event',async t=>{
+ const f=pendingController(t),channel=fakeChannel(),worker=preparedWorker(channel),subscribe=f.container.addEventListener.bind(f.container);
+ f.container.addEventListener=(...args)=>{subscribe(...args);f.container.controller=worker;};
+ assert.equal((await prepareProductRuntimeAssets('pdf',{controllerTimeoutMs:100,makeChannel:()=>channel.channel})).bytes,40);
+ assert.equal(worker.messages.length,1);assert.equal(f.listeners.size,0);
+});
+
+test('stopping initial controller waiting cleans listeners and never starts or retries asset work',async t=>{
+ const f=pendingController(t),controller=new AbortController(),worker=preparedWorker(fakeChannel());let channels=0;
+ const pending=prepareProductRuntimeAssets('pdf',{signal:controller.signal,controllerTimeoutMs:100,makeChannel:()=>{channels++;return fakeChannel().channel;}});
+ assert.equal(f.listeners.size,1);controller.abort();
+ await assert.rejects(pending,error=>error.code==='stopped'&&error.message==='Stopped');
+ assert.equal(f.listeners.size,0);f.arrive(worker);assert.equal(channels,0);assert.deepEqual(worker.messages,[]);
+});
+
+test('initial controller waiting has a safe bounded timeout and detaches its abort listener',async t=>{
+ const f=pendingController(t),controller=new AbortController(),signal=controller.signal,add=signal.addEventListener.bind(signal),remove=signal.removeEventListener.bind(signal),abortListeners=new Set();let channels=0;
+ signal.addEventListener=(type,listener,options)=>{if(type==='abort')abortListeners.add(listener);add(type,listener,options);};
+ signal.removeEventListener=(type,listener,options)=>{if(type==='abort')abortListeners.delete(listener);remove(type,listener,options);};
+ const pending=prepareProductRuntimeAssets('pdf',{signal,controllerTimeoutMs:10,makeChannel:()=>{channels++;return fakeChannel().channel;}});
+ await assert.rejects(pending,error=>error.code==='runtime-timeout'&&error.message==='App worker start timed out · retry preparation');
+ assert.equal(f.listeners.size,0);assert.equal(abortListeners.size,0);assert.equal(channels,0);
+});
+
+test('verification and explicit worker overrides do not wait for a controller',async t=>{
+ const f=pendingController(t),channel=fakeChannel(),worker=preparedWorker(channel);
+ await assert.rejects(verifyProductRuntimeAssets('pdf'),error=>error.code==='runtime-unavailable');
+ f.container.controller=worker;
+ for(const selected of [null,undefined])await assert.rejects(prepareProductRuntimeAssets('pdf',{worker:selected}),error=>error.code==='runtime-unavailable');
+ Object.defineProperty(globalThis.navigator,'serviceWorker',{configurable:true,get(){assert.fail('an explicit worker must not inspect browser registration state');}});
+ assert.equal((await prepareProductRuntimeAssets('pdf',{worker,makeChannel:()=>channel.channel})).bytes,40);
+ assert.equal(f.container.subscribed,0);assert.equal(worker.messages.length,1);
+});
+
+test('an already controlling worker needs no controller listener or additional asset request',async t=>{
+ const f=pendingController(t),channel=fakeChannel(),worker=preparedWorker(channel);f.container.controller=worker;
+ assert.equal((await prepareProductRuntimeAssets('pdf',{makeChannel:()=>channel.channel})).bytes,40);
+ assert.equal(f.container.subscribed,0);assert.equal(worker.messages.length,1);
+});
+
+test('Stop immediately after controller arrival prevents the acquisition request',async t=>{
+ const f=pendingController(t),controller=new AbortController(),worker=preparedWorker(fakeChannel());let channels=0;
+ const pending=prepareProductRuntimeAssets('pdf',{signal:controller.signal,controllerTimeoutMs:100,makeChannel:()=>{channels++;return fakeChannel().channel;}});
+ f.arrive(worker);controller.abort();await assert.rejects(pending,error=>error.code==='stopped');
+ assert.equal(f.listeners.size,0);assert.equal(channels,0);assert.deepEqual(worker.messages,[]);
+});
+
+test('a controller arriving after the waiting wall-clock deadline cannot start asset work',async t=>{
+ const f=pendingController(t),worker=preparedWorker(fakeChannel()),now=Date.now;let current=now(),channels=0;Date.now=()=>current;
+ try{
+  const pending=prepareProductRuntimeAssets('pdf',{controllerTimeoutMs:100,makeChannel:()=>{channels++;return fakeChannel().channel;}});
+  const rejection=assert.rejects(pending,error=>error.code==='runtime-timeout');current+=101;f.arrive(worker);await rejection;
+  assert.equal(f.listeners.size,0);assert.equal(channels,0);assert.deepEqual(worker.messages,[]);
+ }finally{Date.now=now;}
+});
+
+test('controller waiting cannot be configured to remain unbounded',async t=>{
+ const f=pendingController(t);
+ for(const controllerTimeoutMs of [0,-1,NaN,Infinity,10001])await assert.rejects(prepareProductRuntimeAssets('pdf',{controllerTimeoutMs}),error=>error.code==='runtime-setup-error');
+ assert.equal(f.container.subscribed,0);
+});
+
 import {runtimeRoleForModelEngine,runtimeRoleForPreparation} from '../src/product-runtime-assets.ts';
 
 test('maps only known browser runtime engines to their pinned bundles',()=>{

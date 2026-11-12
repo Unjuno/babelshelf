@@ -29,7 +29,9 @@ test('pinned assets never acquire missing data during read or offline preparatio
  const f=fixture(),signal=new AbortController().signal;await assert.rejects(f.store.read('onnx/model_quantized.onnx',signal),/missing/);await assert.rejects(f.store.prepare(false,signal),/Downloads/);assert.equal(f.fetches,0);assert.equal(f.writers,0);
 });
 test('pinned preparation counts network transfer bytes and reports local reuse as zero',async()=>{
- const f=fixture(),signal=new AbortController().signal;const first=await f.store.prepare(true,signal);assert.deepEqual(first,{downloadedBytes:3,downloadedAssets:1,assetCount:1});const second=await f.store.prepare(true,signal);assert.deepEqual(second,{downloadedBytes:0,downloadedAssets:0,assetCount:1});assert.equal(f.fetches,1);
+ const f=fixture(),signal=new AbortController().signal,phases=[];const progress=(_done,_total,phase)=>phases.push(phase);
+ const first=await f.store.prepare(true,signal,progress);assert.deepEqual(first,{downloadedBytes:3,downloadedAssets:1,assetCount:1});assert.deepEqual(new Set(phases),new Set(['downloading']));phases.length=0;
+ const second=await f.store.prepare(true,signal,progress);assert.deepEqual(second,{downloadedBytes:0,downloadedAssets:0,assetCount:1});assert.equal(f.fetches,1);assert.deepEqual(new Set(phases),new Set(['verifying']));
 });
 test('large pinned ONNX resumes after an interrupted request from its last committed range',async()=>{
  const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+37);for(let i=0;i<all.length;i++)all[i]=i%251;
@@ -43,7 +45,8 @@ test('large pinned ONNX resumes after an interrupted request from its last commi
  };
  const store=createPinnedAssetStore(manifest,{directory:async()=>directory,fetch}),signal=new AbortController().signal;
  await assert.rejects(store.prepare(true,signal),/connection reset/);assert.equal(files.get(digest).size,rangeBytes,'only the complete first range is durable');
- const resumed=await store.prepare(true,signal);assert.equal(resumed.downloadedBytes,37);assert.deepEqual(ranges,[`bytes=0-${rangeBytes-1}`,`bytes=${rangeBytes}-${all.length-1}`,`bytes=${rangeBytes}-${all.length-1}`]);
+ const phases=[],resumed=await store.prepare(true,signal,(done,total,phase)=>phases.push({done,total,phase}));assert.equal(resumed.downloadedBytes,37);assert.deepEqual(ranges,[`bytes=0-${rangeBytes-1}`,`bytes=${rangeBytes}-${all.length-1}`,`bytes=${rangeBytes}-${all.length-1}`]);
+ assert.deepEqual(phases[0],{done:rangeBytes,total:all.length,phase:'downloading'});assert.equal(phases.at(-1).phase,'verifying');assert.equal(phases.at(-1).done,all.length);
  assert.equal((await store.status(signal)).filesPresent,true);assert.deepEqual(new Uint8Array(await(await store.read('onnx/model_quantized.onnx',signal)).arrayBuffer()),all);
 });
 test('explicit local import is verified, restart status is declarative and reads rehash retained bytes',async()=>{

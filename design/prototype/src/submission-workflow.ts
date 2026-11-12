@@ -13,7 +13,7 @@ import {executeReviewedSourcedCalculation,proposeSourcedCalculation} from './sou
 import type {CalculationReview} from './SourcedCalculationSheet';
 import {planningContextForInputs,groundingQuery,constrainAudioOnlyInputs,audioOnlySuffix} from './current-input-scope.ts';
 import {workingFileNote,workingFileMetadata} from './working-file.ts';
-import {resolveSubmittedTurnIntent,resolveTurnRoute,scopeResolvedTurnRequest,searchScopeFailure,unspecifiedSavedSearch,clarifiedSavedSearch,cancelClarifiedSavedSearch} from './turn-router.ts';
+import {resolveSubmittedTurnIntent,resolveTurnRoute,scopeResolvedTurnRequest,searchScopeFailure,unspecifiedSavedSearch,clarifiedSavedSearch,cancelClarifiedSavedSearch,explicitCurrentAnswerProseRewrite} from './turn-router.ts';
 import {routeWithDecision} from './decision-routing.ts';
 import {readInputOriginal} from './automatic-reading.ts';
 import {createAutomaticReadingAdapters} from './automatic-reading-adapters.ts';
@@ -282,7 +282,8 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     if(request.action==='capture'){request.historyIndex=original.turnIndex;request.historyPart=original.speaker as 'user'|'assistant';captureSource=makeDialogueCopyReview(prior,selection);}
     inputReadings=[];context={summary:'',recent:[],refs:[],turnCount:prior.turns.length,selectedOriginal:{speaker:original.speaker==='assistant'?'assistant':'user',text:original.quote}};
     await finishTurn(id,{readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},status:'Reading earlier message'});
-    if(request.action==='recall'||request.action==='transform'){const inspection:InferenceMeasurements={measuredModelCalls:0};const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(observeInference(inference,inspection),text,original,checkSend),value=>({...value,inference:{...inspection}}),value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined,()=>({inference:{...inspection}}));checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:result.toolCalls?.some(call=>call.name==='text.replace')?[]:original.refs});return result.status?{kind:'failed',reason:'text-operation'}:{kind:'answered'};}request.action='recall';}
+    const proseRewrite=selection.target==='current'&&original.speaker==='assistant'&&explicitCurrentAnswerProseRewrite(text);
+    if(!proseRewrite&&(request.action==='recall'||request.action==='transform')){const inspection:InferenceMeasurements={measuredModelCalls:0};const inspected=await trace('text.inspect',{model,question:text,target:{turnId:original.turnId,index:original.turnIndex,speaker:original.speaker},text:original.quote},()=>inspectDialogueText(observeInference(inference,inspection),text,original,checkSend),value=>({...value,inference:{...inspection}}),value=>value.operation==='transform'&&value.result.status?Error(value.result.status):undefined,()=>({inference:{...inspection}}));checkSend();if(inspected.operation==='transform'){const result=inspected.result;await finishTurn(id,{...result,status:result.status,refs:result.toolCalls?.some(call=>call.name==='text.replace')?[]:original.refs});return result.status?{kind:'failed',reason:'text-operation'}:{kind:'answered'};}request.action='recall';}
     if(request.action==='capture')request.body=original.quote;else request.action='chat';
    }
    // A native reply may cite an exact search range even after a longer read.

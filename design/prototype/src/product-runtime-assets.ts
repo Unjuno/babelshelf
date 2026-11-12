@@ -47,12 +47,41 @@ export function productRuntimeAssetInput(role:ProductRuntimeRole,allowNetwork:bo
  return {source:{name:runtimeLabels[role]},role:'runtime',feature:role,runtime:{name:'BabelShelf app assets',revision:'build-pinned'},allowNetwork,method:allowNetwork?'explicit-preparation':'local-only'} as const;
 }
 
-type RuntimeRequestOptions={worker?:RuntimeWorker|null;signal?:AbortSignal;operationId?:string;onProgress?:(progress:ProductRuntimeProgress)=>void;makeChannel?:()=>MessageChannel;timeoutMs?:number;maxDurationMs?:number};
+type RuntimeRequestOptions={worker?:RuntimeWorker|null;signal?:AbortSignal;operationId?:string;onProgress?:(progress:ProductRuntimeProgress)=>void;makeChannel?:()=>MessageChannel;timeoutMs?:number;maxDurationMs?:number;controllerTimeoutMs?:number};
+const codedError=(message:string,code:ProductRuntimeFailureCode)=>Object.assign(Error(message),{code});
+/** An explicit preparation may precede the initial app worker taking control.
+ * Observe that existing lifecycle only; never register, update or retry assets.
+ */
+function waitForRuntimeController(container:ServiceWorkerContainer,signal:AbortSignal|undefined,timeoutMs:number){
+ return new Promise<ServiceWorker>((resolve,reject)=>{
+  let settled=false;const deadline=Date.now()+timeoutMs;
+  const finish=(error?:Error,worker?:ServiceWorker)=>{
+   if(settled)return;settled=true;clearTimeout(timer);container.removeEventListener('controllerchange',check);signal?.removeEventListener('abort',abort);
+   if(error)reject(error);else resolve(worker!);
+  };
+  const abort=()=>finish(codedError('Stopped','stopped'));
+  const check=()=>{
+   if(settled)return;if(signal?.aborted)return abort();
+   if(Date.now()>=deadline)return finish(codedError('App worker start timed out · retry preparation','runtime-timeout'));
+   const worker=container.controller;if(worker)finish(undefined,worker);
+  };
+  const timer=setTimeout(()=>finish(codedError('App worker start timed out · retry preparation','runtime-timeout')),timeoutMs);
+  container.addEventListener('controllerchange',check);
+  if(!settled)signal?.addEventListener('abort',abort,{once:true});
+  // Covers control/Stop arriving between the caller's read and subscription.
+  check();
+ });
+}
 /** Prepare or inspect only the selected, build-pinned runtime. */
-function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:RuntimeRequestOptions){
+async function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,options:RuntimeRequestOptions){
  if(!Object.hasOwn(runtimeLabels,role))return Promise.reject(Error('Unknown app runtime role'));
- const worker=options.worker===undefined?(typeof navigator!=='undefined'?navigator.serviceWorker?.controller:null):options.worker;
- const codedError=(message:string,code:ProductRuntimeFailureCode)=>Object.assign(Error(message),{code});
+ const explicitWorker=Object.hasOwn(options,'worker'),container=!explicitWorker&&typeof navigator!=='undefined'?navigator.serviceWorker:undefined;
+ let worker=explicitWorker?options.worker:container?.controller;
+ if(!worker&&acquire&&!explicitWorker&&container){
+  const timeoutMs=options.controllerTimeoutMs??10000;
+  if(!Number.isFinite(timeoutMs)||timeoutMs<1||timeoutMs>10000)return Promise.reject(codedError('Invalid app worker start timeout','runtime-setup-error'));
+  worker=await waitForRuntimeController(container,options.signal,timeoutMs);
+ }
  if(!worker)return Promise.reject(codedError('App runtime unavailable · reopen the installed app','runtime-unavailable'));
  if(options.signal?.aborted)return Promise.reject(codedError('Stopped','stopped'));
  const operationId=options.operationId??globalThis.crypto?.randomUUID?.()??`asset-${Date.now()}-${Math.random().toString(36).slice(2)}`;
