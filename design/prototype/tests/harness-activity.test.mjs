@@ -193,6 +193,32 @@ test('receipt persistence failures are typed and never rerun completed work',asy
  assert.equal(calls,1);assert.equal(failure?.code,'persistence_failure');
 });
 
+test('genuine browser quota failures retain a fixed storage explanation through receipt persistence failures',async()=>{
+ const message='Not enough browser storage · free space and try again';
+ for(const phase of ['start','failed-work','completed-work','projection']){
+  let calls=0,writes=0;
+  await assert.rejects(recordOperation('model.prepare',{model:'local'},async()=>{
+   calls++;if(phase==='failed-work')throw new DOMException('PRIVATE_WORK_QUOTA_DETAILS','QuotaExceededError');return {completed:true};
+  },async()=>{writes++;if(phase==='start'||writes===2)throw new DOMException('PRIVATE_RECEIPT_QUOTA_DETAILS','QuotaExceededError');},result=>{
+   if(phase==='projection')throw Error('PRIVATE_PROJECTION_DETAILS');return result;
+  }),error=>{
+   assert.equal(error.code,'persistence_failure');assert.equal(error.message,message);
+   assert.doesNotMatch(JSON.stringify(error),/PRIVATE_/);return true;
+  });
+  assert.equal(calls,phase==='start'?0:1);assert.equal(writes,phase==='start'?1:2);
+ }
+});
+
+test('quota-like text and an Error with a spoofed quota name remain generic persistence failures',async()=>{
+ for(const failure of [Error('QuotaExceededError · PRIVATE_DETAILS'),Object.assign(Error('PRIVATE_DETAILS'),{name:'QuotaExceededError'})]){
+  let calls=0,writes=0;
+  await assert.rejects(recordOperation('model.prepare',{},async()=>{calls++;return {};},async()=>{if(++writes===2)throw failure;}),error=>{
+   assert.equal(error.code,'persistence_failure');assert.equal(error.message,'Activity record unavailable');assert.doesNotMatch(JSON.stringify(error),/PRIVATE_DETAILS/);return true;
+  });
+  assert.equal(calls,1);assert.equal(writes,2);
+ }
+});
+
 test('custom tool receipt projection strips private content without changing the immediate result',async()=>{
  const {projectAgentActivityResult}=await import('../src/agent-evidence.ts'),body='PRIVATE_NOTE_SENTINEL',result={excerpt:body,path:'Notes/private.md'},entries=[];
  const returned=await recordOperation('user.lookup',{query:'private'},async()=>result,async entry=>entries.push(structuredClone(entry)),value=>projectAgentActivityResult('user.lookup',value));

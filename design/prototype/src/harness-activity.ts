@@ -68,9 +68,13 @@ export function startActivity(tool:ActivityTool,input:unknown):Activity{const a:
 function failure(error:unknown){const message=(error instanceof Error?error.message:String(error)).slice(0,2000)||'Operation failed';const reported=(error as {code?:unknown}|null)?.code;const code=message==='Stopped'?'stopped':typeof reported==='string'&&codes.includes(reported)?reported:/Source changed|Version conflict|Conversation changed/i.test(message)?'source_changed':/context limit/i.test(message)?'context_limit':/not prepared|not loaded|not configured/i.test(message)?'not_prepared':/JSON|citation|Invalid (?:model|answer|text operation|schedule proposal|schedule clarification)/i.test(message)?'invalid_model_output':/not found|unavailable/i.test(message)?'not_found':'operation_failed';return {code,message};}
 export class ActivityPersistenceError extends Error {
  readonly code='persistence_failure';
- constructor(){super('Activity record unavailable');this.name='ActivityPersistenceError';}
+ constructor(error?:unknown){
+  const quotaMessage='Not enough browser storage · free space and try again';
+  const quota=error instanceof DOMException&&error.name==='QuotaExceededError'||error instanceof ActivityPersistenceError&&error.message===quotaMessage;
+  super(quota?quotaMessage:'Activity record unavailable');this.name='ActivityPersistenceError';
+ }
 }
-async function persistActivity(persist:(activity:Activity)=>Promise<void>,activity:Activity){try{await persist(structuredClone(activity));}catch{throw new ActivityPersistenceError();}}
+async function persistActivity(persist:(activity:Activity)=>Promise<void>,activity:Activity){try{await persist(structuredClone(activity));}catch(error){throw new ActivityPersistenceError(error);}}
 export function finishActivity(a:Activity,result:{output?:unknown;error?:unknown}):Activity{validateActivity([a]);if(a.status!=='running')throw Error('Activity already finished');let next:Activity;if('error' in result){const error=failure(result.error);next={...a,finishedAt:new Date().toISOString(),status:error.code==='stopped'?'stopped':'failed',error,...(result.output!==undefined?{output:payload(result.output)}:{})};}else next={...a,finishedAt:new Date().toISOString(),status:'succeeded',output:payload(result.output??null)};validateActivity([next]);return structuredClone(next);}
 export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,persist:(activity:Activity)=>Promise<void>,project:(result:T)=>unknown=result=>result??null,failureOf:(result:T)=>unknown=()=>undefined,failureProject:(error:unknown)=>unknown=()=>undefined,onStarted?:(tool:ActivityTool)=>void):Promise<T>{
  const started=startActivity(tool,input);await persistActivity(persist,started);try{onStarted?.(tool);}catch{/* Live status must not change execution. */}let result:T;
@@ -82,11 +86,11 @@ export async function recordOperation<T>(tool:ActivityTool,input:unknown,work:()
   const projected=failureProject(error);
   const output=diagnostic&&projected&&typeof projected==='object'&&!Array.isArray(projected)?{...diagnostic,...projected}:projected??diagnostic;
   await persistActivity(persist,finishActivity(started,{error,...(output!==undefined?{output}:{})}));
- }catch{throw new ActivityPersistenceError();}throw error;}
+ }catch(persistenceError){throw new ActivityPersistenceError(persistenceError);}throw error;}
  let output:unknown,reported:unknown;
- try{output=project(result);reported=failureOf(result);}catch(error){try{await persistActivity(persist,finishActivity(started,{error}));}catch{throw new ActivityPersistenceError();}throw error;}
+ try{output=project(result);reported=failureOf(result);}catch(error){try{await persistActivity(persist,finishActivity(started,{error}));}catch(persistenceError){throw new ActivityPersistenceError(persistenceError);}throw error;}
  // A final persistence failure must not run the tool again or invent a tool failure.
- try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch{throw new ActivityPersistenceError();}return result;
+ try{await persistActivity(persist,finishActivity(started,{output,...(reported!==undefined?{error:reported}:{})}));}catch(error){throw new ActivityPersistenceError(error);}return result;
 }
 export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()=>Activity[]|undefined;persistActivities:(activities:Activity[])=>Promise<void>;persistActivity?:(activity:Activity)=>Promise<void>;onFailureRecorded:()=>void;onStepStarted?:(tool:ActivityTool)=>void;onStepCompleted?:()=>void;diagnosticsEnabled:boolean;writeDiagnostic:(event:{tool:ActivityTool;status:'failed'|'stopped';code:string;message:string})=>void}){
  // Turn receipts are durable, user-visible diagnostics. Keep useful shape and

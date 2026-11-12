@@ -5,7 +5,8 @@ import {hashLocalModel} from '../../../dist/local-models.js';
 type Pin={path:string;url:string;bytes:number;sha256:string};
 type Manifest={id:string;revision:string;runtime:{revision:string};files:Pin[]};
 type IO={directory:()=>Promise<FileSystemDirectoryHandle>;fetch:typeof fetch};
-type Progress=(bytes:number,total:number)=>void;
+export type PinnedAssetProgress=(bytes:number,total:number,phase?:'downloading'|'verifying')=>void;
+type Progress=PinnedAssetProgress;
 class PinnedAssetVerificationError extends Error {constructor(){super('Asset verification failed');}}
 // Large pinned files are fetched in bounded, durable ranges. Closing each range
 // commits it to OPFS, so a later attempt can continue after the last full range.
@@ -22,7 +23,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
  const stopped=(signal:AbortSignal)=>signal.throwIfAborted();
  const verify=async(pin:Pin,file:File,signal:AbortSignal,progress:Progress)=>{
   stopped(signal);
-  if(file.size!==pin.bytes||await hashLocalModel(file,{signal,progress})!==pin.sha256)throw new PinnedAssetVerificationError();
+  if(file.size!==pin.bytes||await hashLocalModel(file,{signal,progress:(done:number,total:number)=>progress(done,total,'verifying')})!==pin.sha256)throw new PinnedAssetVerificationError();
   stopped(signal);return file;
  };
  const readPin=async(pin:Pin,signal:AbortSignal,progress:Progress)=>{
@@ -62,7 +63,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
       // Only complete, aligned ranges from this protocol are resumable. A
       // legacy or malformed partial is truncated before requesting the model.
       if(offset>pin.bytes||offset%resumableRangeBytes!==0){const reset=await handle.createWritable({keepExistingData:true});try{await reset.truncate(0);await reset.close();}catch(error){await reset.abort().catch(()=>{});throw error;}existing=await handle.getFile();offset=existing.size;}
-      if(offset)progress(offset,pin.bytes);
+      progress(offset,pin.bytes,'downloading');
       downloadedAssets++;
       while(offset<pin.bytes){
        const start=offset,end=Math.min(pin.bytes-1,start+resumableRangeBytes-1),expected=end-start+1,range=`bytes ${start}-${end}/${pin.bytes}`;
@@ -74,7 +75,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
        let writer:FileSystemWritableFileStream|undefined,received=0,closed=false;
        try{
         writer=await handle.createWritable({keepExistingData:true});await writer.seek(start);await writer.truncate(start);stopped(signal);
-        while(true){stopped(signal);const part=await reader.read();stopped(signal);if(part.done)break;if(part.value.byteLength>expected-received)throw Error('Model range exceeds requested size');await writer.write(part.value.slice().buffer);received+=part.value.byteLength;downloadedBytes+=part.value.byteLength;progress(start+received,pin.bytes);}
+        while(true){stopped(signal);const part=await reader.read();stopped(signal);if(part.done)break;if(part.value.byteLength>expected-received)throw Error('Model range exceeds requested size');await writer.write(part.value.slice().buffer);received+=part.value.byteLength;downloadedBytes+=part.value.byteLength;progress(start+received,pin.bytes,'downloading');}
         if(received!==expected)throw Error('Model range incomplete');stopped(signal);await writer.close();writer=undefined;closed=true;offset=end+1;
        }finally{
         if(writer)await writer.abort().catch(()=>{});
@@ -105,7 +106,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
       async read(){const chunk=await activeReader.read();stopped(signal);if(!chunk.done){if(networkSource)downloadedBytes+=chunk.value.byteLength;await activeWriter.write(chunk.value.slice().buffer);stopped(signal);}return chunk;},
       cancel:()=>activeReader.cancel(),releaseLock:()=>activeReader.releaseLock()
      })})};
-     if(await hashLocalModel(streamed,{signal,progress})!==pin.sha256)throw Error('Asset verification failed');
+     if(await hashLocalModel(streamed,{signal,progress:(done:number,total:number)=>progress(done,total,networkSource?'downloading':'verifying')})!==pin.sha256)throw Error('Asset verification failed');
      reader=undefined;stopped(signal);await writer.close();writer=undefined;
     }finally{
      if(writer)await writer.abort().catch(()=>{});
