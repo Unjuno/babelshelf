@@ -85,6 +85,7 @@
 /* App chrome sits below modal glass sheets. */
 .device-screen:has(.chat-home) .sheet-overlay{z-index:60}
 .device-screen:has(.chat-home) .bottom-sheet{z-index:61}
+.device-screen:has(.chat-home) .preview-toast{z-index:59;pointer-events:none}
 
 /* Current destination: a distinct selected surface, not icon tint alone. */
 .nav-items button{position:relative;isolation:isolate}
@@ -696,7 +697,7 @@ button.model-picker svg{flex-shrink:0}
 
 /* Long running work stays visible when the user changes app pages. The sheet
    can be minimized without cancelling the underlying operation. */
-.preview-toast.is-operation{z-index:70;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px 8px;text-align:left;pointer-events:none}
+.preview-toast.is-operation{z-index:59;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px 8px;text-align:left;pointer-events:none}
 .preview-toast.is-operation .preview-toast-message{flex:1 1 100%;max-height:4.5em;text-align:left;font-weight:600}
 .preview-toast.is-operation button{margin-left:0;min-height:40px}
 .preview-toast-elapsed{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;opacity:.78}

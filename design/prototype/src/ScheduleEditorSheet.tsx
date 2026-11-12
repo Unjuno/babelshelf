@@ -36,8 +36,9 @@ const weekdays=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 export function ScheduleEditorSheet({draft,enabled,saving,storagePending,error,nextOccurrence,timezone,onDraftChange,onRepeatOpen,onFormEdit,onCancel,onSave}:Props){
  return <form className="schedule-form creation-form schedule-form--task" onChange={onFormEdit} onSubmit={event=>{event.preventDefault();onSave();}}>
   <div className="task-fields">
-   {!draft.id&&<div className="source-revision" role="status">Saved paused · Enable after saving</div>}
-   <label>Prompt<KeyboardTextarea aria-label="Schedule prompt" value={draft.prompt} onChange={event=>onDraftChange({prompt:event.target.value})} placeholder="Prompt" rows={4}/></label>
+   {!draft.id&&<div className="source-revision" role="status">New schedules start paused. Turn on Enable after saving to run them.</div>}
+   <label>Prompt<KeyboardTextarea aria-label="Schedule prompt" aria-invalid={error==='Enter a prompt'} aria-describedby={error==='Enter a prompt'?'schedule-prompt-error':undefined} value={draft.prompt} onChange={event=>onDraftChange({prompt:event.target.value})} placeholder="Prompt" rows={4}/></label>
+   {error==='Enter a prompt'&&<div className="creation-error" id="schedule-prompt-error" role="alert">{error}</div>}
    <div className="schedule-repeat-field"><span>Repeat</span><button type="button" className="model-picker" aria-label="Repeat" aria-haspopup="dialog" onClick={onRepeatOpen}><span>{repeatOptions.find(option=>option.value===draft.repeat)?.label}</span><CaretDown size={17}/></button></div>
    {draft.repeat==='weekly'&&<div className="weekday-picker" role="group" aria-label="Weekdays">{weekdays.map((day,index)=><button type="button" key={day} aria-pressed={draft.days.includes(index)} onClick={()=>onDraftChange({days:draft.days.includes(index)?draft.days.filter(value=>value!==index):[...draft.days,index].sort()})}>{day}</button>)}</div>}
    {(draft.repeat==='once'||draft.repeat==='custom')&&<label>{draft.repeat==='once'?'Date':'Start date'}<KeyboardInput aria-label="Schedule date" aria-invalid={error==='Invalid date'||error==='Use YYYY-MM-DD'} aria-describedby="schedule-next" value={draft.date} onChange={event=>onDraftChange({date:event.target.value})} placeholder="YYYY-MM-DD"/></label>}

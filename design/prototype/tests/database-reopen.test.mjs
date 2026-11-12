@@ -22,3 +22,18 @@ test('KnowledgeStore reopens a version-changed IndexedDB connection and retains 
   await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});
  }
 });
+
+test('UI commit retries once when a connection closes at transaction start',async()=>{
+ const name='database-reopen-commit-'+crypto.randomUUID(),store=new KnowledgeStore(name);let previous;
+ try{
+  await store.initialize([{id:'retained',path:'Inbox/retained.md',body:'before',version:1,history:[]}]);
+  const before=await store.views();previous=await store.open();let closeOnce=true;
+  store.database=new Proxy(previous,{get(target,key){if(key==='transaction')return(...args)=>{if(closeOnce){closeOnce=false;throw new DOMException('The database connection is closing','InvalidStateError');}return target.transaction(...args);};const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}});
+  await store.commit(before,[{...before[0],body:'after',version:2,history:['before']}]);
+  assert.equal((await store.viewById('retained'))?.body,'after');
+ }finally{
+  previous?.close();
+  store.close();
+  await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});
+ }
+});

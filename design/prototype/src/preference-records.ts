@@ -32,9 +32,9 @@ const defaults={
  appearance:{schemaVersion:PREFERENCE_SCHEMA_VERSION,theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[],paletteRegistry:[] as NamedAppearancePalette[],activePaletteId:''},
  connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false,rustxngEndpoint:''},
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
-  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
-  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read','memory.sources'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:null,maxGenerationMs:null},
-  {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:null,maxGenerationMs:null},
+  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:8192,maxGenerationMs:300_000},
+  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read','memory.sources'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:8192,maxGenerationMs:300_000},
+  {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:8192,maxGenerationMs:300_000},
  ] as HarnessProfile[]},
 };
 export type Preferences=typeof defaults;
@@ -109,7 +109,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  if(schemaVersion<5&&group==='connection'&&!('rustxngEndpoint' in value))value.rustxngEndpoint='';
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='harness'&&!('replyStyle' in value))value.replyStyle='balanced';
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION&&group==='harness'&&!('userGuidance' in value))value.userGuidance='';
- if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles))for(const profile of value.profiles){if(profile&&typeof profile==='object'){if(!('maxGenerationTokens' in profile))profile.maxGenerationTokens=null;if(!('maxGenerationMs' in profile))profile.maxGenerationMs=null;}}
+ if(group==='harness'&&schemaVersion<PREFERENCE_SCHEMA_VERSION&&Array.isArray(value.profiles))for(const profile of value.profiles){if(profile&&typeof profile==='object'){if(!('maxGenerationTokens' in profile))profile.maxGenerationTokens=8192;if(!('maxGenerationMs' in profile))profile.maxGenerationMs=300_000;}}
  if(schemaVersion<PREFERENCE_SCHEMA_VERSION)value.schemaVersion=PREFERENCE_SCHEMA_VERSION;
  // This defaults migration belongs only to schema 1 -> 2. Later schema
  // additions must preserve explicit tools and limits, even when they match
