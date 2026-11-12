@@ -1,34 +1,43 @@
 ## Current status · 2026-11-13
 
-### Real-model verification · 2026-11-13 (release in progress)
+### Latest release and real-model verification · 2026-11-13
 
-The public v352 app has now completed a real LFM3 1.7B QAD Q4_0 chat in a
-dedicated persistent Windows Chrome 157 profile with browser networking
-disabled and the app set Offline. The Decision role was unconfigured. The
-pinned 1,049,615,680-byte model loaded all 25 layers on Intel WebGPU; the
-ordinary sky-color question completed with two model calls and 167.0 seconds
-of recorded generation. This establishes PC inference, not acceptable speed
-on every device or physical iOS/Android acceptance.
+PR #64 merged as `b52d5e13f9159fc270c51d67413fc1c34abc5d11` after its exact
+candidate passed the full quality workflow
+[43243575108](https://github.com/Unjuno/babelshelf/actions/runs/43243575108).
+The post-merge main workflow is
+[43246327095](https://github.com/Unjuno/babelshelf/actions/runs/43246327095).
+Public Site v353 serves build `430a24e0b828000a` /167 assets at
+`https://babelshelf.com/`; the existing public audience is unchanged.
 
-The follow-up exposed a software error: semantic rewriting of the current
-answer went through a literal replacement classifier and could replace the
-answer with the user's instruction. The fix preserves the exact dialogue
-source and sends semantic rewrites directly to generation. The same Japanese
-request returned a Japanese sentence with one model call /5.5 seconds on the
-local candidate. Stop retained the prompt; Edit & resend completed another
-actual reply without downloading weights. Missing-model guidance retained the
-draft and offered Settings.
+The public app completed real LFM3 1.7B QAD Q4_0 replies in a dedicated
+persistent Windows Chrome 157 profile, with both browser networking and the
+app's Online mode disabled. The Decision role remained unconfigured. Update
+preserved the conversation, model and runtime; all 25 layers loaded on Intel
+WebGPU. A short sky-writing request completed in 7.7 seconds of generation.
+The previously failing Japanese rewrite returned `今日の空は青く澄んでいた。`
+in 5.2 seconds /one model call. Neither send reloaded the model, and no
+external requests were observed. A fresh 390px-wide public browser opened
+the normal composer with no page-script errors or horizontal overflow.
 
-Also fixed: distinguish model download progress from verification, retain a
-safe capacity explanation when a quota error prevents recording Activity,
-and briefly await the existing app worker during an explicit preparation
-started immediately after first launch. No implicit registration, acquisition
-retry, model substitution or data reset was added. Local checks passed 275
-root tests, 1,994 prototype tests, nine built-asset checks and the protected
-runtime check. Full candidate CI, main integration and public update follow.
-See the dated real-model entry in `docs/TEST-RESULTS.txt` for scope and limits.
+Semantic current-answer rewrites now preserve their exact dialogue source
+and use generation instead of the literal replacement classifier. The release
+also distinguishes download from verification progress, retains a safe quota
+explanation when Activity persistence fails, and briefly awaits the existing
+worker when explicit preparation races first-launch activation. No implicit
+registration, acquisition retry, model substitution or data reset was added.
+Local checks passed 275 root tests, 1,994 prototype tests, nine built-asset
+checks and the protected runtime check. Actual local Stop/Edit & resend and
+missing-model draft retention also passed. See the dated real-model and v353
+release entries in `docs/TEST-RESULTS.txt` for exact evidence.
 
-### Latest integration and deployment · 2026-11-12
+Limits remain: the initial general question on v352 took 167.0 seconds of
+generation, and the sky-writing response repeated its sentence on both local
+and public candidates. Successful real replies establish PC execution;
+general answer quality, sustained speed and physical iOS/Android acceptance
+are not certified by this run.
+
+### Previous integration and deployment · 2026-11-12
 
 PR #62 merged as `c3dd64f6d9846a2d9197a8a66cffff6992a5d26d`. Missing or
 corrupt app-shell caches now lead to a standalone Repair app screen instead
