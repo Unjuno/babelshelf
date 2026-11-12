@@ -101,7 +101,8 @@ test('shell repair rejects foreign clients and refuses incorrect downloaded byte
  let reply;h.handlers.message({source:{type:'window',id:'foreign',url:'https://foreign.example/'},data:{type:'repair-app-shell',operationId:'repair-test-2'},ports:[{postMessage:value=>{reply=value;}}]});
  assert.equal(reply.status,'failed');assert.deepEqual(h.network,[]);
  corrupt=true;let work;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'repair-app-shell',operationId:'repair-test-3'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});await work;
- assert.equal(reply.status,'failed');assert.equal((await h.request('/assets/shell-ABCDEFGH.js')).status,503);assert.equal(await(await h.request('/','navigate')).text(),'INDEX');
+ assert.equal(reply.status,'failed');assert.equal((await h.request('/assets/shell-ABCDEFGH.js')).status,503);
+ assert.match(await(await h.request('/','navigate')).text(),/<h1>Repair app<\/h1>/);assert.equal(await(await h.request('/index.html')).text(),'INDEX');
 });
 test('a timed-out shell repair can be cancelled without storing an unfinished download',async()=>{
  const files=[pinned('./index.html','INDEX'),pinned('./assets/shell-ABCDEFGH.js','SCRIPT')];let stalled=false,started;
@@ -110,9 +111,44 @@ test('a timed-out shell repair can be cancelled without storing an unfinished do
  await install(h);h.caches.entries.get('babelshelf-product-assets-v1').delete(origin+'/.babelshelf-app-assets/'+files[1].sha256);stalled=true;
  const source={type:'window',id:'tab',url:origin+'/'};let work,reply;h.handlers.message({source,data:{type:'repair-app-shell',operationId:'repair-test-4'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:p=>work=p});
  await begin;h.handlers.message({source,data:{type:'cancel-app-shell-repair',operationId:'repair-test-4'}});await work;
- assert.equal(reply.status,'failed');assert.equal((await h.request('/assets/shell-ABCDEFGH.js')).status,503);assert.equal(await(await h.request('/','navigate')).text(),'INDEX');
+ assert.equal(reply.status,'failed');assert.equal((await h.request('/assets/shell-ABCDEFGH.js')).status,503);
+ assert.match(await(await h.request('/','navigate')).text(),/<h1>Repair app<\/h1>/);assert.equal(await(await h.request('/index.html')).text(),'INDEX');
 });
 const pinned=(path,body)=>({path,bytes:Buffer.byteLength(body),sha256:createHash('sha256').update(body).digest('hex')});
+
+test('an unavailable navigation returns a self-contained repair UI without network or data access',async()=>{
+ const connection={open(){throw Error('Recovery must not open user data');}},files=[pinned('./index.html','INDEX'),pinned('./assets/main-NEWabc12.js','NEW')];
+ const h=await harness('NEW',{files,connection});
+ for(const path of ['/','/index.html','/?prepare=1']){
+  const response=await h.request(path,'navigate'),body=await response.text();
+  assert.equal(response.status,503);assert.match(response.headers.get('Content-Type'),/^text\/html/);
+  assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(response.headers.get('Cross-Origin-Embedder-Policy'),'require-corp');
+  assert.match(body,/<button[^>]*>Repair app online<\/button>/);assert.match(body,/<button[^>]*>Update app online<\/button>/);
+  assert.doesNotMatch(body,/<script[^>]+src=|<link[^>]+href=/);
+  const script=body.match(/<script>([\s\S]+)<\/script>/)[1];
+  assert.ok(response.headers.get('Content-Security-Policy').includes("'sha256-"+createHash('sha256').update(script.replace(/\r\n/g,'\n')).digest('base64')+"'"));
+ }
+ assert.deepEqual(h.network,[]);
+});
+
+test('explicit startup recovery repairs only the app shell while data/model networking stays Offline',async()=>{
+ const files=[pinned('./index.html','INDEX'),pinned('./assets/main-NEWabc12.js','NEW'),{...pinned('./assets/model-RUNTIME1.wasm','RUNTIME'),roles:['speech']}];
+ const connection=connectionDatabase(false),h=await harness(url=>String(url).endsWith('index.html')?'INDEX':'NEW',{files,connection});
+ let work,reply;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'recover-app-shell',operationId:'recovery-test-1'},ports:[{postMessage:value=>{reply=value;}}],waitUntil:value=>{work=value;}});await work;
+ assert.equal(reply.status,'ready');assert.deepEqual(h.network,[origin+'/index.html',origin+'/assets/main-NEWabc12.js']);
+ assert.equal(await(await h.request('/','navigate')).text(),'INDEX');
+ assert.equal((await h.request('https://assets.example/model')).status,503);
+ assert.equal((await h.request('/assets/model-RUNTIME1.wasm')).status,503);assert.equal(h.network.length,2);
+});
+
+test('startup recovery retains source validation and local-only acquisition restrictions',async()=>{
+ const h=await harness('INDEX',{files:[pinned('./index.html','INDEX')]});
+ for(const source of [{type:'window',id:'tab',url:'https://foreign.example/'},{type:'serviceworker',id:'tab',url:origin+'/'}]){
+  let reply;h.handlers.message({source,data:{type:'recover-app-shell',operationId:'recovery-test-2'},ports:[{postMessage:value=>{reply=value;}}]});assert.equal(reply.status,'failed');
+ }
+ let reply,work;h.handlers.message({source:{type:'window',id:'tab',url:origin+'/'},data:{type:'recover-app-shell',operationId:'recovery-test-3',localOnly:true},ports:[{postMessage:value=>{reply=value;}}],waitUntil:value=>{work=value;}});await work;
+ assert.equal(reply.status,'disconnected');assert.deepEqual(h.network,[]);
+});
 test('installation treats an exact concurrent cache write as success but rejects conflicting bytes',async()=>{
  const files=[pinned('./index.html','INDEX'),pinned('./assets/main-NEWabc12.js','NEW')],body=url=>String(url).endsWith('index.html')?'INDEX':'NEW';
  for(const target of ['asset','manifest']){
@@ -316,7 +352,7 @@ test('cache read rejection returns a local failure response and the same cache c
  const caches=storage(),originalOpen=caches.open;let failed=true;
  caches.open=async name=>{if(failed)throw Error('read unavailable');return originalOpen(name);};
  const h=await harness('NEW',{caches});
- const result=await h.request('/','navigate');assert.equal(result.status,503);assert.match(await result.text(),/Local app unavailable/);
+ const result=await h.request('/','navigate');assert.equal(result.status,503);assert.match(await result.text(),/<h1>Repair app<\/h1>/);
  assert.equal((await h.request('/assets/main-NEWabc12.js')).status,503);assert.deepEqual(h.network,[]);
  failed=false;await h.put('babelshelf-product-'+current,'/index.html','Retained shell');
  assert.equal(await(await h.request('/','navigate')).text(),'Retained shell');assert.deepEqual(h.network,[]);

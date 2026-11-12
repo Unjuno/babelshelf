@@ -24,7 +24,7 @@
     "test:quality:editorial": "npm --prefix design/prototype run test:runtime -- -c playwright.editorial.config.ts",
     "test:quality:settings-ui": "npm --prefix design/prototype run test:runtime -- tests/model-catalog-contrast.spec.ts tests/media-vision-navigation.spec.ts tests/settings-home.spec.ts tests/initial-preparation-size.spec.ts tests/tool-limit-review.spec.ts --workers=1",
     "test:quality:inference-lock": "npm --prefix design/prototype run test:runtime -- tests/inference-lease.spec.ts",
-    "test:quality:app-update": "node --test scripts/qa/app-update.mjs",
+    "test:quality:app-update": "node --test scripts/qa/app-update.mjs scripts/qa/startup-recovery.mjs",
     "test:quality:offline-calculation": "npm --prefix design/prototype run test:runtime -- --config=playwright.product-calculation.config.ts --workers=1",
     "test:quality:offline": "node scripts/qa/offline-process.mjs",
     "test:quality:installed-pwa": "node scripts/qa/installed-pwa.mjs",

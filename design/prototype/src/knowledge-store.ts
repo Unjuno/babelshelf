@@ -149,14 +149,19 @@ export class KnowledgeStore {
   }).finally(()=>{this.databasePromise=null;});
   return this.databasePromise!;
  }
- private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void,signal?:AbortSignal):Promise<T>{
+ /** Retry only transaction creation. Replaying a started write could duplicate
+  * approvals or bypass the original compare-and-swap snapshot. */
+ private async startTransaction(stores:string|string[],mode:IDBTransactionMode,signal?:AbortSignal):Promise<IDBTransaction>{
   if(signal?.aborted)throw Error('Stopped');
-  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;let tx:IDBTransaction;
   for(let attempt=0;;attempt++){
    const db=await this.open();if(signal?.aborted)throw Error('Stopped');
-   try{tx=db.transaction(scope,mode);break;}
+   try{return db.transaction(stores,mode);}
    catch(error){const message=error instanceof Error?error.message:'';const closing=(error instanceof DOMException&&error.name==='InvalidStateError')||/database connection is closing|connection is closing/i.test(message);if(!closing||attempt>0)throw error;if(this.database===db)this.database=null;}
   }
+ }
+ private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void,signal?:AbortSignal):Promise<T>{
+  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;
+  const tx=await this.startTransaction(scope,mode,signal);
   return new Promise((resolve,reject)=>{let value:T,error:unknown,stopped=false;
    const cleanup=()=>signal?.removeEventListener('abort',abort);
    const abort=()=>{stopped=true;try{tx.abort();}catch{/* The transaction may already be complete. */}};
@@ -249,16 +254,16 @@ export class KnowledgeStore {
  }
  async corrections(noteId?:string):Promise<CorrectionReceipt[]>{return this.transaction(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').getAll();q.onsuccess=()=>done(q.result.filter(r=>r?.type==='note-correction'&&r.schema===1&&(!noteId||r.noteId===noteId)).sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt)));});}
  async settingsRecoveryHistory(noteId:string){
-  const db=await this.open();return new Promise<{id:string;appliedAt:string;source:any}[]>((resolve,reject)=>{
-   const tx=db.transaction(['notes','runs'],'readonly'),notes=tx.objectStore('notes').getAll(),q=tx.objectStore('runs').getAll(IDBKeyRange.bound('ui-v1-settings-restore-','ui-v1-settings-restore-\uffff'));
+  const tx=await this.startTransaction(['notes','runs'],'readonly');return new Promise<{id:string;appliedAt:string;source:any}[]>((resolve,reject)=>{
+   const notes=tx.objectStore('notes').getAll(),q=tx.objectStore('runs').getAll(IDBKeyRange.bound('ui-v1-settings-restore-','ui-v1-settings-restore-\uffff'));
    let rows:{id:string;appliedAt:string;source:any}[]=[],error:unknown;
    q.onsuccess=()=>{try{for(const receipt of q.result){validateSettingsRestoreReceipt('ui-v1-settings-restore-'+receipt.id,receipt,notes.result);const change=receipt.changes.find((c:any)=>c.noteId===noteId);if(change)rows.push({id:receipt.id,appliedAt:receipt.appliedAt,source:change.source});}rows.sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt));}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve(rows);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery history unavailable'));
   });
  }
  async stageCorrection(proposal:CorrectionProposal,turnId?:string,signal?:AbortSignal):Promise<PendingCorrection>{
-  if(signal?.aborted)throw Error('Stopped');const pending=makePendingCorrection(proposal,turnId),db=await this.open();if(signal?.aborted)throw Error('Stopped');
-  return new Promise((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),prior=settings.get(PENDING_CORRECTION_KEY),rows=tx.objectStore('notes').getAll();let left=2,result=pending,error:unknown,stopped=false;
+  if(signal?.aborted)throw Error('Stopped');const pending=makePendingCorrection(proposal,turnId),tx=await this.startTransaction(['notes','settings'],'readwrite',signal);if(signal?.aborted)throw Error('Stopped');
+  return new Promise((resolve,reject)=>{const settings=tx.objectStore('settings'),prior=settings.get(PENDING_CORRECTION_KEY),rows=tx.objectStore('notes').getAll();let left=2,result=pending,error:unknown,stopped=false;
    const abort=()=>{stopped=true;try{tx.abort();}catch{}};signal?.addEventListener('abort',abort,{once:true});
    const cleanup=()=>signal?.removeEventListener('abort',abort);
    const commit=()=>{if(--left)return;try{if(signal?.aborted)throw Error('Stopped');applyCorrection(rows.result,pending.proposal);if(prior.result!==undefined){const existing=validatePendingCorrection(prior.result);if(!equal(existing.proposal,pending.proposal)||existing.turnId!==turnId)throw Error('Review pending changes first');result=existing;}else settings.put(pending,PENDING_CORRECTION_KEY);}catch(e){error=e;tx.abort();}};prior.onsuccess=commit;rows.onsuccess=commit;
@@ -266,25 +271,25 @@ export class KnowledgeStore {
   });
  }
  async stageNoteReview(value:PendingNoteReview):Promise<PendingNoteReview>{
-  const pending=validatePendingNoteReview(value),db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let result=pending,error:unknown;
+  const pending=validatePendingNoteReview(value),tx=await this.startTransaction('settings','readwrite');return new Promise((resolve,reject)=>{const settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let result=pending,error:unknown;
    q.onsuccess=()=>{try{if(q.result!==undefined){const existing=validatePendingNoteReview(q.result);if(!equal(existing,pending))throw Error('Review pending note first');result=existing;}else settings.put(pending,PENDING_NOTE_REVIEW_KEY);}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not save note review'));
   });
  }
  async updateNoteReview(expected:unknown,next:PendingNoteReview):Promise<PendingNoteReview>{
-  expected=structuredClone(expected);next=validatePendingNoteReview(next);const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
+  expected=structuredClone(expected);next=validatePendingNoteReview(next);const tx=await this.startTransaction('settings','readwrite');return new Promise((resolve,reject)=>{const settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
    q.onsuccess=()=>{try{if(!equal(q.result,expected))throw new PendingNoteReviewConflictError();const prior=validatePendingNoteReview(q.result);if(prior.note.id!==next.note.id||prior.turnId!==next.turnId)throw new PendingNoteReviewConflictError();settings.put(next,PENDING_NOTE_REVIEW_KEY);}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve(next);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not update note review'));
   });
  }
  async discardNoteReview(expected:unknown){
-  expected=structuredClone(expected);const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
+  expected=structuredClone(expected);const tx=await this.startTransaction('settings','readwrite');return new Promise<void>((resolve,reject)=>{const settings=tx.objectStore('settings'),q=settings.get(PENDING_NOTE_REVIEW_KEY);let error:unknown;
    q.onsuccess=()=>{if(!equal(q.result,expected)){error=new PendingNoteReviewConflictError();tx.abort();return;}settings.delete(PENDING_NOTE_REVIEW_KEY);};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not discard note review'));
   });
  }
  async saveReviewedNote(expected:unknown,review:PendingNoteReview){
-  expected=structuredClone(expected);review=validatePendingNoteReview(review);const db=await this.open();return new Promise<NoteView>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),saved=settings.get(PENDING_NOTE_REVIEW_KEY),folders=settings.get('ui-v1-folders'),dialogue=settings.get('ui-v1-dialogue');let remaining=4,error:unknown,result:NoteView;
+  expected=structuredClone(expected);review=validatePendingNoteReview(review);const tx=await this.startTransaction(['notes','settings'],'readwrite');return new Promise<NoteView>((resolve,reject)=>{const notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),saved=settings.get(PENDING_NOTE_REVIEW_KEY),folders=settings.get('ui-v1-folders'),dialogue=settings.get('ui-v1-dialogue');let remaining=4,error:unknown,result:NoteView;
    const commit=()=>{if(--remaining)return;try{
     if(!equal(saved.result,expected)||!equal(saved.result,review))throw new PendingNoteReviewConflictError();
     const view=pendingNoteReviewView(review),existing=rows.result.find((note:Canonical)=>note.id===view.id);
@@ -297,22 +302,22 @@ export class KnowledgeStore {
   });
  }
  async discardCorrection(expected:unknown){
-  expected=structuredClone(expected);const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),settings=tx.objectStore('settings'),q=settings.get(PENDING_CORRECTION_KEY);let error:unknown;
+  expected=structuredClone(expected);const tx=await this.startTransaction('settings','readwrite');return new Promise<void>((resolve,reject)=>{const settings=tx.objectStore('settings'),q=settings.get(PENDING_CORRECTION_KEY);let error:unknown;
    q.onsuccess=()=>{if(!equal(q.result,expected)){error=new PendingCorrectionConflictError();tx.abort();return;}settings.delete(PENDING_CORRECTION_KEY);};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Could not discard review'));
   });
  }
  async approveCorrection(proposal:CorrectionProposal,pending?:PendingCorrection){
-  proposal=structuredClone(proposal);pending=pending===undefined?undefined:structuredClone(pending);const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
-   const tx=db.transaction(['notes','runs',...(pending?['settings']:[])],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
+  proposal=structuredClone(proposal);pending=pending===undefined?undefined:structuredClone(pending);const tx=await this.startTransaction(['notes','runs',...(pending?['settings']:[])],'readwrite');return new Promise<CorrectionReceipt>((resolve,reject)=>{
+   const notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),prior=runs.get('ui-v1-correction-'+proposal.id);let receipt:CorrectionReceipt,error:unknown;
    const saved=pending?tx.objectStore('settings').get(PENDING_CORRECTION_KEY):null;
    prior.onsuccess=()=>{if(prior.result){try{const existing=prior.result;if(existing.schema!==1||existing.type!=='note-correction'||existing.id!==proposal.id||existing.proposalHash!==correctionProposalHash(proposal))throw Error('Correction already applied · proposal conflict');if(pending){validatePendingCorrection(pending);if(!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}receipt=existing;}catch(e){error=e;tx.abort();}return;}const q=notes.getAll();q.onsuccess=()=>{try{if(pending){validatePendingCorrection(pending);if(!equal(saved?.result,pending)||!equal(pending.proposal,proposal))throw new PendingCorrectionConflictError();}const result=applyCorrection(q.result,proposal);notes.put(result.note);runs.add(result.receipt,'ui-v1-correction-'+result.receipt.id);if(pending)tx.objectStore('settings').delete(PENDING_CORRECTION_KEY);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
    tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Correction save failed'));
   });
  }
  async revertCorrection(id:string){
-  const db=await this.open();return new Promise<CorrectionReceipt>((resolve,reject)=>{
-   const tx=db.transaction(['notes','runs'],'readwrite'),notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),q=runs.get('ui-v1-correction-'+id);let receipt:CorrectionReceipt,error:unknown;
+  const tx=await this.startTransaction(['notes','runs'],'readwrite');return new Promise<CorrectionReceipt>((resolve,reject)=>{
+   const notes=tx.objectStore('notes'),runs=tx.objectStore('runs'),q=runs.get('ui-v1-correction-'+id);let receipt:CorrectionReceipt,error:unknown;
    q.onsuccess=()=>{const records=notes.getAll();records.onsuccess=()=>{try{const result=undoCorrection(records.result,q.result);notes.put(result.note);runs.put(result.receipt,'ui-v1-correction-'+id);receipt=result.receipt;}catch(e){error=e;tx.abort();}};};
    tx.oncomplete=()=>resolve(receipt);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Undo failed'));
   });
@@ -373,11 +378,11 @@ export class KnowledgeStore {
     }catch(error){fail(error);}};
    });
   }
- async createFolder(path:string,expected:string[]|undefined){expected=structuredClone(expected);const db=await this.open();return new Promise<{path:string;folders:string[]}>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('settings'),rows=tx.objectStore('notes').getAll(),folders=store.get('ui-v1-folders');let pending=2,error:unknown,result:{path:string;folders:string[]};const commit=()=>{if(--pending)return;try{if(!equal(folders.result,expected))throw Error('Local data changed in another tab · reopen to continue');const old=folders.result??[],occupied=[...old];for(const n of rows.result){const parts=notePath(n).split('/');while(parts.length){occupied.push(parts.join('/'));parts.pop();}}const parts=path.split('/'),name=parts.pop()??'',clean=memoryFolderPath(parts.join('/'),name,occupied);if(clean!==path)throw Error('Invalid folder path');const next=[...old,clean];assertFolderNamespace(rows.result,next);store.put(next,'ui-v1-folders');result={path:clean,folders:next};}catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder save failed'));});}
+ async createFolder(path:string,expected:string[]|undefined){expected=structuredClone(expected);const tx=await this.startTransaction(['notes','settings'],'readwrite');return new Promise<{path:string;folders:string[]}>((resolve,reject)=>{const store=tx.objectStore('settings'),rows=tx.objectStore('notes').getAll(),folders=store.get('ui-v1-folders');let pending=2,error:unknown,result:{path:string;folders:string[]};const commit=()=>{if(--pending)return;try{if(!equal(folders.result,expected))throw Error('Local data changed in another tab · reopen to continue');const old=folders.result??[],occupied=[...old];for(const n of rows.result){const parts=notePath(n).split('/');while(parts.length){occupied.push(parts.join('/'));parts.pop();}}const parts=path.split('/'),name=parts.pop()??'',clean=memoryFolderPath(parts.join('/'),name,occupied);if(clean!==path)throw Error('Invalid folder path');const next=[...old,clean];assertFolderNamespace(rows.result,next);store.put(next,'ui-v1-folders');result={path:clean,folders:next};}catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Folder save failed'));});}
  async renameFolder(from:string,name:string,expectedNotes:NoteView[],expectedFolders:string[]|undefined){
   ({expectedNotes,expectedFolders}=structuredClone({expectedNotes,expectedFolders}));
-  const db=await this.open();return new Promise<{folders:string[];from:string;to:string}>((resolve,reject)=>{
-   const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders');let pending=2,error:unknown,result:{folders:string[];from:string;to:string};
+  const tx=await this.startTransaction(['notes','settings'],'readwrite');return new Promise<{folders:string[];from:string;to:string}>((resolve,reject)=>{
+   const notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders');let pending=2,error:unknown,result:{folders:string[];from:string;to:string};
    const commit=()=>{if(--pending)return;try{
     if(!equal(folders.result,expectedFolders))throw Error('Folders changed · reopen before renaming');
     const plan=planFolderRename(rows.result,folders.result??[],from,name,expectedNotes);
@@ -389,8 +394,8 @@ export class KnowledgeStore {
  }
  async recoverMemory(action:RecoveryAction,expectedFolders:string[]|undefined,expectedTrash:RecoveryBatch[]|undefined){
   ({action,expectedFolders,expectedTrash}=structuredClone({action,expectedFolders,expectedTrash}));
-  const db=await this.open();return new Promise<{folders:string[];trash:RecoveryBatch[]}>((resolve,reject)=>{
-   const tx=db.transaction(['notes','settings'],'readwrite'),notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders'),trash=settings.get('ui-v1-trash');let pending=3,error:unknown,result:{folders:string[];trash:RecoveryBatch[]};
+  const tx=await this.startTransaction(['notes','settings'],'readwrite');return new Promise<{folders:string[];trash:RecoveryBatch[]}>((resolve,reject)=>{
+   const notes=tx.objectStore('notes'),settings=tx.objectStore('settings'),rows=notes.getAll(),folders=settings.get('ui-v1-folders'),trash=settings.get('ui-v1-trash');let pending=3,error:unknown,result:{folders:string[];trash:RecoveryBatch[]};
    const commit=()=>{if(--pending)return;try{
     if(!equal(folders.result,expectedFolders)||!equal(trash.result,expectedTrash))throw Error('Recovery data changed · reopen app');
     const plan=planMemoryRecovery(rows.result,folders.result??[],trash.result??[],action);
@@ -401,8 +406,8 @@ export class KnowledgeStore {
   });
  }
  async exportMarkdown(id:string,revision:number){
-  const db=await this.open();return new Promise<ReturnType<typeof exportMarkdownRevision>>((resolve,reject)=>{
-   const tx=db.transaction('notes','readonly'),q=tx.objectStore('notes').get(id);let error:unknown,file:ReturnType<typeof exportMarkdownRevision>;
+  const tx=await this.startTransaction('notes','readonly');return new Promise<ReturnType<typeof exportMarkdownRevision>>((resolve,reject)=>{
+   const q=tx.objectStore('notes').get(id);let error:unknown,file:ReturnType<typeof exportMarkdownRevision>;
    q.onsuccess=()=>{try{file=exportMarkdownRevision(q.result,revision);}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve(file);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Markdown export failed'));
   });
@@ -412,7 +417,7 @@ export class KnowledgeStore {
  async compareState(key:string,before:unknown,next:unknown){
   ({before,next}=structuredClone({before,next}));
   if(key==='dialogue')validateDialogue(next);
-  const db=await this.open();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),s=tx.objectStore('settings'),q=s.get('ui-v1-'+key);let error:unknown;
+  const tx=await this.startTransaction('settings','readwrite');return new Promise<void>((resolve,reject)=>{const s=tx.objectStore('settings'),q=s.get('ui-v1-'+key);let error:unknown;
    q.onsuccess=()=>{if(!equal(q.result,before)){error=Error(key==='dialogue'?'Conversation changed in another tab · reopen to continue':'Local data changed in another tab · reopen to continue');tx.abort();return;}s.put(next,'ui-v1-'+key);};
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
@@ -425,8 +430,8 @@ export class KnowledgeStore {
   validateDialogue(next);if(!Array.isArray(refs)||!Array.isArray(metadataGuards)||!refs.length&&!metadataGuards.length||!metadataGuards.every(isSourceMetadataGuard))throw Error('Source required');
   const previous=new Map((before?.turns??[]).map(turn=>[turn.id,turn]));
   const addedRefs=next.turns.flatMap(turn=>equal(turn.refs,previous.get(turn.id)?.refs)?[]:turn.refs??[]);
-  const sources=refs,db=await this.open();return new Promise<void>((resolve,reject)=>{
-   const tx=db.transaction(['notes','settings'],'readwrite'),settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
+  const sources=refs,tx=await this.startTransaction(['notes','settings'],'readwrite');return new Promise<void>((resolve,reject)=>{
+   const settings=tx.objectStore('settings'),dialogue=settings.get('ui-v1-dialogue'),notes=tx.objectStore('notes').getAll();let pending=2,error:unknown;
    const commit=()=>{if(--pending)return;try{if(!equal(dialogue.result,before))throw Error('Conversation changed in another tab · reopen to continue');if(sources.length&&!validateGroundingRefs(notes.result,sources).ok||addedRefs.length&&!validateGroundingRefs(notes.result,addedRefs).ok)throw new GroundingConflictError();try{for(const guard of metadataGuards)if(stateHash(noteSourceMetadata(notes.result,guard.noteId,guard.revision))!==guard.snapshot)throw Error('changed');}catch{throw new GroundingConflictError();}settings.put(next,'ui-v1-dialogue');}catch(e){error=e;tx.abort();}};
    dialogue.onsuccess=commit;notes.onsuccess=commit;tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Conversation save failed'));
   });
@@ -439,7 +444,7 @@ export class KnowledgeStore {
  async createSemanticSearchRuntime(modelId:string){const {createSemanticSearchRuntime}=await import('./semantic-search-runtime.ts');return createSemanticSearchRuntime(this,modelId);}
  async searchPage(query:string,options:{offset:number;limit:number;snapshot?:string;pathPrefix?:string},signal?:AbortSignal){const all=await this.all(signal);signal?.throwIfAborted();const records=searchableRecords(all,query,options.pathPrefix);if(typeof Worker==='undefined')return this.searchCache.search(records,query,options);this.searchWorker??=createPagedSearchClient();return this.searchWorker.search(records,query,options,signal);}
  async processingHistory():Promise<Activity[]>{
-  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readonly'),range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
+  const tx=await this.startTransaction(['runs'],'readonly');return new Promise((resolve,reject)=>{const range=IDBKeyRange.bound(processingKey(''),processingKey('')+'\uffff'),q=tx.objectStore('runs').openCursor(range),items:Activity[]=[];let error:unknown;
    q.onsuccess=()=>{const cursor=q.result;if(!cursor)return;try{validateProcessing(String(cursor.key),cursor.value);items.push(structuredClone(cursor.value.activity));cursor.continue();}catch(e){error=e;tx.abort();}};
    tx.oncomplete=()=>resolve(items.sort((a,b)=>b.startedAt.localeCompare(a.startedAt)||b.id.localeCompare(a.id)));tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Processing history unavailable'));
   });
@@ -484,8 +489,8 @@ export class KnowledgeStore {
  }
  /** Read one bounded activity page and its current continuation. */
  async turnActivityPage(turnId:string,pageNumber:number):Promise<{items:Activity[];nextPage:number|null}>{
-  const metaKey=turnActivityMetaKey(turnId),pageKey=turnActivityPageKey(turnId,pageNumber),db=await this.open();
-  return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),page=runs.get(pageKey);let pending=2,error:unknown,result:{items:Activity[];nextPage:number|null}={items:[],nextPage:null};
+  const metaKey=turnActivityMetaKey(turnId),pageKey=turnActivityPageKey(turnId,pageNumber),tx=await this.startTransaction('runs','readonly');
+  return new Promise((resolve,reject)=>{const runs=tx.objectStore('runs'),meta=runs.get(metaKey),page=runs.get(pageKey);let pending=2,error:unknown,result:{items:Activity[];nextPage:number|null}={items:[],nextPage:null};
    const read=()=>{if(--pending)return;try{
     const value=meta.result as TurnActivityMeta|undefined,record=page.result as TurnActivityPage|undefined;
     if(!value){
@@ -502,8 +507,8 @@ export class KnowledgeStore {
   });
  }
  async turnActivities(turnId:string):Promise<Activity[]>{
-  const prefix=turnActivityPagePrefix(turnId),metaKey=turnActivityMetaKey(turnId),db=await this.open();
-  return new Promise((resolve,reject)=>{const tx=db.transaction('runs','readonly'),runs=tx.objectStore('runs'),meta=runs.get(metaKey),request=runs.getAll(IDBKeyRange.bound(prefix,prefix+'\uffff'));let result:Activity[]=[],pending=2,error:unknown;
+  const prefix=turnActivityPagePrefix(turnId),metaKey=turnActivityMetaKey(turnId),tx=await this.startTransaction('runs','readonly');
+  return new Promise((resolve,reject)=>{const runs=tx.objectStore('runs'),meta=runs.get(metaKey),request=runs.getAll(IDBKeyRange.bound(prefix,prefix+'\uffff'));let result:Activity[]=[],pending=2,error:unknown;
    const read=()=>{if(--pending)return;try{
     const value=meta.result as TurnActivityMeta|undefined,pages=request.result as TurnActivityPage[];if(!value){if(pages.length)throw Error('Activity metadata unavailable');return;}
     validateTurnActivityMeta(metaKey,value);const ids=new Set<string>();
@@ -521,23 +526,23 @@ export class KnowledgeStore {
   try{settingsRecovery=planSettingsRestore(current,payload).changes.map(({source,...change})=>({...change,sourceVersion:latest(source).version}));}catch{/* Unsupported settings never enable the separate recovery action. */}
   return {schema:payload.schema,expected:stateHash(current),conflicts:plan.conflicts,added:plan.added,newOnly,newOnlyError,settingsRecovery,noteRecovery:noteRestoreCandidates(current,payload).map(({source,...change})=>change),total:{notes:payload.notes.length,settings:payload.settings?.length??0,runs:payload.runs?.length??0,originals:payload.runs?.filter(r=>r.value?.type==='original-asset').length??0}};}
  async noteRecoveryHistory(noteId:string){
-  const db=await this.open();return new Promise<{id:string;appliedAt:string;source:any}[]>((resolve,reject)=>{
-   const tx=db.transaction(['notes','runs'],'readonly'),notes=tx.objectStore('notes').getAll(),q=tx.objectStore('runs').getAll(IDBKeyRange.bound('ui-v1-note-restore-','ui-v1-note-restore-\uffff'));let rows:{id:string;appliedAt:string;source:any}[]=[],error:unknown;
+  const tx=await this.startTransaction(['notes','runs'],'readonly');return new Promise<{id:string;appliedAt:string;source:any}[]>((resolve,reject)=>{
+   const notes=tx.objectStore('notes').getAll(),q=tx.objectStore('runs').getAll(IDBKeyRange.bound('ui-v1-note-restore-','ui-v1-note-restore-\uffff'));let rows:{id:string;appliedAt:string;source:any}[]=[],error:unknown;
    q.onsuccess=()=>{try{for(const receipt of q.result){validateNoteRestoreReceipt('ui-v1-note-restore-'+receipt.id,receipt,notes.result);if(receipt.noteId===noteId)rows.push({id:receipt.id,appliedAt:receipt.appliedAt,source:receipt.source});}rows.sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt));}catch(e){error=e;tx.abort();}};tx.oncomplete=()=>resolve(rows);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery history unavailable'));
   });
  }
  async restoreNote(text:string,expected:string,noteId:string){
-  if(!expected)throw Error('Review note before restoring');const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
-  return new Promise<void>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown;
+  if(!expected)throw Error('Review note before restoring');const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
+  return new Promise<void>((resolve,reject)=>{let error:unknown;
    readSnapshot(tx,current=>{try{if(stateHash(current)!==expected)throw Error('Local data changed · review backup again');const {change,write}=planNoteRestore(current,incoming,noteId),id=crypto.randomUUID(),receipt={schema:1,type:'note-restore',id,appliedAt:new Date().toISOString(),backupHash,noteId,beforeVersion:change.beforeVersion,afterVersion:change.beforeVersion+1,source:change.source};validateNoteRestoreReceipt('ui-v1-note-restore-'+id,receipt,current.notes.map(n=>n.id===noteId?write:n));tx.objectStore('notes').put(write);tx.objectStore('runs').add(receipt,'ui-v1-note-restore-'+id);}catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Note restore failed'));
   });
  }
  async restoreSettings(text:string,expected:string){
   if(!expected)throw Error('Review settings before restoring');
-  const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,db=await this.open();
+  const {parseStateBackup}=await import('./backup-state.ts'),incoming=await parseStateBackup(text),backupHash=JSON.parse(text).sha256,tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
   return new Promise<number>((resolve,reject)=>{
-   const tx=db.transaction(['notes','settings','runs'],'readwrite');let count=0,error:unknown;
+   let count=0,error:unknown;
    readSnapshot(tx,current=>{try{
     if(stateHash(current)!==expected)throw Error('Local data changed · review backup again');
     const plan=planSettingsRestore(current,incoming);if(!plan.changes.length)throw Error('No settings changes');
@@ -555,8 +560,8 @@ export class KnowledgeStore {
   const {parseStateBackup,planStateRestore,guardRestoredNote}=await import('./backup-state.ts'),incoming=await parseStateBackup(text);
   if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');
   if(incoming.schema===1){for(const n of incoming.notes){if(n.ui?.recordType==='schedule')parseTask(latest(n).body);else if(n.ui?.recordType==='execution')taskRunView(n);else if(n.ui?.recordType==='notification')noticeView(n);}}
-  const db=await this.open();return new Promise<{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean}>((resolve,reject)=>{
-   const tx=db.transaction(['notes','settings','runs'],'readwrite');let result:{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean},error:unknown;
+  const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');return new Promise<{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean}>((resolve,reject)=>{
+   let result:{conflicts:any[];added:{notes:number;settings:number;runs:number};restored:boolean},error:unknown;
    readSnapshot(tx,current=>{try{
     if(expected&&expected!==stateHash(current))throw Error('Local data changed · review backup again');
     if(incoming.schema===1){const merged=mergeNotes(current.notes,incoming.notes);assertFolderNamespace(merged.notes,current.settings.find(s=>s.key==='ui-v1-folders')?.value??[]);const fresh=merged.notes.filter((n:any)=>!current.notes.some(old=>old.id===n.id));for(const n of fresh)tx.objectStore('notes').add(guardRestoredNote(n));result={conflicts:merged.conflicts,added:{notes:fresh.length,settings:0,runs:0},restored:true};return;}
