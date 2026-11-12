@@ -1,3 +1,30 @@
+# Public Site v351 — chat, local database and schedule recovery (2026-11-12 JST)
+
+Product PR #60 merged to `main` as
+`222e9af263216004292465166f689d5e4ebe0c81`. The exact PR candidate passed
+GitHub quality workflow
+[43211141048](https://github.com/Unjuno/babelshelf/actions/runs/43211141048);
+the post-merge main workflow
+[43212839012](https://github.com/Unjuno/babelshelf/actions/runs/43212839012)
+also passed. App build `5e56fbffe17d2bfc` contains 167 verified assets.
+Site source commit `403be964aa379e14043f51e2e6fed6cef6faf017` records the
+product commit and build. Saved Site version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_857ec8e7215c81919ca68c1f72891c06`
+(v351) deployed successfully as
+`appgdep_6af5aa0c8d2c81919b11daafaf439763`. The existing public audience
+and `https://babelshelf.com/` were preserved. The archive was 108,206,080
+bytes /181 files with SHA-256
+`fc2aaa6ff5731e42b86011da0603b79996c92cc8224016e7620609424e90e646`.
+
+Delivery checks passed ONNX WASM gzip/identity byte equivalence, offline-shell
+transport bytes and headers, mutable shell cache policy and method handling.
+The public `/build.json` returned HTTP 200 with build `5e56fbffe17d2bfc` and
+167 file entries. The local Windows Installed PWA test could not start its
+Playwright Chromium process, but both complete GitHub quality workflows passed
+that acceptance stage. No model/runtime was downloaded or run, and no user
+browser data was cleared. This verifies the public build and CI acceptance,
+not physical-phone behavior or actual model quality.
+
 # Public Site v350 — model-load status feedback (2026-11-11 JST)
 
 Product PR #54 merged to `main` as
