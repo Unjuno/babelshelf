@@ -20,6 +20,26 @@ test('a paused calculation runs locally and exposes its calculation in history',
  await source.getByRole('button',{name:'Close'}).click();await navigate(page,'Notifications');await page.getByRole('button',{name:'Delete notification Succeeded · Calculate 12 + 10'}).click();await expect(page.getByText('Deleted · Succeeded · Calculate 12 + 10')).toBeVisible();await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:/Succeeded · Calculate 12 \+ 10/}).first()).toBeVisible();
 });
 
+test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('Enter a prompt');
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('QA schedule to delete');
+ const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for QA schedule to delete'}).click();
+ await page.getByRole('button',{name:'Delete schedule'}).click();
+ const confirmation=page.getByRole('dialog',{name:'Delete?'});await expect(confirmation).toContainText('QA schedule to delete');
+ await confirmation.getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page.locator('button.schedule-detail',{hasText:'QA schedule to delete'})).toHaveCount(0);
+ await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();
+ const trash=page.getByRole('dialog',{name:'Trash'});await expect(trash).toContainText('QA schedule to delete');
+ await trash.getByRole('button',{name:/Restore Schedule\//}).click();await expect(page.getByText('Restored',{exact:true})).toBeVisible();
+ await trash.getByRole('button',{name:'Close'}).click();await navigate(page,'Schedule');
+ await expect(page.locator('button.schedule-detail',{hasText:'QA schedule to delete'})).toBeVisible();
+});
+
 test('a schedule edited in Memory updates the Schedule view and notification delivery is clearly in-app',async({page})=>{
  await page.goto('/');
  await navigate(page,'Schedule');
