@@ -15,7 +15,7 @@ const files=[{path:'./index.html',bytes:Buffer.byteLength(html),sha256:hash(html
  {path:'./assets/main-START123.js',bytes:Buffer.byteLength(script),sha256:hash(script)}];
 
 test('missing shell and boot assets expose offline-safe recovery and preserve local data',async()=>{
- const requests=[];let corrupt=false;
+ const requests=[];let corrupt=false,currentHtml=html;
  let worker=productWorker({build,files,remote:[]});
  const server=createServer((request,response)=>{
   const path=new URL(request.url,'http://localhost').pathname;requests.push(path);
@@ -23,7 +23,7 @@ test('missing shell and boot assets expose offline-safe recovery and preserve lo
   response.setHeader('Cross-Origin-Opener-Policy','same-origin');
   response.setHeader('Cross-Origin-Embedder-Policy','require-corp');
   response.setHeader('Content-Type',path.endsWith('.js')?'text/javascript':'text/html; charset=utf-8');
-  const body=path==='/sw.js'?worker:path==='/assets/main-START123.js'?(corrupt?'incorrect bytes':script):html;
+  const body=path==='/sw.js'?worker:path==='/assets/main-START123.js'?(corrupt?'incorrect bytes':script):currentHtml;
   response.end(body);
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -94,9 +94,20 @@ test('missing shell and boot assets expose offline-safe recovery and preserve lo
   await context.setOffline(false);
   await page.evaluate(async()=>{for(const name of await caches.keys())await caches.delete(name);});
   await page.reload();await page.getByRole('heading',{name:'Repair app'}).waitFor();
-  worker=productWorker({build:'3333333333333333',files,remote:[]});
+  currentHtml=html.replace('App ready','Updated app ready');
+  const nextFiles=[{...files[0],bytes:Buffer.byteLength(currentHtml),sha256:hash(currentHtml)},files[1]];
+  worker=productWorker({build:'3333333333333333',files:nextFiles,remote:[]})
+   .replace("event.waitUntil(self.clients.claim())","event.waitUntil(new Promise(resolve=>setTimeout(resolve,2500)).then(()=>self.clients.claim()))");
+  // Stage a real update at the awkward point where it has left installing/
+  // waiting, but the old worker still controls this recovery document.
+  await page.evaluate(async()=>{
+   const registration=await navigator.serviceWorker.getRegistration();await registration.update();
+   const worker=registration.installing??registration.waiting??registration.active;
+   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Activation fixture timed out')),10000);const check=()=>{if(worker.state==='activating'){clearTimeout(timer);worker.removeEventListener('statechange',check);resolve();}};worker.addEventListener('statechange',check);check();});
+   if(registration.installing||registration.waiting||registration.active===navigator.serviceWorker.controller)throw Error('Expected an activating successor with its predecessor still controlling');
+  });
   await page.getByRole('button',{name:'Update app online',exact:true}).click();
-  await page.getByRole('heading',{name:'App ready',exact:true}).waitFor();await page.waitForFunction(()=>window.appReady);
+  await page.getByRole('heading',{name:'Updated app ready',exact:true}).waitFor();await page.waitForFunction(()=>window.appReady);
   const activeBuild=await page.evaluate(()=>new Promise(resolve=>{const channel=new MessageChannel();channel.port1.onmessage=event=>{channel.port1.close();resolve(event.data.build);};navigator.serviceWorker.controller.postMessage('build',[channel.port2]);}));
   assert.equal(activeBuild,'3333333333333333');assert.deepEqual(await preserved(),original);assert.deepEqual(scriptErrors,[]);
   console.log(JSON.stringify({scope:'PC Chromium, real worker/recovery UI; synthetic shell, no model/device acceptance',browser:browser.version(),missingShell:true,corruptEntry:true,offlineRecovery:true,updateControl:true,dataRetained:true}));
