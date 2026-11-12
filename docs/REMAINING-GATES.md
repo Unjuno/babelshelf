@@ -2,6 +2,41 @@
 
 ### Latest integration and deployment · 2026-11-12
 
+PR #62 merged as `c3dd64f6d9846a2d9197a8a66cffff6992a5d26d`. Missing or
+corrupt app-shell caches now lead to a standalone Repair app screen instead
+of a one-line dead end or an unbootable page. Repair/Update are explicit,
+app-only downloads; user data and model-download preferences remain intact.
+A verified update can replace an unavailable legacy worker without reloading
+live drafts. All 22 specialized KnowledgeStore transaction paths now share
+the bounded transaction-start reconnect policy, preserving CAS and refusing
+to replay a write after it starts.
+
+The exact PR candidate passed the full quality workflow
+[43226135204](https://github.com/Unjuno/babelshelf/actions/runs/43226135204).
+The integration workflow is
+[43228368680](https://github.com/Unjuno/babelshelf/actions/runs/43228368680).
+Local verification passed 275 root tests, 1,982 prototype tests, nine built
+asset checks and three Chromium update/recovery scenarios. See the dated
+startup-recovery entry in `docs/TEST-RESULTS.txt` for scope and evidence.
+
+Public Site v352 serves build `f7a5a5fd3fd47685` /167 assets. Deployment
+`appgdep_6af5c0b366fc81919a63c9abffab4085` succeeded with the existing public
+audience and custom domain. At `https://babelshelf.com/`, a new isolated
+Chromium context loaded the app, explicitly prepared its shell, then lost
+only its disposable app caches. The repair screen remained usable, explained
+offline recovery, and repaired the app in 9.2 seconds online. Its unsent draft
+and Offline preference survived, as did a subsequent offline reload. No user
+browser data or model assets were touched. The Site retains the immediate
+predecessor's pinned assets and shell transport for existing clients.
+
+The reported entrance regression is fixed and released. Prior schedule
+validation/deletion/paused guidance and secondary header controls passed
+built-app/CI checks. Model routing, deadlines and resident-model reuse have
+code-level regression evidence; actual model inference, phone performance
+and physical iOS/Android acceptance remain unverified by this release.
+
+### Previous integration and deployment · 2026-11-12
+
 PR #60 merged as `222e9af263216004292465166f689d5e4ebe0c81`. It recovers
 closed IndexedDB connections, explains unavailable chat decision-model setup
 and stalled work, and improves schedule validation/deletion, paused-state
