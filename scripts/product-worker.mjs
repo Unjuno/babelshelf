@@ -1,7 +1,9 @@
 // Generated offline app worker; model/data stores are outside this module.
 import {readAppNetworkAccess} from '../dist/connection-policy.js';
+import {recoveryDocument,recoveryCSP} from './product-recovery.mjs';
 export function productWorker({build,files,remote}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
 const readAppNetworkAccess=${readAppNetworkAccess.toString()};
+const RECOVERY_DOCUMENT=${JSON.stringify(recoveryDocument)},RECOVERY_CSP=${JSON.stringify(recoveryCSP)};
 `+String.raw`
 const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1',INSTALL_FILES=FILES.filter(file=>file.shell===true||!Array.isArray(file.roles)||file.roles.length===0);
 const hfGrants=new Map(),productAssetJobs=new Map();let shellRepair=null;
@@ -84,6 +86,39 @@ async function historicalShell(file){
  }
  return null;
 }
+function recoveryResponse(){return new Response(RECOVERY_DOCUMENT,{status:503,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':RECOVERY_CSP,'X-Content-Type-Options':'nosniff'}});}
+async function appShellStatus(){
+ const names=await caches.keys();if(!names.includes(CACHE))return 'missing';
+ const cache=await caches.open(CACHE),pool=names.includes(SHARED)?await caches.open(SHARED):null;
+ for(const file of INSTALL_FILES){
+  const direct=await cache.match(absolute(file.path));
+  if(await verified(direct,file))continue;
+  if(file.path==='./index.html'&&await historicalShell(file))continue;
+  const shared=immutable(file.path)&&pool?await pool.match(poolKey(file)):null;
+  if(!await verified(shared,file))return 'missing';
+ }
+ return 'ready';
+}
+async function predecessorUnavailable(){
+ // A legacy error document has no activation button. Inspect its known cache
+ // contract after this installation succeeds, and activate only when that
+ // predecessor demonstrably lacks its shell. Never navigate/reload clients.
+ const active=self.registration.active;if(!active?.postMessage)return false;
+ try{
+  const build=await new Promise(resolve=>{
+   const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();resolve(null);},2000);
+   channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data?.build);};
+   active.postMessage('build',[channel.port2]);
+  });
+  if(typeof build!=='string'||! /^[a-f0-9]{16}$/.test(build)||build===BUILD)return false;
+  const name='babelshelf-product-'+build,names=await caches.keys();if(!names.includes(name))return true;
+  const cache=await caches.open(name),shell=await cache.match(absolute('./index.html'));if(!shell?.ok)return true;
+  const assets=await historicalManifest(cache,name);if(!assets)return false;
+  const pool=names.includes(SHARED)?await caches.open(SHARED):null;
+  for(const file of assets){if(await verified(await cache.match(absolute(file.path)),file))continue;if(!await verified(pool?await pool.match(poolKey(file)):null,file))return true;}
+ }catch{/* An unrecognized predecessor remains on the ordinary update path. */}
+ return false;
+}
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  // Installation is only started by explicit app preparation/update. It may
  // fetch the build-pinned, same-origin shell even while user data/model
@@ -112,6 +147,7 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  // and failed-install pool entries remain intact; no implicit pruning occurs.
   const manifest=JSON.stringify({schema:1,build:BUILD,assets,optional:FILES.length-assets.length});
   await putManifest(cache,absolute(META),manifest);
+  if(await predecessorUnavailable())await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
@@ -120,8 +156,12 @@ self.addEventListener('fetch',event=>{
  if(url.origin!==self.location.origin){event.respondWith(externalRequest(event));return;}
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);
-  const missing=()=>new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain'}});
+  const missing=()=>request.mode==='navigate'?recoveryResponse():new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
   if(path===META||path.startsWith('./.babelshelf-app-assets/'))return missing();
+  // Serving HTML without its entry modules strands the user before React can
+  // render StartupRecovery. Verify the small app shell, never model/runtime
+  // assets, before serving a controlled navigation. This check is read-only.
+  if(request.mode==='navigate'&&FILES.some(file=>file.path==='./index.html')&&await appShellStatus()!=='ready')return recoveryResponse();
   const current=FILES.find(file=>file.path===path),hit=await cache.match(absolute(path));
   if(hit&&(!current||await verified(hit,current)))return hit;
   if(path==='./index.html'&&current){const old=await historicalShell(current);if(old)return old;}
@@ -143,10 +183,10 @@ self.addEventListener('fetch',event=>{
   // do not download, rewrite stored assets or weaken the page's isolation.
   // Rewrapping also removes redirected-index metadata for manual navigation.
   return request.mode==='navigate'||request.destination==='worker'||request.destination==='sharedworker'?isolatedResponse(response):response;
- }).catch(()=>new Response('Local app unavailable. Reload to retry.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})));
+ }).catch(()=>request.mode==='navigate'?isolatedResponse(recoveryResponse()):new Response('Local app unavailable. Reload to retry.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})));
 });
 self.addEventListener('message',event=>{
- if(event.data?.type==='repair-app-shell'){
+ if(event.data?.type==='repair-app-shell'||event.data?.type==='recover-app-shell'){
   const source=event.source,port=event.ports?.[0],operationId=event.data.operationId;
   let valid=false;try{valid=source?.type==='window'&&!!source.id&&new URL(source.url).origin===self.location.origin&&typeof operationId==='string'&&/^[A-Za-z0-9_-]{8,80}$/.test(operationId)&&(event.data.localOnly===undefined||typeof event.data.localOnly==='boolean');}catch{}
   if(!valid||shellRepair){port?.postMessage({status:'failed'});return;}
@@ -161,7 +201,10 @@ self.addEventListener('message',event=>{
     let response=shared&&await verified(shared,file)?shared:null;
     if(!response){
      if(event.data.localOnly===true)throw Error('Browser offline');
-     if(!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');check();
+     // The independent recovery screen is itself an explicit app-only prepare
+     // action, just like installation. It does not change the stored network
+     // preference or permit any cross-origin/model/runtime acquisition.
+     if(event.data.type!=='recover-app-shell'&&!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB))throw Error('Downloads are off');check();
      const sourceUrl=new URL(file.downloadPath??file.path,self.registration.scope);
      if(sourceUrl.origin!==self.location.origin||!sourceUrl.href.startsWith(self.registration.scope))throw Error('App asset outside scope');
      const controller=new AbortController();job.controller=controller;networkRequests.add(controller);
@@ -184,18 +227,7 @@ self.addEventListener('message',event=>{
   const source=event.source,port=event.ports?.[0];
   let valid=false;try{valid=source?.type==='window'&&!!source.id&&new URL(source.url).origin===self.location.origin;}catch{}
   if(!valid){port?.postMessage({status:'unavailable'});return;}
-  const work=(async()=>{
-   const names=await caches.keys();if(!names.includes(CACHE))return 'missing';
-   const cache=await caches.open(CACHE),pool=names.includes(SHARED)?await caches.open(SHARED):null;
-   for(const file of INSTALL_FILES){
-    const direct=await cache.match(absolute(file.path));
-    if(await verified(direct,file))continue;
-    if(file.path==='./index.html'&&await historicalShell(file))continue;
-    const shared=immutable(file.path)&&pool?await pool.match(poolKey(file)):null;
-    if(!await verified(shared,file))return 'missing';
-   }
-   return 'ready';
-  })().catch(()=> 'unavailable').then(status=>{try{port?.postMessage({status,build:BUILD});}catch{}});
+  const work=appShellStatus().catch(()=> 'unavailable').then(status=>{try{port?.postMessage({status,build:BUILD});}catch{}});
   event.waitUntil?.(work);return;
  }
  if(event.data?.type==='prepare-product-assets'){
