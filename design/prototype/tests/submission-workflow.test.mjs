@@ -379,13 +379,14 @@ test('missing evidence asks for information without retrying or opening a genera
 test('current-answer rewrite loads once, reads the exact assistant text and never retrieves unrelated Memory',async()=>{
  const f=fixture(),c=createSubmissionController(),original='Oak wood is used for furniture and barrels.';let loaded='',loads=0;const prompts=[];
  await f.services.saveDialogue({schema:1,revision:1,turns:[{id:'oak-answer',user:'List two uses.',answer:original}],compaction:null,currentResult:{turnId:'oak-answer'},currentFile:{noteId:'unrelated-file',revision:1}});
- f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{prompts.push(messages);return {text:prompts.length===1?'{"action":"read"}':'家具や樽に使います。',finishReason:'stop'};},unload:async()=>{loaded='';},load:async()=>{loads++;loaded='test';}};
+ f.services.model='test';f.services.bonsai={get loaded(){return loaded;},busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async messages=>{prompts.push(messages);return {text:'家具や樽に使います。',finishReason:'stop'};},unload:async()=>{loaded='';},load:async()=>{loads++;loaded='test';}};
  // Controlled protocol responses check routing, not model quality.
  f.services.knowledge={all:async()=>{throw Error('Unrelated Memory read');},search:async()=>{throw Error('Unrelated Memory search');}};
  const outcome=await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run));
- assert.equal(outcome,'completed');assert.equal(loads,1);assert.equal(prompts.length,2);assert.ok(prompts.every(messages=>JSON.stringify(messages).includes(original)));
- assert.deepEqual(prompts[1].slice(1),[{role:'assistant',content:original},{role:'user',content:'今の回答を日本語で短くまとめて。'}]);
+ assert.equal(outcome,'completed',c.state.error);assert.equal(loads,1);assert.equal(prompts.length,1);assert.ok(prompts.every(messages=>JSON.stringify(messages).includes(original)));
+ assert.deepEqual(prompts[0].slice(1),[{role:'assistant',content:original},{role:'user',content:'今の回答を日本語で短くまとめて。'}]);
  const answer=f.current().turns.at(-1);assert.equal(answer.answer,'家具や樽に使います。');assert.equal(answer.readTurn.turnId,'oak-answer');assert.equal(answer.readTurn.speaker,'assistant');assert.deepEqual(answer.refs,[]);assert.equal(answer.activity.some(a=>a.tool==='dialogue.plan'),false);assert.equal(f.current().turns[0].answer,original);
+ assert.equal(answer.activity.some(a=>a.tool==='text.inspect'),false);
  await f.services.saveDialogue(emptyDialogue());prompts.length=0;
  assert.equal(await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run)),'failed');
  assert.match(c.state.error,/Current result unavailable/);assert.equal(prompts.length,0);
@@ -910,7 +911,7 @@ test('literal replacement drops old factual citations while lossless line format
 test('failed original-text classification retains inference work without publishing an answer',async()=>{
  const f=fixture(),c=createSubmissionController();await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'answer',user:'Question',answer:'Original answer'}],currentResult:{turnId:'answer'}});
  let calls=0;f.services.model='test';f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>({text:++calls===1?'true':'invalid classifier output',outputTokens:3,metrics:{runtimePromptTokens:100}})};
- // Explicit current-summary selection goes directly to inspection, without a planner call.
- assert.equal(await c.run(run=>executeSubmission({text:'今の回答を日本語で短くまとめて。',attachments:[]},f.services,f.view,run)),'failed');
+ // Lossless formatting still uses inspection, without a planner call.
+ assert.equal(await c.run(run=>executeSubmission({text:'今の回答をチェックリストにして。',attachments:[]},f.services,f.view,run)),'failed');
  const turn=f.current().turns.at(-1),inspection=turn.activity.find(a=>a.tool==='text.inspect');assert.equal(inspection.status,'failed');assert.equal(inspection.output.inference.measuredModelCalls,1);assert.equal(inspection.output.inference.promptTokens,100);assert.equal(inspection.output.inference.outputTokens,3);assert.equal(summarizeTurnWork(turn.activity).measuredModelCalls,1);assert.equal(turn.answer,undefined);assert.equal(f.reviews.length,0);
 });

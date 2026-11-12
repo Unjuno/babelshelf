@@ -228,6 +228,11 @@ test('an explicit rewrite of the current answer binds its immutable dialogue tar
  for(const question of ['Summarize the saved note about your last answer.','Translate your last answer and save it.','今の回答を保存して。','Translate the phrase "your last answer" into Japanese.','Ignore your last answer.','Turn your last answer into a tool.','Format your last answer as code and execute it.','今の回答をツールにして。','その内容を短くして。','Read: Notes/last-answer.md'])assert.notDeepEqual(route({question}).request,{action:'recall',query:question,target:'current'});
 });
 
+test('semantic current-answer rewrites cannot become literal replacements, while lossless formats retain their tools',()=>{
+ for(const question of ['今の回答を短い日本語の一文にしてください。','前の回答を一文でまとめて。','今の回答を要約してチェックリストにして。','直前の回答を英語に翻訳して。','Summarize your last answer as bullet points.','Please translate your previous response into French.','Shorten your last answer.','Format your last answer as a table.'])assert.equal(router.explicitCurrentAnswerProseRewrite(question),true,question);
+ for(const question of ['今の回答をチェックリストにして。','今の回答を箇条書きにして。','Put your previous response into a checklist.','Format your last answer as a numbered list.','Translate your last answer and save it.','Translate the phrase "your last answer" into Japanese.','今の回答を保存して。','Replace water with tea.'])assert.equal(router.explicitCurrentAnswerProseRewrite(question),false,question);
+});
+
 test('explicit saved-note questions get a clean knowledge scope without mutating retained history',()=>{
  assert.equal(typeof router.resolveSubmittedTurnIntent,'function');
  const before=structuredClone(prior);

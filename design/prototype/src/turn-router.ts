@@ -21,6 +21,17 @@ export function explicitCurrentAnswerRewrite(question:string){
  return english||japanese?{action:'recall' as const,query:question,target:'current' as const}:null;
 }
 
+/** A bound semantic rewrite needs generated prose, not a model-selected literal
+ * replacement. Keep the existing lossless list/split path for those requests;
+ * summarizing or translating into a list still requires new prose.
+ */
+export function explicitCurrentAnswerProseRewrite(question:string){
+ if(!explicitCurrentAnswerRewrite(question))return false;
+ const semantic=/\b(?:summari[sz]e|translate|rephrase|rewrite|shorten|condense)\b|(?:まとめ|要約|翻訳|訳して|言い換え|書き直|短く)/iu.test(question);
+ const literal=/\b(?:checklist|bullets?|bulleted|numbered|split|delimiter|separator|newlines?)\b|(?:チェックリスト|箇条書き|番号付き|番号つき|改行|区切|置換|置き換)/iu.test(question);
+ return semantic||!literal;
+}
+
 // The rest of a question can overwhelm the lexical index. Keep a named saved
 // file's descriptor as the query; the full request is still used for answering.
 export function savedKnowledgeSearchQuery(question:string){
