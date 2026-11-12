@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createTextWorkerHost} from '../src/text-worker-host.ts';
-import {createIsolatedTextClient,DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS} from '../src/isolated-text-client.ts';
+import {createIsolatedTextClient,DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS} from '../src/isolated-text-client.ts';
 import {PlannerOutputError} from '../src/planner-error.ts';
 const message=(id,cmd,args={})=>({data:{id,cmd,args}});
 test('worker initialization passes validated app-owned model declarations into its runtime factory',async()=>{let configuration;const out=[],host=createTextWorkerHost(async(_progress,value)=>{configuration=value;return {assets:{}};},m=>out.push(m));await host(message(1,'init',{customModels:[{id:'local-model'}]}));assert.deepEqual(configuration,{customModels:[{id:'local-model'}]});assert.equal(out.at(-1).type,'done');});
@@ -10,12 +10,21 @@ test('silent model load stops and retires only its worker after the inactivity d
  const pending=client.load('local');await assert.rejects(pending,error=>error.code==='text_model_load_stalled'&&/No model-load progress/.test(error.message));
  assert.equal(client.loaded,null);assert.equal(client.failed,true);assert.equal(terminated,1);worker.onmessage({data:{id:sent[0].id,type:'done',value:{}}});assert.equal(client.loaded,null);
 });
+test('a stalled pre-generation token count gets a clear timeout and retires its worker',async()=>{
+ let terminated=0;const sent=[],worker={postMessage(message){sent.push(message);},terminate(){terminated++;}},client=createIsolatedTextClient(worker,{countTimeoutMs:1000});
+ assert.equal(DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS,60_000);
+ const pending=client.call('count',{messages:[{role:'user',content:'Question'}]});
+ await assert.rejects(pending,error=>error.code==='text_model_count_timeout'&&/1 second.*reload the model/.test(error.message));
+ assert.equal(client.failed,true);assert.equal(client.loaded,null);assert.equal(terminated,1);
+ worker.onmessage({data:{id:sent[0].id,type:'done',value:{prompt_tokens:1}}});
+ await assert.rejects(client.call('count'),/timed out/);assert.equal(terminated,1);
+});
 test('model-load progress renews the inactivity deadline while the hard deadline remains bounded',async()=>{
  const sent=[],events=[],worker={postMessage(message){sent.push(message);setTimeout(()=>worker.onmessage({data:{id:message.id,type:'progress',value:'Loading model · GPU layers 1/4'}}),500);setTimeout(()=>worker.onmessage({data:{id:message.id,type:'done',value:{loaded:true}}}),1300);},terminate(){}},client=createIsolatedTextClient(worker,{loadTimeoutMs:5000,loadIdleTimeoutMs:1000});
  assert.deepEqual(await client.load('local',(type,value)=>events.push({type,value})),{loaded:true});assert.equal(client.loaded,'local');assert.deepEqual(events,[{type:'progress',value:'Loading model · GPU layers 1/4'}]);client.abort();
 });
 test('text load timeout settings reject invalid or unbounded values',()=>{
- const worker={postMessage(){},terminate(){}};assert.throws(()=>createIsolatedTextClient(worker,{loadTimeoutMs:999}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{loadIdleTimeoutMs:1800001}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{loadTimeoutMs:1000,loadIdleTimeoutMs:2000}),/Invalid text model load timeout/);
+ const worker={postMessage(){},terminate(){}};assert.throws(()=>createIsolatedTextClient(worker,{loadTimeoutMs:999}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{loadIdleTimeoutMs:1800001}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{loadTimeoutMs:1000,loadIdleTimeoutMs:2000}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{countTimeoutMs:10*60*1000+1}),/Invalid text token-count timeout/);
 });
 test('default model load has a 10-minute hard ceiling while explicit runtimes may choose a bounded override',()=>{
  assert.equal(DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,10*60*1000);

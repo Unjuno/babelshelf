@@ -860,11 +860,13 @@ test('native current-file reply is accepted without read-completion inference or
 
 test('ordinary prose Send publishes transient previews and clears them on completion or failure',async()=>{
  for(const fail of [false,true]){
-  const f=fixture(),c=createSubmissionController();let observed=false;
+  const f=fixture(),c=createSubmissionController();let observed=false,modelCalls=0;
   f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxToolCalls:null,maxResultChars:8000};
   f.services.model='test';
+  assert.equal(f.services.decision.enabled,false);assert.equal(f.services.decision.ready,false);
   f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
   f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(_messages,_budget,format,onPreview)=>{
+   modelCalls++;
    if(format!=='prose')return {text:JSON.stringify({action:'chat',query:''})};
    onPreview('A short');observed=true;
    assert.equal(c.state.preview,'A short');assert.equal(f.current().turns.at(-1).answer,undefined);
@@ -872,6 +874,7 @@ test('ordinary prose Send publishes transient previews and clears them on comple
    return {text:'A short story.',finishReason:'stop'};
   },load:async()=>{throw Error('Already loaded');},stop(){}};
   const outcome=await c.run(run=>executeSubmission({text:'Tell me a story.',attachments:[]},f.services,f.view,run));
+  assert.equal(modelCalls,2,'an unconfigured Decision role falls through to Text planning and answer generation');
   assert.ok(observed,c.state.error);assert.equal(c.state.preview,'');
   if(fail){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);}
   else{assert.equal(outcome,'completed',c.state.error);assert.equal(f.current().turns.at(-1).answer,'A short story.');}

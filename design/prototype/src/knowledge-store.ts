@@ -27,7 +27,7 @@ import {createNote,reviseNote,withdrawNote,latest,validateRefs,validateGrounding
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared baseline is plain JavaScript.
-import {openDB} from '../../../dist/storage.js';
+import {openDB,isDBClosed,closeDB} from '../../../dist/storage.js';
 import {parsePreference,readPreference,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
@@ -135,11 +135,20 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
 function searchableRecords(all:Canonical[],query:string,pathPrefix?:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query)||typeof pathPrefix==='string'&&/^(?:Tools|Settings|Notifications|Schedule\/Runs)(?:\/|$)/i.test(pathPrefix);return explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
+ private databasePromise:Promise<IDBDatabase>|null=null;
  private searchCache=createStoredSearchCache();
  private searchWorker:ReturnType<typeof createPagedSearchClient>|undefined;
  private name:string;
  constructor(name='mlb-memory-v1'){this.name=name;}
- async open(){if(!this.database)this.database=await openDB(this.name);return this.database!;}
+ async open(){
+  if(this.database&&!isDBClosed(this.database))return this.database;
+  this.database=null;
+  if(!this.databasePromise)this.databasePromise=openDB(this.name).then((database:IDBDatabase)=>{
+   if(isDBClosed(database))throw Error('Database connection closed while opening');
+   this.database=database;database.addEventListener('close',()=>{if(this.database===database)this.database=null;},{once:true});return database;
+  }).finally(()=>{this.databasePromise=null;});
+  return this.databasePromise!;
+ }
  private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void,signal?:AbortSignal):Promise<T>{
   if(signal?.aborted)throw Error('Stopped');
   const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();if(signal?.aborted)throw Error('Stopped');return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown,stopped=false;
@@ -556,5 +565,5 @@ export class KnowledgeStore {
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Restore failed'));
   });
  }
- close(){this.searchWorker?.close();this.searchWorker=undefined;this.searchCache.clear();this.database?.close();this.database=null;}
+ close(){this.searchWorker?.close();this.searchWorker=undefined;this.searchCache.clear();if(this.database)closeDB(this.database);this.database=null;}
 }
