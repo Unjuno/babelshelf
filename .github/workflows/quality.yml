@@ -50,9 +50,9 @@ jobs:
         # The Azure-hosted archive intermittently stops responding during apt
         # downloads; use Ubuntu's public archive to keep browser setup moving.
         run: |
-          sudo find /etc/apt -type f \( -name '*.sources' -o -name '*.list' \) -exec sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' {} +
-          grep -Rni 'azure.archive.ubuntu.com' /etc/apt --include='*.sources' --include='*.list' || true
-          grep -Rni 'archive.ubuntu.com/ubuntu' /etc/apt --include='*.sources' --include='*.list' || true
+          apt-config dump | grep -Ei 'Dir::Etc::(sourcelist|sourceparts)' || true
+          sudo grep -RIl 'azure.archive.ubuntu.com' /etc/apt | while IFS= read -r source; do sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' "$source"; done
+          sudo grep -Rni 'azure.archive.ubuntu.com' /etc/apt || true
       - name: Install browser system dependencies
         # Playwright's Chromium + WebKit dependency list can exceed 15 minutes
         # on a slow GitHub-hosted apt mirror even though the suite is healthy.
