@@ -226,7 +226,7 @@ test('schema-2 harness profiles gain unlimited generation budgets in memory with
  const records=structuredClone(initialPreferenceNotes),record=records.find(note=>note.id==='settings-harness'),value=parsePreference('harness',record.body);
  value.schemaVersion=2;value.profiles[0].maxToolCalls=5;for(const profile of value.profiles){delete profile.maxGenerationTokens;delete profile.maxGenerationMs;}
  record.body=formatPreference('harness',value).replace('"schemaVersion": 7','"schemaVersion": 2');const stored=record.body,projected=readPreference('harness',records);
- assert.equal(projected.schemaVersion,7);assert.equal(projected.profiles[0].maxToolCalls,5);assert.ok(projected.profiles.every(profile=>profile.maxGenerationTokens===null&&profile.maxGenerationMs===null));assert.equal(record.body,stored);assert.equal(record.version,1);
+ assert.equal(projected.schemaVersion,7);assert.equal(projected.profiles[0].maxToolCalls,5);assert.ok(projected.profiles.every(profile=>profile.maxGenerationTokens===8192&&profile.maxGenerationMs===300_000));assert.equal(record.body,stored);assert.equal(record.version,1);
 });
 test('current harness schema preserves an explicitly selected budget equal to an old default',()=>{
  const records=structuredClone(initialPreferenceNotes),target=records.find(note=>note.id==='settings-harness');
@@ -424,4 +424,5 @@ test('fresh knowledge profiles can navigate source provenance without enabling t
  const value=readPreference('harness',initialPreferenceNotes);
  for(const id of ['standard','source-first'])assert.ok(value.profiles.find(p=>p.id===id).enabledTools.includes('memory.sources'));
  assert.deepEqual(value.profiles.find(p=>p.id==='conversation').enabledTools,[]);
+ for(const profile of value.profiles){assert.equal(profile.maxGenerationTokens,8192);assert.equal(profile.maxGenerationMs,300_000);}
 });

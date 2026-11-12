@@ -198,7 +198,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      checkSend();setChatProgress('Selecting action…');return routeWithDecision(decision,text,context,descriptors,trace,checkSend);
     }:undefined,
     plan:async()=>{
-     setChatProgress('Selecting action…');
+     setChatProgress(decision.enabled?'Selecting action…':'Text model · selecting action…');
      const coordinated=await coordinateAgentTurn({onPreview:run.preview,
       engine:inference,snapshot,model,question:text,context,attachments:descriptors,excludedTools:needsSourcedCalculationReview(text,prior.turns.at(-1))?['math.calculate']:[],
       prepareContext:async allowedTools=>{

@@ -151,7 +151,13 @@ export class KnowledgeStore {
  }
  private async transaction<T>(stores:string[],mode:IDBTransactionMode,run:(tx:IDBTransaction,done:(v:T)=>void,fail:(error:unknown)=>void)=>void,signal?:AbortSignal):Promise<T>{
   if(signal?.aborted)throw Error('Stopped');
-  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;const db=await this.open();if(signal?.aborted)throw Error('Stopped');return new Promise((resolve,reject)=>{const tx=db.transaction(scope,mode);let value:T,error:unknown,stopped=false;
+  const guarded=mode==='readwrite'&&stores.includes('notes'),scope=guarded?[...new Set([...stores,'settings'])]:stores;let tx:IDBTransaction;
+  for(let attempt=0;;attempt++){
+   const db=await this.open();if(signal?.aborted)throw Error('Stopped');
+   try{tx=db.transaction(scope,mode);break;}
+   catch(error){const message=error instanceof Error?error.message:'';const closing=(error instanceof DOMException&&error.name==='InvalidStateError')||/database connection is closing|connection is closing/i.test(message);if(!closing||attempt>0)throw error;if(this.database===db)this.database=null;}
+  }
+  return new Promise((resolve,reject)=>{let value:T,error:unknown,stopped=false;
    const cleanup=()=>signal?.removeEventListener('abort',abort);
    const abort=()=>{stopped=true;try{tx.abort();}catch{/* The transaction may already be complete. */}};
    signal?.addEventListener('abort',abort,{once:true});
@@ -227,7 +233,7 @@ export class KnowledgeStore {
   validateDialogue(next);checkAttachmentBatch(originals.map(a=>({size:a.bytes})));const created=originals.map(originalNote);
   if(next.revision!==(expected?.revision??0)+1||next.turns.length!==(expected?.turns.length??0)+1||stateHash(next.turns.slice(0,-1))!==stateHash(expected?.turns??[]))throw Error('Invalid submitted input');
   const turn=next.turns.at(-1)!,ids=new Set(originals.map(a=>a.id));if(ids.size!==originals.length||!Array.isArray(turn.attachments)||new Set(turn.attachments.map(a=>a.id)).size!==turn.attachments.length||[...ids].some(id=>!turn.attachments!.some(a=>a.id===id))||turn.attachments.some(a=>!a.asset||a.asset.id!==a.id))throw Error('Attachment input mismatch');
-  const db=await this.open();return new Promise<any[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings','runs'],'readwrite');let error:unknown,inputNotes=created;
+  return this.transaction<any[]>(['notes','settings','runs'],'readwrite',(tx,done,fail)=>{let inputNotes=created;
    readSnapshot(tx,current=>{try{
     if(stateHash(current.settings.find(s=>s.key==='ui-v1-dialogue')?.value)!==stateHash(expected))throw Error('Conversation changed in another tab · reopen to continue');
     if(expectedSettingsRevisions)for(const group of ['models','harness'] as const){const id=group==='models'?'settings-models':'settings-harness',record=current.notes.find(note=>note.id===id&&note.state==='active'),revision=record?latest(record).version:null;if(revision!==expectedSettingsRevisions[group])throw Error('Settings changed in another tab · send again');}
@@ -237,7 +243,8 @@ export class KnowledgeStore {
     for(const a of turn.attachments!)if(!notes.some(n=>n.id===a.id&&n.originalAsset&&n.state==='active'))throw Error('Original withdrawn or unavailable');
     checkAttachmentBatch(turn.attachments!.map(a=>({size:runs.find(r=>r.key===originalKey(a.id))!.value.bytes})));
     for(const n of [...created,...derived])tx.objectStore('notes').add(n);for(const a of originals)tx.objectStore('runs').add(a,originalKey(a.id));tx.objectStore('settings').put(next,'ui-v1-dialogue');
-   }catch(e){error=e;tx.abort();}});tx.oncomplete=()=>resolve(inputNotes);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Original save failed'));
+    done(inputNotes);
+   }catch(error){fail(error);}});
   });
  }
  async corrections(noteId?:string):Promise<CorrectionReceipt[]>{return this.transaction(['runs'],'readonly',(tx,done)=>{const q=tx.objectStore('runs').getAll();q.onsuccess=()=>done(q.result.filter(r=>r?.type==='note-correction'&&r.schema===1&&(!noteId||r.noteId===noteId)).sort((a,b)=>b.appliedAt.localeCompare(a.appliedAt)));});}
@@ -311,9 +318,8 @@ export class KnowledgeStore {
   });
  }
  private async editRecords<T>(change:(records:Canonical[])=>{put:Canonical[];value:T}):Promise<T>{
-  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),s=tx.objectStore('notes'),q=s.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2,value:T,error:unknown;
-   const commit=()=>{if(--pending)return;try{const result=change(q.result);const map=new Map(q.result.map(n=>[n.id,n]));for(const n of result.put)map.set(n.id,n);checkNotes([...map.values()]);assertFolderNamespace([...map.values()],folders.result??[]);for(const n of result.put)s.put(n);value=result.value;}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;
-   tx.oncomplete=()=>resolve(value);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
+  return this.transaction<T>(['notes','settings'],'readwrite',(tx,done,fail)=>{const s=tx.objectStore('notes'),q=s.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders');let pending=2;
+   const commit=()=>{if(--pending)return;try{const result=change(q.result);const map=new Map(q.result.map(n=>[n.id,n]));for(const n of result.put)map.set(n.id,n);checkNotes([...map.values()]);assertFolderNamespace([...map.values()],folders.result??[]);for(const n of result.put)s.put(n);done(result.value);}catch(error){fail(error);}};q.onsuccess=commit;folders.onsuccess=commit;
   });
  }
  async putTask(task:Task,id?:string,expected?:number,creationId?:string){return this.editRecords(records=>{
@@ -349,9 +355,8 @@ export class KnowledgeStore {
   };});
  }
  async commit(before:NoteView[],after:NoteView[]){
-  before=structuredClone(before);after=structuredClone(after);const db=await this.open();return new Promise<NoteView[]>((resolve,reject)=>{const tx=db.transaction(['notes','settings'],'readwrite'),store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,error:unknown,views:NoteView[];
-   const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after,dialogue.result);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);}catch(e){error=e;tx.abort();}};q.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
-   tx.oncomplete=()=>resolve(views);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Save failed'));
+  before=structuredClone(before);after=structuredClone(after);return this.transaction<NoteView[]>(['notes','settings'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('notes'),q=store.getAll(),folders=tx.objectStore('settings').get('ui-v1-folders'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue');let pending=3,views:NoteView[];
+   const commit=()=>{if(--pending)return;try{const updated=applyKnowledgeChanges(q.result,before,after,dialogue.result);assertFolderNamespace(updated,folders.result??[]);for(const n of updated)if(!equal(q.result.find(x=>x.id===n.id),n))store.put(n);views=updated.filter(n=>n.state==='active').map(projectNote);done(views);}catch(error){fail(error);}};q.onsuccess=commit;folders.onsuccess=commit;dialogue.onsuccess=commit;
   });
  }
   /** Revision a user-edited file through one explicit CAS operation; the UI never constructs a storage-wide diff. */
@@ -440,15 +445,14 @@ export class KnowledgeStore {
   });
  }
  async recordProcessing(next:Activity):Promise<void>{
-  const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(['runs'],'readwrite'),store=tx.objectStore('runs'),key=processingKey(next.id),q=store.get(key);let error:unknown;
-   q.onsuccess=()=>{try{store.put(processingUpdate(q.result as ProcessingRecord|undefined,next),key);}catch(e){error=e;tx.abort();}};
-   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Processing record unavailable'));
+  return this.transaction<void>(['runs'],'readwrite',(tx,done,fail)=>{const store=tx.objectStore('runs'),key=processingKey(next.id),q=store.get(key);
+   q.onsuccess=()=>{try{store.put(processingUpdate(q.result as ProcessingRecord|undefined,next),key);done();}catch(error){fail(error);}};
   });
  }
  /** Store one new or completed receipt without rewriting the conversation. */
  async recordTurnActivity(turnId:string,next:Activity,expected:Dialogue):Promise<void>{
-  const receipt=structuredClone(next);validateActivity([receipt]);validateDialogue(expected);const expectedHash=stateHash(expected),metaKey=turnActivityMetaKey(turnId),indexKey=turnActivityIndexKey(turnId,receipt.id),db=await this.open();
-  return new Promise((resolve,reject)=>{const tx=db.transaction(['settings','runs'],'readwrite'),runs=tx.objectStore('runs'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue'),meta=runs.get(metaKey),index=runs.get(indexKey);let pending=3,error:unknown;
+  const receipt=structuredClone(next);validateActivity([receipt]);validateDialogue(expected);const expectedHash=stateHash(expected),metaKey=turnActivityMetaKey(turnId),indexKey=turnActivityIndexKey(turnId,receipt.id);
+  return this.transaction<void>(['settings','runs'],'readwrite',(tx,done,fail)=>{const runs=tx.objectStore('runs'),dialogue=tx.objectStore('settings').get('ui-v1-dialogue'),meta=runs.get(metaKey),index=runs.get(indexKey);let pending=3;
    const read=()=>{if(--pending)return;try{
     if(!dialogue.result)throw Error('Turn unavailable');const state=validateDialogue(dialogue.result),turn=state.turns.find(turn=>turn.id===turnId);if(!turn)throw Error('Turn unavailable');if(stateHash(state)!==expectedHash)throw Error('Conversation changed in another tab · reopen to continue');
     if(turn.activity?.some(item=>item.id===receipt.id))throw Error('Duplicate activity identity');
@@ -473,10 +477,9 @@ export class KnowledgeStore {
       if(!oldPage||expectedLength<1||oldPage.items.length!==expectedLength||!oldPage.items.some(item=>item.id===receipt.id))throw Error('Activity start unavailable');
       const page={...oldPage,items:updateActivity(oldPage.items,receipt)};validateTurnActivityPage(key,page);runs.put(page,key);
      }
-    }catch(e){error=e;tx.abort();}};
-   }catch(e){error=e;tx.abort();}};
+     }catch(error){fail(error);}};
+   }catch(error){fail(error);}};
    dialogue.onsuccess=read;meta.onsuccess=read;index.onsuccess=read;
-   tx.oncomplete=()=>resolve();tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Activity record unavailable'));
   });
  }
  /** Read one bounded activity page and its current continuation. */
