@@ -8611,3 +8611,22 @@ last visible stage update and avoids presenting an unknown exact percentage as
 proof of no progress. No model/runtime was downloaded or run; no user data was
 cleared. This is PC/CI and public-shell verification, not physical-device or
 actual-model loading acceptance.
+
+2026-11-12 — PR #60 merged to main as
+`222e9af263216004292465166f689d5e4ebe0c81`. The PR candidate workflow
+[43211141048](https://github.com/Unjuno/babelshelf/actions/runs/43211141048)
+and post-merge main workflow
+[43212839012](https://github.com/Unjuno/babelshelf/actions/runs/43212839012)
+both passed the full `Local PWA quality` suite, including Installed PWA
+acceptance. The local Windows run passed all prior stages but Chromium could
+not be spawned for `test:quality:installed-pwa`; direct Chromium startup
+failed at the OS process layer as well. The changed schedule UI regression
+passed 9/9 in isolation. App build `5e56fbffe17d2bfc` contains 167 verified
+assets. Public Site v351 deployed successfully; `https://babelshelf.com/build.json`
+returned HTTP 200 with that build ID and all 167 entries. Site source commit
+`403be964aa379e14043f51e2e6fed6cef6faf017`; archive SHA-256
+`fc2aaa6ff5731e42b86011da0603b79996c92cc8224016e7620609424e90e646`
+(108,206,080 bytes /181 files). Delivery verification passed WASM compressed
+and identity bytes, offline shell transport and mutable shell cache rules. No
+model/runtime was downloaded or run, and no user data was cleared. Public
+deployment and CI acceptance are not physical-device or actual-model evidence.

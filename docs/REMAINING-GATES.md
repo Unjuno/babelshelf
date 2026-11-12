@@ -1,23 +1,24 @@
-## Current status · 2026-11-11
+## Current status · 2026-11-12
 
-### Latest integration and deployment · 2026-11-11
+### Latest integration and deployment · 2026-11-12
 
-PR #54 (`65ddcce6`) merged as `07dd29817963d3b445438bd66a11ec316ffe9ffa`.
-It separates total model-load time from time since the last visible stage
-update. If the runtime does not report a reliable overall percentage, the UI
-says so; a static UI stage is no longer described as proof of no runtime
-progress. Its exact candidate passed the full GitHub `Local PWA quality`
-workflow [42987533321](https://github.com/Unjuno/babelshelf/actions/runs/42987533321).
+PR #60 merged as `222e9af263216004292465166f689d5e4ebe0c81`. It recovers
+closed IndexedDB connections, explains unavailable chat decision-model setup
+and stalled work, and improves schedule validation/deletion, paused-state
+guidance, runtime check feedback and notification layering. Both the exact PR
+candidate and merged main passed the full GitHub `Local PWA quality`
+workflows [43211141048](https://github.com/Unjuno/babelshelf/actions/runs/43211141048)
+and [43212839012](https://github.com/Unjuno/babelshelf/actions/runs/43212839012).
 
-Public Site v350 serves app build `f67c08d029cd7b0f` /167 assets. Site source
-commit `c766900a53625a77c07f89f68503912cdf838313`, saved version
-`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_cfefeedb6f2481919ff215cae65cbf1f`,
-and deployment `appgdep_6af42c3c574881918f223c500f938771` succeeded. The public
-manifest returned HTTP 200 with the expected build. In the existing sidebar
-browser, Update completed and the app remained on the chat screen; connection
-mode was returned to Offline. No model/runtime was downloaded or loaded, and
-no app storage was cleared. This verifies public delivery and the browser
-update action, not active-worker identity, model inference, or phone behavior.
+Public Site v351 serves app build `5e56fbffe17d2bfc` /167 assets. Site source
+commit `403be964aa379e14043f51e2e6fed6cef6faf017`, saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_857ec8e7215c81919ca68c1f72891c06`,
+and deployment `appgdep_6af5aa0c8d2c81919b11daafaf439763` succeeded while
+preserving the public audience and `https://babelshelf.com/`. The public
+manifest returned HTTP 200 with the expected build. The local Windows
+Installed PWA test could not start its Chromium process; both complete GitHub
+workflows passed that acceptance stage. No model/runtime was downloaded or
+loaded, and no user browser data was cleared.
 
 The product is not yet release-complete. Real-model loading and sustained
 performance on target phones, iOS offline cold restart, cross-device data
