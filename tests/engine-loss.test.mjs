@@ -1,6 +1,19 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {Engine} from '../dist/engine.js';
 class Transport{sent=[];terminated=false;postMessage(message){this.sent.push(message);}emit(data){this.onmessage({data});}terminate(){this.terminated=true;}}
 const fixture=()=>{const worker=new Transport(),states=[],engine=new Engine({models:[]},value=>states.push(value),worker);return {worker,states,engine};};
+test('silent WebML generation reaches the inactivity deadline and retires the unresponsive worker',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const worker=new Transport(),engine=new Engine({models:[]},()=>{},worker,{generationIdleTimeoutMs:1000});let outcome;
+ const pending=engine.generate([],null).then(value=>outcome=value,error=>outcome=error);
+ try{t.mock.timers.tick(1000);assert.equal(worker.sent.at(-1).cmd,'abort');t.mock.timers.tick(2500);await Promise.resolve();assert.equal(outcome?.code,'text_model_generation_stalled');assert.equal(worker.terminated,true);assert.equal(engine.loaded,null);
+  worker.emit({id:1,type:'done',value:'late'});assert.equal(engine.failed,true);
+ }finally{engine.abort();t.mock.timers.tick(2500);await pending;}
+});
+test('WebML streaming renews its inactivity deadline and completed requests leave no timer',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const worker=new Transport(),engine=new Engine({models:[]},()=>{},worker,{generationIdleTimeoutMs:1000});let outcome;
+ const pending=engine.generate([],null).then(value=>outcome=value,error=>outcome=error),id=worker.sent.at(-1).id;
+ for(let i=0;i<5;i++){t.mock.timers.tick(900);worker.emit({id,type:i?'text':'progress',value:i?'word':'Prefill · 1 / 2'});await Promise.resolve();assert.equal(outcome,undefined);assert.equal(worker.sent.length,1);}
+ worker.emit({id,type:'done',value:'answer'});await pending;t.mock.timers.tick(10000);assert.equal(outcome,'answer');assert.equal(worker.terminated,false);
+});
 test('GPU loss rejects pending load and ignores its late successful response',async()=>{const {worker,engine}=fixture(),load=engine.load('4B'),rejected=assert.rejects(load,/GPU disconnected/),id=worker.sent.at(-1).id;worker.emit({type:'lost',value:'device removed'});worker.emit({id,type:'done',value:true});await rejected;assert.equal(engine.loaded,null);assert.equal(engine.pending.size,0);assert.equal(worker.sent.length,1);});
 test('GPU loss after done but before load resumes cannot publish loaded state',async()=>{const {worker,engine}=fixture(),load=engine.load('4B'),rejected=assert.rejects(load,/GPU disconnected/),id=worker.sent.at(-1).id;worker.emit({id,type:'done',value:true});worker.emit({type:'lost',value:'device removed'});await rejected;assert.equal(engine.loaded,null);});
 test('GPU loss settles active generation but preserves independent asset inspection and explicit reload',async()=>{const {worker,engine}=fixture();const initial=engine.load('4B');worker.emit({id:worker.sent.at(-1).id,type:'done',value:true});await initial;const generation=engine.generate([],null),rejected=assert.rejects(generation,/GPU disconnected/),count=engine.call('count'),countRejected=assert.rejects(count,/GPU disconnected/),inspect=engine.call('status'),inspectId=worker.sent.at(-1).id;worker.emit({type:'lost',value:'device removed'});await Promise.all([rejected,countRejected]);assert.equal(engine.loaded,null);assert.equal(engine.pending.size,1);worker.emit({id:inspectId,type:'done',value:{filesPresent:true}});assert.deepEqual(await inspect,{filesPresent:true});assert.equal(worker.sent.length,4);const next=engine.load('4B');worker.emit({id:worker.sent.at(-1).id,type:'done',value:true});await next;assert.equal(engine.loaded,'4B');});

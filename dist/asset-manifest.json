@@ -28,8 +28,8 @@
     },
     {
       "path": "./engine.js",
-      "bytes": 3122,
-      "sha256": "bf3d72ca065bba39e5888962fde1112ad676a0eda7e7caa08c46e34c136d3592"
+      "bytes": 4195,
+      "sha256": "2b5c22a0bda360222bdfbd6c459bb97342073e1f6bc270d6db14801e62c24ab4"
     },
     {
       "path": "./files.js",
@@ -83,8 +83,8 @@
     },
     {
       "path": "./lfm-adapter.js",
-      "bytes": 17869,
-      "sha256": "437f4df389ee0564d77e486b2c7eca661be2cafa4efbaeab37f7f4e85715a98b"
+      "bytes": 18349,
+      "sha256": "cddff5f7c8149fa3da4b0cd7addc3d35eb1bbb3d196bc5efce7b1a4a02143f5a"
     },
     {
       "path": "./lfm-model-manifest.json",
@@ -128,8 +128,8 @@
     },
     {
       "path": "./native-answer-preview.js",
-      "bytes": 1983,
-      "sha256": "26701e42ac861e83bf7dcacb6253c93721d6017902bfc66868d7481be897a454"
+      "bytes": 1997,
+      "sha256": "c8fb5f426c5c774e3812725bb157eefafe064935889c69bd73c2ecd1ece588e9"
     },
     {
       "path": "./native-response.js",
@@ -189,7 +189,7 @@
     {
       "path": "./sw.js",
       "bytes": 1866,
-      "sha256": "0dabf23d9f322ac8f18eefd5a888d35931214ddbc3c47ce50d1cf61c5ec1ca25"
+      "sha256": "ebadd11ec3aebea6be831796457c6c30e1639bc1c04bddcb1541af2ffd56899b"
     },
     {
       "path": "./ui.js",

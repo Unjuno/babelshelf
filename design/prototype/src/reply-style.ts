@@ -15,6 +15,10 @@ const guidance:Record<ReplyStyle,string>={
 const explicitLongRequest=/(?:\bin detail\b|\bdetailed\b|\bcomprehensive\b|\bthorough\b|\bstep[- ]by[- ]step\b|\blong[- ]form\b|\bwrite (?:me )?a story\b|\b(?:\d+|two|three|four|five|several) paragraphs?\b|詳しく|詳細に|詳細な|網羅的|徹底的|段階的に|長文|物語|\d+段落)/u;
 const analyticalRequest=/(?:\b(?:analy[sz](?:e|es|ed|ing)|analysis|evaluat(?:e|es|ed|ing|ion)|review|compare|comparison|assess|pros and cons|trade[- ]offs?|implications)\b|分析|比較|比べ|評価|レビュー|検討|考察|長所と短所|利点と欠点|トレードオフ)/iu;
 const additionalStage=/(?:\bthen\b|\bafterwards\b|\bfollowed by\b|その後|そのあと|続けて|その上で)/iu;
+// Shared by request formatting and the narrow greeting grammar. Modifiers do
+// not change the requested sentence count or imply a separate operation.
+export const englishOneSentenceFormat=String.raw`(?:exactly\s+)?(?:one|(?:a\s+)?single)(?:[\s-]+(?:short|brief|concise))?[\s-]+sentence`;
+const oneSentenceRequest=new RegExp(String.raw`\b${englishOneSentenceFormat}\b|(?:一文|1文)(?:で|の|に)`,'iu');
 export function requestsExtendedReply(question:string){return explicitLongRequest.test(question)||analyticalRequest.test(question);}
 
 /** Fixed presentation guidance only; no free-form setting can alter harness policy. */
@@ -28,7 +32,7 @@ export function dialogueOutputLimits(style:unknown,question:string,availableToke
  if(typeof style!=='string'||!REPLY_STYLES.includes(style as ReplyStyle))throw Error('Unsupported reply style');
  if(typeof question!=='string'||!Number.isSafeInteger(availableTokens)||availableTokens<1)throw Error('Invalid dialogue output budget');
  const text=question.toLocaleLowerCase();
- const explicitShort=/(?:\bbriefly\b|\bshort answer\b|\bone sentence\b|\b(?:exactly\s+)?two sentences?\b|\b(?:one|two)[- ]sentence\b|\bconcise(?:ly)?\b|\btldr\b|簡潔に|短く|一言で|一文で|二文で|2文で|要点だけ)/u.test(text);
+ const explicitShort=oneSentenceRequest.test(text)||/(?:\bbriefly\b|\bshort answer\b|\b(?:exactly\s+)?two(?:\s+(?:short|brief|concise))? sentences?\b|\btwo[- ]sentence\b|\bconcise(?:ly)?\b|\btldr\b|簡潔に|短く|一言で|一文で|二文で|2文で|要点だけ)/u.test(text);
  const explicitLong=explicitLongRequest.test(text);
  const analytical=analyticalRequest.test(text);
  let total:number,segment:number;
@@ -52,7 +56,7 @@ export function groundedOutputTokens(style:unknown,question:string,availableToke
 }
 
 export function requestsOneSentence(question:string){
- return typeof question==='string'&&!(explicitLongRequest.test(question.toLocaleLowerCase())&&additionalStage.test(question))&&/(?:\b(?:exactly\s+)?one[\s-]+sentence\b|\bsingle\s+sentence\b|(?:一文|1文)(?:で|の|に))/iu.test(question);
+ return typeof question==='string'&&!(explicitLongRequest.test(question.toLocaleLowerCase())&&additionalStage.test(question))&&oneSentenceRequest.test(question);
 }
 
 function sentenceSegments(text:string){

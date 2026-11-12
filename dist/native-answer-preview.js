@@ -2,7 +2,7 @@
 export function nativeAnswerPreview(calls) {
  if(calls.size!==1)return '';
  const call=[...calls.values()][0];
- if(!['finish_answer','finish_summary','finish_capturetext'].includes(call.name))return '';
+ if(!['finish_chat','finish_answer','finish_summary','finish_capturetext'].includes(call.name))return '';
  const source=call.arguments;let i=0,answer='',seen=false;const eof=Symbol('incomplete');
  const ws=()=>{while(/\s/.test(source[i]??'')&&i<source.length)i++;};
  const need=()=>{if(i>=source.length)throw eof;};

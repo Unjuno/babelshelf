@@ -58,7 +58,7 @@ function entries(list:Entry[]){
  if(!Array.isArray(list)||list.length>20000)throw Error('Invalid backup entries');const keys=new Set<string>();
  for(const item of list){if(!item||typeof item.key!=='string'||!item.key||keys.has(item.key))throw Error('Invalid or duplicate backup key');keys.add(item.key);jsonOnly(item.value);}
 }
-function validateState(state:StateSnapshot){
+export function validateState(state:StateSnapshot){
  jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);
  validateTurnActivityBackup(state.settings,state.runs);
  for(const n of state.notes){validateDialogueCopyRecord(n);const path=notePath(n),group=preferenceGroup(path);

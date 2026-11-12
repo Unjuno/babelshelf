@@ -33,6 +33,21 @@ function fixture(){
  return {services,view,events,reviews,current:()=>dialogue,modelCalls:()=>modelCalls};
 }
 
+test('native conversational completion reaches Send unchanged with one model generation and no tool work',async()=>{
+ const f=fixture(),c=createSubmissionController(),answer='Air scatters sunlight, so the daytime sky often appears blue.';let generations=0;
+ f.services.model='test';
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxToolCalls:null,maxGenerationTokens:null,maxGenerationMs:null};
+ f.services.knowledge={all:async()=>{throw Error('Unexpected knowledge read');},search:async()=>{throw Error('Unexpected search');},getState:async()=>[]};
+ f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),load:async()=>{throw Error('Already resident');},generate:async(_messages,_budget,format)=>{
+  generations++;assert.equal(format.type,'native-tool-plan');
+  return {text:JSON.stringify({action:'chat',reply:{status:'answered',answer,sources:[]}}),finishReason:'stop',outputTokens:25};
+ }};
+ const outcome=await c.run(run=>executeSubmission({text:'Why is the daytime sky blue?',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));assert.equal(generations,1);
+ assert.equal(f.current().turns.at(-1).answer,answer);assert.deepEqual(f.current().turns.at(-1).refs,[]);
+ assert.equal(f.reviews.length,0);assert.equal(summarizeTurnWork(f.current().turns.at(-1).activity).measuredModelCalls,1);
+});
+
 test('source metadata is passed to the final answer commit after agent inspection',async()=>{
  for(const stale of [false,true]){
  const f=fixture(),c=createSubmissionController(),original=createNote({path:'Inbox/original.md',body:'Water 17'}),ref={noteId:original.id,revision:1,start:0,end:8,quote:'Water 17'},summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:[ref]}),records=[original,summary],guards=[];

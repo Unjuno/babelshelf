@@ -1,0 +1,18 @@
+import {useState} from 'react';
+import {canRestore,trashLocation} from './memory-trash';
+import type {RecoveryBatch,NoteView} from './knowledge-store';
+
+export function TrashSheet({trash,notes,folders,busy,onRestore,onPurge,onClose}:{trash:RecoveryBatch[];notes:NoteView[];folders:string[];busy:boolean;onRestore:(batch:RecoveryBatch)=>void;onPurge:(batches:RecoveryBatch[])=>Promise<boolean>;onClose:()=>void}){
+ const [review,setReview]=useState<RecoveryBatch[]|null>(null);
+ if(review)return <div className="trash-purge-review">
+  <h3>Delete permanently?</h3>
+  <p>{review.length===1?review[0].label:`${review.length} items in Trash`}</p>
+  <p>This removes the selected files, their revision history and any originals no longer used elsewhere. This cannot be undone. Referenced files are kept.</p>
+  <div className="action-row"><button className="quiet-button" disabled={busy} onClick={()=>setReview(null)}>Cancel</button><button className="solid-button danger-button" disabled={busy} onClick={()=>void onPurge(review).then(ok=>{if(ok)setReview(null);})}>{busy?'Deleting…':'Delete permanently'}</button></div>
+ </div>;
+ return <div className="trash-list">{trash.length?trash.map(batch=><div className="notification-row" key={batch.id}>
+  <div className="trash-item"><span>{batch.label}</span>{trashLocation(batch)&&<small>{trashLocation(batch)}</small>}<small>{batch.notes.length} {batch.notes.length===1?'file':'files'} · {batch.folders.length} {batch.folders.length===1?'folder':'folders'}</small>{!canRestore(batch,notes,folders)&&<small>Path conflict</small>}</div>
+  <div className="trash-actions"><button className="quiet-button" aria-label={'Restore '+(trashLocation(batch)??batch.label)} disabled={busy||!canRestore(batch,notes,folders)} onClick={()=>onRestore(batch)}>Restore</button><button className="quiet-button danger-button" aria-label={'Delete permanently '+(trashLocation(batch)??batch.label)} disabled={busy} onClick={()=>setReview(structuredClone([batch]))}>Delete permanently</button></div>
+ </div>):<div className="empty-state">Trash is empty</div>}
+ <div className="action-row">{trash.length>0&&<button className="quiet-button danger-button" disabled={busy} onClick={()=>setReview(structuredClone(trash))}>Empty Trash</button>}<button className="quiet-button" disabled={busy} onClick={onClose}>Close</button></div></div>;
+}

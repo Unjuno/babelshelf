@@ -1,5 +1,11 @@
 import {expect,test,type Page} from '@playwright/test';import {readFile} from 'node:fs/promises';import {prepareOfflineShell} from './pwa-offline-setup';
 
+test('header actions do not overlap with enlarged text on a narrow screen',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');await page.addStyleTag({content:'html {font-size:24px !important}'});
+ const update=page.getByRole('button',{name:'Update app',exact:true}),connection=page.locator('.connection-status');await expect(update).toBeVisible();await expect(connection).toBeVisible();
+ const a=await update.boundingBox(),b=await connection.boundingBox();expect(a).not.toBeNull();expect(b).not.toBeNull();expect(a!.x+a!.width+4).toBeLessThanOrEqual(b!.x);expect(b!.x+b!.width).toBeLessThanOrEqual(390);
+});
+
 async function createInboxFile(page:Page,name:string,content:string){
  const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();
  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill(name);await page.getByRole('textbox',{name:'New file content'}).fill(content);await page.getByRole('button',{name:'Save',exact:true}).click();

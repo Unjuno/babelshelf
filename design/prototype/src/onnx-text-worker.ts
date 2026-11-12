@@ -10,6 +10,7 @@ import {transformerLoadOptions} from './onnx-execution-options';
 import {onnxTextModels,getOnnxTextManifest} from './text-model-manifest';
 import {createPinnedAssetStore} from './pinned-text-assets';
 import {collectPreparedTextStatuses} from './prepared-text-backend';
+import {OnnxGenerationProgress} from './onnx-generation-progress';
 const networkFetch=globalThis.fetch.bind(globalThis);
 const runtimeURLs=new Set([wasmURL,mjsURL].map(url=>new URL(url,location.href).href));
 globalThis.fetch=(input,options)=>{
@@ -74,8 +75,9 @@ self.onmessage=async({data})=>{
    validateOnnxTextBudget(tokens,maxTokens,selected!.id);
    const filter=args.format&&args.format!=='prose'?createStructuredTokenFilter(args.format,tokenizer,model.generation_config?.eos_token_id??tokenizer.eos_token_id):null;
    const processors=new LogitsProcessorList();
+   processors.push(new OnnxGenerationProgress(check,progress));
    if(filter){class FormatProcessor extends LogitsProcessor{_call(ids:bigint[][],logits:any){if(ids.length!==1)throw Error('Structured batch unsupported');try{filter!.mask(ids[0].slice(tokens),logits.data);}catch(error){const raw=ids[0].length>tokens?tokenizer.decode(ids[0].slice(tokens).map(Number),{skip_special_tokens:true}):'';diagnostic={raw:raw.slice(0,8192),reason:ids[0].length-tokens>=maxTokens-1?'structured:budget':'structured:continuation',truncated:raw.length>8192};throw Error('Invalid model JSON · structured generation stopped');}return logits;}}processors.push(new FormatProcessor());}
-   progress('Generating');const output=own(await model.generate({...input,max_new_tokens:maxTokens,do_sample:false,...(filter?{logits_processor:processors}:{})}));check();
+   progress('Generating');const output=own(await model.generate({...input,max_new_tokens:maxTokens,do_sample:false,logits_processor:processors}));check();
    const generated=output.tolist()[0].slice(tokens);
    if(filter&&!filter.complete(generated)){const raw=tokenizer.decode(generated,{skip_special_tokens:true});diagnostic={raw:raw.slice(0,8192),reason:'structured:incomplete',truncated:raw.length>8192};throw Error('Invalid model JSON · incomplete structured output');}
    value={text:tokenizer.decode(generated,{skip_special_tokens:true}),outputTokens:generated.length};

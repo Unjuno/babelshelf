@@ -3,7 +3,8 @@ export type DeviceStorage={usage:number|null;quota:number|null;available:number|
 const measured=(v:unknown):number|null=>typeof v==='number'&&Number.isFinite(v)&&v>=0?v:null;
 // Browser estimates only: not physical free disk, RAM, readiness or guaranteed capacity.
 export async function readDeviceStorage(storage:StoragePort|undefined=globalThis.navigator?.storage):Promise<DeviceStorage>{
- const [estimate,persisted]=await Promise.allSettled([Promise.resolve().then(()=>storage?.estimate?.()),Promise.resolve().then(()=>storage?.persisted?.())]);
+ const bounded=async<T,>(read:()=>Promise<T>|undefined):Promise<T|undefined>=>{let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([Promise.resolve().then(read),new Promise<undefined>(resolve=>{timer=setTimeout(()=>resolve(undefined),8000);})]);}finally{if(timer)clearTimeout(timer);}};
+ const [estimate,persisted]=await Promise.allSettled([bounded(()=>storage?.estimate?.()),bounded(()=>storage?.persisted?.())]);
  const value=estimate.status==='fulfilled'?estimate.value:undefined,usage=measured(value?.usage),quota=measured(value?.quota),protection=persisted.status==='fulfilled'?persisted.value:undefined;
  return {usage,quota,available:usage!==null&&quota!==null?Math.max(0,quota-usage):null,persistent:typeof protection==='boolean'?protection:null,canRequest:typeof storage?.persist==='function'};
 }

@@ -704,3 +704,11 @@ button.model-picker svg{flex-shrink:0}
 @media(max-width:420px){.preview-toast.is-operation{left:10px;right:10px;padding:9px 11px;gap:0 4px;font-size:.8125rem}.preview-toast.is-operation button{padding:0 7px;font-size:.8125rem}}
 
 .runtime-inline-form{display:grid;gap:10px;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:14px}.runtime-inline-form label{display:grid;gap:8px}.runtime-inline-form input{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}.runtime-inline-form p{margin:0}
+/* Header actions follow their actual text widths, including larger fonts. */
+.app-header-actions{position:absolute;z-index:34;top:54px;right:19px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 114px)}
+.app-header-actions .app-refresh-button,.app-header-actions .connection-status{position:static;flex:none}
+.back-to-chat{position:absolute;z-index:38;left:18px;top:232px;min-height:44px;background:var(--theme-surface,var(--paper,#fff));border:1px solid currentColor;border-radius:16px;padding:8px 14px}
+.live-text-work{flex-basis:100%;width:100%;padding:6px 0;text-align:left}
+.live-text-work .source-revision{font-size:.75rem;line-height:1.4}
+.trash-actions{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+@media(max-width:420px){.app-header-actions .app-refresh-button{min-width:44px;padding:0 10px}.app-header-actions .app-refresh-button>span{display:none}}

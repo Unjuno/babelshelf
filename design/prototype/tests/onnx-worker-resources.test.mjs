@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 import {isAbsolute} from 'node:path';
 import {rolldown} from 'rolldown';
+import {OnnxGenerationProgress} from '../src/onnx-generation-progress.ts';
 
 const bundle=await rolldown({input:fileURLToPath(new URL('../src/onnx-text-worker.ts',import.meta.url)),external:id=>!isAbsolute(id)&&id!=='./tensor-resources'});
 const source=(await bundle.generate({format:'cjs'})).output[0].code;await bundle.close();
@@ -17,6 +18,7 @@ function fixture(mode='success'){
   if(id==='@huggingface/transformers')return {env:{},AutoTokenizer:{from_pretrained:async()=>tokenizer},AutoModelForCausalLM:{from_pretrained:async()=>model},LogitsProcessor:class{},LogitsProcessorList:class extends Array{}};
   if(id.endsWith('?url'))return {default:'https://local.invalid/runtime/'+(id.includes('.wasm')?'runtime.wasm':'runtime.mjs')};
   if(id==='./structured-decoding')return {createStructuredTokenFilter(){throw Error('Unexpected structured request');}};
+  if(id==='./onnx-generation-progress')return {OnnxGenerationProgress};
   if(id==='./text-model-manifest')return {onnxTextModels:[manifest],getOnnxTextManifest:()=>manifest,validateOnnxTextBudget(){if(mode==='budget-error')throw Error('Budget exceeded');}};
   if(id==='./pinned-text-assets')return {createPinnedAssetStore:()=>({read:async()=>({text:async()=>JSON.stringify({model_type:'qwen2',architectures:['Qwen2ForCausalLM']})})})};
   if(id==='./prepared-text-backend')return {};

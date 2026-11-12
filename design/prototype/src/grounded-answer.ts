@@ -91,7 +91,7 @@ export type GroundedAnswerRequest={
  onInference?:(metrics:Readonly<AnswerInference>)=>void;
  /** Transient prose only; never a validated answer or a save candidate. */
  onPreview?:(text:string)=>void;
- /** A terminal native reply already generated from the same observed tool evidence. */
+ /** A terminal native reply from observed evidence or explicitly source-free conversation. */
  reply?:SourceLabelAnswer;
 };
 export type GroundedAnswerDependencies={store:Pick<KnowledgeStore,'all'|'search'>;engine:TextRuntime;acquireModel?:()=>Promise<TextRuntime>};
@@ -180,7 +180,16 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  // do not ask another generation to paraphrase it before review or display.
  if(request.reply!==undefined){
   if(!request.reply||!Array.isArray(request.reply.sources)||Object.keys(request.reply).some(key=>!['answer','sources','webSources','status'].includes(key))||request.reply.webSources!==undefined&&(!Array.isArray(request.reply.webSources)||request.reply.webSources.some(source=>!validateWebCitation(source,toolEvidence?.webSnapshots??[]))))throw Error('Invalid answer or sources');
-  if(!toolEvidence?.used||!toolEvidence.refs.length&&!operationalEvidence&&request.reply.status!=='insufficient_evidence'||inputReadings.length||mode==='chat')throw Error('Conflicting terminal reply scope');
+  // A native conversation completion has already used the retained dialogue.
+  // It can carry no original/tool evidence and never reads Memory or regenerates.
+  if(mode==='chat'){
+   if(scope.kind!=='conversation'||toolEvidence||request.reply.sources.length||request.reply.webSources?.length)throw Error('Conflicting terminal reply scope');
+   const parsed=bindSourceLabelAnswer({answer:request.reply.answer,sources:[],...(request.reply.status?{status:request.reply.status}:{})},[],{userText:question});
+   checkRepeatedOutput(parsed.answer);
+   if(requestsOneSentence(question)&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
+   check();return {...parsed,model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+  }
+  if(!toolEvidence?.used||!toolEvidence.refs.length&&!operationalEvidence&&request.reply.status!=='insufficient_evidence'||inputReadings.length)throw Error('Conflicting terminal reply scope');
   const labelled=hits.map((ref,index)=>({...ref,label:'S'+(index+1)}));
   const labels=request.reply.sources.map(ref=>ref&&labelled.find(item=>item.noteId===ref.noteId&&item.revision===ref.revision&&item.start===ref.start&&item.end===ref.end&&item.quote===ref.quote)?.label);
   const parsed=bindSourceLabelAnswer({answer:request.reply.answer,sources:labels,...(request.reply.status?{status:request.reply.status}:{})},labelled,{userText:question});

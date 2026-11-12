@@ -34,9 +34,11 @@ import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRu
 import {applyCorrection,undoCorrection,correctionProposalHash,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {stateHash} from './backup-hash.ts';
 import type {StateSnapshot,RestoreMode} from './backup-state.ts';
+import {validateState} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,type Dialogue} from './conversation.ts';
+import {withoutWorkingFile} from './working-file.ts';
 export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
 export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:SavedSourceRef[];dialogueCopy?:DialogueCopy;dialogueCopyCoverage?:'partial';importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
@@ -107,6 +109,10 @@ export function planFolderRename(records:Canonical[],storedFolders:string[],from
  return {records:updated,folders:nextFolders.filter(p=>!isSystemFolder(p)).sort(),from,to};
 }
 export type RecoveryBatch={id:string;label:string;notes:NoteView[];folders:string[]};
+export class TrashPurgeError extends Error {
+ readonly code:'changed'|'protected'|'referenced';
+ constructor(code:'changed'|'protected'|'referenced',message:string){super(message);this.name='TrashPurgeError';this.code=code;}
+}
 export type RecoveryAction={kind:'delete';target:{kind:'file'|'folder';value:string};expectedNotes:NoteView[];id:string;label:string}|{kind:'restore';batch:RecoveryBatch};
 export function planMemoryRecovery(records:Canonical[],storedFolders:string[],storedTrash:RecoveryBatch[],action:RecoveryAction){
  const views=records.filter(n=>n.state==='active').map(projectNote),folders=[...new Set([...SYSTEM_FOLDERS,...storedFolders,...views.map(n=>n.path.split('/').slice(0,-1).join('/'))].flatMap(path=>path?path.split('/').map((_,i,a)=>a.slice(0,i+1).join('/')):[]))];
@@ -403,6 +409,50 @@ export class KnowledgeStore {
     settings.put(plan.folders,'ui-v1-folders');settings.put(plan.trash,'ui-v1-trash');result={folders:plan.folders,trash:plan.trash};
    }catch(e){error=e;tx.abort();}};rows.onsuccess=commit;folders.onsuccess=commit;trash.onsuccess=commit;
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Recovery save failed'));
+  });
+ }
+ /** Permanently remove only the reviewed withdrawn batches. All dependency
+  * checks and writes share one transaction; a started transaction is never replayed. */
+ async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined){
+  ({batches,expectedTrash}=structuredClone({batches,expectedTrash}));
+  const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
+  return new Promise<{trash:RecoveryBatch[];dialogue?:Dialogue}>((resolve,reject)=>{let error:unknown,result:{trash:RecoveryBatch[];dialogue?:Dialogue};
+   readSnapshot(tx,current=>{try{
+    const actualTrash=current.settings.find(s=>s.key==='ui-v1-trash')?.value;
+    if(!equal(actualTrash,expectedTrash))throw new TrashPurgeError('changed','Recovery data changed · reopen Trash');
+    if(!Array.isArray(batches)||!batches.length||new Set(batches.map(b=>b.id)).size!==batches.length)throw Error('Invalid Trash selection');
+    const trash:RecoveryBatch[]=actualTrash??[],ids=new Set<string>();
+    for(const batch of batches){
+     const saved=trash.find(b=>b.id===batch.id);
+     if(saved?!equal(saved,batch):batch.notes.length!==1||batch.folders.length!==0||batch.id!=='recovered-'+batch.notes[0].id)throw new TrashPurgeError('changed','Recovery batch changed · reopen Trash');
+     for(const path of batch.folders)try{assertMutableFolder(path);}catch{throw new TrashPurgeError('protected','Built-in folder is protected');}
+     for(const snapshot of batch.notes){
+      if(ids.has(snapshot.id))throw Error('Recovery batch overlap');ids.add(snapshot.id);
+      const note=current.notes.find(n=>n.id===snapshot.id),version=note?.revisions.length;
+      if(note?.ui?.protected||note?.ui?.managed)throw new TrashPurgeError('protected','Built-in record is protected');
+      if(!note||note.state!=='withdrawn'||!Number.isSafeInteger(snapshot.version)||snapshot.version<1||![snapshot.version,snapshot.version+1].includes(version))throw new TrashPurgeError('changed','Recovery snapshot changed · reopen Trash');
+      const expected=projectNote({...note,revisions:note.revisions.slice(0,snapshot.version)}),last=projectNote(note);
+      if(saved&&!equal(snapshot,expected)||snapshot.body!==expected.body||snapshot.path!==expected.path||!equal(snapshot.history,expected.history)||snapshot.paths&&!equal(snapshot.paths,expected.paths)||last.body!==snapshot.body||last.path!==snapshot.path)throw new TrashPurgeError('changed','Recovery snapshot changed · reopen Trash');
+     }
+    }
+    const selected=new Set(batches.map(b=>b.id)),nextTrash=trash.filter(b=>!selected.has(b.id));
+    const originalKeys=new Set(current.notes.filter(n=>ids.has(n.id)&&n.originalAsset).map(n=>originalKey(n.id)));
+    const dialogueEntry=current.settings.find(s=>s.key==='ui-v1-dialogue');
+    let dialogue:Dialogue|undefined;
+    if(dialogueEntry?.value?.currentFile&&ids.has(dialogueEntry.value.currentFile.noteId)){
+     const before=validateDialogue(dialogueEntry.value);dialogue=withoutWorkingFile(before,before.currentFile!);
+    }
+    const candidate:StateSnapshot={notes:current.notes.filter(n=>!ids.has(n.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
+    // Refuse even references unknown to today's backup validators. This may
+    // conservatively retain a record whose ID appears as ordinary text.
+    const referenced=(value:any):boolean=>typeof value==='string'?ids.has(value):Array.isArray(value)?value.some(referenced):!!value&&typeof value==='object'&&Object.values(value).some(referenced);
+    if(referenced(candidate))throw new TrashPurgeError('referenced','Item is referenced by retained data');
+    try{validateState(candidate);}catch{throw new TrashPurgeError('referenced','Item has retained dependencies or invalid data');}
+    for(const id of ids)tx.objectStore('notes').delete(id);
+    for(const key of originalKeys)tx.objectStore('runs').delete(key);
+    tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');result={trash:nextTrash,...(dialogue?{dialogue}:{})};
+   }catch(e){error=e;tx.abort();}});
+   tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Permanent deletion failed'));
   });
  }
  async exportMarkdown(id:string,revision:number){
