@@ -64,7 +64,7 @@ export class PreparedGgufAdapter {
   // token-prefix/checkpoint validation owns compatibility; never cache answers.
   const cachePrompt=this.promptCacheEnabled&&this.promptCacheReady;this.promptCacheReady=false;
   try{check();this.onProgress('Generating');const stream=await runtime.createChatCompletion({messages,...this.templateOptions(!!tools),...(tools?{tools,tool_choice:'required'}:{}),max_tokens:maxTokens,...this.samplingOptions(),seed:0,cache_prompt:cachePrompt,stream:true,return_tokens:true,...(json?{response_format:{type:'json_object'}}:{}),...(jsonSchema?{json_schema:jsonSchema}:{}),abortSignal:controller.signal});
-   const calls=new Map();let lastAnswerPreview='';
+   const calls=new Map();let lastAnswerPreview='',lastPhase='',lastProgressAt=start;
    for await(const chunk of stream){
     check();const choice=chunk.choices?.[0],delta=choice?.delta,content=delta?.content;
     if(typeof delta?.reasoning_content==='string'){
@@ -97,6 +97,10 @@ export class PreparedGgufAdapter {
      }
     }
     const preview=nativeAnswerPreview(calls);
+    // Report actual received work, never private reasoning or tool arguments.
+    // These events also renew the worker's inactivity deadline; no timer fakes progress.
+    const phase=preview||content?'Generating answer':delta?.tool_calls?.length?'Selecting action':delta?.reasoning_content?'Thinking':'';
+    if(phase&&(phase!==lastPhase||this.clock()-lastProgressAt>=1000)){this.onProgress(phase);lastPhase=phase;lastProgressAt=this.clock();}
     if(preview!==lastAnswerPreview){if(firstAnswerPreview===null&&preview.trim())firstAnswerPreview=this.clock();lastAnswerPreview=preview;onAnswerPreview(preview);}
     if(chunk.usage)usage=chunk.usage;
     if(chunk.timings)timings=chunk.timings;

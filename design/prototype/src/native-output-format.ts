@@ -53,11 +53,12 @@ export function nativeFinalPlanTools(scope:PlannerScope,sourceLabels:readonly st
   if(name==='calculate')return [];
   const navigation=navigationFunctions.find(entry=>entry.action===name);
   let parameters=original,description=navigation?.purpose??nativePurpose(name);
-  if(!scope.inputs&&['answer','summary','capturetext'].includes(name)){
-   const reply={type:'object',properties:{status:{type:'string',enum:['answered','insufficient_evidence']},answer:{type:'string'},sources:{type:'array',items:{type:'string',...(sourceLabels.length?{enum:[...sourceLabels]}:{})},maxItems:sourceLabels.length,uniqueItems:true}},required:['status','answer','sources'],additionalProperties:false};
+  if(!scope.inputs&&(['answer','summary','capturetext'].includes(name)||name==='chat'&&!scope.file&&!afterToolCall)){
+   const labels=name==='chat'?[]:sourceLabels;
+   const reply={type:'object',properties:{status:{type:'string',enum:['answered','insufficient_evidence']},answer:{type:'string'},sources:{type:'array',items:{type:'string',...(labels.length?{enum:[...labels]}:{})},maxItems:labels.length,uniqueItems:true}},required:['status','answer','sources'],additionalProperties:false};
    const {body:_body,...properties}=original.properties;
    parameters={...original,properties:{...properties,reply},required:[...original.required.filter((key:string)=>key!=='body'&&key!=='query'),'reply']};
-   description=name==='capturetext'?'Only when the CURRENT request asks to save or create a NEW note: propose its exact content for review. Otherwise use finish_answer. Nothing is saved yet.':name==='summary'?'Return the requested summary. This does not create a file.':'Return the final answer to the current request, including results of successful tools. This does not create a file.';
+   description=name==='chat'?'Return ordinary conversation, original writing or general explanations using the current request and dialogue. No saved-source facts, citations or claimed tool execution. This does not create a file.':name==='capturetext'?'Only when the CURRENT request asks to save or create a NEW note: propose its exact content for review. Otherwise use finish_answer. Nothing is saved yet.':name==='summary'?'Return the requested summary. This does not create a file.':'Return the final answer to the current request, including results of successful tools. This does not create a file.';
    description+=' Put the complete content in reply; query is optional.';
   }
   const suffix=navigation?.suffix??name;

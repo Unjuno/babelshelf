@@ -1,5 +1,27 @@
 import {expect,test} from '@playwright/test';
 
+test('audit: navigation offers a visible route back to chat and preserves the draft',async({page})=>{
+ await page.goto('/');const input=page.getByRole('textbox',{name:'Message',exact:true});
+ await input.fill('Unsent text');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Back to chat',exact:true}).click();
+ await expect(input).toHaveValue('Unsent text');
+});
+
+test('audit: a saved text draft does not block updating and survives reload',async({page})=>{
+ await page.goto('/');const input=page.getByRole('textbox',{name:'Message',exact:true});await input.fill('Saved draft after stopping');
+ const online=page.getByRole('button',{name:/^Offline · Tap to switch/});if(await online.count())await online.click();
+ await expect(page.getByRole('button',{name:'Update app',exact:true})).not.toHaveAttribute('data-blocked','true');
+ await page.reload();await expect(input).toHaveValue('Saved draft after stopping');
+});
+
+test('audit: Check device produces a result even when a browser storage probe stalls',async({page})=>{
+ test.setTimeout(35_000);
+ await page.addInitScript(()=>{Object.defineProperty(navigator.storage,'estimate',{value:()=>new Promise(()=>{})});Object.defineProperty(navigator,'gpu',{value:undefined});});
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();await page.getByRole('button',{name:/^Model set ·/}).click();await page.getByRole('button',{name:/^LFM3 · 1\.7B · QAD Q4_0 Text/}).click();
+ const review=page.getByRole('dialog');await review.getByRole('button',{name:'Check device',exact:true}).click();await expect(review.getByText('Checking storage and available processors…',{exact:true})).toBeVisible();
+ await expect(review.getByRole('status').filter({hasText:'Storage estimate unavailable'})).toContainText('GPU unavailable',{timeout:12_000});await expect(review.getByRole('button',{name:'Check device',exact:true})).toBeEnabled();
+});
+
 test('local Vision file errors stay visible without an installed inference runtime',async({page})=>{
  const remote:string[]=[];page.on('request',request=>{if(/^https?:/.test(request.url())&&!request.url().startsWith('http://127.0.0.1:'))remote.push(request.url());});
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();

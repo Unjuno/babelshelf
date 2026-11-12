@@ -39,6 +39,7 @@ type ModelSetReviewView = {
   applied: boolean;
   checking: boolean;
   deviceStatus: string | null;
+  deviceError?: string;
   canCheck: boolean;
   canBack: boolean;
   canApply: boolean;
@@ -115,6 +116,8 @@ export function ModelSetSheets({ view }: { view: ModelSetSheetsView }) {
       </div>
       <p className="source-revision">{view.applied ? 'Set selected · files are prepared separately' : 'Applying a set does not prepare files. Device compatibility is not guaranteed.'}</p>
       <button className="quiet-button" disabled={!view.canCheck} onClick={view.onCheck}>{view.checking ? 'Checking…' : 'Check device'}</button>
+      {view.checking&&<div className="speech-runtime-status" role="status">Checking storage and available processors…</div>}
+      {view.deviceError&&<div className="creation-error" role="alert">{view.deviceError}</div>}
       {view.deviceStatus && <div className="speech-runtime-status" role="status">{view.deviceStatus}</div>}
       <div className="action-row">
         {view.applied ? <>

@@ -1,4 +1,5 @@
 import { Bell, CaretDown } from '@phosphor-icons/react';
+import {useEffect,useRef} from 'react';
 import { KeyboardInput, KeyboardTextarea } from './mobile';
 import { repeatOptions } from './schedule-time';
 
@@ -34,7 +35,9 @@ const weekdays=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 /** Schedule-specific form presentation. Persistence and occurrence validation remain with the parent workflow. */
 export function ScheduleEditorSheet({draft,enabled,saving,storagePending,error,nextOccurrence,timezone,onDraftChange,onRepeatOpen,onFormEdit,onCancel,onSave}:Props){
- return <form className="schedule-form creation-form schedule-form--task" onChange={onFormEdit} onSubmit={event=>{event.preventDefault();onSave();}}>
+ const form=useRef<HTMLFormElement>(null);
+ useEffect(()=>{if(error==='Enter a prompt'){const prompt=form.current?.querySelector('textarea');prompt?.focus();prompt?.scrollIntoView({block:'nearest'});}},[error]);
+ return <form ref={form} className="schedule-form creation-form schedule-form--task" onChange={onFormEdit} onSubmit={event=>{event.preventDefault();onSave();}}>
   <div className="task-fields">
    {!draft.id&&<div className="source-revision" role="status">New schedules start paused. Turn on Enable after saving to run them.</div>}
    <label>Prompt<KeyboardTextarea aria-label="Schedule prompt" aria-invalid={error==='Enter a prompt'} aria-describedby={error==='Enter a prompt'?'schedule-prompt-error':undefined} value={draft.prompt} onChange={event=>onDraftChange({prompt:event.target.value})} placeholder="Prompt" rows={4}/></label>

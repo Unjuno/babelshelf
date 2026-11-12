@@ -5,6 +5,31 @@ async function navigate(page:any,destination:string){
  await page.getByRole('menuitem',{name:destination==='Memory'?'BabelShelf':destination,exact:true}).click();
 }
 
+test('audit: blank schedule prompt is identified at the field and remains editable',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ const prompt=page.getByRole('textbox',{name:'Schedule prompt'});
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(prompt).toHaveAttribute('aria-invalid','true');
+ await expect(page.locator('#schedule-prompt-error')).toBeVisible();await expect(prompt).toBeFocused();
+ await prompt.fill('Keep this prompt');await expect(prompt).toHaveAttribute('aria-invalid','false');
+});
+
+test('audit: permanent deletion requires confirmation and survives reload',async({page})=>{
+ test.setTimeout(60_000);
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
+ for(const name of ['Purge first','Purge second']){
+  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill(name);await page.getByRole('textbox',{name:'New file content'}).fill('Disposable test data');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
+ }
+ await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});
+ await trash.getByRole('button',{name:'Delete permanently Inbox/Purge first.md',exact:true}).click();await expect(trash).toContainText('This cannot be undone');await trash.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(trash.getByRole('button',{name:'Restore Inbox/Purge first.md',exact:true})).toBeVisible();
+ await trash.getByRole('button',{name:'Delete permanently Inbox/Purge first.md',exact:true}).click();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect(trash.getByRole('button',{name:'Restore Inbox/Purge first.md',exact:true})).toHaveCount(0);await expect(trash).toContainText('Purge second');
+ await trash.getByRole('button',{name:'Empty Trash',exact:true}).click();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();await expect(trash).toContainText('Trash is empty');
+ await page.reload();await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();await expect(page.getByRole('dialog',{name:'Trash'})).toContainText('Trash is empty');
+});
+
 test('a paused calculation runs locally and exposes its calculation in history',async({page})=>{
  await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 12 + 10');

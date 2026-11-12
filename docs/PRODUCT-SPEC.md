@@ -20,7 +20,7 @@ The user may later choose external tools/MCP/frontier models as an optional sepa
 - UI labels are English; stored content, inputs and generation are multilingual.
 - Glass control material inspired by iOS 26, upright recognizable icons, readable opaque text and short status/error labels. This is a web interpretation, not native Apple Liquid Glass.
 - Input button upper-left. Touch/pen tap returns to input; 80ms hold displays a curved four-item menu. Mouse/trackpad click opens a persistent menu; click a destination to navigate, or click Input again to return to input. Sliding to an item and releasing switches destination. Releasing without a destination leaves the menu open; a short tap returns to Input. No decorative line in the button.
-- Menu: Memory, Schedule, Notifications, Settings. Keyboard activation/arrows/Escape and assistive access must remain. Actual 80ms touch discrimination still needs device testing.
+- Menu: Memory, Schedule, Notifications, Settings. A visible Back to chat action accompanies the open menu on secondary pages. Keyboard activation/arrows/Escape and assistive access must remain. Actual 80ms touch discrimination still needs device testing.
 - Attachment, voice and Send controls are compact, with at least 44px targets. Display each original and its actual extraction state; preview/playback alone never implies model understanding.
 - Answers show a small source mark near the relevant text; source details and the exact original remain available on demand. No automatic filename clutter in ordinary answers.
 
@@ -88,7 +88,7 @@ Fixed canonical directories and Home are protected. A 450ms item hold opens the 
 
 Delete requires target confirmation; folders show descendant file/folder counts. Retain exact records/revisions in recovery batches. Immediate Undo and Settings > Local files > Trash > Restore provide recovery. Restore refuses conflicting IDs/paths rather than overwriting. Memory's header has only creation +; do not put an ambiguous Trash icon beside it.
 
-Trash and folder metadata persist with canonical note lifecycle changes. Withdrawals/restorations append revisions and preserve original bytes. Trash is recovery, not permanent purge or storage reclamation. Arbitrary storage-pressure resilience remains a separate gate. Deleting a notification only removes that event, never its source schedule or execution history.
+Trash and folder metadata persist with canonical note lifecycle changes. Withdrawals/restorations append revisions and preserve original bytes. Trash also offers Delete permanently and Empty Trash with explicit irreversible-action confirmation. Permanent deletion atomically checks the reviewed withdrawn records, rejects retained citations/dependencies and protected records, and removes only unreferenced originals. A display-only current-file pointer may be cleared with the deletion. Browser quota reclamation is not guaranteed. Arbitrary storage-pressure resilience remains a separate gate. Deleting a notification only removes that event, never its source schedule or execution history.
 
 ## Attachments, capabilities, appearance and notification details
 
