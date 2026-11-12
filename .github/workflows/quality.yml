@@ -46,6 +46,13 @@ jobs:
         run: npm ci --prefix design/prototype
       - name: Install root test dependencies
         run: npm ci
+      - name: Use standard Ubuntu package mirror
+        # The Azure-hosted archive intermittently stops responding during apt
+        # downloads; use Ubuntu's public archive to keep browser setup moving.
+        run: |
+          apt-config dump | grep -Ei 'Dir::Etc::(sourcelist|sourceparts)' || true
+          sudo grep -RIl 'azure.archive.ubuntu.com' /etc/apt | while IFS= read -r source; do sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' "$source"; done
+          sudo grep -Rni 'azure.archive.ubuntu.com' /etc/apt || true
       - name: Install browser system dependencies
         # Playwright's Chromium + WebKit dependency list can exceed 15 minutes
         # on a slow GitHub-hosted apt mirror even though the suite is healthy.
