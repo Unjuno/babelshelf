@@ -45,7 +45,7 @@ test('a schedule edited in Memory updates the Schedule view and notification del
  await navigate(page,'Schedule');
  await expect(page.getByText('Runs while visible',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'New schedule'}).click();
- await expect(page.getByRole('status')).toContainText('Saved paused · Enable after saving');
+ await expect(page.getByRole('status')).toContainText('New schedules start paused. Turn on Enable after saving to run them.');
  await expect(page.locator('#schedule-next')).toContainText('Next if enabled ·');
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Check the emergency kit');
  const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});
