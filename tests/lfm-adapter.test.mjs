@@ -1,6 +1,16 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';import {LfmAdapter,Lfm3Adapter,PreparedGgufAdapter} from '../dist/lfm-adapter.js';
 import {createRecentPreparedFileReader} from '../design/prototype/src/prepared-file-snapshot.ts';
 
+test('LFM3 requests and forwards advancing prefill progress without treating repeated or invalid counters as work',async()=>{
+ const progress=[],adapter=new PreparedGgufAdapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[],architecture:'lfm3',onProgress:value=>progress.push(value)});
+ adapter.loaded='local';adapter.runtime={createChatCompletion:async options=>{assert.equal(options.return_progress,true);return (async function*(){
+  for(const processed of [0,128,128,64,256,4001])yield {prompt_progress:{total:4000,processed},choices:[{delta:{content:null}}]};
+  yield {choices:[{delta:{content:'Hello!'}}]};
+ })();}};
+ const result=await adapter.generate([{role:'user',content:'Hello'}],{json:false,maxTokens:16});assert.equal(result.text,'Hello!');
+ assert.deepEqual(progress.filter(value=>value.startsWith('Processing input')),['Processing input · 0/4000 tokens · 0%','Processing input · 128/4000 tokens · 3%','Processing input · 256/4000 tokens · 6%']);
+});
+
 test('native transport accepts the configured catalog plus scoped final actions with one shared bound',async()=>{
  const {MAX_NATIVE_TOOL_DEFINITIONS}=await import('../dist/lfm-adapter.js');
  const adapter=new PreparedGgufAdapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[],architecture:'lfm3'}),seen=[];

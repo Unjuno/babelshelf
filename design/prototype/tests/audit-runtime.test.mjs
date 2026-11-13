@@ -6,6 +6,19 @@ import {Lfm3Adapter} from '../../../dist/lfm-adapter.js';
 import {nativeAnswerPreview} from '../../../dist/native-answer-preview.js';
 
 const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
+test('advancing LFM3 prefill keeps the worker alive beyond its idle limit, but repeated counters do not',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});let id,outcome,terminated=0;
+ const worker={postMessage:m=>id=m.id,terminate:()=>terminated++},client=createIsolatedTextClient(worker,{generationIdleTimeoutMs:1000});
+ const pending=client.call('generate').then(value=>outcome=value,error=>outcome=error);
+ const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[],onProgress:value=>worker.onmessage({data:{id,type:'progress',value}})});
+ adapter.loaded='test';adapter.runtime={createChatCompletion:async()=> (async function*(){
+  for(const processed of [0,128,256,384]){t.mock.timers.tick(900);yield {prompt_progress:{processed,total:4000}};}
+  await flush();assert.equal(outcome,undefined);
+  t.mock.timers.tick(900);yield {prompt_progress:{processed:384,total:4000}};
+  t.mock.timers.tick(100);await flush();assert.equal(outcome?.code,'text_model_generation_stalled');
+ })()};
+ try{await adapter.generate([{role:'user',content:'Long input'}],{json:false,maxTokens:16});await pending;assert.equal(terminated,1);}finally{await client.abort();}
+});
 test('silent generation retires its worker, ignores late output and can be retried only in a new worker',async t=>{
  t.mock.timers.enable({apis:['setTimeout']});
  const sent=[];let terminated=0,outcome;
