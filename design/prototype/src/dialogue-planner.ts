@@ -314,7 +314,7 @@ export function planDialogueMessages(question:string,context:DialogueContext,att
  if(stepInstructions.length)messages.push({role:'system',content:'Current execution status (application-owned): '+stepInstructions.join(' ')});
  if(!nativeToolProtocol)messages.push({role:'user',content:question});return messages;
 }
-const plainGreetings=new Set(['hello','hi','hey','hiya','good morning','good afternoon','good evening','hi there','hello there','hey there','how are you','what\'s up','こんにちは','こんばんは','おはよう','おはようございます','やあ','どうも','もしもし']);
+const plainGreetings=new Set(['hello','hi','hey','hiya','goodbye','bye','farewell','good night','see you','good morning','good afternoon','good evening','hi there','hello there','hey there','how are you','what\'s up','こんにちは','こんばんは','おはよう','おはようございます','やあ','どうも','もしもし']);
 const greetingFormatPrefix=new RegExp(String.raw`^in\s+${englishOneSentenceFormat}\s*,?\s+`,'iu');
 const greetingFormatSuffix=new RegExp(String.raw`\s+in\s+${englishOneSentenceFormat}[.!?\s]*$`,'iu');
 function plainConversationRoute(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
@@ -335,8 +335,8 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  const greeting=question.trim().replace(greetingFormatPrefix,'').replace(greetingFormatSuffix,'');
  if(!sourceReferent.test(question)&&question.length<=80&&(
   /^(?:(?:こんにちは|おはよう(?:ございます)?|こんばんは)[。.!！\s]*)?(?:(?:短い|ひとことの|一文の)\s*)?挨拶を(?:(?:一文で|短く)\s*)?(?:返して|書いて|作って)(?:ください|下さい)?[。.!！?？\s]*$/u.test(question.trim())
-  ||/^(?:please\s+)?(?:say\s+(?:hello|hi)|(?:write|give me)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|concise|one-sentence)\s+)?greeting)[.!?\s]*$/i.test(greeting)
-  ||/^(?:(?:hello|hi|hey|hiya)[.!?,\s]+)?(?:please\s+)?(?:reply with|respond with)\s+(?:(?:a|one)\s+)?(?:(?:short|brief)\s+)?(?:sentence\s*:\s*)?(?:greeting|say\s+(?:hello|hi))[.!?\s]*$/i.test(question.trim())
+  ||/^(?:please\s+)?(?:say\s+(?:hello|hi|goodbye|bye|farewell)|(?:write|give me)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|concise|one-sentence)\s+)?greeting)[.!?\s]*$/i.test(greeting)
+  ||/^(?:(?:hello|hi|hey|hiya)[.!?,\s]+)?(?:please\s+)?(?:reply with|respond with)\s+(?:(?:a|one)\s+)?(?:(?:short|brief)\s+)?(?:sentence\s*:\s*)?(?:greeting|say\s+(?:hello|hi|goodbye|bye|farewell))[.!?\s]*$/i.test(question.trim())
  ))return {action:'chat',query:''};
  if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');

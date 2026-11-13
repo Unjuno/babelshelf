@@ -63,10 +63,14 @@ export class PreparedGgufAdapter {
   // Only a completed operation in this same runtime may seed reuse. Native
   // token-prefix/checkpoint validation owns compatibility; never cache answers.
   const cachePrompt=this.promptCacheEnabled&&this.promptCacheReady;this.promptCacheReady=false;
-  try{check();this.onProgress('Generating');const stream=await runtime.createChatCompletion({messages,...this.templateOptions(!!tools),...(tools?{tools,tool_choice:'required'}:{}),max_tokens:maxTokens,...this.samplingOptions(),seed:0,cache_prompt:cachePrompt,stream:true,return_tokens:true,...(json?{response_format:{type:'json_object'}}:{}),...(jsonSchema?{json_schema:jsonSchema}:{}),abortSignal:controller.signal});
-   const calls=new Map();let lastAnswerPreview='',lastPhase='',lastProgressAt=start;
+  try{check();this.onProgress('Generating');const stream=await runtime.createChatCompletion({messages,...this.templateOptions(!!tools),...(tools?{tools,tool_choice:'required'}:{}),max_tokens:maxTokens,...this.samplingOptions(),seed:0,cache_prompt:cachePrompt,stream:true,...(this.architecture==='lfm3'?{return_progress:true}:{}),return_tokens:true,...(json?{response_format:{type:'json_object'}}:{}),...(jsonSchema?{json_schema:jsonSchema}:{}),abortSignal:controller.signal});
+   const calls=new Map();let lastAnswerPreview='',lastPhase='',lastProgressAt=start,lastPromptProcessed=-1;
    for await(const chunk of stream){
     check();const choice=chunk.choices?.[0],delta=choice?.delta,content=delta?.content;
+    const promptProgress=chunk.prompt_progress;
+    if(promptProgress&&Number.isSafeInteger(promptProgress.total)&&promptProgress.total>0&&Number.isSafeInteger(promptProgress.processed)&&promptProgress.processed>=0&&promptProgress.processed<=promptProgress.total&&promptProgress.processed>lastPromptProcessed){
+     lastPromptProcessed=promptProgress.processed;this.onProgress(`Processing input · ${promptProgress.processed}/${promptProgress.total} tokens · ${Math.floor(100*promptProgress.processed/promptProgress.total)}%`);
+    }
     if(typeof delta?.reasoning_content==='string'){
      reasoning+=delta.reasoning_content;
      checkStreamRepetition(reasoning,delta.reasoning_content,messages,controller);

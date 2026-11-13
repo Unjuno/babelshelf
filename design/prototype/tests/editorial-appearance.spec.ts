@@ -101,9 +101,21 @@ test('a sent prompt can be edited into a new turn without rewriting its original
  await composer.fill('12 + 8');await page.getByRole('button',{name:'Send',exact:true}).click();
  await expect(page.locator('.reply-text').last()).toContainText('20');
  const original=page.getByText('12 + 8',{exact:true});await expect(original).toBeVisible();
+ await composer.fill('R6 DRAFT KEEP ME');await page.getByRole('button',{name:'Edit and resend prompt'}).click();
+ await expect(page.getByText('Replace the current message draft?',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(composer).toHaveValue('R6 DRAFT KEEP ME');await page.getByRole('button',{name:'Edit and resend prompt'}).click();
+ await page.getByRole('button',{name:'Discard changes',exact:true}).click();await expect(composer).toHaveValue('12 + 8');
  await page.getByRole('button',{name:'Edit and resend prompt'}).click();await expect(composer).toHaveValue('12 + 8');
  await composer.fill('30 + 2');await page.getByRole('button',{name:'Send',exact:true}).click();
  await expect(page.locator('.reply-text').last()).toContainText('32');await expect(page.getByText('12 + 8',{exact:true})).toBeVisible();await expect(page.getByText('30 + 2',{exact:true})).toBeVisible();
+});
+
+test('sending the same prompt twice retains two distinct completed turns',async({page})=>{
+ await page.goto('/');const composer=page.getByRole('textbox',{name:'Message'});
+ await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.getByText('Enter a message or add an attachment',{exact:true})).toBeVisible();await expect(page.locator('.sent-message')).toHaveCount(0);
+ for(let count=1;count<=2;count++){await composer.fill('12 + 8');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.reply-text')).toHaveCount(count);await expect(composer).toHaveValue('');}
+ const turns=await page.evaluate(()=>new Promise<any[]>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readonly'),read=tx.objectStore('settings').get('ui-v1-dialogue');read.onsuccess=()=>resolve(read.result.turns);tx.oncomplete=()=>db.close();};}));
+ expect(turns).toHaveLength(2);expect(new Set(turns.map(turn=>turn.id)).size).toBe(2);expect(turns.every(turn=>turn.user==='12 + 8'&&turn.answer==='20')).toBe(true);
 });
 
 test('saving a reviewed answer rejects a changed source state without losing the draft',async({page,context})=>{

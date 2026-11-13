@@ -8,7 +8,8 @@ export default function TurnWorkSummary({activities}:{activities:readonly Activi
  if(!summary)return null;
  return <section aria-label="Turn work summary" className="turn-work-summary">
   <p className="source-revision">Recorded phases only · not total turn time</p>
-  <div className="capability-row"><span>Completed text model calls</span><span>{summary.measuredModelCalls}</span></div>
+  <div className="capability-row"><span>Text model attempts</span><span>{summary.measuredModelCalls}</span></div>
+  <p className="source-revision">Includes failed and stopped attempts. A count does not mean an answer completed.</p>
   {summary.decisionChecks>0&&<div className="capability-row"><span>Decision checks · receipt time</span><span>{summary.decisionChecks}{summary.decisionElapsedMs!==undefined?` · ${duration(summary.decisionElapsedMs)}`:''}</span></div>}
   {summary.promptTokens!==undefined&&<div className="capability-row"><span>Prompt tokens · observed</span><span>{summary.promptTokens.toLocaleString()}</span></div>}
   {summary.outputTokens!==undefined&&<div className="capability-row"><span>Generated tokens · observed</span><span>{summary.outputTokens.toLocaleString()}</span></div>}
