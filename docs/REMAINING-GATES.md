@@ -1,5 +1,36 @@
 ## Current status · 2026-11-13
 
+### Audit six candidate · PR #69 · not deployed
+
+The candidate requests native LFM3 prompt-processing progress and renews the
+inactivity watchdog only on advancing validated token counters. Standalone
+farewells share the existing source-free social route; source-based requests
+retain planning. Edit & resend reviews replacement of an existing draft.
+Trash refusal is visible inside its confirmation, Check device reports start
+and result, empty Send is explained, completed occurrences have an explanation,
+and Activity counts are labelled attempts rather than successful replies.
+
+Dedicated local Chrome GPU checks returned Hello! then Goodbye! through the
+product UI (293 and 294 prompt tokens). A general third question retained both
+turns, used 3,722 prompt tokens and completed in 151 seconds. A separate direct
+CPU/WASM adapter check completed a 3,433-token prompt with 29 real input-progress
+events, but required about 22 minutes. That check has no product profile time
+budget; configured product limits remain enforced. Neither timing certifies
+the audit VM, physical phones, general quality or sustained performance.
+
+Ordinary, referenced and deleted-schedule Trash flows passed dedicated browser
+checks; the external audit's unresponsive purge has not been reproduced. No
+external audit data was accessed. The candidate improves visible failure
+reporting but does not prove the external storage state can be purged. Remaining
+audit observations (reload navigation/runtime lifecycle, old status notices,
+attachment lifecycle, toast queue/layout, conversation management and wording)
+remain follow-up work; no schema reset or session UI was introduced.
+
+Full exact-candidate CI and main integration are pending. The live release is
+still Site v356 / build d92e7452cc0cd8ae from main 766d2ecc, with public access
+at https://babelshelf.com/. Detailed candidate measurements are appended to
+docs/TEST-RESULTS.txt.
+
 ### Latest release and third-audit verification · 2026-11-13
 
 PR #66 merged as 36825d1f30753ea98b7f7572fcefafa4f3a165be. Its exact final
