@@ -235,6 +235,7 @@ export default function Prototype() {
  const [offlineApp,setOfflineApp]=useState(offlineShellStatus);useEffect(()=>{setOfflineApp(offlineShellStatus());return subscribeOfflineShell(()=>setOfflineApp(offlineShellStatus()));},[]);
  const [appRefreshing,setAppRefreshing]=useState(false);
  const appRefreshLock=useRef(false),appRefreshState=useRef({blocked:true,online:false});
+ const observedController=useRef(navigator.serviceWorker?.controller??null),pageNeedsReload=useRef(false);
  const [diagnosticBuild,setDiagnosticBuild]=useState('Not checked'),[runtimeAssetsReady,setRuntimeAssetsReady]=useState<Partial<Record<ProductRuntimeRole,boolean>>>({});
  useEffect(()=>{const worker=navigator.serviceWorker,invalidate=()=>setRuntimeAssetsReady({});worker?.addEventListener('controllerchange',invalidate);return()=>worker?.removeEventListener('controllerchange',invalidate);},[]);
  const [deviceTestRunning,setDeviceTestRunning]=useState(false),[deviceModelTesting,setDeviceModelTesting]=useState(false),[deviceTestReport,setDeviceTestReport]=useState(()=>readSavedDeviceTestReport(localStorage)),[offlineRestartMarker,setOfflineRestartMarker]=useState<OfflineRestartMarker|null>(null),offlineResumeAutoRun=useRef(false),deviceModelTestAbort=useRef<AbortController|null>(null);
@@ -510,6 +511,7 @@ export default function Prototype() {
    }
    await fileFocusQueue.current?.settled();await dialogueWriter.current?.settled();await flushStorage();await flushMetadata();
    if(appRefreshState.current.blocked||!appRefreshState.current.online)return toast('Update paused · finish current work and select Online');
+   if(pageNeedsReload.current){try{sessionStorage.setItem('babelshelf.update-notice.v1','App updated');}catch{}window.location.reload();return;}
    const outcome=await refreshAppVersion(registration,navigator.serviceWorker);
    // Read current render state: the user may type, start work or select Offline
    // while the browser verifies assets. Never reload using the click's snapshot.
@@ -520,6 +522,7 @@ export default function Prototype() {
   }catch(error){toast((error as Error).message||'Could not refresh app');}
   finally{appRefreshLock.current=false;setAppRefreshing(false);}
  }
+ useEffect(()=>{const container=navigator.serviceWorker;if(!container)return;const changed=()=>{const current=container.controller;if(!observedController.current){observedController.current=current;return;}if(current&&current!==observedController.current)pageNeedsReload.current=true;observedController.current=current;};container.addEventListener('controllerchange',changed);changed();return()=>container.removeEventListener('controllerchange',changed);},[]);
  useEffect(()=>{let message:string|null=null;try{message=sessionStorage.getItem('babelshelf.update-notice.v1');if(message)sessionStorage.removeItem('babelshelf.update-notice.v1');}catch{}if(message)toast(message);},[]);
  async function refreshDiagnosticBuild(){setDiagnosticBuild(await activeAppBuild(navigator.serviceWorker));}
  async function collectDeviceReport():Promise<DeviceDiagnosticReport>{
