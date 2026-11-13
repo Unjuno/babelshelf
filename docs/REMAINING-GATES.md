@@ -1,6 +1,6 @@
 ## Current status · 2026-11-13
 
-### Audit six candidate · PR #69 · not deployed
+### Audit six release · PR #69 · Site v357
 
 The candidate requests native LFM3 prompt-processing progress and renews the
 inactivity watchdog only on advancing validated token counters. Standalone
@@ -26,10 +26,16 @@ audit observations (reload navigation/runtime lifecycle, old status notices,
 attachment lifecycle, toast queue/layout, conversation management and wording)
 remain follow-up work; no schema reset or session UI was introduced.
 
-Full exact-candidate CI and main integration are pending. The live release is
-still Site v356 / build d92e7452cc0cd8ae from main 766d2ecc, with public access
-at https://babelshelf.com/. Detailed candidate measurements are appended to
-docs/TEST-RESULTS.txt.
+PR #69 merged as 729cfb0b33a553fccecc052a6ebaddee769ce17e after exact-head full
+quality CI [43408099937](https://github.com/Unjuno/babelshelf/actions/runs/43408099937)
+passed on attempt 2. Attempt 1 had one WebKit initial-navigation timeout;
+the same local WebKit test and unchanged full retry passed. No gate was weakened.
+Site v357 serves build 85437b6c8ab43e01 /166 assets and index-CDSGaKRC.js at
+https://babelshelf.com/, preserving public access. A fresh dedicated public
+Chrome context passed normal entry, file creation/deletion/Empty Trash and
+Check device result display, with zero page-script errors. Exact delivery hashes
+passed for all166 current assets and112 retained predecessor assets. Detailed
+model measurements and release provenance are in docs/TEST-RESULTS.txt.
 
 ### Latest release and third-audit verification · 2026-11-13
 
