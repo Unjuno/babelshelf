@@ -15,6 +15,8 @@ test('calculation execution survives backup and rejects a forged result',async()
  const original={...createTaskNote([],task,crypto.randomUUID(),now),taskCursor:{definition:taskDefinition(task),nextAt:'2026-10-18T00:00:00Z'}},claim=claimTaskRun([original],original.id,'owner',now,{manual:true});
  const done=finishTaskRun([original,claim.run],claim.run.id,'owner',{status:'succeeded',answer:'12 + 10 = 22',sources:[],calculation:makeDecimalReceipt('12 + 10')},now);
  const state={notes:[done.task,done.run],settings:[],runs:[]};const restored=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(restored.notes,state.notes);
+ const rerun=claimTaskRun(state.notes,original.id,'second-owner',now,{manual:true});const second=finishTaskRun([...state.notes,rerun.run],rerun.run.id,'second-owner',{status:'succeeded',answer:'12 + 10 = 22',sources:[],calculation:makeDecimalReceipt('12 + 10')},now);
+ const withRerun={notes:[second.task,done.run,second.run],settings:[],runs:[]};const restoredRerun=await parseStateBackup(JSON.stringify(await makeStateBackup(withRerun)));assert.deepEqual(restoredRerun.notes,withRerun.notes);
  const forged=structuredClone(state);forged.notes[1].revisions.at(-1).body=forged.notes[1].revisions.at(-1).body.replace('12 + 10 = 22','12 + 10 = 23');await assert.rejects(()=>makeStateBackup(forged),/Invalid scheduled calculation/);
 });
 

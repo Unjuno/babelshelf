@@ -185,6 +185,8 @@ test('explicit calculator instructions preserve the original expression rather t
   assert.equal((await calculator({expression:parsed.expression},host))[0].result,String(result));
  }
  assert.deepEqual(explicitCalculationInput('2 + 3'),{expression:'2 + 3',showExpression:false});
+ for(const question of ['2+2は？','３＋３はいくつ？']){const parsed=explicitCalculationInput(question);assert.ok(parsed,question);assert.equal(calculate(parsed.expression),question.startsWith('2')?4:6);}
+ for(const question of ['2+2は？保存して','2+2は？前の回答を保存して'])assert.equal(explicitCalculationInput(question),null,question);
  for(const [request,expression,result] of [['計算: 125 * 8','125 * 8',1000],['計算： （１２＋８）÷４＝','(12+8)÷4',5]]){const parsed=explicitCalculationInput(request);assert.deepEqual(parsed,{expression,showExpression:true});assert.equal(calculate(parsed.expression),result);}
  for(const request of ['計算: 2+3を保存して','計算: 2+3;削除','計算: 2026-10-18','計算: 2+3円'])assert.equal(explicitCalculationInput(request),null,request);
  for(const [request,result] of [['12 × 3 + 5 を計算して',41],['（１２＋８）÷４を計算してください。',5]]){const parsed=explicitCalculationInput(request);assert.ok(parsed,request);assert.equal(calculate(parsed.expression),result);}

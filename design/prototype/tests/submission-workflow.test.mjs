@@ -39,8 +39,8 @@ test('native conversational completion reaches Send unchanged with one model gen
  f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxToolCalls:null,maxGenerationTokens:null,maxGenerationMs:null};
  f.services.knowledge={all:async()=>{throw Error('Unexpected knowledge read');},search:async()=>{throw Error('Unexpected search');},getState:async()=>[]};
  f.services.bonsai={plannerProtocol:'native-tool-calls',loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),load:async()=>{throw Error('Already resident');},generate:async(_messages,_budget,format)=>{
-  generations++;assert.equal(format.type,'native-tool-plan');
-  return {text:JSON.stringify({action:'chat',reply:{status:'answered',answer,sources:[]}}),finishReason:'stop',outputTokens:25};
+  generations++;assert.equal(format,'prose');
+  return {text:answer,finishReason:'stop',outputTokens:25};
  }};
  const outcome=await c.run(run=>executeSubmission({text:'Why is the daytime sky blue?',attachments:[]},f.services,f.view,run));
  assert.equal(outcome,'completed',JSON.stringify(c.state));assert.equal(generations,1);
@@ -636,14 +636,14 @@ test('an unprepared chat request reports needsPreparation and cannot bypass the 
  assert.equal(f.current().turns.length,1);assert.equal(f.current().turns[0].status,'Model not configured · Settings');
 });
 
-test('native-tool Text model owns ordinary action selection without loading the resident Decision role',async()=>{
+test('standalone planning request uses the resident Text model without loading Decision or selecting an unrelated action',async()=>{
  const f=fixture(),c=createSubmissionController();let plans=0,answers=0,decisionCalls=0,decisionLoads=0;
  f.services.activeHarnessProfile={id:'test-profile',label:'Test',enabledTools:[],maxToolCalls:0,maxResultChars:8000};
  f.services.model='native-test';
  f.services.bonsai={loaded:'native-test',busy:false,assets:{'native-test':{filesPresent:true}},manifest:{contextTokens:4096,maxOutputTokens:512,models:[{id:'native-test',revision:'fixture'}],runtime:{revision:'fixture'}},plannerProtocol:'native-tool-calls',protocolForModel:id=>id==='native-test'?'native-tool-calls':'json',pin(){return this;},count:async()=>({prompt_tokens:64}),generate:async(_messages,_maxTokens,format)=>{if(format?.type==='native-tool-plan'){plans++;return {text:JSON.stringify({action:'chat',query:''})};}answers++;return {text:'Let us plan the weekly reset.',finishReason:'stop'};},load:async()=>{throw Error('Unexpected Text reload');},stop(){}};
  f.services.decision={...f.services.decision,enabled:true,ready:true,loaded:false,busy:false,load:async()=>{decisionLoads++;throw Error('Unexpected Decision load');},classify:async()=>{decisionCalls++;throw Error('Unexpected Decision classification');},unload:async()=>{}};
  assert.equal(await c.run(run=>executeSubmission({text:'Could you help me plan a weekly reset?',attachments:[]},f.services,f.view,run)),'completed',c.state.error);
- assert.equal(plans,1);assert.ok(answers>=1);assert.equal(decisionLoads,0);assert.equal(decisionCalls,0);assert.equal(f.current().turns.at(-1).answer,'Let us plan the weekly reset.');
+ assert.equal(plans,0,'a general planning question does not enter history-biased action selection');assert.equal(answers,1);assert.equal(decisionLoads,0);assert.equal(decisionCalls,0);assert.equal(f.current().turns.at(-1).answer,'Let us plan the weekly reset.');
 });
 
 test('literal new-note prose is saved exactly without model acquisition, even when another file is open',async()=>{
@@ -883,14 +883,14 @@ test('ordinary prose Send publishes transient previews and clears them on comple
   f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
   f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(_messages,_budget,format,onPreview)=>{
    modelCalls++;
-   if(format!=='prose')return {text:JSON.stringify({action:'chat',query:''})};
+   assert.equal(format,'prose','standalone general chat skips an unrelated planner generation');
    onPreview('A short');observed=true;
    assert.equal(c.state.preview,'A short');assert.equal(f.current().turns.at(-1).answer,undefined);
    if(fail)throw Error('Runtime failed');
    return {text:'A short story.',finishReason:'stop'};
   },load:async()=>{throw Error('Already loaded');},stop(){}};
   const outcome=await c.run(run=>executeSubmission({text:'Tell me a story.',attachments:[]},f.services,f.view,run));
-  assert.equal(modelCalls,2,'an unconfigured Decision role falls through to Text planning and answer generation');
+  assert.equal(modelCalls,1,'a standalone conversation uses one bounded Text answer generation');
   assert.ok(observed,c.state.error);assert.equal(c.state.preview,'');
   if(fail){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);}
   else{assert.equal(outcome,'completed',c.state.error);assert.equal(f.current().turns.at(-1).answer,'A short story.');}

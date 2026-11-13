@@ -1244,7 +1244,7 @@ test('standalone greetings use a fresh answer context without deleting retained 
  assert.equal(prior.summary,'Workshop moved to Monday at 10.');assert.equal(prior.recent.length,1);assert.equal(prior.turnCount,7);
  let decisionCalls=0;assert.deepEqual(await resolveTurnRoute({current:result.request,question:'Hello.',select:async()=>{decisionCalls++;return {request:null,reason:'ambiguous'};},plan:async()=>({action:'capture'}),check:()=>{}}),{request:result.request,source:'explicit'});assert.equal(decisionCalls,0);
  assert.equal(conversation.contextIndependentConversation('What did we decide about the workshop?',[],prior),null);
- assert.equal(conversation.contextIndependentConversation('Hello, what time is the workshop?',[],prior),null);
+ assert.deepEqual(conversation.contextIndependentConversation('Hello, what time is the workshop?',[],prior),{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}},'an unreferenced current question does not inherit an unrelated older topic');
  const farewell=conversation.contextIndependentConversation('Say goodbye in one short sentence.',[],prior);
  assert.deepEqual(farewell,{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}});
  assert.equal(conversation.contextIndependentConversation('Say goodbye based on my saved notes.',[],prior),null);

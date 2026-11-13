@@ -4,6 +4,7 @@ import {planDialogue,contextIndependentConversation} from '../src/dialogue-plann
 import {nativeFinalPlanTools} from '../src/native-output-format.ts';
 import {groundedAnswer} from '../src/grounded-answer.ts';
 import {dialogueOutputLimits,requestsOneSentence} from '../src/reply-style.ts';
+import {resolveSubmittedTurnIntent,resolveTurnRoute} from '../src/turn-router.ts';
 
 const context={summary:'',recent:[],refs:[],turnCount:0};
 const manifest={contextTokens:8192,maxOutputTokens:8192,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}};
@@ -18,6 +19,30 @@ test('greeting request format modifiers compose without turning source or compou
  }
  for(const question of ['Say hello using my saved notes.','Say hello in one short sentence and save it.','Say hello, then search my files.','Say hello based on our previous conversation.'])assert.equal(contextIndependentConversation(question,[],context),null,question);
  assert.equal(contextIndependentConversation('Say hello in one short sentence.',[{name:'a.txt',kind:'text',status:'Text available'}],context),null);
+});
+
+test('standalone general questions bypass unrelated long dialogue and history-copy actions',()=>{
+ const prior={summary:'Earlier user asked for a note. The assistant answered that LFM3 uses WebAssembly on CPU.',recent:Array.from({length:14},(_,index)=>({id:`old-${index}`,user:index===13?'What is the runtime?':'Please save this answer as a note.',answer:'Old answer that must not be selected or copied.'})),refs:[],turnCount:28,lastAnswerIndex:27};
+ for(const question of ['What runtime does this app use?','思ったんだけど、ランタイム何使ってんの？','Why does sunlight scatter in the atmosphere?','Explain what a transformer model is.']){
+  const selected=contextIndependentConversation(question,[],prior);
+  assert.deepEqual(selected,{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}},question);
+ }
+ for(const question of ['What did we decide about the workshop?','What is in my saved notes?','Please save the current answer as a note.','Delete the old schedule.','What does this file contain?','What is that?','その水を3人で分けると1人何リットルですか？'])assert.equal(contextIndependentConversation(question,[],prior),null,question);
+ assert.equal(contextIndependentConversation('Why does sunlight scatter?', [{name:'photo.jpg',kind:'image',status:'Image text not prepared'}],prior),null);
+ assert.equal(prior.recent.length,14,'retained dialogue stays unchanged');
+});
+
+test('submission intent binds a standalone question before decision or planner routing',async()=>{
+ const prior={schema:1,revision:22,turns:Array.from({length:14},(_,index)=>({id:`turn-${index}`,user:index===13?'Save the answer to my question.':'Make a note of the runtime.',answer:'The runtime uses WASM.'})),compaction:null};
+ const question='What runtime does this app use?';
+ const intent=resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]});
+ assert.deepEqual(intent.request,{action:'chat',query:''});
+ assert.deepEqual(intent.context,{summary:'',recent:[],refs:[],turnCount:0});
+ let decisions=0,planners=0;
+ const routed=await resolveTurnRoute({current:intent.request,question,select:async()=>{decisions++;return {request:{action:'capture'},reason:'confident-read-only'};},plan:async()=>{planners++;return {action:'capture'};},check:()=>{}});
+ assert.deepEqual(routed,{request:{action:'chat',query:''},source:'explicit'});
+ assert.equal(decisions+planners,0,'general questions cannot spend long-history route inference or inherit a capture proposal');
+ assert.equal(prior.turns.length,14,'canonical conversation remains retained');
 });
 
 test('one-sentence formatting accepts shortness modifiers without limiting ordinary or long requests',()=>{

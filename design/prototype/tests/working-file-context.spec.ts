@@ -12,6 +12,15 @@ async function openScheduleFile(page:any){
  await page.locator('.file-row').first().click();
 }
 
+test('a deleted input file explains recovery and can be removed without losing the draft',async({page})=>{
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
+ await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Deleted input');await page.getByRole('textbox',{name:'New file content'}).fill('Recoverable content');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();await expect(page.getByRole('group',{name:'Input file'})).toContainText('Deleted input');await page.getByRole('textbox',{name:'Message'}).fill('Keep this draft');
+ await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open Deleted input.md',exact:true}).click();await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();const chip=page.getByRole('group',{name:'Input file'});await expect(chip).toContainText('Deleted input.md');await expect(chip).toContainText('Unavailable · Restore from Trash or remove');expect(await chip.locator('span').evaluate(el=>el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1)).toBe(true);await chip.getByRole('button',{name:'Remove file from input'}).click();await expect(chip).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message'})).toHaveValue('Keep this draft');
+ await page.reload();await expect(page.getByRole('group',{name:'Input file'})).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message'})).toHaveValue('Keep this draft');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();await expect(page.getByRole('dialog',{name:'Trash'})).toContainText('Deleted input');
+});
+
 test('input exposes file context and removal persists offline without deleting the file',async({page,context})=>{
  await page.goto('/');await prepareOfflineShell(page);
  await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();

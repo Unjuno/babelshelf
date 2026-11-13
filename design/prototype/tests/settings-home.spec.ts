@@ -1,5 +1,28 @@
 import {expect,test} from '@playwright/test';
 
+test('reload retains a secondary page and its settings section with the app controls',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
+ await page.reload();await expect(page.getByRole('heading',{name:'Models',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Update app',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^(Online|Offline) · Tap to switch/})).toBeVisible();
+});
+
+test('a new notice is visible immediately and the previous notice remains available',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.preview-toast')).toContainText('Enter a message or add an attachment');
+ await page.getByRole('button',{name:/^Offline · Tap to switch/}).click();await expect(page.locator('.preview-toast')).toContainText('Online selected');
+ await page.locator('.preview-toast').getByRole('button',{name:'Dismiss'}).click();await expect(page.locator('.preview-toast')).toContainText('Enter a message or add an attachment');
+});
+
+test('a previous model error can be dismissed and reopened after reload without deleting its turn',async({page})=>{
+ await page.goto('/');const message=page.getByRole('textbox',{name:'Message',exact:true});await message.fill('Say hello in one short sentence.');await page.getByRole('button',{name:'Send',exact:true}).click();
+ const turn=page.locator('.sent-message').last();await expect(turn).toContainText('Model not prepared');await turn.getByRole('button',{name:'Dismiss status'}).click();await expect(turn).not.toContainText('Model not prepared');
+ await page.reload();const restored=page.locator('.sent-message').last();await expect(restored).toContainText('Say hello in one short sentence.');await restored.getByRole('button',{name:'Show previous status'}).click();await expect(restored).toContainText('Model not prepared');
+});
+
+test('an old model-preparation error no longer dominates after a later reply',async({page})=>{
+ await page.goto('/');await page.getByRole('textbox',{name:'Message'}).fill('Say hello in one short sentence.');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.sent-message').last()).toContainText('Model not prepared');
+ await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const q=indexedDB.open('mlb-memory-v1');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});await new Promise<void>((resolve,reject)=>{const tx=db.transaction('settings','readwrite'),store=tx.objectStore('settings'),q=store.get('ui-v1-dialogue');q.onsuccess=()=>{const d=q.result;d.turns.push({id:'qa-success-after-warning',user:'Next question',answer:'A later answer.'});d.revision++;store.put(d,'ui-v1-dialogue');};tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});db.close();});
+ await page.reload();const old=page.locator('.sent-message').first();await expect(old).not.toContainText('Model not prepared');await expect(old.getByRole('button',{name:'Show previous status'})).toBeVisible();await old.getByRole('button',{name:'Show previous status'}).click();await expect(old).toContainText('Model not prepared');await expect(page.locator('.sent-message').last()).toContainText('A later answer.');
+});
+
 test('audit: navigation offers a visible route back to chat and preserves the draft',async({page})=>{
  await page.goto('/');const input=page.getByRole('textbox',{name:'Message',exact:true});
  await input.fill('Unsent text');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
@@ -30,8 +53,8 @@ test('local Vision file errors stay visible without an installed inference runti
  await page.getByLabel('Pinned vision model files',{exact:true}).setInputFiles({name:'config.json',mimeType:'application/json',buffer:Buffer.from('{}')});
  await expect(section.getByRole('alert')).toContainText('Vision file size mismatch');
  await page.getByRole('button',{name:'Prepare vision model',exact:true}).waitFor({state:'visible'});
- // The transient toast disappears; the actionable error remains beside its model.
- await expect(page.locator('.preview-toast')).toHaveCount(0,{timeout:6000});
+ // Both the error and the earlier model-selection notice expire; the actionable error remains beside its model.
+ await expect(page.locator('.preview-toast')).toHaveCount(0,{timeout:10000});
  await expect(section.getByRole('alert')).toContainText('config.json');expect(remote).toEqual([]);
 });
 

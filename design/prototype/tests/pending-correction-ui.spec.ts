@@ -6,6 +6,7 @@ async function assistant(page:Page){
  await page.getByText('More',{exact:true}).click();
  await page.getByRole('button',{name:'Assistant',exact:true}).click();
 }
+async function home(page:Page){await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();}
 async function propose(page:Page){
  await page.goto('/');await assistant(page);
  await page.getByRole('button',{name:'Harness profile',exact:true}).click();
@@ -15,7 +16,7 @@ async function propose(page:Page){
 
 test('unapproved review survives dismissal and restart; Save applies once and removes it',async({page})=>{
  await propose(page);await page.keyboard.press('Escape');
- await page.reload();
+ await page.reload();await home(page);
  await expect(page.getByRole('button',{name:'Review pending changes',exact:true})).toBeVisible();
  await assistant(page);
  await expect(page.getByRole('button',{name:'Harness profile',exact:true})).toHaveText('Standard');
@@ -33,7 +34,7 @@ test('unapproved review survives dismissal and restart; Save applies once and re
 });
 
 test('explicit Cancel removes the pending proposal without changing the original settings',async({page})=>{
- await propose(page);await page.reload();
+ await propose(page);await page.reload();await home(page);
  await page.getByRole('button',{name:'Review pending changes',exact:true}).click();
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Review changes',exact:true})).toHaveCount(0);
@@ -52,7 +53,7 @@ test('a pending review blocks a new correction before model preparation and keep
  await expect(page.locator('.sent-message').last()).toContainText('Review pending changes first');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue(request);
  await expect(page.getByText('Model not prepared',{exact:true})).toHaveCount(0);
- await page.reload();await page.getByRole('button',{name:'Review pending changes',exact:true}).click();
+ await page.reload();await home(page);await page.getByRole('button',{name:'Review pending changes',exact:true}).click();
  await expect(page.getByRole('region',{name:'Profile before',exact:true})).toContainText('Standard');await expect(page.getByRole('region',{name:'Profile after',exact:true})).toContainText('Source first');
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await assistant(page);await expect(page.getByRole('button',{name:'Harness profile',exact:true})).toHaveText('Standard');
 });
@@ -62,7 +63,7 @@ test('a saved change in another tab invalidates a resumed review without overwri
  const other=await context.newPage();await other.goto('/');await assistant(other);
  await other.getByRole('button',{name:'Concise',exact:true}).click();
  await expect(other.getByRole('button',{name:'Concise',exact:true})).toHaveAttribute('aria-pressed','true');
- await page.reload();await page.getByRole('button',{name:'Review pending changes',exact:true}).click();
+ await page.reload();await home(page);await page.getByRole('button',{name:'Review pending changes',exact:true}).click();
  await expect(page.getByRole('button',{name:'Save',exact:true})).toBeDisabled();
  await expect(page.getByRole('alert')).toContainText(/changed|conflict/i);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();

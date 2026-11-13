@@ -34,7 +34,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
  async function search(p,query,expected){
   const count=await p.locator('.sent-message').count(),request='Search '+query;
   await p.getByRole('textbox',{name:'Message',exact:true}).fill(request);await p.getByRole('button',{name:'Send',exact:true}).click();
-  await p.waitForFunction(({count,request})=>{const turns=document.querySelectorAll('.sent-message'),last=turns[turns.length-1];return turns.length>count&&last?.querySelector('.user-bubble')?.textContent===request&&last.querySelector('.turn-status')?.textContent==='Found · 1';},{count,request});
+  await p.waitForFunction(({count,request})=>{const turns=document.querySelectorAll('.sent-message'),last=turns[turns.length-1];return turns.length>count&&last?.querySelector('.user-bubble')?.textContent===request&&last.querySelector('.turn-status > span')?.textContent==='Found · 1';},{count,request});
   const text=await p.locator('.sent-message').last().innerText();assert.ok(text.includes(expected),text);return text;
  }
  async function backup(p,name,alreadyLocal=false){if(!alreadyLocal){await go(p,'Settings');await p.getByRole('button',{name:'Local files',exact:true}).click();}const pending=p.waitForEvent('download');await p.getByRole('button',{name:'Export backup',exact:true}).click();const path=join(outputDir,name);await(await pending).saveAs(path);return JSON.parse(await readFile(path,'utf8')).payload;}

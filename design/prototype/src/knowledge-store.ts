@@ -451,6 +451,13 @@ export class KnowledgeStore {
      }
      candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
      const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
+     // Execution and notification links live inside versioned JSON bodies.
+     // Decode only these canonical record types; ordinary user text must not
+     // be treated as structured storage or silently rewritten.
+     for(const note of candidate.notes){
+      const read=note.ui?.recordType==='execution'?taskRunView:note.ui?.recordType==='notification'?noticeView:null;
+      if(read)for(const revision of note.revisions)collectReferences(read({...note,revisions:[revision]}),deletedIds,referencedIds);
+     }
      const blockedBatches=new Set([...referencedIds].map(id=>noteBatch.get(id)).filter((id):id is string=>!!id));
      const newlyRetained=[...blockedBatches].filter(id=>!retainedBatchIds.has(id));
      if(!newlyRetained.length)break;
