@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {formatTask,parseTask,taskDefinition,taskNextAt,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,taskRunView} from '../src/task-records.ts';
+import {formatTask,parseTask,taskDefinition,taskNextAt,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,taskRunView,reviseTaskNote} from '../src/task-records.ts';
 import {projectNote,applyKnowledgeChanges} from '../src/knowledge-store.ts';
 import {createNote,latest} from '../../../dist/core.js';
 import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
@@ -45,6 +45,16 @@ test('finishing a run checks its owner, retains task bytes, and consumes a one-o
  assert.equal(result.task.taskCursor.nextAt,null);
  assert.equal(latest(result.task).body,latest(note).body);
  assert.equal(taskRunView(result.run).answer,'actual result');
+});
+test('source-free scheduled conversation answers complete while cited answers still require current sources',()=>{
+ const note=reviseTaskNote(registered(),{...task,prompt:'say hello briefly'}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
+ const finished=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'Hello!',sources:[]},now);
+ assert.equal(taskRunView(finished.run).status,'succeeded');assert.equal(taskRunView(finished.run).answer,'Hello!');assert.deepEqual(taskRunView(finished.run).sources,[]);
+ const knowledgeNote=registered(),knowledgeRun=claimTaskRun([knowledgeNote],knowledgeNote.id,'knowledge-owner',now);
+ assert.throws(()=>finishTaskRun([knowledgeNote,knowledgeRun.run],knowledgeRun.run.id,'knowledge-owner',{status:'succeeded',answer:'An unsupported answer',sources:[]},now),/Source changed or missing result/);
+ const second=claimTaskRun([note],note.id,'other',now);
+ assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer',sources:[{noteId:'missing',revision:1,start:0,end:1,quote:'x'}]},now),/Source changed or missing result/);
+ assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer'},now),/Source changed or missing result/);
 });
 test('completed one-off can be manually rerun without changing its original occurrence or allowing concurrent owners',()=>{
  const note=registered(),now=new Date(2026,9,20,9),first=claimTaskRun([note],note.id,'owner',now),done=finishTaskRun([note,first.run],first.run.id,'owner',{status:'succeeded',answer:'first',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);

@@ -10,6 +10,37 @@ test('stale or altered batch aborts without any writes',async()=>{const {s,delet
 test('Empty Trash permanently deletes independent batches and keeps only batches with retained references',async()=>{const {s,deleted}=await fixture();try{const views=await s.views();const all=await s.recoverMemory({kind:'delete',target:{kind:'file',value:'two'},expectedNotes:views,id:'batch-two',label:'two'},deleted.folders,deleted.trash);const db=await s.open();await new Promise((resolve,reject)=>{const tx=db.transaction('runs','readwrite');tx.objectStore('runs').put({noteId:'one'},'synthetic-reference');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});const result=await s.purgeMemory(all.trash,all.trash);assert.deepEqual(result.retainedBatchIds,['batch']);assert.deepEqual(result.trash.map(batch=>batch.id),['batch']);const state=await s.snapshot();assert.deepEqual(state.notes.map(note=>note.id),['one']);assert.equal(state.notes.find(note=>note.id==='one').state,'withdrawn');}finally{s.close();}});
 test('a referenced note stays in Trash and does not block unrelated selected entries',async()=>{const {s,deleted}=await fixture();try{const db=await s.open();await new Promise((resolve,reject)=>{const tx=db.transaction('runs','readwrite');tx.objectStore('runs').put({noteId:'one'},'synthetic-reference');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});const second=await s.recoverMemory({kind:'delete',target:{kind:'file',value:'two'},expectedNotes:await s.views(),id:'batch-two',label:'two'},deleted.folders,deleted.trash);const before=await s.snapshot();const result=await s.purgeMemory(second.trash,second.trash);assert.deepEqual(result.retainedBatchIds,['batch']);assert.deepEqual(result.trash.map(batch=>batch.id),['batch']);const after=await s.snapshot();assert.deepEqual(after.notes.map(note=>note.id),['one']);assert.equal(after.notes[0].state,'withdrawn');assert.deepEqual(after.runs,before.runs);}finally{s.close();}});
 
+test('a Trash batch of ten schedules and one linked execution purges after its notification is also selected',async()=>{
+ const {createTaskNote,claimTaskRun,finishTaskRun,taskNotice}=await import('../src/task-records.ts');
+ const zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=new Date('2026-11-14T04:00:00.000Z');
+ const records=[];
+ for(let index=0;index<10;index++){
+  const task={repeat:'once',time:'09:00',days:[],date:'2026-11-15',monthDay:1,interval:1,unit:'days',timezone:zone,enabled:false,notify:index===0,prompt:index===0?'say hello briefly':`QA schedule ${index}`};
+  const schedule=createTaskNote(records,task,crypto.randomUUID(),now);schedule.taskCursor={definition:(await import('../src/task-records.ts')).taskDefinition(task),nextAt:null};records.push(schedule);
+ }
+ const task=records[0],claimed=claimTaskRun(records,task.id,'purge-test-owner',now,{manual:true});records.push(claimed.run);
+ const completed=finishTaskRun(records,claimed.run.id,'purge-test-owner',{status:'succeeded',answer:'Hello!',sources:[]},now);records[0]=completed.task;records[records.indexOf(claimed.run)]=completed.run;
+ const notification=taskNotice(completed.task,completed.run);assert.ok(notification);records.push(notification);
+ const store=new KnowledgeStore('purge-ten-schedule-chain-'+crypto.randomUUID());await store.initialize([]);
+ const db=await store.open();await new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite');for(const note of records)tx.objectStore('notes').put(note);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});
+ await store.setState('folders',[]);await store.setState('trash',[]);
+ try{
+  let folders=[],trash=[];
+  for(const note of records.filter(value=>value!==notification)){
+   const result=await store.recoverMemory({kind:'delete',target:{kind:'file',value:note.id},expectedNotes:await store.views(),id:'trash-'+note.id,label:note.revisions.at(-1).title},folders,trash);
+   folders=result.folders;trash=result.trash;
+  }
+  const first=await store.purgeMemory(trash,trash);
+  assert.equal(first.purgedBatchIds.length,9,'independent schedule definitions can be removed');
+  assert.deepEqual(new Set(first.retainedBatchIds),new Set([`trash-${task.id}`,`trash-${claimed.run.id}`]));
+  assert.equal(first.trash.length,2);
+  const movedNotice=await store.recoverMemory({kind:'delete',target:{kind:'file',value:notification.id},expectedNotes:await store.views(),id:'trash-'+notification.id,label:notification.revisions.at(-1).title},folders,first.trash);
+  const final=await store.purgeMemory(movedNotice.trash,movedNotice.trash);
+  assert.equal(final.trash.length,0,'selecting the linked notification, execution and definition together removes the complete dependency chain');
+  assert.deepEqual((await store.snapshot()).notes,[]);
+ }finally{store.close();}
+});
+
 async function mutate(s,store,key,value){const db=await s.open();await new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value,...(store==='notes'?[]:[key]));tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});}
 test('active and protected targets reject atomically',async()=>{for(const kind of ['active','protected']){const {s,deleted}=await fixture();try{const note=(await s.snapshot()).notes.find(n=>n.id==='one');if(kind==='active')note.state='active';else note.ui={protected:true};await mutate(s,'notes',null,note);const before=await s.snapshot();await assert.rejects(s.purgeMemory([deleted.trash[0]],deleted.trash),e=>e.code===(kind==='active'?'changed':'protected'));assert.deepEqual(await s.snapshot(),before);}finally{s.close();}}});
 test('an original referenced by conversation is kept while independent batches are purged',async()=>{const {s,deleted}=await fixture();try{const {prepareOriginal,originalNote,originalKey,originalRef}=await import('../src/original-assets.ts');const asset=await prepareOriginal(new File(['asset'],'asset.txt',{type:'text/plain'}),'asset-one');const original=originalNote(asset);await mutate(s,'notes',null,original);await mutate(s,'runs',originalKey(asset.id),asset);const {appendTurn,emptyDialogue}=await import('../src/conversation.ts');const dialogue=appendTurn(emptyDialogue(),{id:'turn',user:'Read',attachments:[{id:asset.id,name:asset.name,kind:asset.kind,status:'Not prepared',size:asset.bytes,asset:originalRef(asset)}]});await mutate(s,'settings','ui-v1-dialogue',dialogue);const views=await s.views();const next=await s.recoverMemory({kind:'delete',target:{kind:'file',value:asset.id},expectedNotes:views,id:'asset-batch',label:'asset'},deleted.folders,deleted.trash);const result=await s.purgeMemory(next.trash,next.trash);assert.deepEqual(result.retainedBatchIds,['asset-batch']);assert.deepEqual(result.trash.map(batch=>batch.id),['asset-batch']);const state=await s.snapshot();assert.ok(state.notes.some(note=>note.id===asset.id&&note.state==='withdrawn'));assert.ok(!state.notes.some(note=>note.id==='one'));assert.deepEqual(await s.getState('dialogue'),dialogue);}finally{s.close();}});

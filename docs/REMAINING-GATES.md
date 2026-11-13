@@ -1,4 +1,37 @@
-## Current status · 2026-11-13
+## Current status · 2026-11-14
+
+### Audit nine follow-up · candidate 3c90daab1a22f620
+
+The schedule-specific `Answer contains an internal source label` failure was
+reproduced in the prior public audit and traced to source-free greeting prompts
+entering the knowledge-grounded answer path. These explicit, narrow greeting
+and original-prose requests now use the shared source-free conversation route;
+factual questions and saved-material requests still require current citations.
+Run completion accepts an empty source list only for that narrow route.
+
+The candidate completed `say hello briefly` with the real local Text model in
+the product UI: `Hello! How can I help you today?`; Activity recorded success
+and the Schedule row showed Completed. The audit's growing-history general
+question fix was also confirmed in audit nine on build 370e5ac8: a 20-turn
+conversation answered a capital question directly, with a 296-token prompt;
+this release does not change that chat routing. Real-model checks are local PC
+browser evidence and do not establish audit-VM speed or broad answer quality.
+
+Trash dependency coverage now models ten schedule definitions, one execution
+record and a linked notification. Independent definitions purge while the
+referenced schedule and execution stay protected; selecting the linked
+notification with both records allows the whole synthetic chain to purge.
+This does not inspect or alter the audit browser's retained records. A stale
+attachment revision continues to fail safely under the existing revision
+guard; additional UI wording/lifecycle observations from audit nine remain
+follow-up work.
+
+`npm run test:quality` passed on this exact candidate, including root and
+prototype tests, type/build checks, Chromium and WebKit browser suites,
+schedule/settings/editorial/device handoff, update recovery, offline process
+and installed-PWA checks. The installed-PWA check used a synthetic shell and
+did not constitute physical-device or real-model acceptance. GitHub PR/CI and
+public Site deployment for this candidate are pending.
 
 ### Audit six release · PR #69 · Site v357
 
