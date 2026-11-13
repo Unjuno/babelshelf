@@ -26,11 +26,13 @@ for(const action of ['type','offline'] as const)test(`working during app update:
  await expect(update).toHaveText('Update');
  if(action==='type'){
   await expect(update).not.toHaveAttribute('data-blocked','true');
+  const pageLoads=await page.evaluate(()=>performance.getEntriesByType('navigation').length);
   await page.evaluate(()=>{(window as any).__releaseUpdate=undefined;});await update.click();
   await page.waitForFunction(()=>typeof (window as any).__releaseUpdate==='function');
-  const reloaded=page.waitForEvent('framenavigated',{predicate:frame=>frame===page.mainFrame()});
-  await page.evaluate(()=>(window as any).__releaseUpdate());await reloaded;
+  await page.evaluate(()=>(window as any).__releaseUpdate());
+  await expect(page.getByRole('status').filter({hasText:'Up to date'})).toBeVisible();
   await expect(message).toHaveValue('Keep the new draft written during update');
+  expect(await page.evaluate(()=>performance.getEntriesByType('navigation').length)).toBe(pageLoads);
  }else await expect(update).toBeDisabled();
 });
 
@@ -86,7 +88,7 @@ test('an active diagnostic keeps running and visible while moving to another app
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await page.evaluate(()=>{let stored:Response|undefined;Object.defineProperty(window,'caches',{configurable:true,value:{keys:()=>new Promise<string[]>(resolve=>{(window as any).__releaseDiagnosticCacheKeys=()=>resolve([]);}),open:async()=>({put:async(_key:string,value:Response)=>{stored=value;},match:async()=>stored}),delete:async()=>true}});});
  await page.getByRole('button',{name:'Run app checks',exact:true}).click();await page.waitForFunction(()=>typeof (window as any).__releaseDiagnosticCacheKeys==='function');
- await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Memory'}).click();
  await expect(page.getByRole('status').filter({hasText:'Device check'})).toBeVisible();
  await expect(page.getByRole('button',{name:'Copy current device test snapshot'})).toBeVisible();
  await page.evaluate(()=>(window as any).__releaseDiagnosticCacheKeys());

@@ -7,7 +7,7 @@ test('header actions do not overlap with enlarged text on a narrow screen',async
 });
 
 async function createInboxFile(page:Page,name:string,content:string){
- const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();
+ const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await page.getByRole('menuitem',{name:'Memory'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();
  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill(name);await page.getByRole('textbox',{name:'New file content'}).fill(content);await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.locator('main')).toContainText(name);
 }
@@ -24,11 +24,11 @@ test('an older file version can be reviewed in the editor and saved as a new rev
 test('an old-version draft cannot overwrite another tab’s newer edit',async({page,context})=>{
  await page.goto('/');await createInboxFile(page,'QA-history-conflict','first version');
  await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('textbox',{name:'Markdown content'}).fill('second version');await page.getByRole('button',{name:'Save',exact:true}).click();
- const other=await context.newPage();await other.goto('/');await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'BabelShelf'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-history-conflict.md'}).click();
+ const other=await context.newPage();await other.goto('/');await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'Memory'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-history-conflict.md'}).click();
  await page.getByRole('button',{name:'History',exact:true}).click();const history=page.getByRole('dialog',{name:'History'});await history.getByText('v1',{exact:true}).click();await history.getByRole('button',{name:'Edit from v1'}).click();
  await other.getByRole('button',{name:'Edit',exact:true}).click();await other.getByRole('textbox',{name:'Markdown content'}).fill('third version in another tab');await other.getByRole('button',{name:'Save',exact:true}).click();await expect(other.locator('main')).toContainText('v3');
  await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.getByText(/conflict|changed/i).last()).toBeVisible();
- await other.reload();await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'BabelShelf'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-history-conflict.md'}).click();await expect(other.locator('main')).toContainText('third version in another tab');await expect(other.locator('main')).toContainText('v3');
+ await other.reload();await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'Memory'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-history-conflict.md'}).click();await expect(other.locator('main')).toContainText('third version in another tab');await expect(other.locator('main')).toContainText('v3');
 });
 
 test('Trash identifies a deleted file by its original path before restoring it',async({page})=>{
@@ -38,7 +38,7 @@ test('Trash identifies a deleted file by its original path before restoring it',
 });
 
 test('Trash identifies a deleted folder by its original path',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();await page.getByRole('button',{name:'Open Notes'}).click();
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Memory'}).click();await page.getByRole('button',{name:'Open Notes'}).click();
  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('tab',{name:'Folder'}).click();await page.getByRole('textbox',{name:'Folder name'}).fill('QA-folder-location');await page.getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'Notes',exact:true}).click();await page.getByRole('button',{name:'Actions for QA-folder-location'}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
  await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});await expect(trash).toContainText('Notes/QA-folder-location');await trash.getByRole('button',{name:'Restore Notes/QA-folder-location'}).click();await expect(trash).toContainText('Trash is empty');
@@ -58,7 +58,7 @@ test('restoring an identical backup explains that nothing new was added',async({
 test('dark add buttons remain legible in Schedule and Memory',async({page})=>{
  await page.goto('/');const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await page.getByRole('menuitem',{name:'Settings'}).click();await page.getByRole('button',{name:'Appearance',exact:true}).click();await page.getByRole('button',{name:'Dark',exact:true}).click();
  const check=async(name:string)=>{const button=page.getByRole('button',{name,exact:true});const colors=await button.evaluate(el=>({fg:getComputedStyle(el).color,bg:getComputedStyle(el).backgroundColor,image:getComputedStyle(el).backgroundImage}));const lum=(s:string)=>{const n=s.match(/\d+/g)!.slice(0,3).map(Number).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return .2126*n[0]+.7152*n[1]+.0722*n[2];};const a=lum(colors.fg),b=lum(colors.bg);expect(colors.image).toBe('none');expect((Math.max(a,b)+.05)/(Math.min(a,b)+.05)).toBeGreaterThanOrEqual(4.5);const box=await button.boundingBox();expect(box!.width).toBeGreaterThanOrEqual(44);expect(box!.height).toBeGreaterThanOrEqual(44);};
- await home.click();await page.getByRole('menuitem',{name:'Schedule'}).click();await check('New schedule');await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();await check('New file');
+ await home.click();await page.getByRole('menuitem',{name:'Schedule'}).click();await check('New schedule');await home.click();await page.getByRole('menuitem',{name:'Memory'}).click();await check('New file');
 });
 
 test('invalid stored path offers offline startup recovery without changing the stored note',async({page,context})=>{
@@ -79,7 +79,7 @@ test('a stale tab offers conversation recovery without losing its draft',async({
  await expect(page.locator('.turn-status')).toContainText('Saved · Inbox/amber lantern.md');await expect(page.getByRole('dialog')).toHaveCount(0);
  const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await home.click();
  await expect(page.locator('.turn-status')).toContainText('Saved · Inbox/amber lantern.md');
- await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'Open amber lantern.md'}).click();await home.click();await home.click();
+ await home.click();await page.getByRole('menuitem',{name:'Memory'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'Open amber lantern.md'}).click();await home.click();await home.click();
  const other=await context.newPage();await other.setViewportSize({width:320,height:700});await other.goto('/');await expect(other.locator('.turn-status')).toContainText('Saved · Inbox/amber lantern.md');await expect(other.getByRole('button',{name:'Remove file from input'})).toBeVisible();
  await page.getByRole('textbox',{name:'Message'}).fill('12 + 8');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.reply-text')).toContainText('20');
  await other.getByRole('button',{name:'Remove file from input'}).click();const warning=other.locator('.conversation-warning');await expect(warning).toContainText('Conversation changed');await expect(warning.getByRole('button',{name:'Reload conversation'})).toBeVisible();const bounds=await warning.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(320);await other.getByRole('textbox',{name:'Message'}).fill('My unfinished question');
@@ -121,7 +121,7 @@ test('saving a reviewed answer rejects a changed source state without losing the
  });
  await page.reload();await expect(page.locator('.reply-text')).toContainText('Source has no references.');await page.getByRole('button',{name:'Save note'}).click();
  const dialog=page.getByRole('dialog',{name:'New file'}),draft=dialog.getByRole('textbox',{name:'New file content'});await expect(draft).toHaveValue('Source has no references.');
- const other=await context.newPage();await other.goto('/');await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'BabelShelf'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-source-state.md'}).click();
+ const other=await context.newPage();await other.goto('/');await other.getByRole('button',{name:'Input',exact:true}).click();await other.getByRole('menuitem',{name:'Memory'}).click();await other.getByRole('button',{name:'Open Inbox'}).click();await other.getByRole('button',{name:'Open QA-source-state.md'}).click();
  await other.getByRole('button',{name:'Edit',exact:true}).click();await other.getByRole('textbox',{name:'Markdown content'}).fill('changed');await other.getByRole('button',{name:'Save',exact:true}).click();await expect(other.locator('main')).toContainText('v2');
  await dialog.getByRole('button',{name:'Save',exact:true}).click();await expect(dialog).toContainText('Source changed');await expect(draft).toHaveValue('Source has no references.');await other.close();
 });
@@ -177,7 +177,7 @@ test('an unprepared model offers Memory without losing the question',async({page
 
 test('Memory finds a file by text in its body',async({page})=>{
  await page.goto('/');await createInboxFile(page,'QA-emergency','懐中電灯は玄関にある。');
- const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();
+ const home=page.getByRole('button',{name:'Input',exact:true});await home.click();await page.getByRole('menuitem',{name:'Memory'}).click();
  await page.getByRole('textbox',{name:'Find files or text'}).fill('懐中電灯');await page.getByRole('button',{name:'Open Inbox/QA-emergency.md'}).click();await expect(page.locator('main')).toContainText('懐中電灯は玄関にある。');
 });
 
@@ -200,7 +200,7 @@ test('search citations keep their original revision after a direct correction',a
 
 test('a deleted file can be restored from Memory with its history intact',async({page})=>{
  await page.goto('/');const home=page.getByRole('button',{name:'Input',exact:true});
- await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();
+ await home.click();await page.getByRole('menuitem',{name:'Memory'}).click();await page.getByRole('button',{name:'Open Inbox'}).click();
  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill('QA-trash-restore');
  await page.getByRole('textbox',{name:'New file content'}).fill('Original');await page.getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('textbox',{name:'Markdown content'}).fill('Updated');await page.getByRole('button',{name:'Save',exact:true}).click();
@@ -214,7 +214,7 @@ test('a deleted file can be restored from Memory with its history intact',async(
 
 test('navigation keeps an unfinished edit and its original history',async({page})=>{
  await page.goto('/');const home=page.getByRole('button',{name:'Input',exact:true});
- await home.click();await page.getByRole('menuitem',{name:'BabelShelf'}).click();
+ await home.click();await page.getByRole('menuitem',{name:'Memory'}).click();
  await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'New file'}).click();
  await page.getByRole('textbox',{name:'File name'}).fill('QA-edit-navigation');
  await page.getByRole('textbox',{name:'New file content'}).fill('Original text');await page.getByRole('button',{name:'Save',exact:true}).click();
@@ -244,7 +244,7 @@ test('paper appearance keeps navigation and input operable at narrow width and l
  await page.setViewportSize({width:320,height:700});await page.goto('/');
  await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
  const home=page.getByRole('button',{name:'Input',exact:true});await expect(home).toBeVisible();await home.click();
- await page.getByRole('menuitem',{name:'BabelShelf',exact:true}).click();await expect(page.getByRole('button',{name:'New file'})).toBeVisible();
+ await page.getByRole('menuitem',{name:'Memory',exact:true}).click();await expect(page.getByRole('button',{name:'New file'})).toBeVisible();
  const headingBox=await page.getByRole('heading',{name:'Memory'}).boundingBox(),trashBox=await page.getByRole('button',{name:'Open Trash'}).boundingBox(),newBox=await page.getByRole('button',{name:'New file'}).boundingBox();
  for(const box of [headingBox,trashBox,newBox]){expect(box).not.toBeNull();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(320);}
  expect(headingBox!.x+headingBox!.width).toBeLessThanOrEqual(trashBox!.x);expect(trashBox!.x+trashBox!.width).toBeLessThanOrEqual(newBox!.x);
@@ -338,7 +338,7 @@ test('touch hold, slide and release selects the destination on the arc',async({p
   expect(await page.locator('.arc-choice').evaluate(el=>getComputedStyle(el).borderRadius)).toBe('16px');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await expect(page.getByRole('heading',{name:'Schedule',exact:true})).toBeVisible();
- for(const destinationName of ['Notifications','Settings','Schedule','BabelShelf']){
+ for(const destinationName of ['Notifications','Settings','Schedule','Memory']){
   const anchor=page.getByRole('button',{name:'Input',exact:true}),anchorBox=await anchor.boundingBox();expect(anchorBox).not.toBeNull();
   await expect(anchor).toHaveAttribute('aria-expanded','false');
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(anchorBox!)]});await page.waitForTimeout(100);
@@ -346,7 +346,7 @@ test('touch hold, slide and release selects the destination on the arc',async({p
   const target=page.getByRole('menuitem',{name:destinationName,exact:true}),targetBox=await target.boundingBox();expect(targetBox).not.toBeNull();
   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(targetBox!)]});await expect(page.locator('.arc-choice')).toHaveText(destinationName);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  await expect(page.getByRole('heading',{name:destinationName==='BabelShelf'?'Memory':destinationName,exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:destinationName,exact:true})).toBeVisible();
  }
  await cdp.detach();
 });

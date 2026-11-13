@@ -171,7 +171,7 @@ const initialNotes: Note[] = [
   ...builtinPackageNotes,
   ...initialPreferenceNotes,
 ];
-const tabs = [{id:'input' as Page,label:'Input',icon:ChatCircle},{id:'memory' as Page,label:'BabelShelf',icon:FolderSimple},{id:'schedule' as Page,label:'Schedule',icon:Clock},{id:'notifications' as Page,label:'Notifications',icon:Bell},{id:'settings' as Page,label:'Settings',icon:GearSix}];
+const tabs = [{id:'input' as Page,label:'Input',icon:ChatCircle},{id:'memory' as Page,label:'Memory',icon:FolderSimple},{id:'schedule' as Page,label:'Schedule',icon:Clock},{id:'notifications' as Page,label:'Notifications',icon:Bell},{id:'settings' as Page,label:'Settings',icon:GearSix}];
 
 
 configureSemanticSearchRuntime(modelId=>knowledge.createSemanticSearchRuntime(modelId));
@@ -514,11 +514,13 @@ export default function Prototype() {
    // Read current render state: the user may type, start work or select Offline
    // while the browser verifies assets. Never reload using the click's snapshot.
    if(appRefreshState.current.blocked||!appRefreshState.current.online||composerSnapshot.current.text!==draftAtStart)return toast('Update checked · save current work, then update again');
-   toast(outcome==='Updated'?'Update applied · reopening':'App refreshed');
+   if(outcome==='Up to date')return toast('Up to date');
+   try{sessionStorage.setItem('babelshelf.update-notice.v1','App updated');}catch{}
    window.location.reload();
   }catch(error){toast((error as Error).message||'Could not refresh app');}
   finally{appRefreshLock.current=false;setAppRefreshing(false);}
  }
+ useEffect(()=>{let message:string|null=null;try{message=sessionStorage.getItem('babelshelf.update-notice.v1');if(message)sessionStorage.removeItem('babelshelf.update-notice.v1');}catch{}if(message)toast(message);},[]);
  async function refreshDiagnosticBuild(){setDiagnosticBuild(await activeAppBuild(navigator.serviceWorker));}
  async function collectDeviceReport():Promise<DeviceDiagnosticReport>{
   const build=await activeAppBuild(navigator.serviceWorker);setDiagnosticBuild(build);
@@ -1270,14 +1272,14 @@ export default function Prototype() {
   setOpened(null);setSheet(null);toast('Deleted');
  }
  async function deleteItem(){if(itemTarget)await deleteMemoryTarget(itemTarget);}
- async function purgeTrash(batches:TrashBatch[]){
+ async function purgeTrash(batches:TrashBatch[]):Promise<false|{purged:number;retained:number}>{
   if(recoveryLock.current||storagePending||!metadataReady)return false;
   recoveryLock.current=true;setRecoverySaving(true);setSheetError('');let committed=false;
   try{await fileFocusQueue.current?.settled();await dialogueWriter.current?.settled();await flushStorage();await flushMetadata();const expected=await trashWriter.current.committed();
-   const result=await knowledge.purgeMemory(batches,expected);committed=true;if(result.dialogue){storedDialogue.current=result.dialogue;dialogue.current=result.dialogue;pendingWorkingFile.current=undefined;renderDialogue(result.dialogue);}const selected=new Set(batches.map(batch=>batch.id));
-   const displayed=[...result.trash,...trash.filter(batch=>batch.id.startsWith('recovered-')&&!selected.has(batch.id)&&!result.trash.some(saved=>saved.notes.some(note=>batch.notes.some(old=>old.id===note.id))))];
-   trashWriter.current.hydrate(result.trash,displayed);setTrash(displayed);setUndoDeleteId(id=>id&&selected.has(id)?null:id);await refreshStorage();toast('Deleted permanently');return true;
-  }catch(error){const code=(error as {code?:string}).code;reportSheetError(committed?'Deleted permanently · reopen the app to view':code==='referenced'?'Cannot delete: a file is still referenced, or stored data could not be validated. Other items were kept.':(error as Error).message);return false;}
+     const result=await knowledge.purgeMemory(batches,expected);committed=true;if(result.dialogue){storedDialogue.current=result.dialogue;dialogue.current=result.dialogue;pendingWorkingFile.current=undefined;renderDialogue(result.dialogue);}const selected=new Set(batches.map(batch=>batch.id)),retained=new Set(result.retainedBatchIds);
+     const displayed=[...result.trash,...trash.filter(batch=>batch.id.startsWith('recovered-')&&(!selected.has(batch.id)||retained.has(batch.id))&&!result.trash.some(saved=>saved.notes.some(note=>batch.notes.some(old=>old.id===note.id))))];
+     trashWriter.current.hydrate(result.trash,displayed);setTrash(displayed);setUndoDeleteId(id=>id&&selected.has(id)&&!retained.has(id)?null:id);await refreshStorage();return {purged:result.purgedBatchIds.length,retained:result.retainedBatchIds.length};
+    }catch(error){reportSheetError(committed?'Deleted permanently · reopen the app to view':(error as Error).message||'Could not delete items');return false;}
   finally{recoveryLock.current=false;setRecoverySaving(false);}
  }
  async function restoreItem(batch:TrashBatch){keyboard.hide();home.current?.focus({preventScroll:true});if(await saveRecovery({kind:'restore',batch}))toast('Restored');}

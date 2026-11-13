@@ -416,18 +416,18 @@ export class KnowledgeStore {
  async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined){
   ({batches,expectedTrash}=structuredClone({batches,expectedTrash}));
   const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
-  return new Promise<{trash:RecoveryBatch[];dialogue?:Dialogue}>((resolve,reject)=>{let error:unknown,result:{trash:RecoveryBatch[];dialogue?:Dialogue};
+  return new Promise<{trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];dialogue?:Dialogue}>((resolve,reject)=>{let error:unknown,result:{trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];dialogue?:Dialogue};
    readSnapshot(tx,current=>{try{
     const actualTrash=current.settings.find(s=>s.key==='ui-v1-trash')?.value;
     if(!equal(actualTrash,expectedTrash))throw new TrashPurgeError('changed','Recovery data changed · reopen Trash');
     if(!Array.isArray(batches)||!batches.length||new Set(batches.map(b=>b.id)).size!==batches.length)throw Error('Invalid Trash selection');
-    const trash:RecoveryBatch[]=actualTrash??[],ids=new Set<string>();
+    const trash:RecoveryBatch[]=actualTrash??[],noteBatch=new Map<string,string>();
     for(const batch of batches){
      const saved=trash.find(b=>b.id===batch.id);
      if(saved?!equal(saved,batch):batch.notes.length!==1||batch.folders.length!==0||batch.id!=='recovered-'+batch.notes[0].id)throw new TrashPurgeError('changed','Recovery batch changed · reopen Trash');
      for(const path of batch.folders)try{assertMutableFolder(path);}catch{throw new TrashPurgeError('protected','Built-in folder is protected');}
      for(const snapshot of batch.notes){
-      if(ids.has(snapshot.id))throw Error('Recovery batch overlap');ids.add(snapshot.id);
+      if(noteBatch.has(snapshot.id))throw Error('Recovery batch overlap');noteBatch.set(snapshot.id,batch.id);
       const note=current.notes.find(n=>n.id===snapshot.id),version=note?.revisions.length;
       if(note?.ui?.protected||note?.ui?.managed)throw new TrashPurgeError('protected','Built-in record is protected');
       if(!note||note.state!=='withdrawn'||!Number.isSafeInteger(snapshot.version)||snapshot.version<1||![snapshot.version,snapshot.version+1].includes(version))throw new TrashPurgeError('changed','Recovery snapshot changed · reopen Trash');
@@ -435,22 +435,32 @@ export class KnowledgeStore {
       if(saved&&!equal(snapshot,expected)||snapshot.body!==expected.body||snapshot.path!==expected.path||!equal(snapshot.history,expected.history)||snapshot.paths&&!equal(snapshot.paths,expected.paths)||last.body!==snapshot.body||last.path!==snapshot.path)throw new TrashPurgeError('changed','Recovery snapshot changed · reopen Trash');
      }
     }
-    const selected=new Set(batches.map(b=>b.id)),nextTrash=trash.filter(b=>!selected.has(b.id));
-    const originalKeys=new Set(current.notes.filter(n=>ids.has(n.id)&&n.originalAsset).map(n=>originalKey(n.id)));
-    const dialogueEntry=current.settings.find(s=>s.key==='ui-v1-dialogue');
-    let dialogue:Dialogue|undefined;
-    if(dialogueEntry?.value?.currentFile&&ids.has(dialogueEntry.value.currentFile.noteId)){
-     const before=validateDialogue(dialogueEntry.value);dialogue=withoutWorkingFile(before,before.currentFile!);
+    const selectedBatchIds=new Set(batches.map(b=>b.id)),allIds=new Set(noteBatch.keys()),retainedBatchIds=new Set<string>();
+    const retainedRecovered=()=>batches.filter(batch=>retainedBatchIds.has(batch.id)&&!trash.some(saved=>saved.id===batch.id));
+    const collectReferences=(value:any,targets:Set<string>,found:Set<string>)=>{if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found);return;}if(value&&typeof value==='object')for(const item of Object.values(value))collectReferences(item,targets,found);};
+    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,candidate:StateSnapshot;
+    for(;;){
+     deletedIds=new Set([...allIds].filter(id=>!retainedBatchIds.has(noteBatch.get(id)!)));
+     deletedBatchIds=new Set([...selectedBatchIds].filter(id=>!retainedBatchIds.has(id)));
+     const recovered=retainedRecovered();
+     nextTrash=[...trash.filter(batch=>!deletedBatchIds.has(batch.id)),...recovered];
+     originalKeys=new Set(current.notes.filter(note=>deletedIds.has(note.id)&&note.originalAsset).map(note=>originalKey(note.id)));
+     const dialogueEntry=current.settings.find(s=>s.key==='ui-v1-dialogue');dialogue=undefined;
+     if(dialogueEntry?.value?.currentFile&&deletedIds.has(dialogueEntry.value.currentFile.noteId)){
+      const before=validateDialogue(dialogueEntry.value);dialogue=withoutWorkingFile(before,before.currentFile!);
+     }
+     candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
+     const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
+     const blockedBatches=new Set([...referencedIds].map(id=>noteBatch.get(id)).filter((id):id is string=>!!id));
+     const newlyRetained=[...blockedBatches].filter(id=>!retainedBatchIds.has(id));
+     if(!newlyRetained.length)break;
+     newlyRetained.forEach(id=>retainedBatchIds.add(id));
     }
-    const candidate:StateSnapshot={notes:current.notes.filter(n=>!ids.has(n.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
-    // Refuse even references unknown to today's backup validators. This may
-    // conservatively retain a record whose ID appears as ordinary text.
-    const referenced=(value:any):boolean=>typeof value==='string'?ids.has(value):Array.isArray(value)?value.some(referenced):!!value&&typeof value==='object'&&Object.values(value).some(referenced);
-    if(referenced(candidate))throw new TrashPurgeError('referenced','Item is referenced by retained data');
-    try{validateState(candidate);}catch{throw new TrashPurgeError('referenced','Item has retained dependencies or invalid data');}
-    for(const id of ids)tx.objectStore('notes').delete(id);
+    try{validateState(candidate);}catch{throw new TrashPurgeError('referenced','Stored data has retained dependencies or cannot be validated');}
+    for(const id of deletedIds)tx.objectStore('notes').delete(id);
     for(const key of originalKeys)tx.objectStore('runs').delete(key);
-    tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');result={trash:nextTrash,...(dialogue?{dialogue}:{})};
+    tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');
+    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],...(dialogue?{dialogue}:{})};
    }catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Permanent deletion failed'));
   });
