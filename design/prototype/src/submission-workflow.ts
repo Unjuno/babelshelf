@@ -234,7 +234,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    let selectedFile:any;let workingFile=request?.target==='file'?(sourceFile??prior.currentFile):undefined;
    if(request?.target==='file'){
     if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;
-    selectedFile=await trace('memory.read',{target:'file',binding:fileBinding?.binding??'explicit',...workingFile},async()=>{try{return workingFileNote(await knowledge.all(),filePin);}catch(error){if(sourceFile&&error instanceof Error&&['Working file original unavailable','Working file changed · reopen the file'].includes(error.message))throw Error('Source changed · retry');throw error;}},workingFileMetadata);checkSend();
+    selectedFile=await trace('memory.read',{target:'file',binding:fileBinding?.binding??'explicit',...workingFile},async()=>workingFileNote(await knowledge.all(),filePin),workingFileMetadata);checkSend();
      if(request.action==='read'){const completion=literalRequest?.action==='read'||explicitSavedRequest?.action==='read'?'open':await actions().completeRead(workingFile);checkSend();const metadata=workingFileMetadata(selectedFile),resolution=resolveReadIntent(text,completion,{noteId:selectedFile.id,path:metadata.path,revision:workingFile.revision,body:selectedFile.revisions.at(-1).body});if(resolution.kind==='continue'){request={...request,action:resolution.action,target:'file',query:resolution.query};workingFile=resolution.workingFile;}else{await finishTurn(id,{status:resolution.status,refs:resolution.refs});openNote(selectedFile.id,resolution.path);return {kind:'displayed'};}}
    }
    if(request?.action==='calculate'){

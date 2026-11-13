@@ -4,6 +4,7 @@ import {createNote,reviseNote,latest,validateRefs,validateGroundingRefs,checkNot
 import {nextScheduleOccurrence,localDate,type ScheduleRule} from './schedule-time.ts';
 import {validateScheduledCalculation} from './scheduled-calculation.ts';
 import type {DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
+import {isSourceFreeConversationRequest} from './dialogue-planner.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
 export type RunStatus='running'|'succeeded'|'failed'|'stopped'|'missed'|'interrupted'|'skipped';
@@ -116,7 +117,7 @@ export function finishTaskRun(records:any[],runId:string,owner:string,result:{st
  const lease=old.runLease?.owner===owner?old.runLease.until:data.leaseUntil;if(asDate(lease)<now)throw Error('Execution owner expired');
  if(!['succeeded','failed','stopped','skipped'].includes(result.status))throw Error('Invalid completion');
  if(result.calculation!==undefined)validateRunCalculation({...data,...result});
- else if(result.status==='succeeded'&&(!result.answer?.trim()||!result.sources?.length||!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
+ else if(result.status==='succeeded'&&(!result.answer?.trim()||!Array.isArray(result.sources)||!result.sources.length&&!isSourceFreeConversationRequest(data.prompt)||result.sources.length>0&&!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
  if(result.calculation!==undefined){const revision=task.revisions.find((v:any)=>v.version===data.taskRevision);if(!revision||parseTask(revision.body).prompt!==data.prompt||taskDefinition(parseTask(revision.body))!==data.definition)throw Error('Invalid scheduled calculation target');}
  const completed={...data,...result,finishedAt:now.toISOString()};const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;

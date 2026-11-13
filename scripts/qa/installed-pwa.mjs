@@ -12,6 +12,8 @@ import {parseInstalledPwaArguments,shouldRemoveInstalledPwaOutput,shouldRemoveIn
 import {connectQaProcessSignals} from './process-signals.mjs';
 
 const {profileArg,outputArg,retainProfile}=parseInstalledPwaArguments(process.argv.slice(2)),runId=randomUUID();
+const browserChannel=process.env.BABELSHELF_QA_BROWSER_CHANNEL??'chrome';
+if(!['chromium','chrome','msedge'].includes(browserChannel))throw Error('Unsupported QA browser channel');
 const profileDir=profileArg??join(tmpdir(),`babelshelf-installed-pwa-${runId}-profile`);
 const outputDir=outputArg??join(tmpdir(),`babelshelf-installed-pwa-${runId}-results`);
 const outputWasGeneratedBeforeRun=outputArg===undefined;
@@ -23,7 +25,7 @@ try{
  server=createDevServer('design/prototype/dist/app');
  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
  url='http://127.0.0.1:'+server.address().port+'/';
- const result=await runOfflineProcessCheck(chromium,{profileDir,outputDir,url,channel:'chromium',installedPwa:true,onPwaInstallAttempt:()=>{pwaInstallAttempted=true;},signal:processSignals.signal,afterBootstrap:async()=>{await new Promise(resolve=>server.close(resolve));stopped=true;}});
+ const result=await runOfflineProcessCheck(chromium,{profileDir,outputDir,url,channel:browserChannel,installedPwa:true,onPwaInstallAttempt:()=>{pwaInstallAttempted=true;},signal:processSignals.signal,afterBootstrap:async()=>{await new Promise(resolve=>server.close(resolve));stopped=true;}});
  result.fixtureServerStopped=stopped;
  if(!stopped)throw Error('PWA fixture server was not stopped');
  await writeFile(join(outputDir,'installed-evidence.json'),JSON.stringify(result,null,2));
@@ -38,7 +40,7 @@ try{
  if(server?.listening)try{await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}catch(error){cleanupError=error;}
  // PWA.install registers the app outside the disposable browser profile. Always
  // unregister it, including successful runs, before removing the profile.
- if(pwaInstallAttempted)try{await lstat(profileDir);await uninstallInstalledPwa({browserType:chromium,profileDir,manifestId:url,channel:'chromium'});}catch(error){if(error?.code!=='ENOENT')cleanupError??=error;}
+ if(pwaInstallAttempted)try{await lstat(profileDir);await uninstallInstalledPwa({browserType:chromium,profileDir,manifestId:url,channel:browserChannel});}catch(error){if(error?.code!=='ENOENT')cleanupError??=error;}
  try{const cleanup=await removeOwnedInstalledPwaShortcut(profileDir);if(cleanup.removed)console.log(`Removed ${cleanup.removed} QA-owned desktop shortcut(s)`);}catch(error){cleanupError??=error;}
  if(shouldRemoveInstalledPwaProfile({profileWasAbsentBeforeRun,retainProfile}))try{await rm(profileDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}
  if(shouldRemoveInstalledPwaOutput({outputWasGenerated:outputWasGeneratedBeforeRun}))try{await rm(outputDir,{recursive:true,force:true});}catch(error){cleanupError??=error;}

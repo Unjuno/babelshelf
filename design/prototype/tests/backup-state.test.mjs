@@ -137,7 +137,7 @@ test('export refuses a file beyond its readable UTF8 byte budget before offering
 test('file working target retains its historical version through backup and rejects nonexistent identities',async()=>{
  const state=snapshot(),pin={noteId:state.notes[0].id,revision:1};state.settings[0].value.currentFile=pin;
  const pack=await parseStateBackup(JSON.stringify(await makeStateBackup(state)));assert.deepEqual(pack.settings[0].value.currentFile,pin);
- state.settings[0].value.currentFile={noteId:'missing',revision:1};await assert.rejects(()=>makeStateBackup(state),/Working file/);
+ state.settings[0].value.currentFile={noteId:'missing',revision:1};await assert.rejects(()=>makeStateBackup(state),/Selected file was deleted · restore it from Trash or remove it from input/);
 });
 
 test('explicit new-only restore keeps every conflicting current entry and validates the merged graph',async()=>{

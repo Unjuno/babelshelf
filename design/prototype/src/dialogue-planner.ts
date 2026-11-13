@@ -335,12 +335,17 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  const greeting=question.trim().replace(greetingFormatPrefix,'').replace(greetingFormatSuffix,'');
  if(!sourceReferent.test(question)&&question.length<=80&&(
   /^(?:(?:こんにちは|おはよう(?:ございます)?|こんばんは)[。.!！\s]*)?(?:(?:短い|ひとことの|一文の)\s*)?挨拶を(?:(?:一文で|短く)\s*)?(?:返して|書いて|作って)(?:ください|下さい)?[。.!！?？\s]*$/u.test(question.trim())
-  ||/^(?:please\s+)?(?:say\s+(?:hello|hi|goodbye|bye|farewell)|(?:write|give me)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|concise|one-sentence)\s+)?greeting)[.!?\s]*$/i.test(greeting)
+  ||/^(?:please\s+)?(?:say\s+(?:hello|hi|goodbye|bye|farewell)(?:\s+(?:briefly|shortly|in\s+(?:one|a)\s+(?:short\s+)?sentence))?|(?:write|give me)\s+(?:(?:a|one)\s+)?(?:(?:short|brief|concise|one-sentence)\s+)?greeting)[.!?\s]*$/i.test(greeting)
   ||/^(?:(?:hello|hi|hey|hiya)[.!?,\s]+)?(?:please\s+)?(?:reply with|respond with)\s+(?:(?:a|one)\s+)?(?:(?:short|brief)\s+)?(?:sentence\s*:\s*)?(?:greeting|say\s+(?:hello|hi|goodbye|bye|farewell))[.!?\s]*$/i.test(question.trim())
  ))return {action:'chat',query:''};
  if(question.length>64)return null;
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;
+}
+/** Narrow source-free prose/greeting route shared with scheduled generation.
+ * General questions stay on the scheduled knowledge-answer path. */
+export function isSourceFreeConversationRequest(question:string){
+ return plainConversationRoute(question,[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat';
 }
 /** Select a source-free conversation intent before route classifiers, with no stale topic context. */
 export function contextIndependentConversation(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
