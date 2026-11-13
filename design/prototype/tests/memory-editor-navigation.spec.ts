@@ -44,7 +44,7 @@ test('a removed source remains inspectable at its original version without an un
 
 async function memory(page:Page){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:'BabelShelf',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Memory',exact:true}).click();
 }
 async function create(page:Page){
  await page.goto('/');await memory(page);

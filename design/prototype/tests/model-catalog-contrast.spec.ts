@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:destination==='Memory'?'BabelShelf':destination,exact:true}).click();
+ await page.getByRole('menuitem',{name:destination,exact:true}).click();
 }
 
 test('model catalog actions keep readable contrast in dark appearance',async({page})=>{

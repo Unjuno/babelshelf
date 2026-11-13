@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 
 async function navigate(page:any,destination:string){
  await page.getByRole('button',{name:'Input',exact:true}).click();
- await page.getByRole('menuitem',{name:destination==='Memory'?'BabelShelf':destination,exact:true}).click();
+ await page.getByRole('menuitem',{name:destination,exact:true}).click();
 }
 
 test('audit: blank schedule prompt is identified at the field and remains editable',async({page})=>{
@@ -28,6 +28,19 @@ test('audit: permanent deletion requires confirmation and survives reload',async
  await expect(trash.getByRole('button',{name:'Restore Inbox/Purge first.md',exact:true})).toHaveCount(0);await expect(trash).toContainText('Purge second');
  await trash.getByRole('button',{name:'Empty Trash',exact:true}).click();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();await expect(trash).toContainText('Trash is empty');
  await page.reload();await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();await expect(page.getByRole('dialog',{name:'Trash'})).toContainText('Trash is empty');
+});
+
+test('Empty Trash purges independent entries and clearly leaves referenced entries',async({page})=>{
+ test.setTimeout(60_000);
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
+ for(const name of ['Referenced entry','Independent entry']){
+  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill(name);await page.getByRole('textbox',{name:'New file content'}).fill('Disposable test data');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
+ }
+ await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const note=await new Promise<any>((resolve,reject)=>{const tx=db.transaction('notes','readonly'),request=tx.objectStore('notes').getAll();request.onsuccess=()=>resolve(request.result.find((row:any)=>row.revisions?.at(-1)?.path==='Inbox/Referenced entry.md'));request.onerror=()=>reject(request.error);});if(!note)throw Error('Test note was not stored');await new Promise<void>((resolve,reject)=>{const tx=db.transaction('runs','readwrite');tx.objectStore('runs').put({noteId:note.id},'qa-reference');tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});db.close();});
+ await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});await trash.getByRole('button',{name:'Empty Trash',exact:true}).click();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect(trash.getByRole('status')).toContainText('1 referenced entry was kept in Trash to protect retained history or citations');
+ await expect(trash.getByRole('button',{name:'Restore Inbox/Referenced entry.md',exact:true})).toBeVisible();await expect(trash.getByRole('button',{name:'Restore Inbox/Independent entry.md',exact:true})).toHaveCount(0);
 });
 
 test('a paused calculation runs locally and exposes its calculation in history',async({page})=>{
