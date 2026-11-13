@@ -11,7 +11,7 @@ export function validateWorkingFile(value:unknown):WorkingFile{
  const pin=value as WorkingFile;
  if(!pin||typeof pin!=='object'||Array.isArray(pin)||Object.keys(pin).sort().join(',')!=='noteId,revision'||typeof pin.noteId!=='string'||!pin.noteId||!Number.isSafeInteger(pin.revision)||pin.revision<1)throw Error('Working file invalid');return pin;
 }
-export function validateWorkingFileLink(records:any[],pin:WorkingFile){validateWorkingFile(pin);if(!records.some(n=>n.id===pin.noteId&&n.revisions?.some((v:any)=>v.version===pin.revision)))throw Error('Working file original unavailable');}
+export function validateWorkingFileLink(records:any[],pin:WorkingFile){validateWorkingFile(pin);const note=records.find(n=>n.id===pin.noteId);if(!note)throw Error('Selected file was deleted · restore it from Trash or remove it from input');if(!note.revisions?.some((v:any)=>v.version===pin.revision))throw Error('Selected file version is unavailable · open the latest version or remove it from input');}
 export function withWorkingFile(state:Dialogue,pin:WorkingFile):Dialogue{
  validateWorkingFile(pin);if(state.currentFile?.noteId===pin.noteId&&state.currentFile?.revision===pin.revision)return state;
  return {...state,revision:state.revision+1,currentFile:{...pin}};
@@ -24,7 +24,8 @@ export function withoutWorkingFile(state:Dialogue,expected:WorkingFile):Dialogue
 }
 export function workingFileNote(records:any[],pin:WorkingFile){
  validateWorkingFileLink(records,pin);const note=records.find(n=>n.id===pin.noteId);
- if(note.state!=='active'||latest(note).version!==pin.revision)throw Error('Working file changed · reopen the file');return structuredClone(note);
+ if(note.state!=='active')throw Error('Selected file is in Trash · restore it from Trash or remove it from input');
+ if(latest(note).version!==pin.revision)throw Error('Selected file changed since it was added · open the latest version or remove it from input');return structuredClone(note);
 }
 export function workingFileMetadata(note:any){const v=latest(note);return {id:note.id,path:notePath(note),version:v.version,excerpt:v.body.slice(0,700)};}
 export function workingFileCoverage(note:any){

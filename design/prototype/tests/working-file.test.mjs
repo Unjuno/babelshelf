@@ -25,8 +25,10 @@ test('file working target retains ID/version and refuses stale, withdrawn or mis
  assert.deepEqual(validateDialogue(state).currentFile,pin);assert.deepEqual(dialogueContext(state).currentFile,pin);assert.deepEqual(historyPayload(dialogueContext(state)).currentFile,pin);
  assert.equal(workingFileNote([n],pin).id,n.id);assert.notEqual(workingFileNote([n],pin),n);
  const changed=reviseNote(n,{body:'Different'},1),withdrawn=withdrawNote(n,1);
- for(const records of [[],[changed],[withdrawn]])assert.throws(()=>workingFileNote(records,pin),/changed|unavailable/);
- assert.doesNotThrow(()=>validateWorkingFileLink([withdrawn],pin));assert.throws(()=>validateWorkingFileLink([n],{...pin,revision:99}));
+ assert.throws(()=>workingFileNote([],pin),/Selected file was deleted · restore it from Trash or remove it from input/);
+ assert.throws(()=>workingFileNote([changed],pin),/Selected file changed since it was added · open the latest version or remove it from input/);
+ assert.throws(()=>workingFileNote([withdrawn],pin),/Selected file is in Trash · restore it from Trash or remove it from input/);
+ assert.doesNotThrow(()=>validateWorkingFileLink([withdrawn],pin));assert.throws(()=>validateWorkingFileLink([n],{...pin,revision:99}),/Selected file version is unavailable/);
  assert.throws(()=>validateDialogue({...state,currentFile:{...pin,permission:'write'}}));
  assert.deepEqual(state.turns,[]);assert.equal(withWorkingFile(state,pin),state);
 });

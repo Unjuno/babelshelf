@@ -426,16 +426,16 @@ test('an explicitly bound file question never counts or compacts unrelated dialo
  const current=f.current(),turn=current.turns.at(-1);assert.equal(generations,1);assert.ok(seen.length);assert.deepEqual(current.compaction,prior.compaction);assert.deepEqual(current.turns.slice(0,24),prior.turns);assert.equal(turn.refs[0].noteId,note.id);assert.equal(turn.refs[0].revision,1);assert.equal(turn.refs[0].start,0);assert.equal(turn.refs[0].end,note.revisions[0].body.length);assert.equal(turn.refs[0].quote,note.revisions[0].body);assert.equal(turn.activity.some(a=>a.tool==='dialogue.compact'),false);assert.equal(turn.activity.some(a=>a.tool==='dialogue.plan'),false);assert.equal(turn.answer,'集合場所は北口。持ち物は青いノート。');
 });
 
-test('bound file admission reports unavailable or empty originals before any text model acquisition',async()=>{
- for(const scenario of ['missing','withdrawn','empty']){
+test('bound file admission explains deleted, trashed, changed or empty files before text model acquisition',async()=>{
+ for(const scenario of ['missing','withdrawn','changed','empty']){
   const f=fixture(),c=createSubmissionController(),note=createNote({path:'Inbox/preflight.md',body:scenario==='empty'?'':'Meeting at the north gate.'});
   if(scenario==='withdrawn')note.state='withdrawn';
-  const records=scenario==='missing'?[]:[note],snapshot=structuredClone(records);let loads=0;
+  const records=scenario==='missing'?[]:scenario==='changed'?[reviseNote(note,{body:'Meeting at the south gate.'},1)]:[note],snapshot=structuredClone(records);let loads=0;
   await f.services.saveDialogue({...emptyDialogue(),currentFile:{noteId:note.id,revision:1}});
   f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},load:async()=>{loads++;throw Error('Unexpected model acquisition');}};
   f.services.knowledge={all:async()=>records,search:async()=>{throw Error('Unrelated search');}};
   assert.equal(await c.run(run=>executeSubmission({text:'What time does this file say we should meet?',attachments:[]},f.services,f.view,run)),'failed');
-  assert.match(c.state.error,scenario==='missing'?/Working file original unavailable/:scenario==='withdrawn'?/Working file changed/:/File is empty/);
+  assert.match(c.state.error,scenario==='missing'?/Selected file was deleted · restore it from Trash or remove it from input/:scenario==='withdrawn'?/Selected file is in Trash · restore it from Trash or remove it from input/:scenario==='changed'?/Selected file changed since it was added · open the latest version or remove it from input/:/File is empty/);
   assert.equal(loads,0);assert.deepEqual(records,snapshot);
   assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);
  }
@@ -697,7 +697,7 @@ test('a missing, changed or withdrawn current-answer source refuses before model
   const records=scenario==='missing'?[]:[note],before=structuredClone(records);
   await f.services.saveDialogue({...emptyDialogue(),turns:[{id:'answer',user:'Packing?',answer:'Old text',refs:[{noteId:note.id,revision:1,start:0,end:8,quote:'Old text'}]}],currentResult:{turnId:'answer'}});
  f.services.model='test';f.services.bonsai={loaded:'',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[],runtime:{revision:'fixture'}},load:async()=>{throw Error('Unexpected model acquisition');}};f.services.knowledge={all:async()=>records,search:async()=>{throw Error('Unrelated search');}};
-  assert.equal(await c.run(run=>executeSubmission({text:'What is in that note?',attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/Source changed/);assert.equal(f.current().currentFile,undefined);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);assert.deepEqual(records,before);
+  assert.equal(await c.run(run=>executeSubmission({text:'What is in that note?',attachments:[]},f.services,f.view,run)),'failed');assert.match(c.state.error,/Selected file (?:was deleted|changed since it was added|is in Trash)/);assert.equal(f.current().currentFile,undefined);assert.equal(f.current().turns.at(-1).activity.some(a=>a.tool==='model.load'),false);assert.deepEqual(records,before);
  }
 });
 
