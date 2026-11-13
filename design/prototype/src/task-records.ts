@@ -7,7 +7,7 @@ import type {DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
 export type RunStatus='running'|'succeeded'|'failed'|'stopped'|'missed'|'interrupted'|'skipped';
-export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:{id:string;revision?:string;runtime:string}};
+export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;manualRerun?:true;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:{id:string;revision?:string;runtime:string}};
 export type NoticeData={taskId:string;taskRevision:number;runId:string;runRevision?:number;attempt?:number;title:string;body:string;createdAt:string;read:boolean};
 const fields=['repeat','time','days','date','monthDay','interval','unit','timezone','enabled','notify','prompt'];
 const asDate=(value:string)=>{const date=new Date(value);if(!Number.isFinite(+date))throw Error('Invalid date');return date;};
@@ -75,7 +75,15 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
  const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');if(task.ui.requiresReview)throw Error('Review schedule first');
  const definition=parseTask(latest(task).body);if(!definition.enabled&&!options.manual)throw Error('Task is disabled');
  if(definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone)throw Error('Timezone changed · review schedule');
- const signature=taskDefinition(definition),cursor=task.taskCursor;if(!cursor||cursor.definition!==signature||!cursor.nextAt)throw Error('Task has no pending occurrence');
+ const signature=taskDefinition(definition),cursor=task.taskCursor;if(!cursor||cursor.definition!==signature)throw Error('Task has no pending occurrence');
+ if(!cursor.nextAt){
+  if(!options.manual||definition.repeat!=='once')throw Error('Task has no pending occurrence');
+  const running=records.find(n=>n.state==='active'&&n.ui?.recordType==='execution'&&(()=>{const r=taskRunView(n);return r.taskId===taskId&&r.status==='running';})());
+  if(running){const data=taskRunView(running),until=running.runLease?.owner===data.owner?running.runLease.until:data.leaseUntil;if(asDate(until)>now)throw Error('Occurrence already running');return {task,run:reviseNote(running,{body:runBody({...data,status:'interrupted',error:'Execution interrupted · run again explicitly',finishedAt:now.toISOString()})},latest(running).version),execute:false};}
+  const used=new Set(records.filter(n=>n.ui?.recordType==='execution').map(n=>taskRunView(n)).filter(r=>r.taskId===taskId&&r.definition===signature).map(r=>r.dueAt));let timestamp=+now;while(used.has(new Date(timestamp).toISOString()))timestamp++;
+  const data:RunData={taskId,taskRevision:latest(task).version,definition:signature,dueAt:new Date(timestamp).toISOString(),attempt:1,owner,leaseUntil:new Date(+now+90000).toISOString(),status:'running',startedAt:now.toISOString(),manualRerun:true,prompt:definition.prompt};
+  return {task,run:typedRecord('execution','Schedule/Runs/'+localDate(now)+'-'+crypto.randomUUID()+'.md',runBody(data)),execute:true};
+ }
  const due=asDate(cursor.nextAt);if(due>now&&!options.manual)throw Error('Task is not due');
  const old=records.find(n=>n.ui?.recordType==='execution'&&(()=>{const r=taskRunView(n);return r.taskId===taskId&&r.definition===signature&&r.dueAt===cursor.nextAt;})());
  if(old){

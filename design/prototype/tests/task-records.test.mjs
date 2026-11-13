@@ -46,6 +46,12 @@ test('finishing a run checks its owner, retains task bytes, and consumes a one-o
  assert.equal(latest(result.task).body,latest(note).body);
  assert.equal(taskRunView(result.run).answer,'actual result');
 });
+test('completed one-off can be manually rerun without changing its original occurrence or allowing concurrent owners',()=>{
+ const note=registered(),now=new Date(2026,9,20,9),first=claimTaskRun([note],note.id,'owner',now),done=finishTaskRun([note,first.run],first.run.id,'owner',{status:'succeeded',answer:'first',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);
+ const before=[done.task,done.run],again=claimTaskRun(before,note.id,'other',now,{manual:true});assert.equal(again.execute,true);assert.notEqual(again.run.id,done.run.id);assert.notEqual(taskRunView(again.run).dueAt,taskRunView(done.run).dueAt);assert.equal(taskRunView(again.run).manualRerun,true);
+ assert.throws(()=>claimTaskRun([...before,again.run],note.id,'third',now,{manual:true}),/already running/);const complete=finishTaskRun([...before,again.run],again.run.id,'other',{status:'succeeded',answer:'second',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);
+ assert.equal(complete.task.taskCursor.nextAt,null);assert.equal(taskRunView(done.run).answer,'first');assert.equal(taskRunView(complete.run).answer,'second');assert.throws(()=>claimTaskRun([done.task,done.run],note.id,'automatic',now),/no pending occurrence/);
+});
 test('path changes do not reschedule; editing the canonical task changes conditions and preserves original',()=>{
  const note=registered(),before=projectNote(note),moved={...before,path:'Schedule/moved.md',version:2,history:[before.body]};
  const renamed=applyKnowledgeChanges([note],[before],[moved])[0];assert.deepEqual(renamed.taskCursor,note.taskCursor);

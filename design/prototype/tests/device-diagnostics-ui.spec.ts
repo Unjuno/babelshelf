@@ -46,6 +46,7 @@ async function openSettingsItem(page:Page,name:string){
 
 async function openApp(page:Page){
  await page.goto('/',{waitUntil:'domcontentloaded'});
+ if(!await page.getByRole('textbox',{name:'Message'}).count()){await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();}
  await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
 }
 
@@ -419,6 +420,7 @@ test('an interrupted one-run return is reported once without automatically repea
  await page.reload();
  // Storage hydration, rather than dev-server network idleness, is the app's
  // prerequisite for consuming the one-run marker.
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled();
  await page.waitForTimeout(500);
  expect(await page.evaluate(()=>localStorage.getItem('babelshelf.device-test.report.v1'))).toBe(interruptedText,'a cleared one-run marker cannot trigger another automatic test');
