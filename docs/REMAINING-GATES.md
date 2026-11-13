@@ -1,16 +1,37 @@
 ## Current status · 2026-11-13
 
-### Third-audit candidate · 2026-11-13
+### Latest release and third-audit verification · 2026-11-13
 
-Candidate build 3ea813a61b69552a addresses live generation progress, bounded
-inactivity recovery, one-call native chat replies, Back to chat, inline schedule
-validation, device checks, draft-safe updating, Trash purge and narrow headers.
-Local root277/prototype2020, UI32/editorial37/device35 and built-assets9 checks passed.
-Real LFM3 returned Hello! offline on both Intel WebGPU and CPU/WASM. The GPU
-greeting took6.9s; general GPU chat120.4s; CPU greeting123.2s, mostly prefill.
-These are PC observations, not phone or sustained performance acceptance.
-Full candidate CI and publication are pending; public Site remains v353 below.
-Detailed scope is in the third-audit entry of docs/TEST-RESULTS.txt.
+PR #66 merged as 36825d1f30753ea98b7f7572fcefafa4f3a165be. Its exact final
+candidate passed the full quality workflow
+[43268047634](https://github.com/Unjuno/babelshelf/actions/runs/43268047634),
+and merged main passed
+[43270669796](https://github.com/Unjuno/babelshelf/actions/runs/43270669796).
+Public Site v354 serves build 3ea813a61b69552a /166 assets at
+https://babelshelf.com/ with the existing public audience.
+
+The public app completed real offline LFM3 QAD Q4_0 chat on CPU/WASM with
+Decision unconfigured. After Stop, Update preserved the draft; Edit & resend
+with Say hello in one short sentence. returned Hello! in93.2s generation.
+The same prompt sent with the resident model returned Hello! in4.4s, without
+another model load/hash. Both replies survived a browser-offline reload.
+Running work now shows its phase, backend, elapsed time and configured limits;
+completed calls remain separate. Five minutes without actual generation
+progress stops the worker; active progress is not an implicit wall-time cap.
+
+Public narrow-screen checks verified first entry, Back to chat, focused inline
+empty-Prompt validation, Check device feedback, confirmed Trash purge across
+reload, and a non-overlapping header at320px/200% text. Local root277,
+prototype2020, schedule/settings32, editorial37, device35, review-store6 and
+built-assets9 checks passed. Detailed evidence is in the dated third-audit
+and Site v354 entries of docs/TEST-RESULTS.txt.
+
+Limits: the cold public CPU greeting spent89.6s processing its prompt; the4.4s
+warm result reused289 cached tokens from the same prompt. A general question
+on the local Intel GPU candidate still took120.4s. These PC runs do not certify
+sustained performance, general answer quality, the audit VM or physical phones.
+Reload still unloads the runtime and verifies retained model bytes once at the
+next load. Model/profile choices and inference data remain local.
 
 ### Previous release and real-model verification · 2026-11-13
 
