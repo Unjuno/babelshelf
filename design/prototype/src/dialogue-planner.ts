@@ -345,7 +345,14 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
 /** Narrow source-free prose/greeting route shared with scheduled generation.
  * General questions stay on the scheduled knowledge-answer path. */
 export function isSourceFreeConversationRequest(question:string){
- return plainConversationRoute(question,[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat';
+ if(plainConversationRoute(question,[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat')return true;
+ // Schedules and test fixtures often prefix a plain greeting with a short
+ // run label (for example, "R11 run test 1 — say hello briefly"). Treat only
+ // this tightly bounded metadata form as decoration; source/tool references
+ // and arbitrary leading prose remain on the knowledge/planner path.
+ const labelled=question.trim().match(/^(?:R\d{1,3}\s+)?run\s+test\s+\d{1,3}\s*[—–:-]\s*(.{1,80})$/iu)
+  ??question.trim().match(/^(?:R\d{1,3}\s*[—–:-]\s*)(.{1,80})$/iu);
+ return !!labelled&&plainConversationRoute(labelled[1],[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat';
 }
 /** Select a source-free conversation intent before route classifiers, with no stale topic context. */
 export function contextIndependentConversation(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){

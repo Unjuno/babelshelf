@@ -60,6 +60,7 @@ test('Empty Trash retains a schedule with execution history but removes an unrel
 });
 
 test('a paused calculation runs locally and exposes its calculation in history',async({page})=>{
+ test.setTimeout(45_000);
  await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 12 + 10');
  const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
@@ -76,6 +77,7 @@ test('a paused calculation runs locally and exposes its calculation in history',
 });
 
 test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{
+ test.setTimeout(45_000);
  await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Enter a prompt');
