@@ -1,5 +1,66 @@
 ## Current status · 2026-11-14
 
+### Audit eleven scheduled answer routing
+
+Audit 11 on public v361 (`f0639dbe0341a7b0` / `index-bcjn863r.js`) reported
+two scheduled prompts completing with a verbatim copy of their own prompt,
+tagged `recovery: verbatim-source` and `recoveryReason: answer-shape`. The
+reproduced prompt used a run label followed by a plain greeting request. The
+shared conversation classifier previously rejected that whole string and
+sent it through knowledge retrieval and grounded-answer recovery.
+
+The source-free schedule route now recognizes only a bounded `R<n> run test
+<n> — <greeting>` or `R<n> — <greeting>` label form, strips that metadata from
+the model input, and uses the normal generated prose path. Regression coverage
+checks that this exact class does not read or search Memory, and that labelled
+knowledge requests and arbitrary prefixed instructions remain on the prior
+path. The related scheduled-answer / input-reading tests pass (23/23).
+
+No real model was run against the corrected build yet. The earlier one-off
+v361 real-model check covered the unlabelled prompt `say hello briefly` only;
+it does not verify this new route. Audit 11's 23 older Trash records remain
+untouched. File-question Select action behavior and other Audit 11 findings
+remain open. Runtime optimization claims are deferred until the requested
+same-device traces and controlled benchmarks exist.
+
+On 2026-11-15, a complete `npm run test:quality` run exited after passing all
+stages, including both MCP browsers, Schedule/Trash/Toast UI, Settings,
+Editorial, Chromium and WebKit iOS handoff, update recovery, offline process,
+and Installed PWA acceptance. The earlier time-sensitive failures passed in
+this full rerun; the schedule UI cases were given larger per-test timeouts
+without changing assertions. This is local CI evidence; the GitHub PR workflow
+and public Site release are still required. The corrected run-label path has
+not yet been exercised with a live model on the changed public bundle.
+
+### Audit nine side-panel verification · Site v361
+
+The ChatGPT side-panel browser initially controlled Site v360 (`2a1a51cfeb2d93da` /
+`index-DVHWx343.js`) while public `/build.json` already advertised Site v361
+(`f0639dbe0341a7b0`). Using the app's explicit Update action moved that same
+browser to v361 (`index-bcjn863r.js`); Developer then showed the v361 worker and
+bundle. The browser profile is Windows / Chrome 157. No existing Trash entry
+was restored or permanently deleted.
+
+On v361, App & storage checks reported 9 areas Ready, Installed launch as Check,
+Model files as Check, and Model reply as Not run. A new, local one-time
+`say hello briefly` schedule was run with the selected LFM3 1.7B QAD Q4_0
+model. It reached Completed / `succeeded · Attempt 1`; the execution detail
+showed `Hello! How can I help you today?` and no internal-source-label error.
+This verifies that short source-free scheduled prompt on the current public
+build and this browser profile. It does not cover evidence-grounded schedule
+prompts or the earlier 2/2 failure on v370. The test schedule was then soft
+deleted through the regular UI and left recoverable in Trash; the existing
+Trash contents were preserved.
+
+The Developer page also contained a saved Full cycle report from the previous
+v360 run, with an Incomplete output result. After the Update action the app
+explicitly marked it as a different-build report; it was not treated as a v361
+model test. The current v361 App & storage check completed independently.
+The long-history chat test was not repeated in this profile: its chat was
+empty, and the UI has no conversation deletion control, so sending would leave
+an extra persistent turn. Conversation management and broader attachment
+lifecycle therefore remain open. No v361 Full cycle diagnostic was run.
+
 ### Audit nine toast-layout fix · PR #76 · Site v361
 
 Main is `fd771f5a203ef4e0a1bca1449738a6df46af4366`. PR #76 exact-head quality CI

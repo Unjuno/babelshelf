@@ -23,7 +23,12 @@ export async function executeScheduledAnswer(dependencies:Dependencies,input:Req
  if(calculation&&dependencies.calculate){const receipt=validateDecimalReceipt(await dependencies.calculate(calculation.expression,check));check();const answer=formatCalculation(receipt,calculation.showExpression?calculation.expression:undefined,calculation.unit);return {answer,sources:[],calculation:validateScheduledCalculation(prompt,answer,receipt)};}
  const conversationRequest=isSourceFreeConversationRequest(prompt);
  const engine=await dependencies.models.text(model,check);check();
- if(conversationRequest)return groundedAnswer({store:dependencies.store,engine},{model,question:prompt,query:'',mode:'chat',scope:{kind:'conversation'},context:{summary:'',recent:[],refs:[],turnCount:0},check,replyStyle,userGuidance});
+ if(conversationRequest){
+  const labelled=prompt.trim().match(/^(?:R\d{1,3}\s+)?run\s+test\s+\d{1,3}\s*[—–:-]\s*(.{1,80})$/iu)
+   ??prompt.trim().match(/^(?:R\d{1,3}\s*[—–:-]\s*)(.{1,80})$/iu);
+  const question=labelled?.[1]??prompt;
+  return groundedAnswer({store:dependencies.store,engine},{model,question,query:'',mode:'chat',scope:{kind:'conversation'},context:{summary:'',recent:[],refs:[],turnCount:0},check,replyStyle,userGuidance});
+ }
  const result=await groundedAnswer({store:dependencies.store,engine},{model,question:prompt,query:request?.query??prompt,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
  if(result.status==='insufficient_evidence')throw Error('Not enough evidence · '+result.answer);
  return result;
