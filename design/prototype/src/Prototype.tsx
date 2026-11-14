@@ -110,7 +110,7 @@ import {ScheduleScreen} from './ScheduleScreen';
 import {ScheduleEditorSheet} from './ScheduleEditorSheet';
 import {SettingsHomeScreen} from './SettingsHomeScreen';
 import {FeedbackPanel} from './FeedbackPanel';
-import {type NoteView} from './knowledge-store';
+import {type NoteView,type PurgeRetentionReference} from './knowledge-store';
 import {createNewNoteView,newNoteSourceRef} from './note-creation';
 import {prepareOriginal,TEXT_ATTACHMENT_ACCEPT,originalMime,originalKind,originalText,readOriginal,originalRef,checkAttachmentBatch,type OriginalRef,type OriginalAsset} from './original-assets';
 import {makeVisionText,type VisionText} from './vision-text';
@@ -1285,13 +1285,13 @@ export default function Prototype() {
   setOpened(null);setSheet(null);toast('Deleted',id);
  }
  async function deleteItem(){if(itemTarget)await deleteMemoryTarget(itemTarget);}
- async function purgeTrash(batches:TrashBatch[]):Promise<false|{purged:number;retained:number}>{
+ async function purgeTrash(batches:TrashBatch[]):Promise<false|{purged:number;retained:number;retainedReferences:PurgeRetentionReference[]}>{
   if(recoveryLock.current||storagePending||!metadataReady){reportSheetError(!metadataReady?'Trash is still loading · try again shortly':'Storage is busy · wait for the current save, then try again');return false;}
   recoveryLock.current=true;setRecoverySaving(true);setSheetError('');let committed=false;
   try{await fileFocusQueue.current?.settled();await dialogueWriter.current?.settled();await flushStorage();await flushMetadata();const expected=await trashWriter.current.committed();
      const result=await knowledge.purgeMemory(batches,expected);committed=true;if(result.dialogue){storedDialogue.current=result.dialogue;dialogue.current=result.dialogue;pendingWorkingFile.current=undefined;renderDialogue(result.dialogue);}const selected=new Set(batches.map(batch=>batch.id)),retained=new Set(result.retainedBatchIds);
      const displayed=[...result.trash,...trash.filter(batch=>batch.id.startsWith('recovered-')&&(!selected.has(batch.id)||retained.has(batch.id))&&!result.trash.some(saved=>saved.notes.some(note=>batch.notes.some(old=>old.id===note.id))))];
-     trashWriter.current.hydrate(result.trash,displayed);setTrash(displayed);await refreshStorage();return {purged:result.purgedBatchIds.length,retained:result.retainedBatchIds.length};
+     trashWriter.current.hydrate(result.trash,displayed);setTrash(displayed);await refreshStorage();return {purged:result.purgedBatchIds.length,retained:result.retainedBatchIds.length,retainedReferences:result.retainedReferences};
     }catch(error){reportSheetError(committed?'Deleted permanently · reopen the app to view':(error as Error).message||'Could not delete items');return false;}
   finally{recoveryLock.current=false;setRecoverySaving(false);}
  }

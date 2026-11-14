@@ -39,7 +39,8 @@ test('Empty Trash purges independent entries and clearly leaves referenced entri
  }
  await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const note=await new Promise<any>((resolve,reject)=>{const tx=db.transaction('notes','readonly'),request=tx.objectStore('notes').getAll();request.onsuccess=()=>resolve(request.result.find((row:any)=>row.revisions?.at(-1)?.path==='Inbox/Referenced entry.md'));request.onerror=()=>reject(request.error);});if(!note)throw Error('Test note was not stored');await new Promise<void>((resolve,reject)=>{const tx=db.transaction('runs','readwrite');tx.objectStore('runs').put({noteId:note.id},'qa-reference');tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});db.close();});
  await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});await trash.getByRole('button',{name:'Empty Trash',exact:true}).click();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();
- await expect(trash.getByRole('status')).toContainText('1 referenced entry was kept in Trash to protect retained history or citations');
+ await expect(trash.getByRole('status')).toContainText('1 referenced entry was kept in Trash to preserve linked data');
+ await expect(trash.getByRole('list',{name:'Trash retention references'})).toContainText('Referenced by: Local activity data');
  await expect(trash.getByRole('button',{name:'Restore Inbox/Referenced entry.md',exact:true})).toBeVisible();await expect(trash.getByRole('button',{name:'Restore Inbox/Independent entry.md',exact:true})).toHaveCount(0);
 });
 
