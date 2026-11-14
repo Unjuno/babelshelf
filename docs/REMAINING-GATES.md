@@ -1,5 +1,41 @@
 ## Current status · 2026-11-14
 
+### Audit nine toast-layout fix · PR #76 · Site v361
+
+Main is `fd771f5a203ef4e0a1bca1449738a6df46af4366`. PR #76 exact-head quality CI
+[43586324454](https://github.com/Unjuno/babelshelf/actions/runs/43586324454)
+and merged-main CI
+[43587466713](https://github.com/Unjuno/babelshelf/actions/runs/43587466713)
+both passed. The product build is `f0639dbe0341a7b0` with 166 verified
+assets. Site v361 is live at the existing public
+[https://babelshelf.com](https://babelshelf.com); its HTTP build manifest and a
+fresh isolated browser show the same build. Existing public access was retained.
+The source repo commit is `ebcd8b52f290705d2c0336f7d6f1fe773da90584`; saved
+version is `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_d70a850df0d08191834bb16eda00628d`;
+deployment `appgdep_6af84364ce548191bb2f0ef73430265c` succeeded. The exact
+archive has SHA-256 `0908041df73de931e7f2ebfb707e8cb1bf6020acb73f78a9150e4f2837cd7829`
+and is retained locally at `.site-publish-work/babelshelf-v361.tar.gz`.
+
+A narrow-screen Playwright regression reproduced a long deletion Undo toast
+covering the last Help control by about 3.7 px at 390×844. The app now measures
+the active toast and reduces the content scroll viewport by its actual height;
+the last Help action ended about 81 px above the toast. The regression is part
+of `test:quality:schedule-ui`. Site packaging also verified compressed/identity
+WASM bytes, offline-shell transport, and mutable-shell cache headers. A fresh
+public browser loaded the chat screen without a Repair dead end, but its model
+was not prepared; no v361 inference was run. Site v360's prior real LFM3
+`say hello briefly` schedule success remains the available model evidence.
+
+The source-free scheduled-answer fix predates this release and is covered by
+`scheduled-answer.test.mjs`; v360 separately completed the real-model Run now
+in under 30 seconds. Conversation create/rename/delete UI and toast queueing
+remain open. Attachment recovery and dismissible/stale model-notice behavior
+have browser regressions in the current full suite, but physical mobile-device
+behavior is not claimed. No existing browser data was cleared or permanently
+purged for v361 verification.
+
+### Audit nine follow-up · PR #74 · Site v360
+
 ### Audit nine follow-up · PR #74 · Site v360
 
 Main is `5f1742ebd0b63fdc5be04cb22f562efda9c63716`. PR #74's exact full
