@@ -138,6 +138,17 @@ test('a schedule edited in Memory updates the Schedule view and notification del
  await expect(page.getByText('In-app only',{exact:true})).toBeVisible();
 });
 
+test('schedule actions expose editing so notification delivery can be changed after creation',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Edit from schedule actions');
+ const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Edit from schedule actions'}).click();await page.getByRole('button',{name:'Edit schedule',exact:true}).click();
+ const notify=page.getByRole('switch',{name:'In-app notification'}),initial=await notify.isChecked();await notify.setChecked(!initial);await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Edit from schedule actions'}).click();await page.getByRole('button',{name:'Edit schedule',exact:true}).click();
+ await expect(page.getByRole('switch',{name:'In-app notification'})).toBeChecked({checked:!initial});
+});
+
 test.describe('custom schedule across daylight-saving change',()=>{
  test.use({timezoneId:'America/New_York'});
  test('the next day returns to the chosen local time and remains paused',async({page})=>{

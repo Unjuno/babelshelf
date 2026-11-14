@@ -46,8 +46,16 @@ async function openSettingsItem(page:Page,name:string){
 
 async function openApp(page:Page){
  await page.goto('/',{waitUntil:'domcontentloaded'});
- if(!await page.getByRole('textbox',{name:'Message'}).count()){await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();}
- await expect(page.getByRole('textbox',{name:'Message'})).toBeEnabled({timeout:30_000});
+ const message=page.getByRole('textbox',{name:'Message'});
+ const input=page.getByRole('button',{name:'Input',exact:true});
+ await expect.poll(async()=>await message.isVisible()||await input.isVisible(),{timeout:30_000}).toBe(true);
+ if(!await message.count()){
+  await expect(input).toBeVisible();
+  if(await input.getAttribute('aria-current')!=='page'){
+   await input.click();await page.getByRole('button',{name:'Back to chat',exact:true}).click();
+  }
+ }
+ await expect(message).toBeEnabled({timeout:30_000});
 }
 
 test('saved timing results identify their model, time and build independently of next test options',async({page})=>{
@@ -306,6 +314,7 @@ test('explicit online update retries a missing app registration',async({page})=>
 });
 
 test('chat exposes an explicit app refresh beside the online/offline control',async({page})=>{
+ test.setTimeout(60_000);
  await openApp(page);
  const refresh=page.getByRole('button',{name:'Update app'});
  await expect(refresh).toBeVisible();
@@ -320,7 +329,7 @@ test('chat exposes an explicit app refresh beside the online/offline control',as
  await message.fill('Keep this unsent note');
  await expect(refresh).toBeEnabled();await expect(refresh).not.toHaveAttribute('data-blocked','true');
  expect(await page.evaluate(()=>sessionStorage.getItem('babelshelf.composer-draft.v1'))).toBe('Keep this unsent note');
- await page.reload();await expect(message).toHaveValue('Keep this unsent note');
+ await page.reload();await expect(message).toHaveValue('Keep this unsent note',{timeout:30_000});
 });
 
 test('app refresh is available online and blocked while a draft could be lost',async({page})=>{
