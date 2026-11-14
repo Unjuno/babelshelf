@@ -1,38 +1,54 @@
 ## Current status · 2026-11-14
 
-### Audit nine follow-up · candidate b152f85ae19397dd
+### Audit nine release · PR #72 · Site v359
 
-The schedule-specific `Answer contains an internal source label` failure was
-reproduced in the prior public audit and traced to source-free greeting prompts
-entering the knowledge-grounded answer path. These explicit, narrow greeting
-and original-prose requests now use the shared source-free conversation route;
-factual questions and saved-material requests still require current citations.
-Run completion accepts an empty source list only for that narrow route.
+PR #72 merged to `main` as `155be299df97f1cfef2a7bbe30fd2a82fc398fd3`.
+The exact candidate's full GitHub Actions run [43493161193](https://github.com/Unjuno/babelshelf/actions/runs/43493161193)
+and the merged-main run [43495667426](https://github.com/Unjuno/babelshelf/actions/runs/43495667426)
+both succeeded. Full local `npm run test:quality` also passed on app build
+`b152f85ae19397dd` with 166 verified assets.
 
-The candidate completed `say hello briefly` with the real local Text model in
-the product UI: `Hello! How can I help you today?`; Activity recorded success
-and the Schedule row showed Completed. The audit's growing-history general
-question fix was also confirmed in audit nine on build 370e5ac8: a 20-turn
-conversation answered a capital question directly, with a 296-token prompt;
-this release does not change that chat routing. Real-model checks are local PC
-browser evidence and do not establish audit-VM speed or broad answer quality.
+Site v359 was deployed successfully to the existing public
+[https://babelshelf.com](https://babelshelf.com), preserving its public access.
+The version archive SHA-256 is
+`79c76f47f2f85afb39f54065b72939fefdd6737dd8ea35fa47f1390b1ba75bcb`;
+deployment `appgdep_6af76dd929dc81918f78820203d33407` succeeded. Direct public
+HTTP returned the expected build manifest, bundle `index-UGkqZsgd.js`, and
+stylesheet `index-CDmSf9la.css`; all 166 current assets and 112 retained
+predecessor assets matched their manifest hashes. A fresh isolated public
+Chrome context reached the chat, explicitly prepared the offline shell, and
+received active service-worker control for build `b152f85ae19397dd`.
 
-Trash dependency coverage now models ten schedule definitions, one execution
-record and a linked notification. Independent definitions purge while the
-referenced schedule and execution stay protected; selecting the linked
-notification with both records allows the whole synthetic chain to purge.
-This does not inspect or alter the audit browser's retained records. Sending
-with a deleted, trashed or revised selected file now explains the specific
-recovery action before model acquisition, and preserves both the file and
-draft. Broader attachment lifecycle and UI observations from audit nine remain
-follow-up work.
+The scheduled-run failure `Answer contains an internal source label` was
+reproduced for a source-free greeting and fixed by routing narrowly classified
+greeting/original-prose requests through the shared source-free conversation
+path. Factual questions and saved-material requests remain citation-grounded.
+The real local Text model completed `say hello briefly`; the schedule and
+Activity both showed success, with zero citations and no unexpected file.
 
-`npm run test:quality` passed on this exact candidate, including root and
-prototype tests, type/build checks, Chromium and WebKit browser suites,
-schedule/settings/editorial/device handoff, update recovery, offline process
-and installed-PWA checks. The installed-PWA check used a synthetic shell and
-did not constitute physical-device or real-model acceptance. Candidate PR #72
-and its exact-head CI, followed by public Site deployment, are pending.
+After release, a dedicated QA Chrome profile with eight retained turns and a
+previous context measurement of 3,678 tokens sent “What makes the daytime sky
+appear blue?” to the actual LFM3 model. On the exact current bundle it generated
+a substantive answer in 16.914 seconds: `knowledge.answer` in chat mode, 294
+current prompt tokens and 144 output tokens. The transcript grew from eight to
+nine turns; note count remained 41, with no planner/file action or new-file
+dialog. This verifies long-history direct routing with real inference on the
+local GPU profile; it does not establish CPU/WASM or physical-device latency or
+broad answer quality.
+
+Trash dependency tests use synthetic records for ten schedules, one execution
+and its notification. Independent records purge while a linked chain remains
+protected; selecting its notification, execution and definition together
+allows the chain to purge. Selected-file admission distinguishes deleted,
+trashed, changed-revision and unavailable files before model acquisition,
+with recovery guidance and no mutation. No external audit or user browser
+storage was accessed, cleared or purged. Physical-device testing is not claimed.
+
+Separate lower-priority audit observations remain follow-up work: conversation
+creation/rename/delete controls, some attachment lifecycle cases, old model
+status notices after reload, toast placement/Undo timing, and consistent
+terminology. Their presence does not invalidate the specific routing, schedule,
+Trash and selected-file fixes verified in this release.
 
 ### Audit six release · PR #69 · Site v357
 
