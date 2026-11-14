@@ -26,13 +26,26 @@ public browser loaded the chat screen without a Repair dead end, but its model
 was not prepared; no v361 inference was run. Site v360's prior real LFM3
 `say hello briefly` schedule success remains the available model evidence.
 
+The latest external audit reports two v370e5ac8 schedule failures with
+`Answer contains an internal source label`. The current main source includes
+the narrow source-free schedule route, its regression tests pass, and v360 had
+a successful real-model Run now; this does not yet disprove the reported
+failure on the audited build. A direct v361 rerun was attempted after updating
+an isolated browser to bundle `index-bcjn863r.js`, but that profile had no
+model. Preparing the 1,049.6 MB LFM3 model stopped at 385.9 MB with a browser
+storage-quota error, so no v361 inference ran. The partial test download
+remains in that isolated QA profile; no user browser storage was modified.
+
 The source-free scheduled-answer fix predates this release and is covered by
 `scheduled-answer.test.mjs`; v360 separately completed the real-model Run now
-in under 30 seconds. Conversation create/rename/delete UI and toast queueing
-remain open. Attachment recovery and dismissible/stale model-notice behavior
-have browser regressions in the current full suite, but physical mobile-device
-behavior is not claimed. No existing browser data was cleared or permanently
-purged for v361 verification.
+in under 30 seconds. PR #78's browser regression confirmed that a later save
+notice queues behind the deletion Undo toast, and Undo restores the schedule
+after navigating to Memory and saving a file. The queueing test passed in the
+full quality suite; this required no product-code change or new deployment.
+Conversation create/rename/delete UI remains open. Attachment recovery and
+dismissible/stale model-notice behavior have browser regressions in the current
+full suite, but physical mobile-device behavior is not claimed. No existing
+browser data was cleared or permanently purged for v361 verification.
 
 ### Audit nine follow-up · PR #74 · Site v360
 
