@@ -1,6 +1,40 @@
 ## Current status · 2026-11-14
 
-### Audit nine release · PR #72 · Site v359
+### Audit nine follow-up · PR #74 · Site v360
+
+Main is `5f1742ebd0b63fdc5be04cb22f562efda9c63716`. PR #74's exact full
+quality workflow [43574209652](https://github.com/Unjuno/babelshelf/actions/runs/43574209652)
+and merged-main workflow
+[43575455297](https://github.com/Unjuno/babelshelf/actions/runs/43575455297)
+both succeeded. The product build is `2a1a51cfeb2d93da` with 166 verified
+assets. Site v360 is live at the existing public
+[https://babelshelf.com](https://babelshelf.com); public HTTP and a fresh
+isolated browser confirm the same build.
+
+The selected LFM3 1.7B QAD Q4_0 model was prepared, verified and loaded in the
+isolated public browser (`GPU active`). A new `say hello briefly` schedule
+completed with Run now in under 30 seconds and did not show
+`Answer contains an internal source label`. Before loading the model, the same
+run correctly failed as `Model not prepared`; that attempt did not exercise
+generation. The synthetic schedule and its notifications were soft-deleted
+afterward. No user content or Trash data was permanently purged.
+
+Targeted scheduled-answer and Trash-purge regressions passed 20/20 locally.
+The synthetic Trash dependency chain covered ten schedules, one execution and
+its notification: independent entries purge, linked entries remain protected
+when selected alone, and selecting the full chain together allows deletion.
+This does not establish the contents of the external auditor's browser storage.
+The 10-second deletion Undo window passed the PR #74 browser regression after a
+4.2-second wait; Undo is not guaranteed after the full window. Toast overlap and
+queuing remain open.
+
+Other follow-up observations remain: conversation creation/rename/delete
+controls, attachment lifecycle and recovery presentation, stale model notices
+after reload, toast overlap/queuing, and terminology. This release's short
+schedule run does not establish broad schedule-prompt coverage, CPU/WASM
+performance or physical-device behavior.
+
+### Audit nine original release · PR #72 · Site v359
 
 PR #72 merged to `main` as `155be299df97f1cfef2a7bbe30fd2a82fc398fd3`.
 The exact candidate's full GitHub Actions run [43493161193](https://github.com/Unjuno/babelshelf/actions/runs/43493161193)
