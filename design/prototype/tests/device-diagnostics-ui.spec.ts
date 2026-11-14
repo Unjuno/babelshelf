@@ -87,6 +87,15 @@ test('browser starts with a report-only App & storage check; every test type has
  await expect(page.getByRole('region',{name:'Check results · 13 areas'})).toBeVisible();
 });
 
+test('App & storage checks do not claim that a model reply completed',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-11-14T01:02:03.000Z',appBuild:'fixture',deviceTestMode:'app',checks:[{id:'selected-model',status:'pass',detail:'Selected model files are ready'}],selectedModel:{id:'lfm3-1.7b-qad-q4-0',revision:'fixture-model',backend:'cpu-wasm',runtimeRevision:'fixture-runtime',filesPresent:true,loaded:true}})));
+ await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
+ const results=page.getByRole('region',{name:'Check results · 13 areas'});
+ await expect(results.locator('.diagnostic-result').filter({hasText:'Model reply'})).toContainText('Not run');
+ await expect(page.locator('section[aria-label="Device test"] .capability-row').filter({hasText:'App checks complete'})).toHaveCount(0);
+ await expect(page.locator('section[aria-label="Device test"] .capability-row').filter({hasText:'lfm3-1.7b-qad-q4-0'})).toHaveCount(0);
+});
+
 test('an active diagnostic keeps running and visible while moving to another app screen',async({page})=>{
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  await page.evaluate(()=>{let stored:Response|undefined;Object.defineProperty(window,'caches',{configurable:true,value:{keys:()=>new Promise<string[]>(resolve=>{(window as any).__releaseDiagnosticCacheKeys=()=>resolve([]);}),open:async()=>({put:async(_key:string,value:Response)=>{stored=value;},match:async()=>stored}),delete:async()=>true}});});

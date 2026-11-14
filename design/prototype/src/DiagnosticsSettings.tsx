@@ -49,8 +49,9 @@ export function DiagnosticsSettings(props:Props){
   if(typeof generation?.model==='string')reportModel=generation.model.slice(0,120);
   else if(typeof report?.selectedModel?.id==='string')reportModel=report.selectedModel.id.slice(0,120);
   if(generation)modelStatus=failureLabels[generation.failureType??'']??(generation.failureType==='model-files-not-ready'?'Not prepared':generation.failureType==='restart-pending'?'After restart':generation.failureType==='incomplete-output'?'Incomplete output':generation.failureType==='empty-output'?'No output':generation.status==='fail'&&generation.failureStage?(failureLabels[generation.failureStage]??`Failed · ${generation.failureStage}`):generation.status==='stopped'&&generation.failureStage?`Stopped · ${generation.failureStage}`:generation.status==='pass'&&performanceSample?'Sample complete':({pass:'Passed',fail:'Failed','not-run':'Not run',stopped:'Stopped',interrupted:'Interrupted'} as Record<string,string>)[generation.status]??'Not run');
-  else if(reportMode==='app')modelStatus='App checks complete';
-  else if(reportMode==='model-readiness')modelStatus='Readiness checks complete';
+  // App and readiness checks do not execute inference. Keep their status out
+  // of the model-result row; the per-area summary already reports Model reply
+  // as Not run (or Model files as Ready/Check).
  }catch{/* A broken local report must not break Settings. */}
  if(deviceTestRunning||deviceModelTesting)modelStatus=testStage||'Testing…';
  const restartSteps=offlineRestartMarker?offlineRestartManualSteps(typeof navigator==='undefined'?'Unknown':navigator.platform,typeof navigator==='undefined'?'Unknown':navigator.userAgent,offlineRestartMarker.baseline.standalone):[];
