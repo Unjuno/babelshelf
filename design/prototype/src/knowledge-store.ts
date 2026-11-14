@@ -110,10 +110,34 @@ export function planFolderRename(records:Canonical[],storedFolders:string[],from
 }
 export type RecoveryBatch={id:string;label:string;notes:NoteView[];folders:string[]};
 export type PurgeRetentionReference={batchId:string;referencedBy:string[]};
-export type PurgeMemoryResult={trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];retainedReferences:PurgeRetentionReference[];dialogue?:Dialogue};
+export type PurgeMemoryResult={trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];retainedReferences:PurgeRetentionReference[];dialogue?:Dialogue;dialogueLinksRemoved?:number};
 export class TrashPurgeError extends Error {
  readonly code:'changed'|'protected'|'referenced';
  constructor(code:'changed'|'protected'|'referenced',message:string){super(message);this.name='TrashPurgeError';this.code=code;}
+}
+const referenceProseFields=new Set(['answer','body','content','error','excerpt','history','label','message','name','path','prompt','quote','summary','text','title','user']);
+function withoutDeletedConversationLinks(value:Dialogue,targets:Set<string>):{dialogue:Dialogue;removed:number}{
+ let removed=0,changed=false;
+ const without=(items:any[]|undefined,predicate:(item:any)=>boolean)=>{
+  if(!items)return undefined;const kept=items.filter(item=>!predicate(item));removed+=items.length-kept.length;if(kept.length!==items.length)changed=true;return kept;
+ };
+ const references=(item:unknown)=>{const found=new Set<string>();const visit=(node:any,field='')=>{if(referenceProseFields.has(field))return;if(typeof node==='string'){if(targets.has(node))found.add(node);return;}if(Array.isArray(node)){for(const child of node)visit(child,field);return;}if(node&&typeof node==='object')for(const [key,child] of Object.entries(node))visit(child,key);};visit(item);return found.size>0;};
+ const turns=value.turns.map(turn=>{
+  const before=removed;
+  const refs=without(turn.refs,item=>targets.has(item.noteId)),results=without(turn.results,item=>targets.has(item.noteId)),files=without(turn.files,item=>targets.has(item.noteId));
+  const attachments=without(turn.attachments,item=>targets.has(item.id)||targets.has(item.asset?.id));
+  const sourceMetadataGuards=without(turn.sourceMetadataGuards,item=>targets.has(item.noteId));
+  const activity=without(turn.activity,item=>references(item)),toolCalls=without(turn.toolCalls,item=>references(item));
+  if(removed===before)return turn;
+  const next:any={...turn,status:'Source links removed after permanent deletion'};
+  for(const [key,items] of Object.entries({refs,results,files,attachments,sourceMetadataGuards,activity,toolCalls}))if(turn[key as keyof typeof turn]!==undefined)next[key]=items;
+  return next;
+ });
+ let currentFile=value.currentFile;
+ if(currentFile&&targets.has(currentFile.noteId)){currentFile=undefined;removed++;changed=true;}
+ if(!changed)return {dialogue:value,removed:0};
+ const {currentFile:_oldCurrentFile,...withoutPointer}=value;
+ return {dialogue:{...withoutPointer,revision:value.revision+1,turns,...(currentFile?{currentFile}:{})},removed};
 }
 export type RecoveryAction={kind:'delete';target:{kind:'file'|'folder';value:string};expectedNotes:NoteView[];id:string;label:string}|{kind:'restore';batch:RecoveryBatch};
 export function planMemoryRecovery(records:Canonical[],storedFolders:string[],storedTrash:RecoveryBatch[],action:RecoveryAction){
@@ -415,8 +439,8 @@ export class KnowledgeStore {
  }
  /** Permanently remove only the reviewed withdrawn batches. All dependency
   * checks and writes share one transaction; a started transaction is never replayed. */
- async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined){
-  ({batches,expectedTrash}=structuredClone({batches,expectedTrash}));
+ async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined,options:{removeConversationLinks?:boolean}={}){
+  ({batches,expectedTrash,options}=structuredClone({batches,expectedTrash,options}));
   const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
   return new Promise<PurgeMemoryResult>((resolve,reject)=>{let error:unknown,result:PurgeMemoryResult;
    readSnapshot(tx,current=>{try{
@@ -439,8 +463,8 @@ export class KnowledgeStore {
     }
     const selectedBatchIds=new Set(batches.map(b=>b.id)),allIds=new Set(noteBatch.keys()),retainedBatchIds=new Set<string>();
     const retainedRecovered=()=>batches.filter(batch=>retainedBatchIds.has(batch.id)&&!trash.some(saved=>saved.id===batch.id));
-    const collectReferences=(value:any,targets:Set<string>,found:Set<string>)=>{if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found);return;}if(value&&typeof value==='object')for(const item of Object.values(value))collectReferences(item,targets,found);};
-    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,candidate:StateSnapshot;
+    const collectReferences=(value:any,targets:Set<string>,found:Set<string>,field='')=>{if(referenceProseFields.has(field))return;if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found,field);return;}if(value&&typeof value==='object')for(const [key,item] of Object.entries(value))collectReferences(item,targets,found,key);};
+    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,dialogueLinksRemoved=0,candidate:StateSnapshot;
     const retentionOwners=new Map<string,Set<string>>(),recordRetentionOwners=(value:unknown,label:string,ownerId?:string)=>{const found=new Set<string>();collectReferences(value,allIds,found);for(const noteId of found){if(noteId===ownerId)continue;const batchId=noteBatch.get(noteId);if(!batchId)continue;const owners=retentionOwners.get(batchId)??new Set<string>();owners.add(label);retentionOwners.set(batchId,owners);}};
     for(;;){
      deletedIds=new Set([...allIds].filter(id=>!retainedBatchIds.has(noteBatch.get(id)!)));
@@ -448,9 +472,14 @@ export class KnowledgeStore {
      const recovered=retainedRecovered();
      nextTrash=[...trash.filter(batch=>!deletedBatchIds.has(batch.id)),...recovered];
      originalKeys=new Set(current.notes.filter(note=>deletedIds.has(note.id)&&note.originalAsset).map(note=>originalKey(note.id)));
-     const dialogueEntry=current.settings.find(s=>s.key==='ui-v1-dialogue');dialogue=undefined;
-     if(dialogueEntry?.value?.currentFile&&deletedIds.has(dialogueEntry.value.currentFile.noteId)){
-      const before=validateDialogue(dialogueEntry.value);dialogue=withoutWorkingFile(before,before.currentFile!);
+     const dialogueEntry=current.settings.find(s=>s.key==='ui-v1-dialogue');dialogue=undefined;dialogueLinksRemoved=0;
+     if(dialogueEntry?.value){
+      const before=validateDialogue(dialogueEntry.value);
+      if(options.removeConversationLinks){
+       const clean=withoutDeletedConversationLinks(before,deletedIds);dialogue=clean.dialogue;dialogueLinksRemoved=clean.removed;
+      }
+      if(before.currentFile&&deletedIds.has(before.currentFile.noteId))dialogue=withoutWorkingFile(dialogue??before,before.currentFile);
+      if(dialogue?.revision===before.revision)dialogue=undefined;
      }
      candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
      const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
@@ -473,7 +502,7 @@ export class KnowledgeStore {
     for(const id of deletedIds)tx.objectStore('notes').delete(id);
     for(const key of originalKeys)tx.objectStore('runs').delete(key);
     tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');
-    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],retainedReferences:[...retainedBatchIds].map(batchId=>({batchId,referencedBy:[...(retentionOwners.get(batchId)??[])].sort()})),...(dialogue?{dialogue}:{})};
+    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],retainedReferences:[...retainedBatchIds].map(batchId=>({batchId,referencedBy:[...(retentionOwners.get(batchId)??[])].sort()})),...(dialogue?{dialogue}:{}),...(dialogueLinksRemoved?{dialogueLinksRemoved}:{})};
    }catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Permanent deletion failed'));
   });

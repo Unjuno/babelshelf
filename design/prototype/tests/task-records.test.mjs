@@ -56,6 +56,12 @@ test('source-free scheduled conversation answers complete while cited answers st
  assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer',sources:[{noteId:'missing',revision:1,start:0,end:1,quote:'x'}]},now),/Source changed or missing result/);
  assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer'},now),/Source changed or missing result/);
 });
+test('a verbatim-source recovery cannot be recorded as a successful scheduled answer',()=>{
+ const note=reviseTaskNote(registered(),{...task,prompt:'say hello briefly'}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
+ assert.throws(()=>finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'say hello briefly',sources:[],recovery:'verbatim-source'},now),/Could not verify a schedule answer/);
+ const failed=finishTaskRun([note,run],run.id,'owner',{status:'failed',error:'Could not verify a schedule answer · edit the prompt and retry'},now);
+ assert.equal(taskRunView(failed.run).status,'failed');assert.equal(taskRunView(failed.run).answer,undefined);
+});
 test('completed one-off can be manually rerun without changing its original occurrence or allowing concurrent owners',()=>{
  const note=registered(),now=new Date(2026,9,20,9),first=claimTaskRun([note],note.id,'owner',now),done=finishTaskRun([note,first.run],first.run.id,'owner',{status:'succeeded',answer:'first',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);
  const before=[done.task,done.run],again=claimTaskRun(before,note.id,'other',now,{manual:true});assert.equal(again.execute,true);assert.notEqual(again.run.id,done.run.id);assert.notEqual(taskRunView(again.run).dueAt,taskRunView(done.run).dueAt);assert.equal(taskRunView(again.run).manualRerun,true);
