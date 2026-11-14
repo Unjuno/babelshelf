@@ -115,12 +115,13 @@ export class TrashPurgeError extends Error {
  readonly code:'changed'|'protected'|'referenced';
  constructor(code:'changed'|'protected'|'referenced',message:string){super(message);this.name='TrashPurgeError';this.code=code;}
 }
+const referenceProseFields=new Set(['answer','body','content','error','excerpt','history','label','message','name','path','prompt','quote','summary','text','title','user']);
 function withoutDeletedConversationLinks(value:Dialogue,targets:Set<string>):{dialogue:Dialogue;removed:number}{
  let removed=0,changed=false;
  const without=(items:any[]|undefined,predicate:(item:any)=>boolean)=>{
   if(!items)return undefined;const kept=items.filter(item=>!predicate(item));removed+=items.length-kept.length;if(kept.length!==items.length)changed=true;return kept;
  };
- const references=(item:unknown)=>{const found=new Set<string>();const visit=(node:any)=>{if(typeof node==='string'){if(targets.has(node))found.add(node);return;}if(Array.isArray(node)){for(const child of node)visit(child);return;}if(node&&typeof node==='object')for(const child of Object.values(node))visit(child);};visit(item);return found.size>0;};
+ const references=(item:unknown)=>{const found=new Set<string>();const visit=(node:any,field='')=>{if(referenceProseFields.has(field))return;if(typeof node==='string'){if(targets.has(node))found.add(node);return;}if(Array.isArray(node)){for(const child of node)visit(child,field);return;}if(node&&typeof node==='object')for(const [key,child] of Object.entries(node))visit(child,key);};visit(item);return found.size>0;};
  const turns=value.turns.map(turn=>{
   const before=removed;
   const refs=without(turn.refs,item=>targets.has(item.noteId)),results=without(turn.results,item=>targets.has(item.noteId)),files=without(turn.files,item=>targets.has(item.noteId));
@@ -462,8 +463,7 @@ export class KnowledgeStore {
     }
     const selectedBatchIds=new Set(batches.map(b=>b.id)),allIds=new Set(noteBatch.keys()),retainedBatchIds=new Set<string>();
     const retainedRecovered=()=>batches.filter(batch=>retainedBatchIds.has(batch.id)&&!trash.some(saved=>saved.id===batch.id));
-    const proseFields=new Set(['answer','body','content','error','excerpt','history','label','message','name','path','prompt','quote','summary','text','title','user']);
-    const collectReferences=(value:any,targets:Set<string>,found:Set<string>,field='')=>{if(proseFields.has(field))return;if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found,field);return;}if(value&&typeof value==='object')for(const [key,item] of Object.entries(value))collectReferences(item,targets,found,key);};
+    const collectReferences=(value:any,targets:Set<string>,found:Set<string>,field='')=>{if(referenceProseFields.has(field))return;if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found,field);return;}if(value&&typeof value==='object')for(const [key,item] of Object.entries(value))collectReferences(item,targets,found,key);};
     let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,dialogueLinksRemoved=0,candidate:StateSnapshot;
     const retentionOwners=new Map<string,Set<string>>(),recordRetentionOwners=(value:unknown,label:string,ownerId?:string)=>{const found=new Set<string>();collectReferences(value,allIds,found);for(const noteId of found){if(noteId===ownerId)continue;const batchId=noteBatch.get(noteId);if(!batchId)continue;const owners=retentionOwners.get(batchId)??new Set<string>();owners.add(label);retentionOwners.set(batchId,owners);}};
     for(;;){
