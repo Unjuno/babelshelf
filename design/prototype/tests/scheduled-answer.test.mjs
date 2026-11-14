@@ -38,3 +38,11 @@ test('a scheduled question with missing evidence is not recorded as a successful
  await assert.rejects(executeScheduledAnswer({store:{all:async()=>[note],search:async()=>[ref]},models:{text:async()=>{loads++;return runtime;}}},{prompt:'What time does the workshop start?',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/Not enough evidence/);
  assert.equal(generations,1);assert.equal(loads,1);assert.equal(note.revisions.length,1);
 });
+
+test('a scheduled malformed prose answer cannot fall back to a successful copied source excerpt',async()=>{
+ const body='The documented process includes preparation, validation, comparison, review, and preservation of the original records. '.repeat(6).trim(),note=createNote({path:'Notes/process.md',body});
+ const ref={noteId:note.id,revision:1,start:0,end:body.length,quote:body};let calls=0;
+ const runtime={loaded:'selected',assets:{selected:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:80}),generate:async()=>{calls++;return {text:JSON.stringify(calls===1?{answer:body,citations:[{id:'S0',quote:'invalid'}]}:{answer:body}),finishReason:'stop'};}};
+ await assert.rejects(executeScheduledAnswer({store:{all:async()=>[note],search:async()=>[ref]},models:{text:async()=>runtime}},{prompt:'Quote the complete documented process.',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/Could not verify a schedule answer/);
+ assert.equal(calls,2);
+});

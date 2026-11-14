@@ -31,5 +31,10 @@ export async function executeScheduledAnswer(dependencies:Dependencies,input:Req
  }
  const result=await groundedAnswer({store:dependencies.store,engine},{model,question:prompt,query:request?.query??prompt,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
  if(result.status==='insufficient_evidence')throw Error('Not enough evidence · '+result.answer);
+ // A verbatim-source recovery is useful in an interactive answer, where its
+ // provenance is shown. A scheduled run exposes only the answer text; storing
+ // that recovery as success would hide that the model's answer failed shape
+ // validation and could turn the saved prompt into a false successful result.
+ if(result.recovery==='verbatim-source')throw Error('Could not verify a schedule answer · edit the prompt and retry');
  return result;
 }

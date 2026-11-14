@@ -30,6 +30,20 @@ test('audit: permanent deletion requires confirmation and survives reload',async
  await page.reload();await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();await expect(page.getByRole('dialog',{name:'Trash'})).toContainText('Trash is empty');
 });
 
+test('permanent deletion can explicitly remove source links from conversation history',async({page})=>{
+ test.setTimeout(45_000);
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
+ await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Conversation linked');await page.getByRole('textbox',{name:'New file content'}).fill('Keep this conversation text.');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+ const source=await page.evaluate(async()=>new Promise<any>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('notes','readonly'),query=tx.objectStore('notes').getAll();query.onsuccess=()=>resolve(query.result.find((note:any)=>note.revisions?.at(-1)?.path==='Inbox/Conversation linked.md'));query.onerror=()=>reject(query.error);};}));
+ await page.evaluate((note:any)=>new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readwrite');tx.objectStore('settings').put({schema:1,revision:1,turns:[{id:'linked-turn',user:'What does this source say?',answer:'Keep this conversation text.',refs:[{noteId:note.id,revision:1,start:0,end:'Keep this conversation text.'.length,quote:'Keep this conversation text.'}],attachments:[{id:note.id,name:'Conversation linked.md',kind:'text',status:'Ready'}]}],compaction:null,currentFile:{noteId:note.id,revision:1}},'ui-v1-dialogue');tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}),source);await page.reload();await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open Conversation linked.md',exact:true}).click();
+ await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
+ await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});await trash.getByRole('button',{name:'Delete permanently Inbox/Conversation linked.md',exact:true}).click();
+ await trash.getByLabel('Also remove selected files from conversation history. Message text stays; matching attachments, citations and activity links are removed.').check();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect(trash).toContainText('3 conversation links removed');await expect(trash.getByRole('button',{name:/Restore Inbox\/Conversation linked\.md/})).toHaveCount(0);
+ const dialogue=await page.evaluate(async()=>new Promise<any>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readonly'),query=tx.objectStore('settings').get('ui-v1-dialogue');query.onsuccess=()=>resolve(query.result);query.onerror=()=>reject(query.error);};}));
+ expect(dialogue.currentFile).toBeUndefined();expect(dialogue.turns[0].refs).toEqual([]);expect(dialogue.turns[0].attachments).toEqual([]);expect(dialogue.turns[0].user).toBe('What does this source say?');expect(dialogue.turns[0].status).toBe('Source links removed after permanent deletion');
+});
+
 test('Empty Trash purges independent entries and clearly leaves referenced entries',async({page})=>{
  test.setTimeout(60_000);
  await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
