@@ -358,16 +358,21 @@ export function isSourceFreeConversationRequest(question:string){
 export function contextIndependentConversation(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
  let request=plainConversationRoute(question,attachments,context);
  if(!request&&!attachments.length){
-  const text=question.trim(),sourceReferent=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|さっき|先ほど|前に|以前|過去|保存した|書いた|\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?|previous|earlier|saved)\b)/iu;
+  const text=question.trim(),sourceReferent=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|画像|写真|文書|音声|動画|原文|引用|会話|さっき|先ほど|前に|以前|過去|保存した|書いた|\b(?:notes?|files?|documents?|attachments?|attached|images?|photos?|pictures?|recordings?|audio|videos?|memor(?:y|ies)|schedules?|calendars?|previous|earlier|saved)\b)/iu;
   const standaloneQuestion=/[?？]\s*$/.test(text)||/^(?:what|when|where|who|which|why|how|is|are|am|was|were|do|does|did|can|could|would|should|will|explain|describe|define|tell me)\b/iu.test(text)||/(?:何|なに|誰|どこ|いつ|なぜ|どうして|どうやって|どんな|どれ|いくつ|何人|何時|何日|何語|何色)/u.test(text);
   const localOrDialogueIntent=/\b(?:my|our|earlier|previous|history|saved|stored|remember|recall|save|store|delete|remove|erase|edit|update|schedule|notify|search|find|open|read|send|email|upload|download|execute|run|calculate|compute)\b|(?:私|自分|以前|前回|過去|保存|記録|覚えて|思い出|削除|消去|編集|変更|予定|通知|検索|探して|開いて|読んで|送信|実行|計算)/iu.test(text);
   const conversationalReference=/\b(?:that|this|it|they|those|these)\s*(?:\?|[.!])?$|\b(?:that|this|it|they|those|these)\s+(?:color|colour|answer|reply|response|result|name|option|thing|one)\b|\b(?:that|this|it|they|those|these)\s+(?:is|was|means|does|did|looks|sounds|seems)\b|(?:それ|これ|あれ|その|この)(?:[\p{L}\p{N}]{0,12})?(?:は|が|を|の|に|について|って)/u.test(text);
+  // Plain answer imperatives such as "Name the largest ocean" otherwise
+  // enter the action planner even though they ask only for open-domain text.
+  // Keep source/history references, storage operations, and attached-input
+  // questions on their existing evidence-aware routes.
+  const answerDirective=/^(?:please\s+)?(?:name|identify|state|list|define|explain|describe)\s+(?:me\s+)?(?:the\s+)?[\p{L}\p{N}][\p{L}\p{N}'’ ,:-]{1,140}[.!?]?$/iu.test(text);
   // A standalone open-domain question is a conversation request, even when
   // the retained transcript is long. Keep the original records intact, but
   // give this answer a clean context so unrelated history cannot redirect it
   // into a historical capture or another operation. Explicit references and
   // source/tool requests continue through the ordinary scoped planner.
-  if(standaloneQuestion&&!sourceReferent.test(text)&&!localOrDialogueIntent&&!conversationalReference&&!requestNamesEarlierDialogue(text))request={action:'chat',query:''};
+  if((standaloneQuestion||answerDirective)&&!sourceReferent.test(text)&&!localOrDialogueIntent&&!conversationalReference&&!requestNamesEarlierDialogue(text))request={action:'chat',query:''};
  }
  return request?{request,context:{summary:'',recent:[],refs:[],turnCount:0} as DialogueContext}:null;
 }
