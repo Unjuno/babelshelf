@@ -20,7 +20,7 @@
     "test:quality:hash": "npm --prefix design/prototype run test:runtime -- tests/fast-hash.spec.ts",
     "test:quality:review-store": "npm --prefix design/prototype run test:runtime -- tests/pending-correction-store.spec.ts tests/note-restore-store.spec.ts tests/turn-activity-browser.spec.ts tests/partial-copy-review.spec.ts --workers=1",
     "test:quality:device-memory": "npm --prefix design/prototype run test:runtime -- tests/device-memory-smoke.spec.ts",
-    "test:quality:schedule-ui": "npm --prefix design/prototype run test:runtime -- tests/schedule-screen.spec.ts tests/schedule-memory-ui.spec.ts tests/toast-layout.spec.ts",
+    "test:quality:schedule-ui": "npm --prefix design/prototype run test:runtime -- tests/schedule-screen.spec.ts tests/schedule-memory-ui.spec.ts tests/toast-layout.spec.ts tests/toast-queue.spec.ts",
     "test:quality:editorial": "npm --prefix design/prototype run test:runtime -- -c playwright.editorial.config.ts",
     "test:quality:settings-ui": "npm --prefix design/prototype run test:runtime -- tests/model-catalog-contrast.spec.ts tests/media-vision-navigation.spec.ts tests/settings-home.spec.ts tests/initial-preparation-size.spec.ts tests/tool-limit-review.spec.ts --workers=1",
     "test:quality:inference-lock": "npm --prefix design/prototype run test:runtime -- tests/inference-lease.spec.ts",

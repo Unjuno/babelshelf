@@ -1,0 +1,32 @@
+import {expect,test} from '@playwright/test';
+
+test('a later save notice queues behind a deletion Undo notice without losing Undo',async({page})=>{
+ test.setTimeout(90_000);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Schedule',exact:true}).click();
+ await page.getByRole('button',{name:'New schedule'}).click();
+ const prompt='QA toast queue schedule';
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill(prompt);
+ const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);
+ await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:`Schedule actions for ${prompt}`}).click();
+ await page.getByRole('button',{name:'Delete schedule'}).click();
+ await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
+ const toast=page.locator('.preview-toast');
+ await expect(toast).toContainText('Deleted · '+prompt);
+ await expect(toast.getByRole('button',{name:'Undo'})).toBeVisible();
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Memory',exact:true}).click();
+ await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('textbox',{name:'File name'}).fill('QA-toast-queue.md');
+ await page.getByRole('textbox',{name:'File content'}).fill('toast queue verification');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(toast).toContainText('Saved');
+ await expect(toast).toContainText('Deleted · '+prompt,{timeout:15_000});
+ await expect(toast.getByRole('button',{name:'Undo'})).toBeVisible();
+ await toast.getByRole('button',{name:'Undo'}).click();
+ await expect(toast).toContainText('Restored');
+});
