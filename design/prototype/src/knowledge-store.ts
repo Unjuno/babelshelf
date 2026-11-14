@@ -109,6 +109,8 @@ export function planFolderRename(records:Canonical[],storedFolders:string[],from
  return {records:updated,folders:nextFolders.filter(p=>!isSystemFolder(p)).sort(),from,to};
 }
 export type RecoveryBatch={id:string;label:string;notes:NoteView[];folders:string[]};
+export type PurgeRetentionReference={batchId:string;referencedBy:string[]};
+export type PurgeMemoryResult={trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];retainedReferences:PurgeRetentionReference[];dialogue?:Dialogue};
 export class TrashPurgeError extends Error {
  readonly code:'changed'|'protected'|'referenced';
  constructor(code:'changed'|'protected'|'referenced',message:string){super(message);this.name='TrashPurgeError';this.code=code;}
@@ -416,7 +418,7 @@ export class KnowledgeStore {
  async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined){
   ({batches,expectedTrash}=structuredClone({batches,expectedTrash}));
   const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
-  return new Promise<{trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];dialogue?:Dialogue}>((resolve,reject)=>{let error:unknown,result:{trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];dialogue?:Dialogue};
+  return new Promise<PurgeMemoryResult>((resolve,reject)=>{let error:unknown,result:PurgeMemoryResult;
    readSnapshot(tx,current=>{try{
     const actualTrash=current.settings.find(s=>s.key==='ui-v1-trash')?.value;
     if(!equal(actualTrash,expectedTrash))throw new TrashPurgeError('changed','Recovery data changed · reopen Trash');
@@ -439,6 +441,7 @@ export class KnowledgeStore {
     const retainedRecovered=()=>batches.filter(batch=>retainedBatchIds.has(batch.id)&&!trash.some(saved=>saved.id===batch.id));
     const collectReferences=(value:any,targets:Set<string>,found:Set<string>)=>{if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found);return;}if(value&&typeof value==='object')for(const item of Object.values(value))collectReferences(item,targets,found);};
     let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,candidate:StateSnapshot;
+    const retentionOwners=new Map<string,Set<string>>(),recordRetentionOwners=(value:unknown,label:string,ownerId?:string)=>{const found=new Set<string>();collectReferences(value,allIds,found);for(const noteId of found){if(noteId===ownerId)continue;const batchId=noteBatch.get(noteId);if(!batchId)continue;const owners=retentionOwners.get(batchId)??new Set<string>();owners.add(label);retentionOwners.set(batchId,owners);}};
     for(;;){
      deletedIds=new Set([...allIds].filter(id=>!retainedBatchIds.has(noteBatch.get(id)!)));
      deletedBatchIds=new Set([...selectedBatchIds].filter(id=>!retainedBatchIds.has(id)));
@@ -451,12 +454,15 @@ export class KnowledgeStore {
      }
      candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
      const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
+     for(const note of candidate.notes)recordRetentionOwners(note,notePath(note),note.id);
+     for(const entry of candidate.settings){if(entry.key==='ui-v1-trash'){if(Array.isArray(entry.value))for(const batch of entry.value)if(!selectedBatchIds.has(batch.id))recordRetentionOwners(batch,'Another Trash entry');continue;}recordRetentionOwners(entry.value,entry.key==='ui-v1-dialogue'?'Current conversation':'Saved local settings');}
+     for(const entry of candidate.runs)recordRetentionOwners(entry.value,'Local activity data');
      // Execution and notification links live inside versioned JSON bodies.
      // Decode only these canonical record types; ordinary user text must not
      // be treated as structured storage or silently rewritten.
      for(const note of candidate.notes){
       const read=note.ui?.recordType==='execution'?taskRunView:note.ui?.recordType==='notification'?noticeView:null;
-      if(read)for(const revision of note.revisions)collectReferences(read({...note,revisions:[revision]}),deletedIds,referencedIds);
+      if(read)for(const revision of note.revisions){const view=read({...note,revisions:[revision]});collectReferences(view,deletedIds,referencedIds);recordRetentionOwners(view,notePath(note),note.id);}
      }
      const blockedBatches=new Set([...referencedIds].map(id=>noteBatch.get(id)).filter((id):id is string=>!!id));
      const newlyRetained=[...blockedBatches].filter(id=>!retainedBatchIds.has(id));
@@ -467,7 +473,7 @@ export class KnowledgeStore {
     for(const id of deletedIds)tx.objectStore('notes').delete(id);
     for(const key of originalKeys)tx.objectStore('runs').delete(key);
     tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');
-    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],...(dialogue?{dialogue}:{})};
+    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],retainedReferences:[...retainedBatchIds].map(batchId=>({batchId,referencedBy:[...(retentionOwners.get(batchId)??[])].sort()})),...(dialogue?{dialogue}:{})};
    }catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Permanent deletion failed'));
   });
