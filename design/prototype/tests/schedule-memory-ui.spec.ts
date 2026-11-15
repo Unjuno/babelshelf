@@ -60,6 +60,36 @@ test('Empty Trash purges independent entries and clearly leaves referenced entri
  await expect(trash.getByRole('button',{name:'Restore Inbox/Referenced entry.md',exact:true})).toBeVisible();await expect(trash.getByRole('button',{name:'Restore Inbox/Independent entry.md',exact:true})).toHaveCount(0);
 });
 
+test('Empty Trash breaks a mutual citation cycle between two trashed files',async({page})=>{
+ test.setTimeout(45_000);
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox'}).click();
+ for(const [index,name] of ['Cycle one','Cycle two'].entries()){
+  if(index){await page.getByRole('navigation',{name:'Memory path'}).getByRole('button',{name:'Inbox',exact:true}).click();}
+  await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill(name);await page.getByRole('textbox',{name:'New file content'}).fill(name);await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+ }
+ await page.evaluate(async()=>{
+  const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+  const notes=await new Promise<any[]>((resolve,reject)=>{const tx=db.transaction('notes','readonly'),request=tx.objectStore('notes').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+  const first=notes.find(note=>note.revisions?.at(-1)?.path==='Inbox/Cycle one.md'),second=notes.find(note=>note.revisions?.at(-1)?.path==='Inbox/Cycle two.md');
+  if(!first||!second)throw Error('Cycle test notes were not stored');
+  first.sources=[{noteId:second.id,revision:second.revisions.length,start:0,end:9,quote:'Cycle two'}];second.sources=[{noteId:first.id,revision:first.revisions.length,start:0,end:9,quote:'Cycle one'}];
+  await new Promise<void>((resolve,reject)=>{const tx=db.transaction('notes','readwrite');tx.objectStore('notes').put(first);tx.objectStore('notes').put(second);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});db.close();
+  const settingsDb=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1',1);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+  await new Promise<void>((resolve,reject)=>{const tx=settingsDb.transaction('settings','readwrite');tx.objectStore('settings').put({schema:1,revision:1,turns:[{id:'cycle-turn',user:'Read both cycle files',answer:'They cite each other.',refs:[{noteId:first.id,revision:1,start:0,end:9,quote:'Cycle one'},{noteId:second.id,revision:1,start:0,end:9,quote:'Cycle two'}],attachments:[{id:first.id,name:'Cycle one.md',kind:'text',status:'Ready'},{id:second.id,name:'Cycle two.md',kind:'text',status:'Ready'}]}],compaction:null,currentFile:{noteId:first.id,revision:1}},'ui-v1-dialogue');tx.oncomplete=()=>{settingsDb.close();resolve();};tx.onabort=()=>reject(tx.error);});
+ });
+ await page.reload();await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();
+ for(const name of ['Cycle one','Cycle two']){
+  if(name==='Cycle two')await page.getByRole('navigation',{name:'Memory path'}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:`Open ${name}.md`,exact:true}).click();
+  await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
+ }
+ await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});
+ await trash.getByRole('button',{name:'Delete permanently Inbox/Cycle one.md',exact:true}).click();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expect(trash.getByRole('status')).toContainText('1 referenced entry was kept in Trash');await expect(trash.getByRole('list',{name:'Trash retention references'})).toContainText('Another Trash entry');await expect(trash.getByRole('list',{name:'Trash retention references'})).toContainText('Current conversation');
+ await trash.getByRole('button',{name:'Empty Trash',exact:true}).click();await trash.getByLabel('Also remove selected files from conversation history. Message text stays; matching attachments, citations and activity links are removed.').check();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();await expect(trash).toContainText('Trash is empty');
+ const dialogue=await page.evaluate(async()=>new Promise<any>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readonly'),query=tx.objectStore('settings').get('ui-v1-dialogue');query.onsuccess=()=>resolve(query.result);query.onerror=()=>reject(query.error);};}));
+ expect(dialogue.turns[0].user).toBe('Read both cycle files');expect(dialogue.turns[0].answer).toBe('They cite each other.');expect(dialogue.turns[0].refs).toEqual([]);expect(dialogue.turns[0].attachments).toEqual([]);expect(dialogue.currentFile).toBeUndefined();
+});
+
 test('Empty Trash retains a schedule with execution history but removes an unrelated file',async({page})=>{
  test.setTimeout(60_000);await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 2 + 2');const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
