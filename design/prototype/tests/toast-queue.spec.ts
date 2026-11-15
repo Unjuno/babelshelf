@@ -18,6 +18,8 @@ test('a later save notice queues behind a deletion Undo notice without losing Un
  const toast=page.locator('.preview-toast');
  await expect(toast).toContainText('Deleted · '+prompt);
  await expect(toast.getByRole('button',{name:'Undo'})).toBeVisible();
+ await page.waitForTimeout(11_000);
+ await expect(toast.getByRole('button',{name:'Undo'})).toBeVisible();
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Memory',exact:true}).click();
  await page.getByRole('button',{name:'New file',exact:true}).click();

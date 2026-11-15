@@ -1328,7 +1328,7 @@ export default function Prototype() {
  useLayoutEffect(()=>{const scroll=document.querySelector<HTMLElement>('.mobile-page .mobile-scroll');if(!scroll)return;const previous=scroll.style.bottom;scroll.style.bottom=toastScrollOffset?`calc(var(--keyboard-height) + ${toastScrollOffset}px)`:'var(--keyboard-height)';return()=>{scroll.style.bottom=previous;};},[page,settingsPanel,sheet,toastScrollOffset]);
  useEffect(()=>{
   if(!notice||activeOperation||customReview&&!sheet||backgroundOperationMessage||storageError||dialogueError&&(page!=='input'||sheet!==null)||taskController.error||fileSaveWarning||storagePending)return;
-  const timer=setTimeout(dismissNotice,notice==='Deleted'&&deletionUndoBatch?10_000:3500);return()=>clearTimeout(timer);
+  const timer=setTimeout(dismissNotice,notice==='Deleted'&&deletionUndoBatch?30_000:3500);return()=>clearTimeout(timer);
  },[notice,noticeQueue,deletionUndoBatch,activeOperation,customReview,sheet,backgroundOperationMessage,storageError,dialogueError,page,taskController.error,fileSaveWarning,storagePending]);
  const deletionUndoVisible=notice==='Deleted'&&!!deletionUndoBatch&&!dialogueError&&!storageError&&!taskController.error&&!fileSaveWarning&&!submissionStatus&&!sending&&!bonsai.busy&&!storagePending;
  const renderBreadcrumbs=()=> <nav className="memory-breadcrumbs" aria-label="Memory path">{crumbs.map((crumb,i)=><span className="crumb" key={crumb.scope+crumb.path}>{i>0&&<CaretRight size={13}/>}<button aria-current={i===crumbs.length-1?'location':undefined} onClick={()=>browseMemory(crumb.scope,crumb.path)}>{crumb.label}</button></span>)}</nav>;
