@@ -18,9 +18,9 @@ test('explicit calculator wording keeps parentheses offline without a model',asy
   await expect(row.getByText('Calculated',{exact:true})).toBeVisible();
   await row.getByRole('button',{name:'View activity',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Activity',exact:true});
-  await expect(dialog.locator('details')).toHaveCount(1);
-  await dialog.locator('summary').click();
-  const receipt=(await dialog.locator('pre').allTextContents()).map(text=>JSON.parse(text));
+  await expect(dialog.locator('details.activity-entry')).toHaveCount(1);
+  const activity=dialog.locator('details.activity-entry').first();await activity.locator(':scope > summary').click();const technical=activity.locator('details.activity-technical-details');await technical.locator(':scope > summary').click();
+  const receipt=(await technical.locator('pre').allTextContents()).map(text=>JSON.parse(text));
   expect(receipt.some(value=>value.expression===expression&&value.package==='math.calculate')).toBe(true);
   expect(receipt.some(value=>Array.isArray(value)&&value[0]?.expression===expression&&value[0]?.result===String(result)&&value[0]?.precision==='decimal'&&value[0]?.rounded===false)).toBe(true);
   await dialog.getByRole('button',{name:'Close',exact:true}).click();
