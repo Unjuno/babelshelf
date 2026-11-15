@@ -1,48 +1,36 @@
 ## Current status · 2026-11-15
 
-### Audit 12 follow-up · PR #88 · Site v370
+### Audit 12 follow-up · PR #92 · Site build ca4983cf208c66a4
 
 Audit 12 targeted worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` and
-reported three blockers: source-free greeting schedules could store a prompt
-copy as success, Trash dependencies blocked permanent purge, and Update could
-redownload the model/runtime before scheduled Run now failed after reload. The
-audit target differed from the then-public build `66d5fa3edbaa1856` / bundle
-`index-Djb1PjIH.js`.
+reported prompt-echo schedule success, Trash dependency cycles and a model
+readiness regression after update/reload. The current `main` is
+`ab8c85add9e7b736e959752a8f86793b6e35a584` (PR #92); merged-main quality CI
+[43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
+passed. The existing public Site at [https://babelshelf.com](https://babelshelf.com)
+serves product build `ca4983cf208c66a4` with 166 manifest assets. Its public
+`build.json` and the side-panel Developer page agree on that build; the latter
+reported page bundle `index-C_7oYmXu.js`.
 
-PR #88 merged to `main` as `87e90398c6631ffa43f6c9a57099ddf3670b3211`;
-merged-main quality CI [43673077088](https://github.com/Unjuno/babelshelf/actions/runs/43673077088)
-passed all 17 stages. Public Site v370 is deployed at
-[https://babelshelf.com](https://babelshelf.com); `build.json` and Developer
-reported product build `0c93e56f7b80c24f` with 166 verified assets. The Site
-source commit is `ccfa176ce7aca525e941b0a64f94f1846c3d0d28`, deployment
-`appgdep_6af92c975014819181c3d9c4a1b7517f` succeeded, and public access was
-preserved.
+The side-panel browser (Windows / Chrome 157) retained the selected LFM3
+1.7B QAD Q4_0 files through page reload. After releasing an already-loaded
+model lease in another BabelShelf tab, Run now automatically verified the
+local model and started GPU inference without another model or runtime
+download. The real model completed the existing `say hello briefly` schedule;
+its execution detail read `Hello! How can I help you today?`, not the prompt,
+and status was `succeeded`. The first attempt was correctly blocked by the
+other tab's active model lease and showed an actionable message. This proves
+one bounded prompt after reload on this browser, not all schedules or devices.
 
-In the existing side-panel browser (Windows / Chrome 157), the app's explicit
-Update action moved the active worker to `0c93e56f7b80c24f` / bundle
-`index-C_7oYmXu.js`. Selected LFM3 1.7B QAD Q4_0 files remained present and
-runtime status was Prepared; Quick model reply passed on this build. A real
-Run now of the existing `say hello briefly` schedule succeeded and its detail
-showed `Hello! How can I help you today?`. A separate 100-word general-fact
-schedule exposed a narrower limitation: with no supporting saved material it
-failed as “Not enough evidence” and was never marked succeeded. That temporary
-QA schedule was moved to recoverable Trash, which was not emptied. This is a
-no-source factual schedule observation, not a reproduction of prompt-copy
-success.
-
-While scheduled inference was active, the new live-work receipt displayed the
-text-model phase, processed input tokens, GPU activity, elapsed time and the
-five-minute no-progress stop condition. The fresh Quick report identified build
-`0c93e56f7b80c24f`, model `lfm3-1.7b-qad-q4-0`, and `Model reply · Passed`.
-
-The existing Trash data, including the audit's reported dependency graph, was
-not permanently deleted or rewritten. Full quality CI contains disposable
-fixtures for a linked schedule/run/notification chain, conversation links and
-group selection; these do not prove resolution of the audit browser's exact
-25-entry graph. User-facing diagnostics, schedule general-knowledge behavior,
-lower-priority UI consistency, and physical iPhone/Android acceptance remain
-open or unverified. Do not claim those broader gates passed from the bounded
-checks above.
+Current Trash in this browser showed 12 QA records, not the audit's separate
+25-entry dependency graph. No existing Trash entry was changed or permanently
+deleted. Current `schedule-memory-ui` acceptance covers grouped cyclic Trash
+references and conversation links; exact resolution of the audit's graph is
+therefore still unverified. Physical iPhone/Android behavior, the reported
+Update-time download in the audit's original browser, and broad schedule
+answer quality also remain unverified. See the dated evidence in
+`TEST-RESULTS.txt`; do not generalize the single real-model run beyond its
+stated prompt, browser and build.
 
 ### Audit eleven scheduled answer routing
 
