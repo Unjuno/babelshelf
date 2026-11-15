@@ -1,9 +1,9 @@
 ## Current status · 2026-11-15
 
-### Current release verification · main f1431699 · Site build ca4983cf208c66a4
+### Current release verification · main 07a780c8 · Site build ca4983cf208c66a4
 
-Current `main` is `f1431699ed6bfa1711e53220625a9dde277fe53c`; exact-head PR #94
-quality CI [43688871845](https://github.com/Unjuno/babelshelf/actions/runs/43688871845)
+Current `main` is `07a780c8c9688472eaf0941fad35c146b293d317`; exact-head PR #95
+quality CI [43691683830](https://github.com/Unjuno/babelshelf/actions/runs/43691683830)
 passed. Product code remains PR #92 at
 `ab8c85add9e7b736e959752a8f86793b6e35a584`, with merged-main quality CI
 [43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
@@ -36,14 +36,29 @@ final Installed PWA stage. It included 2,049 root tests and the full product,
 browser, WebKit, update, offline and PWA gates. This does not replace physical
 device acceptance or the unavailable external Trash fixture.
 
+After that entry, the same current Site was reloaded in the side-panel Chrome
+profile. Settings showed the selected LFM3 files present and its runtime
+Prepared while the model itself was unloaded. A newly created paused QA
+schedule then ran without a preparation/download step: the first prefixed QA
+prompt was rejected as `Could not verify a schedule answer` and was not saved
+as success; editing it to the exact reported `say hello briefly` prompt and
+running again produced `Hello! How can I help you today?` with a succeeded
+execution record. This supplies the missing schedule-after-reload observation
+on this PC profile. It is one successful prompt and does not prove all answer
+shapes. The test schedule and its two execution records/notifications remain
+as local QA data; pre-existing Trash entries were left untouched. Focused
+checks on current main passed: `test:submission` 108/108 and the combined
+task-record/Memory-purge suites 39/39. The complete main quality CI remains the
+PR #95 run above; no product source changed in this follow-up.
+
 ### Audit 12 follow-up · PR #92 · Site build ca4983cf208c66a4
 
 The external audit targeted worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` and
 reported prompt-echo schedule success, Trash dependency cycles and a model
 readiness regression after update/reload. Current `main` is
-`f1431699ed6bfa1711e53220625a9dde277fe53c` after PRs #93–#94's
-documentation-only follow-ups; PR #94's exact-head GitHub quality CI
-[43688871845](https://github.com/Unjuno/babelshelf/actions/runs/43688871845)
+`07a780c8c9688472eaf0941fad35c146b293d317` after PRs #93–#95's
+documentation-only follow-ups; PR #95's exact-head GitHub quality CI
+[43691683830](https://github.com/Unjuno/babelshelf/actions/runs/43691683830)
 passed all 17 stages. The product fixes are in PR #92 at
 `ab8c85add9e7b736e959752a8f86793b6e35a584`; its merged-main quality CI
 [43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
