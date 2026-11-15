@@ -1286,13 +1286,13 @@ export default function Prototype() {
   setOpened(null);setSheet(null);toast('Deleted',id);
  }
  async function deleteItem(){if(itemTarget)await deleteMemoryTarget(itemTarget);}
- async function purgeTrash(batches:TrashBatch[],options:{removeConversationLinks:boolean}={removeConversationLinks:false}):Promise<false|{purged:number;retained:number;retainedReferences:PurgeRetentionReference[];dialogueLinksRemoved?:number}> {
+ async function purgeTrash(batches:TrashBatch[],options:{removeConversationLinks:boolean;removeActivityLinks:boolean}={removeConversationLinks:false,removeActivityLinks:false}):Promise<false|{purged:number;retained:number;retainedReferences:PurgeRetentionReference[];dialogueLinksRemoved?:number;activityEntriesRemoved?:number}> {
   if(recoveryLock.current||storagePending||!metadataReady){reportSheetError(!metadataReady?'Trash is still loading · try again shortly':'Storage is busy · wait for the current save, then try again');return false;}
   recoveryLock.current=true;setRecoverySaving(true);setSheetError('');let committed=false;
   try{await fileFocusQueue.current?.settled();await dialogueWriter.current?.settled();await flushStorage();await flushMetadata();const expected=await trashWriter.current.committed();
-     const result=await knowledge.purgeMemory(batches,expected,{removeConversationLinks:options.removeConversationLinks});committed=true;if(result.dialogue){storedDialogue.current=result.dialogue;dialogue.current=result.dialogue;pendingWorkingFile.current=undefined;renderDialogue(result.dialogue);}const selected=new Set(batches.map(batch=>batch.id)),retained=new Set(result.retainedBatchIds);
+     const result=await knowledge.purgeMemory(batches,expected,{removeConversationLinks:options.removeConversationLinks,removeActivityLinks:options.removeActivityLinks});committed=true;if(result.dialogue){storedDialogue.current=result.dialogue;dialogue.current=result.dialogue;pendingWorkingFile.current=undefined;renderDialogue(result.dialogue);}const selected=new Set(batches.map(batch=>batch.id)),retained=new Set(result.retainedBatchIds);
      const displayed=[...result.trash,...trash.filter(batch=>batch.id.startsWith('recovered-')&&(!selected.has(batch.id)||retained.has(batch.id))&&!result.trash.some(saved=>saved.notes.some(note=>batch.notes.some(old=>old.id===note.id))))];
-     trashWriter.current.hydrate(result.trash,displayed);setTrash(displayed);await refreshStorage();return {purged:result.purgedBatchIds.length,retained:result.retainedBatchIds.length,retainedReferences:result.retainedReferences,...(result.dialogueLinksRemoved?{dialogueLinksRemoved:result.dialogueLinksRemoved}:{})};
+     trashWriter.current.hydrate(result.trash,displayed);setTrash(displayed);await refreshStorage();return {purged:result.purgedBatchIds.length,retained:result.retainedBatchIds.length,retainedReferences:result.retainedReferences,...(result.dialogueLinksRemoved?{dialogueLinksRemoved:result.dialogueLinksRemoved}:{}),...(result.activityEntriesRemoved?{activityEntriesRemoved:result.activityEntriesRemoved}:{})};
     }catch(error){reportSheetError(committed?'Deleted permanently · reopen the app to view':(error as Error).message||'Could not delete items');return false;}
   finally{recoveryLock.current=false;setRecoverySaving(false);}
  }

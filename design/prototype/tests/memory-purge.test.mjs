@@ -72,6 +72,23 @@ test('mutually cited Trash entries can be permanently deleted together after a s
  }finally{store.close();}
 });
 test('a referenced note stays in Trash and reports the local record that keeps it',async()=>{const {s,deleted}=await fixture();try{const db=await s.open();await new Promise((resolve,reject)=>{const tx=db.transaction('runs','readwrite');tx.objectStore('runs').put({noteId:'one'},'synthetic-reference');tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});const second=await s.recoverMemory({kind:'delete',target:{kind:'file',value:'two'},expectedNotes:await s.views(),id:'batch-two',label:'two'},deleted.folders,deleted.trash);const before=await s.snapshot();const result=await s.purgeMemory(second.trash,second.trash);assert.deepEqual(result.retainedBatchIds,['batch']);assert.deepEqual(result.retainedReferences,[{batchId:'batch',referencedBy:['Local activity data']}]);assert.deepEqual(result.trash.map(batch=>batch.id),['batch']);const after=await s.snapshot();assert.deepEqual(after.notes.map(note=>note.id),['one']);assert.equal(after.notes[0].state,'withdrawn');assert.deepEqual(after.runs,before.runs);}finally{s.close();}});
+test('reviewed permanent deletion removes linked activity receipts while preserving unrelated activity',async()=>{
+ const {s,deleted}=await fixture();
+ try{
+  const {emptyDialogue,appendTurn}=await import('../src/conversation.ts');
+  const {startActivity,finishActivity}=await import('../src/harness-activity.ts');
+  const turnId='purge-linked-activity-turn',dialogue=appendTurn(emptyDialogue(),{id:turnId,user:'Read the saved file'});await s.setState('dialogue',dialogue);
+  const linked=startActivity('knowledge.answer',{source:{noteId:'one'}}),unrelated=[startActivity('model.load',{model:'local'})];for(let index=0;index<16;index++)unrelated.push(startActivity('model.load',{model:`local-${index}`}));
+  for(const activity of [linked,...unrelated]){await s.recordTurnActivity(turnId,activity,dialogue);await s.recordTurnActivity(turnId,finishActivity(activity,{output:activity===linked?{sources:[{noteId:'one',revision:1}]}:{loaded:true}}),dialogue);}
+  const processingLinked=startActivity('model.test',{source:{noteId:'one'}}),processingUnrelated=startActivity('model.test',{model:'local'});
+  for(const activity of [processingLinked,processingUnrelated]){await s.recordProcessing(activity);await s.recordProcessing(finishActivity(activity,{output:{passed:true}}));}
+  const result=await s.purgeMemory([deleted.trash[0]],deleted.trash,{removeConversationLinks:true,removeActivityLinks:true});
+  assert.deepEqual(result.trash,[]);assert.deepEqual(result.retainedBatchIds,[]);assert.equal(result.activityEntriesRemoved,2);
+  assert.deepEqual((await s.snapshot()).notes.map(note=>note.id),['two']);
+  const remaining=await s.turnActivities(turnId);assert.deepEqual(remaining.map(activity=>activity.id),unrelated.map(activity=>activity.id));assert.equal((await s.turnActivityPage(turnId,1)).items.length,1);
+  assert.deepEqual((await s.processingHistory()).map(activity=>activity.id),[processingUnrelated.id]);
+ }finally{s.close();}
+});
 
 test('a cited source reports the saved note that preserves its citation',async()=>{const {s,deleted}=await fixture();try{const saved=createNote({path:'Notes/saved-answer.md',body:'The source says one.',kind:'generated',sources:[{noteId:'one',revision:1,start:0,end:3,quote:'one'}]});await mutate(s,'notes',null,saved);const result=await s.purgeMemory([deleted.trash[0]],deleted.trash);assert.deepEqual(result.retainedBatchIds,['batch']);assert.deepEqual(result.retainedReferences,[{batchId:'batch',referencedBy:['Notes/saved-answer.md']}]);}finally{s.close();}});
 
