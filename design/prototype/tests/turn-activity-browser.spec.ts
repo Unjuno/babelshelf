@@ -13,6 +13,7 @@ test('activity sheet excludes unmeasured model calls from its saved work summary
  await page.reload();await page.getByRole('button',{name:'View activity',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Activity',exact:true}),summary=dialog.getByRole('region',{name:'Turn work summary'});
  await expect(summary).toBeVisible();await expect(summary).toContainText(/Recorded phases only · not total turn time/);await expect(summary).toContainText(/Text model attempts\s*6/);await expect(summary).toContainText(/Decision checks · receipt time\s*1/);await expect(summary).toContainText(/Prompt tokens · observed\s*240/);await expect(summary).toContainText(/Generated tokens · observed\s*33/);await expect(summary).toContainText(/Token counting\s*12 ms/);await expect(summary).toContainText(/Text generation\s*1\.3 s/);await expect(summary).toContainText(/Tool calls · receipt time\s*1/);
+ const first=dialog.locator('details.activity-entry').first();await first.locator(':scope > summary').click();const technical=first.locator('details.activity-technical-details');await expect(technical.getByText('Technical details',{exact:true})).toBeVisible();await expect(first.locator('pre.activity-data').first()).toBeHidden();await technical.locator(':scope > summary').click();await expect(first.locator('pre.activity-data').first()).toBeVisible();
 });
 
 test('paged receipts survive backup and restore in isolated browser IndexedDB',async({page})=>{
