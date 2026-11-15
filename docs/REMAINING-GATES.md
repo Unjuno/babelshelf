@@ -10,19 +10,25 @@ only linked Activity entries; message text and unrelated Activity remain.
 Paged Activity metadata, pages and indexes are rebuilt together in the same
 IndexedDB transaction. Without that checkbox, the file remains protected.
 
-Local verification on branch `codex/audit-remaining-open`: Memory purge plus
-paged-Activity tests passed 30/30; schedule submission tests passed 108/108;
-Schedule/Trash/Toast browser acceptance passed 22/22, including a regression
-that creates a linked media-processing receipt, sees the retention reason,
-then permanently deletes the file only after explicit confirmation. The test
-also confirms unrelated conversation text and Activity remain. Static checks
-passed and the production shell built with 166 verified assets. Full clean-VM
-GitHub quality CI and public deployment are pending. The auditor's exact
-25-entry Trash fixture remains unmodified and unverified.
+PR #103 was merged to `main` as `42428f087cdffc5688f6a7d34956f7c393a3c819`.
+Its clean-VM quality run [43730864285](https://github.com/Unjuno/babelshelf/actions/runs/43730864285)
+passed all 17 stages. The merged-main run [43732183681](https://github.com/Unjuno/babelshelf/actions/runs/43732183681)
+also passed all 17 stages. Memory purge plus paged-Activity tests passed 30/30; schedule
+submission tests passed 108/108; Schedule/Trash/Toast browser acceptance passed
+22/22, including a regression that creates a linked media-processing receipt,
+sees the retention reason, then permanently deletes the file only after
+explicit confirmation. Unrelated conversation text and Activity remain.
 
-### Current product release verification · PR #101 · Site build eafeda33b3b0360b
+Site version 375 is deployed to [https://babelshelf.com](https://babelshelf.com)
+from the merged main app source. Public `/build.json` serves app build
+`6215847c9ed1b0c7` and bundle `index-BKOXN7DD.js`; the fetched bundle SHA-256
+matches the manifest and returns HTTP 200. The Site archive excludes model
+weights. The auditor's exact 25-entry Trash fixture remains untouched and
+unverified.
 
-The current product source is main commit `7eeda32f2cb58560316433ed89f7d5913995a765` (PR #101). Exact-head GitHub quality run [43708494206](https://github.com/Unjuno/babelshelf/actions/runs/43708494206) passed all 17 stages; merged-main run [43709802267](https://github.com/Unjuno/babelshelf/actions/runs/43709802267) also passed. The canonical public Site at [https://babelshelf.com](https://babelshelf.com) serves build `eafeda33b3b0360b`, bundle `index-SjBzl9PP.js`, and 166 manifest assets. The Audit 12 worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` is not the current public worker.
+### Previous product release verification · PR #101 · Site build eafeda33b3b0360b
+
+At that release, the product source was main commit `7eeda32f2cb58560316433ed89f7d5913995a765` (PR #101). Exact-head GitHub quality run [43708494206](https://github.com/Unjuno/babelshelf/actions/runs/43708494206) passed all 17 stages; merged-main run [43709802267](https://github.com/Unjuno/babelshelf/actions/runs/43709802267) also passed. The canonical public Site at [https://babelshelf.com](https://babelshelf.com) served build `eafeda33b3b0360b`, bundle `index-SjBzl9PP.js`, and 166 manifest assets. The Audit 12 worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` is not the current public worker.
 
 The side-panel Windows / Chrome 157 browser ran Developer > Quick on the selected local model `lfm3-1.7b-qad-q4-0`; Model files were Ready and Model reply Passed. Quick explicitly reports that it performs no download. A new paused one-off QA schedule with prompt `R12 run test 9 — say hello briefly` then ran through Schedule > Run now on this public build. The run visibly verified the saved model file, loaded the model (GPU layers 25/25), and completed. The execution detail answer and the in-app notification body both read `Hello! How can I help you today?`; neither copied the prompt. This also exercised schedule-side local model acquisition without requiring a separate Prepare/Load action. It is one prompt on one Windows browser profile, not broad answer-quality or phone evidence.
 
