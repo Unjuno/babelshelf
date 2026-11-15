@@ -4,13 +4,16 @@
 
 Audit 12 targeted worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` and
 reported prompt-echo schedule success, Trash dependency cycles and a model
-readiness regression after update/reload. The current `main` is
-`ab8c85add9e7b736e959752a8f86793b6e35a584` (PR #92); merged-main quality CI
+readiness regression after update/reload. Current `main` is
+`4d0da6d93e7f7dde466a5e29b02b0a5ce2968322` (PR #93's documentation-only
+follow-up); its exact-head GitHub quality CI
+[43687026066](https://github.com/Unjuno/babelshelf/actions/runs/43687026066)
+passed all 17 stages. The product fixes are in PR #92 at
+`ab8c85add9e7b736e959752a8f86793b6e35a584`; its merged-main quality CI
 [43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
 passed. The existing public Site at [https://babelshelf.com](https://babelshelf.com)
 serves product build `ca4983cf208c66a4` with 166 manifest assets. Its public
-`build.json` and the side-panel Developer page agree on that build; the latter
-reported page bundle `index-C_7oYmXu.js`.
+`build.json` and the side-panel Developer page agree on that build.
 
 The side-panel browser (Windows / Chrome 157) retained the selected LFM3
 1.7B QAD Q4_0 files through page reload. After releasing an already-loaded
@@ -22,12 +25,21 @@ and status was `succeeded`. The first attempt was correctly blocked by the
 other tab's active model lease and showed an actionable message. This proves
 one bounded prompt after reload on this browser, not all schedules or devices.
 
+The exact public Update flow was then verified without clearing data. Before
+the explicit Update click, Developer showed page bundle `index-C_7oYmXu.js`,
+which was absent from the current manifest and returned 404. After Update and
+reload, the active worker remained `ca4983cf208c66a4` and the page bundle became
+the manifest entry `index-BU9E1LOs.js` (HTTP 200). LFM3 remained `Loaded · GPU
+active`, Runtime `Prepared`, and the existing schedule list remained present;
+no model-preparation or download progress appeared. A subsequent check visibly
+showed `Up to date`. This confirms the update path on this browser, not the
+separate older browser profile used for the reported 1 GB transfer.
+
 Current Trash in this browser showed 12 QA records, not the audit's separate
 25-entry dependency graph. No existing Trash entry was changed or permanently
 deleted. Current `schedule-memory-ui` acceptance covers grouped cyclic Trash
 references and conversation links; exact resolution of the audit's graph is
-therefore still unverified. Physical iPhone/Android behavior, the reported
-Update-time download in the audit's original browser, and broad schedule
+therefore still unverified. Physical iPhone/Android behavior and broad schedule
 answer quality also remain unverified. See the dated evidence in
 `TEST-RESULTS.txt`; do not generalize the single real-model run beyond its
 stated prompt, browser and build.
