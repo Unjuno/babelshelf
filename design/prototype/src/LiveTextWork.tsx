@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {DEFAULT_TEXT_GENERATION_IDLE_TIMEOUT_MS} from './isolated-text-client';
-export type TextWork={kind:'count'|'generate';startedAt:number;updatedAt:number;phase:string};
+import type {LiveTextWorkReceipt} from './live-text-work';
+export type TextWork=LiveTextWorkReceipt;
 
 /** Transient work is kept separate from completed, persisted model receipts. */
 export function LiveTextWork({work,backend,maxTokens,maxMs}:{work:TextWork;backend?:string;maxTokens?:number|null;maxMs?:number|null}){
