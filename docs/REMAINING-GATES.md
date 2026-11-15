@@ -1,43 +1,48 @@
 ## Current status · 2026-11-15
 
-### Audit 12 follow-up · build identity and current public behavior
+### Audit 12 follow-up · PR #88 · Site v370
 
-Audit 12 reported source-free greeting schedules saved as verbatim prompt
-copies, a 24-of-25 Trash purge refusal involving conversation and Trash
-references, and a model/runtime redownload plus failed Run now after reload.
-The audited identity was worker `4916f688e797d4db` / bundle
-`index-CrmAZHu2.js`. A direct public manifest and the existing side-panel
-browser on 2026-11-15 both returned worker/build `66d5fa3edbaa1856`; Developer
-reported bundle `index-Djb1PjIH.js`. These are not the same build, so audit
-observations must not be attributed to the currently served shell.
+Audit 12 targeted worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` and
+reported three blockers: source-free greeting schedules could store a prompt
+copy as success, Trash dependencies blocked permanent purge, and Update could
+redownload the model/runtime before scheduled Run now failed after reload. The
+audit target differed from the then-public build `66d5fa3edbaa1856` / bundle
+`index-Djb1PjIH.js`.
 
-On public build `66d5fa3edbaa1856`, the local scheduled-answer route rejects
-`verbatim-source` recovery instead of marking a copied prompt as success. Two
-real-model runs in the side-panel browser completed with generated prose. One
-used the exact bounded label shape `R12 run test 2 — say hello briefly`; its
-execution detail contained `Hello! How can I help you today?`, not a prompt
-copy. This is evidence for those prompts, that build, and that browser only.
-The existing Developer Quick report also shows `Model reply · Passed`; model
-files are present on that device. A full after-update storage comparison is
-still required for the audit's separate redownload claim.
+PR #88 merged to `main` as `87e90398c6631ffa43f6c9a57099ddf3670b3211`;
+merged-main quality CI [43673077088](https://github.com/Unjuno/babelshelf/actions/runs/43673077088)
+passed all 17 stages. Public Site v370 is deployed at
+[https://babelshelf.com](https://babelshelf.com); `build.json` and Developer
+reported product build `0c93e56f7b80c24f` with 166 verified assets. The Site
+source commit is `ccfa176ce7aca525e941b0a64f94f1846c3d0d28`, deployment
+`appgdep_6af92c975014819181c3d9c4a1b7517f` succeeded, and public access was
+preserved.
 
-Trash purge logic and regression tests support deleting selected linked
-groups together, and the confirmation offers removal of selected-file links
-from conversation history while retaining message text. The audit's exact
-24-record browser graph and the existing side-panel Trash were not purged or
-rewritten. Tests use disposable linked schedule/run/notification and
-conversation fixtures; they do not prove the uninspected 24-record graph is
-resolvable.
+In the existing side-panel browser (Windows / Chrome 157), the app's explicit
+Update action moved the active worker to `0c93e56f7b80c24f` / bundle
+`index-C_7oYmXu.js`. Selected LFM3 1.7B QAD Q4_0 files remained present and
+runtime status was Prepared; Quick model reply passed on this build. A real
+Run now of the existing `say hello briefly` schedule succeeded and its detail
+showed `Hello! How can I help you today?`. A separate 100-word general-fact
+schedule exposed a narrower limitation: with no supporting saved material it
+failed as “Not enough evidence” and was never marked succeeded. That temporary
+QA schedule was moved to recoverable Trash, which was not emptied. This is a
+no-source factual schedule observation, not a reproduction of prompt-copy
+success.
 
-The current candidate adds a first-use explanation in the empty chat, including
-the selected model's size and a direct route to the full setup estimate before
-download. This follow-up also shows the measured text-model phase and elapsed
-time while a scheduled model run owns active inference; chat progress remains
-unchanged. Full local quality CI passed, including Chromium and WebKit. After
-merge and publication, the side-panel browser still needs to verify progress
-on the new build and confirm its prepared model files survive the in-app
-update. Raw developer diagnostics, conversation management, other UI
-consistency issues, and physical iPhone/Android acceptance remain open.
+While scheduled inference was active, the new live-work receipt displayed the
+text-model phase, processed input tokens, GPU activity, elapsed time and the
+five-minute no-progress stop condition. The fresh Quick report identified build
+`0c93e56f7b80c24f`, model `lfm3-1.7b-qad-q4-0`, and `Model reply · Passed`.
+
+The existing Trash data, including the audit's reported dependency graph, was
+not permanently deleted or rewritten. Full quality CI contains disposable
+fixtures for a linked schedule/run/notification chain, conversation links and
+group selection; these do not prove resolution of the audit browser's exact
+25-entry graph. User-facing diagnostics, schedule general-knowledge behavior,
+lower-priority UI consistency, and physical iPhone/Android acceptance remain
+open or unverified. Do not claim those broader gates passed from the bounded
+checks above.
 
 ### Audit eleven scheduled answer routing
 
