@@ -92,6 +92,7 @@ test('browser starts with a report-only App & storage check; every test type has
  await page.getByRole('button',{name:'Run app checks',exact:true}).click();await expect(page.getByRole('button',{name:'Copy report for Codex'})).toBeEnabled();
  const report=JSON.parse((await page.locator('.diagnostic-report').textContent())??'{}');expect(report.deviceTestMode).toBe('app');expect(report.modelGeneration).toBeUndefined();
  await expect(page.getByRole('region',{name:'Last test overview · App & storage'})).toContainText('No model load or download');
+ await expect(page.getByRole('region',{name:'Last test overview · App & storage'})).toContainText('13 areas ·');await expect(page.getByRole('region',{name:'Last test overview · App & storage'})).toContainText('not checked');
  await expect(page.getByRole('region',{name:'Check results · 13 areas'})).toBeVisible();
 });
 
@@ -99,7 +100,7 @@ test('App & storage checks do not claim that a model reply completed',async({pag
  await page.addInitScript(()=>localStorage.setItem('babelshelf.device-test.report.v1',JSON.stringify({schema:1,createdAt:'2026-11-14T01:02:03.000Z',appBuild:'fixture',deviceTestMode:'app',checks:[{id:'selected-model',status:'pass',detail:'Selected model files are ready'}],selectedModel:{id:'lfm3-1.7b-qad-q4-0',revision:'fixture-model',backend:'cpu-wasm',runtimeRevision:'fixture-runtime',filesPresent:true,loaded:true}})));
  await openApp(page);await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings'}).click();await openSettingsItem(page,'Developer');
  const results=page.getByRole('region',{name:'Check results · 13 areas'});
- await expect(results.locator('.diagnostic-result').filter({hasText:'Model reply'})).toContainText('Not run');
+ await expect(results.locator('.diagnostic-result').filter({hasText:'Model reply'})).toContainText('Not run in this check');
  await expect(page.locator('section[aria-label="Device test"] .capability-row').filter({hasText:'App checks complete'})).toHaveCount(0);
  await expect(page.locator('section[aria-label="Device test"] .capability-row').filter({hasText:'lfm3-1.7b-qad-q4-0'})).toHaveCount(0);
 });
