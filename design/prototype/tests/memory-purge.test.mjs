@@ -89,8 +89,15 @@ test('a Trash batch of ten schedules and one linked execution purges after its n
   assert.deepEqual(new Set(first.retainedBatchIds),new Set([`trash-${task.id}`,`trash-${claimed.run.id}`]));
   assert.equal(first.trash.length,2);
   const movedNotice=await store.recoverMemory({kind:'delete',target:{kind:'file',value:notification.id},expectedNotes:await store.views(),id:'trash-'+notification.id,label:notification.revisions.at(-1).title},folders,first.trash);
-  const final=await store.purgeMemory(movedNotice.trash,movedNotice.trash);
+  const {emptyDialogue,appendTurn}=await import('../src/conversation.ts');
+  const dialogueLinks=[task.id,claimed.run.id,notification.id].map(noteId=>({noteId,revision:1,start:0,end:0,quote:''}));
+  const dialogue=appendTurn(emptyDialogue(),{id:'linked-schedule-turn',user:'Review the schedule result',answer:'The schedule ran.',refs:dialogueLinks,attachments:dialogueLinks.map((ref,index)=>({id:ref.noteId,name:`linked-${index}.md`,kind:'text',status:'Ready'}))});
+  await mutate(store,'settings','ui-v1-dialogue',dialogue);
+  const final=await store.purgeMemory(movedNotice.trash,movedNotice.trash,{removeConversationLinks:true});
   assert.equal(final.trash.length,0,'selecting the linked notification, execution and definition together removes the complete dependency chain');
+  assert.equal(final.dialogueLinksRemoved,6,'reviewed cleanup removes only the selected conversation references');
+  assert.equal(final.dialogue.turns[0].user,'Review the schedule result');assert.equal(final.dialogue.turns[0].answer,'The schedule ran.');
+  assert.deepEqual(final.dialogue.turns[0].refs,[]);assert.deepEqual(final.dialogue.turns[0].attachments,[]);
   assert.deepEqual((await store.snapshot()).notes,[]);
  }finally{store.close();}
 });
