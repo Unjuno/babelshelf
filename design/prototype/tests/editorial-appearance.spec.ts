@@ -527,7 +527,7 @@ test('consecutive failed retries are compacted in the view while original attemp
  });
  await page.reload();const latest=page.locator('.sent-message');await expect(latest).toHaveCount(1);await expect(latest.locator('.user-bubble.added-message')).toHaveText('Compare these saved notes.');await expect(latest).toContainText('The saved notes contain different locations.');
  const history=latest.locator('details.retry-history');await expect(history).toContainText('Earlier attempts · 2');await history.locator('summary').click();await expect(history).toContainText('Attempt 1 · Citation mismatch');await expect(history).toContainText('Attempt 2 · Citation mismatch');
- await history.getByRole('button',{name:'View attempt 1 activity'}).click();await expect(page.locator('.activity-entry')).toHaveCount(1);await expect(page.locator('.activity-entry summary')).toContainText('Select action');
+ await history.getByRole('button',{name:'View attempt 1 activity'}).click();await expect(page.locator('.activity-entry')).toHaveCount(1);await expect(page.locator('.activity-entry > summary')).toContainText('Select action');
  const stored=await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const value=await new Promise<any>((resolve,reject)=>{const request=db.transaction('settings').objectStore('settings').get('ui-v1-dialogue');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});db.close();return value;});
  expect(stored.turns.map((turn:any)=>turn.id)).toEqual(['retry-1','retry-2','retry-success']);
 });
