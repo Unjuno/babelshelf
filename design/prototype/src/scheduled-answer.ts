@@ -6,20 +6,12 @@ import {formatCalculation} from './calculation-action.ts';
 import {validateScheduledCalculation} from './scheduled-calculation.ts';
 import {validateDecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 import {isSourceFreeConversationRequest} from './dialogue-planner.ts';
+import {schedulePromptBody} from './scheduled-prompt.ts';
 // @ts-expect-error Shared literal request parser is JavaScript.
 import {localRequest} from '../../../dist/requests.js';
 
 type Dependencies={store:GroundedAnswerDependencies['store'];models:{text:(model:string,check:()=>void)=>Promise<TextRuntime>};calculate?:(expression:string,check:()=>void)=>Promise<unknown>};
 type Request={prompt:string;model:string;signal:AbortSignal;replyStyle:Preferences['harness']['replyStyle'];userGuidance:string};
-
-function schedulePromptBody(prompt:string){
- const trimmed=prompt.trim();
- // Audit labels are metadata, not part of the task. Keep this grammar narrow
- // so arbitrary user instructions are never stripped or reinterpreted.
- const labelled=trimmed.match(/^(?:R\d{1,3}\s+)?run\s+(?:test\s+\d{1,3}|[a-z])\s*[—–:-]\s*(.{1,160})$/iu)
-  ??trimmed.match(/^(?:R\d{1,3}\s*[—–:-]\s*)(.{1,160})$/iu);
- return labelled?.[1]?.trim()||prompt;
-}
 
 function rejectRecoveredScheduleAnswer<T extends {recovery?:string}>(result:T):T{
  if(result.recovery==='verbatim-source')throw Error('Could not verify a schedule answer · edit the prompt and retry');
