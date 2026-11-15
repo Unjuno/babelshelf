@@ -1,4 +1,5 @@
 import {validateActivity,type Activity} from './harness-activity.ts';
+import {conversationDialogueEntries} from './conversation-sessions.ts';
 
 // New records coexist with inline legacy turn.activity; no migration deletes or
 // rewrites old receipts. The production tracer pages new overflow events here.
@@ -28,7 +29,7 @@ export function validateTurnActivityIndex(key:string,value:any):asserts value is
 export function validateTurnActivityBackup(settings:{key:string;value:any}[],runs:{key:string;value:any}[]){
  const entries=runs.filter(({key,value})=>key.startsWith(prefix)||['turn-activity-meta','turn-activity-page','turn-activity-index'].includes(value?.type));
  if(!entries.length)return;
- const dialogue=settings.find(entry=>entry.key==='ui-v1-dialogue')?.value,turns=new Map<string,any>((dialogue?.turns??[]).map((turn:any)=>[turn.id,turn]));
+ const turns=new Map<string,any>(conversationDialogueEntries(settings).flatMap(({dialogue})=>dialogue.turns.map((turn:any)=>[turn.id,turn] as [string,any])));
  const metas=new Map<string,TurnActivityMeta>(),pages=new Map<string,TurnActivityPage[]>(),indexes=new Map<string,TurnActivityIndex>();
  for(const {key,value} of entries){
   if(value?.type==='turn-activity-meta'){validateTurnActivityMeta(key,value);if(metas.has(value.turnId))throw Error('Duplicate activity metadata');metas.set(value.turnId,value);}

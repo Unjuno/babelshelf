@@ -30,6 +30,7 @@ import {parseTask,taskDefinition,taskRunView,noticeView,validateNoticeLinks,vali
 import {verifyHistoricalCorrection,correctionOperationRaw} from './note-corrections.ts';
 import {memoryFolderPath} from './memory-paths.ts';
 import {validateOriginalLinks} from './original-assets.ts';
+import {conversationDialogueEntries,isConversationDialogueKey,CONVERSATION_SESSIONS_KEY,validateConversationSessions} from './conversation-sessions.ts';
 
 export type Entry={key:string;value:any};
 export type StateSnapshot={notes:any[];settings:Entry[];runs:Entry[]};
@@ -59,7 +60,7 @@ function entries(list:Entry[]){
  for(const item of list){if(!item||typeof item.key!=='string'||!item.key||keys.has(item.key))throw Error('Invalid or duplicate backup key');keys.add(item.key);jsonOnly(item.value);}
 }
 export function validateState(state:StateSnapshot){
- jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);validateVoiceInputs(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.runs);validateInputReadings(state.settings.find(s=>s.key==='ui-v1-dialogue')?.value,state.notes,state.runs);
+ jsonOnly(state);checkNotes(state.notes);entries(state.settings);entries(state.runs);const dialogues=conversationDialogueEntries(state.settings);validateOriginalLinks(state.notes,state.settings,state.runs);validateTranscriptLinks(state.notes,state.runs);validatePdfLinks(state.notes,state.runs);validateOcrLinks(state.notes,state.runs);validateVisionLinks(state.notes,state.runs);for(const {dialogue} of dialogues){validateVoiceInputs(dialogue,state.runs);validateInputReadings(dialogue,state.notes,state.runs);}
  validateTurnActivityBackup(state.settings,state.runs);
  for(const n of state.notes){validateDialogueCopyRecord(n);const path=notePath(n),group=preferenceGroup(path);
   if(n.ui?.managed&&group)parsePreference(group,latest(n).body);
@@ -70,7 +71,8 @@ export function validateState(state:StateSnapshot){
  for(const {key,value} of state.settings){
   if(key===PENDING_CORRECTION_KEY)validatePendingCorrection(value);
   if(key===PENDING_NOTE_REVIEW_KEY)validatePendingNoteReview(value);
-  if(key==='ui-v1-dialogue'){const d=validateDialogue(value);if(d.currentFile)validateWorkingFileLink(state.notes,d.currentFile);for(const turn of d.turns){if(turn.files!==undefined)validateFileResultLinks(state.notes,turn.files);sourceRefs(state.notes,turn.refs??[]);sourceRefs(state.notes,turn.results??[]);if(turn.attachments!==undefined&&(!Array.isArray(turn.attachments)||turn.attachments.some(a=>!a||['id','name','kind','status'].some(k=>typeof (a as any)[k]!=='string'))))throw Error('Invalid dialogue attachments');}}
+  if(key==='ui-v1-dialogue'||isConversationDialogueKey(key)){const d=validateDialogue(value);if(d.currentFile)validateWorkingFileLink(state.notes,d.currentFile);for(const turn of d.turns){if(turn.files!==undefined)validateFileResultLinks(state.notes,turn.files);sourceRefs(state.notes,turn.refs??[]);sourceRefs(state.notes,turn.results??[]);if(turn.attachments!==undefined&&(!Array.isArray(turn.attachments)||turn.attachments.some(a=>!a||['id','name','kind','status'].some(k=>typeof (a as any)[k]!=='string'))))throw Error('Invalid dialogue attachments');}}
+  if(key===CONVERSATION_SESSIONS_KEY)validateConversationSessions(value);
   if(key==='ui-v1-folders'){if(!Array.isArray(value)||new Set(value).size!==value.length)throw Error('Invalid folder metadata');assertFolderNamespace(state.notes,value);for(const path of value){if(typeof path!=='string')throw Error('Invalid folder metadata');const parts=path.split('/');memoryFolderPath(parts.slice(0,-1).join('/'),parts.at(-1)!);}}
   if(key==='ui-v1-trash'){if(!Array.isArray(value))throw Error('Invalid recovery metadata');for(const batch of value){if(!batch||typeof batch.id!=='string'||typeof batch.label!=='string'||!Array.isArray(batch.notes)||!Array.isArray(batch.folders))throw Error('Invalid recovery metadata');for(const n of batch.notes)if(!state.notes.some(x=>x.id===n.id&&x.state==='withdrawn'))throw Error('Recovery target unavailable');}}
  }
