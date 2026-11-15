@@ -1,16 +1,15 @@
 ## Current status · 2026-11-15
 
-### Current release verification · main 620e3919 · Site build ca4983cf208c66a4
+### Current product release verification · PR #92 source baseline · Site build ca4983cf208c66a4
 
-Current `main` is `620e3919e091b32a73c29c2eb99cbaf0e96266a5`. Documentation-only
-PR #97 passed all 17 Local PWA quality stages at exact head
-`55f4c324c35af682e9c37dd79af05e85ed437258` in run
-[43696296384](https://github.com/Unjuno/babelshelf/actions/runs/43696296384)
-before merging. The product-code baseline remains PR #92 at
+The deployed product-code baseline remains PR #92 at
 `ab8c85add9e7b736e959752a8f86793b6e35a584`, with merged-main quality CI
 [43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
-passing; PRs #95–#97 also passed exact-head CI. PRs #96 and #97 changed
-documentation only, so no product redeployment was made. The public Site manifest returns HTTP 200 and build
+passing. Evidence/test-only PRs #96–#98 are also merged; #98 added the cyclic
+Trash browser regression and passed all 17 Local PWA quality stages at exact
+head in run [43699152712](https://github.com/Unjuno/babelshelf/actions/runs/43699152712).
+These follow-ups did not change product runtime code, so no Site redeployment
+was needed. The public Site manifest returns HTTP 200 and build
 `ca4983cf208c66a4` / 166 assets. The report below describes that release; older
 historical status sections are superseded by the dated evidence at the end of
 `TEST-RESULTS.txt`.
@@ -28,9 +27,15 @@ permanently deleted.
 
 The same live browser retained its loaded model and prepared runtime after the
 explicit Update check; the reported approximately 1 GB transfer was not
-reproduced in this profile. Do not generalize that result to the auditor's
-separate profile. The exact 25-entry Trash graph, physical iPhone/Android
-behavior, and broad schedule-answer quality remain unverified. Conversation
+reproduced in this profile. Current-source inspection confirms `refreshApp()`
+calls only `refreshAppVersion()` for a service-worker shell update. The public
+shell manifest has 166 same-origin assets and its largest file is 26,861,777
+bytes; model weights are separately stored in OPFS and the pinned-model
+`prepare` path is not called by app Update. This explains why a 1 GB transfer
+is not expected from Update alone on the current code. It does not explain what
+the auditor's older build/profile did, or exclude a separate preparation action
+after reload. The exact 25-entry Trash graph, physical iPhone/Android behavior,
+and broad schedule-answer quality remain unverified. Conversation
 creation/rename/delete controls are outside the accepted product spec (which
 explicitly defines one conversation and no New chat), not a release gate.
 
