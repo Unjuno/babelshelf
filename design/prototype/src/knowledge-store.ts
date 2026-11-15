@@ -17,7 +17,7 @@ import {visionTextNote,type VisionText} from './vision-text.ts';
 import {processingKey,processingUpdate,validateProcessing,type ProcessingRecord} from './processing-history.ts';
 import type {Activity} from './harness-activity.ts';
 import {updateActivity,validateActivity} from './harness-activity.ts';
-import {TURN_ACTIVITY_PAGE_SIZE,turnActivityMetaKey,turnActivityPageKey,turnActivityIndexKey,turnActivityPagePrefix,validateTurnActivityMeta,validateTurnActivityPage,validateTurnActivityIndex,type TurnActivityMeta,type TurnActivityPage,type TurnActivityIndex} from './turn-activity-pages.ts';
+import {TURN_ACTIVITY_PAGE_SIZE,turnActivityMetaKey,turnActivityPageKey,turnActivityIndexKey,turnActivityPagePrefix,validateTurnActivityMeta,validateTurnActivityPage,validateTurnActivityIndex,validateTurnActivityBackup,type TurnActivityMeta,type TurnActivityPage,type TurnActivityIndex} from './turn-activity-pages.ts';
 import {pdfTextNote,type PdfText} from './pdf-text.ts';
 import {deletionContents,canRestore} from './memory-trash.ts';
 import {validateVoiceInputs} from './voice-input.ts';
@@ -110,12 +110,35 @@ export function planFolderRename(records:Canonical[],storedFolders:string[],from
 }
 export type RecoveryBatch={id:string;label:string;notes:NoteView[];folders:string[]};
 export type PurgeRetentionReference={batchId:string;referencedBy:string[]};
-export type PurgeMemoryResult={trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];retainedReferences:PurgeRetentionReference[];dialogue?:Dialogue;dialogueLinksRemoved?:number};
+export type PurgeMemoryResult={trash:RecoveryBatch[];purgedBatchIds:string[];retainedBatchIds:string[];retainedReferences:PurgeRetentionReference[];dialogue?:Dialogue;dialogueLinksRemoved?:number;activityEntriesRemoved?:number};
 export class TrashPurgeError extends Error {
  readonly code:'changed'|'protected'|'referenced';
  constructor(code:'changed'|'protected'|'referenced',message:string){super(message);this.name='TrashPurgeError';this.code=code;}
 }
 const referenceProseFields=new Set(['answer','body','content','error','excerpt','history','label','message','name','path','prompt','quote','summary','text','title','user']);
+function linkedToTargets(value:any,targets:Set<string>){
+ const visit=(node:any,field=''):boolean=>{if(referenceProseFields.has(field))return false;if(typeof node==='string')return targets.has(node);if(Array.isArray(node))return node.some(child=>visit(child,field));if(node&&typeof node==='object')return Object.entries(node).some(([key,child])=>visit(child,key));return false;};return visit(value);
+}
+function removeLinkedActivityEntries(rows:StateSnapshot['runs'],targets:Set<string>,settings:StateSnapshot['settings']){
+ validateTurnActivityBackup(settings,rows);let removed=0;const deletedKeys=new Set<string>(),replacements=new Map<string,unknown>();
+ for(const row of rows){if(row.key.startsWith('ui-v1-processing-')){validateProcessing(row.key,row.value);if(linkedToTargets(row.value.activity,targets)){deletedKeys.add(row.key);removed++;}}}
+ const pages=new Map<string,{key:string;value:TurnActivityPage}[]>();
+ for(const row of rows)if(row.value?.type==='turn-activity-page'){
+  validateTurnActivityPage(row.key,row.value);const list=pages.get(row.value.turnId)??[];list.push({key:row.key,value:row.value});pages.set(row.value.turnId,list);
+ }
+ for(const [turnId,items] of pages){
+  items.sort((a,b)=>a.value.page-b.value.page);const all=items.flatMap(item=>item.value.items),kept=all.filter(item=>!linkedToTargets(item,targets));if(kept.length===all.length)continue;removed+=all.length-kept.length;
+  for(const row of rows)if(row.value?.turnId===turnId&&['turn-activity-meta','turn-activity-page','turn-activity-index'].includes(row.value.type))deletedKeys.add(row.key);
+  if(!kept.length)continue;
+  const metaKey=turnActivityMetaKey(turnId),meta:TurnActivityMeta={schema:1,type:'turn-activity-meta',turnId,count:kept.length};validateTurnActivityMeta(metaKey,meta);replacements.set(metaKey,meta);
+  for(let offset=0,page=0;offset<kept.length;offset+=TURN_ACTIVITY_PAGE_SIZE,page++){
+   const key=turnActivityPageKey(turnId,page),record:TurnActivityPage={schema:1,type:'turn-activity-page',turnId,page,items:kept.slice(offset,offset+TURN_ACTIVITY_PAGE_SIZE)};validateTurnActivityPage(key,record);replacements.set(key,record);
+   for(const activity of record.items){const indexKey=turnActivityIndexKey(turnId,activity.id),index:TurnActivityIndex={schema:1,type:'turn-activity-index',turnId,id:activity.id,page};validateTurnActivityIndex(indexKey,index);replacements.set(indexKey,index);}
+  }
+ }
+ const next=new Map<string,unknown>(rows.filter(row=>!deletedKeys.has(row.key)).map(row=>[row.key,row.value]));for(const [key,value] of replacements)next.set(key,value);
+ return {rows:[...next].map(([key,value])=>({key,value})),removed,deletedKeys,replacements};
+}
 function withoutDeletedConversationLinks(value:Dialogue,targets:Set<string>):{dialogue:Dialogue;removed:number}{
  let removed=0,changed=false;
  const without=(items:any[]|undefined,predicate:(item:any)=>boolean)=>{
@@ -439,7 +462,7 @@ export class KnowledgeStore {
  }
  /** Permanently remove only the reviewed withdrawn batches. All dependency
   * checks and writes share one transaction; a started transaction is never replayed. */
- async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined,options:{removeConversationLinks?:boolean}={}){
+ async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined,options:{removeConversationLinks?:boolean;removeActivityLinks?:boolean}={}){
   ({batches,expectedTrash,options}=structuredClone({batches,expectedTrash,options}));
   const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
   return new Promise<PurgeMemoryResult>((resolve,reject)=>{let error:unknown,result:PurgeMemoryResult;
@@ -464,7 +487,7 @@ export class KnowledgeStore {
     const selectedBatchIds=new Set(batches.map(b=>b.id)),allIds=new Set(noteBatch.keys()),retainedBatchIds=new Set<string>();
     const retainedRecovered=()=>batches.filter(batch=>retainedBatchIds.has(batch.id)&&!trash.some(saved=>saved.id===batch.id));
     const collectReferences=(value:any,targets:Set<string>,found:Set<string>,field='')=>{if(referenceProseFields.has(field))return;if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found,field);return;}if(value&&typeof value==='object')for(const [key,item] of Object.entries(value))collectReferences(item,targets,found,key);};
-    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,dialogueLinksRemoved=0,candidate:StateSnapshot;
+    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,dialogueLinksRemoved=0,activityEntriesRemoved=0,activityRunPlan:ReturnType<typeof removeLinkedActivityEntries>|undefined,candidate:StateSnapshot;
     const retentionOwners=new Map<string,Set<string>>(),recordRetentionOwners=(value:unknown,label:string,ownerId?:string)=>{const found=new Set<string>();collectReferences(value,allIds,found);for(const noteId of found){if(noteId===ownerId)continue;const batchId=noteBatch.get(noteId);if(!batchId)continue;const owners=retentionOwners.get(batchId)??new Set<string>();owners.add(label);retentionOwners.set(batchId,owners);}};
     for(;;){
      deletedIds=new Set([...allIds].filter(id=>!retainedBatchIds.has(noteBatch.get(id)!)));
@@ -481,7 +504,8 @@ export class KnowledgeStore {
       if(before.currentFile&&deletedIds.has(before.currentFile.noteId))dialogue=withoutWorkingFile(dialogue??before,before.currentFile);
       if(dialogue?.revision===before.revision)dialogue=undefined;
      }
-     candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:current.runs.filter(r=>!originalKeys.has(r.key))};
+     const remainingRuns=current.runs.filter(r=>!originalKeys.has(r.key));activityRunPlan=options.removeActivityLinks?removeLinkedActivityEntries(remainingRuns,deletedIds,current.settings):undefined;activityEntriesRemoved=activityRunPlan?.removed??0;
+     candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:activityRunPlan?.rows??remainingRuns};
      const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
      for(const note of candidate.notes)recordRetentionOwners(note,notePath(note),note.id);
      for(const entry of candidate.settings){if(entry.key==='ui-v1-trash'){if(Array.isArray(entry.value))for(const batch of entry.value)if(!selectedBatchIds.has(batch.id))recordRetentionOwners(batch,'Another Trash entry');continue;}recordRetentionOwners(entry.value,entry.key==='ui-v1-dialogue'?'Current conversation':'Saved local settings');}
@@ -501,8 +525,9 @@ export class KnowledgeStore {
     try{validateState(candidate);}catch{throw new TrashPurgeError('referenced','Stored data has retained dependencies or cannot be validated');}
     for(const id of deletedIds)tx.objectStore('notes').delete(id);
     for(const key of originalKeys)tx.objectStore('runs').delete(key);
+    if(activityRunPlan){for(const key of activityRunPlan.deletedKeys)tx.objectStore('runs').delete(key);for(const [key,value] of activityRunPlan.replacements)tx.objectStore('runs').put(value,key);}
     tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');
-    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],retainedReferences:[...retainedBatchIds].map(batchId=>({batchId,referencedBy:[...(retentionOwners.get(batchId)??[])].sort()})),...(dialogue?{dialogue}:{}),...(dialogueLinksRemoved?{dialogueLinksRemoved}:{})};
+    result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],retainedReferences:[...retainedBatchIds].map(batchId=>({batchId,referencedBy:[...(retentionOwners.get(batchId)??[])].sort()})),...(dialogue?{dialogue}:{}),...(dialogueLinksRemoved?{dialogueLinksRemoved}:{}),...(activityEntriesRemoved?{activityEntriesRemoved}:{})};
    }catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Permanent deletion failed'));
   });

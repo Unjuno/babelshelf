@@ -1,4 +1,24 @@
-## Current status · 2026-11-15
+## Current status · 2026-11-16
+
+### Audit follow-up · linked local Activity records in Trash
+
+Current-main review found that the permanent-delete dependency check could keep
+a file in Trash when paged turn Activity or media-processing history referenced
+it. There was no user-facing way to remove those specific links. The explicit
+Trash confirmation now offers to remove conversation references and delete
+only linked Activity entries; message text and unrelated Activity remain.
+Paged Activity metadata, pages and indexes are rebuilt together in the same
+IndexedDB transaction. Without that checkbox, the file remains protected.
+
+Local verification on branch `codex/audit-remaining-open`: Memory purge plus
+paged-Activity tests passed 30/30; schedule submission tests passed 108/108;
+Schedule/Trash/Toast browser acceptance passed 22/22, including a regression
+that creates a linked media-processing receipt, sees the retention reason,
+then permanently deletes the file only after explicit confirmation. The test
+also confirms unrelated conversation text and Activity remain. Static checks
+passed and the production shell built with 166 verified assets. Full clean-VM
+GitHub quality CI and public deployment are pending. The auditor's exact
+25-entry Trash fixture remains unmodified and unverified.
 
 ### Current product release verification · PR #101 · Site build eafeda33b3b0360b
 
