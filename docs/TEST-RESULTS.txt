@@ -24,6 +24,15 @@ CI includes scheduled-answer echo rejection and cyclic Trash browser coverage.
 The auditor's external 25-item Trash graph and physical mobile devices were not
 replayed. Main-branch CI also passed all 17 stages in the linked GitHub Actions run.
 
+After the canonical app update, the public Windows/Chrome profile reran the
+existing QA schedule `R12 run test 9 — say hello briefly` through Schedule > Run
+now. The model file verified locally, loaded with GPU 25/25 layers, and
+completed. Execution detail and the generated in-app notification both showed
+`Hello! How can I help you today?`; neither echoed the prompt. The check created
+one manual execution and notification, left the schedule unchanged, and did not
+delete Trash data. This is one real-model prompt/profile, not broad quality or
+mobile evidence.
+
 2026-11-04 — Guard ordinary dialogue from internal tool/source leakage.
 Read-only review of the currently open public app showed old retained QA turns
 with internal tool syntax and source IDs. They were not edited or deleted and

@@ -23,6 +23,14 @@ check did not run a model reply. The existing public browser Trash data was
 left intact. The current model-download byte count was not instrumented during
 the update, so this is not a measured network-transfer comparison.
 
+After that check, the same public build ran the existing QA schedule
+`R12 run test 9 — say hello briefly` using the real selected LFM3 model. It
+verified the saved model, loaded with GPU layers 25/25 and completed a manual
+Run now. The saved execution answer and the corresponding in-app notification
+both read `Hello! How can I help you today?`; neither copied the prompt. This
+is one prompt on one Windows/Chrome profile and does not establish broad answer
+quality. No Trash records were deleted.
+
 The greeting-shaped scheduled-answer fix was exercised on the preceding public
 release with the actual LFM3 model: “say hello briefly” produced “Hello! How can
 I help you today?” with no recovery/fallback echo. The new answer-shape and
