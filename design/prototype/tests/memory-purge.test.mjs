@@ -34,6 +34,22 @@ test('reviewed permanent deletion can remove only the selected file links from c
   assert.ok(!(await store.snapshot()).notes.some(note=>note.id==='one'));
  }finally{store.close();}
 });
+test('Empty Trash can remove a selected group linked from the current conversation without deleting its message text',async()=>{
+ const {s,deleted}=await fixture();
+ try{
+  const second=await s.recoverMemory({kind:'delete',target:{kind:'file',value:'two'},expectedNotes:await s.views(),id:'batch-two',label:'two'},deleted.folders,deleted.trash);
+  const {emptyDialogue,appendTurn}=await import('../src/conversation.ts');
+  const dialogue=appendTurn(emptyDialogue(),{id:'linked-turn',user:'Read both files',answer:'I reviewed the two files.',refs:[
+   {noteId:'one',revision:1,start:0,end:3,quote:'one'},
+   {noteId:'two',revision:1,start:0,end:3,quote:'two'},
+  ],attachments:[{id:'one',name:'one.md',kind:'text',status:'Ready'},{id:'two',name:'two.md',kind:'text',status:'Ready'}]});
+  await mutate(s,'settings','ui-v1-dialogue',dialogue);
+  const result=await s.purgeMemory(second.trash,second.trash,{removeConversationLinks:true});
+  assert.deepEqual(result.trash,[]);assert.deepEqual(result.retainedBatchIds,[]);assert.equal(result.purgedBatchIds.length,2);
+  assert.equal(result.dialogueLinksRemoved,4);assert.equal(result.dialogue.turns[0].user,'Read both files');assert.equal(result.dialogue.turns[0].answer,'I reviewed the two files.');
+  assert.deepEqual(result.dialogue.turns[0].refs,[]);assert.deepEqual(result.dialogue.turns[0].attachments,[]);assert.deepEqual((await s.snapshot()).notes,[]);
+ }finally{s.close();}
+});
 test('removing conversation links preserves activity whose prose only happens to equal a file id',async()=>{
  const {emptyDialogue,appendTurn}=await import('../src/conversation.ts');const store=new KnowledgeStore('purge-activity-prose-'+crypto.randomUUID());await store.initialize(initial);await store.setState('folders',[]);await store.setState('trash',[]);
  try{const dialogue=appendTurn(emptyDialogue(),{id:'turn-id',user:'Review this note',answer:'The source is one.',activity:[{schema:1,id:'activity-id',tool:'knowledge.answer',input:{prompt:'one'},startedAt:'2026-11-14T00:00:00.000Z',status:'succeeded',finishedAt:'2026-11-14T00:00:01.000Z',output:{text:'one'}}]});await mutate(store,'settings','ui-v1-dialogue',dialogue);const deleted=await store.recoverMemory({kind:'delete',target:{kind:'file',value:'one'},expectedNotes:await store.views(),id:'prose-activity-one',label:'one'},await store.getState('folders'),await store.getState('trash'));const result=await store.purgeMemory([deleted.trash[0]],deleted.trash);assert.deepEqual(result.trash,[]);const saved=(await store.snapshot()).settings.find(entry=>entry.key==='ui-v1-dialogue').value;assert.equal(saved.turns[0].activity.length,1);assert.equal(saved.turns[0].activity[0].input.prompt,'one');assert.equal(saved.turns[0].activity[0].output.text,'one');}finally{store.close();}
