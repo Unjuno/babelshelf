@@ -1,3 +1,29 @@
+2026-11-16 — Audit 12 follow-up: publish current main and manage conversations.
+PR #105 merged as `71ea612de85f967ef310a9d6c8f8f89c77919c70`; exact-head GitHub
+quality CI [43742579549](https://github.com/Unjuno/babelshelf/actions/runs/43742579549)
+and merged-main CI [43743853410](https://github.com/Unjuno/babelshelf/actions/runs/43743853410)
+both passed all 17 workflow stages. The PR adds local create/open/rename/delete
+conversation controls, protects unsent drafts, stores each dialogue/activity
+independently and validates backup coverage. Unit, isolated IndexedDB and
+Playwright create/rename/reload/delete regressions are included.
+
+Site version 376 was published from Site-source commit
+`ce26aaa0e162c00ea994a6fddc4fdf0fcc0f3e59` for GitHub main commit
+`71ea612de85f967ef310a9d6c8f8f89c77919c70`. Product app build
+`81d85330289c33b6` contains 166 verified assets; the public browser showed
+bundle `index-CexTAS7m.js` and active worker `81d85330289c33b6` after applying
+Update on the deployment URL and `babelshelf.com`. Site audience remains public.
+Staging/delivery verification passed. The Developer App & storage check showed
+9 ready, 2 need review and 2 not checked; Model reply remained “Not run” in that
+check. This release's update transfer was not instrumented in bytes. No public
+Trash item was permanently deleted.
+
+The preceding public release's real LFM3 schedule test for “say hello briefly”
+returned “Hello! How can I help you today?” with no recovery/prompt echo. Current
+CI includes scheduled-answer echo rejection and cyclic Trash browser coverage.
+The auditor's external 25-item Trash graph and physical mobile devices were not
+replayed. Main-branch CI also passed all 17 stages in the linked GitHub Actions run.
+
 2026-11-04 — Guard ordinary dialogue from internal tool/source leakage.
 Read-only review of the currently open public app showed old retained QA turns
 with internal tool syntax and source IDs. They were not edited or deleted and

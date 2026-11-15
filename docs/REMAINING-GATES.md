@@ -1,5 +1,37 @@
 ## Current status · 2026-11-16
 
+### Audit 12 follow-up · PR #105 · Site version 376
+
+GitHub PR [#105](https://github.com/Unjuno/babelshelf/pull/105) merged to
+`main` as `71ea612de85f967ef310a9d6c8f8f89c77919c70`. Exact-head quality run
+[43742579549](https://github.com/Unjuno/babelshelf/actions/runs/43742579549)
+and merged-main run
+[43743853410](https://github.com/Unjuno/babelshelf/actions/runs/43743853410)
+both passed all 17 stages.
+Conversation management now supports creating, opening, renaming and deleting
+sessions, with unsent-draft protection and independent message/activity storage.
+IndexedDB, backup validation and browser UI coverage were added.
+
+Site version 376 was published from the matching Site-source commit
+`ce26aaa0e162c00ea994a6fddc4fdf0fcc0f3e59`, whose `release-source.json` records
+the exact merged GitHub commit and app build `81d85330289c33b6`. Archive staging
+and delivery verification passed. The side-panel browser on both the deployment
+URL and [https://babelshelf.com](https://babelshelf.com) applied the update and
+showed active worker `81d85330289c33b6` with bundle `index-CexTAS7m.js`.
+Developer App & storage reported 9 ready, 2 need review, 2 not checked; this
+check did not run a model reply. The existing public browser Trash data was
+left intact. The current model-download byte count was not instrumented during
+the update, so this is not a measured network-transfer comparison.
+
+The greeting-shaped scheduled-answer fix was exercised on the preceding public
+release with the actual LFM3 model: “say hello briefly” produced “Hello! How can
+I help you today?” with no recovery/fallback echo. The new answer-shape and
+prompt-echo rejection tests are part of the passing CI. Cyclic Trash reference
+resolution is covered by the browser acceptance test using disposable fixtures;
+the auditor's external 25-item Trash graph was not purged or independently
+replayed. Physical iOS/Android acceptance and broad schedule-answer quality
+remain unverified.
+
 ### Audit follow-up · linked local Activity records in Trash
 
 Current-main review found that the permanent-delete dependency check could keep
