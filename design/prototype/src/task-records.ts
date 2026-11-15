@@ -5,6 +5,7 @@ import {nextScheduleOccurrence,localDate,type ScheduleRule} from './schedule-tim
 import {validateScheduledCalculation} from './scheduled-calculation.ts';
 import type {DecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
 import {isSourceFreeConversationRequest} from './dialogue-planner.ts';
+import {schedulePromptBody} from './scheduled-prompt.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
 export type RunStatus='running'|'succeeded'|'failed'|'stopped'|'missed'|'interrupted'|'skipped';
@@ -111,10 +112,10 @@ export function heartbeatRun(records:any[],runId:string,owner:string,now=new Dat
  // The lease is transport metadata, not a content revision or a source change.
  return {...old,runLease:{owner,until:new Date(+now+90000).toISOString()}};
 }
-function normalizedScheduleText(value:string){return value.normalize('NFKC').replace(/\s+/gu,' ').trim().replace(/[.!?。！？]+$/gu,'').toLowerCase();}
+function normalizedScheduleText(value:string){return value.normalize('NFKC').replace(/^#{1,6}\s*Prompt\s*\n/iu,'').replace(/^Prompt\s*:\s*/iu,'').replace(/\s+/gu,' ').trim().replace(/[.!?。！？]+$/gu,'').toLowerCase();}
 function isSchedulePromptEcho(answer:string,prompt:string){
- const output=answer.trim().replace(/^#{1,6}\s*Prompt\s*\n/iu,'').trim();
- return normalizedScheduleText(output)===normalizedScheduleText(prompt);
+ const output=normalizedScheduleText(answer),savedPrompt=normalizedScheduleText(prompt),modelPrompt=normalizedScheduleText(schedulePromptBody(prompt));
+ return output===savedPrompt||output===modelPrompt;
 }
 export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry'},now=new Date()){
  const old=records.find(n=>n.id===runId&&n.state==='active');if(!old)throw Error('Execution unavailable');const data=taskRunView(old);

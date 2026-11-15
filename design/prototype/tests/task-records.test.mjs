@@ -68,6 +68,10 @@ test('a prompt copied verbatim into a schedule result cannot be recorded as succ
  const finished=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'Hello!',sources:[]},now);
  assert.equal(taskRunView(finished.run).answer,'Hello!');
 });
+test('a labelled audit prompt and its model-facing text are both rejected as copied schedule answers',()=>{
+ const prompt='R12 run test 1 — say hello briefly',note=reviseTaskNote(registered(),{...task,prompt}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
+ for(const answer of ['say hello briefly','## Prompt\nsay hello briefly'])assert.throws(()=>finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer,sources:[]},now),/Could not verify a schedule answer/);
+});
 test('completed one-off can be manually rerun without changing its original occurrence or allowing concurrent owners',()=>{
  const note=registered(),now=new Date(2026,9,20,9),first=claimTaskRun([note],note.id,'owner',now),done=finishTaskRun([note,first.run],first.run.id,'owner',{status:'succeeded',answer:'first',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);
  const before=[done.task,done.run],again=claimTaskRun(before,note.id,'other',now,{manual:true});assert.equal(again.execute,true);assert.notEqual(again.run.id,done.run.id);assert.notEqual(taskRunView(again.run).dueAt,taskRunView(done.run).dueAt);assert.equal(taskRunView(again.run).manualRerun,true);
