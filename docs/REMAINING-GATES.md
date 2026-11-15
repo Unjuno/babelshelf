@@ -1,4 +1,37 @@
-## Current status · 2026-11-14
+## Current status · 2026-11-15
+
+### Audit 12 follow-up · build identity and current public behavior
+
+Audit 12 reported source-free greeting schedules saved as verbatim prompt
+copies, a 24-of-25 Trash purge refusal involving conversation and Trash
+references, and a model/runtime redownload plus failed Run now after reload.
+The audited identity was worker `4916f688e797d4db` / bundle
+`index-CrmAZHu2.js`. A direct public manifest check on 2026-11-15 returned
+worker/build `8be9cde074f77d53`, so these are not the same build and the
+audit observations must not be attributed to the currently served shell.
+
+On the current public build, the local scheduled-answer route rejects
+`verbatim-source` recovery instead of marking a copied prompt as success. A
+real `say hello briefly` run after a fresh page reload automatically loaded
+the selected text model and completed; its execution detail contained
+`Hello! How can I help you today?`. The model/runtime files remained present
+after the prior in-app update and Quick model check. This is direct evidence
+for that browser profile and prompt, not all greeting shapes, browsers, or
+storage conditions.
+
+Trash purge logic and regression tests support deleting selected linked
+groups together, and the confirmation offers removal of selected-file links
+from conversation history while retaining message text. The audit's exact
+24-record browser graph was not inspected or mutated; do not permanently
+delete real user records to infer its dependencies. A synthetic cycle or
+conversation-linked purge must be tested with disposable fixtures before
+claiming the observed graph is resolvable.
+
+The current candidate adds a first-use explanation in the empty chat, including
+the selected model's size and a direct route to the full setup estimate before
+download. Generation-stage progress, raw developer diagnostics, conversation
+management, and UI consistency remain open. Browser-based Chromium/WebKit
+coverage passed; no physical iPhone or Android device was tested.
 
 ### Audit eleven scheduled answer routing
 

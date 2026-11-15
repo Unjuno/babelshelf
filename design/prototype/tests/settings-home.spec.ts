@@ -1,5 +1,12 @@
 import {expect,test} from '@playwright/test';
 
+test('first-use chat explains local setup and shows the model download estimate',async({page})=>{
+ await page.goto('/');const welcome=page.getByRole('region',{name:'Welcome to BabelShelf',exact:true});
+ await expect(welcome).toBeVisible();await expect(welcome).toContainText('saved files stay in this browser');await expect(welcome).toContainText('runs on this device');
+ await expect(welcome.getByRole('button')).toBeVisible();await welcome.getByRole('button').click();const prep=page.getByRole('dialog',{name:'Initial preparation'});
+ await expect(prep).toBeVisible();await expect(prep).toContainText('Estimated assets');await expect(prep).toContainText('1049.6 MB');
+});
+
 test('reload retains a secondary page and its settings section with the app controls',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
  await page.reload();await expect(page.getByRole('heading',{name:'Models',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Update app',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^(Online|Offline) · Tap to switch/})).toBeVisible();
