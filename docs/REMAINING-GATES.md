@@ -1,13 +1,15 @@
 ## Current status · 2026-11-15
 
-### Current release verification · main 07a780c8 · Site build ca4983cf208c66a4
+### Current release verification · main 85a32c91 · Site build ca4983cf208c66a4
 
-Current `main` is `07a780c8c9688472eaf0941fad35c146b293d317`; exact-head PR #95
-quality CI [43691683830](https://github.com/Unjuno/babelshelf/actions/runs/43691683830)
-passed. Product code remains PR #92 at
+Current `main` is `85a32c910630558751c219ea9cff83a6eccac746`; docs follow-up PR #96
+passed exact-head Local PWA quality CI
+[43694165176](https://github.com/Unjuno/babelshelf/actions/runs/43694165176)
+before merge. The product-code baseline remains PR #92 at
 `ab8c85add9e7b736e959752a8f86793b6e35a584`, with merged-main quality CI
 [43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
-passing. The public Site manifest returns HTTP 200 and build
+passing; PR #95 also passed exact-head CI [43691683830](https://github.com/Unjuno/babelshelf/actions/runs/43691683830).
+PR #96 changes documentation only, so no product redeployment was made. The public Site manifest returns HTTP 200 and build
 `ca4983cf208c66a4` / 166 assets. The report below describes that release; older
 historical status sections are superseded by the dated evidence at the end of
 `TEST-RESULTS.txt`.
