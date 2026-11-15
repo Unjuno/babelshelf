@@ -37,7 +37,8 @@ import type {StateSnapshot,RestoreMode} from './backup-state.ts';
 import {validateState} from './backup-state.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
-import {validateDialogue,type Dialogue} from './conversation.ts';
+import {validateDialogue,emptyDialogue,type Dialogue} from './conversation.ts';
+import {createConversationSession,switchConversationSession,renameConversationSession,deleteConversationSession,validateConversationSessions,CONVERSATION_SESSIONS_KEY,conversationDialogueKey,isConversationDialogueKey,type ConversationSessions} from './conversation-sessions.ts';
 import {withoutWorkingFile} from './working-file.ts';
 export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
@@ -487,7 +488,7 @@ export class KnowledgeStore {
     const selectedBatchIds=new Set(batches.map(b=>b.id)),allIds=new Set(noteBatch.keys()),retainedBatchIds=new Set<string>();
     const retainedRecovered=()=>batches.filter(batch=>retainedBatchIds.has(batch.id)&&!trash.some(saved=>saved.id===batch.id));
     const collectReferences=(value:any,targets:Set<string>,found:Set<string>,field='')=>{if(referenceProseFields.has(field))return;if(typeof value==='string'){if(targets.has(value))found.add(value);return;}if(Array.isArray(value)){for(const item of value)collectReferences(item,targets,found,field);return;}if(value&&typeof value==='object')for(const [key,item] of Object.entries(value))collectReferences(item,targets,found,key);};
-    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,dialogueLinksRemoved=0,activityEntriesRemoved=0,activityRunPlan:ReturnType<typeof removeLinkedActivityEntries>|undefined,candidate:StateSnapshot;
+    let deletedIds=new Set<string>(),deletedBatchIds=new Set<string>(),nextTrash:RecoveryBatch[]=[],originalKeys=new Set<string>(),dialogue:Dialogue|undefined,dialogueUpdates=new Map<string,Dialogue>(),dialogueLinksRemoved=0,activityEntriesRemoved=0,activityRunPlan:ReturnType<typeof removeLinkedActivityEntries>|undefined,candidate:StateSnapshot;
     const retentionOwners=new Map<string,Set<string>>(),recordRetentionOwners=(value:unknown,label:string,ownerId?:string)=>{const found=new Set<string>();collectReferences(value,allIds,found);for(const noteId of found){if(noteId===ownerId)continue;const batchId=noteBatch.get(noteId);if(!batchId)continue;const owners=retentionOwners.get(batchId)??new Set<string>();owners.add(label);retentionOwners.set(batchId,owners);}};
     for(;;){
      deletedIds=new Set([...allIds].filter(id=>!retainedBatchIds.has(noteBatch.get(id)!)));
@@ -495,20 +496,18 @@ export class KnowledgeStore {
      const recovered=retainedRecovered();
      nextTrash=[...trash.filter(batch=>!deletedBatchIds.has(batch.id)),...recovered];
      originalKeys=new Set(current.notes.filter(note=>deletedIds.has(note.id)&&note.originalAsset).map(note=>originalKey(note.id)));
-     const dialogueEntry=current.settings.find(s=>s.key==='ui-v1-dialogue');dialogue=undefined;dialogueLinksRemoved=0;
-     if(dialogueEntry?.value){
-      const before=validateDialogue(dialogueEntry.value);
-      if(options.removeConversationLinks){
-       const clean=withoutDeletedConversationLinks(before,deletedIds);dialogue=clean.dialogue;dialogueLinksRemoved=clean.removed;
-      }
-      if(before.currentFile&&deletedIds.has(before.currentFile.noteId))dialogue=withoutWorkingFile(dialogue??before,before.currentFile);
-      if(dialogue?.revision===before.revision)dialogue=undefined;
+     dialogue=undefined;dialogueUpdates=new Map();dialogueLinksRemoved=0;
+     for(const entry of current.settings)if(entry.key==='ui-v1-dialogue'||isConversationDialogueKey(entry.key)){
+      const before=validateDialogue(entry.value);let next=before;
+      if(options.removeConversationLinks){const clean=withoutDeletedConversationLinks(next,deletedIds);next=clean.dialogue;dialogueLinksRemoved+=clean.removed;}
+      if(before.currentFile&&deletedIds.has(before.currentFile.noteId))next=withoutWorkingFile(next,before.currentFile);
+      if(next.revision!==before.revision){dialogueUpdates.set(entry.key,next);if(entry.key==='ui-v1-dialogue')dialogue=next;}
      }
      const remainingRuns=current.runs.filter(r=>!originalKeys.has(r.key));activityRunPlan=options.removeActivityLinks?removeLinkedActivityEntries(remainingRuns,deletedIds,current.settings):undefined;activityEntriesRemoved=activityRunPlan?.removed??0;
-     candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>s.key==='ui-v1-dialogue'&&dialogue?{...s,value:dialogue}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:activityRunPlan?.rows??remainingRuns};
+     candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>dialogueUpdates.has(s.key)?{...s,value:dialogueUpdates.get(s.key)}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:activityRunPlan?.rows??remainingRuns};
      const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
      for(const note of candidate.notes)recordRetentionOwners(note,notePath(note),note.id);
-     for(const entry of candidate.settings){if(entry.key==='ui-v1-trash'){if(Array.isArray(entry.value))for(const batch of entry.value)if(!selectedBatchIds.has(batch.id))recordRetentionOwners(batch,'Another Trash entry');continue;}recordRetentionOwners(entry.value,entry.key==='ui-v1-dialogue'?'Current conversation':'Saved local settings');}
+     for(const entry of candidate.settings){if(entry.key==='ui-v1-trash'){if(Array.isArray(entry.value))for(const batch of entry.value)if(!selectedBatchIds.has(batch.id))recordRetentionOwners(batch,'Another Trash entry');continue;}recordRetentionOwners(entry.value,entry.key==='ui-v1-dialogue'?'Current conversation':isConversationDialogueKey(entry.key)?'Conversation history':'Saved local settings');}
      for(const entry of candidate.runs)recordRetentionOwners(entry.value,'Local activity data');
      // Execution and notification links live inside versioned JSON bodies.
      // Decode only these canonical record types; ordinary user text must not
@@ -526,7 +525,7 @@ export class KnowledgeStore {
     for(const id of deletedIds)tx.objectStore('notes').delete(id);
     for(const key of originalKeys)tx.objectStore('runs').delete(key);
     if(activityRunPlan){for(const key of activityRunPlan.deletedKeys)tx.objectStore('runs').delete(key);for(const [key,value] of activityRunPlan.replacements)tx.objectStore('runs').put(value,key);}
-    tx.objectStore('settings').put(nextTrash,'ui-v1-trash');if(dialogue)tx.objectStore('settings').put(dialogue,'ui-v1-dialogue');
+    tx.objectStore('settings').put(nextTrash,'ui-v1-trash');for(const [key,value] of dialogueUpdates)tx.objectStore('settings').put(value,key);
     result={trash:nextTrash,purgedBatchIds:[...deletedBatchIds],retainedBatchIds:[...retainedBatchIds],retainedReferences:[...retainedBatchIds].map(batchId=>({batchId,referencedBy:[...(retentionOwners.get(batchId)??[])].sort()})),...(dialogue?{dialogue}:{}),...(dialogueLinksRemoved?{dialogueLinksRemoved}:{}),...(activityEntriesRemoved?{activityEntriesRemoved}:{})};
    }catch(e){error=e;tx.abort();}});
    tx.oncomplete=()=>resolve(result);tx.onabort=tx.onerror=()=>reject(error??tx.error??Error('Permanent deletion failed'));
@@ -540,6 +539,63 @@ export class KnowledgeStore {
   });
  }
  async getState<T>(key:string):Promise<T|undefined>{return this.transaction(['settings'],'readonly',(tx,done)=>{const q=tx.objectStore('settings').get('ui-v1-'+key);q.onsuccess=()=>done(q.result);});}
+ async ensureConversationSessions(now=new Date().toISOString()):Promise<ConversationSessions>{
+  return this.transaction<ConversationSessions>(['settings'],'readwrite',(tx,done,fail)=>{
+   const settings=tx.objectStore('settings'),saved=settings.get(CONVERSATION_SESSIONS_KEY),keys=settings.getAllKeys(),active=settings.get('ui-v1-dialogue');let pending=3;
+   const commit=()=>{if(--pending)return;try{if(saved.result){const sessions=validateConversationSessions(saved.result);if(!active.result)throw Error('Active conversation data unavailable');validateDialogue(active.result);done(sessions);return;}
+    if(keys.result.some(key=>typeof key==='string'&&isConversationDialogueKey(key)))throw Error('Unindexed conversation session data');
+    const initial:ConversationSessions={schema:1,activeId:'legacy',sessions:[{id:'legacy',name:'Conversation 1',createdAt:now,updatedAt:now}]};
+    validateConversationSessions(initial);if(active.result)validateDialogue(active.result);else settings.put(emptyDialogue(),'ui-v1-dialogue');settings.put(initial,CONVERSATION_SESSIONS_KEY);done(initial);
+   }catch(error){fail(error);}};
+   saved.onsuccess=keys.onsuccess=active.onsuccess=commit;
+   saved.onerror=keys.onerror=active.onerror=()=>fail(Error('Conversation list unavailable'));
+  });
+ }
+ async createConversation(id:string,now:string,expected:ConversationSessions,before:Dialogue):Promise<{sessions:ConversationSessions;dialogue:Dialogue}>{
+  expected=structuredClone(expected);before=structuredClone(before);validateConversationSessions(expected);validateDialogue(before);
+  return this.transaction<{sessions:ConversationSessions;dialogue:Dialogue}>(['settings'],'readwrite',(tx,done,fail)=>{
+   const settings=tx.objectStore('settings'),index=settings.get(CONVERSATION_SESSIONS_KEY),current=settings.get('ui-v1-dialogue');let pending=2;
+   const commit=()=>{if(--pending)return;try{if(!equal(index.result,expected)||!equal(current.result,before))throw Error('Conversation changed in another tab · reopen to continue');
+    const next=createConversationSession(expected,id,now);settings.put(before,conversationDialogueKey(expected.activeId));settings.put(emptyDialogue(),'ui-v1-dialogue');settings.put(next,CONVERSATION_SESSIONS_KEY);done({sessions:next,dialogue:emptyDialogue()});
+   }catch(error){fail(error);}};
+   index.onsuccess=commit;current.onsuccess=commit;index.onerror=current.onerror=()=>fail(Error('Conversation state unavailable'));
+  });
+ }
+ async switchConversation(id:string,now:string,expected:ConversationSessions,before:Dialogue):Promise<{sessions:ConversationSessions;dialogue:Dialogue}>{
+  expected=structuredClone(expected);before=structuredClone(before);validateConversationSessions(expected);validateDialogue(before);
+  if(id===expected.activeId)return {sessions:expected,dialogue:before};
+  return this.transaction<{sessions:ConversationSessions;dialogue:Dialogue}>(['settings'],'readwrite',(tx,done,fail)=>{
+   const settings=tx.objectStore('settings'),index=settings.get(CONVERSATION_SESSIONS_KEY),current=settings.get('ui-v1-dialogue'),target=settings.get(conversationDialogueKey(id));let pending=3;
+   const commit=()=>{if(--pending)return;try{if(!equal(index.result,expected)||!equal(current.result,before))throw Error('Conversation changed in another tab · reopen to continue');
+    const next=switchConversationSession(expected,id);const targetDialogue=target.result?validateDialogue(target.result):emptyDialogue();
+    const sessions:ConversationSessions={...next,sessions:next.sessions.map(item=>item.id===id?{...item,updatedAt:now}:item)};validateConversationSessions(sessions);
+    settings.put(before,conversationDialogueKey(expected.activeId));if(target.result)settings.delete(conversationDialogueKey(id));settings.put(targetDialogue,'ui-v1-dialogue');settings.put(sessions,CONVERSATION_SESSIONS_KEY);done({sessions,dialogue:targetDialogue});
+   }catch(error){fail(error);}};
+   index.onsuccess=commit;current.onsuccess=commit;target.onsuccess=commit;index.onerror=current.onerror=target.onerror=()=>fail(Error('Conversation state unavailable'));
+  });
+ }
+ async renameConversation(id:string,name:string,now:string,expected:ConversationSessions):Promise<ConversationSessions>{
+  expected=structuredClone(expected);validateConversationSessions(expected);
+  return this.transaction<ConversationSessions>(['settings'],'readwrite',(tx,done,fail)=>{const settings=tx.objectStore('settings'),index=settings.get(CONVERSATION_SESSIONS_KEY);index.onsuccess=()=>{try{if(!equal(index.result,expected))throw Error('Conversation list changed in another tab · reopen to continue');const next=renameConversationSession(expected,id,name,now);settings.put(next,CONVERSATION_SESSIONS_KEY);done(next);}catch(error){fail(error);}};index.onerror=()=>fail(Error('Conversation list unavailable'));});
+ }
+ async deleteConversation(id:string,replacementId:string|undefined,expected:ConversationSessions,before:Dialogue):Promise<{sessions:ConversationSessions;dialogue:Dialogue}>{
+  expected=structuredClone(expected);before=structuredClone(before);validateConversationSessions(expected);validateDialogue(before);
+  return this.transaction<{sessions:ConversationSessions;dialogue:Dialogue}>(['settings','runs'],'readwrite',(tx,done,fail)=>{
+   const settings=tx.objectStore('settings'),runs=tx.objectStore('runs'),index=settings.get(CONVERSATION_SESSIONS_KEY),current=settings.get('ui-v1-dialogue'),target=settings.get(conversationDialogueKey(id)),runKeys=runs.getAllKeys(),runValues=runs.getAll();let pending=5;
+   const commit=()=>{if(--pending)return;try{
+    if(!equal(index.result,expected)||!equal(current.result,before))throw Error('Conversation changed in another tab · reopen to continue');
+    const removedDialogue=id===expected.activeId?before:target.result?validateDialogue(target.result):emptyDialogue(),turnIds=new Set(removedDialogue.turns.map(turn=>turn.id));
+    const discardActivity=()=>{for(let i=0;i<runKeys.result.length;i++){const value=runValues.result[i];if(turnIds.has(value?.turnId)&&['turn-activity-meta','turn-activity-page','turn-activity-index'].includes(value?.type))runs.delete(runKeys.result[i]);}};
+    if(id===expected.activeId){if(expected.sessions.length===1)throw Error('Create another conversation before deleting the last conversation');if(!replacementId)throw Error('Choose another conversation first');const replacement=settings.get(conversationDialogueKey(replacementId));replacement.onsuccess=()=>{try{
+      const targetDialogue=replacement.result?validateDialogue(replacement.result):emptyDialogue(),next=deleteConversationSession(expected,id,replacementId),sessions:ConversationSessions={...next,sessions:next.sessions.map(item=>item.id===replacementId?{...item,updatedAt:new Date().toISOString()}:item)};validateConversationSessions(sessions);
+      discardActivity();settings.delete(conversationDialogueKey(replacementId));settings.put(targetDialogue,'ui-v1-dialogue');settings.put(sessions,CONVERSATION_SESSIONS_KEY);done({sessions,dialogue:targetDialogue});
+     }catch(error){fail(error);}};replacement.onerror=()=>fail(Error('Replacement conversation unavailable'));}
+    else{const next=deleteConversationSession(expected,id);discardActivity();settings.delete(conversationDialogueKey(id));settings.put(next,CONVERSATION_SESSIONS_KEY);done({sessions:next,dialogue:before});}
+   }catch(error){fail(error);}};
+   index.onsuccess=current.onsuccess=target.onsuccess=runKeys.onsuccess=runValues.onsuccess=commit;
+   index.onerror=current.onerror=target.onerror=runKeys.onerror=runValues.onerror=()=>fail(Error('Conversation state unavailable'));
+  });
+ }
  async setState(key:string,value:unknown){value=structuredClone(value);return this.transaction<void>(['settings'],'readwrite',(tx,done)=>{tx.objectStore('settings').put(value,'ui-v1-'+key);done();});}
  async compareState(key:string,before:unknown,next:unknown){
   ({before,next}=structuredClone({before,next}));

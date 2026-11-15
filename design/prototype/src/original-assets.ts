@@ -62,5 +62,5 @@ export function validateOriginalLinks(notes:any[],settings:{key:string;value:any
  for(const n of notes)if(n.originalAsset){const asset=check(n.originalAsset);if(n.id!==asset.id)throw Error('Original note identity invalid');
   const original=originalNote(asset);if(JSON.stringify(n.attachmentText)!==JSON.stringify(original.attachmentText)||n.revisions[0].body!==original.revisions[0].body)throw Error('Original text provenance invalid');
  }
- for(const {key,value} of settings)if(key==='ui-v1-dialogue')for(const turn of value.turns??[])for(const a of turn.attachments??[])if(a.asset){const original=check(a.asset);if(a.id!==original.id||a.name!==original.name||a.kind!==original.kind)throw Error('Attachment identity invalid');}
+ for(const {key,value} of settings)if(key==='ui-v1-dialogue'||key.startsWith('ui-v1-conversation:'))for(const turn of value.turns??[])for(const a of turn.attachments??[])if(a.asset){const original=check(a.asset);if(a.id!==original.id||a.name!==original.name||a.kind!==original.kind)throw Error('Attachment identity invalid');}
 }
