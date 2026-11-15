@@ -1,13 +1,49 @@
 ## Current status · 2026-11-15
 
+### Current release verification · main f1431699 · Site build ca4983cf208c66a4
+
+Current `main` is `f1431699ed6bfa1711e53220625a9dde277fe53c`; exact-head PR #94
+quality CI [43688871845](https://github.com/Unjuno/babelshelf/actions/runs/43688871845)
+passed. Product code remains PR #92 at
+`ab8c85add9e7b736e959752a8f86793b6e35a584`, with merged-main quality CI
+[43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
+passing. The public Site manifest returns HTTP 200 and build
+`ca4983cf208c66a4` / 166 assets. The report below describes that release; older
+historical status sections are superseded by the dated evidence at the end of
+`TEST-RESULTS.txt`.
+
+On 2026-11-15, the side-panel browser ran the Audit 12 labelled prompt
+`R12 run test 1 — say hello briefly` through Schedule > Run now using the actual
+LFM3 1.7B QAD Q4_0 model on GPU. The run succeeded with
+`Hello! How can I help you today?`; its execution receipt had no
+`recovery`/`recoveryReason`, one measured model call, 289 prompt tokens, 10
+output tokens and about 1.5 seconds generation wall time. This directly checks
+the reported greeting/answer-shape case on the current public build. The
+verification-only schedule was soft-deleted to recoverable Trash; its
+execution record and notification remain linked there. No existing entry was
+permanently deleted.
+
+The same live browser retained its loaded model and prepared runtime after the
+explicit Update check; the reported approximately 1 GB transfer was not
+reproduced in this profile. Do not generalize that result to the auditor's
+separate profile. The exact 25-entry Trash graph, physical iPhone/Android
+behavior, and broad schedule-answer quality remain unverified. Conversation
+creation/rename/delete controls are outside the accepted product spec (which
+explicitly defines one conversation and no New chat), not a release gate.
+
+The fresh local `npm run test:quality` run on 2026-11-15 exited 0 after the
+final Installed PWA stage. It included 2,049 root tests and the full product,
+browser, WebKit, update, offline and PWA gates. This does not replace physical
+device acceptance or the unavailable external Trash fixture.
+
 ### Audit 12 follow-up · PR #92 · Site build ca4983cf208c66a4
 
-Audit 12 targeted worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` and
+The external audit targeted worker `4916f688e797d4db` / bundle `index-CrmAZHu2.js` and
 reported prompt-echo schedule success, Trash dependency cycles and a model
 readiness regression after update/reload. Current `main` is
-`4d0da6d93e7f7dde466a5e29b02b0a5ce2968322` (PR #93's documentation-only
-follow-up); its exact-head GitHub quality CI
-[43687026066](https://github.com/Unjuno/babelshelf/actions/runs/43687026066)
+`f1431699ed6bfa1711e53220625a9dde277fe53c` after PRs #93–#94's
+documentation-only follow-ups; PR #94's exact-head GitHub quality CI
+[43688871845](https://github.com/Unjuno/babelshelf/actions/runs/43688871845)
 passed all 17 stages. The product fixes are in PR #92 at
 `ab8c85add9e7b736e959752a8f86793b6e35a584`; its merged-main quality CI
 [43683314412](https://github.com/Unjuno/babelshelf/actions/runs/43683314412)
