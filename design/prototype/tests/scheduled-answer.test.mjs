@@ -20,6 +20,15 @@ test('numbered run-test greeting labels are metadata, so schedule output is gene
  const result=await executeScheduledAnswer({store,models:{text:async()=>{loads++;return engine;}}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
  assert.equal(result.answer,'Hello!');assert.deepEqual(result.sources,[]);assert.equal(generations,1);assert.equal(loads,1);assert.equal(isSourceFreeConversationRequest(prompt),true);
 });
+test('lettered audit run labels are stripped before classifying and answering a greeting',async()=>{
+ for(const prompt of ['Run A — say hello briefly','R12 Run A: say hello briefly']){
+  let generations=0;
+  const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{generations++;assert.equal(format,'prose');assert.match(messages.at(-1).content,/say hello briefly/i);assert.doesNotMatch(messages.at(-1).content,/Run A/i);return {text:'Hello!',finishReason:'stop',outputTokens:2};}};
+  const store={all:async()=>{throw Error('A labelled source-free schedule must not read Memory');},search:async()=>{throw Error('A labelled source-free schedule must not search Memory');}};
+  const result=await executeScheduledAnswer({store,models:{text:async()=>engine}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
+  assert.equal(result.answer,'Hello!');assert.deepEqual(result.sources,[]);assert.equal(generations,1);
+ }
+});
 test('run labels do not hide knowledge requests or arbitrary prefixed instructions',()=>{
  assert.equal(isSourceFreeConversationRequest('R11 run test 1 — What time does the workshop start?'),false);
  assert.equal(isSourceFreeConversationRequest('R11 — summarize my saved notes'),false);

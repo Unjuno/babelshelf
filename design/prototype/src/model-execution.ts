@@ -18,12 +18,20 @@ export function createModelExecutionManager<D extends Decision>(ports:{text:Text
   if(!ports.text.assets[model]?.filesPresent)throw new ModelPreparationRequired('model-files','Model not prepared · Settings');
   return model;
  };
+ const ensureTextAvailable=async(model:string|undefined,check:()=>void)=>{
+  try{return requireText(model);}catch(error){
+   if(!(error instanceof ModelPreparationRequired)||error.reason!=='model-files'||!model||!ports.text.refreshStatus)throw error;
+   // A reload may leave the first in-memory asset snapshot stale. Recheck local
+   // status once before reporting that already-prepared model files are missing.
+   await ports.text.refreshStatus();check();return requireText(model);
+  }
+ };
  const ensureTextRuntime=async(selected:string,allowNetwork:boolean)=>{
   const role=runtimeRoleForModelEngine((ports.text.manifest.models.find(item=>item.id===selected) as {engine?:string}|undefined)?.engine);
   if(role)await ports.ensureRuntime(role,allowNetwork);
  };
  const loadText=async(model:string|undefined,check:()=>void,options:{allowNetwork?:boolean}={},runtimeReady=false)=>{
-  check();const selected=requireText(model);
+  check();const selected=await ensureTextAvailable(model,check);
   if(!runtimeReady)await ensureTextRuntime(selected,options.allowNetwork===true);
   check();const metrics=safeRuntimeLoadMetrics(await ports.text.load(selected));check();if(ports.text.loaded!==selected)throw Error('Text model did not load');return {loaded:selected,...(metrics?{metrics}:{})};
  };
@@ -34,7 +42,7 @@ export function createModelExecutionManager<D extends Decision>(ports:{text:Text
   },
   async text(model:string|undefined,check:()=>void,load:(work:()=>Promise<{loaded:string}>)=>Promise<unknown>=work=>work()):Promise<TextRuntime>{
    let runtimeReady=false;
-   check();if(!model||ports.text.loaded!==model)requireText(model);
+   check();if(!model||ports.text.loaded!==model)await ensureTextAvailable(model,check);
    if(model&&ports.text.loaded!==model){await ensureTextRuntime(model,false);runtimeReady=true;check();requireText(model);}
    await releaseIdleInference([ports.decision],check);check();
    if(ports.text.loaded!==model)await load(()=>loadText(model,check,{},runtimeReady));
