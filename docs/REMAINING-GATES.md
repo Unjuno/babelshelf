@@ -1,4 +1,49 @@
-## Current status · 2026-11-16
+## Current status · 2026-11-17
+
+### Audit 13 follow-up · PR #106 · Site version 377
+
+PR [#106](https://github.com/Unjuno/babelshelf/pull/106) merged to `main` as
+`ab855107c476ea8716a90621d31c2bb86bbbcfea`. Exact-head quality run
+[43897947297](https://github.com/Unjuno/babelshelf/actions/runs/43897947297)
+and merged-main run
+[43900922784](https://github.com/Unjuno/babelshelf/actions/runs/43900922784)
+passed all 17 stages.
+
+Update now explains that app-shell refresh is separate from model acquisition,
+asks before applying an update, and reports the selected model size if its
+files are missing. The explicit model-preparation flow also warns before
+fetching missing weights. Permanent deletion can remove only the selected
+schedule's linked execution and notification records as one reviewed group;
+it refuses an active run and leaves unrelated records alone. Failed scheduled
+answers retain a bounded diagnostic (stage, reason, candidate, model and
+inference metrics); rejected echoes are not reported as successful answers,
+and retries keep prior attempt summaries. A successful local model load clears
+the stale “Model not prepared” task error.
+
+Site version 377 is live at [https://babelshelf.com](https://babelshelf.com).
+Its Site-source commit is `e8129d3629dac7716a13afa22c60e51590aa54f5`; the
+release manifest pins product main `ab855107c476ea8716a90621d31c2bb86bbbcfea`
+and app build `b8a7e77bba9539e3` (166 verified assets). Staging and delivery
+verification passed, including the worker's WASM gzip/identity responses and
+mutable-shell cache policy. The public `/build.json` and home page returned the
+new build. In the existing side-panel browser, the app updated to Active worker
+`b8a7e77bba9539e3` / bundle `index-DVv_Rp-j.js`; selected LFM3 files still read
+`Files present` and its runtime `Prepared`. This was not a byte-level network
+capture, so the earlier approximate 1 GB report was not directly measured.
+
+After releasing, the existing `R12 run test 9 — say hello briefly` QA schedule
+was run with the real local LFM3 model. The first manual attempt correctly
+reported that the model was active in another BabelShelf tab; after unloading
+it there, retry verified the model and completed with
+`Hello! How can I help you today?`, not a prompt echo. This is one Windows / Chrome
+profile result, not broad schedule-quality or physical-phone evidence. The
+profile now contains one failed record from the cross-tab conflict and one new
+successful manual run plus their notifications; they were left intact. The
+previous model was unloaded and remains unloaded in that second tab. No Trash
+records were changed. The auditor's exact 25-item dependency graph was not
+purged or replayed; linked schedule/run/notification deletion and active-run
+refusal are covered with isolated fixtures in CI. Physical iOS/Android
+acceptance remains open.
 
 ### Audit 12 follow-up · PR #105 · Site version 376
 
