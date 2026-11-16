@@ -12,6 +12,7 @@ for(const action of ['type','offline'] as const)test(`working during app update:
  });
  await openApp(page);
  await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
+ page.on('dialog',dialog=>void dialog.accept());
  await page.getByRole('button',{name:'Update app'}).click();
  await page.waitForFunction(()=>typeof (window as any).__releaseUpdate==='function');
  await expect(page.getByRole('button',{name:'Update app'})).toHaveText('Updating…');
@@ -309,6 +310,7 @@ test('explicit online update retries a missing app registration',async({page})=>
  });
  await openApp(page);await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).__registrationAttempts)).toBe(1);
+ page.on('dialog',dialog=>void dialog.accept());
  await page.getByRole('button',{name:'Update app'}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).__registrationAttempts)).toBe(2);
  await expect(page.getByRole('status').filter({hasText:'App prepared · update again to reopen'})).toBeVisible();
@@ -331,6 +333,14 @@ test('chat exposes an explicit app refresh beside the online/offline control',as
  await expect(refresh).toBeEnabled();await expect(refresh).not.toHaveAttribute('data-blocked','true');
  expect(await page.evaluate(()=>sessionStorage.getItem('babelshelf.composer-draft.v1'))).toBe('Keep this unsent note');
  await page.reload();await expect(message).toHaveValue('Keep this unsent note',{timeout:30_000});
+});
+
+test('app refresh explains that locally prepared model files are separate before updating',async({page})=>{
+ await page.addInitScript(()=>{(window as any).__confirmMessage='';window.confirm=(message:string)=>{(window as any).__confirmMessage=message;return false;};});
+ await openApp(page);await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();await expect(page.getByRole('button',{name:'Online · Tap to switch Offline'})).toBeVisible();await page.waitForFunction(()=>navigator.serviceWorker.getRegistration().then(Boolean));
+ const refresh=page.getByRole('button',{name:'Update app'});await expect(refresh).toBeEnabled();await expect(refresh).not.toHaveAttribute('data-blocked','true',{timeout:30_000});await refresh.click();await expect.poll(()=>page.evaluate(()=>(window as any).__confirmMessage)).not.toBe('');const message=await page.evaluate(()=>(window as any).__confirmMessage as string);
+ expect(message).toContain('Check for and apply the BabelShelf app update or repair');expect(message).toContain('Selected model files are currently missing (1049.6 MB)');expect(message).toContain('Updating the app does not fetch model files');expect(message).toContain('ask before downloading them');
+ await expect(refresh).toContainText('Update');await expect(page.getByRole('heading',{name:'BabelShelf'})).toBeVisible();
 });
 
 test('app refresh is available online and blocked while a draft could be lost',async({page})=>{

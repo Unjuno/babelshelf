@@ -396,7 +396,7 @@ export class KnowledgeStore {
  });}
  async heartbeat(runId:string,owner:string){return this.editRecords(records=>({put:[heartbeatRun(records,runId,owner)],value:true}));}
  async skipRun(taskId:string,owner:string){return this.editRecords(records=>{const result=skipTaskRun(records,taskId,owner),notice=taskNotice(result.task,result.run);return {put:[result.task,result.run,...(notice?[notice]:[])],value:projectNote(result.run)};});}
- async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:import('./task-records.ts').RunData['calculation'];model?:import('./task-records.ts').RunData['model']},now=new Date()){return this.editRecords(records=>{
+ async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:import('./task-records.ts').RunData['calculation'];model?:import('./task-records.ts').RunData['model'];diagnostic?:import('./task-records.ts').RunData['diagnostic']},now=new Date()){return this.editRecords(records=>{
   const completed=finishTaskRun(records,runId,owner,result,now),notice=taskNotice(completed.task,completed.run);
   return {put:[completed.task,completed.run,...(notice?[notice]:[])],value:projectNote(completed.run)};
  });}
@@ -493,8 +493,18 @@ export class KnowledgeStore {
     for(;;){
      deletedIds=new Set([...allIds].filter(id=>!retainedBatchIds.has(noteBatch.get(id)!)));
      deletedBatchIds=new Set([...selectedBatchIds].filter(id=>!retainedBatchIds.has(id)));
+     const linkedActivityNoteIds=new Set<string>();
+     if(options.removeActivityLinks){
+      for(const note of current.notes)if(deletedIds.has(note.id)&&note.ui?.recordType==='execution'&&taskRunView(note).status==='running')throw new TrashPurgeError('referenced','Stop scheduled work before deleting its linked records');
+      let changed=true;while(changed){changed=false;for(const note of current.notes){if(deletedIds.has(note.id)||linkedActivityNoteIds.has(note.id)||!['execution','notification'].includes(note.ui?.recordType))continue;
+       const read=note.ui.recordType==='execution'?taskRunView:noticeView;let linked=false;
+       for(const revision of note.revisions){const view=read({...note,revisions:[revision]}),found=new Set<string>();collectReferences(view,deletedIds,found);if(found.size){linked=true;break;}}
+       if(linked){if(note.ui.recordType==='execution'&&taskRunView(note).status==='running')throw new TrashPurgeError('referenced','Stop scheduled work before deleting its linked records');linkedActivityNoteIds.add(note.id);deletedIds.add(note.id);changed=true;}
+      }}
+     }
+     for(const batch of trash){if(batch.notes.every(note=>deletedIds.has(note.id))&&!batch.folders.length)deletedBatchIds.add(batch.id);}
      const recovered=retainedRecovered();
-     nextTrash=[...trash.filter(batch=>!deletedBatchIds.has(batch.id)),...recovered];
+     nextTrash=[...trash.filter(batch=>!deletedBatchIds.has(batch.id)).map(batch=>({...batch,notes:batch.notes.filter(note=>!deletedIds.has(note.id))})).filter(batch=>batch.notes.length||batch.folders.length),...recovered];
      originalKeys=new Set(current.notes.filter(note=>deletedIds.has(note.id)&&note.originalAsset).map(note=>originalKey(note.id)));
      dialogue=undefined;dialogueUpdates=new Map();dialogueLinksRemoved=0;
      for(const entry of current.settings)if(entry.key==='ui-v1-dialogue'||isConversationDialogueKey(entry.key)){
@@ -503,7 +513,7 @@ export class KnowledgeStore {
       if(before.currentFile&&deletedIds.has(before.currentFile.noteId))next=withoutWorkingFile(next,before.currentFile);
       if(next.revision!==before.revision){dialogueUpdates.set(entry.key,next);if(entry.key==='ui-v1-dialogue')dialogue=next;}
      }
-     const remainingRuns=current.runs.filter(r=>!originalKeys.has(r.key));activityRunPlan=options.removeActivityLinks?removeLinkedActivityEntries(remainingRuns,deletedIds,current.settings):undefined;activityEntriesRemoved=activityRunPlan?.removed??0;
+     const remainingRuns=current.runs.filter(r=>!originalKeys.has(r.key));activityRunPlan=options.removeActivityLinks?removeLinkedActivityEntries(remainingRuns,deletedIds,current.settings):undefined;activityEntriesRemoved=(activityRunPlan?.removed??0)+[...linkedActivityNoteIds].filter(id=>!selectedBatchIds.has(noteBatch.get(id)??'')).length;
      candidate={notes:current.notes.filter(note=>!deletedIds.has(note.id)),settings:current.settings.filter(s=>s.key!=='ui-v1-trash').map(s=>dialogueUpdates.has(s.key)?{...s,value:dialogueUpdates.get(s.key)}:s).concat([{key:'ui-v1-trash',value:nextTrash}]),runs:activityRunPlan?.rows??remainingRuns};
      const referencedIds=new Set<string>();collectReferences(candidate,deletedIds,referencedIds);
      for(const note of candidate.notes)recordRetentionOwners(note,notePath(note),note.id);

@@ -26,7 +26,7 @@ export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boo
    const claim=await knowledge.claimRun(id,owner.current,{retry,manual});if(!claim.execute)return;
    runId=claim.run.id;heartbeat=setInterval(()=>{knowledge.heartbeat(runId!,owner.current).catch(e=>setError(e.message));},20000);
    try{await latest.current.refresh();control.check();const output=await latest.current.execute(taskRunView(claim.run).prompt,control.signal);control.check();if(!control.claimCompletion())throw Error('Stopped');setFinishing(true);await knowledge.finishRun(runId!,owner.current,{status:'succeeded',...output});}
-   catch(e){const message=(e as Error).message;await knowledge.finishRun(runId!,owner.current,{status:message==='Stopped'?'stopped':'failed',error:message});if(manual&&message!=='Stopped')setError(message);}
+   catch(e){const message=(e as Error).message,diagnostic=(e&&typeof e==='object'&&'diagnostic'in e?(e as {diagnostic?:RunData['diagnostic']}).diagnostic:undefined);await knowledge.finishRun(runId!,owner.current,{status:message==='Stopped'?'stopped':'failed',error:message,...(diagnostic?{diagnostic}:{})});if(manual&&message!=='Stopped')setError(message);}
   }finally{if(heartbeat)clearInterval(heartbeat);if(cancellation.current===control)cancellation.current=null;locked.current=false;setActive(null);setStopping(false);setFinishing(false);await latest.current.refresh();}
  }
  function stop(){const current=cancellation.current;if(!current||current.signal.aborted)return;try{if(current.stop())setStopping(true);}catch(error){setStopping(true);setError((error as Error).message);}}

@@ -129,6 +129,27 @@ test('a Trash batch of ten schedules and one linked execution purges after its n
   assert.deepEqual((await store.snapshot()).notes,[]);
  }finally{store.close();}
 });
+test('reviewed schedule cleanup removes its linked run and notification without retaining a reference cycle',async()=>{
+ const records=[],now=new Date('2026-11-15T04:00:00.000Z'),zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+ const {createTaskNote,claimTaskRun,finishTaskRun,taskNotice,taskDefinition}=await import('../src/task-records.ts');
+ const task={repeat:'once',time:'09:00',days:[],date:'2026-11-15',monthDay:1,interval:1,unit:'days',timezone:zone,enabled:false,notify:true,prompt:'say hello briefly'};
+ const schedule=createTaskNote(records,task,crypto.randomUUID(),now);schedule.taskCursor={definition:taskDefinition(task),nextAt:null};records.push(schedule);
+ const claimed=claimTaskRun(records,schedule.id,'purge-linked-owner',now,{manual:true});records.push(claimed.run);
+ const finished=finishTaskRun(records,claimed.run.id,'purge-linked-owner',{status:'succeeded',answer:'Hello!',sources:[]},now);records[0]=finished.task;records[1]=finished.run;
+ const notice=taskNotice(finished.task,finished.run);assert.ok(notice);records.push(notice);
+ const store=new KnowledgeStore('purge-reviewed-schedule-cycle-'+crypto.randomUUID());await store.initialize([]);const db=await store.open();await new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite');for(const note of records)tx.objectStore('notes').put(note);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});await store.setState('folders',[]);await store.setState('trash',[]);
+ try{const deleted=await store.recoverMemory({kind:'delete',target:{kind:'file',value:schedule.id},expectedNotes:await store.views(),id:'schedule-only-trash',label:'schedule'},[],[]);const result=await store.purgeMemory(deleted.trash,deleted.trash,{removeActivityLinks:true});assert.deepEqual(result.trash,[]);assert.deepEqual(result.retainedBatchIds,[]);assert.equal(result.activityEntriesRemoved,2);assert.deepEqual((await store.snapshot()).notes,[]);}
+ finally{store.close();}
+});
+test('reviewed Trash cleanup refuses to remove a live scheduled run',async()=>{
+ const records=[],now=new Date('2026-11-15T04:00:00.000Z'),zone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+ const {createTaskNote,claimTaskRun,taskDefinition}=await import('../src/task-records.ts');
+ const task={repeat:'once',time:'09:00',days:[],date:'2026-11-15',monthDay:1,interval:1,unit:'days',timezone:zone,enabled:false,notify:false,prompt:'say hello briefly'};
+ const schedule=createTaskNote(records,task,crypto.randomUUID(),now);schedule.taskCursor={definition:taskDefinition(task),nextAt:null};records.push(schedule);const claimed=claimTaskRun(records,schedule.id,'live-purge-owner',now,{manual:true});records.push(claimed.run);
+ const store=new KnowledgeStore('purge-live-schedule-run-'+crypto.randomUUID());await store.initialize([]);const db=await store.open();await new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite');for(const note of records)tx.objectStore('notes').put(note);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});await store.setState('folders',[]);await store.setState('trash',[]);
+ try{const deleted=await store.recoverMemory({kind:'delete',target:{kind:'file',value:schedule.id},expectedNotes:await store.views(),id:'live-schedule-trash',label:'schedule'},[],[]),before=await store.snapshot();await assert.rejects(store.purgeMemory(deleted.trash,deleted.trash,{removeActivityLinks:true}),/Stop scheduled work/);assert.deepEqual(await store.snapshot(),before);}
+ finally{store.close();}
+});
 
 async function mutate(s,store,key,value){const db=await s.open();await new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value,...(store==='notes'?[]:[key]));tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});}
 test('active and protected targets reject atomically',async()=>{for(const kind of ['active','protected']){const {s,deleted}=await fixture();try{const note=(await s.snapshot()).notes.find(n=>n.id==='one');if(kind==='active')note.state='active';else note.ui={protected:true};await mutate(s,'notes',null,note);const before=await s.snapshot();await assert.rejects(s.purgeMemory([deleted.trash[0]],deleted.trash),e=>e.code===(kind==='active'?'changed':'protected'));assert.deepEqual(await s.snapshot(),before);}finally{s.close();}}});

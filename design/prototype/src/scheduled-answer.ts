@@ -1,5 +1,6 @@
-import {groundedAnswer,type GroundedAnswerDependencies} from './grounded-answer.ts';
+import {groundedAnswer,type GroundedAnswerDependencies,type AnswerInference} from './grounded-answer.ts';
 import type {TextRuntime} from './text-inference.ts';
+import type {RunDiagnostic} from './task-records.ts';
 import type {Preferences} from './preference-records.ts';
 import {explicitCalculationInput} from './explicit-calculation.ts';
 import {formatCalculation} from './calculation-action.ts';
@@ -13,8 +14,12 @@ import {localRequest} from '../../../dist/requests.js';
 type Dependencies={store:GroundedAnswerDependencies['store'];models:{text:(model:string,check:()=>void)=>Promise<TextRuntime>};calculate?:(expression:string,check:()=>void)=>Promise<unknown>};
 type Request={prompt:string;model:string;signal:AbortSignal;replyStyle:Preferences['harness']['replyStyle'];userGuidance:string};
 
-function rejectRecoveredScheduleAnswer<T extends {recovery?:string}>(result:T):T{
- if(result.recovery==='verbatim-source')throw Error('Could not verify a schedule answer · edit the prompt and retry');
+export class ScheduleAnswerError extends Error{
+ readonly diagnostic:RunDiagnostic;
+ constructor(message:string,diagnostic:RunDiagnostic){super(message);this.name='ScheduleAnswerError';this.diagnostic=diagnostic;}
+}
+function rejectRecoveredScheduleAnswer<T extends {answer:string;recovery?:string;recoveryReason?:string;model?:RunDiagnostic['model']}>(result:T,inference?:AnswerInference):T{
+ if(result.recovery==='verbatim-source')throw new ScheduleAnswerError('Could not verify a schedule answer · edit the prompt and retry',{stage:'answer-validation',reason:result.recoveryReason??'verbatim-source-recovery',candidate:result.answer.slice(0,4000),model:result.model,...(inference?{inference}:{})});
  return result;
 }
 
@@ -29,16 +34,22 @@ export async function executeScheduledAnswer(dependencies:Dependencies,input:Req
  const calculation=explicitCalculationInput(question);
  if(calculation&&dependencies.calculate){const receipt=validateDecimalReceipt(await dependencies.calculate(calculation.expression,check));check();const answer=formatCalculation(receipt,calculation.showExpression?calculation.expression:undefined,calculation.unit);return {answer,sources:[],calculation:validateScheduledCalculation(question,answer,receipt)};}
  const conversationRequest=isSourceFreeConversationRequest(question);
- const engine=await dependencies.models.text(model,check);check();
+ let engine:TextRuntime;try{engine=await dependencies.models.text(model,check);check();}catch(error){throw new ScheduleAnswerError((error as Error).message,{stage:'model-acquisition',reason:(error as Error).message,model:{id:model}});}
+ let inference:AnswerInference|undefined,candidate='';
+ const observedEngine=new Proxy(engine,{get(target,property){if(property==='generate'){const generate=Reflect.get(target,property,target) as TextRuntime['generate'];return async(...args:Parameters<TextRuntime['generate']>)=>{const result=await generate.apply(target,args);if(typeof result.text==='string')candidate=result.text.slice(0,4000);return result;};}return Reflect.get(target,property,target);}});
+ const answer=(request:Parameters<typeof groundedAnswer>[1])=>groundedAnswer({store:dependencies.store,engine:observedEngine},{...request,onInference:metrics=>{inference={...metrics};}}).catch(error=>{
+  const message=(error as Error).message,sourceLeak=['InternalSourceLabelLeakError','InternalImplementationLeakError'].includes((error as Error).name)||message==='Invalid answer or sources'||message==='Citation mismatch';
+  throw new ScheduleAnswerError(message,{stage:sourceLeak?'answer-validation':'generation',reason:message,...(candidate?{candidate}:{}),model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference?{inference}:{})});
+ });
  if(conversationRequest){
-  const result=await groundedAnswer({store:dependencies.store,engine},{model,question,query:'',mode:'chat',scope:{kind:'conversation'},context:{summary:'',recent:[],refs:[],turnCount:0},check,replyStyle,userGuidance});
-  return rejectRecoveredScheduleAnswer(result);
+  const result=await answer({model,question,query:'',mode:'chat',scope:{kind:'conversation'},context:{summary:'',recent:[],refs:[],turnCount:0},check,replyStyle,userGuidance});
+  return rejectRecoveredScheduleAnswer(result,inference);
  }
- const result=await groundedAnswer({store:dependencies.store,engine},{model,question,query:request?.query??question,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
- if(result.status==='insufficient_evidence')throw Error('Not enough evidence · '+result.answer);
+ const result=await answer({model,question,query:request?.query??question,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
+ if(result.status==='insufficient_evidence')throw new ScheduleAnswerError('Not enough evidence · '+result.answer,{stage:'answer-validation',reason:'The saved sources do not support an answer',candidate:result.answer.slice(0,4000),model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference?{inference}:{})});
  // A verbatim-source recovery is useful in an interactive answer, where its
  // provenance is shown. A scheduled run exposes only the answer text; storing
  // that recovery as success would hide that the model's answer failed shape
  // validation and could turn the saved prompt into a false successful result.
- return rejectRecoveredScheduleAnswer(result);
+ return rejectRecoveredScheduleAnswer(result,inference);
 }
