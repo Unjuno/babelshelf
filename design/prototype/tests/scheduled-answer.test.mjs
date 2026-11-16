@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {executeScheduledAnswer} from '../src/scheduled-answer.ts';
+import {executeScheduledAnswer,ScheduleAnswerError} from '../src/scheduled-answer.ts';
 import {makeDecimalReceipt} from '../src/tools/math.calculate/decimal-receipt.ts';
 import {createNote} from '../../../dist/core.js';
 import {isSourceFreeConversationRequest} from '../src/dialogue-planner.ts';
@@ -43,8 +43,8 @@ test('mixed requests are not silently reduced to calculation',async()=>{const f=
 test('a scheduled question with missing evidence is not recorded as a successful answer or retried',async()=>{
  const note=createNote({path:'Notes/workshop.md',body:'The workshop takes place in Cedar Hall.'}),body=note.revisions[0].body;
  const ref={noteId:note.id,revision:1,start:0,end:body.length,quote:body};let generations=0,loads=0;
- const runtime={loaded:'selected',assets:{selected:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{generations++;return {text:JSON.stringify({status:'insufficient_evidence',answer:'The supplied excerpts do not give a start time.',sources:[]}),finishReason:'stop'};}};
- await assert.rejects(executeScheduledAnswer({store:{all:async()=>[note],search:async()=>[ref]},models:{text:async()=>{loads++;return runtime;}}},{prompt:'What time does the workshop start?',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/Not enough evidence/);
+ const runtime={loaded:'selected',assets:{selected:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{generations++;return {text:JSON.stringify({status:'insufficient_evidence',answer:'The supplied excerpts do not give a start time.',sources:[]}),finishReason:'stop',outputTokens:18};}};
+ await assert.rejects(executeScheduledAnswer({store:{all:async()=>[note],search:async()=>[ref]},models:{text:async()=>{loads++;return runtime;}}},{prompt:'What time does the workshop start?',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),error=>error instanceof ScheduleAnswerError&&/Not enough evidence/.test(error.message)&&error.diagnostic.stage==='answer-validation'&&error.diagnostic.candidate==='The supplied excerpts do not give a start time.'&&error.diagnostic.inference?.outputTokens===18);
  assert.equal(generations,1);assert.equal(loads,1);assert.equal(note.revisions.length,1);
 });
 
@@ -52,6 +52,6 @@ test('a scheduled malformed prose answer cannot fall back to a successful copied
  const body='The documented process includes preparation, validation, comparison, review, and preservation of the original records. '.repeat(6).trim(),note=createNote({path:'Notes/process.md',body});
  const ref={noteId:note.id,revision:1,start:0,end:body.length,quote:body};let calls=0;
  const runtime={loaded:'selected',assets:{selected:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:80}),generate:async()=>{calls++;return {text:JSON.stringify(calls===1?{answer:body,citations:[{id:'S0',quote:'invalid'}]}:{answer:body}),finishReason:'stop'};}};
- await assert.rejects(executeScheduledAnswer({store:{all:async()=>[note],search:async()=>[ref]},models:{text:async()=>runtime}},{prompt:'Quote the complete documented process.',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/Could not verify a schedule answer/);
+ await assert.rejects(executeScheduledAnswer({store:{all:async()=>[note],search:async()=>[ref]},models:{text:async()=>runtime}},{prompt:'Quote the complete documented process.',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),error=>error instanceof ScheduleAnswerError&&/Could not verify a schedule answer/.test(error.message)&&error.diagnostic.stage==='answer-validation'&&typeof error.diagnostic.reason==='string'&&error.diagnostic.candidate===body&&error.diagnostic.inference?.measuredModelCalls===2);
  assert.equal(calls,2);
 });

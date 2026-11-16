@@ -9,7 +9,9 @@ import {schedulePromptBody} from './scheduled-prompt.ts';
 
 export type Task=ScheduleRule&{timezone:string;enabled:boolean;notify:boolean;prompt:string};
 export type RunStatus='running'|'succeeded'|'failed'|'stopped'|'missed'|'interrupted'|'skipped';
-export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;manualRerun?:true;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:{id:string;revision?:string;runtime:string}};
+export type RunDiagnostic={stage:'answer-validation'|'model-acquisition'|'generation';reason:string;candidate?:string;model?:{id:string;revision?:string;runtime?:string};inference?:{measuredModelCalls:number;promptTokens?:number;outputTokens?:number;countMs?:number;generationWallMs?:number;runtimeTtftMs?:number;runtimePrefillMs?:number;runtimeDecodeMs?:number;runtimeCachedTokens?:number}};
+export type RunAttemptReceipt={attempt:number;status:RunStatus;startedAt:string;finishedAt?:string;answer?:string;error?:string;diagnostic?:RunDiagnostic;model?:RunData['model'];sources?:any[];calculation?:DecimalReceipt};
+export type RunData={taskId:string;taskRevision:number;definition:string;dueAt:string;attempt:number;owner:string;leaseUntil:string;status:RunStatus;startedAt:string;manualRerun?:true;finishedAt?:string;prompt:string;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:{id:string;revision?:string;runtime:string};diagnostic?:RunDiagnostic;attemptHistory?:RunAttemptReceipt[]};
 export type NoticeData={taskId:string;taskRevision:number;runId:string;runRevision?:number;attempt?:number;title:string;body:string;createdAt:string;read:boolean};
 const fields=['repeat','time','days','date','monthDay','interval','unit','timezone','enabled','notify','prompt'];
 const asDate=(value:string)=>{const date=new Date(value);if(!Number.isFinite(+date))throw Error('Invalid date');return date;};
@@ -98,8 +100,9 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
    return {task,run:reviseNote(old,{body:runBody(interrupted)},latest(old).version),execute:false};
   }
   if(!options.retry||!['failed','stopped','missed','interrupted'].includes(data.status))throw Error('Occurrence already processed');
-  const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
-  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;
+  const previous:RunAttemptReceipt={attempt:data.attempt,status:data.status,startedAt:data.startedAt,...(data.finishedAt?{finishedAt:data.finishedAt}:{}),...(data.answer?{answer:data.answer}:{}),...(data.error?{error:data.error}:{}),...(data.diagnostic?{diagnostic:data.diagnostic}:{}),...(data.model?{model:data.model}:{}),...(data.sources?{sources:data.sources}:{}),...(data.calculation?{calculation:data.calculation}:{})};
+  const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,attemptHistory:[...(data.attemptHistory??[]),previous],startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
+  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;delete retried.diagnostic;
   const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;
   return {task,run,execute:true};
  }
@@ -117,18 +120,18 @@ function isSchedulePromptEcho(answer:string,prompt:string){
  const output=normalizedScheduleText(answer),savedPrompt=normalizedScheduleText(prompt),modelPrompt=normalizedScheduleText(schedulePromptBody(prompt));
  return output===savedPrompt||output===modelPrompt;
 }
-export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry'},now=new Date()){
+export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry';diagnostic?:RunDiagnostic},now=new Date()){
  const old=records.find(n=>n.id===runId&&n.state==='active');if(!old)throw Error('Execution unavailable');const data=taskRunView(old);
  if(data.owner!==owner||data.status!=='running')throw Error('Execution owner conflict');
  const lease=old.runLease?.owner===owner?old.runLease.until:data.leaseUntil;if(asDate(lease)<now)throw Error('Execution owner expired');
  if(!['succeeded','failed','stopped','skipped'].includes(result.status))throw Error('Invalid completion');
- if(result.status==='succeeded'&&result.recovery==='verbatim-source')throw Error('Could not verify a schedule answer · edit the prompt and retry');
- if(result.status==='succeeded'&&result.calculation===undefined&&result.answer&&isSchedulePromptEcho(result.answer,data.prompt))throw Error('Could not verify a schedule answer · edit the prompt and retry');
+ if(result.status==='succeeded'&&result.recovery==='verbatim-source')result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{stage:'answer-validation',reason:'verbatim-source-recovery',candidate:result.answer?.slice(0,4000),model:result.model}};
+ if(result.status==='succeeded'&&result.calculation===undefined&&result.answer&&isSchedulePromptEcho(result.answer,data.prompt))result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{stage:'answer-validation',reason:'prompt-echo',candidate:result.answer.slice(0,4000),model:result.model}};
  if(result.calculation!==undefined)validateRunCalculation({...data,...result});
  else if(result.status==='succeeded'&&(!result.answer?.trim()||!Array.isArray(result.sources)||!result.sources.length&&!isSourceFreeConversationRequest(data.prompt)||result.sources.length>0&&!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
  if(result.calculation!==undefined){const revision=task.revisions.find((v:any)=>v.version===data.taskRevision);if(!revision||parseTask(revision.body).prompt!==data.prompt||taskDefinition(parseTask(revision.body))!==data.definition)throw Error('Invalid scheduled calculation target');}
- const completed={...data,...result,finishedAt:now.toISOString()};const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
+ const completed={...data,...result,finishedAt:now.toISOString()};delete (completed as any).recovery;const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
  if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition&&task.taskCursor.nextAt===data.dueAt){
   if(definition.repeat!=='once'&&definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone){
