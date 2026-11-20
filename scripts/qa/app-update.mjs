@@ -63,6 +63,12 @@ test('one explicit refresh installs, activates and reopens a verified generation
    const settings=await new Promise((resolve,reject)=>{const r=indexedDB.open('mlb-memory-v1',1);r.onupgradeneeded=()=>r.result.createObjectStore('notes',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
    await new Promise((resolve,reject)=>{const tx=settings.transaction('notes','readwrite');tx.objectStore('notes').put({id:'settings-connection',state:'active',ui:{managed:true},revisions:[{path:'Settings/connection.md',body:'# Connection\n\n```json\n{"downloads":true,"diagnosticLogs":false}\n```\n'}]});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});settings.close();
   });
+  await page.evaluate(async()=>{
+   // A model-like OPFS sentinel stands in for already prepared weights.
+   const root=await navigator.storage.getDirectory(),models=await root.getDirectoryHandle('babelshelf-text-lfm-v1',{create:true});
+   const model=await models.getFileHandle('update-retention-fixture.gguf',{create:true}),writer=await model.createWritable();
+   await writer.write(new TextEncoder().encode('synthetic prepared model bytes'));await writer.close();
+  });
   assert.equal(await page.evaluate(()=>window.update()),'Up to date');
   await page.evaluate(()=>{window.events=[];window.fixtureDraft='unsaved in memory';});
   current=1;delayPayload=true;
@@ -115,10 +121,14 @@ test('one explicit refresh installs, activates and reopens a verified generation
   const retained=await page.evaluate(async()=>{
    const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('update-fixture');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
    const record=await new Promise((resolve,reject)=>{const r=db.transaction('records').objectStore('records').get('fixture');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();
-   return {draft:localStorage.getItem('retained-draft'),record};
+   const root=await navigator.storage.getDirectory(),models=await root.getDirectoryHandle('babelshelf-text-lfm-v1');
+   const model=await(await models.getFileHandle('update-retention-fixture.gguf')).getFile();
+   return {draft:localStorage.getItem('retained-draft'),record,model:new TextDecoder().decode(await model.arrayBuffer())};
   });
-  assert.deepEqual(retained,{draft:'synthetic unsent draft',record:{id:'fixture',versions:['original','correction']}});
-  console.log(JSON.stringify({scope:'PC Chromium, actual product worker and refresh helper; synthetic shell, no model/device acceptance',browser:browser.version(),firstEvents,workerChecks:requests.filter(r=>r.path==='/sw.js').map(r=>r.build),offlineReload:true,retained:true}));
+  assert.deepEqual(retained,{draft:'synthetic unsent draft',record:{id:'fixture',versions:['original','correction']},model:'synthetic prepared model bytes'});
+  const modelAssetRequests=requests.filter(r=>/\.gguf$|\/models?\//i.test(r.path));
+  assert.deepEqual(modelAssetRequests,[]);
+  console.log(JSON.stringify({scope:'PC Chromium, actual product worker and refresh helper; synthetic shell and OPFS model sentinel, no real-model/device acceptance',browser:browser.version(),firstEvents,workerChecks:requests.filter(r=>r.path==='/sw.js').map(r=>r.build),offlineReload:true,retained:true,modelAssetRequests:modelAssetRequests.length}));
   await context.close();
  }catch(error){
   console.error(JSON.stringify({scope:'Update fixture failure; request paths and synthetic builds only',requests}));

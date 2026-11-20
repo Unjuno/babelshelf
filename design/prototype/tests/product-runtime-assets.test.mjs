@@ -141,6 +141,15 @@ test('explicit runtime preparation waits for the initial controller, then sends 
  assert.equal(channels,1);assert.equal(worker.messages.length,1);assert.equal(worker.messages[0].acquire,true);assert.equal(f.listeners.size,0);
 });
 
+test('a slow first app-shell installation can control the page before explicit preparation times out',async t=>{
+ const f=pendingController(t),channel=fakeChannel(),worker=preparedWorker(channel),now=Date.now;let current=now();Date.now=()=>current;
+ try{
+  const pending=prepareProductRuntimeAssets('pdf',{controllerTimeoutMs:15000,makeChannel:()=>channel.channel});
+  current+=12000;f.arrive(worker);
+  assert.equal((await pending).bytes,40);assert.equal(worker.messages.length,1);assert.equal(f.listeners.size,0);
+ }finally{Date.now=now;}
+});
+
 test('a controller arriving during listener installation is observed without another event',async t=>{
  const f=pendingController(t),channel=fakeChannel(),worker=preparedWorker(channel),subscribe=f.container.addEventListener.bind(f.container);
  f.container.addEventListener=(...args)=>{subscribe(...args);f.container.controller=worker;};
@@ -199,7 +208,7 @@ test('a controller arriving after the waiting wall-clock deadline cannot start a
 
 test('controller waiting cannot be configured to remain unbounded',async t=>{
  const f=pendingController(t);
- for(const controllerTimeoutMs of [0,-1,NaN,Infinity,10001])await assert.rejects(prepareProductRuntimeAssets('pdf',{controllerTimeoutMs}),error=>error.code==='runtime-setup-error');
+ for(const controllerTimeoutMs of [0,-1,NaN,Infinity,60001])await assert.rejects(prepareProductRuntimeAssets('pdf',{controllerTimeoutMs}),error=>error.code==='runtime-setup-error');
  assert.equal(f.container.subscribed,0);
 });
 

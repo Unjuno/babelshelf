@@ -78,8 +78,11 @@ async function requestProductRuntime(role:ProductRuntimeRole,acquire:boolean,opt
  const explicitWorker=Object.hasOwn(options,'worker'),container=!explicitWorker&&typeof navigator!=='undefined'?navigator.serviceWorker:undefined;
  let worker=explicitWorker?options.worker:container?.controller;
  if(!worker&&acquire&&!explicitWorker&&container){
-  const timeoutMs=options.controllerTimeoutMs??10000;
-  if(!Number.isFinite(timeoutMs)||timeoutMs<1||timeoutMs>10000)return Promise.reject(codedError('Invalid app worker start timeout','runtime-setup-error'));
+  // First installation may still be precaching the app shell while an
+  // explicit runtime preparation is waiting for the page to become controlled.
+  // Give that browser-owned install a bounded window before asking the user to retry.
+  const timeoutMs=options.controllerTimeoutMs??30000;
+  if(!Number.isFinite(timeoutMs)||timeoutMs<1||timeoutMs>60000)return Promise.reject(codedError('Invalid app worker start timeout','runtime-setup-error'));
   worker=await waitForRuntimeController(container,options.signal,timeoutMs);
  }
  if(!worker)return Promise.reject(codedError('App runtime unavailable · reopen the installed app','runtime-unavailable'));
