@@ -56,14 +56,16 @@ test('source-free scheduled conversation answers complete while cited answers st
  assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer',sources:[{noteId:'missing',revision:1,start:0,end:1,quote:'x'}]},now),/Source changed or missing result/);
  assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer'},now),/Source changed or missing result/);
 });
-test('a verbatim-source recovery is failed with its rejected draft preserved for diagnosis',()=>{
+test('a verbatim-source recovery is failed with its rejected draft and inference metrics preserved for diagnosis',()=>{
  const note=reviseTaskNote(registered(),{...task,prompt:'say hello briefly'}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
- const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'say hello briefly',sources:[],recovery:'verbatim-source',model:{id:'fixture',runtime:'runtime-r1'}},now);
- const saved=taskRunView(failed.run);assert.equal(saved.status,'failed');assert.equal(saved.answer,undefined);assert.equal(saved.error,'Could not verify a schedule answer · edit the prompt and retry');assert.equal(saved.diagnostic.reason,'verbatim-source-recovery');assert.equal(saved.diagnostic.candidate,'say hello briefly');assert.equal(saved.diagnostic.model.id,'fixture');
+ const inference={measuredModelCalls:2,promptTokens:1088,outputTokens:269,generationWallMs:529000,runtimePrefillMs:418000};
+ const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'say hello briefly',sources:[],recovery:'verbatim-source',model:{id:'fixture',runtime:'runtime-r1'},inference},now);
+ const saved=taskRunView(failed.run);assert.equal(saved.status,'failed');assert.equal(saved.answer,undefined);assert.equal(saved.error,'Could not verify a schedule answer · edit the prompt and retry');assert.equal(saved.diagnostic.reason,'verbatim-source-recovery');assert.equal(saved.diagnostic.candidate,'say hello briefly');assert.equal(saved.diagnostic.model.id,'fixture');assert.deepEqual(saved.diagnostic.inference,inference);assert.equal(JSON.parse(latest(failed.run).body.match(/```json\n([\s\S]*)\n```/)[1]).inference,undefined);
 });
-test('a prompt copied verbatim into a schedule result cannot be recorded as success without recovery metadata',()=>{
+test('a prompt copied verbatim into a schedule result cannot be recorded as success without recovery metadata and retains inference metrics',()=>{
  const prompt='say hello briefly',note=reviseTaskNote(registered(),{...task,prompt}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
- for(const answer of [prompt,'## Prompt\n'+prompt]){const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer,sources:[]},now);assert.equal(taskRunView(failed.run).status,'failed');assert.equal(taskRunView(failed.run).diagnostic.reason,'prompt-echo');assert.equal(taskRunView(failed.run).diagnostic.candidate,answer);}
+ const inference={measuredModelCalls:1,promptTokens:2020,outputTokens:264,generationWallMs:502000};
+ for(const answer of [prompt,'## Prompt\n'+prompt]){const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer,sources:[],inference},now);assert.equal(taskRunView(failed.run).status,'failed');assert.equal(taskRunView(failed.run).diagnostic.reason,'prompt-echo');assert.equal(taskRunView(failed.run).diagnostic.candidate,answer);assert.deepEqual(taskRunView(failed.run).diagnostic.inference,inference);assert.equal(JSON.parse(latest(failed.run).body.match(/```json\n([\s\S]*)\n```/)[1]).inference,undefined);}
  const finished=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'Hello!',sources:[]},now);
  assert.equal(taskRunView(finished.run).answer,'Hello!');
 });

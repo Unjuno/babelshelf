@@ -120,18 +120,19 @@ function isSchedulePromptEcho(answer:string,prompt:string){
  const output=normalizedScheduleText(answer),savedPrompt=normalizedScheduleText(prompt),modelPrompt=normalizedScheduleText(schedulePromptBody(prompt));
  return output===savedPrompt||output===modelPrompt;
 }
-export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry';diagnostic?:RunDiagnostic},now=new Date()){
+export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry';diagnostic?:RunDiagnostic;inference?:RunDiagnostic['inference']},now=new Date()){
  const old=records.find(n=>n.id===runId&&n.state==='active');if(!old)throw Error('Execution unavailable');const data=taskRunView(old);
  if(data.owner!==owner||data.status!=='running')throw Error('Execution owner conflict');
  const lease=old.runLease?.owner===owner?old.runLease.until:data.leaseUntil;if(asDate(lease)<now)throw Error('Execution owner expired');
  if(!['succeeded','failed','stopped','skipped'].includes(result.status))throw Error('Invalid completion');
- if(result.status==='succeeded'&&result.recovery==='verbatim-source')result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{stage:'answer-validation',reason:'verbatim-source-recovery',candidate:result.answer?.slice(0,4000),model:result.model}};
- if(result.status==='succeeded'&&result.calculation===undefined&&result.answer&&isSchedulePromptEcho(result.answer,data.prompt))result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{stage:'answer-validation',reason:'prompt-echo',candidate:result.answer.slice(0,4000),model:result.model}};
+ if(result.status==='succeeded'&&result.recovery==='verbatim-source')result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{...result.diagnostic,stage:'answer-validation',reason:'verbatim-source-recovery',candidate:result.answer?.slice(0,4000),model:result.model,...(result.inference?{inference:result.inference}:{})}};
+ if(result.status==='succeeded'&&result.calculation===undefined&&result.answer&&isSchedulePromptEcho(result.answer,data.prompt))result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{...result.diagnostic,stage:'answer-validation',reason:'prompt-echo',candidate:result.answer.slice(0,4000),model:result.model,...(result.inference?{inference:result.inference}:{})}};
  if(result.calculation!==undefined)validateRunCalculation({...data,...result});
  else if(result.status==='succeeded'&&(!result.answer?.trim()||!Array.isArray(result.sources)||!result.sources.length&&!isSourceFreeConversationRequest(data.prompt)||result.sources.length>0&&!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
  if(result.calculation!==undefined){const revision=task.revisions.find((v:any)=>v.version===data.taskRevision);if(!revision||parseTask(revision.body).prompt!==data.prompt||taskDefinition(parseTask(revision.body))!==data.definition)throw Error('Invalid scheduled calculation target');}
- const completed={...data,...result,finishedAt:now.toISOString()};delete (completed as any).recovery;const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
+ const {inference:_inference,...persistedResult}=result;
+ const completed={...data,...persistedResult,finishedAt:now.toISOString()};delete (completed as any).recovery;const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
  if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition&&task.taskCursor.nextAt===data.dueAt){
   if(definition.repeat!=='once'&&definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone){
