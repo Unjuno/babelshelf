@@ -18,7 +18,18 @@ the WASM gzip/identity and offline-shell delivery paths. Public requests to
 `/`, `/index.html`, `/sw.js`, `/manifest.webmanifest`, `/build.json` and the
 referenced JavaScript bundle returned HTTP 200; `/build.json` reported the
 expected build and 166 assets. This confirms public deployment, not a fresh
-real-model inference or physical-device update.
+physical-device update.
+
+After deployment, the existing side-panel PWA applied the update and reported
+Active worker `6bd762f2184afc33` / bundle `index-hLG6c4hh.js`. App & storage
+checks passed 9 ready / 2 need review / 2 not checked. The current-build Quick
+check then passed with local `lfm3-1.7b-qad-q4-0` on Windows Chrome 157: 43
+input tokens, 11 generated tokens, 5.23 s generation, 2.1 aggregate tokens/s,
+WebGPU execution backend and 25/25 runtime-observed GPU layers. The local test
+loaded the selected model, returned a short structured result, discarded its
+text and unloaded it afterward. This is one inference sample, not a normal
+chat-turn, schedule, sustained-rate or physical-device result. The model files
+were available after update, but actual transfer bytes were not captured.
 
 The P0 acceptance gaps below remain open: byte-level transfer measurement for
 an already prepared real model during update; real-model schedule prompts on
