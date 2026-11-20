@@ -1,3 +1,39 @@
+2026-11-21 — Reuse verified model-file snapshots across page restarts.
+Implemented a privacy-bounded OPFS verification marker for the pinned immutable
+LFM3 model snapshot, keyed by model ID/revision, expected SHA-256, byte size,
+and `lastModified`. The worker adapter skips a repeated full-file hash only
+when marker metadata matches. Missing/invalid markers or mismatched metadata
+fall back to full SHA-256. Explicit Verify always hashes the complete file.
+App-controlled replacement invalidates the marker before writing, and a
+successfully committed streamed download can record its verified snapshot.
+No prompt, answer, or conversation text is stored in the marker.
+
+On public `https://babelshelf.com`, Windows / Chrome 157, selected real model
+`lfm3-1.7b-qad-q4-0`, build `8b2112c83968872f`, bundle
+`index-DnBr9270.js`, WebGPU, 25/25 runtime-observed GPU layers: the first
+Performance sample after app update displayed model load 50.1 s, first text
+5.60 s, 4.57 overall tokens/s and 6.40 decode tokens/s. After a full page
+navigation/restart, a second real-model Performance sample displayed model
+load 14.3 s, first text 4.77 s, 7.06 overall tokens/s and 11.40 decode
+tokens/s. The second saved report records verification 8.675 ms, import 45.48
+ms, runtime load 14,226.30 ms, total load 14,258.42 ms, input 50 tokens,
+output 84 tokens, prefill 4,578.87 ms, decode 7,283.19 ms, 4 runtime threads,
+and 25/25 observed GPU layers. This supports repeat-load hash work reduction
+on this profile only; generation-rate differences are not attributed to the
+change. The benchmark was the bounded Performance prose sample, not a user
+question/quality, CPU/WASM, iPhone, thermal, or sustained-performance test.
+
+Validation: `npm run check`; focused LFM3/OPFS tests 65/65; `npm run test:app`
+9/9; full `npm run test:quality` reported all stages passing, ending with
+installed-PWA `pass: true`. Site deployment v381 used app build
+`8b2112c83968872f`, Site source commit `58ad00b1ba665f08c3f0aeb4f8edcbc7d5d42689`,
+deployment `appgdep_6b00aa7560f481918027d1ab7a9c4e39`. Direct public
+`/build.json` verification returned HTTP 200 with the exact build and 166
+assets. Product source commit is `e4d95ff5fddb999d41670a4701132e51dca762f9`;
+GitHub product publication remains blocked because the repository's prescribed
+push branch `codex/ui-design-handoff` is absent. No user files or browser model
+data were deleted.
+
 2026-11-16 — Audit 12 follow-up: publish current main and manage conversations.
 PR #105 merged as `71ea612de85f967ef310a9d6c8f8f89c77919c70`; exact-head GitHub
 quality CI [43742579549](https://github.com/Unjuno/babelshelf/actions/runs/43742579549)

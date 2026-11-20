@@ -2,6 +2,26 @@
 
 ### Latest follow-up · 2026-11-21
 
+The local LFM3 adapter now reuses a verified OPFS snapshot marker across page
+and worker restarts, keyed to the selected model revision, expected SHA-256,
+size, and file modification time. Explicit Verify remains a full SHA-256 check;
+uncertain/mismatched metadata falls back to hashing. On the public Windows
+Chrome 157 profile, build `8b2112c83968872f` reduced the Performance sample's
+model-load display from 50.1 s on the first run to 14.3 s after a page restart.
+The second run's report records 8.675 ms verification, 14,226 ms runtime load,
+WebGPU and 25/25 observed GPU layers; its 50-token sample produced 84 tokens
+at 7.06 tokens/s (11.40 decode tokens/s). This is one browser profile and one
+bounded sample, not an inference-kernel, CPU/WASM, mobile, quality or sustained
+performance claim. Full local quality workflow and the post-deploy real-model
+timing sample passed. Site v381 is live with this exact app build.
+
+The product candidate is local on `codex/nov21-release-gates`, seven commits
+ahead of its existing remote counterpart. Project guidance specifies
+`codex/ui-design-handoff` as the only push target, but that remote branch is
+absent. No source push, PR, merge, or matching-head GitHub CI was performed;
+`main` remains unchanged. Site v381 is live from the verified artifact. Source
+publication and physical iPhone model acceptance remain open.
+
 Windows-side permission was granted for Phone Use and the physical iPhone
 session resumed. The public Site v380 Quick model test reached the LFM3
 `model-load` stage with prepared files/runtime and no download, but failed near
@@ -16,13 +36,8 @@ reproduced physical-device release blocker and requires a diagnostic that
 distinguishes WebGPU preflight, tensor transfer/allocation, and runtime load,
 followed by an actual iPhone model reply before closure.
 
-The product candidate remains local on `codex/nov21-release-gates`, five
-commits ahead of its existing remote counterpart. Project guidance specifies
-`codex/ui-design-handoff` as the only push target, but that remote branch is
-absent. No source push, PR, merge, or matching-head GitHub CI was performed;
-`main` remains unchanged. Site v380 is already live from the verified artifact.
-The release is therefore deployed to the Site but is not complete for source
-publication or iPhone model acceptance.
+The product candidate also contains the earlier Site v380 changes; see the
+latest follow-up above for current GitHub and Site state.
 
 ### Latest release · Site v380
 
