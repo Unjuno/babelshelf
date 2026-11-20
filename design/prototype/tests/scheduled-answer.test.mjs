@@ -34,6 +34,18 @@ test('run labels do not hide knowledge requests or arbitrary prefixed instructio
  assert.equal(isSourceFreeConversationRequest('R11 — summarize my saved notes'),false);
  assert.equal(isSourceFreeConversationRequest('Please, for this run, say hello briefly'),false);
 });
+test('standalone source-free schedule questions use prose conversation answering',async()=>{
+ for(const prompt of ['海について一文','海について一文を書いてください']){
+  let calls=0;
+  const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{calls++;assert.equal(format,'prose');assert.equal(messages.at(-1).content,prompt);return {text:'A verified generated sentence.',finishReason:'stop',outputTokens:6};}};
+  const store={all:async()=>{throw Error('A standalone source-free schedule must not read Memory');},search:async()=>{throw Error('A standalone source-free schedule must not search Memory');}};
+  const result=await executeScheduledAnswer({store,models:{text:async()=>engine}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
+  assert.equal(result.answer,'A verified generated sentence.');assert.deepEqual(result.sources,[]);assert.equal(calls,1);assert.equal(isSourceFreeConversationRequest(prompt),true);
+ }
+});
+test('schedule questions about saved sources keep the evidence-aware path',()=>{
+ for(const prompt of ['What does my saved note say about the sea?','What did we decide earlier about the sea?','Describe the attached image of the sea.'])assert.equal(isSourceFreeConversationRequest(prompt),false,prompt);
+});
 test('scheduled capture is refused before any model acquisition',async()=>{const f=run();await assert.rejects(executeScheduledAnswer(f.dependencies,{prompt:'note: Change the memory',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/read-only/);assert.equal(f.calls,0);});
 test('scheduled Stop prevents runtime acquisition',async()=>{const f=run(),c=new AbortController();c.abort();await assert.rejects(executeScheduledAnswer(f.dependencies,{prompt:'Summarize my notes',model:'selected',signal:c.signal,replyStyle:'balanced',userGuidance:''}),/Stopped/);assert.equal(f.calls,0);});
 test('scheduled work propagates the shared acquisition failure without another engine or retry',async()=>{const f=run();await assert.rejects(executeScheduledAnswer(f.dependencies,{prompt:'Summarize my notes',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),/Controlled acquisition refusal/);assert.equal(f.calls,1);});

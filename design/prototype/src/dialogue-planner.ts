@@ -342,10 +342,15 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;
 }
-/** Narrow source-free prose/greeting route shared with scheduled generation.
- * General questions stay on the scheduled knowledge-answer path. */
+/** Source-free conversation route shared with scheduled generation.
+ * Explicit knowledge/history/input references remain on the evidence-aware path. */
 export function isSourceFreeConversationRequest(question:string){
  if(plainConversationRoute(question,[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat')return true;
+ // Explicit original-writing prompts in Japanese have no saved-source target.
+ // Keep this grammar narrow so factual questions that may refer to Memory do
+ // not bypass evidence selection.
+ if(!/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|以前|過去|保存した)/u.test(question)
+  &&/^(?:(?:.{1,20}について|.{1,20}をテーマに)\s*)?(?:(?:短い|ひとことの|一文の|一つの)\s*)?(?:文|文章|一文)(?:(?:を|で)?(?:書いて|作って|考えて)(?:ください|下さい)?)?[。.!！?？\s]*$/u.test(question.trim()))return true;
  // Schedules and test fixtures often prefix a plain greeting with a short
  // run label (for example, "R11 run test 1 — say hello briefly"). Treat only
  // this tightly bounded metadata form as decoration; source/tool references

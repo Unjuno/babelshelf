@@ -8990,3 +8990,57 @@ In a fresh side-panel browser profile, public Site v379 showed the initial-prepa
 The browser reported Windows Chrome 157, Win32, 12 logical processors and 16 GB device-memory estimate; `navigator.gpu` was available. On the public app, `Say hello in one short sentence.` returned `Hello!`. Activity recorded 293 prompt tokens, 10 generated tokens, 26 ms token counting, 11.1 s text generation, and 21.5846 s model loading (11.4816 s verification, 38.1 ms import, 9.8891 s runtime load). A separate manual schedule `say hello briefly` completed on attempt 1 with saved answer `Hello! How can I help you today?`; the corresponding success notification body matched exactly and opened as Read. During the scheduled run the UI displayed `GPU active`, but the worker technical details did not independently establish actual GPU layer placement. Console recorded zero errors and two warnings. This was one PC/side-panel browser sample; it does not close the current-build prompt matrix, CPU/WASM comparison, prepared-model update-transfer check, or the separate iPhone Safari failure.
 
 The test created one schedule, one execution record and one notification in the side-panel browser profile, and added one real-model chat turn to its default conversation. No Memory or Trash records were changed and no original files were overwritten. The generated chat turn and schedule test records remain in that browser profile.
+
+2026-11-21 JST · public v379 one-schedule dependency purge
+
+In the fresh side-panel profile, a test `say hello briefly` schedule completed with one execution record and one matching success notification. Deleting that schedule moved its definition to Trash (count 1). The delete confirmation showed the schedule name but did not explain effects on linked executions or notifications. In the permanent-delete dialog, selecting “Also remove selected files from conversation history and delete linked activity records, including schedule runs and notifications” removed the schedule definition plus the two linked activity records; the app reported `1 entry deleted. 2 linked activity entries removed. No referenced entries remain.` Trash was empty afterward. These were test artifacts created in this profile; no earlier Memory or Trash records were touched. This confirms one linked schedule graph on public v379; the auditor's 25-record cyclic graph remains a separate, unverified case.
+
+2026-11-21 JST · Japanese source-free schedule prompt failure and routing candidate
+
+On public v379 in the side-panel Windows Chrome 157 profile, a real LFM3
+schedule with prompt `海について一文` failed after generation instead of saving
+an answer. Execution details showed `Could not verify a schedule answer`, reason
+`answer-shape`, rejected candidate `## Prompt\n海について一文`, model
+`lfm3-1.7b-qad-q4-0`, three model calls, 1,915 input tokens, 220 output tokens
+and 44.1 seconds of text generation. The page showed `GPU active`; actual layer
+placement was not independently proven. This confirms a schedule-path false
+format rejection for this tested standalone Japanese free-text prompt, not a
+general failure for all schedules.
+
+The local candidate now routes the narrow Japanese original-writing form
+`海について一文` (and explicit variants such as `海について一文を書いてください`)
+through the existing prose conversation answer path. Prompts that mention
+saved notes, history, files, attachments, or citations remain on the
+evidence-aware route. The focused scheduling/conversation tests passed 22/22.
+App build `8f0c66a0e06a18b3` contains 166 verified assets; app acceptance passed
+9/9. The first local `npm run test:quality` attempt had one WebKit MCP
+custom-tool test fail; that exact test passed 1/1 on isolated rerun. A second
+full `npm run test:quality` run completed through installed-PWA acceptance on
+build `8f0c66a0e06a18b3`: core 278/278, prototype 2,073/2,073, Editor 28/28,
+review-store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1, Tools
+16/16, Markdown 4/4, SHA 1/1, custom tools 38/38, MCP 8/8 in Chromium and
+WebKit, device-memory 1/1, inference lease 1/1, Schedule/Trash/Toast 25/25,
+Settings 32/32, Editorial 38/38, iOS handoff UI 37/37 in Chromium and WebKit,
+app update 3/3, persistent offline-process `pass: true`, and installed-PWA
+`pass: true`. Update retention used a synthetic OPFS model sentinel and
+observed zero model asset requests; this does not measure public production
+transfer bytes or establish model inference. The schedule fix has not yet been
+replayed with the real model or covered by current-head GitHub CI. No Site
+update or model download was performed for this patch. The failed test schedule
+remains in the side-panel profile pending cleanup after its evidence is
+retained; no preexisting Memory or Trash records were changed.
+
+2026-11-21 JST · side-panel QA schedule cleanup
+
+After recording the failed Japanese schedule run, the task-created schedule
+`海について一文` was moved to Trash and permanently deleted using the explicit
+linked-activity removal checkbox. The app reported `1 entry deleted. 2 linked
+activity entries removed. No referenced entries remain.` Trash then showed empty.
+The temporary failure status was dismissed. This removed only the schedule,
+run and notification created for this investigation. The real-model chat test
+turn remains; no preexisting conversation turn, Memory file or Trash record was
+modified.
+
+The latest local source patch is committed locally, but no current-head push or
+Site deployment was made. The instructed existing remote branch
+`codex/ui-design-handoff` is absent; `main` was not changed.

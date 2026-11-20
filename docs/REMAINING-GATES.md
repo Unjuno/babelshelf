@@ -36,17 +36,28 @@ generation, 21.6 s model load, and 26 ms token counting. The page displayed
 `GPU active`, but runtime GPU layer placement was not independently verified.
 This PC browser result does not change the separate iPhone failure above.
 
-The latest local candidate is app build `879e22fa2700e3ed` with 166 verified
-assets. Its full `npm run test:quality` workflow completed successfully on
-Windows Chromium 149.0.7827.55 and WebKit 26.5. It includes regression coverage
-for schedule-source isolation, the reported Japanese emoji/ampersand arithmetic
-prompt, and LFM3 WebGPU model loads that remain silent for longer than the
-generic five-minute idle timeout. The LFM3-specific timeout remains bounded by
-the existing ten-minute hard cap. This fix has not been re-tested on the
-iPhone. The candidate has not been pushed, merged or deployed. Existing release
-gates remain open: current-build real-model schedule prompts on GPU and
-CPU/WASM, production model-byte transfer accounting, comparison against the
-auditor's anonymized 25-item Trash graph, and physical iPhone/Android PWA checks.
+The latest local candidate is app build `8f0c66a0e06a18b3` with 166 verified
+assets. It retains the LFM3 silent-load timeout correction and adds a narrow
+source-free prose route for standalone Japanese original-writing schedule
+prompts such as `海について一文`; saved-source, history and attachment requests
+remain on the evidence-aware path. Focused schedule and conversation tests pass
+22/22, and app acceptance passes 9/9. The first complete local quality attempt
+had one WebKit MCP custom-tool test fail; the exact test passed in isolation,
+and a second full `npm run test:quality` run completed through installed-PWA
+acceptance with the 166-asset build. PR #111's previous head `ddfdf6c7` passed
+CI, but this latest local patch has not been pushed or covered by CI. The
+repository instruction limits pushes to the existing `codex/ui-design-handoff`
+branch, which is absent from the remote refs; no push or `main` update was
+made. On public
+v379, a real Japanese schedule run failed answer-shape validation after 44.1 s
+generation (3 calls, 1,915 input tokens, 220 output tokens); the rejected
+candidate was `## Prompt\n海について一文`. This candidate fix has not been
+tested with the real model. The iPhone timeout correction has not been
+re-tested on the phone.
+Existing release gates remain open: current-candidate real-model schedule
+prompts on GPU and CPU/WASM, production model-byte transfer accounting,
+comparison against the auditor's anonymized 25-item Trash graph, and physical
+iPhone/Android PWA checks.
 
 After that deployment, local commit `0ef49727` added a readable schedule-run
 diagnostic view in Execution history and Memory. Focused component tests passed
@@ -71,7 +82,12 @@ notifications), adds a conversation source/attachment link, and confirms reviewe
 purge removes the selected dependency graph while preserving an unrelated file
 byte-for-byte. The prototype suite passes 2,063/2,063 with this case. This
 synthetic graph has not been compared with an anonymized copy of the auditor's
-exact records, so that P0 gate remains partial.
+exact records, so that P0 gate remains partial. Separately, on public v379 a
+fresh test schedule with one run and one notification was moved to Trash; using
+the explicit linked-record checkbox permanently removed the definition and
+both activity records, leaving Trash empty. The one-schedule delete-confirm
+dialog named the schedule but did not explain the linked records it would
+affect. This validates that bounded dependency path, not the 25-item graph.
 
 On 2026-11-20, the local release candidate was rebuilt as app build
 `1b9220a37e0a05bf` with 166 verified assets. The full `npm run test:quality`
