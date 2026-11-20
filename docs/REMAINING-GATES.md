@@ -1,5 +1,43 @@
 ## Current status · 2026-11-20
 
+### Latest release · Site v379
+
+PR [#110](https://github.com/Unjuno/babelshelf/pull/110) merged to `main` as
+`684b5c773d8d986835895dbceabc41c16ed00c9a`. Its exact-head Local PWA quality
+workflow [44707352356](https://github.com/Unjuno/babelshelf/actions/runs/44707352356)
+completed successfully in 14m36s. The merged source built as app build
+`4844b1b70599ee68` with 166 verified assets. Site v379 uses Site-source commit
+`8a43c6447dda20954f234239970179c8f7c98914`, archive
+`sha256:beca18af0162da35db07a7bcac93bd01b5ddc509eb1b781b9aec43e108244a64`,
+and deployed successfully at 2026-11-20 09:21:16 UTC. Public HTTP checks on
+`https://babelshelf.com/`, `/sw.js`, `/build.json` and the referenced entry
+bundle returned 200; the live manifest reports build `4844b1b70599ee68` and
+166 files. The public audience and custom domain were retained.
+
+The existing PWA's adoption of v379 was not confirmed: an Update click in the
+side-panel browser produced no observable active-worker/build change in that
+check. This is deployment evidence, not client migration or byte-level
+measurement of prepared model weights. The existing public release still has
+the P0 model-transfer, real-model schedule-matrix and anonymized 25-item Trash
+graph gates below.
+
+After that deployment, local commit `0ef49727` added a readable schedule-run
+diagnostic view in Execution history and Memory. Focused component tests passed
+3/3; the history-to-Memory Playwright route passed 1/1; Schedule/Trash/Toast
+passed 25/25; prototype tests passed 2,062/2,062; app acceptance passed 9/9;
+`npm run check` and the production build passed. This local candidate shows the
+failed candidate/reason and inference metrics when they exist, while preserving
+the complete JSON under a collapsed disclosure. It is not on `main` or Site.
+No browser records or Trash entries were modified.
+
+Local follow-up commit `69c2b632` fixes a persistence gap: when schedule-run
+finalization rejects an echoed answer or verbatim-source recovery, inference
+call counts, token totals and timing now remain in the failure diagnostic.
+Focused task-record tests passed 21/21, the prototype suite 2,062/2,062,
+Schedule/Trash/Toast browser coverage 25/25, and the production build/check
+passed. The local commit is not pushed or deployed. Real-model prompt reliability
+and the reported Trash graph still require separate acceptance evidence.
+
 ### Release-readiness follow-up · Site v378
 
 PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
