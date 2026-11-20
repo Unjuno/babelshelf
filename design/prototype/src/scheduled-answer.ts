@@ -18,6 +18,11 @@ export class ScheduleAnswerError extends Error{
  readonly diagnostic:RunDiagnostic;
  constructor(message:string,diagnostic:RunDiagnostic){super(message);this.name='ScheduleAnswerError';this.diagnostic=diagnostic;}
 }
+function repeatsSchedulePrompt(answer:string,prompt:string){
+ const comparable=(value:string)=>value.normalize('NFKC').replace(/^#{1,6}\s*Prompt\s*\n/iu,'').replace(/^Prompt\s*:\s*/iu,'').replace(/\s+/gu,' ').trim().replace(/[.!?。！？]+$/gu,'').toLowerCase();
+ const output=comparable(answer);
+ return output===comparable(prompt)||output===comparable(schedulePromptBody(prompt));
+}
 function rejectRecoveredScheduleAnswer<T extends {answer:string;recovery?:string;recoveryReason?:string;model?:RunDiagnostic['model']}>(result:T,inference?:AnswerInference):T{
  if(result.recovery==='verbatim-source')throw new ScheduleAnswerError('Could not verify a schedule answer · edit the prompt and retry',{stage:'answer-validation',reason:result.recoveryReason??'verbatim-source-recovery',candidate:result.answer.slice(0,4000),model:result.model,...(inference?{inference}:{})});
  return result;
@@ -42,7 +47,14 @@ export async function executeScheduledAnswer(dependencies:Dependencies,input:Req
   throw new ScheduleAnswerError(message,{stage:sourceLeak?'answer-validation':'generation',reason:message,...(candidate?{candidate}:{}),model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference?{inference}:{})});
  });
  if(conversationRequest){
-  const result=await answer({model,question,query:'',mode:'chat',scope:{kind:'conversation'},context:{summary:'',recent:[],refs:[],turnCount:0},check,replyStyle,userGuidance});
+  const request={model,question,query:'',mode:'chat' as const,scope:{kind:'conversation' as const},context:{summary:'',recent:[],refs:[],turnCount:0},check,replyStyle,userGuidance};
+  let result=await answer(request);
+  // Small local models occasionally echo a short scheduled instruction. Give
+  // that exact failure one bounded repair while preserving the original task.
+  if(repeatsSchedulePrompt(result.answer,question)){
+   result=await answer({...request,userGuidance:[userGuidance,'For this scheduled task, provide the requested result directly. Do not quote, restate, or explain the instruction.'].filter(Boolean).join('\n')});
+   if(repeatsSchedulePrompt(result.answer,question))throw new ScheduleAnswerError('Could not verify a schedule answer · edit the prompt and retry',{stage:'answer-validation',reason:'prompt-echo-after-repair',candidate:result.answer.slice(0,4000),model:result.model,...(inference?{inference}:{})});
+  }
   return rejectRecoveredScheduleAnswer(result,inference);
  }
  const result=await answer({model,question,query:request?.query??question,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});

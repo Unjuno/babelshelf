@@ -2,6 +2,26 @@
 
 ### Latest follow-up · 2026-11-21
 
+Audit 17 follow-up, PC-only local candidate (2026-11-21): model preparation and
+app update now use visible in-app confirmation sheets with model-size/retention
+disclosure; cancelling Text model preparation was verified not to start a
+download. Search settings now explain that a model must be selected and that
+downloads must be enabled before Prepare can run. Restore defaults confirmation
+now says Connection returns to Offline. Run now keeps its action sheet open
+until execution ends to prevent a second tap from activating another schedule;
+completed one-off schedules are projected as off/disabled without rewriting the
+canonical schedule. Source-free scheduled echoes receive one bounded repair and
+retain a rejected candidate/reason if still invalid; general capital questions
+are routed to source-free prose. Build `0a82a0f0444e016b` has 166 verified
+assets; `npm run check` passed. Focused UI checks passed for app update (3/3),
+Text preparation confirmation (1/1), Search model explanation (1/1), Restore
+defaults disclosure (1/1), and one-off schedule status (1/1); scheduled-answer
+and task unit tests passed 41/41. No real-model or physical iPhone verification
+was performed in this follow-up. Phone Use currently reports Bluetooth
+disconnected and not mirroring. The remaining audit blockers, full quality
+workflow, GitHub publication and Site deployment are still open; this local
+candidate is not a release approval.
+
 The local LFM3 adapter now reuses a verified OPFS snapshot marker across page
 and worker restarts, keyed to the selected model revision, expected SHA-256,
 size, and file modification time. Explicit Verify remains a full SHA-256 check;

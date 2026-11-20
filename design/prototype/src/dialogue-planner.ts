@@ -346,6 +346,13 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  * Explicit knowledge/history/input references remain on the evidence-aware path. */
 export function isSourceFreeConversationRequest(question:string){
  if(plainConversationRoute(question,[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat')return true;
+ // A small set of explicitly global fact questions can be answered from the
+ // selected model's general knowledge. Keep questions about schedules,
+ // personal records, attachments, and saved Memory on the evidence path.
+ const normalized=question.normalize('NFKC').trim();
+ if(!/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|以前|過去|保存した|saved|memory|my\b|our\b|earlier|previous)/iu.test(normalized)
+  &&(/^(?:what is|what's) the capital of [\p{L}][\p{L} .'-]{0,60}[?.!]?$/iu.test(normalized)
+   ||/^[\p{L}][\p{L}・ー .'-]{0,40}の首都は(?:どこ|何処)?[ですか？?。.!！]*$/u.test(normalized)))return true;
  // Explicit original-writing prompts in Japanese have no saved-source target.
  // Keep this grammar narrow so factual questions that may refer to Memory do
  // not bypass evidence selection.

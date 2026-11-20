@@ -10,7 +10,7 @@ function raw(n:NoteView){return {ui:{recordType:n.recordType},revisions:[{versio
 export function taskViews(notes:NoteView[]){
  const tasks:TaskView[]=[],executions:ExecutionView[]=[],notifications:NotificationView[]=[],errors:string[]=[];
  for(const n of notes)try{
-  if(n.recordType==='schedule'){const task=parseTask(n.body);tasks.push({...task,id:n.id,title:task.prompt.trim().split('\n')[0].slice(0,72),version:n.version,path:n.path,nextAt:n.nextAt,requiresReview:n.requiresReview});}
+  if(n.recordType==='schedule'){const task=parseTask(n.body);tasks.push({...task,enabled:task.enabled&&!(task.repeat==='once'&&n.nextAt===null),id:n.id,title:task.prompt.trim().split('\n')[0].slice(0,72),version:n.version,path:n.path,nextAt:n.nextAt,requiresReview:n.requiresReview});}
   else if(n.recordType==='execution')executions.push({...taskRunView(raw(n)),id:n.id,path:n.path,version:n.version});
   else if(n.recordType==='notification'){const notice=noticeView(raw(n));notifications.push({...notice,id:n.id,scheduleId:notice.taskId});}
  }catch(e){errors.push(n.path+' · '+(e as Error).message);}

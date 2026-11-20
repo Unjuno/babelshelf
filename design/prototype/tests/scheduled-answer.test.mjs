@@ -12,6 +12,16 @@ test('short source-free greeting schedules use one prose answer and never inspec
  assert.equal(result.answer,'Hello!');assert.deepEqual(result.sources,[]);assert.equal(loads,1);assert.equal(generations,1);assert.equal(counts,1);
  assert.equal(isSourceFreeConversationRequest('What time does the workshop start?'),false,'general factual questions may still need saved knowledge');
 });
+test('unambiguous public capital questions use source-free prose while personal questions stay grounded',()=>{
+ assert.equal(isSourceFreeConversationRequest('What is the capital of France?'),true);
+ assert.equal(isSourceFreeConversationRequest('フランスの首都は？'),true);
+ for(const prompt of ['What time does the workshop start?','What is the capital in my saved note?','What did we decide earlier about France?'])assert.equal(isSourceFreeConversationRequest(prompt),false,prompt);
+});
+test('a schedule prompt echo gets one bounded prose repair and keeps the generated answer',async()=>{
+ let generations=0;const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{generations++;assert.equal(format,'prose');if(generations===2)assert.match(messages[0].content,/Do not quote, restate, or explain/);return {text:generations===1?'say hello briefly':'Hello! How can I help?',finishReason:'stop',outputTokens:4};}};
+ const result=await executeScheduledAnswer({store:{all:async()=>{throw Error('Echo repair must not read Memory');},search:async()=>{throw Error('Echo repair must not search Memory');}},models:{text:async()=>engine}},{prompt:'say hello briefly',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
+ assert.equal(result.answer,'Hello! How can I help?');assert.equal(generations,2);
+});
 test('numbered run-test greeting labels are metadata, so schedule output is generated as prose',async()=>{
  let generations=0,loads=0;
  const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{generations++;assert.equal(format,'prose');assert.match(messages.at(-1).content,/say hello briefly/i);assert.doesNotMatch(messages.at(-1).content,/R11 run test 1/i);return {text:'Hello!',finishReason:'stop',outputTokens:2};}};

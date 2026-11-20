@@ -37,8 +37,10 @@ export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{mo
   </select>
   <div className="source-revision">Local multilingual embeddings · {(assetBytes/1_000_000).toFixed(0)} MB · Apache-2.0{manifest.id.includes('311m')?' · higher quality, slower on some devices':''}</div>
   <div className="model-preparation"><span>{status}</span>{selected&&<button className="quiet-button" disabled={blocked} onClick={()=>select('')}>Turn off</button>}</div>
+  {!selected&&<div className="source-revision" role="status">Choose a Search model above to enable semantic search. Keyword search remains available while Search is off.</div>}
   {selected&&<>
    <div className="source-revision">Prepare and load to use semantic matches. Word search remains available. Model change keeps the previous derived index; each model has a separate index.</div>
+   {!downloads&&<div className="source-revision" role="status">Search model preparation needs downloads enabled. Turn Online on in Connection settings; no files download while Offline.</div>}
    <div className="action-row">
     <button className="quiet-button" disabled={blocked} onClick={()=>void run('Checking local Search files',async(runtime,signal)=>{await runtime.verifyRuntime(signal,events);const files=await runtime.status(signal);if(files.filesPresent)await runtime.verifyModel(signal,events);return files;})}>Check files</button>
     <button className="quiet-button" disabled={blocked} onClick={()=>void run(downloads?'Preparing Search runtime':'Checking local Search runtime',downloads?(runtime,signal)=>runtime.prepareRuntime(true,signal,events):(runtime,signal)=>runtime.verifyRuntime(signal,events))}>{downloads?'Prepare runtime':'Check runtime'}</button>
