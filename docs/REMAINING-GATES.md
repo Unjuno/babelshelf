@@ -1,5 +1,32 @@
 ## Current status · 2026-11-20
 
+### Release-readiness follow-up · Site v378
+
+PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
+`main` as `bab1b98327972195394bc4f3c2827ff01a262d0e`. Exact-PR quality run
+[44694445549](https://github.com/Unjuno/babelshelf/actions/runs/44694445549)
+passed all 17 workflow stages on retry (attempt 2). The merged-main run
+[44699436749](https://github.com/Unjuno/babelshelf/actions/runs/44699436749)
+was still running when this entry was written.
+
+The merged source rebuilt as app build `6bd762f2184afc33` with 166 verified
+assets. The existing public Site was updated to v378, retaining public access.
+Its Site-source commit is `1fe18485766179137a0942620342cf8c3ccf1ef2`; the
+release manifest pins product `main` at `bab1b98327972195394bc4f3c2827ff01a262d0e`.
+The Site staging check verified the current and previous asset manifests and
+the WASM gzip/identity and offline-shell delivery paths. Public requests to
+`/`, `/index.html`, `/sw.js`, `/manifest.webmanifest`, `/build.json` and the
+referenced JavaScript bundle returned HTTP 200; `/build.json` reported the
+expected build and 166 assets. This confirms public deployment, not a fresh
+real-model inference or physical-device update.
+
+The P0 acceptance gaps below remain open: byte-level transfer measurement for
+an already prepared real model during update; real-model schedule prompts on
+the deployed build across GPU and CPU/WASM, including the reported failure
+shapes; and an isolated replay of the external 25-item Trash graph. Existing
+user/browser records were not purged. Physical iPhone/Android, storage-pressure
+and remaining P2 checks also remain separate gates.
+
 ### Release-readiness follow-up · candidate app build `6bd762f2184afc33`
 
 The product source was at `aa14faffaa9da739e75f588b12e504ac0501b111` before this
