@@ -1,5 +1,51 @@
 ## Current status · 2026-11-20
 
+### Release-readiness follow-up · Site v378
+
+PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
+`main` as `bab1b98327972195394bc4f3c2827ff01a262d0e`. Exact-PR quality run
+[44694445549](https://github.com/Unjuno/babelshelf/actions/runs/44694445549)
+passed all 17 workflow stages on retry (attempt 2). The merged-main run
+[44699436749](https://github.com/Unjuno/babelshelf/actions/runs/44699436749)
+was still running when this entry was written.
+
+The merged source rebuilt as app build `6bd762f2184afc33` with 166 verified
+assets. The existing public Site was updated to v378, retaining public access.
+Its Site-source commit is `1fe18485766179137a0942620342cf8c3ccf1ef2`; the
+release manifest pins product `main` at `bab1b98327972195394bc4f3c2827ff01a262d0e`.
+The Site staging check verified the current and previous asset manifests and
+the WASM gzip/identity and offline-shell delivery paths. Public requests to
+`/`, `/index.html`, `/sw.js`, `/manifest.webmanifest`, `/build.json` and the
+referenced JavaScript bundle returned HTTP 200; `/build.json` reported the
+expected build and 166 assets. This confirms public deployment, not a fresh
+physical-device update.
+
+After deployment, the existing side-panel PWA applied the update and reported
+Active worker `6bd762f2184afc33` / bundle `index-hLG6c4hh.js`. App & storage
+checks passed 9 ready / 2 need review / 2 not checked. The current-build Quick
+check then passed with local `lfm3-1.7b-qad-q4-0` on Windows Chrome 157: 43
+input tokens, 11 generated tokens, 5.23 s generation, 2.1 aggregate tokens/s,
+WebGPU execution backend and 25/25 runtime-observed GPU layers. The local test
+loaded the selected model, returned a short structured result, discarded its
+text and unloaded it afterward. This is one inference sample, not a normal
+chat-turn, schedule, sustained-rate or physical-device result. The model files
+were available after update, but actual transfer bytes were not captured.
+
+On the same v378 browser session, one manual run of the existing paused QA
+schedule `say hello briefly` completed as `succeeded · Attempt 1` and its
+execution detail showed `Hello! How can I help you today?`. A new unread
+notification was created; its body was not opened for comparison. This
+reproduces the previously failing greeting-shaped schedule on the current
+build, but covers only one run and does not close the emoji/ampersand,
+Japanese, source-backed, retry/Stop or CPU/WASM cases.
+
+The P0 acceptance gaps below remain open: byte-level transfer measurement for
+an already prepared real model during update; real-model schedule prompts on
+the deployed build across GPU and CPU/WASM, including the reported failure
+shapes; and an isolated replay of the external 25-item Trash graph. Existing
+user/browser records were not purged. Physical iPhone/Android, storage-pressure
+and remaining P2 checks also remain separate gates.
+
 ### Release-readiness follow-up · candidate app build `6bd762f2184afc33`
 
 The product source was at `aa14faffaa9da739e75f588b12e504ac0501b111` before this
