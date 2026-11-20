@@ -849,7 +849,7 @@ export default function Prototype() {
  }
  function beginEdit(note:Note){editBase.current={body:note.body,path:note.path};setEditBody(note.body);setEditPath(note.path);setEditVersion(note.version);setEditing(true);}
  useEffect(()=>{
-  if(current)pendingWorkingFile.current={noteId:current.id,revision:current.version};
+  if(current){const pin={noteId:current.id,revision:current.version},previous=dialogue.current.currentFile;pendingWorkingFile.current=pin;if(previous?.noteId!==pin.noteId||previous.revision!==pin.revision)toast(`Input file changed · ${current.path} · v${pin.revision}`);}
   if(!dialogueReady||sendLock.current||sending||!pendingWorkingFile.current)return;
   const pin=pendingWorkingFile.current;pendingWorkingFile.current=undefined;
   void fileFocusQueue.current!.select(pin).catch(e=>setDialogueError(e.message));

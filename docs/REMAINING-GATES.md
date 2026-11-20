@@ -21,6 +21,17 @@ measurement of prepared model weights. The existing public release still has
 the P0 model-transfer, real-model schedule-matrix and anonymized 25-item Trash
 graph gates below.
 
+The latest local candidate is app build `910afe3bc16c3dec` with 166 verified
+assets. Its full `npm run test:quality` workflow completed successfully on
+Windows Chromium 149.0.7827.55 and WebKit 26.5. A new built-product regression
+shows a visible notice when opening another Memory file changes the Input
+working-file pin; the same test configuration also verifies the pin remains
+correct through offline persistence. This is local PC-browser evidence only.
+The candidate has not been pushed, merged or deployed. Existing release gates
+remain open: a current-build real-model schedule prompt matrix on GPU and
+CPU/WASM, production model-byte transfer accounting, comparison against the
+auditor's anonymized 25-record Trash graph, and physical iPhone/Android checks.
+
 After that deployment, local commit `0ef49727` added a readable schedule-run
 diagnostic view in Execution history and Memory. Focused component tests passed
 3/3; the history-to-Memory Playwright route passed 1/1; Schedule/Trash/Toast
