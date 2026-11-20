@@ -38,6 +38,14 @@ Schedule/Trash/Toast browser coverage 25/25, and the production build/check
 passed. The local commit is not pushed or deployed. Real-model prompt reliability
 and the reported Trash graph still require separate acceptance evidence.
 
+An isolated fake-IndexedDB test at `design/prototype/tests/trash-purge-graph.test.mjs`
+now constructs 25 related records (10 schedules, 11 execution records and 4
+notifications), adds a conversation source/attachment link, and confirms reviewed
+purge removes the selected dependency graph while preserving an unrelated file
+byte-for-byte. The prototype suite passes 2,063/2,063 with this case. This
+synthetic graph has not been compared with an anonymized copy of the auditor's
+exact records, so that P0 gate remains partial.
+
 ### Release-readiness follow-up · Site v378
 
 PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
