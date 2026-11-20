@@ -1,28 +1,39 @@
 ## Current status · 2026-11-21
 
-### Latest release · Site v379
+### Latest release · Site v380
 
-PR [#110](https://github.com/Unjuno/babelshelf/pull/110) merged to `main` as
+PR [#110](https://github.com/Unjuno/babelshelf/pull/110) remains the latest
+merge to the product repository's `main`, at
 `684b5c773d8d986835895dbceabc41c16ed00c9a`. Its exact-head Local PWA quality
 workflow [44707352356](https://github.com/Unjuno/babelshelf/actions/runs/44707352356)
-completed successfully in 14m36s. The merged source built as app build
-`4844b1b70599ee68` with 166 verified assets. Site v379 uses Site-source commit
-`8a43c6447dda20954f234239970179c8f7c98914`, archive
-`sha256:beca18af0162da35db07a7bcac93bd01b5ddc509eb1b781b9aec43e108244a64`,
-and deployed successfully at 2026-11-20 09:21:16 UTC. Public HTTP checks on
-`https://babelshelf.com/`, `/sw.js`, `/build.json` and the referenced entry
-bundle returned 200; the live manifest reports build `4844b1b70599ee68` and
-166 files. The public audience and custom domain were retained.
+completed successfully in 14m36s. The product candidate containing the
+Japanese schedule-answer fixes is locally committed as
+`a3021b7a360a19a9815bb6ef6949269b87e0c3c9` on `codex/nov21-release-gates`;
+it has not been pushed to the product GitHub repository because the required
+remote branch `codex/ui-design-handoff` is absent. Its app build
+`a684409fdab5774b` has 166 verified assets and passed the full local quality
+workflow. Site v380 was built from Site-source commit
+`0e651dba74ebe750f2d7570ecb6adc811dd68f81` (version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_2b6decc6ae0c81918e709fdb70d128b2`)
+and deployed as `appgdep_6b008c7bcf548191bb29824209131602`. Archive SHA-256 is
+`750db6e8efc1e014c346a0c4430f0a62ab7c20584c6ad1bf3344f41f4713ae20`;
+206 archived files, 110,684,160 bytes. The public audience and custom domain
+`https://babelshelf.com` were retained. Direct requests to `/`, `/build.json`
+and the referenced entry bundle returned HTTP 200; the manifest reports build
+`a684409fdab5774b` and 166 files. This deploys the verified product candidate
+to Site while product GitHub publication and matching-head CI remain pending.
 
 On 2026-11-21, after the user granted Windows-side Phone Use permission, the
-public app was opened in iPhone Safari 27.2 on iPhone 18,4. The Developer
-Model readiness check was freshly run: 3 ready and 1 need review; the selected
-`lfm3-1.7b-qad-q4-0` Q4_0 model files were present and verified. A real Quick
-request then ran for 311,613 ms and failed in `model-load` with
-`text_model_load_stalled`, before any text generation or answer. The selected
-route was `webgpu`, but runtime GPU execution/layer placement was not proven.
-Safari reported `standalone:false`; this was not a Home Screen PWA or offline
-restart test. No model acquisition or user-data/Trash change was made.
+public app was opened in iPhone Safari 27.2 on iPhone 18,4. The v380 browser
+bundle `index-CYwtwqXs.js` loaded and Developer app checks reported build
+`a684409fdab5774b`, 9 ready, 2 need review and 2 not checked. Model reply was
+not run by that check; GPU capability only established browser availability,
+not model GPU placement. A previous v379 Quick request had failed in
+`model-load` after 311,613 ms with `text_model_load_stalled`, before generation.
+On the v380 follow-up, the Model files check was not observed to finish; the
+mirror stopped updating and input could not be confirmed. No new inference,
+Home Screen PWA test or offline restart is claimed. No model acquisition or
+user-data/Trash change was made.
 
 In the side-panel Windows Chrome 157 profile on public v379, a fresh setup
 downloaded the 1,049,615,680-byte model in 63 HTTP 206 range responses; summed
@@ -55,9 +66,10 @@ WebKit; app update 3/3; offline-process `pass: true`; installed-PWA
 `pass: true`. Earlier attempts had intermittent WebKit timeouts; the affected
 tests passed in isolation and the final complete workflow passed. Matching-head
 GitHub CI remains pending. The required push target `codex/ui-design-handoff`
-does not exist in remote refs, so no push, PR update or Site deployment has
-been made; `main` remains unchanged. The iPhone timeout correction has not been
-re-tested on the phone.
+does not exist in remote refs, so no product push or PR update has been made;
+`main` remains unchanged. Site v380 was deployed independently from the exact
+verified artifact as recorded above. The iPhone timeout correction has not
+been re-tested on the phone.
 Existing release gates remain open: CPU/WASM schedule replay, production
 prepared-model update-transfer accounting, comparison against the auditor's
 anonymized 25-item Trash graph, and physical iPhone/Android PWA checks. The

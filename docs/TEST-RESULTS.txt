@@ -9080,3 +9080,36 @@ intermittent WebKit timeouts; isolated reruns passed and the final full run was
 green. Matching-head GitHub CI remains pending. No push or Site deployment was
 made because the instructed push target `codex/ui-design-handoff` is absent
 from remote refs.
+
+2026-11-21 JST · Site v380 publication and current-build browser verification
+
+The verified app artifact `a684409fdab5774b` (166 manifest assets) was staged
+into the existing public BabelShelf Site source. Delivery verification passed
+for WASM identity/gzip bytes, offline-shell transport and cache policy. Site
+source commit `0e651dba74ebe750f2d7570ecb6adc811dd68f81` was saved as Site
+version 380 and deployed successfully as
+`appgdep_6b008c7bcf548191bb29824209131602`. The deployment archive contained
+206 files (110,684,160 bytes), with SHA-256
+`750db6e8efc1e014c346a0c4430f0a62ab7c20584c6ad1bf3344f41f4713ae20`. The
+existing public audience and `https://babelshelf.com` domain were retained.
+Public `/`, `/build.json` and the referenced entry bundle returned HTTP 200;
+`build.json` reported `a684409fdab5774b` and 166 files. In an existing public
+browser profile, app Update applied the same worker and bundle while preserving
+the visible conversation. No user conversation, Memory or Trash records were
+deleted.
+
+With Windows-side Phone Use permission enabled, the iPhone Safari session
+loaded the v380 page bundle `index-CYwtwqXs.js`; Developer app checks reported
+build `a684409fdab5774b`, iPhone Safari 27.2, and 9 ready / 2 need review /
+2 not checked. The check explicitly left Model reply as “Not run in this
+check.” A subsequent Model files tap had no confirmed result; the mirror then
+stopped updating and the device action was not repeated. Therefore no v380
+iPhone model inference is claimed. The previous v379 load-stall and local
+timeout fix remain unverified on v380 hardware. No model download or user-data
+cleanup was performed.
+
+Product GitHub publication is still pending: the repository's required
+`codex/ui-design-handoff` push target is absent from remote refs. The product
+candidate remains on its local branch; product `main` and PR #110 were not
+changed. Thus Site v380 is live, but the product source has not been published
+to GitHub and matching-head GitHub CI has not run.
