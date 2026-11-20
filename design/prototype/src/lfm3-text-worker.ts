@@ -10,6 +10,7 @@ import {Lfm3Adapter} from '../../../dist/lfm-adapter.js';
 import {validateLocalModel} from '../../../dist/local-models.js';
 import {describeLfm3Text,lfm3TextModels} from './lfm3-text-manifest.ts';
 import {createRecentPreparedFileReader} from './prepared-file-snapshot.ts';
+import {createVerifiedOpfsSnapshotCache} from './verified-opfs-snapshot.ts';
 import {createLfmTextRuntime} from './lfm-text-runtime.ts';
 import {createTextWorkerHost} from './text-worker-host.ts';
 import {ownChildWorkers} from './owned-workers.ts';
@@ -33,13 +34,16 @@ self.onmessage=createTextWorkerHost(async(progress,configuration)=>{
  if(custom.some((model:any)=>model.engine!=='wllama-lfm3'))throw Error('Unexpected LFM3 model registry');
  const pinnedContextTokens=configuration?.pinnedContextTokens??8192;
  const manifest=describeLfm3Text(custom,'',pinnedContextTokens,configuration?.testContextTokens),byId=new Map(manifest.models.map((model:any)=>[model.id,model]));
+ const modelDirectory=async()=> (await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-text-lfm3-v1');
+ const snapshotCache=createVerifiedOpfsSnapshotCache(modelDirectory);
  const readFile=createRecentPreparedFileReader(async(id:string)=>{
   const model=byId.get(id) as any;if(!model)throw Error('Unknown LFM3 model');
-  const dir=await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-text-lfm3-v1');
+  const dir=await modelDirectory();
   return(await dir.getFileHandle(model.file.sha256)).getFile();
  },id=>(byId.get(id) as any)?.file.sha256??'',id=>(byId.get(id) as any)?.file.bytes??0);
+ const identity=(model:any)=>({modelId:model.id,modelRevision:model.revision,sha256:model.file.sha256,bytes:model.file.bytes});
  const assets:Record<string,{filesPresent:boolean}>={};
  for(const model of manifest.models){let present=false;try{present=(await readFile(model.id)).size===model.file.bytes;}catch{/* missing is not ready */}assets[model.id]={filesPresent:present};}
- const adapter=new Lfm3Adapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:Math.max(...manifest.models.map((model:any)=>model.contextTokens)),reusePrompt:true,onProgress:progress});
+ const adapter=new Lfm3Adapter({Wllama,paths:{default:wasm},compat:{wasm:compatWasm,worker:{code:compatCode}},models:manifest.models,maxReplyTokens:Math.max(...manifest.models.map((model:any)=>model.contextTokens)),reusePrompt:true,isVerifiedFile:(file:File,model:any)=>snapshotCache.isVerified(file,identity(model)),onFileVerified:(file:File,model:any)=>snapshotCache.remember(file,identity(model)),onProgress:progress});
  return createLfmTextRuntime({adapter,manifest,readFile,readAssets:()=>assets,backend:textBackendPolicy(),onProgress:progress});
 },message=>self.postMessage(message),owned.dispose);

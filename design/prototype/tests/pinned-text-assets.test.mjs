@@ -33,6 +33,12 @@ test('pinned preparation counts network transfer bytes and reports local reuse a
  const first=await f.store.prepare(true,signal,progress);assert.deepEqual(first,{downloadedBytes:3,downloadedAssets:1,assetCount:1});assert.deepEqual(new Set(phases),new Set(['downloading']));phases.length=0;
  const second=await f.store.prepare(true,signal,progress);assert.deepEqual(second,{downloadedBytes:0,downloadedAssets:0,assetCount:1});assert.equal(f.fetches,1);assert.deepEqual(new Set(phases),new Set(['verifying']));
 });
+test('a streamed LFM3 GGUF digest marks the committed OPFS snapshot for the next worker load',async()=>{
+ const lfmManifest={...manifest,id:'lfm3-1.7b-qad-q4-0',files:[{...manifest.files[0],path:'model.gguf'}]},files=new Map();
+ const directory={async getFileHandle(name,{create=false}={}){if(!files.has(name)){if(!create)throw new DOMException('missing','NotFoundError');files.set(name,new Blob([]));}return {getFile:async()=>new File([files.get(name)],name,{lastModified:123}),async createWritable(){let pending=[];return {async write(value){pending.push(typeof value==='string'?value:value);},async close(){files.set(name,new Blob(pending));},async abort(){pending=[];}};}};},async removeEntry(name){if(!files.delete(name))throw new DOMException('missing','NotFoundError');}};
+ const store=createPinnedAssetStore(lfmManifest,{directory:async()=>directory,fetch:async()=>new Response(bytes)}),marker=sha256+'.verified-v1.json';
+ await store.prepare(true,new AbortController().signal);assert.ok(files.has(marker),'verified committed GGUF snapshot gets a cache marker');
+});
 test('large pinned ONNX resumes after an interrupted request from its last committed range',async()=>{
  const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+37);for(let i=0;i<all.length;i++)all[i]=i%251;
  const digest=createHash('sha256').update(all).digest('hex'),pin={path:'onnx/model_quantized.onnx',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/onnx/model_quantized.onnx',bytes:all.length,sha256:digest},files=new Map(),ranges=[];
