@@ -16,10 +16,14 @@ import {createTextWorkerHost} from './text-worker-host.ts';
 import {ownChildWorkers} from './owned-workers.ts';
 import {preferHighPerformanceAdapterRequests} from './webgpu-preference.ts';
 import {textBackendPolicy} from './text-device-policy.ts';
+import {installLfm3NestedWorkerWebGpuPreference} from './lfm3-nested-worker-webgpu.ts';
 
 const owned=ownChildWorkers(self as unknown as {Worker:typeof Worker});
 // Wllama/Emdawn asks navigator.gpu.requestAdapter directly. A separate
-// preflight request does not configure that later runtime-owned request.
+// preflight request does not configure that later runtime-owned request. The
+// pinned Wllama build starts a second Blob worker for llama.cpp, so install the
+// same preference into that worker's own global scope as well.
+installLfm3NestedWorkerWebGpuPreference();
 preferHighPerformanceAdapterRequests((globalThis.navigator as Navigator&{gpu?:{requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>}}|undefined)?.gpu);
 const networkFetch=globalThis.fetch.bind(globalThis);
 const allowed=new Set([wasm,compatWasm].map(url=>new URL(url,location.href).href));
