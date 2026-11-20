@@ -9111,7 +9111,8 @@ saved result was `Model result · Failed · model-load`. Check results showed
 reply `Failed · model-load`, and Offline restart `Not checked`. No answer was
 generated. This confirms that the local timeout change prevented the previous
 five-minute stop on this run, but it does not fix the iPhone model-load stall.
-Safari was not in standalone mode, actual GPU layer placement was not proven,
+The bounded report lists the configured engine/backend as `wllama-lfm3` /
+`webgpu`; it does not prove GPU execution. Safari was not in standalone mode,
 and no model download or user-data cleanup was performed.
 
 Product GitHub publication is still pending: the repository's required

@@ -37,8 +37,10 @@ failing. The saved result says `Model result · Failed · model-load`, with
 0 ready, 1 need review and 2 not checked; Model files is Failed and Model reply
 is `Failed · model-load`. No answer was generated. The 5-minute idle-stop did
 not recur, but the physical load still did not complete. Safari reported
-`standalone:false`; this was not a Home Screen PWA or offline restart test. No
-model acquisition or user-data/Trash change was made.
+`standalone:false`; this was not a Home Screen PWA or offline restart test. The
+bounded report lists configured engine/backend as `wllama-lfm3` / `webgpu`,
+which does not prove GPU execution. No model acquisition or user-data/Trash
+change was made.
 
 In the side-panel Windows Chrome 157 profile on public v379, a fresh setup
 downloaded the 1,049,615,680-byte model in 63 HTTP 206 range responses; summed
