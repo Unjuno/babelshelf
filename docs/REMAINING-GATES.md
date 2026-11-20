@@ -80,6 +80,21 @@ installed-PWA evidence remains synthetic/PC-browser evidence. The three P0
 external-evidence gates above remain open; the candidate has not been pushed,
 merged, or deployed.
 
+After that candidate was brought up to date with `origin/main` at
+`684b5c773d8d986835895dbceabc41c16ed00c9a`, the integrated local head
+`db2b485a9e027167b4e2871842db939973ff91fa` rebuilt to the same app build
+`ab24395037bcd18a` with 166 verified assets and completed `npm run
+test:quality` through its final installed-PWA step. The run included 2,066 root
+tests, app acceptance 9/9, Editor 28/28, Schedule/Trash/Toast 25/25, Settings
+32/32, Editorial 38/38, iOS-handoff UI 37/37 on Chromium and WebKit, app-update
+3/3, offline-process `pass: true`, and installed-PWA `pass: true`. These remain
+local automated and synthetic fixture results. The latest side-panel browser
+attempt again left both the navigation and conversation-manager controls
+unchanged; no current-build real-model schedule or update-byte trace could be
+collected. The required push branch `codex/ui-design-handoff` is absent from
+the refreshed remote, and the P0 external-evidence gates remain open, so no
+GitHub publication or Site deployment was made.
+
 ### Release-readiness follow-up · Site v378
 
 PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
