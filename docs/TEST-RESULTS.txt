@@ -9102,11 +9102,17 @@ With Windows-side Phone Use permission enabled, the iPhone Safari session
 loaded the v380 page bundle `index-CYwtwqXs.js`; Developer app checks reported
 build `a684409fdab5774b`, iPhone Safari 27.2, and 9 ready / 2 need review /
 2 not checked. The check explicitly left Model reply as “Not run in this
-check.” A subsequent Model files tap had no confirmed result; the mirror then
-stopped updating and the device action was not repeated. Therefore no v380
-iPhone model inference is claimed. The previous v379 load-stall and local
-timeout fix remain unverified on v380 hardware. No model download or user-data
-cleanup was performed.
+check.” In Models, selected `lfm3-1.7b-qad-q4-0` Q4_0 showed `Files present`
+and `Runtime · Prepared`. Developer Quick explicitly stated “No download” and
+was run once. It stayed in `model-load` for roughly 10 minutes; the progress
+display continued past five minutes with “No new visible step” and then the
+saved result was `Model result · Failed · model-load`. Check results showed
+0 ready, 1 need review and 2 not checked, with Model files `Failed`, Model
+reply `Failed · model-load`, and Offline restart `Not checked`. No answer was
+generated. This confirms that the local timeout change prevented the previous
+five-minute stop on this run, but it does not fix the iPhone model-load stall.
+Safari was not in standalone mode, actual GPU layer placement was not proven,
+and no model download or user-data cleanup was performed.
 
 Product GitHub publication is still pending: the repository's required
 `codex/ui-design-handoff` push target is absent from remote refs. The product

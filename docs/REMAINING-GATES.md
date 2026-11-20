@@ -30,10 +30,15 @@ bundle `index-CYwtwqXs.js` loaded and Developer app checks reported build
 not run by that check; GPU capability only established browser availability,
 not model GPU placement. A previous v379 Quick request had failed in
 `model-load` after 311,613 ms with `text_model_load_stalled`, before generation.
-On the v380 follow-up, the Model files check was not observed to finish; the
-mirror stopped updating and input could not be confirmed. No new inference,
-Home Screen PWA test or offline restart is claimed. No model acquisition or
-user-data/Trash change was made.
+On the v380 follow-up, Models showed the selected LFM3 Q4_0 files as `Files
+present` and the runtime as `Prepared`. Developer Quick explicitly said “No
+download”; it then remained in model-load for roughly 10 minutes before
+failing. The saved result says `Model result · Failed · model-load`, with
+0 ready, 1 need review and 2 not checked; Model files is Failed and Model reply
+is `Failed · model-load`. No answer was generated. The 5-minute idle-stop did
+not recur, but the physical load still did not complete. Safari reported
+`standalone:false`; this was not a Home Screen PWA or offline restart test. No
+model acquisition or user-data/Trash change was made.
 
 In the side-panel Windows Chrome 157 profile on public v379, a fresh setup
 downloaded the 1,049,615,680-byte model in 63 HTTP 206 range responses; summed
@@ -69,7 +74,9 @@ GitHub CI remains pending. The required push target `codex/ui-design-handoff`
 does not exist in remote refs, so no product push or PR update has been made;
 `main` remains unchanged. Site v380 was deployed independently from the exact
 verified artifact as recorded above. The iPhone timeout correction has not
-been re-tested on the phone.
+completed on the phone: it now survives the previous 5-minute boundary but
+reaches the 10-minute run limit without completing model-load. Physical iPhone
+model readiness remains a release gate.
 Existing release gates remain open: CPU/WASM schedule replay, production
 prepared-model update-transfer accounting, comparison against the auditor's
 anonymized 25-item Trash graph, and physical iPhone/Android PWA checks. The
