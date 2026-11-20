@@ -1,4 +1,50 @@
-## Current status · 2026-11-17
+## Current status · 2026-11-20
+
+### Release-readiness follow-up · candidate app build `6bd762f2184afc33`
+
+The product source was at `aa14faffaa9da739e75f588b12e504ac0501b111` before this
+candidate. A first-visit runtime request could time out after 10 seconds while
+the browser was still installing the app-shell worker. The controller wait now
+defaults to 30 seconds and remains caller-bounded to at most 60 seconds; Stop,
+offline checks and requests with an already controlling worker keep their prior
+behavior. A focused simulated 12-second first-install regression passed.
+
+Added an isolated Chromium regression around the production service worker and
+refresh helper. It installs and updates synthetic app shells, then checks
+offline restart and preservation of a synthetic LFM3-directory OPFS sentinel,
+an IndexedDB record and a draft. The observed server request log contained no
+`.gguf` or model-path requests. This tests the app-update boundary; it is not a
+byte-level trace of the public site's real model server or a measurement of a
+1 GB transfer. The real browser's prepared model and QA schedule were left
+intact.
+
+The existing public Site browser's current schedule detail showed a successful
+real LFM3 result, `Hello! How can I help you today?`, rather than a prompt echo.
+This is one prompt/device/profile result. The reported emoji/ampersand,
+Japanese, source-backed, CPU/WASM and retry/Stop matrix still needs separate
+real-model verification. The auditor's original 25-entry Trash data was not
+copied or changed. The isolated Schedule/Trash/Toast browser suite passed
+24/24, covering mutual citation cycles, conversation/activity links,
+schedule/run/notification deletion and unrelated-entry retention.
+
+The full local quality workflow was completed stage by stage after the pinned
+Playwright Chromium 149.0.7827.55 and WebKit 26.5 binaries were installed. The
+first `npm run test:quality` invocation halted at WebKit because its executable
+was absent; the failed WebKit stage was rerun and passed, and all remaining
+stages were then resumed. The workflow included
+2,057 Node/prototype unit tests, the production build (`6bd762f2184afc33`, 166
+verified assets), app acceptance (9/9), Editor (28/28), Schedule/Trash/Toast
+(24/24), Settings (32/32), Editorial (38/38), iOS handoff Chromium/WebKit
+(37/37 each), app-update (3/3), offline process and installed-PWA acceptance.
+The WebKit binaries were missing on the first attempt; its 8 MCP and 37 device
+handoff checks passed after the pinned binaries were installed. These are
+automated browser checks, not physical iOS/Android inference acceptance.
+
+GitHub PR/CI and a Site deployment for this candidate are not yet complete.
+The previous published build remains Site version 377 (`b8a7e77bba9539e3`).
+The user-authorized release sequence is exact-head CI, merge, build from the
+merged commit, Site deployment from that artifact and public build verification.
+No existing Memory/Trash records were permanently deleted.
 
 ### Audit 13 follow-up · PR #106 · Site version 377
 
