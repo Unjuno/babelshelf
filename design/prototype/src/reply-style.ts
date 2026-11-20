@@ -18,7 +18,7 @@ const additionalStage=/(?:\bthen\b|\bafterwards\b|\bfollowed by\b|その後|そ�
 // Shared by request formatting and the narrow greeting grammar. Modifiers do
 // not change the requested sentence count or imply a separate operation.
 export const englishOneSentenceFormat=String.raw`(?:exactly\s+)?(?:one|(?:a\s+)?single)(?:[\s-]+(?:short|brief|concise))?[\s-]+sentence`;
-const oneSentenceRequest=new RegExp(String.raw`\b${englishOneSentenceFormat}\b|(?:一文|1文)(?:で|の|に)`,'iu');
+const oneSentenceRequest=new RegExp(String.raw`\b${englishOneSentenceFormat}\b|(?:一文|1文)(?:で|の|に|を|[。.!！?？\s]|$)`,'iu');
 export function requestsExtendedReply(question:string){return explicitLongRequest.test(question)||analyticalRequest.test(question);}
 
 /** Fixed presentation guidance only; no free-form setting can alter harness policy. */

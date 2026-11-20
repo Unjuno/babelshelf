@@ -32,7 +32,7 @@ test('dialogue output budgets allow complete answers by default and obey explici
 });
 
 test('explicit one-sentence requests are recognized across languages and clipped at sentence boundaries',()=>{
- for(const question of ['In exactly one sentence, explain this.','Reply in a single sentence.','Use a one-sentence answer.','一文で説明して。','1文で答えて。'])assert.equal(requestsOneSentence(question),true,question);
+ for(const question of ['In exactly one sentence, explain this.','Reply in a single sentence.','Use a one-sentence answer.','一文で説明して。','1文で答えて。','海について一文','海について一文を書いてください'])assert.equal(requestsOneSentence(question),true,question);
  for(const question of ['Explain this in detail.','Write two paragraphs.','Summarize the file.'])assert.equal(requestsOneSentence(question),false,question);
  assert.equal(firstSentenceOnly('Dr. Lee keeps the file offline. It can still answer locally.'),'Dr. Lee keeps the file offline.');
  assert.equal(hasMultipleSentences('Dr. Lee keeps the file offline.'),false);

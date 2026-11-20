@@ -37,10 +37,10 @@ test('run labels do not hide knowledge requests or arbitrary prefixed instructio
 test('standalone source-free schedule questions use prose conversation answering',async()=>{
  for(const prompt of ['海について一文','海について一文を書いてください']){
   let calls=0;
-  const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{calls++;assert.equal(format,'prose');assert.equal(messages.at(-1).content,prompt);return {text:'A verified generated sentence.',finishReason:'stop',outputTokens:6};}};
+  const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{calls++;assert.equal(format,'prose');assert.equal(messages.at(-1).content,prompt);return {text:prompt==='海について一文'?'海は地球上で最も広大な水域です。波や潮があり、多様な生物がいます。':'A verified generated sentence.',finishReason:'stop',outputTokens:12};}};
   const store={all:async()=>{throw Error('A standalone source-free schedule must not read Memory');},search:async()=>{throw Error('A standalone source-free schedule must not search Memory');}};
   const result=await executeScheduledAnswer({store,models:{text:async()=>engine}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
-  assert.equal(result.answer,'A verified generated sentence.');assert.deepEqual(result.sources,[]);assert.equal(calls,1);assert.equal(isSourceFreeConversationRequest(prompt),true);
+  assert.equal(result.answer,prompt==='海について一文'?'海は地球上で最も広大な水域です。':'A verified generated sentence.');assert.deepEqual(result.sources,[]);assert.equal(calls,1);assert.equal(isSourceFreeConversationRequest(prompt),true);
  }
 });
 test('schedule questions about saved sources keep the evidence-aware path',()=>{

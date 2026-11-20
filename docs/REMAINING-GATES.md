@@ -36,28 +36,33 @@ generation, 21.6 s model load, and 26 ms token counting. The page displayed
 `GPU active`, but runtime GPU layer placement was not independently verified.
 This PC browser result does not change the separate iPhone failure above.
 
-The latest local candidate is app build `8f0c66a0e06a18b3` with 166 verified
-assets. It retains the LFM3 silent-load timeout correction and adds a narrow
-source-free prose route for standalone Japanese original-writing schedule
-prompts such as `海について一文`; saved-source, history and attachment requests
-remain on the evidence-aware path. Focused schedule and conversation tests pass
-22/22, and app acceptance passes 9/9. The first complete local quality attempt
-had one WebKit MCP custom-tool test fail; the exact test passed in isolation,
-and a second full `npm run test:quality` run completed through installed-PWA
-acceptance with the 166-asset build. PR #111's previous head `ddfdf6c7` passed
-CI, but this latest local patch has not been pushed or covered by CI. The
-repository instruction limits pushes to the existing `codex/ui-design-handoff`
-branch, which is absent from the remote refs; no push or `main` update was
-made. On public
-v379, a real Japanese schedule run failed answer-shape validation after 44.1 s
-generation (3 calls, 1,915 input tokens, 220 output tokens); the rejected
-candidate was `## Prompt\n海について一文`. This candidate fix has not been
-tested with the real model. The iPhone timeout correction has not been
+The latest local candidate is app build `a684409fdab5774b` with 166 verified
+assets. It routes standalone Japanese original-writing prompts such as
+`海について一文` through prose answering, recognizes the one-sentence
+constraint, and trims excess generated sentences. Source/history/attachment
+requests remain evidence-aware. The actual LFM3 Q4 model was run from the
+side-panel Windows Chrome browser after applying the candidate update: the
+manual schedule completed in 32 seconds and its saved answer was one sentence.
+The test schedule, execution records, and notification were then deleted using
+the linked-record control; Trash was verified empty. Focused reply-style,
+schedule-answer and chat-terminal tests passed 41/41; `npm run check` passed.
+The final `npm run test:quality` workflow passed through installed-PWA
+acceptance: prototype 2,073/2,073; Editor 28/28; review-store 6/6; offline
+calculation 1/1; working-file 2/2; Help 1/1; Tools 16/16; Markdown 4/4; SHA
+1/1; custom tools 38/38; MCP 8/8 on Chromium and WebKit; Schedule/Trash/Toast
+25/25; Settings 32/32; Editorial 38/38; iOS handoff UI 37/37 on Chromium and
+WebKit; app update 3/3; offline-process `pass: true`; installed-PWA
+`pass: true`. Earlier attempts had intermittent WebKit timeouts; the affected
+tests passed in isolation and the final complete workflow passed. Matching-head
+GitHub CI remains pending. The required push target `codex/ui-design-handoff`
+does not exist in remote refs, so no push, PR update or Site deployment has
+been made; `main` remains unchanged. The iPhone timeout correction has not been
 re-tested on the phone.
-Existing release gates remain open: current-candidate real-model schedule
-prompts on GPU and CPU/WASM, production model-byte transfer accounting,
-comparison against the auditor's anonymized 25-item Trash graph, and physical
-iPhone/Android PWA checks.
+Existing release gates remain open: CPU/WASM schedule replay, production
+prepared-model update-transfer accounting, comparison against the auditor's
+anonymized 25-item Trash graph, and physical iPhone/Android PWA checks. The
+single Windows Chrome real-model result does not establish broad prompt
+reliability or actual GPU layer placement.
 
 After that deployment, local commit `0ef49727` added a readable schedule-run
 diagnostic view in Execution history and Memory. Focused component tests passed

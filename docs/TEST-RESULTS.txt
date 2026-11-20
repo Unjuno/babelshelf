@@ -9044,3 +9044,39 @@ modified.
 The latest local source patch is committed locally, but no current-head push or
 Site deployment was made. The instructed existing remote branch
 `codex/ui-design-handoff` is absent; `main` was not changed.
+
+2026-11-21 JST · local LFM3 Japanese one-sentence schedule verification
+
+The candidate added Japanese one-sentence request recognition for terminal
+`一文` forms, and scheduled answer finalization now trims excess prose at a
+sentence boundary when the request explicitly asks for one sentence. The
+regressions cover `海について一文` and `海について一文を書いてください`; the
+fixture also proves a two-sentence generated response is persisted as one
+sentence. Focused `reply-style`, `scheduled-answer` and `chat-terminal` tests
+passed 41/41, `npm run check` passed, and app build
+`a684409fdab5774b` contains 166 verified assets.
+
+In the isolated side-panel Windows Chrome profile on local app port 4181, the
+selected real model `lfm3-1.7b-qad-q4-0` was retained after applying the app
+update. A manual schedule for `海について一文` completed on Attempt 1 in 32
+seconds. The saved answer was one sentence: “海は地球上で最も広大な水域であ
+り、陸地と水を結びつける重要な役割を果たしています。” This is one
+successful local Windows browser/model sample; GPU layer placement was not
+independently verified and CPU/WASM was not tested.
+
+The task-created test schedule, its two execution records and notification
+were deleted through the linked-activity removal control; the UI reported
+`1 entry deleted. 4 linked activity entries removed. No referenced entries
+remain.` Trash then showed empty. No pre-existing records were modified.
+
+The final full `npm run test:quality` passed through installed-PWA acceptance:
+prototype 2,073/2,073; Editor 28/28; review-store 6/6; offline calculation
+1/1; working-file 2/2; Help 1/1; Tools 16/16; Markdown 4/4; SHA 1/1; custom
+tools 38/38; MCP 8/8 on Chromium and WebKit; device-memory 1/1; inference
+lease 1/1; Schedule/Trash/Toast 25/25; Settings 32/32; Editorial 38/38; iOS
+handoff UI 37/37 on Chromium and WebKit; app update 3/3; offline-process
+`pass: true`; installed-PWA `pass: true`. Earlier full attempts had
+intermittent WebKit timeouts; isolated reruns passed and the final full run was
+green. Matching-head GitHub CI remains pending. No push or Site deployment was
+made because the instructed push target `codex/ui-design-handoff` is absent
+from remote refs.
