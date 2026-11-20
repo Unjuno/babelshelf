@@ -39,6 +39,20 @@ test('explicit system folder search finds its records without broadening ordinar
  }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
 });
 
+test('ordinary knowledge search excludes schedule definitions while an explicit Schedule path can find them',async()=>{
+ const name='search-schedule-scope-'+crypto.randomUUID(),store=new KnowledgeStore(name);
+ try{
+  const schedule={id:'schedule-definition',path:'Schedule/qa-task.md',body:'say hello briefly',version:1,history:[],recordType:'schedule'};
+  await store.initialize([{id:'saved-note',path:'Notes/hello.md',body:'A saved hello note.',version:1,history:[]},schedule]);
+  const ordinary=await store.searchPage('say hello briefly',{offset:0,limit:12});
+  assert.ok(!ordinary.hits.some(hit=>hit.noteId==='schedule-definition'));
+  const explicit=await store.searchPage('say hello briefly',{offset:0,limit:12,pathPrefix:'Schedule'});
+  assert.ok(explicit.hits.some(hit=>hit.noteId==='schedule-definition'));
+  const named=await store.searchPage('Schedule/qa-task.md',{offset:0,limit:12});
+  assert.ok(named.hits.some(hit=>hit.noteId==='schedule-definition'));
+ }finally{store.close();await new Promise((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=resolve;request.onerror=()=>reject(request.error);});}
+});
+
 test('stored search pages reflect IndexedDB and reject continuation after another record is added',async()=>{
  const name='search-page-'+crypto.randomUUID(),store=new KnowledgeStore(name);
  const seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));

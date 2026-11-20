@@ -188,7 +188,7 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
  const updated=applyKnowledgeChanges(records,[],batch.notes);
  return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
-function searchableRecords(all:Canonical[],query:string,pathPrefix?:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query)||typeof pathPrefix==='string'&&/^(?:Tools|Settings|Notifications|Schedule\/Runs)(?:\/|$)/i.test(pathPrefix);return explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));}
+function searchableRecords(all:Canonical[],query:string,pathPrefix?:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule)\//i.test(query)||typeof pathPrefix==='string'&&/^(?:Tools|Settings|Notifications|Schedule)(?:\/|$)/i.test(pathPrefix);return explicit?all:all.filter(n=>!n.ui?.protected&&!['schedule','execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\//i.test(notePath(n)));}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
  private databasePromise:Promise<IDBDatabase>|null=null;

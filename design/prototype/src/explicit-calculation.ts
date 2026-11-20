@@ -15,8 +15,8 @@ export function explicitCalculationInput(text:string):{expression:string;showExp
  if(japaneseSuffix){const expression=calculatorInput(japaneseSuffix[1]);return expression===null?null:{expression,showExpression:true};}
  // A complete arithmetic question is also an explicit calculation request.
  // Do not consume prose following it or infer operations from the conversation.
- const japaneseQuestion=input.trim().match(/^([\d\s.+\-*/()×÷−eE]+?)\s*は(?:いくつ|何|なん|いくら)?[？?]$/u);
- if(japaneseQuestion){const expression=calculatorInput(japaneseQuestion[1]);return expression===null?null:{expression,showExpression:true};}
+ const japaneseQuestion=input.trim().match(/^(?:\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?\s*)?([\d\s.+\-*/()×÷−eE]+?)\s*は(?:いくつ|何|なん|いくら)?[？?]\s*(?:答えは(?:数字|数値)だけ)?\s*&?$/u);
+ if(japaneseQuestion){const expression=calculatorInput(japaneseQuestion[1]);return expression===null?null:{expression,showExpression:!/(?:答えは)?(?:数字|数値)だけ/u.test(japaneseQuestion[0])};}
  // An explicitly denominated bill and whole-person divisor. No rounding or
  // additional action is inferred; the calculator reports its own precision.
  const split=input.replace(/，/g,',').trim().match(/^((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*円を\s*(\d+)\s*人で割って(?:ください|下さい)?[？?。.!！]?$/u);

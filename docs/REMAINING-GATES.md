@@ -1,4 +1,4 @@
-## Current status · 2026-11-20
+## Current status · 2026-11-21
 
 ### Latest release · Site v379
 
@@ -14,23 +14,39 @@ and deployed successfully at 2026-11-20 09:21:16 UTC. Public HTTP checks on
 bundle returned 200; the live manifest reports build `4844b1b70599ee68` and
 166 files. The public audience and custom domain were retained.
 
-The existing PWA's adoption of v379 was not confirmed: an Update click in the
-side-panel browser produced no observable active-worker/build change in that
-check. This is deployment evidence, not client migration or byte-level
-measurement of prepared model weights. The existing public release still has
-the P0 model-transfer, real-model schedule-matrix and anonymized 25-item Trash
-graph gates below.
+On 2026-11-21, after the user granted Windows-side Phone Use permission, the
+public app was opened in iPhone Safari 27.2 on iPhone 18,4. The Developer
+Model readiness check was freshly run: 3 ready and 1 need review; the selected
+`lfm3-1.7b-qad-q4-0` Q4_0 model files were present and verified. A real Quick
+request then ran for 311,613 ms and failed in `model-load` with
+`text_model_load_stalled`, before any text generation or answer. The selected
+route was `webgpu`, but runtime GPU execution/layer placement was not proven.
+Safari reported `standalone:false`; this was not a Home Screen PWA or offline
+restart test. No model acquisition or user-data/Trash change was made.
 
-The latest local candidate is app build `910afe3bc16c3dec` with 166 verified
+In the side-panel Windows Chrome 157 profile on public v379, a fresh setup
+downloaded the 1,049,615,680-byte model in 63 HTTP 206 range responses; summed
+Resource Timing `encodedBodySize` matched the asset byte length. Cross-origin
+`transferSize` was unavailable (reported as zero), and no prepared-model update
+was applied, so update retention/transfer is still unmeasured. The real model
+returned `Hello!` in chat, then a `say hello briefly` schedule completed with
+“Hello! How can I help you today?”; the notification body matched that saved
+answer. Activity recorded 293 prompt tokens, 10 generated tokens, 11.1 s text
+generation, 21.6 s model load, and 26 ms token counting. The page displayed
+`GPU active`, but runtime GPU layer placement was not independently verified.
+This PC browser result does not change the separate iPhone failure above.
+
+The latest local candidate is app build `879e22fa2700e3ed` with 166 verified
 assets. Its full `npm run test:quality` workflow completed successfully on
-Windows Chromium 149.0.7827.55 and WebKit 26.5. A new built-product regression
-shows a visible notice when opening another Memory file changes the Input
-working-file pin; the same test configuration also verifies the pin remains
-correct through offline persistence. This is local PC-browser evidence only.
-The candidate has not been pushed, merged or deployed. Existing release gates
-remain open: a current-build real-model schedule prompt matrix on GPU and
+Windows Chromium 149.0.7827.55 and WebKit 26.5. It includes regression coverage
+for schedule-source isolation, the reported Japanese emoji/ampersand arithmetic
+prompt, and LFM3 WebGPU model loads that remain silent for longer than the
+generic five-minute idle timeout. The LFM3-specific timeout remains bounded by
+the existing ten-minute hard cap. This fix has not been re-tested on the
+iPhone. The candidate has not been pushed, merged or deployed. Existing release
+gates remain open: current-build real-model schedule prompts on GPU and
 CPU/WASM, production model-byte transfer accounting, comparison against the
-auditor's anonymized 25-record Trash graph, and physical iPhone/Android checks.
+auditor's anonymized 25-item Trash graph, and physical iPhone/Android PWA checks.
 
 After that deployment, local commit `0ef49727` added a readable schedule-run
 diagnostic view in Execution history and Memory. Focused component tests passed

@@ -1,6 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createTextWorkerHost} from '../src/text-worker-host.ts';
 import {createIsolatedTextClient,DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS} from '../src/isolated-text-client.ts';
+import {createLfm3TextClient} from '../src/lfm3-text-backend.ts';
 import {PlannerOutputError} from '../src/planner-error.ts';
 const message=(id,cmd,args={})=>({data:{id,cmd,args}});
 test('worker initialization passes validated app-owned model declarations into its runtime factory',async()=>{let configuration;const out=[],host=createTextWorkerHost(async(_progress,value)=>{configuration=value;return {assets:{}};},m=>out.push(m));await host(message(1,'init',{customModels:[{id:'local-model'}]}));assert.deepEqual(configuration,{customModels:[{id:'local-model'}]});assert.equal(out.at(-1).type,'done');});
@@ -29,6 +30,19 @@ test('text load timeout settings reject invalid or unbounded values',()=>{
 test('default model load has a 10-minute hard ceiling while explicit runtimes may choose a bounded override',()=>{
  assert.equal(DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,10*60*1000);
  assert.doesNotThrow(()=>createIsolatedTextClient({postMessage(){},terminate(){}},{loadTimeoutMs:20*60*1000,loadIdleTimeoutMs:5*60*1000}));
+});
+test('LFM3 load silence is allowed up to the hard timeout because its pinned runtime has no load heartbeat',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});let terminated=0,result;const sent=[];
+ const worker={postMessage(message){sent.push(message);},terminate(){terminated++;}},client=createLfm3TextClient(worker);
+ const pending=client.load('lfm3-test').then(value=>result=value,error=>result=error);
+ try{
+  t.mock.timers.tick(6*60*1000);await Promise.resolve();await Promise.resolve();
+  assert.equal(result,undefined);assert.equal(terminated,0);
+  worker.onmessage({data:{id:sent[0].id,type:'done',value:{loaded:true}}});await pending;
+  assert.deepEqual(result,{loaded:true});assert.equal(client.loaded,'lfm3-test');
+ }finally{
+  const disposal=client.abort();worker.onmessage({data:{id:0,type:'disposed'}});await disposal;
+ }
 });
 test('prepared worker protocol refuses acquisition before runtime creation and serializes actual commands',async()=>{const out=[];let starts=0,release;const runtime={assets:{local:{filesPresent:true}},count:()=>new Promise(r=>release=r),generate:async()=>({text:'controlled'}),load:async()=>{},unload:async()=>{}};const host=createTextWorkerHost(async()=>{starts++;return runtime;},m=>out.push(m));await host(message(1,'prepare'));assert.equal(starts,0);assert.match(out.pop().value,/Unknown/);await host(message(2,'status'));assert.equal(out.pop().value.local.filesPresent,true);const pending=host(message(3,'count',{messages:[]}));await Promise.resolve();await Promise.resolve();await host(message(4,'load',{model:'local'}));assert.match(out.pop().value,/busy/);release({prompt_tokens:12});await pending;assert.equal(out.pop().value.prompt_tokens,12);assert.equal(starts,1);});
 test('worker diagnostics stay bounded and survive the generic isolated client',async()=>{const worker={postMessage(m){void host({data:m});},terminate(){}},client=createIsolatedTextClient(worker);const host=createTextWorkerHost(async()=>({generate:async()=>{throw new PlannerOutputError('Invalid model JSON','x'.repeat(9000),'structured:incomplete');}}),m=>worker.onmessage({data:m}));await assert.rejects(client.call('generate',{messages:[]}),e=>e.diagnostic.raw.length<=8192&&e.diagnostic.reason==='structured:incomplete');client.abort();await assert.rejects(client.call('status'),/Stopped/);});
