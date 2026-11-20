@@ -9120,3 +9120,24 @@ Product GitHub publication is still pending: the repository's required
 candidate remains on its local branch; product `main` and PR #110 were not
 changed. Thus Site v380 is live, but the product source has not been published
 to GitHub and matching-head GitHub CI has not run.
+2026-11-21 JST · iPhone model-load follow-up after Windows Phone Use permission
+
+Windows-side Phone Use permission was enabled and the iPhone session reconnected.
+The public v380 app loaded in iPhone Safari; the selected LFM3 Q4_0 files were
+present, the runtime was Prepared, and Developer Quick stated “No download.”
+One real-model Quick run remained in `model-load` for roughly ten minutes and
+then failed before generation; no answer was produced. The saved handoff
+exposed `failureStage=model-load` but not a detailed failure code, so the exact
+underlying cause remains unknown. Safari was in a browser tab, not Home Screen
+mode, and the configured `webgpu` route does not prove any GPU layers were
+actually placed. No model download, user-data/Trash modification, or destructive
+recovery was performed. Phone Use was ended after the run.
+
+Code review confirmed that LFM3 has no load heartbeat and uses the full ten-
+minute hard limit as its idle window; extending it would only prolong a silent
+wait. The existing `auto` route retries CPU/WASM only for explicit allowlisted
+WebGPU errors with confirmed cleanup, and a silent timeout is not such evidence.
+No route or timeout policy was changed. The next valid diagnostic must identify
+preflight, tensor transfer/allocation, runtime initialization, and actual GPU
+layer placement separately, then verify a real answer on iPhone. This physical
+model-readiness gate remains open.

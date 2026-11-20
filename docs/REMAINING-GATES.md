@@ -1,5 +1,29 @@
 ## Current status · 2026-11-21
 
+### Latest follow-up · 2026-11-21
+
+Windows-side permission was granted for Phone Use and the physical iPhone
+session resumed. The public Site v380 Quick model test reached the LFM3
+`model-load` stage with prepared files/runtime and no download, but failed near
+the ten-minute hard limit before generation. The persisted handoff identifies
+the stage but not the detailed failure code; do not infer that the timeout
+itself proves WebGPU allocation failure. The client intentionally treats a
+silent LFM3 load as active for up to that hard limit because the pinned runtime
+has no load heartbeat. Existing CPU fallback only handles explicit, allowlisted
+WebGPU failures after confirmed cleanup; it cannot safely recover an opaque
+silent timeout. No timeout increase or silent CPU fallback was made. This is a
+reproduced physical-device release blocker and requires a diagnostic that
+distinguishes WebGPU preflight, tensor transfer/allocation, and runtime load,
+followed by an actual iPhone model reply before closure.
+
+The product candidate remains local on `codex/nov21-release-gates`, five
+commits ahead of its existing remote counterpart. Project guidance specifies
+`codex/ui-design-handoff` as the only push target, but that remote branch is
+absent. No source push, PR, merge, or matching-head GitHub CI was performed;
+`main` remains unchanged. Site v380 is already live from the verified artifact.
+The release is therefore deployed to the Site but is not complete for source
+publication or iPhone model acceptance.
+
 ### Latest release · Site v380
 
 PR [#110](https://github.com/Unjuno/babelshelf/pull/110) remains the latest
