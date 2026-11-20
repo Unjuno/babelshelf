@@ -8,15 +8,16 @@ disclosure; cancelling Text model preparation was verified not to start a
 download. Search settings now explain that a model must be selected and that
 downloads must be enabled before Prepare can run. Restore defaults confirmation
 now says Connection returns to Offline. Run now keeps its action sheet open
-until execution ends to prevent a second tap from activating another schedule;
+until execution ends, then absorbs repeated taps during a 650 ms close guard so
+a second tap cannot activate another schedule;
 completed one-off schedules are projected as off/disabled without rewriting the
 canonical schedule. Source-free scheduled echoes receive one bounded repair and
 retain a rejected candidate/reason if still invalid; general capital questions
-are routed to source-free prose. Build `0a82a0f0444e016b` has 166 verified
+are routed to source-free prose. Build `6a3c4424b42ea633` has 166 verified
 assets; `npm run check` passed. Focused UI checks passed for app update (3/3),
 Text preparation confirmation (1/1), Search model explanation (1/1), Restore
-defaults disclosure (1/1), and one-off schedule status (1/1); scheduled-answer
-and task unit tests passed 41/41. No real-model or physical iPhone verification
+defaults disclosure (1/1), one-off schedule status (1/1), and repeated Run now
+tap guard (1/1); scheduled-answer and task unit tests passed 41/41. No real-model or physical iPhone verification
 was performed in this follow-up. Phone Use currently reports Bluetooth
 disconnected and not mirroring. The remaining audit blockers, full quality
 workflow, GitHub publication and Site deployment are still open; this local

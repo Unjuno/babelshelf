@@ -145,6 +145,19 @@ test('a paused calculation runs locally and exposes its calculation in history',
  await source.getByRole('button',{name:'Close'}).click();await navigate(page,'Notifications');await expect(page.getByRole('button',{name:'Delete notification Succeeded · Calculate 12 + 10'})).toHaveCount(2);await page.getByRole('button',{name:'Delete notification Succeeded · Calculate 12 + 10'}).first().click();await expect(page.getByText('Deleted · Succeeded · Calculate 12 + 10')).toBeVisible();await page.waitForTimeout(4200);await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:/Succeeded · Calculate 12 \+ 10/}).first()).toBeVisible();
 });
 
+test('a repeated Run now tap is absorbed before the schedule actions sheet closes',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 12 + 10');
+ const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();
+ const run=page.getByRole('button',{name:'Run now',exact:true});await run.dblclick();
+ await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
+ await expect(run).toBeDisabled();
+ await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toBeHidden();
+ await expect(run).toBeHidden({timeout:2_000});
+});
+
 test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{
  test.setTimeout(45_000);
  await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
