@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-11-11 JST. This file holds product requirements and next work; the single current GitHub/Site release snapshot and device evidence live at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md), with detailed dated runs in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). Do not duplicate release hashes or deployment identifiers here.
+Updated 2026-11-20 JST. This file holds product requirements and next work; the single current GitHub/Site release snapshot and device evidence live at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md), with detailed dated runs in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). Do not duplicate release hashes or deployment identifiers here.
 
 ## Read in this order
 
@@ -32,7 +32,7 @@ Connection settings remain Memory-backed. Chat may propose toggling `diagnosticL
 
 ### Release-readiness checklist · 2026-11-20 JST
 
-The latest release snapshot and this task's follow-up checks are in the [release record](docs/REMAINING-GATES.md). PR #108 passed its exact-head CI on retry and was merged; app build `6bd762f2184afc33` is deployed as Site v378. The merged-main CI was still running at the latest status entry. Automated PC browser checks and one earlier real LFM3 greeting do not count as broad schedule, current-build, or physical-device acceptance. The [MVP acceptance matrix](docs/MVP-ACCEPTANCE.md) defines the broader product scope.
+The current public release is Site v379. PR #110 passed its exact-head workflow and was merged to `main`; see the [release record](docs/REMAINING-GATES.md) for deployment and client-adoption evidence. A later local candidate passed the full quality workflow and covers readable schedule-failure diagnostics, answer-echo rejection, update retention in an isolated worker fixture, and linked Trash purge. The remaining P0 items still lack current-build real-model/CPU-WASM evidence, production byte-level transfer accounting, and comparison with an anonymized copy of the reported 25-item Trash graph. Automated PC browser checks do not count as physical-device acceptance. The [MVP acceptance matrix](docs/MVP-ACCEPTANCE.md) defines the broader product scope.
 
 | Priority | Work | State on 2026-11-20 | Evidence needed to close it |
 |---|---|---|---|
