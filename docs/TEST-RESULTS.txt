@@ -8892,3 +8892,20 @@ Opened the notification created by the existing QA schedule run and confirmed it
 
 2026-11-20 JST · readable scheduled execution diagnostics (local candidate)
 The execution detail sheet and Memory viewer now share a readable schedule-run summary. Failed attempts show the user-facing error, a plain-language diagnostic stage/reason, rejected candidate text when present, model/runtime, measured calls and token/prefill/decode values; earlier attempts are expandable, and the complete record remains available under a collapsed Technical record section. Legacy malformed records fall back to their original text. No user/browser data was changed. Focused component tests passed 3/3; the real Schedule > History > Execution > Open current file Playwright path passed 1/1; Schedule/Trash/Toast passed 25/25; prototype tests passed 2,062/2,062; app acceptance passed 9/9; `npm run check`, prototype TypeScript/production build and `git diff --check` passed. This is a local unpublished candidate without a refreshed app build identity. It improves failure visibility but does not fix or validate scheduled-answer generation quality, real update transfer bytes, the external 25-item Trash graph, or physical-device behavior.
+2026-11-20 JST · Local release candidate `1b9220a37e0a05bf` full quality workflow
+The current worktree candidate built 166 verified assets. `npm run test:quality`
+completed with exit code 0 on Windows using Chromium 149.0.7827.55 and WebKit
+26.5. It ran the complete repository workflow: Node and prototype tests, static
+checks, production build and app acceptance, Editor, review-store, offline
+calculation, Help, Tools, Markdown, SHA-256, custom tools, MCP Chromium/WebKit,
+device-memory, inference-lease, Schedule/Trash/Toast (25/25), Settings (32/32),
+Editorial (38/38), iOS handoff UI Chromium/WebKit (37/37 each), app-update
+(3/3), persistent offline-process and installed-PWA acceptance. The last
+installed-PWA result was `pass: true`; its disposable fixture server was stopped
+and profile removed. Update retention uses a synthetic OPFS model sentinel and
+observed zero model asset requests; no real-model transfer or inference was
+measured by this workflow. The side-panel public app rendered but ignored UI
+navigation actions, so current-build real schedule prompts could not be run.
+No user browser data was deleted. The candidate remains local and Site v379 is
+still live; the exact 25-item external Trash graph, production model-byte trace,
+GPU/CPU-WASM prompt matrix and physical iPhone/Android acceptance remain open.

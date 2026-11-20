@@ -46,6 +46,24 @@ byte-for-byte. The prototype suite passes 2,063/2,063 with this case. This
 synthetic graph has not been compared with an anonymized copy of the auditor's
 exact records, so that P0 gate remains partial.
 
+On 2026-11-20, the local release candidate was rebuilt as app build
+`1b9220a37e0a05bf` with 166 verified assets. The full `npm run test:quality`
+workflow completed with exit code 0, including Node/prototype tests, production
+build and acceptance, Editor, review-store, offline calculation, Help, Tools,
+Markdown, hash, custom tools, MCP on Chromium and WebKit, device-memory,
+inference leases, 25 Schedule/Trash/Toast browser cases, Settings, Editorial,
+iOS handoff UI on Chromium and WebKit, app-update recovery, a persistent offline
+process, and installed-PWA acceptance. The update fixture retained its synthetic
+OPFS model sentinel, IndexedDB record and draft through an offline restart and
+observed zero model asset requests. This remains synthetic model retention and
+PC browser evidence. The public Site is still v379; this local candidate has
+not been pushed, merged, or deployed. The side-panel public page rendered, but
+navigation actions did not respond to CUA or DOM-driven clicks, so no fresh
+real-model schedule matrix was collected. Real production model byte accounting,
+GPU/CPU-WASM schedule prompts, the auditor's exact 25-entry Trash graph and
+physical iPhone/Android behavior remain open. Detailed run evidence is in
+[`TEST-RESULTS.txt`](TEST-RESULTS.txt).
+
 ### Release-readiness follow-up · Site v378
 
 PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
