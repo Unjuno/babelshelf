@@ -60,7 +60,7 @@ import {getSpeechManifest,speechModelProvenance} from './speech-models';
 // @ts-expect-error Shared baseline key policy is JavaScript.
 import {isSubmitKey} from '../../../dist/input-events.js';
 import {createReviewedFileSaver} from './reviewed-file-save';
-import {scheduleStatus,scheduleRunAction} from './task-status';
+import {currentScheduleExecution,scheduleStatus,scheduleRunAction} from './task-status';
 import {executionAtRevision} from './execution-selection.ts';
 import {createDialogueWriter} from './dialogue-writer';
 import {createFileFocusQueue,withWorkingFile,withoutWorkingFile,type WorkingFile} from './working-file';
@@ -689,7 +689,7 @@ export default function Prototype() {
  useEffect(()=>{previewMounted.current=true;return()=>{previewMounted.current=false;previewSelection.current.cancel();assetURLs.current.forEach(url=>URL.revokeObjectURL(url));};},[]);
  const effectiveTheme=theme==='system'?(systemDark?'dark':'light'):theme;
  const activeTask=schedules.find(t=>t.id===selectedTask),activeExecution=selectedExecution?executionAtRevision(notes,selectedExecution,selectedExecutionRevision):undefined;
- const pendingExecution=activeTask?executions.find(r=>r.taskId===activeTask.id&&r.definition===taskDefinition(activeTask)&&r.dueAt===activeTask.nextAt):undefined;
+ const pendingExecution=activeTask?currentScheduleExecution(activeTask,executions):undefined;
  const activeNotification=notifications.find(n=>n.id===selectedNotification);
  async function openNotification(id:string){try{keyboard.hide();home.current?.focus({preventScroll:true});setSelectedNotification(id);await taskController.read(id);setSheet('notification');}catch(e){toast((e as Error).message);}}
  async function removeRecord(id:string){const note=notes.find(n=>n.id===id);if(note)await deleteMemoryTarget({kind:'file',value:id,label:notifications.find(item=>item.id===id)?.title??note.path.split('/').at(-1)!});}

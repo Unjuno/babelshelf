@@ -75,6 +75,12 @@ export function taskNotice(task:any,run:any){const data=taskRunView(run),origina
  const value:NoticeData={taskId:task.id,taskRevision:data.taskRevision,runId:run.id,runRevision:latest(run).version,attempt:data.attempt,title,body:data.answer??data.error??'Execution needs attention',createdAt:new Date().toISOString(),read:false};
  return typedRecord('notification','Notifications/'+localDate()+'-'+crypto.randomUUID()+'.md',noticeBody(value));
 }
+function retryRun(old:any,owner:string,now:Date){
+ const data=taskRunView(old),previous:RunAttemptReceipt={attempt:data.attempt,status:data.status,startedAt:data.startedAt,...(data.finishedAt?{finishedAt:data.finishedAt}:{}),...(data.answer?{answer:data.answer}:{}),...(data.error?{error:data.error}:{}),...(data.diagnostic?{diagnostic:data.diagnostic}:{}),...(data.model?{model:data.model}:{}),...(data.sources?{sources:data.sources}:{}),...(data.calculation?{calculation:data.calculation}:{})};
+ const retried:RunData={...data,owner,status:'running',attempt:data.attempt+1,attemptHistory:[...(data.attemptHistory??[]),previous],startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
+ delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;delete retried.diagnostic;
+ const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;return run;
+}
 export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Date(),options:{retry?:boolean;manual?:boolean}={}){
  const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');if(task.ui.requiresReview)throw Error('Review schedule first');
  const definition=parseTask(latest(task).body);if(!definition.enabled&&!options.manual)throw Error('Task is disabled');
@@ -84,6 +90,8 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
   if(!options.manual||definition.repeat!=='once')throw Error('Task has no pending occurrence');
   const running=records.find(n=>n.state==='active'&&n.ui?.recordType==='execution'&&(()=>{const r=taskRunView(n);return r.taskId===taskId&&r.status==='running';})());
   if(running){const data=taskRunView(running),until=running.runLease?.owner===data.owner?running.runLease.until:data.leaseUntil;if(asDate(until)>now)throw Error('Occurrence already running');return {task,run:reviseNote(running,{body:runBody({...data,status:'interrupted',error:'Execution interrupted · run again explicitly',finishedAt:now.toISOString()})},latest(running).version),execute:false};}
+  const previous=records.filter(n=>n.state==='active'&&n.ui?.recordType==='execution').map(n=>({note:n,data:taskRunView(n)})).filter(value=>value.data.taskId===taskId&&value.data.definition===signature&&value.data.manualRerun).sort((a,b)=>b.data.startedAt.localeCompare(a.data.startedAt))[0];
+  if(options.retry){if(!previous||!['failed','stopped','interrupted'].includes(previous.data.status))throw Error('No failed manual execution to retry');return {task,run:retryRun(previous.note,owner,now),execute:true};}
   const used=new Set(records.filter(n=>n.ui?.recordType==='execution').map(n=>taskRunView(n)).filter(r=>r.taskId===taskId&&r.definition===signature).map(r=>r.dueAt));let timestamp=+now;while(used.has(new Date(timestamp).toISOString()))timestamp++;
   const data:RunData={taskId,taskRevision:latest(task).version,definition:signature,dueAt:new Date(timestamp).toISOString(),attempt:1,owner,leaseUntil:new Date(+now+90000).toISOString(),status:'running',startedAt:now.toISOString(),manualRerun:true,prompt:definition.prompt};
   return {task,run:typedRecord('execution','Schedule/Runs/'+localDate(now)+'-'+crypto.randomUUID()+'.md',runBody(data)),execute:true};
@@ -100,11 +108,7 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
    return {task,run:reviseNote(old,{body:runBody(interrupted)},latest(old).version),execute:false};
   }
   if(!options.retry||!['failed','stopped','missed','interrupted'].includes(data.status))throw Error('Occurrence already processed');
-  const previous:RunAttemptReceipt={attempt:data.attempt,status:data.status,startedAt:data.startedAt,...(data.finishedAt?{finishedAt:data.finishedAt}:{}),...(data.answer?{answer:data.answer}:{}),...(data.error?{error:data.error}:{}),...(data.diagnostic?{diagnostic:data.diagnostic}:{}),...(data.model?{model:data.model}:{}),...(data.sources?{sources:data.sources}:{}),...(data.calculation?{calculation:data.calculation}:{})};
-  const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,attemptHistory:[...(data.attemptHistory??[]),previous],startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
-  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;delete retried.diagnostic;
-  const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;
-  return {task,run,execute:true};
+  return {task,run:retryRun(old,owner,now),execute:true};
  }
  const missed=!options.manual&&+now-+due>60000;
  const data:RunData={taskId,taskRevision:latest(task).version,definition:signature,dueAt:cursor.nextAt,attempt:missed?0:1,owner,leaseUntil:new Date(+now+90000).toISOString(),status:missed?'missed':'running',startedAt:now.toISOString(),prompt:definition.prompt,...(missed?{error:'Missed while app was unavailable · run or skip explicitly',finishedAt:now.toISOString()}:{})};

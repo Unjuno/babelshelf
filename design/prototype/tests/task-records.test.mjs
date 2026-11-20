@@ -83,6 +83,13 @@ test('completed one-off can be manually rerun without changing its original occu
  assert.throws(()=>claimTaskRun([...before,again.run],note.id,'third',now,{manual:true}),/already running/);const complete=finishTaskRun([...before,again.run],again.run.id,'other',{status:'succeeded',answer:'second',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);
  assert.equal(complete.task.taskCursor.nextAt,null);assert.equal(taskRunView(done.run).answer,'first');assert.equal(taskRunView(complete.run).answer,'second');assert.throws(()=>claimTaskRun([done.task,done.run],note.id,'automatic',now),/no pending occurrence/);
 });
+test('a stopped manual rerun of a completed one-off retries the same record and retains the prior attempt',()=>{
+ const note=registered(),now=new Date(2026,9,20,9);note.taskCursor={...note.taskCursor,nextAt:null};
+ const first=claimTaskRun([note],note.id,'owner',now,{manual:true}),stopped=finishTaskRun([note,first.run],first.run.id,'owner',{status:'stopped',error:'Stopped'},now),before=taskRunView(stopped.run);
+ assert.equal(before.manualRerun,true);assert.equal(before.status,'stopped');
+ const retry=claimTaskRun([stopped.task,stopped.run],note.id,'retry-owner',new Date(+now+1000),{manual:true,retry:true}),after=taskRunView(retry.run);
+ assert.equal(retry.execute,true);assert.equal(retry.run.id,first.run.id);assert.equal(after.attempt,2);assert.equal(after.status,'running');assert.equal(after.attemptHistory.length,1);assert.equal(after.attemptHistory[0].status,'stopped');assert.equal(after.attemptHistory[0].error,'Stopped');
+});
 test('path changes do not reschedule; editing the canonical task changes conditions and preserves original',()=>{
  const note=registered(),before=projectNote(note),moved={...before,path:'Schedule/moved.md',version:2,history:[before.body]};
  const renamed=applyKnowledgeChanges([note],[before],[moved])[0];assert.deepEqual(renamed.taskCursor,note.taskCursor);

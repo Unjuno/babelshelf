@@ -8947,3 +8947,22 @@ inference. The existing side-panel browser controls remained unresponsive, and
 the required remote branch `codex/ui-design-handoff` is absent. No push, PR or
 deployment was made; external real-model, exact Trash-graph, byte-trace and
 physical-device gates remain open.
+
+2026-11-20 JST · one-off manual schedule retry state and attempt history
+Reproduced the status/action gap for completed one-time schedules: a stopped or
+failed manual rerun was hidden by the `Completed` label, and Retry allocated a
+new execution record. The fix now selects the current manual execution,
+surfaces its stopped/failed/interrupted state, and retries the same record with
+an incremented attempt and preserved prior receipt. Red/green task tests first
+reproduced both failures, then the focused task status/record suites passed
+26/26. `npm run check`, `npm run build:app`, and `git diff --check` passed.
+Focused schedule/Trash browser checks passed 22/22. The exact app build
+`b70d009826374c9e` completed `npm run test:quality` with exit code 0, including
+production build/acceptance, Schedule/Trash/Toast UI, Chromium and WebKit
+iOS-handoff UI, app-update recovery, persistent offline process and
+installed-PWA checks. The update fixture used a synthetic OPFS model sentinel;
+this was not real model inference or production transfer-byte measurement. No
+user browser data, Trash entries or originals were changed. The code and
+evidence remain local; no push, merge or Site deployment was made. Real-model
+schedule matrix, production model-byte trace, exact auditor Trash graph and
+physical iPhone/Android acceptance remain open.

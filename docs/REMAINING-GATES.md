@@ -95,6 +95,20 @@ collected. The required push branch `codex/ui-design-handoff` is absent from
 the refreshed remote, and the P0 external-evidence gates remain open, so no
 GitHub publication or Site deployment was made.
 
+On 2026-11-20, a further regression was reproduced in one-time schedule
+reruns: after a completed one-off schedule was manually run and stopped or
+failed, the list still showed `Completed`, and Retry created a new execution
+record rather than preserving the failed attempt. The local fix now reports
+`Stopped · Manual run` / `Failed · Manual run` and retries the same execution
+record with incremented attempt history. The focused task status/record suites
+pass 26/26, and focused schedule/Trash browser checks pass 22/22. The exact
+candidate `b70d009826374c9e` completed `npm run test:quality` with exit code 0,
+including Chromium/WebKit schedule UI, update recovery, offline process and
+installed-PWA checks. Update/offline model retention is still synthetic; this
+candidate has not been published. Current-build real-model schedule prompts,
+the real prepared-model byte trace, the auditor's exact Trash graph and physical
+iPhone/Android acceptance remain open.
+
 ### Release-readiness follow-up · Site v378
 
 PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to
