@@ -256,6 +256,18 @@ test('a due schedule in another timezone does not block local due work',async({p
 });
 
 import {claimTaskRun} from '../src/task-records';
+test('execution history presents a failed answer check in readable form',async({page})=>{
+ const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+ const task={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone,enabled:false,notify:false,prompt:'say hello briefly'};
+ const schedule=createNote({path:'Schedule/diagnostic-fixture.md',body:formatTask(task)});schedule.ui={recordType:'schedule'};schedule.taskCursor={definition:taskDefinition(task),nextAt:new Date(Date.now()+86400000).toISOString()};
+ const startedAt='2026-11-20T00:00:00.000Z',finishedAt='2026-11-20T00:03:08.000Z';
+ const runData={taskId:schedule.id,taskRevision:1,definition:taskDefinition(task),dueAt:'2026-11-20T00:00:00.000Z',attempt:1,owner:'fixture-owner',leaseUntil:finishedAt,status:'failed',startedAt,finishedAt,prompt:task.prompt,error:'Could not verify a schedule answer',diagnostic:{stage:'answer-validation',reason:'verbatim-source-recovery',candidate:task.prompt,model:{id:'lfm3-1.7b-qad-q4-0',runtime:'CPU/WASM'},inference:{measuredModelCalls:2,promptTokens:1024,outputTokens:35,runtimePrefillMs:120000,runtimeDecodeMs:24000,runtimeCachedTokens:289}}};
+ const nl=String.fromCharCode(10),fence=String.fromCharCode(96,96,96),body='# Execution'+nl+nl+fence+'json'+nl+JSON.stringify(runData,null,2)+nl+fence+nl;const run=createNote({path:'Schedule/Runs/diagnostic-fixture.md',body});run.ui={recordType:'execution'};
+ await page.goto('/');await page.evaluate(async records=>{await new Promise<void>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readwrite');for(const record of records)tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},[schedule,run]);
+ await page.reload();await navigate(page,'Schedule');await page.getByRole('button',{name:'Schedule actions for say hello briefly'}).click();await page.getByRole('button',{name:'History',exact:true}).click();await page.getByRole('button',{name:/failed/}).click();
+ const dialog=page.getByRole('dialog',{name:'Execution'});await expect(dialog).toContainText('Could not verify a schedule answer');await expect(dialog).toContainText('Why it did not complete');await expect(dialog).toContainText('The model repeated source text instead of producing a verifiable answer.');await expect(dialog).toContainText('Rejected draft');await expect(dialog).toContainText('lfm3-1.7b-qad-q4-0 · CPU/WASM');await expect(dialog).toContainText('1,024 input tokens');await expect(dialog).toContainText('Input processing 2m 0s');await expect(dialog).toContainText('Text generation 24.000s');
+ await expect(dialog.getByText('Technical record',{exact:true})).toBeVisible();await dialog.getByRole('button',{name:'Open current file'}).click();await expect(page.locator('main')).toContainText('The model repeated source text instead of producing a verifiable answer.');await expect(page.locator('main').getByText('Technical record',{exact:true})).toBeVisible();
+});
 test('a run owned by another tab does not block another local due schedule',async({page})=>{
  const local=Intl.DateTimeFormat().resolvedOptions().timeZone,base={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',enabled:true,notify:false,timezone:local};
  const first={...base,prompt:'Other tab running fixture'},second={...base,prompt:'Second local overdue fixture'},due=new Date(Date.now()-600000).toISOString(),now=new Date();
