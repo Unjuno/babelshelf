@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelStepElapsedSeconds,shouldShowLiveTextWork} from '../src/live-text-work.ts';
+import {elapsedDurationLabel,modelStepElapsedSeconds,shouldShowLiveTextWork} from '../src/live-text-work.ts';
 
 const work={kind:'generate',startedAt:1,updatedAt:2,phase:'Decoding'};
 
@@ -17,4 +17,6 @@ test('idle state and model work detached from a visible operation stay hidden',(
 test('elapsed time is explicitly scoped to the current model step',()=>{
  assert.equal(modelStepElapsedSeconds(359_000,300_000),59);
  assert.equal(modelStepElapsedSeconds(299_000,300_000),0);
+ assert.equal(elapsedDurationLabel(59),'59s');
+ assert.equal(elapsedDurationLabel(300),'5m 00s');
 });

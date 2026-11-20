@@ -38,6 +38,11 @@ test('one owner rejects overlap until the original work settles, including Stop'
  assert.equal(c.stop(),true);assert.equal(c.state.phase,'stopping');assert.equal(await c.run(async()=>{count++;}),'busy');
  exit.resolve();assert.equal(await first,'cancelled');assert.equal(count,1);assert.equal(c.state.phase,'cancelled');assert.equal(c.busy,false);
 });
+test('operation start time survives progress updates and clears when the operation ends',async()=>{
+ const c=createSubmissionController(),entered=deferred(),exit=deferred();let startedAt;
+ const work=c.run(async run=>{startedAt=c.state.startedAt;run.progress('Processing input');assert.equal(c.state.startedAt,startedAt);entered.resolve();await exit.promise;});
+ await entered.promise;assert.equal(typeof startedAt,'number');exit.resolve();await work;assert.equal(c.state.startedAt,undefined);
+});
 test('state is observable without React and stale progress cannot change the next run',async()=>{
  const c=createSubmissionController(),seen=[];let stale;
  const unsubscribe=c.subscribe(s=>seen.push(s.phase));

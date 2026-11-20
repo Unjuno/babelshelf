@@ -17,17 +17,17 @@ export function taskViews(notes:NoteView[]){
  executions.sort((a,b)=>b.startedAt.localeCompare(a.startedAt));notifications.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));return {tasks,executions,notifications,errors};
 }
 export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boolean),refresh:()=>Promise<NoteView[]>,execute:(prompt:string,signal:AbortSignal)=>Promise<{answer:string;sources:any[];model?:RunData['model'];calculation?:RunData['calculation']}>,stopInference:()=>void=()=>{}){
- const views=taskViews(notes),[active,setActive]=useState<string|null>(null),[stopping,setStopping]=useState(false),[finishing,setFinishing]=useState(false),[error,setError]=useState(''),[pollError,setPollError]=useState(''),[saving,setSaving]=useState(false),savingLock=useRef(false),owner=useRef(crypto.randomUUID()),locked=useRef(false),cancellation=useRef<ReturnType<typeof createTaskCancellation>|null>(null);
+ const views=taskViews(notes),[active,setActive]=useState<string|null>(null),[activeStartedAt,setActiveStartedAt]=useState<number|null>(null),[stopping,setStopping]=useState(false),[finishing,setFinishing]=useState(false),[error,setError]=useState(''),[pollError,setPollError]=useState(''),[saving,setSaving]=useState(false),savingLock=useRef(false),owner=useRef(crypto.randomUUID()),locked=useRef(false),cancellation=useRef<ReturnType<typeof createTaskCancellation>|null>(null);
  const latest=useRef({views,blocked,refresh,execute,stopInference});latest.current={views,blocked,refresh,execute,stopInference};
  const isBlocked=()=>typeof latest.current.blocked==='function'?latest.current.blocked():latest.current.blocked;
  async function run(id:string,retry=false,manual=true){
-  if(locked.current||isBlocked())throw Error('Model busy');locked.current=true;setActive(id);setStopping(false);setFinishing(false);setError('');const control=createTaskCancellation(latest.current.stopInference);cancellation.current=control;let runId:string|undefined,heartbeat:ReturnType<typeof setInterval>|undefined;
+  if(locked.current||isBlocked())throw Error('Model busy');locked.current=true;setActive(id);setActiveStartedAt(Date.now());setStopping(false);setFinishing(false);setError('');const control=createTaskCancellation(latest.current.stopInference);cancellation.current=control;let runId:string|undefined,heartbeat:ReturnType<typeof setInterval>|undefined;
   try{
    const claim=await knowledge.claimRun(id,owner.current,{retry,manual});if(!claim.execute)return;
    runId=claim.run.id;heartbeat=setInterval(()=>{knowledge.heartbeat(runId!,owner.current).catch(e=>setError(e.message));},20000);
    try{await latest.current.refresh();control.check();const output=await latest.current.execute(taskRunView(claim.run).prompt,control.signal);control.check();if(!control.claimCompletion())throw Error('Stopped');setFinishing(true);await knowledge.finishRun(runId!,owner.current,{status:'succeeded',...output});}
    catch(e){const message=(e as Error).message,diagnostic=(e&&typeof e==='object'&&'diagnostic'in e?(e as {diagnostic?:RunData['diagnostic']}).diagnostic:undefined);await knowledge.finishRun(runId!,owner.current,{status:message==='Stopped'?'stopped':'failed',error:message,...(diagnostic?{diagnostic}:{})});if(manual&&message!=='Stopped')setError(message);}
-  }finally{if(heartbeat)clearInterval(heartbeat);if(cancellation.current===control)cancellation.current=null;locked.current=false;setActive(null);setStopping(false);setFinishing(false);await latest.current.refresh();}
+  }finally{if(heartbeat)clearInterval(heartbeat);if(cancellation.current===control)cancellation.current=null;locked.current=false;setActive(null);setActiveStartedAt(null);setStopping(false);setFinishing(false);await latest.current.refresh();}
  }
  function stop(){const current=cancellation.current;if(!current||current.signal.aborted)return;try{if(current.stop())setStopping(true);}catch(error){setStopping(true);setError((error as Error).message);}}
  async function skip(id:string){await knowledge.skipRun(id,owner.current);await latest.current.refresh();}
@@ -50,5 +50,5 @@ export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boo
   const timer=setInterval(poll,15000);const resume=()=>{if(document.visibilityState==='visible')void poll();};document.addEventListener('visibilitychange',resume);void poll();
   return()=>{stopped=true;clearInterval(timer);document.removeEventListener('visibilitychange',resume);};
  },[ready]);
- return {...views,get busy(){return locked.current;},active,stopping,finishing,error:error||pollError,saving,run,skip,stop,save,read,dismissError:()=>{setError('');setPollError('');}};
+ return {...views,get busy(){return locked.current;},active,activeStartedAt,stopping,finishing,error:error||pollError,saving,run,skip,stop,save,read,dismissError:()=>{setError('');setPollError('');}};
 }
