@@ -160,7 +160,15 @@ test('plain natural-language Memory search and open work offline without prepari
 test('correcting an invalid file name clears its stale error and preserves content',async({page})=>{
  await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'New file'}).click();
  await page.getByRole('textbox',{name:'File name'}).fill('bad/name');await page.getByRole('textbox',{name:'New file content'}).fill('Draft remains');
- await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.getByRole('alert')).toHaveText('Enter a name without slashes');
+ await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.getByRole('alert')).toHaveText('Name contains unsupported characters · avoid / \\ : * ? " < > | and control characters');
  await page.getByRole('textbox',{name:'File name'}).fill('good-name');await expect(page.getByRole('alert')).toHaveCount(0);
  await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('Draft remains');
+});
+
+test('empty Memory file names show a useful error and clear it when edited',async({page})=>{
+ await page.goto('/');await navigate(page,'Memory');await page.getByRole('button',{name:'New file'}).click();
+ await page.getByRole('textbox',{name:'New file content'}).fill('Keep this draft');
+ await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.getByRole('alert')).toHaveText('Enter a file or folder name');
+ await page.getByRole('textbox',{name:'File name'}).fill('recovered');await expect(page.getByRole('alert')).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'New file content'})).toHaveValue('Keep this draft');
 });

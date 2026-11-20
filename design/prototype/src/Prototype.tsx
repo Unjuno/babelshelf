@@ -21,6 +21,7 @@ import {executeSubmission,type SubmissionAttachment} from './submission-workflow
 import {makeAnswerCopyReview,makeDialogueCopyReview,selectDialogueCopy,reviewedDialogueCopy,type DialogueCopyReview} from './dialogue-copy';
 import {DialogueCopySource} from './DialogueCopySource';
 import {runtimeStatus} from './runtime-status';
+import {expireUndoNotices,nextUndoExpiry,type ToastNotice} from './toast-queue';
 import {harnessGuidanceBytes,validateHarnessGuidance} from './harness-guidance';
 import {useGuidanceDraft} from './useGuidanceDraft';
 import {diagnoseModelIssues,modelIssueAction,type ModelRole} from './model-diagnostics';
@@ -285,7 +286,7 @@ export default function Prototype() {
  const directSaveLock=useRef(false);const [editSaving,setEditSaving]=useState(false);const [editing,setEditing]=useState(false),[editBody,setEditBody]=useState(''),[editVersion,setEditVersion]=useState(0),[editPath,setEditPath]=useState(''),[query,setQuery]=useState('');
  const correctionTargetChoice=useCorrectionTargetChoice();
  const sourcedCalculationReview=useSourcedCalculationReview();
-  const [sheet,setSheetState]=useState<'ocr-reading'|'ocr-review'|'ocr-model'|'ocr-library'|'ocr-language'|'speech-language'|'vision-model'|'vision-library'|'vision-result'|'processing-history'|'pdf-reading'|'pdf-review'|'transcript'|'correction'|'voice'|'history'|'schedule'|'file'|'folder'|'tool-package'|'tool-test'|'source'|'activity'|'operation'|'initial-preparation'|'custom-model'|'custom-decision-model'|'custom-speech-model'|'custom-vision-model'|'text-model'|'decision-model'|'item-actions'|'delete'|'trash'|'rename'|'notification'|'attachment'|'attachment-source'|'speech-model'|'speech-library'|'schedule-repeat'|'text-library'|'decision-library'|'huggingface'|'restore-backup'|'restore-defaults'|'model-sets'|'model-set-review'|'model-set-save'|'harness-profile'|'task-actions'|'executions'|'execution'|'conversations'|null>(null);const [noticeQueue,setNoticeQueue]=useState<{text:string;undoId?:string}[]>([]);const notice=noticeQueue[0]?.text??'';const toastElement=useRef<HTMLDivElement|null>(null),[toastHeight,setToastHeight]=useState(0);const activityMinimized=useRef(false);
+  const [sheet,setSheetState]=useState<'ocr-reading'|'ocr-review'|'ocr-model'|'ocr-library'|'ocr-language'|'speech-language'|'vision-model'|'vision-library'|'vision-result'|'processing-history'|'pdf-reading'|'pdf-review'|'transcript'|'correction'|'voice'|'history'|'schedule'|'file'|'folder'|'tool-package'|'tool-test'|'source'|'activity'|'operation'|'initial-preparation'|'custom-model'|'custom-decision-model'|'custom-speech-model'|'custom-vision-model'|'text-model'|'decision-model'|'item-actions'|'delete'|'trash'|'rename'|'notification'|'attachment'|'attachment-source'|'speech-model'|'speech-library'|'schedule-repeat'|'text-library'|'decision-library'|'huggingface'|'restore-backup'|'restore-defaults'|'model-sets'|'model-set-review'|'model-set-save'|'harness-profile'|'task-actions'|'executions'|'execution'|'conversations'|null>(null);const [noticeQueue,setNoticeQueue]=useState<ToastNotice[]>([]);const notice=noticeQueue[0]?.text??'';const toastElement=useRef<HTMLDivElement|null>(null),[toastHeight,setToastHeight]=useState(0);const activityMinimized=useRef(false);
  const [sheetError,setSheetError]=useState('');
  type ActivityPages={turnId:string;pages:Activity[][];nextPage:number|null};
  const [pagedActivity,setPagedActivity]=useState<ActivityPages|null>(null),[pagedActivityState,setPagedActivityState]=useState<'idle'|'loading'|'error'>('idle'),[activityPageVersion,setActivityPageVersion]=useState(0);
@@ -853,7 +854,7 @@ export default function Prototype() {
   const pin=pendingWorkingFile.current;pendingWorkingFile.current=undefined;
   void fileFocusQueue.current!.select(pin).catch(e=>setDialogueError(e.message));
  },[current?.id,current?.version,dialogueReady,sending]);
- function toast(text:string,undoId?:string){setNoticeQueue(queue=>[{text:runtimeStatus(text),...(undoId?{undoId}:{})},...queue]);} function dismissNotice(){setNoticeQueue(queue=>queue.slice(1));}
+ function toast(text:string,undoId?:string){const now=Date.now();setNoticeQueue(queue=>[{text:runtimeStatus(text),...(undoId?{undoId,expiresAt:now+30_000}:{})},...queue]);} function dismissNotice(){setNoticeQueue(queue=>queue.slice(1));}
  function navigate(next:Page){requestEditorExit(()=>{previewSelection.current.cancel();keyboard.hide();setPage(next);if(next==='settings')setSettingsPanel(null);if(next==='memory'){setMemoryScope('home');setActiveFolder('');setQuery('');}setOpened(null);setEditing(false);home.current?.focus({preventScroll:true});});}
  function chooseMediaFiles(accept:string){keyboard.hide();if(!mediaFiles.current)return;toast('Choose files to attach');mediaFiles.current.accept=accept;mediaFiles.current.click();}
  function openModelSettings(role:ModelRole){requestEditorExit(()=>{
@@ -1357,8 +1358,10 @@ export default function Prototype() {
  useLayoutEffect(()=>{const scroll=document.querySelector<HTMLElement>('.mobile-page .mobile-scroll');if(!scroll)return;const previous=scroll.style.bottom;scroll.style.bottom=toastScrollOffset?`calc(var(--keyboard-height) + ${toastScrollOffset}px)`:'var(--keyboard-height)';return()=>{scroll.style.bottom=previous;};},[page,settingsPanel,sheet,toastScrollOffset]);
  useEffect(()=>{
   if(!notice||activeOperation||customReview&&!sheet||backgroundOperationMessage||storageError||dialogueError&&(page!=='input'||sheet!==null)||taskController.error||fileSaveWarning||storagePending)return;
-  const timer=setTimeout(dismissNotice,notice==='Deleted'&&deletionUndoBatch?30_000:3500);return()=>clearTimeout(timer);
+  const deadline=notice==='Deleted'&&deletionUndoBatch?noticeQueue[0]?.expiresAt:undefined;
+  const timer=setTimeout(dismissNotice,deadline===undefined?3500:Math.max(0,deadline-Date.now()));return()=>clearTimeout(timer);
  },[notice,noticeQueue,deletionUndoBatch,activeOperation,customReview,sheet,backgroundOperationMessage,storageError,dialogueError,page,taskController.error,fileSaveWarning,storagePending]);
+ useEffect(()=>{const expiry=nextUndoExpiry(noticeQueue);if(expiry===undefined)return;const timer=setTimeout(()=>setNoticeQueue(queue=>expireUndoNotices(queue)),Math.max(0,expiry-Date.now()));return()=>clearTimeout(timer);},[noticeQueue]);
  const deletionUndoVisible=notice==='Deleted'&&!!deletionUndoBatch&&!dialogueError&&!storageError&&!taskController.error&&!fileSaveWarning&&!submissionStatus&&!sending&&!bonsai.busy&&!storagePending;
  const renderBreadcrumbs=()=> <nav className="memory-breadcrumbs" aria-label="Memory path">{crumbs.map((crumb,i)=><span className="crumb" key={crumb.scope+crumb.path}>{i>0&&<CaretRight size={13}/>}<button aria-current={i===crumbs.length-1?'location':undefined} onClick={()=>browseMemory(crumb.scope,crumb.path)}>{crumb.label}</button></span>)}</nav>;
  const renderListing=()=> <>{visibleFolders.map(entry=><MemoryItem key={entry.scope+entry.path} label={entry.label} folder protectedItem={entry.scope!=='folder'||isSystemFolder(entry.path)} onOpen={()=>browseMemory(entry.scope,entry.path)} onActions={()=>itemActions({kind:'folder',value:entry.path,label:entry.label})}/>)}{scopedNotes.map(n=><MemoryItem key={n.id} label={memoryQuery?n.path:n.path.split('/').at(-1)!} folder={false} protectedItem={n.protected} pathProtected={n.managed} onOpen={()=>openNote(n.id)} onActions={()=>itemActions({kind:'file',value:n.id,label:n.path.split('/').at(-1)!})}/>)}{!visibleFolders.length&&!scopedNotes.length&&<div className="empty-state">No files</div>}</>;

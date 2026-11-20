@@ -1,4 +1,5 @@
 import type {FormEvent,ReactNode} from 'react';
+import {useState} from 'react';
 import {FolderSimple} from '@phosphor-icons/react';
 import {KeyboardInput,KeyboardTextarea} from './mobile';
 
@@ -13,7 +14,8 @@ export function MemoryCreationSheet({mode,saving,ready,storagePending,canCreateF
  onModeChange:(mode:MemoryCreationMode)=>void;onNameChange:(name:string)=>void;onContentChange:(content:string)=>void;
  onSave:()=>void;onCancel:()=>void;onDiscard?:()=>void;
 }){
- function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();onSave();}
+ const [nameEdited,setNameEdited]=useState(false);
+ function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();setNameEdited(false);onSave();}
  return <form className="schedule-form creation-form schedule-form--task" onSubmit={submit}>
   <div className="task-fields">
    <div className="creation-types" role="tablist" aria-label="Create">
@@ -21,10 +23,10 @@ export function MemoryCreationSheet({mode,saving,ready,storagePending,canCreateF
     <button type="button" role="tab" aria-selected={mode==='folder'} disabled={saving||!canCreateFolder} title={canCreateFolder?'New folder':'Maximum 5 folder levels'} onClick={()=>onModeChange('folder')}>Folder</button>
    </div>
    <div className="new-file-location"><FolderSimple size={17}/>{location}<span className="depth-count">{depth}</span></div>
-   <label>Name<KeyboardInput disabled={saving} aria-label={mode==='file'?'File name':'Folder name'} placeholder={mode==='file'?'File name':'Folder name'} value={name} onChange={event=>onNameChange(event.target.value)}/></label>
+   <label>Name<KeyboardInput disabled={saving} aria-label={mode==='file'?'File name':'Folder name'} placeholder={mode==='file'?'File name':'Folder name'} value={name} onChange={event=>{setNameEdited(true);onNameChange(event.target.value);}}/></label>
    {mode==='file'&&sourceControls}
    {mode==='file'&&<label>Content<KeyboardTextarea disabled={saving} aria-label="New file content" placeholder="Write…" rows={4} value={content} onChange={event=>onContentChange(event.target.value)}/></label>}
-   {error&&<div className="creation-error" role="alert">{error}</div>}
+   {error&&!nameEdited&&<div className="creation-error" role="alert">{error}</div>}
    {restoreConflicts.map(conflict=><button key={conflict.id} type="button" className="quiet-button" disabled={saving||conflict.disabled} onClick={conflict.onRestore}>Restore deleted file</button>)}
   </div>
   <div className="action-row">{draft&&onDiscard&&<button type="button" className="quiet-button danger-button" disabled={saving} onClick={onDiscard}>Discard draft</button>}<button type="button" className="quiet-button" disabled={saving} onClick={onCancel}>{draft?'Close':'Cancel'}</button><button type="submit" disabled={!ready||storagePending||saving} className="solid-button">Save</button></div>

@@ -1,6 +1,13 @@
 import { settings } from './app-settings.ts';
 export const MAX_FOLDER_DEPTH = settings.storage.maxFolderDepth;
-function segment(value:string){const name=value.trim().normalize('NFC');if(!name||name==='.'||name==='..'||/[\\/:*?"<>|\u0000-\u001f]/.test(name)||/[. ]$/.test(name))throw Error('Enter a name without slashes');return name;}
+function segment(value:string){
+ const name=value.trim().normalize('NFC');
+ if(!name)throw Error('Enter a file or folder name');
+ if(name==='.'||name==='..')throw Error('Choose a name other than . or ..');
+ if(/[\\/:*?"<>|\u0000-\u001f]/.test(name))throw Error('Name contains unsupported characters · avoid / \\ : * ? " < > | and control characters');
+ if(/[. ]$/.test(name))throw Error('Names cannot end with a period or space');
+ return name;
+}
 function customToolSourcePath(path:string){return /^Tools\/user\.[a-z][a-z0-9-]{0,47}\/tool\.js$/.test(path);}
 function folder(value:string){if(!value)return '';const parts=value.split('/').map(segment);if(parts.length>MAX_FOLDER_DEPTH)throw Error('Maximum 5 folder levels');return parts.join('/');}
 function available(path:string,occupied:string[]){if(occupied.some(p=>p.toLowerCase()===path.toLowerCase()))throw Error('Name already exists');return path;}

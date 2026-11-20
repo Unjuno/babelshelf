@@ -64,6 +64,22 @@ GPU/CPU-WASM schedule prompts, the auditor's exact 25-entry Trash graph and
 physical iPhone/Android behavior remain open. Detailed run evidence is in
 [`TEST-RESULTS.txt`](TEST-RESULTS.txt).
 
+The next local candidate now builds as `ab24395037bcd18a` with 166 verified
+assets. It gives empty names, reserved filename characters and trailing path
+characters specific validation errors, and anchors deletion Undo to a fixed
+30-second deadline even while notices are queued. The path/queue unit suites
+passed 9/9, filename validation browser checks passed 2/2, the queued-Undo
+browser check passed 1/1, `npm run check` passed, and the production build
+passed. The full `npm run test:quality` workflow then completed with exit code
+0 on this exact candidate: Node/prototype tests, app build/acceptance, Editor,
+review-store, offline calculation, Help, Tools, Markdown, SHA, custom tools,
+MCP Chromium/WebKit, device-memory, inference leases, Schedule/Trash/Toast,
+Settings, Editorial, iOS-handoff UI Chromium/WebKit, app-update, persistent
+offline-process and installed-PWA acceptance all passed. The app-update and
+installed-PWA evidence remains synthetic/PC-browser evidence. The three P0
+external-evidence gates above remain open; the candidate has not been pushed,
+merged, or deployed.
+
 ### Release-readiness follow-up · Site v378
 
 PR [#108](https://github.com/Unjuno/babelshelf/pull/108) was merged to

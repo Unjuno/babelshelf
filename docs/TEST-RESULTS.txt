@@ -8909,3 +8909,24 @@ navigation actions, so current-build real schedule prompts could not be run.
 No user browser data was deleted. The candidate remains local and Site v379 is
 still live; the exact 25-item external Trash graph, production model-byte trace,
 GPU/CPU-WASM prompt matrix and physical iPhone/Android acceptance remain open.
+
+2026-11-20 JST · Audit 13 filename validation and queued Undo follow-up
+The local candidate builds as `ab24395037bcd18a` with 166 verified assets.
+Memory path validation now distinguishes empty names, `.`/`..`, reserved path
+characters and trailing periods/spaces. The creation form clears the displayed
+validation error when the user edits the name. Path tests passed 6/6; browser
+checks for rejected-name correction and empty-name feedback passed 2/2.
+Deletion Undo now has a fixed 30-second deadline from the delete action, and
+expired Undo notices are removed from anywhere in the notification queue.
+Toast queue unit tests passed 3/3; the queued-notice Undo browser flow passed
+1/1. `npm run check`, production app build and `git diff --check` passed. The
+full `npm run test:quality` workflow then completed with exit code 0 on this
+candidate: Node/prototype tests, app build/acceptance, Editor, review-store,
+offline calculation, Help, Tools, Markdown, SHA, custom tools, MCP
+Chromium/WebKit, device-memory, inference leases, Schedule/Trash/Toast,
+Settings, Editorial, iOS-handoff UI Chromium/WebKit, app-update,
+persistent-offline-process and installed-PWA acceptance all passed. Update
+retention and installed-PWA coverage used synthetic/disposable PC-browser
+fixtures; this is not byte-level evidence for a real prepared model or physical
+device acceptance. No user Memory or Trash data was changed. The candidate has
+not been pushed, merged or deployed.
