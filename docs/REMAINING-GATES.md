@@ -33,11 +33,12 @@ were available after update, but actual transfer bytes were not captured.
 
 On the same v378 browser session, one manual run of the existing paused QA
 schedule `say hello briefly` completed as `succeeded · Attempt 1` and its
-execution detail showed `Hello! How can I help you today?`. A new unread
-notification was created; its body was not opened for comparison. This
+execution detail showed `Hello! How can I help you today?`. Opening the new
+notification showed the same answer. The app marked it read on open. This
 reproduces the previously failing greeting-shaped schedule on the current
-build, but covers only one run and does not close the emoji/ampersand,
-Japanese, source-backed, retry/Stop or CPU/WASM cases.
+build and confirms this run's notification body, but covers only one run and
+does not close the emoji/ampersand, Japanese, source-backed, retry/Stop or
+CPU/WASM cases.
 
 The P0 acceptance gaps below remain open: byte-level transfer measurement for
 an already prepared real model during update; real-model schedule prompts on
