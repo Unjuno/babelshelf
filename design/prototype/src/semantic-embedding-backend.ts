@@ -12,9 +12,15 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
  const modelId=typeof modelIdOrWorker==='string'?modelIdOrWorker:semanticEmbeddingManifest.id;
  const createWorker=typeof modelIdOrWorker==='function'?modelIdOrWorker:workerOverride;
  const manifest=semanticEmbeddingManifestFor(modelId);
- const workerFactory=createWorker??(()=>new Worker(manifest.id===semanticEmbeddingManifest.id?new URL('./semantic-embedding-worker.ts',import.meta.url):new URL('./semantic-embedding-311-worker.ts',import.meta.url),{type:'module',name:'BabelShelf local embeddings'}));
+ // Keep the Vite-only worker constructors out of Node tests that inject a
+ // fake Worker. The browser factory still compiles both workers as JS bundles.
  let client:ReturnType<typeof createSemanticEmbeddingClient>|null=null,activeController:AbortController|null=null,closed=false;
- const getClient=()=>{if(closed)throw Error('Embedding backend closed');if(client?.failed)client=null;return client??=createSemanticEmbeddingClient(workerFactory());};
+ const getClient=async(signal:AbortSignal)=>{
+  if(closed)throw Error('Embedding backend closed');if(client?.failed)client=null;if(client)return client;
+  const worker=createWorker?createWorker():(await import('./semantic-embedding-worker-factory.ts')).createSemanticEmbeddingWorker(manifest.id);
+  if(closed||signal.aborted){worker.terminate();if(closed)throw Error('Embedding backend closed');throw Error('Stopped');}
+  return client??=createSemanticEmbeddingClient(worker);
+ };
  const run=<T>(work:(signal:AbortSignal,current:ReturnType<typeof createSemanticEmbeddingClient>)=>Promise<T>,signal?:AbortSignal,events?:Events)=>{
   if(closed)return Promise.reject(Error('Embedding backend closed'));
   if(activeController)return Promise.reject(Error('Embedding operation busy'));
@@ -22,7 +28,7 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
   const controller=new AbortController();activeController=controller;
   const onAbort=()=>{controller.abort();const old=client;client=null;if(old)old.abort();};
   signal?.addEventListener('abort',onAbort,{once:true});
-  return Promise.resolve().then(()=>work(controller.signal,getClient())).then(value=>{controller.signal.throwIfAborted();return value;}).catch(error=>{if(controller.signal.aborted)throw Error('Stopped');throw error;}).finally(()=>{signal?.removeEventListener('abort',onAbort);if(activeController===controller)activeController=null;});
+  return Promise.resolve().then(async()=>{const current=await getClient(controller.signal);return work(controller.signal,current);}).then(value=>{controller.signal.throwIfAborted();return value;}).catch(error=>{if(controller.signal.aborted)throw Error('Stopped');throw error;}).finally(()=>{signal?.removeEventListener('abort',onAbort);if(activeController===controller)activeController=null;});
  };
  const progress=(events?:Events)=>(value:string)=>events?.('progress',value);
  return {

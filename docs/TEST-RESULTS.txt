@@ -1,3 +1,40 @@
+2026-11-21 JST · Audit 17 schedule-answer repair and final local release gate
+
+On local candidate build `b1a23f2fd12b9f98` (168 verified assets), source-free
+scheduled requests now use bounded plain-text answering while requests that
+need saved sources continue through grounded answer validation. The route rejects
+prompt echoes, internal source labels and implementation leaks; a failed final
+attempt retains a bounded generated candidate and aggregated call/token/timing
+metrics, and can never be recorded as a successful prompt copy. Search setup
+keeps file, runtime and loaded-model readiness separate, and the Check runtime
+control gives a visible result. OPFS writer and per-model digest synchronization
+regressions cover concurrent access and quota-transfer accounting.
+
+Verification: `npm run test:quality` exited 0 across the full workflow on the
+same app build: root 285/285, prototype 2,098/2,098, app acceptance 9/9, editor
+28/28, review store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1,
+tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit
+8/8 each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 26/26,
+Settings 34/34, editorial 38/38, iOS handoff UI Chromium/WebKit 38/38 each,
+app update 3/3, offline process pass and installed-PWA pass. A test-only
+diagnostic assertion was added after that full run; afterward the complete
+prototype suite passed 2,099/2,099 and focused schedule-answer tests passed
+20/20. `npm run check`, `npm run build:app`, and `git diff --check` passed.
+PC Chromium showed a visible Search runtime-not-prepared result; Search weights
+were not downloaded. These automated and desktop-browser checks do not establish
+real-model quality, physical iPhone operation or production feedback delivery.
+
+The preserved side-panel model profile still shows Text model `Not prepared`
+and a retained partial LFM3 Q4 file of 989,855,744 bytes. Preparation failed
+with a storage error / `QuotaExceededError` while the browser estimate reported
+10.7 GB available. No existing model, user data or browser storage was removed.
+Phone Use status showed HID active, Bluetooth disconnected and screen mirroring
+stopped; the user indicated the phone was not available, so physical iPhone
+testing was not attempted. No public feedback POST was sent. No GitHub merge or
+Site deployment was made because real-model, physical iPhone, CPU/WASM schedule,
+feedback delivery, prepared-model transfer accounting, public client adoption
+and the reported 25-item Trash dependency graph remain release gates.
+
 2026-11-21 — Reuse verified model-file snapshots across page restarts.
 Implemented a privacy-bounded OPFS verification marker for the pinned immutable
 LFM3 model snapshot, keyed by model ID/revision, expected SHA-256, byte size,
@@ -9156,6 +9193,30 @@ Product GitHub publication is still pending: the repository's required
 candidate remains on its local branch; product `main` and PR #110 were not
 changed. Thus Site v380 is live, but the product source has not been published
 to GitHub and matching-head GitHub CI has not run.
+
+2026-11-21 JST · Audit 17 local follow-up verification, build `ea776cc09a81b651`
+
+Build output verified 167 assets. `npm run test:quality` had passed the Node
+suite (2,086/2,086), type/check, build, app acceptance, editor, review-store,
+offline calculation, working file, Help, tools, markdown, hash, custom-tools,
+Chromium MCP and MCP WebKit suites except two initial WebKit timeouts. Those two
+MCP cases passed immediately when rerun individually (1.8s and 1.5s), indicating
+the earlier timeouts were not reproducible in isolation. Follow-on checks
+passed: device-memory 1/1, inference lease 1/1, schedule UI 26/26, settings UI
+33/33, editorial 38/38, Chromium device handoff 38/38, app-update/recovery 3/3,
+offline process PASS, and installed-PWA PASS. MCP Chromium passed 8/8; MCP
+WebKit's isolated cases passed 8/8.
+
+The full WebKit device-handoff suite passed 37/38. Its Text preparation test
+reproducibly fails because the WebKit page reports `Files unavailable`, leaving
+the `Prepare text model` action absent; the same test passes in Chromium. This
+was not worked around or weakened. The test evidence does not establish whether
+the cause is WebKit OPFS/worker status behavior or an application defect. A real
+LFM3 response, public Audit 17 schedule-answer behavior, feedback delivery and
+physical iPhone operation were not verified in this run. No user/browser data
+was cleared. GitHub publication and Site deployment were intentionally not
+performed because the exact candidate has an unresolved WebKit preparation
+failure and the public blockers are not closed.
 2026-11-21 JST · iPhone model-load follow-up after Windows Phone Use permission
 
 Windows-side Phone Use permission was enabled and the iPhone session reconnected.
@@ -9177,3 +9238,251 @@ No route or timeout policy was changed. The next valid diagnostic must identify
 preflight, tensor transfer/allocation, runtime initialization, and actual GPU
 layer placement separately, then verify a real answer on iPhone. This physical
 model-readiness gate remains open.
+
+2026-11-21 JST · Audit 17 follow-up, local candidate `b61280113935cb2c`
+
+`npm run build:app` passed and produced 166 verified shell assets. The build
+now asserts that both optional semantic-embedding workers are compiled `.js`
+bundles. Before this fix, a fresh browser profile requested the selected Search
+worker as a `.ts` URL and showed `Embedding worker stopped`; Vite had copied the
+conditional TypeScript worker sources instead of compiling them. After the fix,
+the side-panel PC Chrome profile applied the exact build through the visible
+Update flow (service-worker reply: `b61280113935cb2c`, 166 assets). Search
+`Check files` now starts its worker and reports that the Search runtime is not
+prepared. No Search runtime/model was downloaded, so successful embedding
+generation and semantic search remain unverified.
+
+The same isolated profile reproduced a storage quota failure while preparing
+LFM3 Q4_0: 406.3 MB of complete ranges were committed; the next write failed
+with a browser quota error even though `navigator.storage.estimate()` reported
+about 11.2 GB quota. The app now displays `The browser could not store more
+model data · check device storage and retry. Completed download ranges remain
+on this device.` The completed range remained stored, and app update preserved
+the OPFS usage and prepared runtime. This is remote-browser evidence only, not
+a general browser or physical-phone limit. No site data or files were cleared.
+
+Run now was changed to keep its actions sheet open after an attempt and disable
+Run now until the user closes and reopens the sheet. The focused regression
+`tests/schedule-memory-ui.spec.ts` passed (1/1), preventing a repeated tap from
+falling through to another schedule. A new scheduled `3+3` direct-calculation
+regression test was added. `npm run check` passed; focused pinned-assets,
+scheduled-answer and task-record suites passed 51/51. The targeted Run now
+Playwright test passed in 14.4 seconds.
+
+No real-model answer was run in this follow-up; the local profile still has only
+partial LFM3 weights. Physical iPhone WebGPU load remains open and Phone Use is
+currently disconnected. The Audit 17 public-build failures (intermittent
+schedule-answer validation, Restore backup behavior, feedback submission, and
+one-off schedule state) remain release gates. This local candidate was not
+deployed and was not published to GitHub.
+
+2026-11-21 JST · OPFS capability reporting, candidate `7719e618e949e4ee`
+
+The Playwright WebKit runner reports no `navigator.storage.getDirectory` API.
+The prior UI mapped the resulting model-worker status failure to `Files
+unavailable`, which concealed that this browser context cannot access the
+required local OPFS store. Text model controls now show `Local model storage
+unavailable in this browser` and suppress preparation, import, verification and
+retry controls in that unsupported context; a model already loaded can still
+be unloaded. In environments with OPFS, the existing explicit-download flow is
+unchanged.
+
+`node --test design/prototype/tests/text-model-controls.test.mjs` passed 8/8;
+`npm run check` passed. The focused Text preparation case passed in WebKit (the
+explicit unsupported-storage branch) and Chromium (the size disclosure and
+cancel-without-download branch). The full Chromium and WebKit device-handoff
+suites then passed 38/38 each on this candidate. No model files were downloaded.
+`npm run build:app` produced 167 verified assets at `7719e618e949e4ee`. Physical
+iPhone and real-model answer checks remain outstanding; this diagnostic
+improvement does not close the separate schedule-answer and feedback-delivery
+release blockers.
+
+2026-11-21 JST · OPFS range staging, full quality workflow, candidate `5556a90380450fbc`
+
+The audit Chrome profile retained a 419,430,400-byte pinned model file plus a
+266,211,217-byte `.crswap` file after LFM3 preparation failed. The browser
+reported quota 11,625,328,558 bytes and origin usage 887,910,318 bytes, then
+refused a new OPFS write with `QuotaExceededError`. Existing large-file range
+writes used `createWritable({keepExistingData:true})`, which can stage a second
+copy of the existing file. Pinned LFM3 preparation now uses a dedicated module
+worker and `FileSystemSyncAccessHandle` for in-place writes. Restart truncates an
+incomplete trailing range to the previous 16 MiB boundary while preserving
+earlier completed ranges. No model or `.crswap` bytes were deleted.
+
+`node --test design/prototype/tests/pinned-text-assets.test.mjs
+design/prototype/tests/scheduled-answer.test.mjs` passed 32/32. The direct OPFS
+writer fixture started with one complete 16 MiB range and a five-byte partial
+tail; retry retained the complete range, requested only the final 37 bytes,
+and verified the final digest. Build output included the separate
+`lfm3-assets-worker` module. A Chromium side-panel worker smoke using the built
+asset returned the expected `Downloads are off` result with network disabled.
+The same browser could not allocate a small direct OPFS probe due to its storage
+failure, so a full 1GB preparation, WebGPU load and real-model answer remain
+unverified on this candidate.
+
+The full `npm run test:quality` workflow exited 0 on build `5556a90380450fbc`
+(168 verified assets): root tests 278/278, prototype tests 2,089/2,089,
+product acceptance 9/9, editor 28/28, review-store 6/6, schedule/Memory/toast UI
+26/26, settings UI 33/33, editorial 38/38, handoff UI 38/38 in Chromium and
+38/38 in WebKit, offline-process `pass: true`, installed-PWA `pass: true`, and
+the other workflow steps passed. This is PC/browser regression evidence, not
+physical iPhone or real inference acceptance. Release remains DO-NOT-SHIP due
+the unresolved scheduled-answer and feedback-delivery blockers plus missing
+real-model storage/run evidence. No GitHub publication, merge or Site deployment
+was performed.
+
+Final direct-truncate refinement produced build `552e3c59e0f9ea2a` (168 assets).
+`node --test` on pinned-assets and scheduled-answer passed 32/32, `npm run check`
+passed, and `npm run build:app` completed. The new built Worker smoke returned
+`Downloads are off` without enabling network access. Two subsequent full
+`npm run test:quality` attempts on this exact candidate encountered intermittent
+WebKit MCP failures: one failed 3/8, the next failed 2/8. In both attempts the
+failing calls were WebKit browser fixtures (one timed out while initializing
+KnowledgeStore; another produced invalid/incomplete mocked planner results).
+`npm run test:quality:mcp:webkit` run by itself passed 8/8 after the first full
+run. The full workflow therefore is not recorded as green on build
+`552e3c59e0f9ea2a`; that candidate is not eligible for release. The preceding
+candidate `5556a90380450fbc` had one full workflow pass before the last direct
+truncate refactoring. Actual model acquisition/inference, phone verification,
+public deployment and GitHub publication remain outstanding.
+
+2026-11-21 JST · Feedback Worker local D1 check
+
+Started local Wrangler on port 8787 with only `http://127.0.0.1:4183` allowed.
+The first valid POST returned 503 because Wrangler had not applied the local D1
+migration. After applying the existing `0001_create_feedback.sql` migration,
+the same POST returned 201; local D1 query verified one row with the exact QA
+message/build. The OPTIONS preflight returned 204. The local QA row was deleted
+and a follow-up query verified zero remaining QA rows. `node --test
+tests/feedback-api.test.mjs` passed 3/3. The public Worker was not sent a valid
+POST, so its D1 write path and the reported production feedback failure remain
+unverified. The Wrangler local-state directory was generated by this run, but
+the environment blocked its removal; it contains the local migration metadata
+and empty QA database, not user or production data.
+
+2026-11-21 JST · Service Worker self-script fetch and full quality candidate
+`46ff3aed8bf61509`
+
+Read-only inspection in the isolated audit Chrome tab showed that the active
+worker intercepted `fetch('/sw.js')` and returned HTTP 503 (`Local app asset
+missing...`). The product worker now leaves its own script URL to the browser's
+network path. `node --test tests/product-worker.test.mjs` passed 54/54. The
+isolated app-update Chromium workflow passed 3/3; its first generation models a
+legacy worker blocking direct script access, and the activated replacement
+successfully fetches the new server script. It also checks update activation,
+offline reload, and retention of synthetic IndexedDB, draft and OPFS data.
+
+`npm run test:quality` exited 0 on build `46ff3aed8bf61509` with 168 verified
+assets. Root tests 279/279; prototype 2,089/2,089; product acceptance 9/9;
+editor 28/28; review store 6/6; offline calculation 1/1; working-file 2/2;
+Help 1/1; tools 16/16; Markdown 4/4; hash 1/1; custom tools 38/38; MCP browser
+8/8 in Chromium and 8/8 in WebKit; device memory 1/1; inference lock 1/1;
+schedule/Memory/toast 26/26; Settings 33/33; editorial 38/38; device-handoff
+UI 38/38 in Chromium and 38/38 in WebKit; app-update 3/3; offline process
+`pass: true`; installed PWA `pass: true`. A subsequent focused app-update run
+again passed 3/3 after adding the explicit legacy self-script regression.
+
+The existing isolated audit Chrome tab attempted to install `46ff3aed8bf61509`
+through its real registration; the installing worker became `redundant`, and
+the browser tooling did not expose an install error reason. This is not a
+verified real-profile update. The profile was not cleared. The 1GB model
+download and actual model answer remain unverified because prior OPFS writes
+failed with `QuotaExceededError`. Schedule-answer validation, deployed feedback
+delivery and physical iPhone acceptance also remain open. This candidate is
+not a release; no GitHub publication or Site deployment was performed.
+
+2026-11-21 JST · Fresh-install and real LFM3 storage-cap verification · candidate `46ff3aed8bf61509`
+
+In the existing isolated audit Chrome profile, an attempted Service Worker upgrade ended in `redundant`; no browser install error was exposed and no site data was cleared. Separately, a clean isolated Chrome profile installed the candidate after the user explicitly chose Prepare offline app. The activated worker reported build `46ff3aed8bf61509`, and `/sw.js` returned HTTP 200. A direct network check verified status, expected byte length, and SHA-256 for all 94 shell assets. These checks establish fresh install and origin-asset integrity, not migration of the preexisting profile.
+
+The exact LFM3 · 1.7B · QAD Q4_0 model (1,049,615,680 bytes) was then prepared through the product UI and dedicated OPFS writer in that isolated profile. Writing stopped at 855,638,016 bytes with the product's browser-storage error; the completed prefix was retained and no `.crswap` was created. At failure, `navigator.storage.estimate()` reported quota 11,630,379,348 bytes and usage 892,961,108 bytes (10,737,418,240 bytes nominally available), so the effective write cap is not represented by that estimate. No digest verification, model load, or inference answer was possible. This partial QA file remains in the isolated profile; existing audit-profile model and swap files were untouched. This result is browser/environment storage evidence, not proof of a runtime inference defect or a successful LFM3 run.
+
+2026-11-21 JST · Existing-profile Update UI retry · candidate `46ff3aed8bf61509`
+
+On isolated audit profile `babelshelf-audit17-candidate`, the controlling worker was `b61280113935cb2c`. The product Update action opened its confirmation and disclosed that the selected model files were missing (1,049.6 MB), that updating would not fetch model files, and that later model preparation would ask before downloading. Confirming Update surfaced `Update verification failed`; the active worker remained `b61280113935cb2c` and no waiting/installing worker remained. This verifies user-facing disclosure and error feedback, but the old-to-candidate migration still fails. The browser exposed neither the failed install's cause nor a new build activation. The isolated profile's model/storage data was preserved.
+
+2026-11-21 JST · History-dependent general-answer route regression · candidate `75e7b170ba78771a`
+
+On the prior full-model Windows Chrome profile, a 10-turn conversation followed by `Name the largest ocean on Earth. Reply with its name only.` routed through Select action: 3,798 prompt tokens, 115.6 seconds of text generation, and one text-model attempt. This was a real LFM3 Q4 GPU run on that prior bundle; it demonstrates an unnecessarily expensive route for this prompt, not a wrong final answer. `contextIndependentConversation()` now recognizes the bounded answer-format suffix while keeping attachment, prior-history, saved-memory, save-intent, and follow-up requests on their existing evidence-aware paths. The exact regression test failed before the change and passed after it. `node --test design/prototype/tests/chat-terminal.test.mjs` passed 9/9.
+
+The full `npm run test:quality` workflow exited 0 on candidate `75e7b170ba78771a` (168 verified assets): root 279/279, prototype 2,089/2,089, app acceptance 9/9, editor 28/28, review store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1, tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each, device memory 1/1, inference lock 1/1, schedule/Memory/toast 26/26, Settings 33/33, editorial 38/38, handoff Chromium/WebKit 38/38 each, app update 3/3, offline process `pass: true`, and installed PWA `pass: true`. This does not include real-model replay of the route fix.
+
+The complete 1,049,615,680-byte LFM3 file was found in the isolated local Chrome profile and its file hash was read without modifying it. The current session's Chrome browser tools expose only other isolated profiles, and the attempt to reopen that saved profile was blocked by execution policy. Its storage was not cleared or changed. The route change therefore remains unverified with the real model on this candidate. Audit 17's schedule validation, permanent-delete dependency, disabled controls, update migration and phone gates remain release blockers. No GitHub publication or Site deployment was made.
+
+2026-11-21 JST · Search Worker shell packaging fix · candidate `bf1a81daccafe9d4`
+
+In the direct-served candidate `75e7b170ba78771a`, selecting the optional Search model immediately produced `Embedding worker stopped`. Browser Network showed the compiled `semantic-embedding-worker-4Z5FVchc.js` returned HTTP 503. The worker bundle had been tagged as an optional Search model asset, so the offline app-shell worker did not cache it. The application-owned worker JavaScript is required code even when the Search weights are optional. The product build now leaves both compiled embedding Worker bundles in the app shell, and the build fails unless those two bundles are JavaScript and carry no optional-role tag. With that assertion added before the classification fix, `npm run build:app` failed on the existing role tag as expected; removing that tag made the build pass as `bf1a81daccafe9d4` with 168 verified assets. `npm run check` passed.
+
+On an isolated browser profile, a normal `Update app` from `75e7b170ba78771a` to `bf1a81daccafe9d4` completed with `App updated`, and the active worker reported the new build. Selecting Search then returned HTTP 200 for the compiled worker script, showed `Files not prepared`, and emitted no worker error. `Check device` returned its bounded storage/GPU result. Opening Prepare text model showed the 1,049.6 MB estimate and did not start a download until confirmation; the dialog was cancelled. Pressing Prepare Search model did start optional setup without a separate confirmation; Stop was pressed immediately. Network showed only config and tokenizer requests (including a small ranged tokenizer response); the 123 MB model body was not requested, and the page returned to `Files not prepared`. No model files were installed in this profile.
+
+The full `npm run test:quality` workflow completed with exit code 0 on `bf1a81daccafe9d4` (168 verified assets): root 279/279, prototype 2,089/2,089, app acceptance 9/9, editor 28/28, review store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1, tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 26/26, Settings 33/33, editorial 38/38, iOS handoff UI Chromium/WebKit 38/38 each, app update 3/3, offline process `pass: true`, and installed PWA `pass: true`. The first full run had one WebKit handoff initialization timeout; the single case passed in isolation and all 38 passed in the second full run. This is browser/UI and shell verification, not Search-model inference or physical phone acceptance.
+
+On the existing isolated Audit 17 profile, Update from active worker `b61280113935cb2c` to `75e7b170ba78771a` again failed with `Update verification failed`; the active worker remained unchanged. The current candidate `bf1a81daccafe9d4` was successfully adopted by the fresh isolated profile, but old-profile migration to this candidate remains unverified. Its existing model/storage contents were preserved. The route-matcher change also remains unverified with the real LFM3 model on this candidate. Audit 17 schedule-answer quality, public feedback delivery, old-profile update migration, and physical iPhone checks remain open; no GitHub publication or Site deployment was made.
+
+2026-11-21 JST · Existing Audit 17 profile update retry · candidate `bf1a81daccafe9d4`
+
+Retried the in-app update in the preserved isolated profile `babelshelf-audit17-candidate`. It disclosed that the selected 1,049.6 MB model file was missing and that updating would not download model files. After confirmation, the installing worker became `redundant`; the UI reported `Update verification failed`. The active worker remained `b61280113935cb2c`. Cache Storage showed an empty failed-candidate cache `babelshelf-product-bf1a81daccafe9d4`; the browser did not expose the install exception. The profile's OPFS, IndexedDB, and existing caches were not cleared or modified. An update from the clean isolated profile is not evidence that this older profile can migrate.
+
+2026-11-21 JST · Cache Storage quota update fix · candidate `4e02f6e9ed930c87`
+
+In the preserved Audit 17 profile, a temporary same-page listener observed `QuotaExceededError` at `store-asset`, asset index 1 (HTTP 200). The changed `backup-state-7yTUWQSS.js` was not present in the shared cache. The service worker now falls back to an exact-hash-verified per-build cache copy if a shared immutable-asset write hits quota. If that per-build write also hits quota, it may remove inactive app-generation caches only when there is at most one window open; the active and candidate caches are retained. It never deletes shared asset entries, IndexedDB, OPFS, or model assets. The user-facing update confirmation explains that older cached app versions may be removed under storage pressure while notes, backups and models stay on device. `node --test tests/product-worker.test.mjs` passed 59/59, including shared-cache fallback, bounded pruning and the multi-tab refusal case.
+
+The full `npm run test:quality` workflow exited 0 on exact build `4e02f6e9ed930c87` (168 verified assets): root 284/284, prototype 2,089/2,089, app acceptance 9/9, editor 28/28, review store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1, tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 26/26, Settings 33/33, editorial 38/38, iOS handoff UI Chromium/WebKit 38/38 each, app update 3/3, offline process `pass: true`, and installed PWA `pass: true`.
+
+The preserved old profile was then opened to retry Update and its existing confirmation disclosure was inspected. After confirmation, the browser control channel stopped responding during worker activation/reload. The active worker, the install-failure diagnostic, and final data/model state could not be queried, so this attempt is inconclusive and is not recorded as a successful migration. No site data was cleared. The profile's previous `QuotaExceededError` at the shared-cache path remains the reproducible failure; this candidate's browser-level old-profile recovery is still unverified. No GitHub or Site release was made because the release gates for schedule-answer behavior and real-model candidate replay remain open, in addition to this migration result and physical iPhone acceptance.
+
+2026-11-21 JST · Astra review correction and final quota-safe candidate · `90ce9b62b2342e30`
+
+An Astra review found that pruning older app-generation caches based only on one worker's client list could delete a generation still needed by another page/scope, and that install-time reuse of a historical hashed asset was not handled consistently by predecessor health checks and offline repair. The pruning path and its broad storage-deletion disclosure were removed. Historical assets are now resolved by exact path/byte-count/SHA-256 across shell status, predecessor checks and repair. Quota fallback writes the asset into the candidate's verified per-build cache; if all usable writes fail, update fails with the old generations retained. Exact historical non-hashed small assets remain reusable without entering the immutable manifest. A three-generation regression exercises a quota-fallback JS asset, the next worker's predecessor decision, app-shell status, and Local repair. `node --test tests/product-worker.test.mjs` passed 60/60.
+
+The final full `npm run test:quality` workflow exited 0 on build `90ce9b62b2342e30` (168 verified assets): root 285/285, prototype 2,089/2,089, app acceptance 9/9, editor 28/28, review store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1, tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 26/26, Settings 33/33, editorial 38/38, iOS handoff UI Chromium/WebKit 38/38 each, app update 3/3, offline process `pass: true`, and installed PWA `pass: true`.
+
+This run validates the candidate in automated PC Chromium/WebKit profiles. It does not close migration in the preserved Audit 17 browser profile; that earlier in-app update attempt became unobservable when the browser control connection stopped responding. We did not clear that profile or remove any of its storage. The installed-PWA acceptance uses a disposable synthetic-data profile. No GitHub or Site release was made: the actual-profile update result, schedule answer quality, real-model candidate replay, and physical-device checks remain open.
+
+2026-11-21 JST · Final local candidate migration and LFM3 storage retry · `90ce9b62b2342e30`
+
+The isolated `babelshelf-audit17-candidate` browser profile was readable again. Its earlier submitted update had activated an intermediate candidate `4e02f6e9ed930c87`; the profile was then updated through the in-app Update control to the final local build `90ce9b62b2342e30`. Controller and active worker matched that build, with no waiting/installing worker. Prior Cache Storage entries remained (`assets-v1`, `b61280113935cb2c`, `247893071cb89a29`, `4e02f6e9ed930c87`, `90ce9b62b2342e30`). IndexedDB counts before/after were unchanged: 28 notes, 4 runs, 2 settings. Storage usage rose from 884,171,451 to 886,508,697 bytes during update. This verifies migration and data retention in this local PC browser profile only; it is not public-site adoption or phone evidence.
+
+A separate empty isolated Chrome profile approved preparation of the real `LFM3 · 1.7B · QAD Q4_0` model, with estimate 1,049,615,680 model bytes plus 27.6 MB runtime. Runtime preparation completed and OPFS streamed model bytes to 989,855,744 bytes (59 complete 16 MiB ranges). The next write failed; UI reported browser storage could not store more model data and asked to check storage. At failure, `navigator.storage.estimate()` reported usage 1,027,741,633 bytes and quota 11,765,159,873 bytes (about 10.7 GB nominally available); usageDetails attributed 989,856,382 bytes to File System. Thus the write failure is real while the reported origin quota is not predictive of the effective OPFS limit. The partial model remains in this disposable QA profile and was not removed. No model digest verification, load, chat response, or schedule run could be tested on build `90ce9b62b2342e30`. The physical iPhone/Phone Use was unavailable, so no device test was performed. No GitHub or public Site update was made because the candidate is still DO-NOT-SHIP.
+
+Follow-up on candidate `90ce9b62b2342e30` · lower-size real model attempt and storage accounting · 2026-11-21 JST
+
+To distinguish a Q4-only size issue, a separate empty isolated Chrome profile added the pinned LFM3 1.7B IQ3_M Community model (868.8 MB) and explicitly approved preparation. Its 27.5 MB runtime prepared successfully. The model stopped at 553,648,128 bytes (33 complete 16 MiB ranges) with the same product storage-quota error. This is not evidence of bad model/runtime compatibility because the weights never completed, verified, or loaded.
+
+Read-only OPFS inventories across the isolated contexts showed 3,224,720,491 bytes (about 3.00 GiB) of preserved partial QA model/embedding files: Audit 17 profile 808,801,387; update-fresh 855,638,016; prior fresh real-model 989,855,744; newest IQ3_M 553,648,128; and another QA profile 16,777,216. These per-profile totals include the model/swap/embedding files over 1 MB listed by read-only OPFS inventory. Every per-origin Storage Estimate still reported multi-gigabyte headroom. A shared browser-environment storage ceiling is plausible but not confirmed; no QA partials or browser data were deleted.
+
+Focused Node suites covering pinned asset download/resume/quota behavior, schedule answer validation, and model controls passed 40/40. `git diff --check` passed (Git reported only its existing LF-to-CRLF normalization notice). No code changed during this follow-up, so the prior full quality result for this exact candidate remains the latest full workflow. The LFM3 model was not run; schedule behavior, public feedback delivery, public deployment/adoption, and physical iPhone checks remain open. No GitHub or Site release was made.
+
+2026-11-21 JST · Direct UI checks on isolated candidate browser · `90ce9b62b2342e30`
+
+On a fresh isolated Chromium profile, after a real model-preparation attempt ended with the browser-storage error, the Models screen still showed the model as Not prepared and disabled Test generation (correctly gated). `More text options > Check device` returned a visible status: “Storage estimate covers model file · GPU found · model fit not checked · CPU fallback may be tried · Model load not tested.” `Check text runtime` returned “Runtime files verified.” Both audit17 no-feedback controls produced explicit user-visible results in this current candidate. This is a PC browser check only; it did not load a text model, prove model fit, or test GPU inference.
+
+The focused Node command `node --test design/prototype/tests/pinned-text-assets.test.mjs design/prototype/tests/scheduled-answer.test.mjs design/prototype/tests/text-model-controls.test.mjs` passed 40/40; `git diff --check` passed (line-ending normalization warning only). No product source changed in this UI check. No model partials or browser data were deleted.
+
+2026-11-21 JST · OPFS concurrent-writer guards and Worker failure telemetry · candidate `4b4cdd5c39e56392`
+
+Astra's code review identified a stale range writer race: after taking a snapshot of the expected start offset, a writer could truncate a newer committed prefix on size mismatch; an unconditional rollback could also truncate bytes it did not own. The OPFS range writer now checks the actual file size after acquiring the exclusive access handle and refuses mismatched offsets without writing or truncating. Pinned asset truncation, recovery trimming, and the writable-stream fallback also compare expected committed size after obtaining the writer lock. Added regressions assert stale writers do not read, write, or truncate newer prefixes and that recovery does not trim newer aligned data.
+
+The LFM3 asset Worker previously forwarded only an error message, losing the bounded completed-byte and asset counters that the UI already knows how to display. A bounded, allowlisted Worker error protocol now preserves code, bytes and asset count. Protocol tests cover zero counters, malformed/excessive values, and message truncation. Focused pinned asset, Worker protocol, schedule-answer and model-control suites passed 45/45. `npm run check`, `npm run build:app` and `git diff --check` passed; build has 168 verified assets.
+
+`npm run test:quality` reached the Schedule/Memory/Toast stage and exited 1 on a 60-second Chromium wait for the `Input` button. That suite passed 26/26 on immediate rerun. The separate WebKit iOS-handoff run passed 37/38; its one failure was a cancelled page navigation during page setup, and that case passed 1/1 when rerun alone. All later stages were then run separately and passed: Settings 33/33, editorial 38/38, iOS handoff Chromium 38/38, WebKit isolated failure case 1/1, app update 3/3, offline process and installed PWA. Since the all-in-one workflow did not exit 0 and those transient failures remain a possible CI flake, this is not recorded as a green full quality run.
+
+The current isolated browser's real Q4 preparation attempt still reports a storage error while the Storage Estimate API shows about 10.7 GB available. Model data and partial OPFS files were not removed. The model was not fully prepared, integrity-verified, loaded or used for inference. This candidate is not verified with a real model or physical phone; no GitHub or Site release was made.
+
+2026-11-21 JST · Full quality rerun after OPFS concurrency fix · `4b4cdd5c39e56392`
+
+A second uninterrupted `npm run test:quality` run exited 0 on the exact candidate build `4b4cdd5c39e56392` (168 verified assets). Counts: root 285/285; prototype 2,094/2,094; product acceptance 9/9; editor 28/28; review store 6/6; offline calculation 1/1; working-file 2/2; Help 1/1; tools 16/16; Markdown 4/4; hash 1/1; custom tools 38/38; MCP Chromium and WebKit 8/8 each; device memory 1/1; inference lock 1/1; Schedule/Memory/Toast 26/26; Settings 33/33; editorial 38/38; device-handoff UI Chromium and WebKit 38/38 each; app update 3/3; offline process `pass: true`; installed PWA `pass: true`. The first full run had transient Chromium and WebKit startup failures; both passed in isolated reruns and all tests passed in this full rerun.
+
+This is PC-browser/automated acceptance only. The real LFM3 model still did not finish OPFS preparation in the side-panel isolated browser, so candidate model hash verification, load, answer and schedule replay were not performed. Phone Use/iPhone remains unavailable per the user's instruction to continue without the handset. GitHub and public Site were not updated because these release gates remain open.
+
+2026-11-21 JST · Candidate `4b4cdd5c39e56392` in side-panel Chrome · real model resume
+
+The local side-panel server on `127.0.0.1:4180` served `build.json` with build `4b4cdd5c39e56392` and 168 assets. An isolated Chrome context initially had the old app page bundle while its active worker reported build `4b4cdd5c39e56392`; after a normal page reload, the page loaded `index-KkjI8K5Q.js`. The current build's Update action showed an `Up to date` notice after confirming no newer version was available.
+
+The selected LFM3 Q4 runtime showed Prepared. Re-running model preparation resumed the pinned model at 989.9/1,049.6 MB (94%), then returned `The browser could not store more model data`. A read-only OPFS inventory showed one file at 989,855,744 bytes; Storage Estimate reported quota 11,763,369,424 bytes, usage 1,025,951,184 bytes, of which 989,856,382 were File System, with about 10.7 GB reported available. The local Windows C: volume had 279.6 GB free, so the host disk is not full; the browser context's effective write limit remains unidentified. `Protect storage` returned `Not granted`. The model prefix remained present and no data was removed. No integrity verification, load, answer or schedule inference could be run.
+
+This is evidence from the current side-panel browser candidate for the acquisition failure and a visible current-build up-to-date result. It does not prove successful model inference, public-client migration or physical iPhone behavior. No GitHub/Site release was performed.
+
+2026-11-21 JST · Isolated OPFS quota probes · candidate side-panel profile
+
+In the current isolated browser origin, a unique 1 MiB OPFS probe file was written successfully and removed. A separate unique 64 MiB probe using 4 MiB writes returned `QuotaExceededError` after 4 MiB had been written; the exact probe file was removed in `finally`. Storage Estimate returned to the pre-probe 1,025,951,184-byte usage afterward, and the retained Q4 partial remained 989,855,744 bytes. This demonstrates low effective write headroom in this browser origin even though the estimate reports about 10.7 GB. It does not identify the precise quota boundary or enforcing layer. The temporary probes were not user data and were cleaned up; no existing file was removed.

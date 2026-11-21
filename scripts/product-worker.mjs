@@ -8,6 +8,9 @@ const RECOVERY_DOCUMENT=${JSON.stringify(recoveryDocument)},RECOVERY_CSP=${JSON.
 const SHARED='babelshelf-product-assets-v1',META='./.babelshelf-app-manifest-v1',INSTALL_FILES=FILES.filter(file=>file.shell===true||!Array.isArray(file.roles)||file.roles.length===0);
 const hfGrants=new Map(),productAssetJobs=new Map();let shellRepair=null;
 const networkRequests=new Set();let networkEpoch=0;
+async function reportInstallFailure(stage,index,status,error){
+ try{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});const errorName=typeof error?.name==='string'&&/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(error.name)?error.name:'Error';const detail={type:'app-update-install-failed',build:BUILD,stage,index,errorName,...(Number.isInteger(status)&&status>=100&&status<=599?{status}:{})};for(const client of clients){if(client.url.startsWith(self.registration.scope))try{client.postMessage(detail);}catch{}}}catch{}
+}
 const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
 function productAssetFailureCode(error){const message=error instanceof Error?error.message:'',name=error&&typeof error==='object'&&typeof error.name==='string'?error.name:'',code=error&&typeof error==='object'&&typeof error.code==='string'?error.code:'';if(code==='runtime-network-error')return code;if(message==='Stopped')return 'stopped';if(message==='Runtime not prepared · switch Online to prepare')return 'runtime-not-prepared';if(message==='Downloads are off')return 'downloads-off';if(message==='App runtime HTTP request failed')return 'runtime-http-error';if(message==='App asset verification failed')return 'runtime-integrity-error';if(message==='App asset storage verification failed'||name==='QuotaExceededError')return 'runtime-storage-error';return 'runtime-setup-error';}
 function isolatedResponse(response){
@@ -75,8 +78,22 @@ async function historicalManifest(cache,name){
   const paths=new Set();for(const file of value.assets){if(!file||typeof file.path!=='string'||!immutable(file.path)||paths.has(file.path)||!Number.isSafeInteger(file.bytes)||file.bytes<0||typeof file.sha256!=='string'||! /^[a-f0-9]{64}$/.test(file.sha256))return null;paths.add(file.path);}return value.assets;
  }catch{return null;}
 }
-// An old HTML shell is usable only when it is byte-for-byte identical to the
-// current build's pinned shell. Never fetch or rewrite caches during recovery.
+// Reuse only same-path historical bytes that match this build's exact size and
+// digest. This avoids duplicate Cache Storage writes under quota pressure.
+async function historicalAsset(file){
+ if(file?.path==='./index.html')return null;
+ for(const name of (await caches.keys()).reverse()){
+  if(name===CACHE||! /^babelshelf-product-[a-f0-9]{16}$/.test(name))continue;
+  const saved=await(await caches.open(name)).match(absolute(file.path));
+  if(await verified(saved,file))return saved;
+ }
+ return null;
+}
+async function cachedAppAsset(file,cache,pool){
+ const direct=await cache.match(absolute(file.path));if(await verified(direct,file))return direct;
+ if(immutable(file.path)&&pool){const shared=await pool.match(poolKey(file));if(await verified(shared,file))return shared;}
+ return historicalAsset(file);
+}
 async function historicalShell(file){
  if(file?.path!=='./index.html')return null;
  for(const name of (await caches.keys()).reverse()){
@@ -91,11 +108,9 @@ async function appShellStatus(){
  const names=await caches.keys();if(!names.includes(CACHE))return 'missing';
  const cache=await caches.open(CACHE),pool=names.includes(SHARED)?await caches.open(SHARED):null;
  for(const file of INSTALL_FILES){
-  const direct=await cache.match(absolute(file.path));
-  if(await verified(direct,file))continue;
+  if(await cachedAppAsset(file,cache,pool))continue;
   if(file.path==='./index.html'&&await historicalShell(file))continue;
-  const shared=immutable(file.path)&&pool?await pool.match(poolKey(file)):null;
-  if(!await verified(shared,file))return 'missing';
+  return 'missing';
  }
  return 'ready';
 }
@@ -115,7 +130,7 @@ async function predecessorUnavailable(){
   const cache=await caches.open(name),shell=await cache.match(absolute('./index.html'));if(!shell?.ok)return true;
   const assets=await historicalManifest(cache,name);if(!assets)return false;
   const pool=names.includes(SHARED)?await caches.open(SHARED):null;
-  for(const file of assets){if(await verified(await cache.match(absolute(file.path)),file))continue;if(!await verified(pool?await pool.match(poolKey(file)):null,file))return true;}
+  for(const file of assets)if(!await cachedAppAsset(file,cache,pool))return true;
  }catch{/* An unrecognized predecessor remains on the ordinary update path. */}
  return false;
 }
@@ -123,37 +138,53 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  // Installation is only started by explicit app preparation/update. It may
  // fetch the build-pinned, same-origin shell even while user data/model
  // network access is Offline; all cross-origin requests remain gated below.
- const cache=await caches.open(CACHE),pool=await caches.open(SHARED),assets=[];
- for(const file of INSTALL_FILES){
-  if(immutable(file.path)){const saved=await pool.match(poolKey(file));if(saved&&await verified(saved,file)){assets.push(file);continue;}}
-  const controller=new AbortController();networkRequests.add(controller);
-  try{
-   const source=new URL(file.downloadPath??file.path,self.registration.scope);
-   if(source.origin!==self.location.origin||!source.href.startsWith(self.registration.scope))throw Error('App asset outside scope');
-   let response=await fetch(source.href,{cache:'no-store',credentials:'same-origin',signal:controller.signal});
-   if(!response.ok)throw Error('App asset missing');if(!await verified(response,file))throw Error('App asset verification failed');
-   if(controller.signal.aborted)throw Error('App preparation was cancelled');
-   if(file.path==='./index.html'&&file.downloadPath){
-    const headers=new Headers(response.headers);headers.set('Content-Type','text/html; charset=utf-8');
-    headers.delete('Content-Encoding');headers.delete('Content-Length');
-    response=new Response(response.body,{status:200,headers});
-   }
-   const store=immutable(file.path)?pool:cache,key=immutable(file.path)?poolKey(file):absolute(file.path);
-   await putVerified(store,key,response,file);
-  }finally{networkRequests.delete(controller);}
-  if(immutable(file.path))assets.push(file);
- }
- // Publish references only after all shell/shared responses verify. Older caches
- // and failed-install pool entries remain intact; no implicit pruning occurs.
-  const manifest=JSON.stringify({schema:1,build:BUILD,assets,optional:FILES.length-assets.length});
-  await putManifest(cache,absolute(META),manifest);
+ let stage='open-build-cache',index=-1,status;
+ try{
+  const cache=await caches.open(CACHE);stage='open-shared-cache';const pool=await caches.open(SHARED),assets=[];
+  for(index=0;index<INSTALL_FILES.length;index++){
+   const file=INSTALL_FILES[index];status=undefined;
+   if(immutable(file.path)){const saved=await pool.match(poolKey(file));if(saved&&await verified(saved,file)){assets.push(file);continue;}}
+   if(await historicalAsset(file)){if(immutable(file.path))assets.push(file);continue;}
+   const controller=new AbortController();networkRequests.add(controller);
+   try{
+    stage='fetch-asset';
+    const source=new URL(file.downloadPath??file.path,self.registration.scope);
+    if(source.origin!==self.location.origin||!source.href.startsWith(self.registration.scope))throw Error('App asset outside scope');
+    let response=await fetch(source.href,{cache:'no-store',credentials:'same-origin',signal:controller.signal});status=response.status;
+    if(!response.ok){stage='http-response';throw Error('App asset missing');}stage='verify-response';if(!await verified(response,file))throw Error('App asset verification failed');
+    if(controller.signal.aborted)throw Error('App preparation was cancelled');
+    if(file.path==='./index.html'&&file.downloadPath){
+     const headers=new Headers(response.headers);headers.set('Content-Type','text/html; charset=utf-8');
+     headers.delete('Content-Encoding');headers.delete('Content-Length');
+     response=new Response(response.body,{status:200,headers});
+    }
+    stage='store-asset';const shared=immutable(file.path),store=shared?pool:cache,key=shared?poolKey(file):absolute(file.path),retryResponse=response.clone();
+    try{await putVerified(store,key,response,file);}catch(error){
+     if(error?.name!=='QuotaExceededError')throw error;
+     if(shared)await putVerified(cache,absolute(file.path),retryResponse,file);
+     else throw error;
+    }
+    stage='asset-stored';
+   }finally{networkRequests.delete(controller);}
+   if(immutable(file.path))assets.push(file);
+  }
+  // Publish references only after all shell/shared responses verify. Older caches
+  // and failed-install pool entries remain intact; no implicit pruning occurs.
+  stage='write-manifest';const manifest=JSON.stringify({schema:1,build:BUILD,assets,optional:FILES.length-assets.length});
+  await putManifest(cache,absolute(META),manifest);stage='manifest-stored';
   if(await predecessorUnavailable())await self.skipWaiting();
+ }catch(error){await reportInstallFailure(stage,index,status,error);throw error;}
 })()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
  if(request.method!=='GET'){event.respondWith(new Response('Method unavailable',{status:405}));return;}
  if(url.origin!==self.location.origin){event.respondWith(externalRequest(event));return;}
+ // Keep the registration script reachable from a controlled page. Returning
+ // without respondWith lets the browser fetch the current server copy; routing
+ // this request through the app-shell cache would return the generic missing
+ // asset response and strand direct update/recovery checks on older builds.
+ if(url.origin===self.location.origin&&url.pathname===new URL(self.location.href).pathname)return;
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);
   const missing=()=>request.mode==='navigate'?recoveryResponse():new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
@@ -165,6 +196,7 @@ self.addEventListener('fetch',event=>{
   const current=FILES.find(file=>file.path===path),hit=await cache.match(absolute(path));
   if(hit&&(!current||await verified(hit,current)))return hit;
   if(path==='./index.html'&&current){const old=await historicalShell(current);if(old)return old;}
+  if(current&&path!=='./index.html'){const old=await historicalAsset(current);if(old)return old;}
   if(immutable(path)){
    const pool=await caches.open(SHARED);
    if(current){const saved=await pool.match(poolKey(current));if(saved&&await verified(saved,current))return saved;}
@@ -195,9 +227,10 @@ self.addEventListener('message',event=>{
   const work=(async()=>{
    const cache=await caches.open(CACHE),pool=await caches.open(SHARED),assets=[];
    for(const file of INSTALL_FILES){
-    check();const direct=await cache.match(absolute(file.path)),shared=immutable(file.path)?await pool.match(poolKey(file)):null;
+    check();const direct=await cache.match(absolute(file.path)),shared=immutable(file.path)?await pool.match(poolKey(file)):null,historical=await historicalAsset(file);
     if(direct&&await verified(direct,file)){if(immutable(file.path))assets.push(file);continue;}
-    if(!direct&&shared&&await verified(shared,file)){assets.push(file);continue;}
+    if(shared&&await verified(shared,file)){if(immutable(file.path))assets.push(file);continue;}
+    if(historical){if(immutable(file.path))assets.push(file);continue;}
     let response=shared&&await verified(shared,file)?shared:null;
     if(!response){
      if(event.data.localOnly===true)throw Error('Browser offline');

@@ -28,7 +28,11 @@ function generation(number){
  </script>`;
  const files=new Map([['/index.html',html],['/refresh.js',helper],['/payload.txt',`verified generation ${number}`]]);
  const worker=productWorker({build,files:[...files].map(([path,body])=>({path:'.'+path,bytes:Buffer.byteLength(body),sha256:hash(body)})),remote:[]});
- return {build,files,worker};
+ // Model an already-installed predecessor that routes its own script through
+ // the app cache and therefore blocks direct update diagnostics.
+ const legacyWorker=number===1?worker.replace(/\s*\/\/ Keep the registration script[\s\S]*?return;\n/,''):worker;
+ if(number===1&&legacyWorker===worker)throw Error('Legacy service-worker fixture was not created');
+ return {build,files,worker:legacyWorker};
 }
 
 test('one explicit refresh installs, activates and reopens a verified generation without losing local data',async()=>{
@@ -54,6 +58,8 @@ test('one explicit refresh installs, activates and reopens a verified generation
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.waitForFunction(()=>navigator.serviceWorker.controller&&window.update);
   assert.equal(await page.evaluate(()=>window.activeBuild()),versions[0].build);
+  const blockedScript=await page.evaluate(async()=>{const response=await fetch('./sw.js',{cache:'no-store'});return {status:response.status,body:await response.text()};});
+  assert.equal(blockedScript.status,503,'legacy worker must reproduce its blocked direct script request');
   await page.evaluate(async()=>{
    localStorage.setItem('retained-draft','synthetic unsent draft');
    const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('update-fixture',1);r.onupgradeneeded=()=>r.result.createObjectStore('records');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
@@ -74,6 +80,8 @@ test('one explicit refresh installs, activates and reopens a verified generation
   current=1;delayPayload=true;
   assert.equal(await page.evaluate(()=>window.update()),'Updated');
   assert.equal(await page.evaluate(()=>window.activeBuild()),versions[1].build);
+  const reachableScript=await page.evaluate(async()=>{const response=await fetch('./sw.js',{cache:'no-store'}),body=await response.text();return {status:response.status,build:body.match(/^const BUILD=\"([a-f0-9]{16})\"/)?.[1]??null};});
+  assert.deepEqual(reachableScript,{status:200,build:versions[1].build},'updated worker must leave the server registration script reachable');
   // Activation must not reload a page or erase its unsaved in-memory work.
   assert.equal(await page.locator('#version').textContent(),versions[0].build);
   assert.equal(await page.evaluate(()=>window.fixtureDraft),'unsaved in memory');

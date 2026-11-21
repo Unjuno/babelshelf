@@ -65,6 +65,11 @@ test('preparing the selected Text model explains its download and cancellation s
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Models',exact:true}).click();
+ if(!(await page.evaluate(()=>typeof navigator.storage?.getDirectory==='function'))){
+  await expect(page.getByText('Local model storage unavailable in this browser',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Prepare text model',exact:true})).toHaveCount(0);
+  return;
+ }
  await page.getByRole('button',{name:'Prepare text model',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Prepare text model'});
  await expect(dialog).toBeVisible();
@@ -354,7 +359,7 @@ test('chat exposes an explicit app refresh beside the online/offline control',as
 test('app refresh explains that locally prepared model files are separate before updating',async({page})=>{
  await openApp(page);await page.getByRole('button',{name:'Offline · Tap to switch Online'}).click();await expect(page.getByRole('button',{name:'Online · Tap to switch Offline'})).toBeVisible();await page.waitForFunction(()=>navigator.serviceWorker.getRegistration().then(Boolean));
  const refresh=page.locator('.app-refresh-button');await expect(refresh).toBeEnabled();await expect(refresh).not.toHaveAttribute('data-blocked','true',{timeout:30_000});await refresh.click();
- const confirm=page.getByRole('dialog',{name:'App update'});await expect(confirm).toContainText('Selected model files are currently missing (1049.6 MB)');await expect(confirm).toContainText('Updating the app does not fetch model files');await expect(confirm).toContainText('ask before downloading them');
+ const confirm=page.getByRole('dialog',{name:'App update'});await expect(confirm).toContainText('Selected model files are currently missing (1049.6 MB)');await expect(confirm).toContainText('Updating the app does not fetch model files');await expect(confirm).toContainText('ask before downloading them');await expect(confirm).toContainText('If there is not enough room, the current app stays in place');await expect(confirm).toContainText('does not delete your notes, backups, prepared models, or older app caches');
  await confirm.getByRole('button',{name:'Cancel'}).click();await expect(refresh).toContainText('Update');await expect(page.getByRole('heading',{name:'BabelShelf'})).toBeVisible();
 });
 

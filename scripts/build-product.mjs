@@ -21,7 +21,6 @@ function optionalRoles(file){
  if(name.startsWith('decision-worker-'))return ['decision'];
  if(name.startsWith('speech-worker-')||name.startsWith('speech-assets-worker-'))return ['speech'];
  if(name.startsWith('vision-worker-'))return ['vision'];
- if(name.startsWith('semantic-embedding-worker-'))return ['search'];
  if(name.startsWith('lfm3-text-worker-')||name.startsWith('lfm3-')&&name.endsWith('.wasm'))return ['text-lfm3'];
  if(name.startsWith('lfm-text-worker-')||name.startsWith('qwen3-text-worker-'))return ['text-wllama'];
  // The application imports this lightweight text helper during startup.
@@ -40,6 +39,8 @@ function optionalRoles(file){
 async function walk(folder){for(const entry of await readdir(folder,{withFileTypes:true})){const full=path.join(folder,entry.name);if(entry.isDirectory())await walk(full);else{const bytes=await readFile(full),filePath='./'+path.relative(root,full).split(path.sep).join('/'),roles=optionalRoles(filePath),shell=path.basename(filePath).startsWith('lfm3-text-worker-'),sha256=createHash('sha256').update(bytes).digest('hex'),parts=[];if(roles.includes('text-lfm3')&&bytes.length>resumableRuntimePartBytes){for(let offset=0,index=0;offset<bytes.length;offset+=resumableRuntimePartBytes,index++){const part=bytes.subarray(offset,Math.min(bytes.length,offset+resumableRuntimePartBytes)),name=`${sha256}-${String(index).padStart(4,'0')}.bin`,partPath='./runtime-parts/'+name;await mkdir(path.join(root,'runtime-parts'),{recursive:true});await writeFile(path.join(root,'runtime-parts',name),part);parts.push({path:partPath,sha256:createHash('sha256').update(part).digest('hex'),bytes:part.length});}}files.push({path:filePath,sha256,bytes:bytes.length,...(roles.length?{roles}:{}),...(parts.length?{parts}:{}),...(shell?{shell:true}:{})});}}}
 await mkdir(path.join(root,'licenses'),{recursive:true});for(const name of await readdir('design/prototype/licenses'))await copyFile(path.join('design/prototype/licenses',name),path.join(root,'licenses',name));
 await walk(root);files.sort((a,b)=>a.path.localeCompare(b.path));
+const embeddingWorkers=files.filter(file=>/\/semantic-embedding-(?:311-)?worker-/.test(file.path)&&!file.path.includes('semantic-embedding-worker-factory-'));
+ if(embeddingWorkers.length!==2||embeddingWorkers.some(file=>!file.path.endsWith('.js')||file.roles?.length))throw Error('Semantic embedding workers must be compiled JavaScript app-shell assets');
 const upstreamManifest=JSON.parse(await readFile('dist/model-manifest.json','utf8'));
 assertPinnedRuntimeExcluded(upstreamManifest,files);
 // A binary transport keeps hosting-side HTML injection out of the offline shell.

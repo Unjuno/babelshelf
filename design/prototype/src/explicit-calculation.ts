@@ -28,7 +28,12 @@ export function explicitCalculationInput(text:string):{expression:string;showExp
  // Full-request matching refuses additional instructions and mixed currencies.
  const yen=input.replace(/，/g,',').trim().match(/^((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*円\s*([+\-−])\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*円[？?。.!！]?$/u);
  if(yen)return {expression:`${yen[1].replace(/,/g,'')} ${yen[2]==='−'?'-':yen[2]} ${yen[3].replace(/,/g,'')}`,showExpression:true};
- const direct=calculatorInput(input);if(direct!==null)return {expression:direct,showExpression:false};
+ // Some users decorate a complete arithmetic prompt with one leading symbol
+ // and a terminal ampersand. Strip only that bounded decoration, then pass the
+ // entire remainder through the calculator's strict arithmetic grammar. Any
+ // additional prose or an internal ampersand still refuses the shortcut.
+ const decorated=input.trim().replace(/^\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?\s*/u,'').replace(/\s*&\s*$/u,'').replace(/[？?]\s*$/u,'');
+ const direct=calculatorInput(decorated);if(direct!==null)return {expression:direct,showExpression:false};
  const ordered=orderedCalculationInput(input);if(ordered!==null)return {expression:ordered,showExpression:true};
  // Whole-request forms only: a discount is a different calculation from
  // a percentage, and mixed instructions must remain on the planning path.

@@ -105,7 +105,7 @@ test('Empty Trash retains a schedule with execution history but removes an unrel
  test.setTimeout(60_000);await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 2 + 2');const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
- await page.getByRole('button',{name:'Schedule actions for Calculate 2 + 2'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 2 + 2'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Schedule actions for Calculate 2 + 2'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 2 + 2'})).toContainText('Completed');await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 2 + 2'}).click();await page.getByRole('button',{name:'Delete schedule'}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
  await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Unrelated');await page.getByRole('textbox',{name:'New file content'}).fill('Independent');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
@@ -121,7 +121,7 @@ test('reviewed permanent deletion removes the linked schedule execution and noti
  test.setTimeout(60_000);await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 3 + 4');const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
- await page.getByRole('button',{name:'Schedule actions for Calculate 3 + 4'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 3 + 4'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Schedule actions for Calculate 3 + 4'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 3 + 4'})).toContainText('Completed');await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 3 + 4'}).click();await page.getByRole('button',{name:'Delete schedule'}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
  await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});await trash.getByRole('button',{name:'Empty Trash'}).click();
  await trash.getByLabel('Also remove selected files from conversation history and delete linked activity records, including schedule runs and notifications. Message text and unrelated activity remain.').check();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();await expect(trash).toContainText('Trash is empty');
@@ -135,8 +135,9 @@ test('a paused calculation runs locally and exposes its calculation in history',
  const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await page.getByRole('button',{name:'Run now'}).click();
- await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');await expect(page.getByRole('switch',{name:'Enable Calculate 12 + 10'})).not.toBeChecked();await expect(page.getByRole('switch',{name:'Enable Calculate 12 + 10'})).toBeDisabled();
+ await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('switch',{name:'Enable Calculate 12 + 10'})).not.toBeChecked();await expect(page.getByRole('switch',{name:'Enable Calculate 12 + 10'})).toBeDisabled();
  await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await expect(page.getByText('This occurrence is complete. Run now creates a separate manual execution.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Run now',exact:true}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await page.getByRole('button',{name:'History',exact:true}).click();await expect(page.getByRole('button',{name:/succeeded/})).toHaveCount(2);await expect(page.getByRole('button',{name:/succeeded.*Manual run/})).toHaveCount(1);await page.getByRole('button',{name:/succeeded/}).first().click();
  await expect(page.getByRole('dialog',{name:'Execution'})).toContainText('Calculator · 12 + 10');await expect(page.getByRole('dialog',{name:'Execution'})).toContainText('12 + 10 = 22');
  await page.getByRole('button',{name:'Save note'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Calculation result');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
@@ -155,7 +156,10 @@ test('a repeated Run now tap is absorbed before the schedule actions sheet close
  await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
  await expect(run).toBeDisabled();
  await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toBeHidden();
- await expect(run).toBeHidden({timeout:2_000});
+ await expect(run).toBeVisible();
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();
+ await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
 });
 
 test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{

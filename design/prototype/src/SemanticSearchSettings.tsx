@@ -2,29 +2,38 @@ import {useEffect,useRef,useState} from 'react';
 import {CaretRight} from '@phosphor-icons/react';
 import {semanticEmbeddingAssetBytesFor,semanticEmbeddingManifests,semanticEmbeddingManifest,semanticEmbeddingManifestFor} from './semantic-embedding-manifest.ts';
 import {closeSemanticSearchRuntime,getSemanticSearchRuntime} from './semantic-search-session.ts';
+import {semanticSearchOperationMessage} from './semantic-search-errors.ts';
 
+type FilesState='Not checked'|'Files present · not verified'|'Files verified'|'Files prepared'|'Files not prepared';
 export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{modelId:string;downloads:boolean;disabled?:boolean;onSelect:(modelId:string)=>void}){
  const selected=!!modelId,manifest=semanticEmbeddingManifestFor(selected?modelId:semanticEmbeddingManifest.id),assetBytes=semanticEmbeddingAssetBytesFor(manifest);
- const [status,setStatus]=useState(selected?'Not checked':'Off'),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number}|null>(null),[testResult,setTestResult]=useState(''),[error,setError]=useState('');
+ const [filesState,setFilesState]=useState<FilesState>(selected?'Not checked':'Files not prepared'),[runtimeReady,setRuntimeReady]=useState(false),[loaded,setLoaded]=useState(false),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number}|null>(null),[testResult,setTestResult]=useState(''),[error,setError]=useState('');
  const operation=useRef<AbortController|null>(null);
- const blocked=!!disabled||busy;
- const canLoad=status==='Files prepared'||status==='Files verified';
- const select=(next:string)=>{void closeSemanticSearchRuntime();setTestResult('');setIndexed(null);setProgress('');setStatus(next?'Checking local Search status':'Off');onSelect(next);};
+ const blocked=!!disabled||busy,canLoad=selected&&runtimeReady&&(filesState==='Files verified'||filesState==='Files prepared');
+ const select=(next:string)=>{void closeSemanticSearchRuntime();setTestResult('');setIndexed(null);setProgress('');setLoaded(false);setRuntimeReady(false);setFilesState(next?'Not checked':'Files not prepared');setError('');onSelect(next);};
  useEffect(()=>{
-  if(!selected){setStatus('Off');return;}
-  setStatus('Checking local Search status');
+  if(!selected){setFilesState('Files not prepared');setRuntimeReady(false);setLoaded(false);return;}
   let active=true;const controller=new AbortController();
   void getSemanticSearchRuntime(modelId).then(async runtime=>{
-   if(runtime.loaded){if(active)setStatus('Model loaded');return;}
+   if(runtime.loaded){if(active){setLoaded(true);setFilesState('Files verified');setRuntimeReady(true);setError('');}return;}
    const state=await runtime.status(controller.signal);
-   if(active)setStatus(state.filesPresent?'Files verified':'Files not prepared');
+   if(active){setFilesState(state.filesPresent?'Files present · not verified':'Files not prepared');setError('');}
   }).catch(cause=>{if(active)setError(cause instanceof Error?cause.message:'Search status unavailable');});
   return()=>{active=false;controller.abort();};
  },[selected,modelId]);
- const run=async(label:string,work:(runtime:Awaited<ReturnType<typeof getSemanticSearchRuntime>>,signal:AbortSignal)=>Promise<unknown>)=>{
+ const run=async(kind:'check-files'|'prepare-runtime'|'check-runtime'|'prepare-model'|'load'|'test'|'index'|'unload',label:string,work:(runtime:Awaited<ReturnType<typeof getSemanticSearchRuntime>>,signal:AbortSignal)=>Promise<unknown>)=>{
   if(operation.current)return;const controller=new AbortController();operation.current=controller;setBusy(true);setError('');setProgress(label);
-  try{const runtime=await getSemanticSearchRuntime(modelId),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();if(label==='Checking local Search files')setStatus(result&&typeof result==='object'&&'filesPresent'in result&&(result as {filesPresent:boolean}).filesPresent?'Files verified':'Files not prepared');else if(label==='Preparing Search runtime')setStatus('Runtime prepared');else if(label==='Preparing Search model')setStatus('Files prepared');else if(label==='Loading Search model')setStatus('Model loaded');else if(label==='Building Search index'&&result&&typeof result==='object')setIndexed({sources:Number((result as {sources:number}).sources)||0,chunks:Number((result as {chunks:number}).chunks)||0});else if(label==='Testing Search model'&&result&&typeof result==='object'){const receipt=result as {passed:boolean;matchRank:number};setTestResult(receipt.passed?`Local embedding check passed · matching passage ranked ${receipt.matchRank}${receipt.matchRank===1?'st':'nd'}`:'Local embedding check failed · matching passage ranked below the distractor');}else if(label==='Unloading Search model')setStatus('Model unloaded');setProgress('');}
-  catch(cause){const message=cause instanceof Error?cause.message:'Search operation failed';setError(controller.signal.aborted?'Stopped':message);setProgress('');}
+  try{const runtime=await getSemanticSearchRuntime(modelId),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();
+   if(kind==='check-files'){const files=result as {filesPresent?:boolean};setFilesState(files.filesPresent?'Files verified':'Files not prepared');}
+   if(kind==='prepare-runtime'||kind==='check-runtime')setRuntimeReady(true);
+   if(kind==='prepare-model')setFilesState('Files prepared');
+   if(kind==='load'){setLoaded(true);setRuntimeReady(true);setFilesState('Files verified');}
+   if(kind==='unload')setLoaded(false);
+   if(kind==='index'&&result&&typeof result==='object')setIndexed({sources:Number((result as {sources:number}).sources)||0,chunks:Number((result as {chunks:number}).chunks)||0});
+   if(kind==='test'&&result&&typeof result==='object'){const receipt=result as {passed:boolean;matchRank:number};setTestResult(receipt.passed?`Local embedding check passed · matching passage ranked ${receipt.matchRank}${receipt.matchRank===1?'st':'nd'}`:'Local embedding check failed · matching passage ranked below the distractor');}
+   setProgress('');
+  }
+  catch(cause){setError(controller.signal.aborted?'Stopped':semanticSearchOperationMessage(cause,downloads));setProgress('');if(kind==='check-runtime'||kind==='prepare-runtime')setRuntimeReady(false);if(kind==='check-files'||kind==='prepare-model')setFilesState('Files not prepared');if(kind==='load'||kind==='unload')setLoaded(false);}
   finally{if(operation.current===controller)operation.current=null;setBusy(false);}
  };
  const events=(type:string,value:unknown)=>{if(type==='progress'&&typeof value==='string')setProgress(value);if(type==='index-progress'&&value&&typeof value==='object'){const item=value as {completed?:number;total?:number};setProgress(`Indexing notes · ${(item.completed??0).toLocaleString('en')} / ${(item.total??0).toLocaleString('en')} passages`);}};
@@ -36,21 +45,22 @@ export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{mo
    {semanticEmbeddingManifests.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}
   </select>
   <div className="source-revision">Local multilingual embeddings · {(assetBytes/1_000_000).toFixed(0)} MB · Apache-2.0{manifest.id.includes('311m')?' · higher quality, slower on some devices':''}</div>
-  <div className="model-preparation"><span>{status}</span>{selected&&<button className="quiet-button" disabled={blocked} onClick={()=>select('')}>Turn off</button>}</div>
+  <div className="model-preparation"><span>{selected?`${filesState} · Runtime ${runtimeReady?'ready':'not checked'} · Model ${loaded?'loaded':'not loaded'}`:'Off · keyword search'}</span>{selected&&<button className="quiet-button" disabled={blocked} onClick={()=>select('')}>Turn off</button>}</div>
   {!selected&&<div className="source-revision" role="status">Choose a Search model above to enable semantic search. Keyword search remains available while Search is off.</div>}
   {selected&&<>
    <div className="source-revision">Prepare and load to use semantic matches. Word search remains available. Model change keeps the previous derived index; each model has a separate index.</div>
    {!downloads&&<div className="source-revision" role="status">Search model preparation needs downloads enabled. Turn Online on in Connection settings; no files download while Offline.</div>}
    <div className="action-row">
-    <button className="quiet-button" disabled={blocked} onClick={()=>void run('Checking local Search files',async(runtime,signal)=>{await runtime.verifyRuntime(signal,events);const files=await runtime.status(signal);if(files.filesPresent)await runtime.verifyModel(signal,events);return files;})}>Check files</button>
-    <button className="quiet-button" disabled={blocked} onClick={()=>void run(downloads?'Preparing Search runtime':'Checking local Search runtime',downloads?(runtime,signal)=>runtime.prepareRuntime(true,signal,events):(runtime,signal)=>runtime.verifyRuntime(signal,events))}>{downloads?'Prepare runtime':'Check runtime'}</button>
-    <button className="quiet-button" disabled={blocked||!downloads} title={!downloads?'Turn downloads on in Connection settings':''} onClick={()=>void run('Preparing Search model',(runtime,signal)=>runtime.prepareModel(true,[],signal,events))}>Prepare model</button>
+    <button className="quiet-button" disabled={blocked} onClick={()=>void run('check-files','Checking local Search files',async(runtime,signal)=>{const files=await runtime.status(signal);if(files.filesPresent)await runtime.verifyModel(signal,events);return files;})}>Check files</button>
+    <button className="quiet-button" disabled={blocked||!downloads} title={!downloads?'Turn downloads on in Connection settings':''} onClick={()=>void run('prepare-runtime','Preparing Search runtime',(runtime,signal)=>runtime.prepareRuntime(true,signal,events))}>Prepare runtime</button>
+    <button className="quiet-button" disabled={blocked} onClick={()=>void run('check-runtime','Checking local Search runtime',(runtime,signal)=>runtime.verifyRuntime(signal,events))}>Check runtime</button>
+    <button className="quiet-button" disabled={blocked||!downloads} title={!downloads?'Turn downloads on in Connection settings':''} onClick={()=>void run('prepare-model','Preparing Search model',(runtime,signal)=>runtime.prepareModel(true,[],signal,events))}>Prepare model</button>
    </div>
    <div className="action-row">
-    <button className="quiet-button" disabled={blocked||!canLoad} onClick={()=>void run('Loading Search model',(runtime,signal)=>runtime.load(signal,events))}>Load</button>
-    <button className="quiet-button" disabled={blocked||status!=='Model loaded'} onClick={()=>{setTestResult('');void run('Testing Search model',(runtime,signal)=>runtime.smokeTest(signal,events));}}>Test Search</button>
-    <button className="quiet-button" disabled={blocked||status!=='Model loaded'} onClick={()=>void run('Building Search index',(runtime,signal)=>runtime.index(signal,events))}>Build index</button>
-    <button className="quiet-button" disabled={blocked} onClick={()=>void run('Unloading Search model',(runtime,signal)=>runtime.unload(signal))}>Unload</button>
+    <button className="quiet-button" disabled={blocked||!canLoad} onClick={()=>void run('load','Loading Search model',(runtime,signal)=>runtime.load(signal,events))}>Load</button>
+    <button className="quiet-button" disabled={blocked||!loaded} onClick={()=>{setTestResult('');void run('test','Testing Search model',(runtime,signal)=>runtime.smokeTest(signal,events));}}>Test Search</button>
+    <button className="quiet-button" disabled={blocked||!loaded} onClick={()=>void run('index','Building Search index',(runtime,signal)=>runtime.index(signal,events))}>Build index</button>
+    <button className="quiet-button" disabled={blocked||!loaded} onClick={()=>void run('unload','Unloading Search model',(runtime,signal)=>runtime.unload(signal))}>Unload</button>
    </div>
    {indexed&&<div className="source-revision">Indexed {indexed.sources.toLocaleString('en')} notes · {indexed.chunks.toLocaleString('en')} passages</div>}
    {testResult&&<div className="speech-runtime-status" role={testResult.includes('passed')?'status':'alert'}>{testResult}</div>}

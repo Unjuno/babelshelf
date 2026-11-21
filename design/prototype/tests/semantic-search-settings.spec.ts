@@ -18,6 +18,14 @@ test('Search model selection is explicit and does not download or index files',a
  await expect(section).toContainText('Prepare and load to use semantic matches');
  await expect(section.getByRole('status')).toContainText('Search model preparation needs downloads enabled');
  await expect(section.getByRole('button',{name:'Turn off',exact:true})).toBeVisible();
+ const state=section.locator('.model-preparation');
+ await section.getByRole('button',{name:'Check runtime',exact:true}).click();
+ await expect.poll(async()=>{const line=await state.innerText();const alert=await section.locator('[role="alert"]').count();return /Runtime ready/.test(line)||alert>0;}).toBe(true);
+ const runtimeState=(await state.innerText()).match(/Runtime (ready|not checked)/)?.[0];
+ expect(runtimeState).toBeTruthy();
+ await section.getByRole('button',{name:'Check files',exact:true}).click();
+ await expect(state).toContainText(runtimeState!);
+ await expect(section.getByRole('button',{name:'Load',exact:true})).toBeDisabled();
  await picker.selectOption('granite-embedding-311m-multilingual-r2-onnx');
  await expect(section).toContainText('347 MB');
  expect(external).toEqual([]);

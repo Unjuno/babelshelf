@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {createTextWorkerHost} from '../src/text-worker-host.ts';
-import {createIsolatedTextClient,DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS} from '../src/isolated-text-client.ts';
+import {createIsolatedTextClient,DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS,DEFAULT_TEXT_MODEL_INIT_TIMEOUT_MS} from '../src/isolated-text-client.ts';
 import {createLfm3TextClient} from '../src/lfm3-text-backend.ts';
 import {PlannerOutputError} from '../src/planner-error.ts';
 const message=(id,cmd,args={})=>({data:{id,cmd,args}});
@@ -26,6 +26,12 @@ test('model-load progress renews the inactivity deadline while the hard deadline
 });
 test('text load timeout settings reject invalid or unbounded values',()=>{
  const worker={postMessage(){},terminate(){}};assert.throws(()=>createIsolatedTextClient(worker,{loadTimeoutMs:999}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{loadIdleTimeoutMs:1800001}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{loadTimeoutMs:1000,loadIdleTimeoutMs:2000}),/Invalid text model load timeout/);assert.throws(()=>createIsolatedTextClient(worker,{countTimeoutMs:10*60*1000+1}),/Invalid text token-count timeout/);
+});
+test('silent runtime initialization is bounded and retires the stalled worker',async()=>{
+ assert.equal(DEFAULT_TEXT_MODEL_INIT_TIMEOUT_MS,5*60_000);
+ let terminated=0;const worker={postMessage(){},terminate(){terminated++;}},client=createIsolatedTextClient(worker,{initTimeoutMs:1000});
+ await assert.rejects(client.init(),error=>error.code==='text_runtime_init_timeout'&&/initialization timed out after 1 second/.test(error.message));
+ assert.equal(terminated,1);assert.equal(client.failed,true);
 });
 test('default model load has a 10-minute hard ceiling while explicit runtimes may choose a bounded override',()=>{
  assert.equal(DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,10*60*1000);
