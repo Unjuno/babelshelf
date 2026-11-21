@@ -12,6 +12,19 @@ test('reload retains a secondary page and its settings section with the app cont
  await page.reload();await expect(page.getByRole('heading',{name:'Models',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Update app',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^(Online|Offline) · Tap to switch/})).toBeVisible();
 });
 
+test('Restore defaults confirmation explains that connection returns to Offline',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.locator('.settings-more > summary').click();
+ await page.getByRole('button',{name:'Restore defaults',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Restore defaults?'});
+ await expect(dialog).toContainText('Connection returns to Offline.');
+ await expect(dialog).toContainText('Turn Online on again before preparing any model or runtime files.');
+ await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(dialog).toBeHidden();
+});
+
 test('a new notice is visible immediately and the previous notice remains available',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Send',exact:true}).click();await expect(page.locator('.preview-toast')).toContainText('Enter a message or add an attachment');
  await page.getByRole('button',{name:/^Offline · Tap to switch/}).click();await expect(page.locator('.preview-toast')).toContainText('Online selected');

@@ -1,4 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {createLfmTextRuntime} from '../src/lfm-text-runtime.ts';
 import {lfmTextModels,describeLfmText} from '../src/lfm-text-manifest.ts';
 import {PreparedGgufAdapter} from '../../../dist/lfm-adapter.js';
@@ -243,6 +244,15 @@ test('GGUF adapter tries preferred and default WebGPU selection, then rejects ab
   await assert.rejects(adapter.load(file,'local',{backend:'webgpu'}),/WebGPU unavailable/);
   assert.deepEqual(adapterOptions,[{powerPreference:'high-performance'},{}]);assert.equal(fileSizeReads,0);assert.equal(runtimeConstructions,0);
  }finally{if(original)Object.defineProperty(globalThis,'navigator',original);else delete globalThis.navigator;}
+});
+test('LFM3 adapter skips the full hash only for an explicitly verified immutable snapshot',async()=>{
+ const bytes=new Uint8Array([1,2,3]),sha256=createHash('sha256').update(bytes).digest('hex'),progress=[],verified=[];
+ class Runtime{static getLibllamaVersion(){return 'test';}constructor(){this.useMultiThread=false;this.nbThreads=1;}setCompat(){}async loadModel(){}getChatTemplate(){return 'template';}getLoadedContextInfo(){return {n_ctx:2048,metadata:{'general.architecture':'lfm3'}};}getWorkerResources(){return {compat:false};}async exit(){}}
+ const adapter=new PreparedGgufAdapter({Wllama:Runtime,paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},architecture:'lfm3',models:[{id:'local',revision:'r1',contextTokens:2048,file:{name:'local.gguf',bytes:bytes.length,sha256}}],isVerifiedFile:async file=>file.lastModified===123,onFileVerified:async file=>verified.push(file.lastModified),onProgress:value=>progress.push(value)});
+ const first=new File([bytes],'local.gguf',{lastModified:123});
+ await adapter.load(first,'local',{backend:'cpu'});assert.equal(progress.includes('Verifying model'),false);await adapter.unload();
+ const changed=new File([bytes],'local.gguf',{lastModified:124});
+ await adapter.load(changed,'local',{backend:'cpu'});assert.equal(progress.includes('Verifying model'),true);assert.deepEqual(verified,[124]);await adapter.unload();
 });
 test('prepared text bridge pins CPU and sends an app-generated schema for constrained planner output',async()=>{const f=fixture();await f.runtime.load('local');assert.equal(f.runtime.manifest.contextTokens,2048);assert.deepEqual(f.calls[1],['load','cpu']);const bound=f.runtime.pin();assert.equal((await bound.count([])).prompt_tokens,20);const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]}};assert.equal((await bound.generate([],768,format)).text,'{ "action" : "chat" , "query" : "" }');assert.equal(f.calls.at(-1)[0],'generate');assert.deepEqual(f.calls.at(-1)[1].jsonSchema.type,'object');assert.ok(f.calls.at(-1)[1].jsonSchema.anyOf.length>0);f.adapter.count=async()=>2040;await assert.rejects(f.runtime.generate([{role:'user',content:'different'}],16),/context limit/);assert.equal(f.calls.filter(c=>c[0]==='generate').length,1);f.manifest.runtime.revision='forged';assert.equal(f.runtime.manifest.runtime.revision,'fixed-count-runtime');await f.runtime.unload();await assert.rejects(bound.count([]),/Stopped/);assert.equal(f.runtime.loaded,'');});
 test('native tool-call plans normalize a registered function call and preserve offered schemas',async()=>{

@@ -9,7 +9,7 @@ function fixture(){
    async write(chunk){writes.push(name);data.push(chunk instanceof Blob?new Uint8Array(await chunk.arrayBuffer()):new Uint8Array(chunk));},
    async close(){files.set(name,new Blob(data));},async abort(){data=[];}
   };}};
- }};
+ },async removeEntry(name){if(!files.delete(name))throw new DOMException('missing','NotFoundError');}};
  const model={id:'local-'+sha,label:'My LFM2',engine:'wllama-lfm2',revision:'sha256:'+sha,file:{bytes:bytes.length,sha256:sha}};return {files,writes,directory,model};
 }
 test('local custom weights import and verify by content hash without any network acquisition',async()=>{

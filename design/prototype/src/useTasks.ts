@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {knowledge} from './useKnowledge';
 import type {NoteView} from './knowledge-store';
-import {parseTask,taskRunView,noticeView,taskDefinition,type Task,type RunData,type NoticeData} from './task-records';
+import {parseTask,taskRunView,noticeView,taskDefinition,type Task,type RunData,type RunDiagnostic,type NoticeData} from './task-records';
 import {createTaskCancellation} from './task-cancellation';
 export type TaskView=Task&{id:string;title:string;version:number;path:string;nextAt?:string|null;requiresReview?:boolean};
 export type ExecutionView=RunData&{id:string;version:number;path:string};
@@ -10,13 +10,13 @@ function raw(n:NoteView){return {ui:{recordType:n.recordType},revisions:[{versio
 export function taskViews(notes:NoteView[]){
  const tasks:TaskView[]=[],executions:ExecutionView[]=[],notifications:NotificationView[]=[],errors:string[]=[];
  for(const n of notes)try{
-  if(n.recordType==='schedule'){const task=parseTask(n.body);tasks.push({...task,id:n.id,title:task.prompt.trim().split('\n')[0].slice(0,72),version:n.version,path:n.path,nextAt:n.nextAt,requiresReview:n.requiresReview});}
+  if(n.recordType==='schedule'){const task=parseTask(n.body);tasks.push({...task,enabled:task.enabled&&!(task.repeat==='once'&&n.nextAt===null),id:n.id,title:task.prompt.trim().split('\n')[0].slice(0,72),version:n.version,path:n.path,nextAt:n.nextAt,requiresReview:n.requiresReview});}
   else if(n.recordType==='execution')executions.push({...taskRunView(raw(n)),id:n.id,path:n.path,version:n.version});
   else if(n.recordType==='notification'){const notice=noticeView(raw(n));notifications.push({...notice,id:n.id,scheduleId:notice.taskId});}
  }catch(e){errors.push(n.path+' · '+(e as Error).message);}
  executions.sort((a,b)=>b.startedAt.localeCompare(a.startedAt));notifications.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));return {tasks,executions,notifications,errors};
 }
-export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boolean),refresh:()=>Promise<NoteView[]>,execute:(prompt:string,signal:AbortSignal)=>Promise<{answer:string;sources:any[];model?:RunData['model'];calculation?:RunData['calculation']}>,stopInference:()=>void=()=>{}){
+export function useTasks(notes:NoteView[],ready:boolean,blocked:boolean|(()=>boolean),refresh:()=>Promise<NoteView[]>,execute:(prompt:string,signal:AbortSignal)=>Promise<{answer:string;sources:any[];model?:RunData['model'];calculation?:RunData['calculation'];inference?:RunDiagnostic['inference']}>,stopInference:()=>void=()=>{}){
  const views=taskViews(notes),[active,setActive]=useState<string|null>(null),[activeStartedAt,setActiveStartedAt]=useState<number|null>(null),[stopping,setStopping]=useState(false),[finishing,setFinishing]=useState(false),[error,setError]=useState(''),[pollError,setPollError]=useState(''),[saving,setSaving]=useState(false),savingLock=useRef(false),owner=useRef(crypto.randomUUID()),locked=useRef(false),cancellation=useRef<ReturnType<typeof createTaskCancellation>|null>(null);
  const latest=useRef({views,blocked,refresh,execute,stopInference});latest.current={views,blocked,refresh,execute,stopInference};
  const isBlocked=()=>typeof latest.current.blocked==='function'?latest.current.blocked():latest.current.blocked;

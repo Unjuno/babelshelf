@@ -1418,3 +1418,26 @@ PWA applied worker build `04f76abf91fd65da`, showed the import action and
 corrected label, and was returned to Offline. Staged delivery verification
 passed WASM identity/gzip bytes and offline-shell transport. No model was
 imported, downloaded, loaded, or run; no physical iPhone validation was done.
+
+## Public Site v379 — full elapsed-time reporting (2026-11-20 JST)
+
+Product source `Unjuno/babelshelf` PR #110 merged to `main` as
+`684b5c773d8d986835895dbceabc41c16ed00c9a`. Exact-head GitHub Actions run
+[44707352356](https://github.com/Unjuno/babelshelf/actions/runs/44707352356)
+succeeded. The merged app build is `4844b1b70599ee68` with 166 verified
+assets. Site v379 was saved from Site-source commit
+`8a43c6447dda20954f234239970179c8f7c98914` (version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_bd0fc2ea06c88191a430b3ab7f37cde6`)
+and deployed successfully as
+`appgdep_6b00110051888191bd811503d976ad26`. Archive SHA-256 is
+`beca18af0162da35db07a7bcac93bd01b5ddc509eb1b781b9aec43e108244a64`;
+205 archived files, 110,602,240 bytes. The public audience and custom domain
+`https://babelshelf.com` were retained. Direct requests to `/`, `/sw.js`,
+`/build.json` and the referenced entry bundle returned HTTP 200; the manifest
+reported the expected build and 166 files.
+
+An Update click in the side-panel browser did not yield an observable active
+worker/build change in that check, so PWA adoption is unverified. No real-model
+transfer bytes were captured. Current P0 follow-up evidence and limitations are
+tracked in `REMAINING-GATES.md`; the later local diagnostics-only candidate is
+not included in this Site version.

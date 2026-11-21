@@ -26,6 +26,12 @@ test('unavailable status never claims a missing model or offers load and can be 
  assert.equal(textModelControls({selected:true,custom:false,present:false,statusError:true,loaded:false,busy:true,downloads:true}).retry,false);
 });
 
+test('browser storage API absence explains why local model actions are unavailable',()=>{
+ const controls=textModelControls({selected:true,custom:false,present:false,statusError:true,storageAvailable:false,loaded:false,busy:false,downloads:true});
+ assert.equal(controls.status,'Local model storage unavailable in this browser');
+ assert.equal(controls.prepare,false);assert.equal(controls.setup,false);assert.equal(controls.retry,false);assert.equal(controls.importFiles,false);
+});
+
 
 test('present model files do not imply that the required local runtime is ready',()=>{
  const base={selected:true,custom:true,present:true,loaded:false,busy:false,downloads:false};

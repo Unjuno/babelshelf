@@ -56,14 +56,16 @@ test('source-free scheduled conversation answers complete while cited answers st
  assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer',sources:[{noteId:'missing',revision:1,start:0,end:1,quote:'x'}]},now),/Source changed or missing result/);
  assert.throws(()=>finishTaskRun([note,second.run],second.run.id,'other',{status:'succeeded',answer:'A source-backed answer'},now),/Source changed or missing result/);
 });
-test('a verbatim-source recovery is failed with its rejected draft preserved for diagnosis',()=>{
+test('a verbatim-source recovery is failed with its rejected draft and inference metrics preserved for diagnosis',()=>{
  const note=reviseTaskNote(registered(),{...task,prompt:'say hello briefly'}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
- const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'say hello briefly',sources:[],recovery:'verbatim-source',model:{id:'fixture',runtime:'runtime-r1'}},now);
- const saved=taskRunView(failed.run);assert.equal(saved.status,'failed');assert.equal(saved.answer,undefined);assert.equal(saved.error,'Could not verify a schedule answer · edit the prompt and retry');assert.equal(saved.diagnostic.reason,'verbatim-source-recovery');assert.equal(saved.diagnostic.candidate,'say hello briefly');assert.equal(saved.diagnostic.model.id,'fixture');
+ const inference={measuredModelCalls:2,promptTokens:1088,outputTokens:269,generationWallMs:529000,runtimePrefillMs:418000};
+ const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'say hello briefly',sources:[],recovery:'verbatim-source',model:{id:'fixture',runtime:'runtime-r1'},inference},now);
+ const saved=taskRunView(failed.run);assert.equal(saved.status,'failed');assert.equal(saved.answer,undefined);assert.equal(saved.error,'Could not verify a schedule answer · edit the prompt and retry');assert.equal(saved.diagnostic.reason,'verbatim-source-recovery');assert.equal(saved.diagnostic.candidate,'say hello briefly');assert.equal(saved.diagnostic.model.id,'fixture');assert.deepEqual(saved.diagnostic.inference,inference);assert.equal(JSON.parse(latest(failed.run).body.match(/```json\n([\s\S]*)\n```/)[1]).inference,undefined);
 });
-test('a prompt copied verbatim into a schedule result cannot be recorded as success without recovery metadata',()=>{
+test('a prompt copied verbatim into a schedule result cannot be recorded as success without recovery metadata and retains inference metrics',()=>{
  const prompt='say hello briefly',note=reviseTaskNote(registered(),{...task,prompt}),now=new Date(2026,9,20,9),{run}=claimTaskRun([note],note.id,'owner',now);
- for(const answer of [prompt,'## Prompt\n'+prompt]){const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer,sources:[]},now);assert.equal(taskRunView(failed.run).status,'failed');assert.equal(taskRunView(failed.run).diagnostic.reason,'prompt-echo');assert.equal(taskRunView(failed.run).diagnostic.candidate,answer);}
+ const inference={measuredModelCalls:1,promptTokens:2020,outputTokens:264,generationWallMs:502000};
+ for(const answer of [prompt,'## Prompt\n'+prompt]){const failed=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer,sources:[],inference},now);assert.equal(taskRunView(failed.run).status,'failed');assert.equal(taskRunView(failed.run).diagnostic.reason,'prompt-echo');assert.equal(taskRunView(failed.run).diagnostic.candidate,answer);assert.deepEqual(taskRunView(failed.run).diagnostic.inference,inference);assert.equal(JSON.parse(latest(failed.run).body.match(/```json\n([\s\S]*)\n```/)[1]).inference,undefined);}
  const finished=finishTaskRun([note,run],run.id,'owner',{status:'succeeded',answer:'Hello!',sources:[]},now);
  assert.equal(taskRunView(finished.run).answer,'Hello!');
 });
@@ -80,6 +82,13 @@ test('completed one-off can be manually rerun without changing its original occu
  const before=[done.task,done.run],again=claimTaskRun(before,note.id,'other',now,{manual:true});assert.equal(again.execute,true);assert.notEqual(again.run.id,done.run.id);assert.notEqual(taskRunView(again.run).dueAt,taskRunView(done.run).dueAt);assert.equal(taskRunView(again.run).manualRerun,true);
  assert.throws(()=>claimTaskRun([...before,again.run],note.id,'third',now,{manual:true}),/already running/);const complete=finishTaskRun([...before,again.run],again.run.id,'other',{status:'succeeded',answer:'second',sources:[{noteId:note.id,revision:1,start:0,end:1,quote:'#'}]},now);
  assert.equal(complete.task.taskCursor.nextAt,null);assert.equal(taskRunView(done.run).answer,'first');assert.equal(taskRunView(complete.run).answer,'second');assert.throws(()=>claimTaskRun([done.task,done.run],note.id,'automatic',now),/no pending occurrence/);
+});
+test('a stopped manual rerun of a completed one-off retries the same record and retains the prior attempt',()=>{
+ const note=registered(),now=new Date(2026,9,20,9);note.taskCursor={...note.taskCursor,nextAt:null};
+ const first=claimTaskRun([note],note.id,'owner',now,{manual:true}),stopped=finishTaskRun([note,first.run],first.run.id,'owner',{status:'stopped',error:'Stopped'},now),before=taskRunView(stopped.run);
+ assert.equal(before.manualRerun,true);assert.equal(before.status,'stopped');
+ const retry=claimTaskRun([stopped.task,stopped.run],note.id,'retry-owner',new Date(+now+1000),{manual:true,retry:true}),after=taskRunView(retry.run);
+ assert.equal(retry.execute,true);assert.equal(retry.run.id,first.run.id);assert.equal(after.attempt,2);assert.equal(after.status,'running');assert.equal(after.attemptHistory.length,1);assert.equal(after.attemptHistory[0].status,'stopped');assert.equal(after.attemptHistory[0].error,'Stopped');
 });
 test('path changes do not reschedule; editing the canonical task changes conditions and preserves original',()=>{
  const note=registered(),before=projectNote(note),moved={...before,path:'Schedule/moved.md',version:2,history:[before.body]};

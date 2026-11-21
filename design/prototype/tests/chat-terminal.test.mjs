@@ -34,12 +34,12 @@ test('standalone general questions bypass unrelated long dialogue and history-co
 
 test('plain answer directives bypass long-history planning without consuming file or tool requests',()=>{
  const prior={summary:'Old dialogue and unrelated saved-note instructions.',recent:Array.from({length:14},(_,index)=>({id:`old-${index}`,user:'Save the previous response as a note.',answer:'An unrelated historical response.'})),refs:[],turnCount:28};
- for(const question of ['Name the largest ocean in one word.','Identify the chemical symbol for gold.','State the capital of Portugal briefly.']){
+ for(const question of ['Name the largest ocean in one word.','Identify the chemical symbol for gold.','State the capital of Portugal briefly.','Name the largest ocean on Earth. Reply with its name only.']){
   assert.deepEqual(contextIndependentConversation(question,[],prior),{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}},question);
   const routed=resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:{schema:1,revision:1,turns:prior.recent.map(turn=>({...turn})),compaction:null},attachments:[]});
   assert.deepEqual(routed.request,{action:'chat',query:''},question);
  }
- for(const question of ['Name the code in this attachment.','Name the number from my previous calculation.','Name three saved notes.','Name the largest ocean and save the answer.'])assert.equal(contextIndependentConversation(question,[],prior),null,question);
+ for(const question of ['Name the code in this attachment.','Name the number from my previous calculation.','Name three saved notes.','Name the largest ocean and save the answer.','Name the largest ocean. Then describe it in detail.'])assert.equal(contextIndependentConversation(question,[],prior),null,question);
  assert.equal(contextIndependentConversation('Name the largest ocean in one word.',[{name:'qa.txt',kind:'text',status:'Text available'}],prior),null);
  assert.equal(prior.recent.length,14,'retained dialogue stays unchanged');
 });

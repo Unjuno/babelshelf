@@ -105,7 +105,7 @@ test('Empty Trash retains a schedule with execution history but removes an unrel
  test.setTimeout(60_000);await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 2 + 2');const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
- await page.getByRole('button',{name:'Schedule actions for Calculate 2 + 2'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 2 + 2'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Schedule actions for Calculate 2 + 2'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 2 + 2'})).toContainText('Completed');await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 2 + 2'}).click();await page.getByRole('button',{name:'Delete schedule'}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
  await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Unrelated');await page.getByRole('textbox',{name:'New file content'}).fill('Independent');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'File actions',exact:true}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
@@ -121,7 +121,7 @@ test('reviewed permanent deletion removes the linked schedule execution and noti
  test.setTimeout(60_000);await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 3 + 4');const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
- await page.getByRole('button',{name:'Schedule actions for Calculate 3 + 4'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 3 + 4'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Schedule actions for Calculate 3 + 4'}).click();await page.getByRole('button',{name:'Run now'}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 3 + 4'})).toContainText('Completed');await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 3 + 4'}).click();await page.getByRole('button',{name:'Delete schedule'}).click();await page.getByRole('dialog',{name:'Delete?'}).getByRole('button',{name:'Delete',exact:true}).click();
  await navigate(page,'Memory');await page.getByRole('button',{name:'Open Trash'}).click();const trash=page.getByRole('dialog',{name:'Trash'});await trash.getByRole('button',{name:'Empty Trash'}).click();
  await trash.getByLabel('Also remove selected files from conversation history and delete linked activity records, including schedule runs and notifications. Message text and unrelated activity remain.').check();await trash.getByRole('button',{name:'Delete permanently',exact:true}).click();await expect(trash).toContainText('Trash is empty');
@@ -135,14 +135,31 @@ test('a paused calculation runs locally and exposes its calculation in history',
  const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
  await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await page.getByRole('button',{name:'Run now'}).click();
- await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
+ await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');await page.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('switch',{name:'Enable Calculate 12 + 10'})).not.toBeChecked();await expect(page.getByRole('switch',{name:'Enable Calculate 12 + 10'})).toBeDisabled();
  await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await expect(page.getByText('This occurrence is complete. Run now creates a separate manual execution.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Run now',exact:true}).click();await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();await page.getByRole('button',{name:'History',exact:true}).click();await expect(page.getByRole('button',{name:/succeeded/})).toHaveCount(2);await expect(page.getByRole('button',{name:/succeeded.*Manual run/})).toHaveCount(1);await page.getByRole('button',{name:/succeeded/}).first().click();
  await expect(page.getByRole('dialog',{name:'Execution'})).toContainText('Calculator · 12 + 10');await expect(page.getByRole('dialog',{name:'Execution'})).toContainText('12 + 10 = 22');
  await page.getByRole('button',{name:'Save note'}).click();await page.getByRole('textbox',{name:'File name'}).fill('Calculation result');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
  await navigate(page,'Memory');await page.getByRole('button',{name:'Open Inbox'}).click();await page.getByRole('button',{name:'Open Calculation result.md',exact:true}).click();
  await expect(page.locator('main')).toContainText('12 + 10 = 22');await page.getByText('Sources',{exact:true}).click();await expect(page.locator('main')).toContainText('Schedule/Runs/');await page.getByRole('button',{name:'View saved source 1'}).click();const source=page.getByRole('dialog',{name:'Source'});await expect(source).toContainText('12 + 10 = 22');await expect(source).toContainText('Calculator');await expect(source).not.toContainText('leaseUntil');
  await source.getByRole('button',{name:'Close'}).click();await navigate(page,'Notifications');await expect(page.getByRole('button',{name:'Delete notification Succeeded · Calculate 12 + 10'})).toHaveCount(2);await page.getByRole('button',{name:'Delete notification Succeeded · Calculate 12 + 10'}).first().click();await expect(page.getByText('Deleted · Succeeded · Calculate 12 + 10')).toBeVisible();await page.waitForTimeout(4200);await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:/Succeeded · Calculate 12 \+ 10/}).first()).toBeVisible();
+});
+
+test('a repeated Run now tap is absorbed before the schedule actions sheet closes',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Calculate 12 + 10');
+ const tomorrow=await page.evaluate(()=>{const d=new Date();d.setDate(d.getDate()+1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();
+ const run=page.getByRole('button',{name:'Run now',exact:true});await run.dblclick();
+ await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
+ await expect(run).toBeDisabled();
+ await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toBeHidden();
+ await expect(run).toBeVisible();
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();
+ await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
 });
 
 test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{
@@ -256,6 +273,18 @@ test('a due schedule in another timezone does not block local due work',async({p
 });
 
 import {claimTaskRun} from '../src/task-records';
+test('execution history presents a failed answer check in readable form',async({page})=>{
+ const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+ const task={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',timezone,enabled:false,notify:false,prompt:'say hello briefly'};
+ const schedule=createNote({path:'Schedule/diagnostic-fixture.md',body:formatTask(task)});schedule.ui={recordType:'schedule'};schedule.taskCursor={definition:taskDefinition(task),nextAt:new Date(Date.now()+86400000).toISOString()};
+ const startedAt='2026-11-20T00:00:00.000Z',finishedAt='2026-11-20T00:03:08.000Z';
+ const runData={taskId:schedule.id,taskRevision:1,definition:taskDefinition(task),dueAt:'2026-11-20T00:00:00.000Z',attempt:1,owner:'fixture-owner',leaseUntil:finishedAt,status:'failed',startedAt,finishedAt,prompt:task.prompt,error:'Could not verify a schedule answer',diagnostic:{stage:'answer-validation',reason:'verbatim-source-recovery',candidate:task.prompt,model:{id:'lfm3-1.7b-qad-q4-0',runtime:'CPU/WASM'},inference:{measuredModelCalls:2,promptTokens:1024,outputTokens:35,runtimePrefillMs:120000,runtimeDecodeMs:24000,runtimeCachedTokens:289}}};
+ const nl=String.fromCharCode(10),fence=String.fromCharCode(96,96,96),body='# Execution'+nl+nl+fence+'json'+nl+JSON.stringify(runData,null,2)+nl+fence+nl;const run=createNote({path:'Schedule/Runs/diagnostic-fixture.md',body});run.ui={recordType:'execution'};
+ await page.goto('/');await page.evaluate(async records=>{await new Promise<void>((resolve,reject)=>{const req=indexedDB.open('mlb-memory-v1');req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result,tx=db.transaction('notes','readwrite');for(const record of records)tx.objectStore('notes').put(record);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};});},[schedule,run]);
+ await page.reload();await navigate(page,'Schedule');await page.getByRole('button',{name:'Schedule actions for say hello briefly'}).click();await page.getByRole('button',{name:'History',exact:true}).click();await page.getByRole('button',{name:/failed/}).click();
+ const dialog=page.getByRole('dialog',{name:'Execution'});await expect(dialog).toContainText('Could not verify a schedule answer');await expect(dialog).toContainText('Why it did not complete');await expect(dialog).toContainText('The model repeated source text instead of producing a verifiable answer.');await expect(dialog).toContainText('Rejected draft');await expect(dialog).toContainText('lfm3-1.7b-qad-q4-0 · CPU/WASM');await expect(dialog).toContainText('1,024 input tokens');await expect(dialog).toContainText('Input processing 2m 0s');await expect(dialog).toContainText('Text generation 24.000s');
+ await expect(dialog.getByText('Technical record',{exact:true})).toBeVisible();await dialog.getByRole('button',{name:'Open current file'}).click();await expect(page.locator('main')).toContainText('The model repeated source text instead of producing a verifiable answer.');await expect(page.locator('main').getByText('Technical record',{exact:true})).toBeVisible();
+});
 test('a run owned by another tab does not block another local due schedule',async({page})=>{
  const local=Intl.DateTimeFormat().resolvedOptions().timeZone,base={repeat:'daily',time:'09:00',days:[],date:'2026-10-20',monthDay:1,interval:1,unit:'days',enabled:true,notify:false,timezone:local};
  const first={...base,prompt:'Other tab running fixture'},second={...base,prompt:'Second local overdue fixture'},due=new Date(Date.now()-600000).toISOString(),now=new Date();

@@ -7,8 +7,8 @@ test('paged Memory search runs in a browser worker and keeps exact source ranges
   const name='search-worker-browser-'+crypto.randomUUID(),store=new KnowledgeStore(name);
   try{
    const seeds=Array.from({length:15},(_,i)=>({id:`water-${i}`,path:`Inbox/${i<14?'travel':'travelling'}/water-${i}.md`,body:`water reserve ${i}`,version:1,history:[]}));
-   await store.initialize(seeds);const first=await store.searchPage('water',{offset:0,limit:12});const second=await store.searchPage('water',{offset:first.nextOffset!,limit:12,snapshot:first.snapshot});
-   const scoped=await store.searchPage('water',{offset:0,limit:12,pathPrefix:'Inbox/travel'});const scopedNext=await store.searchPage('water',{offset:12,limit:12,pathPrefix:'Inbox/travel',snapshot:scoped.snapshot});let rejected=false;
+  await store.initialize(seeds);const first=await store.searchPage('water',{offset:0,limit:12});const second=await store.searchPage('water',{offset:first.nextOffset!,limit:12,snapshot:first.snapshot});
+  const scoped=await store.searchPage('water',{offset:0,limit:12,pathPrefix:'Inbox/travel'});const scopedNext=await store.searchPage('water',{offset:12,limit:12,pathPrefix:'Inbox/travel',snapshot:scoped.snapshot});let rejected=false;
    try{await store.searchPage('water',{offset:12,limit:12,pathPrefix:'Inbox/travelling',snapshot:scoped.snapshot});}catch{rejected=true;}
    const rows=await store.all();return {workerAvailable:typeof Worker!=='undefined',first:first.hits.length,second:second.hits.length,exact:second.hits.every((hit:any)=>typeof hit.quote==='string'&&rows.find((note:any)=>note.id===hit.noteId).revisions[hit.revision-1].body.slice(hit.start,hit.end)===hit.quote),scoped:scoped.hits.length+scopedNext.hits.length,inside:[...scoped.hits,...scopedNext.hits].every((hit:any)=>hit.noteId!=='water-14'),rejected};
   }finally{store.close();await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(name);request.onsuccess=()=>resolve();request.onerror=()=>reject(request.error);});}

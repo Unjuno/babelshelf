@@ -4,10 +4,14 @@ import {PlannerOutputError} from './planner-error.ts';
 // a single foreground load should not leave users waiting for half an hour.
 // The worker is retired on expiry; the separately stored model file is kept.
 export const DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS=10*60*1000;
+// Import/compile has no progress event. Give slower phones room to initialize
+// the bundled runtime while still retiring a silent worker within five minutes.
+export const DEFAULT_TEXT_MODEL_INIT_TIMEOUT_MS=5*60*1000;
 export const DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS=60*1000;
 const DEFAULT_LOAD_IDLE_TIMEOUT_MS=5*60*1000;
 export const DEFAULT_TEXT_GENERATION_IDLE_TIMEOUT_MS=5*60*1000;
-export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={},loadTimeoutMs=DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,loadIdleTimeoutMs=DEFAULT_LOAD_IDLE_TIMEOUT_MS,countTimeoutMs=DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS,generationIdleTimeoutMs=DEFAULT_TEXT_GENERATION_IDLE_TIMEOUT_MS}:{disposeHandshake?:boolean;initArgs?:any;loadTimeoutMs?:number;loadIdleTimeoutMs?:number;countTimeoutMs?:number;generationIdleTimeoutMs?:number}={}){
+export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,initArgs={},initTimeoutMs=DEFAULT_TEXT_MODEL_INIT_TIMEOUT_MS,loadTimeoutMs=DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS,loadIdleTimeoutMs=DEFAULT_LOAD_IDLE_TIMEOUT_MS,countTimeoutMs=DEFAULT_TEXT_MODEL_COUNT_TIMEOUT_MS,generationIdleTimeoutMs=DEFAULT_TEXT_GENERATION_IDLE_TIMEOUT_MS}:{disposeHandshake?:boolean;initArgs?:any;initTimeoutMs?:number;loadTimeoutMs?:number;loadIdleTimeoutMs?:number;countTimeoutMs?:number;generationIdleTimeoutMs?:number}={}){
+ if(!Number.isSafeInteger(initTimeoutMs)||initTimeoutMs<1_000||initTimeoutMs>10*60*1000)throw Error('Invalid text model initialization timeout');
  if(!Number.isSafeInteger(loadTimeoutMs)||loadTimeoutMs<1000||loadTimeoutMs>60*60*1000||!Number.isSafeInteger(loadIdleTimeoutMs)||loadIdleTimeoutMs<1000||loadIdleTimeoutMs>loadTimeoutMs)throw Error('Invalid text model load timeout');
  if(!Number.isSafeInteger(countTimeoutMs)||countTimeoutMs<1_000||countTimeoutMs>10*60*1000)throw Error('Invalid text token-count timeout');
  if(!Number.isSafeInteger(generationIdleTimeoutMs)||generationIdleTimeoutMs<1000||generationIdleTimeoutMs>10*60*1000)throw Error('Invalid text generation inactivity timeout');
@@ -25,6 +29,7 @@ export function createIsolatedTextClient(worker:Worker,{disposeHandshake=false,i
   if(fault)return Promise.reject(fault);
   return new Promise((resolve,reject)=>{const id=++seq,item:Pending={resolve,reject,events};pending.set(id,item);
    const expire=(message:string,code:string)=>{if(pending.get(id)!==item)return;const error=Object.assign(Error(message),{code});fail(error);void abort().catch(()=>{});};
+   if(cmd==='init')item.timer=setTimeout(()=>expire(`Text runtime initialization timed out after ${Math.ceil(initTimeoutMs/1000)} seconds · reload the app to retry`,'text_runtime_init_timeout'),initTimeoutMs);
    if(cmd==='count')item.timer=setTimeout(()=>{const seconds=Math.ceil(countTimeoutMs/1000);expire(`Text token count timed out after ${seconds} second${seconds===1?'':'s'} · reload the model to retry`,'text_model_count_timeout');},countTimeoutMs);
    if(cmd==='generate'){item.renew=()=>{clearPending(item);item.timer=setTimeout(()=>expire(`No text-generation progress for ${Math.ceil(generationIdleTimeoutMs/1000)} seconds · model stopped; load it to retry`,'text_model_generation_stalled'),generationIdleTimeoutMs);};item.renew();}
    try{worker.postMessage({id,cmd,args});}catch(error){pending.delete(id);clearPending(item);reject(error);}});

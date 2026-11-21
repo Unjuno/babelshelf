@@ -319,7 +319,7 @@ const greetingFormatPrefix=new RegExp(String.raw`^in\s+${englishOneSentenceForma
 const greetingFormatSuffix=new RegExp(String.raw`\s+in\s+${englishOneSentenceFormat}[.!?\s]*$`,'iu');
 function plainConversationRoute(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
  if(attachments.length)return null;
- const sourceReferent=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|さっき|先ほど|前に|以前|過去|保存した|書いた|\b(?:notes?|files?|documents?|memor(?:y|ies)|schedules?|calendars?|previous|earlier|saved)\b)/iu;
+ const sourceReferent=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|さっき|先ほど|前に|以前|過去|保存した|書いた|\b(?:attached|attachment|notes?|files?|documents?|sources?|citations?|excerpts?|records?|memor(?:y|ies)|schedules?|calendars?|previous|earlier|saved)\b|\b(?:according\s+to|based\s+on|from|in)\s+(?:the\s+)?(?:attached|provided|uploaded|current|my|our|saved|these|those)?\s*(?:notes?|files?|documents?|sources?|records?|memory|attachment|excerpt)\b|\b(?:selon|d['’]après)\s+(?:mes|les|ces|vos)?\s*(?:notes?|fichiers?|documents?|sources?)\b)/iu;
  // Small text models can misroute a plainly original writing request into a
  // knowledge search. This narrow grammar contains no file or memory verbs.
  if(!sourceReferent.test(question)&&/^(?:please\s+)?(?:write|compose|create|invent)\s+(?:(?:one|a|an|some|short|brief|long|detailed|original|creative|fictional|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)-sentence)\s+)*(?:sentence|poem|story|joke|haiku|fictional dialogue)\b/i.test(question.trim()))return {action:'chat',query:''};
@@ -342,10 +342,26 @@ function plainConversationRoute(question:string,attachments:{name:string;kind:st
  const text=question.normalize('NFKC').trim().toLowerCase().replace(/[\s.,!?。！？、…]+$/gu,'').replace(/\s+/gu,' ');
  return plainGreetings.has(text)?{action:'chat',query:''}:null;
 }
-/** Narrow source-free prose/greeting route shared with scheduled generation.
- * General questions stay on the scheduled knowledge-answer path. */
+/** Source-free conversation route shared with scheduled generation.
+ * Explicit knowledge/history/input references remain on the evidence-aware path. */
 export function isSourceFreeConversationRequest(question:string){
  if(plainConversationRoute(question,[],{summary:'',recent:[],refs:[],turnCount:0})?.action==='chat')return true;
+ // A small set of explicitly global fact questions can be answered from the
+ // selected model's general knowledge. Keep questions about schedules,
+ // personal records, attachments, and saved Memory on the evidence path.
+ const normalized=question.normalize('NFKC').trim();
+ const sourceReference=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|以前|過去|保存した|\b(?:saved|memory|my|our|earlier|previous|attached|attachment|notes?|files?|documents?|sources?|citations?|excerpts?|records?)\b|\b(?:according\s+to|based\s+on|from|in)\s+(?:the\s+)?(?:attached|provided|uploaded|current|my|our|saved|these|those)?\s*(?:notes?|files?|documents?|sources?|records?|memory|attachment|excerpt)\b|\b(?:selon|d['’]après)\s+(?:mes|les|ces|vos)?\s*(?:notes?|fichiers?|documents?|sources?)\b)/iu;
+ if(!sourceReference.test(normalized)
+  &&(/^(?:(?:what is|what's) the capital of|where is (?:the )?capital of|name (?:the )?capital of|state (?:the )?capital of) [\p{L}][\p{L} .'-]{0,60}[?.!]?$/iu.test(normalized)
+   ||/^(?:quelle est|quelle ville est) la capitale de [\p{L}][\p{L} .'-]{0,60}[?.!？]?$/iu.test(normalized)
+   ||/^[\p{L}][\p{L}・ー .'-]{0,40}の首都は(?:どこ|何処)?[ですか？?。.!！]*$/u.test(normalized)))return true;
+ const outputFormat=normalized.replace(/[.!]\s+(?:reply|respond|answer)\s+(?:(?:with|in)\s+)?(?:(?:just|only)\s+)?(?:(?:its|the|a|one)\s+)?(?:name|answer|result|value|number|city|phrase|sentence)(?:\s+only)?[.!]?$/iu,'');
+ if(!sourceReference.test(normalized)&&/^(?:please\s+)?(?:name|identify|state|list|define|explain|describe)\s+(?:me\s+)?(?:the\s+)?[\p{L}\p{N}][\p{L}\p{N}'’ ,:-]{1,140}[.!?]?$/iu.test(outputFormat))return true;
+ // Explicit original-writing prompts in Japanese have no saved-source target.
+ // Keep this grammar narrow so factual questions that may refer to Memory do
+ // not bypass evidence selection.
+ if(!/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|以前|過去|保存した)/u.test(question)
+  &&/^(?:(?:.{1,20}について|.{1,20}をテーマに)\s*)?(?:(?:短い|ひとことの|一文の|一つの)\s*)?(?:文|文章|一文)(?:(?:を|で)?(?:書いて|作って|考えて)(?:ください|下さい)?)?[。.!！?？\s]*$/u.test(question.trim()))return true;
  // Schedules and test fixtures often prefix a plain greeting with a short
  // run label (for example, "R11 run test 1 — say hello briefly"). Treat only
  // this tightly bounded metadata form as decoration; source/tool references
@@ -366,7 +382,11 @@ export function contextIndependentConversation(question:string,attachments:{name
   // enter the action planner even though they ask only for open-domain text.
   // Keep source/history references, storage operations, and attached-input
   // questions on their existing evidence-aware routes.
-  const answerDirective=/^(?:please\s+)?(?:name|identify|state|list|define|explain|describe)\s+(?:me\s+)?(?:the\s+)?[\p{L}\p{N}][\p{L}\p{N}'’ ,:-]{1,140}[.!?]?$/iu.test(text);
+  // Accept one trailing output-format clause after a complete prose request.
+  // Without this, ordinary prompts such as "Name the largest ocean. Reply
+  // with its name only." fall through to the expensive action planner.
+  const directiveText=text.replace(/[.!]\s+(?:reply|respond|answer)\s+(?:(?:with|in)\s+)?(?:(?:just|only)\s+)?(?:(?:its|the|a|one)\s+)?(?:name|answer|result|value|number|city|phrase|sentence)(?:\s+only)?[.!]?$/iu,'');
+  const answerDirective=/^(?:please\s+)?(?:name|identify|state|list|define|explain|describe)\s+(?:me\s+)?(?:the\s+)?[\p{L}\p{N}][\p{L}\p{N}'’ ,:-]{1,140}[.!?]?$/iu.test(directiveText);
   // A standalone open-domain question is a conversation request, even when
   // the retained transcript is long. Keep the original records intact, but
   // give this answer a clean context so unrelated history cannot redirect it

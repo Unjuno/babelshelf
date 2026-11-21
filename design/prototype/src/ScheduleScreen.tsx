@@ -36,7 +36,7 @@ export function ScheduleScreen({schedules,active,stopping,finishing,saving,error
      <span className="schedule-name">{schedule.title}</span>
      <span className="schedule-meta">{scheduleSummary(schedule)} · {statusLabel(schedule)}</span>
     </button>
-    <input type="checkbox" role="switch" aria-label={'Enable '+schedule.title} checked={schedule.enabled} disabled={saving||schedule.requiresReview} onChange={event=>onToggle(schedule,event.target.checked)}/>
+    <input type="checkbox" role="switch" aria-label={'Enable '+schedule.title} checked={schedule.enabled} disabled={saving||schedule.requiresReview||schedule.repeat==='once'&&!schedule.nextAt} onChange={event=>onToggle(schedule,event.target.checked)}/>
     <button className="icon-button" aria-label={'Schedule actions for '+schedule.title} onClick={()=>onActions(schedule.id)}><DotsThree size={22}/></button>
    </div>):<div className="schedule-empty"><Clock size={27}/><span>No schedules</span></div>}
   </div>

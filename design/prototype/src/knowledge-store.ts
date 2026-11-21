@@ -30,7 +30,7 @@ import {notePath} from '../../../dist/files.js';
 import {openDB,isDBClosed,closeDB} from '../../../dist/storage.js';
 import {parsePreference,readPreference,restoreDefaultPreferences,formatPreference,preferenceGroup} from './preference-records.ts';
 import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDERS,isSystemFolder,MAX_FOLDER_DEPTH} from './memory-paths.ts';
-import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus} from './task-records.ts';
+import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus,type RunDiagnostic} from './task-records.ts';
 import {applyCorrection,undoCorrection,correctionProposalHash,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {stateHash} from './backup-hash.ts';
 import type {StateSnapshot,RestoreMode} from './backup-state.ts';
@@ -188,7 +188,7 @@ export function planMemoryRecovery(records:Canonical[],storedFolders:string[],st
  const updated=applyKnowledgeChanges(records,[],batch.notes);
  return {records:updated,folders:[...new Set([...storedFolders,...batch.folders])],trash:structuredClone(storedTrash.filter(b=>b.id!==batch.id))};
 }
-function searchableRecords(all:Canonical[],query:string,pathPrefix?:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule\/Runs)\//i.test(query)||typeof pathPrefix==='string'&&/^(?:Tools|Settings|Notifications|Schedule\/Runs)(?:\/|$)/i.test(pathPrefix);return explicit?all:all.filter(n=>!n.ui?.protected&&!['execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\/Runs\//i.test(notePath(n)));}
+function searchableRecords(all:Canonical[],query:string,pathPrefix?:string){const explicit=/\b(?:Tools|Settings|Notifications|Schedule)\//i.test(query)||typeof pathPrefix==='string'&&/^(?:Tools|Settings|Notifications|Schedule)(?:\/|$)/i.test(pathPrefix);return explicit?all:all.filter(n=>!n.ui?.protected&&!['schedule','execution','notification'].includes(n.ui?.recordType)&&! /^(?:Tools|Settings|Notifications)\/|^Schedule\//i.test(notePath(n)));}
 export class KnowledgeStore {
  private database:IDBDatabase|null=null;
  private databasePromise:Promise<IDBDatabase>|null=null;
@@ -396,7 +396,7 @@ export class KnowledgeStore {
  });}
  async heartbeat(runId:string,owner:string){return this.editRecords(records=>({put:[heartbeatRun(records,runId,owner)],value:true}));}
  async skipRun(taskId:string,owner:string){return this.editRecords(records=>{const result=skipTaskRun(records,taskId,owner),notice=taskNotice(result.task,result.run);return {put:[result.task,result.run,...(notice?[notice]:[])],value:projectNote(result.run)};});}
- async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:import('./task-records.ts').RunData['calculation'];model?:import('./task-records.ts').RunData['model'];diagnostic?:import('./task-records.ts').RunData['diagnostic']},now=new Date()){return this.editRecords(records=>{
+ async finishRun(runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:import('./task-records.ts').RunData['calculation'];model?:import('./task-records.ts').RunData['model'];diagnostic?:import('./task-records.ts').RunData['diagnostic'];inference?:RunDiagnostic['inference']},now=new Date()){return this.editRecords(records=>{
   const completed=finishTaskRun(records,runId,owner,result,now),notice=taskNotice(completed.task,completed.run);
   return {put:[completed.task,completed.run,...(notice?[notice]:[])],value:projectNote(completed.run)};
  });}

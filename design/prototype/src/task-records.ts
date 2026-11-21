@@ -75,6 +75,12 @@ export function taskNotice(task:any,run:any){const data=taskRunView(run),origina
  const value:NoticeData={taskId:task.id,taskRevision:data.taskRevision,runId:run.id,runRevision:latest(run).version,attempt:data.attempt,title,body:data.answer??data.error??'Execution needs attention',createdAt:new Date().toISOString(),read:false};
  return typedRecord('notification','Notifications/'+localDate()+'-'+crypto.randomUUID()+'.md',noticeBody(value));
 }
+function retryRun(old:any,owner:string,now:Date){
+ const data=taskRunView(old),previous:RunAttemptReceipt={attempt:data.attempt,status:data.status,startedAt:data.startedAt,...(data.finishedAt?{finishedAt:data.finishedAt}:{}),...(data.answer?{answer:data.answer}:{}),...(data.error?{error:data.error}:{}),...(data.diagnostic?{diagnostic:data.diagnostic}:{}),...(data.model?{model:data.model}:{}),...(data.sources?{sources:data.sources}:{}),...(data.calculation?{calculation:data.calculation}:{})};
+ const retried:RunData={...data,owner,status:'running',attempt:data.attempt+1,attemptHistory:[...(data.attemptHistory??[]),previous],startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
+ delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;delete retried.diagnostic;
+ const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;return run;
+}
 export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Date(),options:{retry?:boolean;manual?:boolean}={}){
  const task=records.find(n=>n.id===taskId&&n.state==='active');if(!task||task.ui?.recordType!=='schedule')throw Error('Task is not registered');if(task.ui.requiresReview)throw Error('Review schedule first');
  const definition=parseTask(latest(task).body);if(!definition.enabled&&!options.manual)throw Error('Task is disabled');
@@ -84,6 +90,8 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
   if(!options.manual||definition.repeat!=='once')throw Error('Task has no pending occurrence');
   const running=records.find(n=>n.state==='active'&&n.ui?.recordType==='execution'&&(()=>{const r=taskRunView(n);return r.taskId===taskId&&r.status==='running';})());
   if(running){const data=taskRunView(running),until=running.runLease?.owner===data.owner?running.runLease.until:data.leaseUntil;if(asDate(until)>now)throw Error('Occurrence already running');return {task,run:reviseNote(running,{body:runBody({...data,status:'interrupted',error:'Execution interrupted · run again explicitly',finishedAt:now.toISOString()})},latest(running).version),execute:false};}
+  const previous=records.filter(n=>n.state==='active'&&n.ui?.recordType==='execution').map(n=>({note:n,data:taskRunView(n)})).filter(value=>value.data.taskId===taskId&&value.data.definition===signature&&value.data.manualRerun).sort((a,b)=>b.data.startedAt.localeCompare(a.data.startedAt))[0];
+  if(options.retry){if(!previous||!['failed','stopped','interrupted'].includes(previous.data.status))throw Error('No failed manual execution to retry');return {task,run:retryRun(previous.note,owner,now),execute:true};}
   const used=new Set(records.filter(n=>n.ui?.recordType==='execution').map(n=>taskRunView(n)).filter(r=>r.taskId===taskId&&r.definition===signature).map(r=>r.dueAt));let timestamp=+now;while(used.has(new Date(timestamp).toISOString()))timestamp++;
   const data:RunData={taskId,taskRevision:latest(task).version,definition:signature,dueAt:new Date(timestamp).toISOString(),attempt:1,owner,leaseUntil:new Date(+now+90000).toISOString(),status:'running',startedAt:now.toISOString(),manualRerun:true,prompt:definition.prompt};
   return {task,run:typedRecord('execution','Schedule/Runs/'+localDate(now)+'-'+crypto.randomUUID()+'.md',runBody(data)),execute:true};
@@ -100,11 +108,7 @@ export function claimTaskRun(records:any[],taskId:string,owner:string,now=new Da
    return {task,run:reviseNote(old,{body:runBody(interrupted)},latest(old).version),execute:false};
   }
   if(!options.retry||!['failed','stopped','missed','interrupted'].includes(data.status))throw Error('Occurrence already processed');
-  const previous:RunAttemptReceipt={attempt:data.attempt,status:data.status,startedAt:data.startedAt,...(data.finishedAt?{finishedAt:data.finishedAt}:{}),...(data.answer?{answer:data.answer}:{}),...(data.error?{error:data.error}:{}),...(data.diagnostic?{diagnostic:data.diagnostic}:{}),...(data.model?{model:data.model}:{}),...(data.sources?{sources:data.sources}:{}),...(data.calculation?{calculation:data.calculation}:{})};
-  const retried:RunData={...data,taskRevision:latest(task).version,owner,status:'running',attempt:data.attempt+1,attemptHistory:[...(data.attemptHistory??[]),previous],startedAt:now.toISOString(),leaseUntil:new Date(+now+90000).toISOString()};
-  delete retried.finishedAt;delete retried.answer;delete retried.error;delete retried.sources;delete retried.calculation;delete retried.model;delete retried.diagnostic;
-  const run=reviseNote(old,{body:runBody(retried)},latest(old).version);delete run.runLease;
-  return {task,run,execute:true};
+  return {task,run:retryRun(old,owner,now),execute:true};
  }
  const missed=!options.manual&&+now-+due>60000;
  const data:RunData={taskId,taskRevision:latest(task).version,definition:signature,dueAt:cursor.nextAt,attempt:missed?0:1,owner,leaseUntil:new Date(+now+90000).toISOString(),status:missed?'missed':'running',startedAt:now.toISOString(),prompt:definition.prompt,...(missed?{error:'Missed while app was unavailable · run or skip explicitly',finishedAt:now.toISOString()}:{})};
@@ -120,18 +124,19 @@ function isSchedulePromptEcho(answer:string,prompt:string){
  const output=normalizedScheduleText(answer),savedPrompt=normalizedScheduleText(prompt),modelPrompt=normalizedScheduleText(schedulePromptBody(prompt));
  return output===savedPrompt||output===modelPrompt;
 }
-export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry';diagnostic?:RunDiagnostic},now=new Date()){
+export function finishTaskRun(records:any[],runId:string,owner:string,result:{status:RunStatus;answer?:string;error?:string;sources?:any[];calculation?:DecimalReceipt;model?:RunData['model'];recovery?:'verbatim-source'|'citation-retry';diagnostic?:RunDiagnostic;inference?:RunDiagnostic['inference']},now=new Date()){
  const old=records.find(n=>n.id===runId&&n.state==='active');if(!old)throw Error('Execution unavailable');const data=taskRunView(old);
  if(data.owner!==owner||data.status!=='running')throw Error('Execution owner conflict');
  const lease=old.runLease?.owner===owner?old.runLease.until:data.leaseUntil;if(asDate(lease)<now)throw Error('Execution owner expired');
  if(!['succeeded','failed','stopped','skipped'].includes(result.status))throw Error('Invalid completion');
- if(result.status==='succeeded'&&result.recovery==='verbatim-source')result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{stage:'answer-validation',reason:'verbatim-source-recovery',candidate:result.answer?.slice(0,4000),model:result.model}};
- if(result.status==='succeeded'&&result.calculation===undefined&&result.answer&&isSchedulePromptEcho(result.answer,data.prompt))result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{stage:'answer-validation',reason:'prompt-echo',candidate:result.answer.slice(0,4000),model:result.model}};
+ if(result.status==='succeeded'&&result.recovery==='verbatim-source')result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{...result.diagnostic,stage:'answer-validation',reason:'verbatim-source-recovery',candidate:result.answer?.slice(0,4000),model:result.model,...(result.inference?{inference:result.inference}:{})}};
+ if(result.status==='succeeded'&&result.calculation===undefined&&result.answer&&isSchedulePromptEcho(result.answer,data.prompt))result={...result,status:'failed',answer:undefined,sources:undefined,error:'Could not verify a schedule answer · edit the prompt and retry',diagnostic:{...result.diagnostic,stage:'answer-validation',reason:'prompt-echo',candidate:result.answer.slice(0,4000),model:result.model,...(result.inference?{inference:result.inference}:{})}};
  if(result.calculation!==undefined)validateRunCalculation({...data,...result});
  else if(result.status==='succeeded'&&(!result.answer?.trim()||!Array.isArray(result.sources)||!result.sources.length&&!isSourceFreeConversationRequest(data.prompt)||result.sources.length>0&&!validateGroundingRefs(records,result.sources).ok))throw Error('Source changed or missing result');
  const task=records.find(n=>n.id===data.taskId);if(!task)throw Error('Task unavailable');
  if(result.calculation!==undefined){const revision=task.revisions.find((v:any)=>v.version===data.taskRevision);if(!revision||parseTask(revision.body).prompt!==data.prompt||taskDefinition(parseTask(revision.body))!==data.definition)throw Error('Invalid scheduled calculation target');}
- const completed={...data,...result,finishedAt:now.toISOString()};delete (completed as any).recovery;const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
+ const {inference:_inference,...persistedResult}=result;
+ const completed={...data,...persistedResult,finishedAt:now.toISOString()};delete (completed as any).recovery;const run=reviseNote(old,{body:runBody(completed)},latest(old).version);delete run.runLease;
  const definition=parseTask(latest(task).body);let updated=task;
  if(['succeeded','skipped'].includes(result.status)&&task.taskCursor?.definition===data.definition&&task.taskCursor.nextAt===data.dueAt){
   if(definition.repeat!=='once'&&definition.timezone!==Intl.DateTimeFormat().resolvedOptions().timeZone){
