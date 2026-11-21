@@ -2,8 +2,7 @@
 
 The earlier full append-only log is preserved at [the 2026-11-21 archive](history/TEST-RESULTS-2026-11-21-archive.txt); this file now holds the current release snapshot and recent follow-up evidence.
 
-Latest local candidate: source baseline HEAD `964778a1e8ec4ce1c770ad0d645065094ba95c5e`
-with uncommitted changes, build `a3549c629588495e` (168 verified assets;
+Application source commit `f0c72c671c76c6d02c44eb894ccded0acbe5ffaf`; documentation-only branch HEAD `2e1f21291986912d624bcdc38fa889b5ace89772`, PR #113 open. Build `a3549c629588495e` (168 verified assets;
 bundle `index-CWBPmADs.js`). It passed full `npm run test:quality`: root
 286/286, prototype 2,106/2,106, app acceptance 9/9, editor 28/28, review store
 6/6, offline calculation 1/1, working file 2/2, Help 1/1, tools 16/16,
@@ -13,7 +12,7 @@ device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 27/27, Settings
 3/3, startup storage 1/1, offline process and installed PWA passed. `npm run
 check`, `npm run build:app`, and `git diff --check` passed. The public debug
 Site remains v384 on prior build `b492f04c696e4119`; this local candidate has
-not been deployed or pushed to product GitHub. General release remains
+not been deployed to the public Site. General release remains
 DO-NOT-SHIP.
 
 The latest change keeps planner/protocol previews out of the assistant-answer
@@ -2568,3 +2567,8 @@ Reviewing partial-answer retention found that the callback was also passed into 
 The exact resulting production candidate passed the full `npm run test:quality` workflow with exit code 0: root 286/286, prototype 2,106/2,106, app acceptance 9/9, editor 28/28, review store 6/6, offline calculation 1/1, working file 2/2, Help 1/1, tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 27/27, Settings 37/37, editorial 38/38, handoff Chromium/WebKit 38/38 each, app update/recovery 3/3, storage startup 1/1, offline process and installed PWA passed. `npm run check` passed with 41 shell asset hashes; build produced 168 verified assets and main bundle `index-CWBPmADs.js`; `git diff --check` exited 0 with line-ending warnings only.
 
 This proves deterministic correctness and PC browser/installed-PWA shell behavior, not real-model quality or physical iPhone/Android acceptance. The exact Audit 18 schedule failure prompt/Activity were not retained. Muse's backup and feedback failures, compatible Decision-model inference, actual 300-second real-model partial retention and live schedule retry recovery remain open. Public debug Site v384 and product GitHub remain unchanged; general release remains DO-NOT-SHIP.
+
+
+2026-11-22 JST · Audit 18 current-candidate focused browser recheck · build `a3549c629588495e`
+
+On the local candidate, Playwright ran `settings-home.spec.ts` and `schedule-memory-ui.spec.ts` in an isolated test profile: 48/48 passed (4m54s). Coverage included schedule prompt validation, repeated Run now handling, run history/retry controls, deletion dependency flows, backup export/file-chooser/review, feedback offline gating and mocked-service failure draft retention. No live feedback was sent by this test. Also reran `npm run test:submission` (120/120) and focused scheduled-answer, task-record, task-status and backup-state Node tests (76/76). These deterministic/browser checks do not reproduce Muse's unavailable per-run failure evidence, verify source-free answers with the real model, prove 300-second real-model partial retention, or test live retry settling. Site source Git did not respond to a read-only `ls-remote` from this Windows environment; its deployment helper stopped before changing Site source or publishing. Public debug Site remains v384; general release remains DO-NOT-SHIP.
