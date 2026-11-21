@@ -47,14 +47,25 @@ function summaryRepeatsRequest(question:string,answer:string,sources:readonly So
  const comparable=(value:string)=>value.normalize('NFKC').replace(/\s+/gu,'').replace(/[。.!！?？]+$/gu,'').toLocaleLowerCase();
  return comparable(answer)===comparable(question)&&!sources.some(source=>comparable(source.quote).includes(comparable(question)));
 }
-function cleanReasoningMarkup(text:string){
+export function cleanReasoningMarkup(text:string){
  // A GGUF chat template can still surface reasoning delimiters even when
  // thinking is disabled in runtime options. Never persist those delimiters
- // in the user-facing dialogue answer. Drop complete or unterminated blocks;
- // a lone closing marker is separated from adjacent prose.
- return text.replace(/<think\b[^>]*>[\s\S]*?(?:<\/think\s*>|$)/giu,'')
-  .replace(/<\/think\s*>/giu,'\n\n').replace(/<think\b[^>]*>/giu,'')
-  .replace(/[ \t]{2,}/gu,' ').replace(/[ \t]+\n/gu,'\n').replace(/\n{2,}[ \t]+/gu,'\n\n').replace(/\n{3,}/gu,'\n\n').trim();
+ // in the user-facing answer. An orphan closing marker is a boundary between
+ // surrounding prose; callers with a stricter output contract may apply a
+ // specialized policy. Unterminated opening blocks are discarded.
+ let output='',cursor=0,inThinking=false;
+ const marker=/<think\b[^>]*>|<\/think\s*>/giu;
+ for(const match of text.matchAll(marker)){
+  const value=match[0],index=match.index!;
+  if(value.toLowerCase().startsWith('<think')){
+   if(!inThinking)output+=text.slice(cursor,index);
+   inThinking=true;
+  }else if(inThinking)inThinking=false;
+  else output+=text.slice(cursor,index)+'\n\n';
+  cursor=index+value.length;
+ }
+ if(!inThinking)output+=text.slice(cursor);
+ return output.replace(/[ \t]{2,}/gu,' ').replace(/[ \t]+\n/gu,'\n').replace(/\n{2,}[ \t]+/gu,'\n\n').replace(/\n{3,}/gu,'\n\n').trim();
 }
 async function continueDialogue(engine:TextRuntime,messages:{role:string;content:string}[],initial:GenerationResult,segmentBudget:number,totalBudget:number,check:()=>void,onPreview?:(text:string)=>void){
  checkRepeatedOutput(initial.text);const parts=[initial.text];let result=initial,currentBudget=segmentBudget,spent=Math.min(totalBudget,segmentBudget);

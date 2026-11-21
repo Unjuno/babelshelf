@@ -31,6 +31,18 @@ test('scheduled public-capital questions answer directly in English and French w
   assert.equal(result.answer,answer);assert.deepEqual(result.sources,[]);assert.equal(generations,1);
  }
 });
+test('scheduled prose discards duplicated reasoning around an orphan delimiter',async()=>{
+ const prompt='What is the capital of France?',final='The capital of France is Paris.',engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async()=>({text:final+'</think>'+final,finishReason:'stop',outputTokens:16})};
+ const store={all:async()=>{throw Error('A source-free schedule must not read Memory');},search:async()=>{throw Error('A source-free schedule must not search Memory');}};
+ const result=await executeScheduledAnswer({store,models:{text:async()=>engine}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
+ assert.equal(result.answer,final);assert.deepEqual(result.sources,[]);
+});
+test('scheduled prose preserves distinct prose around an orphan reasoning delimiter',async()=>{
+ const prompt='Describe the situation.',prefix='One relevant fact.',final='Here is the requested answer.';
+ const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async()=>({text:prefix+'</think>'+final,finishReason:'stop',outputTokens:16})};
+ const result=await executeScheduledAnswer({store:{all:async()=>[],search:async()=>[]},models:{text:async()=>engine}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
+ assert.equal(result.answer,`${prefix}\n\n${final}`);
+});
 test('decorated arithmetic remains a complete local calculation request',()=>{
  for(const prompt of ['🧮 3 + 4 &','🔢 3+4 &']){
   assert.deepEqual(explicitCalculationInput(prompt),{expression:prompt.includes('3 + 4')?'3 + 4':'3+4',showExpression:false});
