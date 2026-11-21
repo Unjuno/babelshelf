@@ -1,17 +1,23 @@
-## Current status · 2026-11-21
+## Current status · 2026-11-22
 
-Latest local candidate: build `b1a23f2fd12b9f98` (168 verified assets). The
-`npm run test:quality` workflow exited 0 on this app build: root 285/285,
-prototype 2,098/2,098 during the workflow, app acceptance 9/9, editor 28/28,
-review store 6/6, offline calculation 1/1, working-file 2/2, Help 1/1, tools
-16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8
-each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 26/26,
-Settings 34/34, editorial 38/38, and iOS-handoff UI Chromium/WebKit 38/38 each;
-app update 3/3, offline process and installed PWA passed. After the workflow, a
-diagnostic assertion was added to the scheduled-answer test; the complete
-prototype suite then passed 2,099/2,099 and the focused schedule suite passed
-20/20. `npm run check` and the app build passed. The final test-only change does
-not alter build `b1a23f2fd12b9f98`.
+Latest local candidate: source baseline HEAD `964778a1e8ec4ce1c770ad0d645065094ba95c5e` with uncommitted changes, build `a3549c629588495e` (168 verified assets; main bundle `index-CWBPmADs.js`). This candidate passed the complete `npm run test:quality` workflow: root 286/286, prototype 2,106/2,106, app acceptance 9/9, editor 28/28, review store 6/6, offline calculation 1/1, working file 2/2, Help 1/1, tools 16/16, Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each, device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 27/27, Settings 37/37, editorial 38/38, handoff Chromium/WebKit 38/38 each, app update/recovery 3/3, startup storage 1/1, offline process and installed PWA passed. `npm run check`, `npm run build:app`, and `git diff --check` also passed.
+
+The public debug Site remains v384 for Muse and serves prior build `b492f04c696e4119` / `index-OAqy6WQA.js`; local candidate `a3549c629588495e` has not been published or pushed to product GitHub. The schedule-definition deletion impact warning was reproduced on v383, fixed locally, covered by Schedule/Memory/Toast 27/27, and deployed in v384. Site v384 is a debugging candidate only; general release remains DO-NOT-SHIP.
+
+On v384 in the existing side-panel browser, loaded built-in Decision `Open d1 · 600M · Text decision` on WebGPU, then switched back to the LFM3 Text model; role residency evicted and reloaded as designed. An ambiguous LFM3 request with Decision selected still ran the native tool planner instead of Decision classification: no `Decide` phase, 8 Select-action attempts, 30,737 prompt tokens, 893 generated tokens, 192.6 seconds and 7 tool calls before Stop. Code inspection confirms native-tool-call LFM3 explicitly bypasses the optional Decision classifier. Added a Models-screen disclosure and a regression test; Settings passed 37/37. This clarifies the supported routing contract but does not prove Decision inference on a compatible JSON-planner model or fix the observed long tool loop.
+
+The current full-quality pass is deterministic PC/browser evidence, not full real-model or device acceptance. In the side-panel browser on v384, the existing LFM3 Q4 model was already present; after a local verify/load it ran on GPU (25/25 layers). A manual rerun of the existing `say hello briefly` schedule returned `Hello! How can I help you today?` in 10 seconds, with 1 model call and no recovery. A later explicit D1 preparation downloaded 405.9 MB of weights plus a 27.4 MB runtime, verified the files, and loaded Decision as `Loaded · webgpu`; Text changed to `Unloaded`. Loading Text restored `Loaded · GPU active` and left Decision unloaded/loadable, confirming role-switch eviction and reload in this browser. With D1 selected and loaded, an explicit note request bypassed Decision and produced `Saved · Inbox/TANGERINE-5842.md` rather than the requested title; a factual question took the direct Text answer path. An ambiguous follow-up request produced no `Decide`/`decision.classify` phase: LFM3 Text `Select action`/search/list-folder work repeated to 8 attempts, 30,737 prompt tokens, 893 generated tokens, 192.6 s generation and 7 tool calls before manual Stop; the draft was restored. Code inspection explains the bypass: built-in LFM3 registers `native-tool-calls`, and `decisionMayRouteRequest` excludes that protocol. This is intentional architecture, but the UI did not disclose the limitation; added a visible Models notice and regression (focused test 1/1 passed). Decision inference remains unverified on a compatible JSON-planner model. Decision selection was restored to `Not configured`, Text was reloaded to GPU, and the test note was moved to Trash (recoverable); downloaded D1 assets remain in the local browser profile. This is one successful current-candidate schedule replay, not a resolution of Muse's intermittent failures. The exact failed schedule prompt and per-run Activity/answer were not retained, so that failure cannot be replayed exactly. Open gates include source-free schedule answer correctness, verified Decision inference/result correctness, real 300-second partial-answer retention, Muse-specific backup and feedback failure reproduction, constrained-profile Q4 acquisition and physical iPhone acceptance. One synthetic QA feedback row remains in the development D1 database; one isolated backup restore succeeded. These do not explain Muse's repeated failures. No product-source push or merge to `Unjuno/babelshelf` was made; Site source is a separate repository.
+The startup path now bounds both normal and recovery IndexedDB opens. A pending
+database open displays a recovery page after 15 seconds, closes a connection
+that succeeds late, and does not delete or reset saved data. This resolves the
+known indefinite database-open wait in focused deterministic and browser tests.
+It does not explain the separate intermittent WebKit batch failure seen once:
+trace showed all app resources returned HTTP 200, the page briefly rendered the
+storage gate, then the React root became empty. No console/page error or failed
+request appeared in that isolated trace; the same case passed three times
+alone and the complete 38-test WebKit handoff then passed. Keep this recorded as
+an intermittent risk until further runs establish stability. See the latest
+dated entry in [TEST-RESULTS.txt](TEST-RESULTS.txt).
 
 This candidate routes source-free scheduled requests through bounded plain-text
 answering, retains source-backed schedules on the evidence-aware path, rejects
@@ -23,28 +29,182 @@ historical caches; isolated update, offline process and installed-PWA acceptance
 all passed on this build. The side-panel Chrome page also showed the expected
 visible Search runtime failure when runtime files were not prepared.
 
-Release remains DO-NOT-SHIP. No current-candidate real-model generation could be
-run: the preserved local Chrome context has a partial LFM3 Q4 file of
-989,855,744 bytes, reports `QuotaExceededError` during preparation despite a
-10.7 GB `navigator.storage.estimate()` availability estimate, and shows Text
-model `Not prepared`. The storage layer enforcing the effective write ceiling
-is unidentified. Existing model/OPFS data and browser profiles were not cleared
+Release remains DO-NOT-SHIP for general release. No real-model generation was
+run on the exact local candidate in the preserved isolated profile: its partial
+LFM3 Q4 file is
+989,855,744 bytes, preparation returned `QuotaExceededError` despite a 10.7 GB
+`navigator.storage.estimate()` availability estimate, and the quota-enforcing
+layer is unknown. Before the v382 debug deployment, the public side-panel app
+in an existing Windows Chrome profile had the exact pinned Q4 asset already
+present, passed Verify, loaded as `GPU active`, and answered `4` in a new chat;
+this did not exercise a new download or the local candidate. Thus Q4 is not
+generally unsavable, but first-acquisition reliability in constrained profiles
+remains open. That pre-v382 public profile showed active worker
+`4844b1b70599ee68` and page bundle `index-BNrCVlks`. Existing model/OPFS data and browser profiles were not cleared
 or deleted. The iPhone was unavailable; `phoneuse status` showed HID active but
 Bluetooth disconnected and screen mirroring stopped. Therefore physical iPhone,
-CPU/WASM schedule replay, real-model schedule quality, feedback POST delivery,
+CPU/WASM schedule replay, real-model schedule quality, Muse-specific feedback
+failure reproduction,
 production prepared-model transfer accounting, public-client adoption and the
-reported 25-item Trash graph remain open. No Site deployment was made. The
-verified GitHub source branch and deployment decision are recorded separately;
-older dated observations below remain tied to their stated builds. PR
+reported 25-item Trash graph remain open. At the user's request, Site v383 was
+deployed as a public debugging candidate for Muse; its public `build.json`
+matches the candidate exactly. This does not close those gates or change the
+DO-NOT-SHIP assessment. The Site source repository is separate from the product
+GitHub repo; no product-repo source push or PR was made in this deployment.
+Older dated observations below remain tied to their stated builds. PR
 [#111](https://github.com/Unjuno/babelshelf/pull/111) was merged to `main` as
 `d4583efe9ffa8ed4b2b70d2cab13166ed6f47b9a` after its exact-head quality run
 passed. The post-merge `main` run
 [#44882483220](https://github.com/Unjuno/babelshelf/actions/runs/44882483220)
-also passed all stages in 13m50s. This updates source and CI only; it does not
-close the model, physical-device, or schedule-quality gates and does not
-authorize deployment of this candidate.
+also passed all stages in 13m50s. This updates product source and CI only; it
+does not close the model, physical-device, or schedule-quality gates.
 
-### Latest follow-up · 2026-11-21
+### Debug deployment · Site v382 · 2026-11-22 JST
+
+At the user's request, the exact local candidate build `e856b3e336bc171e` (168
+verified assets) was deployed to the existing public BabelShelf Site so Muse
+could audit it. The Site version is 382; its Site-source repository commit is
+`39d5ef26f248995dc07746b54399ce552b4ec009` on that repository's `main` branch.
+The saved version is
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_a3375b5978c88191878048ddc3301439`
+and the successful production deployment is
+`appgdep_6b01c024872481918118124c1070e650`. The current public custom URL
+remains [https://babelshelf.com](https://babelshelf.com).
+
+Before saving, the Site staging script copied `design/prototype/dist/app`,
+retained current and previous build assets, and the delivery verifier confirmed
+ONNX WASM gzip/identity bytes, method handling, offline-shell byte
+identity/headers, and mutable-shell cache policy. The Sites deployment returned
+`succeeded`. In the side-panel browser, the normal app Update flow was invoked;
+Settings → More → Developer then showed active worker `e856b3e336bc171e` and
+page bundle `index-CN26EzvF`. The saved Developer report was marked as belonging
+to another build and was not treated as current evidence.
+
+This is a public debugging deployment, not a release-gate pass. The P0 gates
+for constrained-profile Q4 acquisition, current-candidate real-model and
+schedule acceptance, and physical-device behavior remain open. No product
+source was pushed to `Unjuno/babelshelf`, no PR or merge was made, and no
+candidate real-model inference was run during this deployment.
+
+### Audit 18 follow-up · local changes · 2026-11-22 JST
+
+Muse confirmed that schedule-answer behavior depends on whether supporting
+Memory exists: the same France-capital prompt failed without a note (0/3) and
+passed with a note, while greetings and `3+3` also failed. The current source
+already routes a bounded set of source-free prompts and explicit calculations
+away from Memory search; deterministic schedule tests cover those cases, but
+they do not explain the conflicting live observation. The exact failed
+France-capital prompt was not recorded; routing now also strips a bounded
+trailing instruction such as “Reply in one short sentence” before classifying
+the capital question. A focused regression passes, but this is not proof that
+it matches Muse's prompt. The schedule editor now
+discloses that schedules do not browse the web and that personal-record prompts
+need matching Memory sources. The focused schedule browser test passed, and this
+candidate is included in public debug Site v383; it is not general-release
+acceptance.
+
+The backup Restore button was exercised through the normal file chooser on the
+live v383 Site in an isolated browser profile. A 29-record archive was
+exported, its synthetic QA note was removed from the isolated database, then
+`Restore new` committed that note; its body token was read back successfully.
+The test note and Trash entry were then removed. One existing-record conflict
+was reported and kept. This verifies a normal single-new-file restore, but does
+not reproduce Muse's 8/8 no-response or cover all restore conflict scopes.
+The deployed feedback Worker answered the synthetic QA POST with HTTP 201 and
+the UI reported `Sent · saved for product development`. A narrow read-only
+remote D1 query found the matching synthetic row (`category=bug`,
+`app_build=NULL`); this expected row remains in the development database.
+This confirms one valid feedback delivery, not the auditor's specific failures
+or all error cases. The UI keeps a failed draft and surfaces an HTTP
+status/service error code; a browser test with a mocked 503 passed.
+Decision/Text eviction is the current explicit
+memory-protection policy; Decision model load/use still lacks current real-model
+acceptance. When generation fails after streaming prose, the latest preview is
+now saved as a dialogue answer marked `Partial · not verified`; explicit Stop
+does not retain partial text. This has a deterministic workflow regression,
+and `npm run test:submission` passes 119/119. After a schedule run settles, the
+action sheet now reports its completion/error and explains why Run now remains
+disabled until the sheet is reopened; the repeated-run browser test passes. A
+real 300-second model timeout and live post-run behavior have not been repeated.
+At first these product changes were local; the candidate was later published
+as debug-only Site v383 described below. The follow-up live-browser restore
+and feedback checks above were run against v383. This does not mean a P0
+real-model gate passed.
+
+### Muse Audit 18 report · Site v383 · 2026-11-22 JST
+
+Muse reports (and confirms that the exact prompt and per-run record were not retained) the France-capital schedule failed 0/3 without a Memory note and
+succeeded with a note containing `Paris is the capital of France.`; a separate
+PLUM-4821 note-reference prompt also succeeded. Greetings and `3+3` failed.
+This supports the observed distinction between source-grounded and
+source-free runs, but the exact France prompt text is unknown, so the reported
+source-free classifier path cannot yet be reproduced from the audit record.
+The candidate already warns that schedules do not browse and that
+personal-record requests need matching Memory. Do not change evidence
+validation or route heuristics solely to match an unrecorded prompt.
+
+The following candidate fixes were confirmed by synthetic/local tests only,
+not by Muse's live-model run: update preserves the prepared model; a second
+Run now tap is ignored; Search model Prepare and standalone Prepare text model
+respond; Once schedules turn off after success; Restore defaults warns that
+Online becomes Offline. Schedule source-free real-model correctness remains
+unresolved. Backup restore was verified for one isolated new-record case, and
+feedback delivery plus its D1 row were verified with one synthetic QA record;
+broader restore conflict behavior and Muse's reported feedback failure remain
+open. Decision-model execution and Text return, real 300-second partial-answer
+persistence and live post-run retry controls remain open. The active-schedule-definition deletion warning was reproduced on v383 and fixed in v384. Audit 18's prior long-running generation issue and answer/history/
+notification consistency need exact prompt/model/route evidence from v383.
+Muse confirmed the exact failed prompt and per-run Activity/answer candidate were not retained, so the schedule mismatch cannot currently be mapped to an exact route. The general release remains DO-NOT-SHIP.
+
+### Debug deployment · Site v383 · 2026-11-22 JST · build `dd4af0ed569fa915`
+
+At the user's request, the exact local app artifact `dd4af0ed569fa915` (168
+verified assets) was deployed to the existing public BabelShelf Site so Muse
+can test the candidate. Site source commit `c08c7f6465b51849e7c8e4d15cb7c82e16d0dda6`
+was pushed to the Site's separate source repository `main`; product repository
+`Unjuno/babelshelf` was not pushed or merged. Version 383 is saved as
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_0f7c8d4583a08191b6b5dc0dc6fc5dcc`.
+Production deployment `appgdep_6b01e357263c81918f57ef1e2db4325c` returned
+`succeeded`; `get_site` then reported version 383 and live URL
+`https://babelshelf.com`. A direct GET of `/build.json` reported build
+`dd4af0ed569fa915`, 168 assets and `index-COrGjEFZ.js`.
+
+The archive contains 208 files, size 111,790,080 bytes, with content hash
+`sha256:2d199c4a9204340215fe29fab93fca8eb7472f54fd0e79e057208bed30e68202`.
+Before saving, the delivery verifier passed ONNX WASM gzip/identity bytes,
+method handling, offline-shell byte identity/headers and mutable-shell cache
+policy. `release-source.json` records the product base commit
+`964778a1e8ec4ce1c770ad0d645065094ba95c5e`, that the product working tree was
+modified, and purpose `debug-candidate-do-not-ship`; this avoids presenting the
+uncommitted product changes as a GitHub commit. No real-model inference was
+performed after deployment. Q4 first-acquisition, scheduled answer quality,
+Decision execution, feedback delivery, long-generation timeout, physical
+device and other P0 gates remain open. General release remains DO-NOT-SHIP.
+
+### Q4 saved-model verification · 2026-11-21
+
+On public app worker `4844b1b70599ee68` / page bundle `index-BNrCVlks`, the
+side-panel Windows Chrome profile already contained the exact Q4 asset at the
+manifest SHA-256 filename and full 1,049,615,680-byte size. Storage Estimate
+reported quota 11,834,850,882 bytes and usage 1,097,432,642 bytes. Verify
+completed as `Verified`; Load completed as `Loaded · GPU active`; then a new
+conversation returned `4` to `What is 2 + 2? Reply with one digit.` Activity
+recorded 1 model attempt, 300 prompt tokens, 2 generated tokens, 59 ms token
+counting and 11.0 seconds text generation. No model download occurred during
+this verification because the pinned asset was already present. The browser's
+Developer panel also held an older test report, explicitly marked as a
+different build; the acceptance above is from direct interaction on the
+current page, not that report.
+
+This establishes that the default model is valid and can be saved, verified,
+loaded and used in at least one real browser profile. It does not reproduce a
+new download in this profile. Earlier isolated-profile downloads failed with
+`QuotaExceededError` near 0.86–0.99 GB despite about 10.7 GB reported available;
+the app received the browser storage error, but available evidence does not
+identify whether an automation-profile limit or another browser quota caused
+the discrepancy. Retained model partials and user data were not modified.
+
+### Candidate follow-up · b1a23f2fd12b9f98 · 2026-11-21
 
 Final candidate verification (2026-11-21): build `b1a23f2fd12b9f98` contains
 168 verified assets. The exact built app passed the full `npm run test:quality`
@@ -2291,3 +2451,16 @@ WebGPU diagnostic failure classification follow-up (2026-11-03 JST): Developer r
 Developer report handoff follow-up (2026-11-03 JST): the copy-to-Codex guidance now stays platform-neutral and describes offline/force-close evidence according to the reported environment, so a Windows speed sample no longer receives iOS-only instructions. The report remains bounded and excludes prompts, notes, original files, and answer text. Focused report tests passed 14/14, root tests 258/258, prototype tests 1,844/1,844, `npm run check` passed, the production shell verified 165 assets, and product acceptance passed 8/8. No model was loaded and no live performance values were added; Windows model performance still requires a report from Settings → Developer → Performance → Run speed sample.
 
 Audit 12 release follow-up (2026-11-15 JST): merged follow-up PR [#86](https://github.com/Unjuno/babelshelf/pull/86) at `2bb9e56395a83eb75a99b12ce715a877daa81978`. GitHub Actions Local PWA quality [43660367921](https://github.com/Unjuno/babelshelf/actions/runs/43660367921) and a clean local `npm run test:quality` passed. Site version 367 was built from Site source `63d1f6e2e637f79b736dd125819c54823911a3c3`, using app main `2bb9e56395a83eb75a99b12ce715a877daa81978` and build `8be9cde074f77d53`; it deployed successfully to the existing public BabelShelf Site, with `https://babelshelf.com` retained as its live custom URL. The side-panel browser confirmed active worker `8be9cde074f77d53` / bundle `index-NC6p4Uaz.js`. The selected LFM3 model files remained present and runtime was Prepared after the update; Quick reported Model reply Passed without a model download. A real scheduled run of `say hello briefly` completed on that Site build: its execution record and notification both contain `Hello! How can I help you today?`, and no verbatim-source recovery. This closes the reported prompt-copy and Schedule Run now failure for the tested case; it does not establish correctness for every greeting or every prompt shape. Automated transactional tests cover Trash dependency groups, conversation-link removal while preserving message text, and rollback; existing browser Trash records were preserved, so no real-device permanent purge was attempted. The stale model-status retry is local-only and regression-tested, but a Schedule run immediately after a fresh page reload was not separately observed on the deployed build. Other audit-12 readiness findings (first-use explanation, generation-stage progress, raw developer diagnostics, conversation management, and remaining UI consistency issues) are outside these three blockers and remain open for release polish. No iPhone/Android or shared low-resource VM run was performed.
+
+### Audit 18 follow-up · schedule definition deletion disclosure · 2026-11-22 JST
+
+In an isolated Playwright profile on public Site v383, an enabled one-time schedule was created for a future date. Opening Delete from its definition file showed only the filename and did not explain that the schedule would disappear from Schedule; the confirmation was canceled, so no schedule data was deleted. The local change in `Prototype.tsx` explains that moving the definition to Trash removes it from Schedule until restored and that run history/notifications remain separately stored. A Playwright regression covers an enabled definition and cancels the delete.
+
+On exact local build `b8a7e77bba9539e3` (166 verified shell assets; main bundle `index-DVv_Rp-j.js`), the Schedule/Memory/Toast suite passed 27/27, `npm run check` passed, and `npm run build:app` completed. The full `npm run test:quality` workflow was not rerun on this exact candidate. It has not been deployed. The previously published debug Site v383 remains on `dd4af0ed569fa915`.
+
+Muse's Audit 18 follow-up confirms that the precise source-free failed prompt and its per-run Activity/answer candidate are unavailable. The reported no-note France-capital failures (0/3), success with a matching Memory note, greeting failures and arithmetic failures remain valuable observations but cannot be mapped to one exact route/request. No weakening of evidence validation was made based only on that incomplete record. General release remains DO-NOT-SHIP.
+### Debug deployment · Site v384 · 2026-11-22 JST · build `b492f04c696e4119`
+
+At the user's prior request for a Muse debugging candidate, the exact local artifact `b492f04c696e4119` (168 verified assets) was staged and delivered. Site source commit `39c0d75a52545018bb6872fcd95d33c564387a90` was pushed to the separate Site source repository `main`; product GitHub repository `Unjuno/babelshelf` was not pushed or merged. The Site archive SHA-256 is `1d31700fb2d04794b2b80c10d447eb6dbc400c12d0407b207154c61116feba1b` (111,790,080 bytes; 208 files). Version 384 was saved as `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_fc1f2a48241c8191994e91b25560bd08` and production deployment `appgdep_6b01f1eec3708191ad36b7f7f33354c1` succeeded. `get_site` confirms latest version 384 and custom live URL `https://babelshelf.com`; direct GET of `/build.json` confirms build `b492f04c696e4119`, 168 assets and main bundle `index-OAqy6WQA.js`.
+
+Site audience remains public, as before. This is a debug candidate for Muse, not a general release. Real-model schedule correctness, Decision execution/return to Text, the live long-generation timeout, Muse-specific Restore/Feedback failure reproduction, Q4 acquisition in constrained profiles and physical iPhone acceptance remain open. No product-source push/merge was made.

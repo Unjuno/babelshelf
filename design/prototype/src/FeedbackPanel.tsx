@@ -20,9 +20,12 @@ export function FeedbackPanel({onlineMode}:{onlineMode:boolean}){
   setBusy(true);setStatus('Sending…');
   try{
    const response=await fetch(endpoint,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',redirect:'error',headers:{'content-type':'application/json'},body:JSON.stringify({category,message:message.trim(),build:String(import.meta.env.VITE_APP_BUILD??'').slice(0,64)})});
-   if(!response.ok)throw new Error('Feedback service unavailable');
+   if(!response.ok){
+    const code=await response.clone().json().then((value:unknown)=>value&&typeof value==='object'&&'error'in value&&typeof value.error==='string'?value.error:'').catch(()=>'' as string);
+    throw new Error(`Feedback service returned ${response.status}${code?` · ${code}`:''}`);
+   }
    setMessage('');setStatus('Sent · saved for product development');
-  }catch{setStatus('Could not send · try again when online');}
+  }catch(error){const detail=error instanceof Error&&error.message.startsWith('Feedback service returned ')?` · ${error.message}`:'';setStatus(`Could not send${detail} · check the connection and retry`);}
   finally{setBusy(false);}
  }
 

@@ -4,6 +4,28 @@ import assert from 'node:assert/strict';
 import {KnowledgeStore} from '../src/knowledge-store.ts';
 import {isDBClosed} from '../../../dist/storage.js';
 import {makePendingNoteReview,PENDING_NOTE_REVIEW_STATE} from '../src/pending-note-review.ts';
+import {openDB} from '../../../dist/storage.js';
+
+test('a pending IndexedDB open times out without creating or deleting stored data',async()=>{
+ const previous=globalThis.indexedDB,request={};let opened=0;
+ globalThis.indexedDB={open(){opened++;return request;}};
+ try{
+  await assert.rejects(openDB('never-settles',10),/did not respond.*saved data was not changed/i);
+  assert.equal(opened,1);
+  let closed=0;request.result={close(){closed++;}};request.onsuccess();
+  assert.equal(closed,1,'a connection that opens after timeout must close immediately');
+ }finally{if(previous===undefined)delete globalThis.indexedDB;else globalThis.indexedDB=previous;}
+});
+
+test('an IndexedDB open resolves normally and a blocked open reports actionable recovery',async()=>{
+ const previous=globalThis.indexedDB,connection={objectStoreNames:{contains:()=>true},addEventListener(){},close(){}};
+ try{
+  globalThis.indexedDB={open(){const request={result:connection};queueMicrotask(()=>request.onsuccess());return request;}};
+  assert.equal(await openDB('opens',100),connection);
+  globalThis.indexedDB={open(){const request={};queueMicrotask(()=>request.onblocked());return request;}};
+  await assert.rejects(openDB('blocked',100),/blocked by another tab.*saved data was not changed/i);
+ }finally{if(previous===undefined)delete globalThis.indexedDB;else globalThis.indexedDB=previous;}
+});
 
 test('KnowledgeStore reopens a version-changed IndexedDB connection and retains committed data',async()=>{
  const name='database-reopen-'+crypto.randomUUID(),store=new KnowledgeStore(name);

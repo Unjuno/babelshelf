@@ -12,6 +12,12 @@ test('reload retains a secondary page and its settings section with the app cont
  await page.reload();await expect(page.getByRole('heading',{name:'Models',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Update app',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^(Online|Offline) · Tap to switch/})).toBeVisible();
 });
 
+test('Decision settings explain when the selected Text model routes actions itself',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
+ const decision=page.locator('[data-model-role="decision"]');
+ await expect(decision).toContainText('The selected Text model chooses actions itself. A Decision model is not used for chat with this Text model.');
+});
+
 test('Restore defaults confirmation explains that connection returns to Offline',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
@@ -107,6 +113,33 @@ test('feedback can be drafted in Settings but cannot be sent while app connectio
  await expect(page.getByRole('button',{name:'Send feedback',exact:true})).toBeDisabled();
  await expect(page.getByRole('status')).toContainText('Connect and turn Online on to send');
  await expect(page.getByText(/Do not include private notes or personal information/)).toBeVisible();
+});
+
+test('feedback keeps the draft and shows the service response when delivery fails',async({page})=>{
+ await page.route('https://babelshelf-feedback-api.unjuno-org.workers.dev/v1/feedback',async route=>{
+  if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'content-type'}});
+  return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'feedback-unavailable'})});
+ });
+ await page.goto('/');
+ const connection=page.getByRole('button',{name:/^(Online|Offline) · Tap to switch/});
+ if((await connection.innerText()).startsWith('Offline'))await connection.click();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Send feedback',exact:true}).click();
+ const message=page.getByRole('textbox',{name:'Feedback message',exact:true});await message.fill('Delivery diagnostic fixture');
+ await page.getByRole('button',{name:'Send feedback',exact:true}).click();
+ await expect(page.locator('section[aria-label="Feedback"]').getByRole('status')).toContainText('503 · feedback-unavailable');
+ await expect(message).toHaveValue('Delivery diagnostic fixture');
+});
+
+test('Restore backup opens a review for an exported local archive',async({page},testInfo)=>{
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Local files',exact:true}).click();
+ const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Export backup',exact:true}).click();
+ const download=await downloadPromise,filePath=testInfo.outputPath('restore-flow.brainpack');await download.saveAs(filePath);
+ const chooserPromise=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();
+ const chooser=await chooserPromise;await chooser.setFiles(filePath);
+ const review=page.getByRole('dialog',{name:'Restore backup?'});await expect(review).toBeVisible();await expect(review).toContainText('records');
+ await review.getByRole('button',{name:'Cancel',exact:true}).click();
 });
 
 test('Connection separates cached app readiness from Home Screen launch mode',async({page})=>{

@@ -55,14 +55,28 @@ export function searchScopeFailure(status:string,question:string,hasFile:boolean
 
 function hasPendingSavedSearch(prior:Dialogue,currentInputs:boolean){const previous=prior.turns.at(-1);return !currentInputs&&previous?.status==='What should I search for?'&&unspecifiedSavedSearch(previous.user);}
 function socialReply(text:string){return /^(?:ありがとう(?:ございます|ございました)?|どうもありがとう|こんにちは|こんばんは|おはよう(?:ございます)?|thank(?:s| you)(?: very much)?|hello|hi|hey)[.!！。]*$/iu.test(text);}
-/** A question explicitly about the immediately preceding user utterance needs
- * that original exchange, not a lossy summary of all earlier conversation. */
+const assistantAnswerQuestion=/^(?:what (?:was|is) (?:the |your )?(?:answer|response|reply) you (?:just )?(?:gave|sent|provided|returned)(?: me)?|what did you (?:just )?(?:answer|reply|respond)(?: to me)?|what was your (?:last|previous) (?:answer|response|reply)|repeat your (?:last|previous) (?:answer|response|reply))[?!.]*$/iu;
+/** Exact answer recall is a local dialogue read; do not spend inference to copy a bounded completed answer. */
+function previousAssistantAnswer(question:string,prior:Dialogue,hasInputs:boolean){
+ const last=prior.turns.at(-1),text=question.trim();
+ if(hasInputs||prior.currentFile||!last?.answer?.trim()||last.answer.length>1000)return null;
+ if(/\b(?:partial|incomplete|interrupted|stopped|failed|error|not enough evidence|timed out|model not prepared)\b/iu.test(last.status??''))return null;
+ const recallQuestion=text.replace(/[.!?]\s+(?:reply|respond|answer)\s+(?:(?:with|in)\s+)?(?:(?:just|only)\s+)?(?:(?:the|a|one|its)\s+)?(?:name|answer|result|value|number|city|phrase|sentence)(?:\s+only)?[.!?]?$/iu,'').trim();
+ if(!assistantAnswerQuestion.test(recallQuestion))return null;
+ if(/\bnumber\b/iu.test(text)&&!/^[+-]?(?:\d+(?:[.,]\d+)?|\d+\/\d+)(?:\s*[%‰])?[.!?]?$/u.test(last.answer.trim()))return null;
+ return {turn:last,index:prior.turns.length-1,answer:last.answer.trim()};
+}
+/** A question explicitly about the immediately preceding exchange needs that
+ * original turn, not a lossy summary or an empty fresh-chat context. */
 function previousUserUtterance(question:string,prior:Dialogue,hasInputs:boolean):DialogueContext|null{
  const last=prior.turns.at(-1),text=question.trim();
  if(hasInputs||!last?.user?.trim()||last.user.length>1000||(last.answer?.length??0)>1000)return null;
  const japanese=/^私が直前に(?:言った|送った|書いた)(?:挨拶|言葉|内容|メッセージ|こと)は何(?:ですか|でしたか)[？?。]?$/u;
  const english=/^what (?:did i (?:just|last) (?:say|send|write)|was my (?:last|previous) message)[?!.]?$/iu;
- return japanese.test(text)||english.test(text)?{summary:'',recent:[last],refs:[],turnCount:1}:null;
+ const answerQuestion=text.replace(/[.!?]\s+(?:reply|respond|answer)\s+(?:(?:with|in)\s+)?(?:(?:just|only)\s+)?(?:(?:the|a|one|its)\s+)?(?:name|answer|result|value|number|city|phrase|sentence)(?:\s+only)?[.!?]?$/iu,'').trim();
+ if(japanese.test(text)||english.test(text))return {summary:'',recent:[last],refs:[],turnCount:1};
+ if(last.answer?.trim()&&assistantAnswerQuestion.test(answerQuestion))return {summary:'',recent:[last],refs:[],turnCount:1};
+ return null;
 }
 export function cancelClarifiedSavedSearch(question:string,prior:Dialogue,currentInputs=false){
  return hasPendingSavedSearch(prior,currentInputs)&&/^(?:キャンセル|取り消し|中止|やめる|やめて|cancel|never mind|nevermind)[。.!！]*$/iu.test(question.trim());
@@ -285,6 +299,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  // request for its entire intent. Keep the full request for the tool planner.
  const literalRequest=requestsLocalSearchReadAnswer(question)||(input.literalRequest as {action?:string}|null)?.action==='search'&&requestsCompoundSearchTask(question)?null:input.literalRequest;
  const socialAfterClarification=!literalRequest&&hasPendingSavedSearch(prior,hasAttachments||hasCurrentInputReadings)&&socialReply(question.trim());
+ const previousAnswer=previousAssistantAnswer(question,prior,hasAttachments||hasCurrentInputReadings);
  const previousUtterance=!literalRequest?previousUserUtterance(question,prior,hasAttachments||hasCurrentInputReadings):null;
  const operationContext=literalRequest?null:earlierOperationContext(prior,question,hasAttachments||hasCurrentInputReadings);
  const noteCapture=literalRequest?null:explicitNewTextCapture(question,hasAttachments||hasCurrentInputReadings);
@@ -303,7 +318,7 @@ export function resolveSubmittedTurnIntent<LiteralRequest>(input:{
  // Optional chaining otherwise produces undefined, which is not a selected route.
  const request=(socialAfterClarification?{action:'chat',query:''}:null)??(previousUtterance?{action:'chat',query:question}:null)??noteCapture??currentCapture??answerRewrite??(operationContext?{action:'chat',query:question}:null)??namedCorrection??fileCorrection??(explicitSavedRequest as LiteralRequest)??(scopeLiteralRequest(literalRequest as {action:string;query:string}|null,hasCurrentInputReadings) as LiteralRequest)??(explicitFileQuestion as LiteralRequest)??inputQuestion??contextIndependent?.request??null;
  const context=socialAfterClarification?priorContext:previousUtterance??operationContext??contextIndependent?.context??priorContext;
- return {literalRequest,explicitSavedRequest,explicitFileQuestion,namedCorrection,sourceFile,inputQuestion,priorContext,contextIndependent,request,context};
+ return {literalRequest,explicitSavedRequest,explicitFileQuestion,namedCorrection,sourceFile,inputQuestion,priorContext,contextIndependent,previousAnswer,request,context};
 }
 export type TurnSelection<Request>={request:Request|null;reason:string};
 export type TurnRoute<Request>=

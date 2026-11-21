@@ -15,6 +15,7 @@ test('short source-free greeting schedules use one prose answer and never inspec
 });
 test('unambiguous public capital questions use source-free prose while personal questions stay grounded',()=>{
  assert.equal(isSourceFreeConversationRequest('What is the capital of France?'),true);
+ assert.equal(isSourceFreeConversationRequest('What is the capital of France? Reply in one short sentence.'),true);
  assert.equal(isSourceFreeConversationRequest('Where is the capital of France?'),true);
  assert.equal(isSourceFreeConversationRequest('Quelle est la capitale de la France ?'),true);
  assert.equal(isSourceFreeConversationRequest('Name the capital of France'),true);
@@ -22,7 +23,7 @@ test('unambiguous public capital questions use source-free prose while personal 
  for(const prompt of ['What time does the workshop start?','What is the capital in my saved note?','What did we decide earlier about France?'])assert.equal(isSourceFreeConversationRequest(prompt),false,prompt);
 });
 test('scheduled public-capital questions answer directly in English and French without searching Memory',async()=>{
- for(const [prompt,answer] of [['What is the capital of France?','Paris'],['Quelle est la capitale de la France ?','Paris']]){
+ for(const [prompt,answer] of [['What is the capital of France?','Paris'],['What is the capital of France? Reply in one short sentence.','Paris'],['Quelle est la capitale de la France ?','Paris']]){
   let generations=0;
   const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{generations++;assert.equal(format,'prose');assert.match(messages.at(-1).content,/capital|capitale/i);return {text:answer,finishReason:'stop',outputTokens:1};}};
   const store={all:async()=>{throw Error('A public-capital schedule must not read Memory');},search:async()=>{throw Error('A public-capital schedule must not search Memory');}};

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planDialogue,contextIndependentConversation} from '../src/dialogue-planner.ts';
 import {nativeFinalPlanTools} from '../src/native-output-format.ts';
-import {groundedAnswer} from '../src/grounded-answer.ts';
+import {dialogueAnswerMessages,groundedAnswer} from '../src/grounded-answer.ts';
 import {dialogueOutputLimits,requestsOneSentence} from '../src/reply-style.ts';
 import {resolveSubmittedTurnIntent,resolveTurnRoute} from '../src/turn-router.ts';
 
@@ -30,6 +30,42 @@ test('standalone general questions bypass unrelated long dialogue and history-co
  for(const question of ['What did we decide about the workshop?','What is in my saved notes?','Please save the current answer as a note.','Delete the old schedule.','What does this file contain?','What is that?','その水を3人で分けると1人何リットルですか？'])assert.equal(contextIndependentConversation(question,[],prior),null,question);
  assert.equal(contextIndependentConversation('Why does sunlight scatter?', [{name:'photo.jpg',kind:'image',status:'Image text not prepared'}],prior),null);
  assert.equal(prior.recent.length,14,'retained dialogue stays unchanged');
+});
+
+test('underspecified advice about an item stays conversational while explicit source inspection still plans',()=>{
+ const prior={summary:'Old tool requests and unrelated dialogue.',recent:Array.from({length:20},(_,index)=>({id:`old-${index}`,user:'Search my notes and save the answer.',answer:'An unrelated saved fact.'})),refs:[],turnCount:40};
+ const advice='I have a note to organize but I am not sure what action is best.';
+ assert.deepEqual(contextIndependentConversation(advice,[],prior),{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}});
+ const routed=resolveSubmittedTurnIntent({question:advice,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:{schema:1,revision:1,turns:prior.recent.map(turn=>({...turn})),compaction:null},attachments:[]});
+ assert.deepEqual(routed.request,{action:'chat',query:''});
+ assert.deepEqual(routed.context,{summary:'',recent:[],refs:[],turnCount:0});
+ for(const question of [
+  'I am not sure what action is best; please read my saved note and advise.',
+  'I am unsure what is best based on the attached file.',
+  'I am not sure which action is best from the previous note.',
+  'Find my saved note and recommend what to do.'
+ ])assert.equal(contextIndependentConversation(question,[],prior),null,question);
+ assert.equal(contextIndependentConversation(advice,[{name:'note.md',kind:'text',status:'Text available'}],prior),null,'an available attachment remains evidence-aware');
+ assert.equal(prior.recent.length,20,'canonical history is not modified');
+});
+
+test('a question about the immediately preceding assistant answer uses that exchange as direct chat context',()=>{
+ const turn={id:'turn-math',user:'What is 2+2? Reply with just the number.',answer:'2'};
+ const prior={schema:1,revision:1,turns:[turn],compaction:null};
+ const question='What was the answer you just gave me? Reply with the number.';
+ const intent=resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]});
+ assert.deepEqual(intent.previousAnswer,{turn,index:0,answer:'2'});
+ assert.deepEqual(intent.request,{action:'chat',query:question});
+ assert.deepEqual(intent.context,{summary:'',recent:[turn],refs:[],turnCount:1});
+ const messages=dialogueAnswerMessages(question,intent.context);
+ assert.ok(messages.some(message=>message.role==='assistant'&&message.content==='2'));
+ assert.equal(messages.at(-1).content,question);
+ for(const followup of ['What did you just answer?','What was your last response? Reply with the answer only.']){
+  const resolved=resolveSubmittedTurnIntent({question:followup,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]});
+  assert.deepEqual(resolved.context,{summary:'',recent:[turn],refs:[],turnCount:1},followup);
+ }
+ const independent=resolveSubmittedTurnIntent({question:'What is the answer to 2+2?',literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior,attachments:[]});
+ assert.deepEqual(independent.context,{summary:'',recent:[],refs:[],turnCount:0},'an independent question does not inherit stale dialogue');
 });
 
 test('plain answer directives bypass long-history planning without consuming file or tool requests',()=>{
