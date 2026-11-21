@@ -155,12 +155,11 @@ test('a repeated Run now tap is absorbed before the schedule actions sheet close
  const run=page.getByRole('button',{name:'Run now',exact:true});await run.dblclick();
  await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
  await expect(run).toBeDisabled();
- await expect(page.getByRole('dialog',{name:'Schedule'}).getByText('Run finished · close and reopen this schedule to run again',{exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Schedule'}).getByText('Run finished · you can run it again shortly',{exact:true})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toBeHidden();
  await expect(run).toBeVisible();
- await page.getByRole('button',{name:'Close',exact:true}).click();
- await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();
- await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
+ await expect(run).toBeEnabled({timeout:3000});
+ await run.click();await page.getByRole('button',{name:'History',exact:true}).click();await expect(page.getByRole('button',{name:/succeeded/})).toHaveCount(2);
 });
 
 test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{
