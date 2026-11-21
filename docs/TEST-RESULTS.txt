@@ -9486,3 +9486,16 @@ This is evidence from the current side-panel browser candidate for the acquisiti
 2026-11-21 JST · Isolated OPFS quota probes · candidate side-panel profile
 
 In the current isolated browser origin, a unique 1 MiB OPFS probe file was written successfully and removed. A separate unique 64 MiB probe using 4 MiB writes returned `QuotaExceededError` after 4 MiB had been written; the exact probe file was removed in `finally`. Storage Estimate returned to the pre-probe 1,025,951,184-byte usage afterward, and the retained Q4 partial remained 989,855,744 bytes. This demonstrates low effective write headroom in this browser origin even though the estimate reports about 10.7 GB. It does not identify the precise quota boundary or enforcing layer. The temporary probes were not user data and were cleaned up; no existing file was removed.
+
+2026-11-21 JST · GitHub merge and post-merge CI · PR #111
+
+PR [#111](https://github.com/Unjuno/babelshelf/pull/111), carrying candidate
+commit `eab84d0be0049c804a662b7f2c7ccd70a30ef2c6`, merged to `main` as
+`d4583efe9ffa8ed4b2b70d2cab13166ed6f47b9a`. Exact-head PR quality run
+[44881375543](https://github.com/Unjuno/babelshelf/actions/runs/44881375543)
+passed; post-merge `main` quality run
+[44882483220](https://github.com/Unjuno/babelshelf/actions/runs/44882483220)
+passed all stages in 13m50s. These runs cover the automated local PWA quality
+workflow. They do not establish current-candidate real-model inference,
+physical iPhone behavior, or unresolved schedule-answer quality. The public
+Site was not deployed; the release remains DO-NOT-SHIP until those gates close.

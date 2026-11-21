@@ -35,7 +35,14 @@ CPU/WASM schedule replay, real-model schedule quality, feedback POST delivery,
 production prepared-model transfer accounting, public-client adoption and the
 reported 25-item Trash graph remain open. No Site deployment was made. The
 verified GitHub source branch and deployment decision are recorded separately;
-older dated observations below remain tied to their stated builds.
+older dated observations below remain tied to their stated builds. PR
+[#111](https://github.com/Unjuno/babelshelf/pull/111) was merged to `main` as
+`d4583efe9ffa8ed4b2b70d2cab13166ed6f47b9a` after its exact-head quality run
+passed. The post-merge `main` run
+[#44882483220](https://github.com/Unjuno/babelshelf/actions/runs/44882483220)
+also passed all stages in 13m50s. This updates source and CI only; it does not
+close the model, physical-device, or schedule-quality gates and does not
+authorize deployment of this candidate.
 
 ### Latest follow-up · 2026-11-21
 
