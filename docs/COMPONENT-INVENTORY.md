@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-22 JST のローカル作業ツリー（source commit `a739a574275cd9abe552fb00642626c1e48e0ceb`、PR #113 head `991fb72e659076fe0247212d2e94e6a4e98e1bd1`、品質確認済み製品ビルド `064f6378b888213a`、168 検証済み資産）を基準にする。PR head の最新文書変更後も GitHub Actions run [44970360642](https://github.com/Unjuno/babelshelf/actions/runs/44970360642) は全段階成功。機能と設計の対応、最適化、検証済みの範囲、未解決事項を同じ表で管理する。公開可否は [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
+2026-11-22 JST のローカル作業ツリー（製品コード commit `a739a574275cd9abe552fb00642626c1e48e0ceb`、PR #113 は open、品質確認済み製品ビルド `064f6378b888213a`、168 検証済み資産）を基準にする。台帳更新前のPR headで GitHub Actions run [44970360642](https://github.com/Unjuno/babelshelf/actions/runs/44970360642) は全段階成功。機能と設計の対応、最適化、検証済みの範囲、未解決事項を同じ表で管理する。公開可否は [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 
