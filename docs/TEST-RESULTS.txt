@@ -2,24 +2,68 @@
 
 The earlier full append-only log is preserved at [the 2026-11-21 archive](history/TEST-RESULTS-2026-11-21-archive.txt); this file now holds the current release snapshot and recent follow-up evidence.
 
-Application source commit `f0c72c671c76c6d02c44eb894ccded0acbe5ffaf`; documentation-only branch HEAD `2e1f21291986912d624bcdc38fa889b5ace89772`, PR #113 open. Build `a3549c629588495e` (168 verified assets;
-bundle `index-CWBPmADs.js`). It passed full `npm run test:quality`: root
-286/286, prototype 2,106/2,106, app acceptance 9/9, editor 28/28, review store
-6/6, offline calculation 1/1, working file 2/2, Help 1/1, tools 16/16,
-Markdown 4/4, hash 1/1, custom tools 38/38, MCP Chromium/WebKit 8/8 each,
-device memory 1/1, inference lock 1/1, Schedule/Memory/Toast 27/27, Settings
-37/37, editorial 38/38, handoff Chromium/WebKit 38/38 each, app update/recovery
-3/3, startup storage 1/1, offline process and installed PWA passed. `npm run
-check`, `npm run build:app`, and `git diff --check` passed. The public debug
-Site remains v384 on prior build `b492f04c696e4119`; this local candidate has
-not been deployed to the public Site. General release remains
-DO-NOT-SHIP.
+Application source commit `a739a574275cd9abe552fb00642626c1e48e0ceb` on
+`codex/nov21-contextual-chat-followup`, PR #113 open. Build
+`064f6378b888213a` (168 verified assets; bundle `index-DOB_F15s.js`) passed
+the full `npm run test:quality` workflow, `npm run check`, and build. Public
+debug Site v385 serves this candidate; exact version/deployment details are in
+the Current status block of `REMAINING-GATES.md`. Audit 19 continued to find
+source-free schedule failures and other open release gates. General release
+remains DO-NOT-SHIP.
 
 The latest change keeps planner/protocol previews out of the assistant-answer
 channel while retaining only plain-text answer-stage previews after a runtime
 failure. Submission/model/schedule tests pass 120/120. The current candidate
 has passed all deterministic and browser quality stages; Audit 18 real-model
 schedule, backup and feedback failures remain unreproduced on this candidate.
+
+### Muse Audit 19 · public Site v385 · 2026-11-22 JST
+
+The auditor confirmed worker `064f6378b888213a` / `index-DOB_F15s.js` three
+times. Correction to the audit-summary line: the two detailed no-note France
+capital runs both failed `Not enough evidence` (0/2); a matching note restored
+the successful result. Greeting failed after 2m41 with
+`The model repeated the schedule prompt`; `3+3` failed immediately with
+`No matching notes`. The exact failed prompts and per-run records were not
+retained. Do not count the earlier summary's claimed France 2/2 as evidence.
+
+Restore backup had no visible response in 4/4 attempts (12/12 cumulative).
+Feedback failed 0/2 with HTTP 405, but the browser POST trace was not retained.
+The configured endpoint returns 405 for GET, 204 for OPTIONS, and 400 for an
+invalid POST; those safe probes do not reproduce the failed user submission.
+No valid feedback report was sent during this follow-up. Models were shown as
+unprepared after each of two updates, followed by a roughly 1,049.6 MB / 7
+minute Q4 reacquisition. Update causation is unknown because there was no
+before-update storage measurement and the prior worker's Repair route failed.
+The 300-second long-chat timeout without partial text recurred. Schedule-delete
+confirmation now warns about the enabled definition, while the subsequent
+operation/toast remains silent. Decision still unloads Text without a Loaded
+status and appears on-screen only for a long failed turn. The reported
+post-run control lock did not recur; controls returned within 37 seconds.
+Schedule is not listed in Memory Home, so its folder is reachable only through
+Schedule UI in this build. General release remains DO-NOT-SHIP.
+
+### Audit 19 correction and Memory navigation · local candidate · 2026-11-22 JST
+
+The France-capital audit result was corrected to 0/2 without a note. To close
+the reported Memory Home gap, `memory-navigation.ts` now lists the protected
+`Schedule` root in Home while retaining its existing entry at Memory root;
+breadcrumb and Home search scope include that root. `node --test
+design/prototype/tests/memory-navigation.test.mjs` passed 3/3. The exact local
+production build is `95335123c7a30b70`, 168 assets, bundle
+`index-CW6wWGKo.js`; the complete `npm run test:quality` workflow exited 0,
+including schedule/Memory/Toast 27/27, Settings 38/38, device handoff
+Chromium/WebKit 38/38 each, app update/recovery 3/3, offline process and
+installed PWA (`pass: true`). The first whole-workflow attempt caught a
+regression where Home exposure removed Schedule from the Memory-root list; the
+filter was corrected to preserve both paths and the second full run passed.
+An extra isolated rerun of the offline working-file test timed out before app
+assertions while waiting for a service-worker controller; the same 16-test
+working-file suite passed in the full production workflow. This local build
+has not yet replaced public Site v385. Schedule-answer quality, Restore
+backup's Muse-specific no-response, feedback POST 405, update/model persistence
+causation, long-chat partial retention and physical-device acceptance remain
+open. No model data or browser profiles were cleared.
 
 On dd4af0, changes include schedule source/web disclosure, explicit
 post-run status, feedback service error details with retained drafts,

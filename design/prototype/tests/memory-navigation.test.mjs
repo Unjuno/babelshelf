@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {memoryBreadcrumbs,memoryFolderEntries,memoryNoteMatchesScope,memoryCreationFolder} from '../src/memory-navigation.ts';
-test('Home shows user locations and root exposes internal locations only on request',()=>{
+test('Home exposes user locations including schedules while root retains other internal locations',()=>{
  const folders=['Inbox','Notes','Notes/work','Schedule','Notifications','Attachments','Tools','Settings'];
- assert.deepEqual(memoryFolderEntries('home','',folders).map(e=>e.label),['Inbox','Notes','Files']);
+ assert.deepEqual(memoryFolderEntries('home','',folders).map(e=>e.label),['Inbox','Notes','Schedule','Files']);
  assert.deepEqual(memoryFolderEntries('root','',folders).map(e=>e.label),['Home','Schedule','Notifications','Tools','Settings']);
  assert.deepEqual(memoryFolderEntries('folder','Notes',folders).map(e=>e.path),['Notes/work']);
 });
 test('breadcrumbs navigate ancestors without changing canonical paths or depth',()=>{
  assert.deepEqual(memoryBreadcrumbs('folder','Notes/work').map(c=>[c.label,c.path]),[['Memory',''],['Home',''],['Notes','Notes'],['work','Notes/work']]);
  assert.deepEqual(memoryBreadcrumbs('folder','Attachments').map(c=>c.label),['Memory','Home','Files']);
- assert.deepEqual(memoryBreadcrumbs('folder','Schedule').map(c=>c.label),['Memory','Schedule']);
+ assert.deepEqual(memoryBreadcrumbs('folder','Schedule').map(c=>c.label),['Memory','Home','Schedule']);
  assert.equal(memoryCreationFolder('home','','file'),'Inbox');
  assert.equal(memoryCreationFolder('home','','folder'),'Notes');
  assert.equal(memoryCreationFolder('folder','Notes/work','file'),'Notes/work');
@@ -18,7 +18,7 @@ test('breadcrumbs navigate ancestors without changing canonical paths or depth',
 test('search scope is global at Memory root, user-only at Home, and recursive inside a folder',()=>{
  assert.equal(memoryNoteMatchesScope('root','','Schedule/2026-10-29.md','meeting'),true);
  assert.equal(memoryNoteMatchesScope('root','','Notes/work/plan.md','meeting'),true);
- assert.equal(memoryNoteMatchesScope('home','','Schedule/2026-10-29.md','meeting'),false);
+ assert.equal(memoryNoteMatchesScope('home','','Schedule/2026-10-29.md','meeting'),true);
  assert.equal(memoryNoteMatchesScope('home','','Notes/work/plan.md','meeting'),true);
  assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/work/plan.md','meeting'),true);
  assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/plan.md',''),true);
