@@ -49,6 +49,16 @@ test('underspecified advice about an item stays conversational while explicit so
  assert.equal(prior.recent.length,20,'canonical history is not modified');
 });
 
+test('advice follow-up about a deictic prior item preserves the bounded dialogue context',()=>{
+ const prior={summary:'We compared the blue and green options.',recent:[{id:'choice',user:'Which option is safer?',answer:'The blue option has the stronger evidence.'}],refs:[],turnCount:1,lastAnswerIndex:1};
+ const question='I am not sure what to do about that option.';
+ const selected=contextIndependentConversation(question,[],prior);
+ assert.deepEqual(selected,{request:{action:'chat',query:''},context:prior});
+ const routed=resolveSubmittedTurnIntent({question,literalRequest:null,hasAttachments:false,hasCurrentInputReadings:false,prior:{schema:1,revision:1,turns:prior.recent,compaction:{through:1,summary:prior.summary}},attachments:[]});
+ assert.deepEqual(routed.request,{action:'chat',query:''});
+ assert.ok(routed.context.summary.includes('blue and green options')||routed.context.recalled?.some(item=>item.quote.includes('blue option')),'the selected dialogue answer remains available to the follow-up');
+});
+
 test('a question about the immediately preceding assistant answer uses that exchange as direct chat context',()=>{
  const turn={id:'turn-math',user:'What is 2+2? Reply with just the number.',answer:'2'};
  const prior={schema:1,revision:1,turns:[turn],compaction:null};

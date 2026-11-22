@@ -27,3 +27,13 @@ test('partial answer origin survives save, backup and markdown export',async()=>
  assert.equal(full.dialogueCopyCoverage,undefined);const later=structuredClone(complete);later.turns[0].status='Partial · incomplete inspection';
  assert.throws(()=>applyKnowledgeChanges([],[],[{id:'later',path:'Inbox/later.md',version:1,history:[],...full}],later),/source changed/i);
 });
+
+test('unverified answer preview remains marked partial when copied to Memory',async()=>{
+ const state=appendTurn(emptyDialogue(),{id:'unverified',user:'Explain the result.',answer:'A partial draft.',status:'Partial · not verified · Runtime failed'});
+ const copy=reviewedDialogueCopy(state,makeAnswerCopyReview(state,'unverified','A partial draft.'),'A partial draft.');
+ assert.equal(copy.dialogueCopyCoverage,'partial');
+ const [note]=applyKnowledgeChanges([],[],[{id:'unverified-note',path:'Inbox/partial.md',version:1,history:[],...copy}],state);
+ assert.equal(projectNote(note).dialogueCopyCoverage,'partial');
+ const backup=await makeStateBackup({notes:[note],settings:[],runs:[]});
+ assert.equal((await parseStateBackup(JSON.stringify(backup))).notes[0].dialogueCopyCoverage,'partial');
+});
