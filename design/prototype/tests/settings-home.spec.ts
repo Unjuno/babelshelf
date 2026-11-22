@@ -142,6 +142,23 @@ test('Restore backup opens a review for an exported local archive',async({page},
  await review.getByRole('button',{name:'Cancel',exact:true}).click();
 });
 
+test('Restore backup imports a saved file into a separate empty profile',async({page,browser},testInfo)=>{
+ const content='Restore round-trip marker R18-7264';
+ await page.goto('/');const appUrl=new URL('/',page.url()).toString();
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Memory',exact:true}).click();await page.getByRole('button',{name:'Open Inbox'}).click();
+ await page.getByRole('button',{name:'New file'}).click();await page.getByRole('textbox',{name:'File name'}).fill('R18 restore round trip');await page.getByRole('textbox',{name:'New file content'}).fill(content);await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('main')).toContainText(content);
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Local files',exact:true}).click();
+ const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Export backup',exact:true}).click();const download=await downloadPromise,filePath=testInfo.outputPath('restore-round-trip.brainpack');await download.saveAs(filePath);
+ const isolated=await browser.newContext();
+ try{
+  const restored=await isolated.newPage();await restored.goto(appUrl);await restored.getByRole('button',{name:'Input',exact:true}).click();await restored.getByRole('menuitem',{name:'Settings',exact:true}).click();await restored.getByRole('button',{name:'Local files',exact:true}).click();
+  const chooserPromise=restored.waitForEvent('filechooser');await restored.getByRole('button',{name:'Restore backup',exact:true}).click();await (await chooserPromise).setFiles(filePath);
+  const review=restored.getByRole('dialog',{name:'Restore backup?'});await expect(review).toBeVisible();await expect(review).toContainText('New · 1 records');const restore=review.getByRole('button',{name:'Restore new',exact:true});await expect(restore).toBeEnabled();await restore.click();
+  await expect(restored.getByRole('status')).toContainText('Restored ·');
+  await restored.getByRole('button',{name:'Input',exact:true}).click();await restored.getByRole('menuitem',{name:'Memory',exact:true}).click();await restored.getByRole('button',{name:'Open Inbox'}).click();await restored.getByRole('button',{name:'Open R18 restore round trip.md',exact:true}).click();await expect(restored.locator('main')).toContainText(content);
+ }finally{await isolated.close();}
+});
+
 test('Connection separates cached app readiness from Home Screen launch mode',async({page})=>{
  await page.goto('/');
  await page.getByRole('button',{name:'Input',exact:true}).click();
