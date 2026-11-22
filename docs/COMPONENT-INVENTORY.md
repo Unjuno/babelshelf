@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-22 JST のローカル作業ツリー（製品コード commit `a739a574275cd9abe552fb00642626c1e48e0ceb`、PR #113 は open、品質確認済み製品ビルド `064f6378b888213a`、168 検証済み資産）を基準にする。台帳更新前のPR headで GitHub Actions run [44970360642](https://github.com/Unjuno/babelshelf/actions/runs/44970360642) は全段階成功。機能と設計の対応、最適化、検証済みの範囲、未解決事項を同じ表で管理する。公開可否は [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
+2026-11-22 JST のローカル作業ツリー（製品コード commit `a739a574275cd9abe552fb00642626c1e48e0ceb`、PR #113 は open、品質確認済み製品ビルド `064f6378b888213a`、168 検証済み資産）を基準にする。Site v385はこのdebug buildを公開中（一般リリース判定はDO-NOT-SHIP）。PR head向けGitHub Actions run [44971814685](https://github.com/Unjuno/babelshelf/actions/runs/44971814685) は全段階成功。機能と設計の対応、最適化、検証済みの範囲、未解決事項を同じ表で管理する。公開可否は [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 
@@ -17,9 +17,9 @@
 | DATA / 保存・履歴・削除 | `knowledge-store.ts`、`memory-trash.ts`、`backup-state.ts`。IndexedDBが正本、Markdownは投影 | 改版時CAS、履歴・withdrawal・原本IDを保持。通常／復旧DBオープンは15秒で失敗を返し、遅れて成立した接続を閉じる | **PARTIAL** — DB境界試験19/19、未応答DB回復画面はChromium/WebKit各1/1。別プロファイルへのBackup `Restore new` UI往復を追加しSettings 38/38・全品質で合格（ノート1件の本文一致）。Muse報告の8/8無反応は再現しておらず、バックアップ形状/設定競合/原本を含む網羅確認と監査実データ25件の参照照合は未完。実利用者データを消して試験しない |
 | SCHED / スケジュール・通知 | `scheduled-answer.ts`、`task-records.ts`、`ScheduleEditorSheet.tsx`。Run now、予定回、Retry、履歴、アプリ内通知 | 出典不要な質問と根拠が必要な質問を分ける。回答候補・再試行計測を保持。作成時にウェブ非対応とMemory根拠の注意を表示。閉じたPWAでの起動は保証しない | **OPEN / P0** — 合成分岐と作成時説明は自動試験合格。Audit 18のexact prompt/Activityは未保存で再現不能。v384でQ4をGPU 25/25層ロード後、`say hello briefly` は1回10秒で正常回答したが単一成功に留まる。CPU/WASM・実モデルのanswer/run/history/notification整合は未受入。Schedule/Memory UI 27/27、Run now二度押し防止とterminal後の同sheet再実行を含むPC操作試験は合格。ソース不要の実回答品質・失敗記録保持は未解決。定義削除警告はv384に反映済み |
 | TOOL / Decision・ツール | `agent-coordinator.ts`、`decision-routing.ts`、`custom-tool-runtime.ts`。組込・承認付き操作・隔離QuickJS | 宣言済みローカル能力だけを公開。コード、時間、出力、呼出回数に上限。DecisionとTextは別ロール | **PARTIAL** — QuickJS 38/38、MCP browser Chromium/WebKit 8/8。実ブラウザでD1準備・WebGPUロードとTextへの役割切替を確認。ただしLFM3 `native-tool-calls` はDecision分類を迂回する設計で、設定説明を追加。互換JSON-plannerでのDecision実推論と曖昧依頼の正しい結果は未受入 |
-| PWA / 起動・更新・接続 | `scripts/build-product.mjs` とService Worker。検証済みシェルを明示準備・修復・更新し、オンライン状態を別管理 | ハッシュ付きアセット、履歴キャッシュ、モデル保存とシェル更新を分離 | **PARTIAL** — 現ローカル候補の更新・起動回復・オフライン・インストール済みPWAの自動受入合格。debug Site v384は前の候補のまま。実モデルと実機の受入は未完 |
+| PWA / 起動・更新・接続 | `scripts/build-product.mjs` とService Worker。検証済みシェルを明示準備・修復・更新し、オンライン状態を別管理 | ハッシュ付きアセット、履歴キャッシュ、モデル保存とシェル更新を分離 | **PARTIAL** — build 064をdebug Site v385として公開、更新・起動回復・オフライン・インストール済みPWAの自動受入合格。実モデルと実機の受入は未完 |
 | DIAG / 診断・進捗 | `device-diagnostics.ts`、`LiveTextWork.tsx`、`inference-measurements.ts`。ロード、入力処理、生成、停止を記録 | 実測値を表示し、計測不能とゼロを区別。端末検査記録をローカル保存 | **PARTIAL** — Check device、更新中操作、実行状態のUI検査合格。handoff Chromium/WebKit 38/38。WebKitの旧root消失traceは原因未特定だが、今回の全品質runで再現なし。物理iPhone/Androidは未検証 |
-| EXT / フィードバック・公開 | `FeedbackPanel.tsx`、`feedback-api/src/index.mjs`。利用者の明示送信。GitHub CIとSite配布を別工程化 | 入力サイズ制限、受信側検証、失敗時のHTTP/service error提示。候補アセットのビルドID・ハッシュを記録 | **PARTIAL** — Site v383隔離profileから合成QA feedbackを実送信しHTTP 201、UI成功表示、限定D1読取で行を確認。合成行1件は残存。mocked 503 UIではdraft保持。Muse報告の失敗は環境/記録不足で未再現。Site v384はdebug候補で一般リリースP0は未完 |
+| EXT / フィードバック・公開 | `FeedbackPanel.tsx`、`feedback-api/src/index.mjs`。利用者の明示送信。GitHub CIとSite配布を別工程化 | 入力サイズ制限、受信側検証、失敗時のHTTP/service error提示。候補アセットのビルドID・ハッシュを記録 | **PARTIAL** — Site v383隔離profileから合成QA feedbackを実送信しHTTP 201、UI成功表示、限定D1読取で行を確認。合成行1件は残存。mocked 503 UIではdraft保持。Muse報告の失敗は環境/記録不足で未再現。Site v385はdebug候補で一般リリースP0は未完 |
 
 ## 不具合・リリースゲート一覧
 
@@ -31,7 +31,7 @@
 | P1 | スケジュール作成時に根拠・ウェブ非対応の説明がない | **候補へ反映済み** — editorにMemory根拠とブラウジング不可の説明を追加、focused browser test合格。実モデルの失敗傾向は未解決 | 現行Siteでプロンプト別の適格性・説明を確認し、根拠不要/必要の動作を実モデル検証 |
 | P1 | Restore backup がブラウザから開始できない | **通常の復元UIは追加確認済み** — v383隔離Chromiumの既存試験に加え、build 064で別の空プロファイルへQAノートを`Restore new`し、本文一致をSettings 38/38・全品質で確認 | Museの8/8無反応は依然として再現不能。設定競合・originals・他のバックアップ形式/サイズでrestore scopeを検証 |
 | P1 | Send feedback がオンラインでも失敗する | **v383実送信・D1保存確認済み** — 隔離Chromiumから合成QA記録を明示送信、API HTTP 201、UI `Sent · saved for product development`。読み取り専用D1照会で該当行を確認。合成行1件は開発DBに残存 | Muse環境で失敗ケースを分類し直す。API障害時のdraft保持とHTTP/service code表示はfocused 503試験済み |
-| P1 | 有効スケジュール定義ファイルの削除時に影響が無告知 | **公開v383で再現、修正・debug v384公開** — 隔離profileで有効な一回予定を作成し、削除確認に影響説明がないことを確認。操作はキャンセル。ローカル候補のSchedule/Memory/Toast 27/27とfull quality合格 | Site v384で公開済み。Museに対象ビルドを確認して再監査依頼 |
+| P1 | 有効スケジュール定義ファイルの削除時に影響が無告知 | **公開v383で再現、修正済み** — 隔離profileで有効な一回予定を作成し、削除確認に影響説明がないことを確認。操作はキャンセル。ローカル候補のSchedule/Memory/Toast 27/27とfull quality合格 | 修正はdebug v384に含まれ、引き続きv385で公開中。一般リリースはP0未解決のため保留 |
 | P1 | 長時間生成失敗時に部分回答が残らない | **コード修正済み、実モデル未確認** — 失敗後は非空previewを`Partial · not verified`として保存。Memoryへコピーした場合もpartial provenanceを保ち、Stop時は未確定previewを確定扱いしない。workflow/copy regressions追加 | 実モデルの300秒timeoutで部分テキスト・状態が保持されること、再試行で履歴を保持することを確認 |
 | P1 | Decision/Text切替とDecision実行結果が分かりにくい | **一部は設計どおり、受入未完** — 単一モデルのメモリ保護で他ロールを解放。実モデルによるDecision選択・ロード・活動表示は未確認 | 対象端末でTextを解放してDecision実行後、Textを再取得し、経路/進捗/結果を実モデルで確認。二重常駐を無条件に有効化しない |
 | P1 | スケジュール完了後の Retry/Run now 状態が遅れて更新される | **PCブラウザUI試験合格、実モデル未確認** — same-sheetでRun now二度押しを抑止し、約600msのsettle後に再実行可能。2行の成功履歴を確認 | 実モデルの成功・失敗・停止・Retry後に一覧、活性、履歴、通知の状態が一致することを現行Siteで確認 |
