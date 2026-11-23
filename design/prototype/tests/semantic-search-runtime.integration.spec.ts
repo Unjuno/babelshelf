@@ -25,6 +25,8 @@ test('pinned multilingual Search model indexes saved notes and retrieves a Japan
   const runtime=createSemanticSearchRuntime({views:async()=>[
    {id:'meeting-location',path:'Inbox/meeting-location.md',body:'Meeting logistics: everyone will convene beside the north entrance of the main railway station.',version:1},
    {id:'lunch-menu',path:'Inbox/lunch-menu.md',body:'The lunch menu includes noodles, green tea and seasonal fruit.',version:1},
+   {id:'secret-quokka',path:'Inbox/secret-quokka.md',body:'The secret word is QUOKKA.',version:1},
+   {id:'secret-blueberry',path:'Inbox/secret-blueberry.md',body:'The secret word is BLUEBERRY.',version:1},
   ]},'granite-embedding-97m-multilingual-r2-onnx');
   const signal=new AbortController().signal;let lastProgress='';
   const events=(_type:string,value:unknown)=>{const next=typeof value==='string'?value:JSON.stringify(value);if(next!==lastProgress){lastProgress=next;void (window as any).reportSemanticProgress(next);}};
@@ -33,14 +35,21 @@ test('pinned multilingual Search model indexes saved notes and retrieves a Japan
    await runtime.prepareModel(true,[],signal,events);
    const loaded=await runtime.load(signal,events);
    const indexed=await runtime.index(signal,events);
-   const query='会議の集合場所は駅のどの入口ですか？',runs=[];
-   for(let attempt=0;attempt<4;attempt++)runs.push((await runtime.search(query,12,signal,events)).map(hit=>({noteId:hit.noteId,path:hit.path,quote:hit.quote,score:hit.score})));
-   return {loaded,indexed,runs};
+   const serialize=(hits:Awaited<ReturnType<typeof runtime.search>>)=>hits.map(hit=>({noteId:hit.noteId,path:hit.path,quote:hit.quote,score:hit.score}));
+   const paraphraseRuns=[],conflictRuns=[];
+   for(let attempt=0;attempt<4;attempt++){
+    paraphraseRuns.push(serialize(await runtime.search('会議の集合場所は駅のどの入口ですか？',12,signal,events)));
+    conflictRuns.push(serialize(await runtime.search('What is the secret word?',12,signal,events)));
+   }
+   return {loaded,indexed,paraphraseRuns,conflictRuns};
   }finally{await runtime.close();}
  },`/assets/${runtimeAsset}`);
  expect(result.loaded).toMatchObject({model:'granite-embedding-97m-multilingual-r2-onnx',device:'wasm'});
- expect(result.indexed.sources).toBe(2);
- expect(result.runs).toHaveLength(4);
- for(const hits of result.runs){expect(hits[0]?.noteId).toBe('meeting-location');expect(hits[0]?.quote).toContain('north entrance');}
- expect(result.runs.slice(1)).toEqual([result.runs[0],result.runs[0],result.runs[0]]);
+ expect(result.indexed.sources).toBe(4);
+ expect(result.paraphraseRuns).toHaveLength(4);
+ for(const hits of result.paraphraseRuns){expect(hits[0]?.noteId).toBe('meeting-location');expect(hits[0]?.quote).toContain('north entrance');}
+ expect(result.paraphraseRuns.slice(1)).toEqual([result.paraphraseRuns[0],result.paraphraseRuns[0],result.paraphraseRuns[0]]);
+ expect(result.conflictRuns).toHaveLength(4);
+ for(const hits of result.conflictRuns){expect(hits.map(hit=>hit.noteId)).toContain('secret-quokka');expect(hits.map(hit=>hit.noteId)).toContain('secret-blueberry');}
+ expect(result.conflictRuns.slice(1)).toEqual([result.conflictRuns[0],result.conflictRuns[0],result.conflictRuns[0]]);
 });

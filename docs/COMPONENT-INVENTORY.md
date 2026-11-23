@@ -28,8 +28,8 @@
 | P0 | DecisionとカスタムツールのONNX統合経路 | **PARTIAL / graceful fallback added** — 候補 build `37c10d6035042df3` では任意Decisionのload失敗をActivityへ残し、Text plannerへ続行する決定的回帰テストが通過。実Decision ONNX session、Decision分類、custom-tool chat統合は未確認。現workerはbuilt-in D1 Q8をWebGPUへ渡さずWASMを選ぶ | 実モデルでDecisionを選択するJSON-planner構成からcustom-tool dispatchし、session provider/operator、tool call、最終回答と保存記録を確認。失敗時にTextへ継続できることも対象ブラウザで検証。WASM fallbackをWebGPU合格とは報告しない |
 | P0 | 更新後に既定モデルがNot preparedとなり再取得が繰り返される | **原因未確定** — Service Worker更新/repair pathにモデルOPFSを削除する処理なし。Museでは3回連続して未準備と約1GB再DLを観測、更新前の実ファイル存在を記録できず削除は未立証 | 更新前後の隔離PCブラウザでモデルOPFSのサイズ/ハッシュを比較し、UI stateとasset bytesを分離。実転送0・実ファイル保持を確認 |
 | P0 | Backup restoreが対象ブラウザで無反応 | **Muse再現未解決** — 現候補の通常Restore newはブラウザで複数回成功、`Restore new`後に本文一致。16/16監査失敗は対象profileの競合/asset形状/chooser traceがなく未説明 | Muse同型backupでchooser→parse→review→commitを計測。conflicts/originals/settings/runs付き全ケースとエラー表示を検証 |
-| P0 | Memory画面のSearch model設定が検索結果に反映されない | **runtime PASS / UI parity open** — production worker上の実Granite埋め込み検索は日本語言い換えで正しいノートを返し、固定2件corpusの4反復で順位・score・引用が完全一致。実アプリMemory画面のON/OFF対比は未確認 | 現候補のMemory UIで日本語意味検索ON/OFFを対応比較。複数候補、revision変更、folder scope、オフラインを確認 |
-| P0 | 検索候補が揺れて内部source label/矛盾回答へ進む | **固定2件corpusでは安定、実監査corpusは未解決** — 現Search runtimeの同一query・同一corpusを4回検索しIDs/ranks/scores/quotesが一致。Audit20のBLUEBERRY/QUOKKA混在corpusは未再生。現indexはrevision pinで古い引用を破棄する | 固定conflict corpusを実モデルで複数回再生し、候補の選択・矛盾処理を確認。source-label拒否の候補/理由を履歴に残す |
+| P0 | Memory画面のSearch model設定が検索結果に反映されない | **runtime PASS / UI parity open** — production worker上の実Granite埋め込み検索は日本語言い換えで正しいノートを返し、固定4件corpusの4反復で順位・score・引用が完全一致。実アプリMemory画面のON/OFF対比は未確認 | 現候補のMemory UIで日本語意味検索ON/OFFを対応比較。複数候補、revision変更、folder scope、オフラインを確認 |
+| P0 | 検索候補が揺れて内部source label/矛盾回答へ進む | **小規模conflict corpusは安定、実監査corpus/回答検証は未解決** — 4件の固定corpusにQUOKKAとBLUEBERRYを含め、同一queryを4回実検索。候補ID・順位・score・引用が完全一致し、両候補が全反復で返った。過去ノートが増えた実profileと、その後の回答の矛盾処理は未再生 | Muse相当のcorpusと質問で繰返し検索し、候補選択・回答の不確かさ表示とsource-label失敗理由の履歴保存を確認 |
 | P0 | 既定Q4モデルの初回保存がquotaで止まる | **未解決** — 有効なエラー説明と完了範囲保持は実装済み。容量境界を越えて取得できる保証はない | 対象ユーザープロファイルで1,049,615,680 bytes取得、SHA-256検証、モデルロード、実回答まで確認。実効容量制限と空き推定差の再現条件を確定 |
 | P0 | 長い履歴の一般質問が誤操作へ振り分けられる | **自動経路は改善、実モデル未完** — 直接回答への経路と長対話UI試験はある | 現行候補の実モデルで独立質問、文脈追質問、資料質問、明示操作を同じ長い履歴から各検証し、経路と結果が要求に合う |
 | P0 | スケジュールの自由文・挨拶を誤検証／失敗扱いする | **未解決** — 合成テストはある。過去の実モデル監査は不安定 | GPUとCPU/WASMで挨拶、一般知識、記号付き計算、資料根拠を実行し、answer/run/history/notificationが一致。失敗時の候補と理由を残す |
@@ -44,7 +44,7 @@
 | P1 | WebKitでアプリ起動待ちの散発タイムアウト | **間欠リスク** — 最新の全品質runでhandoff 38/38。以前の1 runでtrace上storage gate描画後にrootが空になったが、資産は全て200、console/pageerror/requestfailedなし。isolated 3回と今回の全runは合格。原因未確定 | 再発した場合は別traceで調査し、時間制限やassertionを緩めず安定性を再確認 |
 | P1 | Trashの実データ参照サイクル | **部分確認** — 合成25件のグラフと関連削除は合格 | 監査データを匿名化した同型グラフで定義・Runs・通知・会話参照を確認し、関連項目だけを削除、無関係原本と履歴を保持 |
 | P1 | 削除／改版後の添付チップ整合 | **UI回帰合格、旧データ修復未完** — 消失ファイルは説明・解除できる | 削除、復元、新版作成、別タブ編集後に添付ID/revisionを照合し、古い参照の説明と回復を実ブラウザで確認 |
-| P1 | Search意味検索の実ランタイム | **WASMで小規模反復PASS** — 実Graniteモデルをproduction workerの隔離Chromiumで検証・ロード。固定2件corpusの日本語言い換えqueryで4/4同じmeaning hit・順位・score・引用 | UIの複数query・ON/OFF比較、conflict corpus、改版、scope、オフライン再検索を対応比較 |
+| P1 | Search意味検索の実ランタイム | **WASMで小規模反復PASS** — 実Graniteモデルをproduction workerの隔離Chromiumで検証・ロード。固定4件corpusで日本語言い換えと競合候補queryを各4回実行し、全結果が一致。競合2ノートも毎回返った | UIの複数query・ON/OFF比較、大きなcorpus、改版、scope、オフライン再検索を対応比較 |
 | P1 | iPhone/Android installed PWA | **未検証** — iOS handoff UIはPCで試験済み。Phone Useは接続不可 | 実機の現候補でモデルLoad/Generation、Home Screen起動、オフライン冷間起動、再開後の保存を確認。PC WebKitは代替にしない |
 | P2 | 通知送信・GitHub/Siteへの公開配線 | **未検証** — フィードバックUIのオフライン挙動と本番POST成功は別 | テスト用の明示的な送信でAPIの受信・応答を確認。公開はrelease gate合格後にbuildを照合して実行 |
 
