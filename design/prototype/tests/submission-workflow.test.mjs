@@ -48,6 +48,18 @@ test('native conversational completion reaches Send unchanged with one model gen
  assert.equal(f.reviews.length,0);assert.equal(summarizeTurnWork(f.current().turns.at(-1).activity).measuredModelCalls,1);
 });
 
+test('an explicit previous-answer recall copies the exact completed dialogue answer without inference',async()=>{
+ const f=fixture(),c=createSubmissionController(),prior={id:'math-answer',user:'What is 2+2?',answer:'2',status:'Calculated',refs:[]};
+ await f.services.saveDialogue({...emptyDialogue(),turns:[prior]});
+ const outcome=await c.run(run=>executeSubmission({text:'What was the answer you just gave me? Reply with the number.',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));
+ const turn=f.current().turns.at(-1);assert.equal(turn.answer,'2');assert.equal(turn.status,'Repeated previous answer');
+ assert.deepEqual(turn.readTurn,{turnId:'math-answer',index:0,speaker:'assistant'});
+ assert.ok(turn.activity.some(activity=>activity.tool==='dialogue.read'));
+ assert.equal(turn.activity.some(activity=>activity.tool==='model.load'||activity.tool==='knowledge.answer'),false);
+ assert.equal(f.modelCalls(),0);
+});
+
 test('source metadata is passed to the final answer commit after agent inspection',async()=>{
  for(const stale of [false,true]){
  const f=fixture(),c=createSubmissionController(),original=createNote({path:'Inbox/original.md',body:'Water 17'}),ref={noteId:original.id,revision:1,start:0,end:8,quote:'Water 17'},summary=createNote({path:'Inbox/summary.md',body:'Summary',kind:'generated',sources:[ref]}),records=[original,summary],guards=[];
@@ -646,6 +658,18 @@ test('standalone planning request uses the resident Text model without loading D
  assert.equal(plans,0,'a general planning question does not enter history-biased action selection');assert.equal(answers,1);assert.equal(decisionLoads,0);assert.equal(decisionCalls,0);assert.equal(f.current().turns.at(-1).answer,'Let us plan the weekly reset.');
 });
 
+test('a Decision ONNX load failure is recorded and falls back to the Text planner',async()=>{
+ const f=fixture(),c=createSubmissionController();let decisionLoads=0,textLoads=0,generations=0;let resident='';
+ f.services.model='json-test';f.services.decisionModel='d1-omni-600M';
+ f.services.bonsai={plannerProtocol:'json',protocolForModel:()=> 'json',loaded:'',busy:false,assets:{'json-test':{filesPresent:true}},manifest:{contextTokens:4096,maxOutputTokens:512,models:[{id:'json-test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),load:async id=>{textLoads++;resident=id;return {loaded:id};},get loaded(){return resident;},generate:async()=>{generations++;return generations===1?{text:'{\"action\":\"chat\",\"query\":\"\"}',finishReason:'stop'}:{text:'I can help with questions and local notes.',finishReason:'stop'};},pin(){return this;},stop(){}};
+ f.services.decision={identity:{model:'d1-omni-600M',revision:'r1',inputLimit:4096,scope:'text-only'},enabled:true,ready:true,loaded:false,busy:false,load:async()=>{decisionLoads++;throw Error('GatherBlockQuantized implementation missing at embed/Gather_Q4');},unload:async()=>{},classify:async()=>{throw Error('Decision must not classify after a failed load');}};
+ f.services.ensureProductRuntime=async()=>{};f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ const outcome=await c.run(run=>executeSubmission({text:'I need advice.',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));assert.equal(decisionLoads,1);assert.ok(textLoads>=1);assert.equal(generations,2);
+ const turn=f.current().turns.at(-1);assert.equal(turn.answer,'I can help with questions and local notes.');
+ assert.ok(turn.activity.some(activity=>activity.tool==='decision.load'&&activity.status==='failed'),'the Decision load failure remains in Activity');
+});
+
 test('literal new-note prose is saved exactly without model acquisition, even when another file is open',async()=>{
  const f=fixture(),c=createSubmissionController();await f.services.saveDialogue({...f.current(),currentFile:{noteId:'existing',revision:2}});
  const outcome=await c.run(run=>executeSubmission({text:'QA星見の持ち物は水と充電器。メモして。',attachments:[]},f.services,f.view,run));
@@ -752,8 +776,8 @@ test('native search/read replies reach display or note review once, with exact s
    const observed=messages.filter(message=>message.role==='tool');let value;
    if(observed.some(message=>message.name==='memory.read')){
     assert.equal(terminal++,0,'only one terminal reply');
-    onPreview(answer.slice(0,12));
-    assert.equal(c.state.preview,answer.slice(0,12),'preview crosses the application boundary before completion');
+    assert.equal(onPreview,undefined,'planner protocol output is not published as an answer preview');
+    assert.equal(c.state.preview,'','unverified terminal plan text stays private until validated');
     assert.equal(f.current().turns.at(-1).answer,undefined,'partial text is not committed');
     assert.equal(f.reviews.length,0,'partial text cannot become a saved-note proposal');
     const read=JSON.parse(observed.find(message=>message.name==='memory.read').content)[0];assert.equal(read.excerpt,full);assert.equal(read.source,'S2');
@@ -874,8 +898,8 @@ test('native current-file reply is accepted without read-completion inference or
 });
 
 
-test('ordinary prose Send publishes transient previews and clears them on completion or failure',async()=>{
- for(const fail of [false,true]){
+test('ordinary prose Send publishes live previews and preserves failed output as an unverified partial answer',async()=>{
+ for(const failure of [null,'Runtime failed','Stopped']){
   const f=fixture(),c=createSubmissionController();let observed=false,modelCalls=0;
   f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxToolCalls:null,maxResultChars:8000};
   f.services.model='test';
@@ -886,16 +910,30 @@ test('ordinary prose Send publishes transient previews and clears them on comple
    assert.equal(format,'prose','standalone general chat skips an unrelated planner generation');
    onPreview('A short');observed=true;
    assert.equal(c.state.preview,'A short');assert.equal(f.current().turns.at(-1).answer,undefined);
-   if(fail)throw Error('Runtime failed');
+   if(failure)throw Error(failure);
    return {text:'A short story.',finishReason:'stop'};
   },load:async()=>{throw Error('Already loaded');},stop(){}};
   const outcome=await c.run(run=>executeSubmission({text:'Tell me a story.',attachments:[]},f.services,f.view,run));
   assert.equal(modelCalls,1,'a standalone conversation uses one bounded Text answer generation');
   assert.ok(observed,c.state.error);assert.equal(c.state.preview,'');
-  if(fail){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);}
+  if(failure==='Runtime failed'){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,'A short');assert.equal(f.current().turns.at(-1).refs,undefined);assert.match(f.current().turns.at(-1).status,/Partial · not verified · Runtime failed/);}
+  else if(failure==='Stopped'){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);}
   else{assert.equal(outcome,'completed',c.state.error);assert.equal(f.current().turns.at(-1).answer,'A short story.');}
   assert.equal(f.reviews.length,0);
  }
+});
+
+test('failed tool planning never persists its protocol preview as a partial answer',async()=>{
+ const f=fixture(),c=createSubmissionController(),plannerDraft='{"action":"tool","tool":"memory.search","arguments":{"query":"meeting"}}';
+ f.services.activeHarnessProfile={...f.services.activeHarnessProfile,enabledTools:['memory.search'],maxToolCalls:4,maxResultChars:8000};
+ f.services.builtinToolPackages=[{definition:searchDefinition,entry:'Tools/memory.search/tool.ts',sources:[{path:'Tools/memory.search/SKILL.md',body:'Search saved notes.'},{path:'Tools/memory.search/tool.ts',body:'Trusted search.'}],run:searchRun}];
+ f.services.builtinToolRegistry=createToolRegistry(f.services.builtinToolPackages);f.services.model='test';
+ f.services.bonsai={loaded:'test',busy:false,assets:{test:{filesPresent:true}},manifest:{contextTokens:4096,models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async(_messages,_budget,_format,onPreview)=>{if(onPreview)onPreview(plannerDraft);throw Error('Runtime failed');},load:async()=>{throw Error('Already loaded');}};
+ f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ const outcome=await c.run(run=>executeSubmission({text:'Find my saved notes about the meeting and tell me what to do next.',attachments:[]},f.services,f.view,run));
+ assert.notEqual(outcome,'completed');const turn=f.current().turns.at(-1);
+ assert.equal(turn.answer,undefined);assert.match(turn.status,/No matching notes/);assert.equal(c.state.preview,'');
+ assert.equal(JSON.stringify(turn).includes(plannerDraft),false,'planner protocol text is not saved to the dialogue');
 });
 
 // Recalling an answer supplies its words, not fresh inspection of its citations.

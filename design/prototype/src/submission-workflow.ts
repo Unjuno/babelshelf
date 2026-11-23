@@ -109,7 +109,8 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
  const model=snapshot.models.text.id,decisionModel=snapshot.models.decision.id,ocrModel=snapshot.models.ocr,speechModel=snapshot.models.speech,visionModel=snapshot.models.vision,harnessPreferences={replyStyle:snapshot.response.style,userGuidance:snapshot.response.userGuidance};
  const activeHarnessProfile={...serviceHarnessProfile,enabledTools:[...snapshot.harness.enabledTools],maxToolCalls:snapshot.harness.maxToolCalls,maxResultChars:snapshot.harness.maxResultChars,maxGenerationTokens:snapshot.harness.maxGenerationTokens,maxGenerationMs:snapshot.harness.maxGenerationMs};
  const setChatProgress=(value:string)=>run.progress(value);
- let inference:TextRuntime=bonsai,prior=currentDialogue(),activityFailureRecorded=false;
+ let inference:TextRuntime=bonsai,prior=currentDialogue(),activityFailureRecorded=false,lastPreview='';
+ const publishAnswerPreview=(value:string)=>{lastPreview=value;run.preview(value);};
  let deferredContext:(()=>Promise<DialogueContext>)|undefined;
   const submission=createInputSubmission(id,text,items,checkSend);
   const recoverDraft=()=>{const recovered=submission.recover(view.composer());if(recovered)view.restore(recovered);};
@@ -154,6 +155,14 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    if(unspecifiedSavedSearch(text,items.length>0)){await finishTurn(id,{status:'What should I search for?',refs:[]});return {kind:'displayed'};}
    if(cancelClarifiedSavedSearch(text,prior,items.length>0)){await finishTurn(id,{status:'Search cancelled',refs:[]});return {kind:'displayed'};}
    let inputReadings:CurrentInputRef[]=sent.flatMap<CurrentInputRef>(a=>a.reading?[a.reading]:a.status==='Text available'?[{kind:'text',noteId:a.id,revision:1}]:[]);const intent=resolveSubmittedTurnIntent({question:text,literalRequest:localRequest(text.trimStart()),hasAttachments:items.length>0,hasCurrentInputReadings:inputReadings.length>0,prior,attachments:sent.map(({name,kind,status})=>({name,kind,status}))});const {literalRequest,explicitSavedRequest,sourceFile,inputQuestion}=intent;let {request,context}=intent;
+   if(intent.previousAnswer){
+    const selected={target:'history' as const,historyIndex:intent.previousAnswer.index,historyPart:'assistant' as const};
+    const original=await trace('dialogue.read',dialogueTargetInput(prior,selected),async()=>resolveDialogueTarget(prior,selected));checkSend();
+    if(original.turnId!==intent.previousAnswer.turn.id||original.quote!==intent.previousAnswer.answer)throw Error('Previous answer changed · try again');
+    const refs=intent.previousAnswer.turn.refs??[];
+    await finishTurn(id,{answer:original.quote,status:'Repeated previous answer',refs,readTurn:{turnId:original.turnId,index:original.turnIndex,speaker:'assistant'}},refs);
+    return {kind:'answered'};
+   }
    if(!request)request=clarifiedSavedSearch(text,prior,items.length>0);
    if(context.outcomeOnly){await trace('dialogue.read',{scope:'recorded-outcomes',source:'submitted-dialogue-snapshot'},async()=>structuredClone(context.recalled??[]));checkSend();}
    const importedRefs=imported.filter(n=>n.body.length).map(n=>newNoteSourceRef(n));
@@ -194,12 +203,25 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      context=planningContextForInputs({...prepared,refs:[...prepared.refs,...importedRefs]},inputReadings.length>0);}
     }:undefined,
     select:decisionCanRoute?async()=>{
-     await models.decision(checkSend,work=>{setChatProgress('Loading decision model…');return trace('decision.load',decisionAssetInput(false,modelPreferences.customDecisionModels.find(m=>m.id===decisionModel)),work);});
+     try{
+      await models.decision(checkSend,work=>{setChatProgress('Loading decision model…');return trace('decision.load',decisionAssetInput(false,modelPreferences.customDecisionModels.find(m=>m.id===decisionModel)),work);});
+     }catch(error){
+      checkSend();
+      if((error as Error).message==='Decision selection changed')throw error;
+      // Decision is an optional read-only router. Its failed load is already
+      // recorded as a failed activity; continue with Text so a broken optional
+      // ONNX session does not discard the user's entire chat turn.
+      setChatProgress('Decision unavailable · continuing with Text model');
+      return {request:null,reason:'decision-unavailable'};
+     }
      checkSend();setChatProgress('Selecting action…');return routeWithDecision(decision,text,context,descriptors,trace,checkSend);
     }:undefined,
     plan:async()=>{
      setChatProgress(decision.enabled?'Selecting action…':'Text model · selecting action…');
-     const coordinated=await coordinateAgentTurn({onPreview:run.preview,
+     // Planner previews are protocol/action drafts, not user-facing answers.
+     // Only the grounded/plain-text answer stage may publish a retainable
+     // partial preview to the conversation.
+     const coordinated=await coordinateAgentTurn({
       engine:inference,snapshot,model,question:text,context,attachments:descriptors,excludedTools:needsSourcedCalculationReview(text,prior.turns.at(-1))?['math.calculate']:[],
       prepareContext:async allowedTools=>{
        const withInputs=(value:DialogueContext)=>planningContextForInputs({...value,refs:[...value.refs,...importedRefs]},inputReadings.length>0);
@@ -230,7 +252,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
    }
     const scoped=scopeResolvedTurnRequest({request,question:text,literal:!!literalRequest,literalAction:literalRequest?.action,inputs:inputReadings,currentFile:sourceFile??prior.currentFile});
     request=scoped.request;inputReadings=scoped.inputs;const fileBinding=scoped.fileBinding;
-   const actions=()=>createResolvedActions({onPreview:run.preview,store:knowledge,engine:inference,model,question:text,check:checkSend,signal:run.signal,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;},...(modelPreferences.searchModel&&services.semanticSearch?{semanticSearch:services.semanticSearch}:{})});
+   const actions=()=>createResolvedActions({onPreview:publishAnswerPreview,store:knowledge,engine:inference,model,question:text,check:checkSend,signal:run.signal,trace,snapshot:refreshSnapshot,registry:builtinToolRegistry,acquireModel:async()=>{await ensureText('generating');return inference;},...(modelPreferences.searchModel&&services.semanticSearch?{semanticSearch:services.semanticSearch}:{})});
    let selectedFile:any;let workingFile=request?.target==='file'?(sourceFile??prior.currentFile):undefined;
    if(request?.target==='file'){
     if(!workingFile)throw Error('No working file · open a file first');const filePin=workingFile;
@@ -341,5 +363,5 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     const guard=parsed.sources.length&&parsed.sources.every(ref=>ref.groundingEligible!==false)?parsed.sources:undefined;if(parsed.webSources?.length)view.showWebCitations?.(id,parsed.webSources);await finishTurn(id,{answer:parsed.answer,refs:parsed.sources,status:agentBudgetExhausted?'Partial · incomplete inspection':parsed.webSources?.length?'Web citation details are not saved':parsed.recovery==='verbatim-source'?'Source excerpt · partial answer':'answerBudget' in parsed&&parsed.answerBudget?'Limited answer space':request.action==='summary'?'Summary · selected excerpts':undefined},guard,metadataGuards);return {kind:'answered'};}
    await finishTurn(id,{refs:importedRefs,status:items.length&&!text?(items.some(a=>a.reviewedText||a.kind==='text'&&a.text!==undefined)?'Text imported':'Analysis not prepared'):'Model not prepared'});
    return items.length?(sent.every(a=>a.reading||a.voice||a.status==='Text available')?{kind:'imported'}:{kind:'partial',reason:'unread-input'}):{kind:'needsPreparation',reason:'model-unavailable'};
-  }catch(e){try{recordUnclassifiedTurnFailure(diagnostics,connectionPreferences.diagnosticLogs,activityFailureRecorded,e);}catch{/* Diagnostics must never change the operation result. */}recoverDraft();try{if(currentDialogue().turns.some(t=>t.id===id))await finishTurn(id,{status:searchScopeFailure((e as Error).message,text,!!prior.currentFile,items.length>0)});else view.toast((e as Error).message);}catch(failure){view.failure((failure as Error).message);view.toast((failure as Error).message);}throw e;}
+  }catch(e){try{recordUnclassifiedTurnFailure(diagnostics,connectionPreferences.diagnosticLogs,activityFailureRecorded,e);}catch{/* Diagnostics must never change the operation result. */}recoverDraft();try{if(currentDialogue().turns.some(t=>t.id===id)){const failure=searchScopeFailure((e as Error).message,text,!!prior.currentFile,items.length>0),partial=lastPreview.trim()&&(e as Error).message!=='Stopped';await finishTurn(id,partial?{answer:lastPreview,status:'Partial · not verified · '+failure}:{status:failure});}else view.toast((e as Error).message);}catch(failure){view.failure((failure as Error).message);view.toast((failure as Error).message);}throw e;}
 }

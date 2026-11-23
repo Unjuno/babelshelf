@@ -37,7 +37,7 @@ export function selectDialogueCopy(state:Dialogue,review:DialogueCopyReview,inde
 }
 export function dialogueCopyIsPartial(state:Dialogue,source:{turnId:string;turnIndex:number;speaker:string}){
  const turn=state.turns[source.turnIndex];if(source.speaker!=='assistant'||turn?.id!==source.turnId)return false;
- const status=dialogueTurnStatus(turn);return status==='Partial · incomplete inspection'||status==='Source excerpt · partial answer';
+ const status=dialogueTurnStatus(turn);return status==='Partial · incomplete inspection'||status==='Source excerpt · partial answer'||status?.startsWith('Partial · not verified ·')===true;
 }
 /** Display-only execution context; never changes copy coverage or saved text. */
 export function dialogueCopyHasLimitedSpace(state:Dialogue,source:{turnId:string;turnIndex:number;speaker:string}){

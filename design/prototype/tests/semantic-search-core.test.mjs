@@ -36,10 +36,11 @@ test('range-only semantic hits re-create citation text from canonical Memory',()
  assert.deepEqual(bindSemanticHits(notes,[{noteId:'note-a',revision:4,start:0,end:29,score:0.9}]),[{kind:'passage',noteId:'note-a',revision:4,title:'Garden',start:0,end:29,quote:'A seed needs light and water.',score:0.9}]);
 });
 
-test('semantic ranking uses only the selected embedding revision and normalized cosine order',()=>{
+test('semantic ranking uses the selected embedding revision, normalized cosine and top confidence cohort',()=>{
  const ranked=rankSemanticVectors(new Float32Array([8,0]),[
   {modelRevision:'embed-r1',noteId:'related',revision:2,start:0,end:7,quote:'Related',vector:new Float32Array([4,0])},
-  {modelRevision:'embed-r1',noteId:'partial',revision:1,start:0,end:7,quote:'Partial',vector:[1,1]},
+  {modelRevision:'embed-r1',noteId:'partial',revision:1,start:0,end:7,quote:'Partial',vector:[0.97,Math.sqrt(1-0.97**2)]},
+  {modelRevision:'embed-r1',noteId:'unrelated',revision:1,start:0,end:9,quote:'Unrelated',vector:[0.72,Math.sqrt(1-0.72**2)]},
   {modelRevision:'embed-r0',noteId:'stale-model',revision:1,start:0,end:10,quote:'Stale model',vector:[1,0]},
   {modelRevision:'embed-r1',noteId:'invalid',revision:1,start:0,end:7,quote:'Invalid',vector:[Infinity,0]},
   {modelRevision:'embed-r1',noteId:'zero',revision:1,start:0,end:4,quote:'Zero',vector:[0,0]},
@@ -47,7 +48,13 @@ test('semantic ranking uses only the selected embedding revision and normalized 
  ],'embed-r1',{limit:4});
  assert.deepEqual(ranked.map(hit=>hit.noteId),['related','partial']);
  assert.equal(ranked[0].score,1);
- assert.ok(Math.abs(ranked[1].score-Math.SQRT1_2)<1e-12);
+ assert.ok(Math.abs(ranked[1].score-0.97)<1e-12);
+ assert.ok(ranked.every(hit=>ranked[0].score-hit.score<=0.05));
+});
+
+test('semantic ranking fails closed when the strongest embedding match is below the relevance floor',()=>{
+ const record={modelRevision:'embed-r1',noteId:'weak',revision:1,start:0,end:4,quote:'Fact',vector:[0.74,Math.sqrt(1-0.74**2)]};
+ assert.deepEqual(rankSemanticVectors([1,0],[record],'embed-r1'),[]);
 });
 
 test('semantic ranking rejects unusable query vectors and invalid limits',()=>{

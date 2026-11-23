@@ -4,8 +4,18 @@ const closedDatabases=new WeakSet();
 const pending=new Map();
 export function isDBClosed(database){return closedDatabases.has(database);}
 export function closeDB(database){closedDatabases.add(database);database.close();}
-export function openDB(name='mlb-memory-v1'){
- return new Promise((resolve,reject)=>{const q=indexedDB.open(name,1);q.onupgradeneeded=()=>{for(const s of ['notes','settings','runs'])q.result.createObjectStore(s,s==='notes'?{keyPath:'id'}:undefined);};q.onsuccess=()=>{const database=q.result;database.onversionchange=()=>closeDB(database);database.addEventListener('close',()=>closedDatabases.add(database),{once:true});resolve(database);};q.onerror=()=>reject(q.error);q.onblocked=()=>reject(Error('Database blocked'));});
+export function openDB(name='mlb-memory-v1',timeoutMs=15000){
+ return new Promise((resolve,reject)=>{
+  let settled=false;
+  const finish=(callback,value)=>{if(settled)return false;settled=true;clearTimeout(timer);callback(value);return true;};
+  const timer=setTimeout(()=>finish(reject,Error('Local storage did not respond within 15 seconds. Your saved data was not changed. Reopen the app to try again.')),timeoutMs);
+  let q;
+  try{q=indexedDB.open(name,1);}catch(error){finish(reject,error);return;}
+  q.onupgradeneeded=()=>{if(settled){q.transaction?.abort();return;}try{for(const s of ['notes','settings','runs'])if(!q.result.objectStoreNames.contains(s))q.result.createObjectStore(s,s==='notes'?{keyPath:'id'}:undefined);}catch(error){q.transaction?.abort();finish(reject,error);}};
+  q.onsuccess=()=>{const database=q.result;if(!finish(resolve,database)){database.close();return;}database.onversionchange=()=>closeDB(database);database.addEventListener('close',()=>closedDatabases.add(database),{once:true});};
+  q.onerror=()=>finish(reject,q.error??Error('Local storage could not be opened. Your saved data was not changed.'));
+  q.onblocked=()=>finish(reject,Error('Local storage is blocked by another tab. Close other BabelShelf tabs and reopen the app. Your saved data was not changed.'));
+ });
 }
 export async function db(name='mlb-memory-v1'){let opening=pending.get(name);if(opening){const database=await opening;if(!isDBClosed(database))return database;pending.delete(name);}opening=openDB(name);pending.set(name,opening);try{return await opening;}catch(error){if(pending.get(name)===opening)pending.delete(name);throw error;}}
 export function txValue(database,store,mode,run){return new Promise((resolve,reject)=>{const t=database.transaction(store,mode);let q;try{q=run(t.objectStore(store),t);}catch(e){t.abort();reject(e);return;}t.oncomplete=()=>resolve(q?.result);t.onabort=t.onerror=()=>reject(t.error??Error('Save failed'));});}

@@ -5,6 +5,8 @@ type CanonicalNote={id:string;state?:string;path?:string;revisions?:Array<{versi
 type ProjectedNote={id:string;version?:number;revision?:number;title:string;path?:string;body:string};
 type SemanticHit={noteId:string;revision:number;start:number;end:number;quote?:string;score:number};
 export type SemanticVectorRecord={modelRevision:string;noteId:string;revision:number;start:number;end:number;quote?:string;vector:readonly number[]|Float32Array};
+const MIN_SEMANTIC_COSINE_SCORE=0.75;
+const SEMANTIC_TOP_SCORE_MARGIN=0.05;
 
 const isRecord=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
 const safeBoundary=(text:string,index:number,direction:'left'|'right')=>{
@@ -63,7 +65,13 @@ export function rankSemanticVectors(query:readonly number[]|Float32Array,records
   let cosine=0;for(let i=0;i<normalizedQuery.length;i++)cosine+=normalizedQuery[i]*vector[i];
   const score=Math.max(0,Math.min(1,cosine));if(score>0)ranked.push({noteId:candidate.noteId,revision:candidate.revision,start:candidate.start,end:candidate.end,...(candidate.quote!==undefined?{quote:candidate.quote}:{}),score});
  }
- return ranked.sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start).slice(0,limit);
+ const ordered=ranked.sort((a,b)=>b.score-a.score||a.noteId.localeCompare(b.noteId)||a.start-b.start),best=ordered[0]?.score;
+ // Keep only a high-confidence top cohort. This avoids treating every positive
+ // cosine as a match: multilingual embeddings often assign positive similarity
+ // even to unrelated notes. Near-tied candidates are retained so genuinely
+ // competing sources remain visible to downstream conflict handling.
+ if(best===undefined||best<MIN_SEMANTIC_COSINE_SCORE)return [];
+ return ordered.filter(hit=>hit.score>=best-SEMANTIC_TOP_SCORE_MARGIN).slice(0,limit);
 }
 
 /** Rebind candidate passages to current canonical revisions; candidate text/metadata is never trusted. */

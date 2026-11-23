@@ -151,7 +151,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
    }
    stopped(signal);
    return {downloadedBytes,downloadedAssets,assetCount:pins.files.length};
-   }catch(error){const failure=isQuotaExceeded(error)?Object.assign(Error('The browser could not store more model data · check device storage and retry. Completed download ranges remain on this device.'),{code:'storage-quota-exceeded',cause:error}):error;if(failure&&typeof failure==='object')try{Object.assign(failure,{downloadedBytes,downloadedAssets});}catch{}throw failure;}
+   }catch(error){const failure=isQuotaExceeded(error)?Object.assign(Error('The browser stopped accepting model data. Its effective storage limit can be lower than the estimate. Completed download ranges remain on this device.'),{code:'storage-quota-exceeded',cause:error}):error;if(failure&&typeof failure==='object')try{Object.assign(failure,{downloadedBytes,downloadedAssets});}catch{}throw failure;}
   }
  };
 }

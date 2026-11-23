@@ -1,4 +1,4 @@
-import {dialogueAnswerMessages,groundedAnswer,type GroundedAnswerDependencies,type AnswerInference} from './grounded-answer.ts';
+import {cleanReasoningMarkup,dialogueAnswerMessages,groundedAnswer,type GroundedAnswerDependencies,type AnswerInference} from './grounded-answer.ts';
 import type {TextRuntime} from './text-inference.ts';
 import type {RunDiagnostic} from './task-records.ts';
 import type {Preferences} from './preference-records.ts';
@@ -38,7 +38,18 @@ function mergeInference(total:AnswerInference|undefined,next:Readonly<AnswerInfe
  return total;
 }
 function scheduledProse(text:string){
- const raw=text.slice(0,4000),visible=text.replace(/<think>[\s\S]*?<\/think>/giu,'').replace(/<\|(?:analysis|final)\|>/giu,'').trim();
+ const raw=text.slice(0,4000);
+ // A GGUF template can leak an orphan </think> between reasoning and final
+ // prose. Remove the prefix only when the post-marker answer duplicates it;
+ // otherwise preserve useful text on both sides of the boundary.
+ const orphan=/<\/think\s*>/iu.exec(text);
+ let normalized=cleanReasoningMarkup(text);
+ if(orphan){
+  const prefix=text.slice(0,orphan.index),suffix=text.slice(orphan.index+orphan[0].length);
+  const comparable=(value:string)=>value.replace(/<think\b[^>]*>[\s\S]*?(?:<\/think\s*>|$)/giu,'').replace(/<\|(?:analysis|final)\|>/giu,'').replace(/\s+/gu,' ').trim().replace(/[.!?。！？]+$/gu,'').toLocaleLowerCase();
+  if(comparable(prefix)&&comparable(suffix)&&comparable(prefix)===comparable(suffix))normalized=suffix;
+ }
+ const visible=normalized.replace(/<\|(?:analysis|final)\|>/giu,'').trim();
  if(!visible)return {answer:'',reason:'empty-answer',candidate:raw};
  let answer=visible;
  if(/^\s*\{/u.test(visible)){

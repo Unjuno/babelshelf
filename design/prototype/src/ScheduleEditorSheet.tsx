@@ -40,6 +40,7 @@ export function ScheduleEditorSheet({draft,enabled,saving,storagePending,error,n
  return <form ref={form} className="schedule-form creation-form schedule-form--task" onChange={onFormEdit} onSubmit={event=>{event.preventDefault();onSave();}}>
   <div className="task-fields">
    {!draft.id&&<div className="source-revision" role="status">New schedules start paused. Turn on Enable after saving to run them.</div>}
+   <div className="source-revision" role="note">Scheduled answers run locally and do not browse the web. For answers about your own records, add the relevant information to Memory first; a run can fail if no matching source is available.</div>
    <label>Prompt<KeyboardTextarea aria-label="Schedule prompt" aria-invalid={error==='Enter a prompt'} aria-describedby={error==='Enter a prompt'?'schedule-prompt-error':undefined} value={draft.prompt} onChange={event=>onDraftChange({prompt:event.target.value})} placeholder="Prompt" rows={4}/></label>
    {error==='Enter a prompt'&&<div className="creation-error" id="schedule-prompt-error" role="alert">{error}</div>}
    <div className="schedule-repeat-field"><span>Repeat</span><button type="button" className="model-picker" aria-label="Repeat" aria-haspopup="dialog" onClick={onRepeatOpen}><span>{repeatOptions.find(option=>option.value===draft.repeat)?.label}</span><CaretDown size={17}/></button></div>

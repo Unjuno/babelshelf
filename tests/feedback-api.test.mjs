@@ -37,6 +37,13 @@ test('feedback rejects an unapproved origin, invalid category and oversized text
  assert.equal(inserts.length,0);
 });
 
+test('feedback preflight allows only the configured app origin and JSON POST headers',async()=>{
+ const {env}=fixture();
+ const preflight=new Request('https://feedback-api.example/v1/feedback',{method:'OPTIONS',headers:{origin:'https://babelshelf.com','access-control-request-method':'POST','access-control-request-headers':'content-type'}});
+ const allowed=await worker.fetch(preflight,env);assert.equal(allowed.status,204);assert.equal(allowed.headers.get('access-control-allow-origin'),'https://babelshelf.com');assert.equal(allowed.headers.get('access-control-allow-methods'),'POST, OPTIONS');assert.equal(allowed.headers.get('access-control-allow-headers'),'content-type');
+ const rejected=await worker.fetch(new Request(preflight,{headers:{origin:'https://attacker.example'}}),env);assert.equal(rejected.status,403);
+});
+
 test('feedback has no public read route and rejects oversized request bodies',async()=>{
  const {env,inserts}=fixture();
  assert.equal((await worker.fetch(request('GET',undefined),env)).status,405);

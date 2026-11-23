@@ -350,12 +350,12 @@ export function isSourceFreeConversationRequest(question:string){
  // selected model's general knowledge. Keep questions about schedules,
  // personal records, attachments, and saved Memory on the evidence path.
  const normalized=question.normalize('NFKC').trim();
+ const outputFormat=normalized.replace(/[.!?]\s+(?:please\s+)?(?:reply|respond|answer)\s+(?:(?:with|in)\s+)?(?:(?:just|only)\s+)?(?:(?:its|the|a|one)\s+)?(?:(?:short|brief|single)\s+)?(?:name|answer|result|value|number|city|phrase|sentence)(?:\s+only)?[.!?]?$/iu,'');
  const sourceReference=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|原文|引用|会話|以前|過去|保存した|\b(?:saved|memory|my|our|earlier|previous|attached|attachment|notes?|files?|documents?|sources?|citations?|excerpts?|records?)\b|\b(?:according\s+to|based\s+on|from|in)\s+(?:the\s+)?(?:attached|provided|uploaded|current|my|our|saved|these|those)?\s*(?:notes?|files?|documents?|sources?|records?|memory|attachment|excerpt)\b|\b(?:selon|d['’]après)\s+(?:mes|les|ces|vos)?\s*(?:notes?|fichiers?|documents?|sources?)\b)/iu;
  if(!sourceReference.test(normalized)
-  &&(/^(?:(?:what is|what's) the capital of|where is (?:the )?capital of|name (?:the )?capital of|state (?:the )?capital of) [\p{L}][\p{L} .'-]{0,60}[?.!]?$/iu.test(normalized)
-   ||/^(?:quelle est|quelle ville est) la capitale de [\p{L}][\p{L} .'-]{0,60}[?.!？]?$/iu.test(normalized)
-   ||/^[\p{L}][\p{L}・ー .'-]{0,40}の首都は(?:どこ|何処)?[ですか？?。.!！]*$/u.test(normalized)))return true;
- const outputFormat=normalized.replace(/[.!]\s+(?:reply|respond|answer)\s+(?:(?:with|in)\s+)?(?:(?:just|only)\s+)?(?:(?:its|the|a|one)\s+)?(?:name|answer|result|value|number|city|phrase|sentence)(?:\s+only)?[.!]?$/iu,'');
+  &&(/^(?:(?:what is|what's) the capital of|where is (?:the )?capital of|name (?:the )?capital of|state (?:the )?capital of) [\p{L}][\p{L} .'-]{0,60}[?.!]?$/iu.test(outputFormat)
+   ||/^(?:quelle est|quelle ville est) la capitale de [\p{L}][\p{L} .'-]{0,60}[?.!？]?$/iu.test(outputFormat)
+   ||/^[\p{L}][\p{L}・ー .'-]{0,40}の首都は(?:どこ|何処)?[ですか？?。.!！]*$/u.test(outputFormat)))return true;
  if(!sourceReference.test(normalized)&&/^(?:please\s+)?(?:name|identify|state|list|define|explain|describe)\s+(?:me\s+)?(?:the\s+)?[\p{L}\p{N}][\p{L}\p{N}'’ ,:-]{1,140}[.!?]?$/iu.test(outputFormat))return true;
  // Explicit original-writing prompts in Japanese have no saved-source target.
  // Keep this grammar narrow so factual questions that may refer to Memory do
@@ -372,12 +372,18 @@ export function isSourceFreeConversationRequest(question:string){
 }
 /** Select a source-free conversation intent before route classifiers, with no stale topic context. */
 export function contextIndependentConversation(question:string,attachments:{name:string;kind:string;status:string}[],context:DialogueContext){
- let request=plainConversationRoute(question,attachments,context);
+ let request=plainConversationRoute(question,attachments,context),keepDialogueContext=false;
  if(!request&&!attachments.length){
   const text=question.trim(),sourceReferent=/(?:メモ|ノート|ファイル|資料|記録|日記|予定|カレンダー|添付|画像|写真|文書|音声|動画|原文|引用|会話|さっき|先ほど|前に|以前|過去|保存した|書いた|\b(?:notes?|files?|documents?|attachments?|attached|images?|photos?|pictures?|recordings?|audio|videos?|memor(?:y|ies)|schedules?|calendars?|previous|earlier|saved)\b)/iu;
+  const conversationalReference=/\b(?:that|this|it|they|those|these)\s*(?:\?|[.!])?$|\b(?:that|this|it|they|those|these)\s+(?:color|colour|answer|reply|response|result|name|option|thing|one)\b|\b(?:that|this|it|they|those|these)\s+(?:is|was|means|does|did|looks|sounds|seems)\b|(?:それ|これ|あれ|その|この)(?:[\p{L}\p{N}]{0,12})?(?:は|が|を|の|に|について|って)/u.test(text);
+  const guidanceRequest=/\b(?:not sure|unsure|uncertain|don't know|do not know)\b.{0,100}\b(?:what to do|what action|which action|how to proceed|best (?:action|step|approach|way)|action is best)\b/iu.test(text);
+  const explicitEvidenceRequest=/\b(?:search|find|look up|open|read|review|inspect|based on|according to|from)\b.{0,100}\b(?:my|our|the|saved|previous|earlier|current|provided|these|those|attached|uploaded|note|file|memory|document|source|record)\b/iu.test(text);
+  // Underspecified advice about a mentioned item is conversation, not a
+  // request to inspect the user's saved data. Keep explicit source-reading,
+  // search and operation requests on their existing evidence-aware route.
+  if(guidanceRequest&&!explicitEvidenceRequest){request={action:'chat',query:''};keepDialogueContext=conversationalReference;}
   const standaloneQuestion=/[?？]\s*$/.test(text)||/^(?:what|when|where|who|which|why|how|is|are|am|was|were|do|does|did|can|could|would|should|will|explain|describe|define|tell me)\b/iu.test(text)||/(?:何|なに|誰|どこ|いつ|なぜ|どうして|どうやって|どんな|どれ|いくつ|何人|何時|何日|何語|何色)/u.test(text);
   const localOrDialogueIntent=/\b(?:my|our|earlier|previous|history|saved|stored|remember|recall|save|store|delete|remove|erase|edit|update|schedule|notify|search|find|open|read|send|email|upload|download|execute|run|calculate|compute)\b|(?:私|自分|以前|前回|過去|保存|記録|覚えて|思い出|削除|消去|編集|変更|予定|通知|検索|探して|開いて|読んで|送信|実行|計算)/iu.test(text);
-  const conversationalReference=/\b(?:that|this|it|they|those|these)\s*(?:\?|[.!])?$|\b(?:that|this|it|they|those|these)\s+(?:color|colour|answer|reply|response|result|name|option|thing|one)\b|\b(?:that|this|it|they|those|these)\s+(?:is|was|means|does|did|looks|sounds|seems)\b|(?:それ|これ|あれ|その|この)(?:[\p{L}\p{N}]{0,12})?(?:は|が|を|の|に|について|って)/u.test(text);
   // Plain answer imperatives such as "Name the largest ocean" otherwise
   // enter the action planner even though they ask only for open-domain text.
   // Keep source/history references, storage operations, and attached-input
@@ -394,7 +400,7 @@ export function contextIndependentConversation(question:string,attachments:{name
   // source/tool requests continue through the ordinary scoped planner.
   if((standaloneQuestion||answerDirective)&&!sourceReferent.test(text)&&!localOrDialogueIntent&&!conversationalReference&&!requestNamesEarlierDialogue(text))request={action:'chat',query:''};
  }
- return request?{request,context:{summary:'',recent:[],refs:[],turnCount:0} as DialogueContext}:null;
+ return request?{request,context:keepDialogueContext?structuredClone(context):{summary:'',recent:[],refs:[],turnCount:0} as DialogueContext}:null;
 }
 function plannerInput(question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[],agent?:AgentPlannerContext,nativeToolProtocol=false,sourceCatalog?:readonly LabelledSource[]){
  const {scope,toolBudgetExhausted}=agentPlannerScope(question,context,attachments,agent);

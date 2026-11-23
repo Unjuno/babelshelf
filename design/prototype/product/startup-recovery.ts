@@ -12,10 +12,14 @@ export async function recoverStartup<Registration>(ports:{getRegistration:()=>Pr
 // @ts-expect-error Shared path validation is JavaScript.
 import {normalizePath,notePath} from '../../../dist/files.js';
 import {originalKey,readOriginal,type OriginalAsset,type OriginalRef} from '../src/original-assets.ts';
-function openExistingMemory(){return new Promise<IDBDatabase>((resolve,reject)=>{
- let blocked=false;const r=indexedDB.open('mlb-memory-v1');r.onupgradeneeded=()=>r.transaction?.abort();
- r.onsuccess=()=>{if(blocked){r.result.close();return;}r.result.onversionchange=()=>r.result.close();resolve(r.result);};
- r.onerror=()=>reject(r.error??Error('Storage unavailable'));r.onblocked=()=>{blocked=true;reject(Error('Storage unavailable'));};
+function openExistingMemory(timeoutMs=15000){return new Promise<IDBDatabase>((resolve,reject)=>{
+ let settled=false,blocked=false;const finish=(callback:(value:any)=>void,value:any)=>{if(settled)return false;settled=true;clearTimeout(timer);callback(value);return true;};
+ const timer=setTimeout(()=>finish(reject,Error('Local storage did not respond. Your saved data was not changed. Reopen the app to try again.')),timeoutMs);
+ let r:IDBOpenDBRequest;try{r=indexedDB.open('mlb-memory-v1');}catch(error){finish(reject,error);return;}
+ r.onupgradeneeded=()=>r.transaction?.abort();
+ r.onsuccess=()=>{if(blocked||settled){r.result.close();return;}r.result.onversionchange=()=>r.result.close();finish(resolve,r.result);};
+ r.onerror=()=>finish(reject,r.error??Error('Storage unavailable'));
+ r.onblocked=()=>{blocked=true;finish(reject,Error('Storage is blocked by another tab. Close other BabelShelf tabs and reopen the app. Your saved data was not changed.'));};
 });}
 export function invalidStoredPaths(records:any[]){
  const problems:{id:string;version:number;path:string;hasOriginal:boolean}[]=[];
@@ -30,8 +34,8 @@ export async function readRecoveryOriginal(id:string){
  const db=await openExistingMemory();
  try{return await new Promise<{name:string;mime:string;bytes:Uint8Array<ArrayBuffer>}>((resolve,reject)=>{const tx=db.transaction(['notes','runs'],'readonly'),q=tx.objectStore('notes').get(id);q.onsuccess=()=>{const ref:OriginalRef|undefined=q.result?.originalAsset??q.result?.mediaSource;if(!ref||typeof ref.id!=='string'){reject(Error('Original unavailable'));return;}const asset=tx.objectStore('runs').get(originalKey(ref.id));asset.onsuccess=()=>{try{const original:OriginalAsset=asset.result;resolve({name:original.name,mime:original.mime,bytes:Uint8Array.from(readOriginal(original,ref))});}catch(e){reject(e);}};asset.onerror=()=>reject(asset.error);};q.onerror=()=>reject(q.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
 }
-export async function inspectStoredPaths(){
- const db=await openExistingMemory();
+export async function inspectStoredPaths(timeoutMs=15000){
+ const db=await openExistingMemory(timeoutMs);
  try{return await new Promise<ReturnType<typeof invalidStoredPaths>>((resolve,reject)=>{const tx=db.transaction('notes','readonly'),r=tx.objectStore('notes').getAll();r.onsuccess=()=>{try{resolve(invalidStoredPaths(r.result));}catch(e){reject(e);}};r.onerror=()=>reject(r.error);tx.onabort=()=>reject(tx.error);});}finally{db.close();}
 }
 export async function readRecoverySnapshot(){

@@ -1,10 +1,14 @@
 import manifest from './decision-manifest.json' with {type:'json'};
+import {createPinnedAssetStore} from './pinned-text-assets.ts';
 // @ts-expect-error Shared verified streaming hash implementation is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
 // @ts-expect-error Shared strict local model record and cancellable hash functions are JavaScript.
 import {MAX_LOCAL_DECISION_BYTES,hashLocalModel,localDecisionModelId,validateLocalModel} from '../../../dist/local-models.js';
 import type {CustomDecisionModel} from './preference-records.ts';
 export const decisionManifest=manifest;
+export function createDecisionAssetStore(io:Pick<IO,'directory'|'fetch'>,source:typeof manifest=manifest){
+ return createPinnedAssetStore({id:'decision-'+source.id.toLowerCase(),revision:source.conversion.revision,runtime:{revision:source.runtime.revision},files:source.files},io);
+}
 type Pin=typeof manifest.files[number];
 export type DecisionModelDescriptor={id:string;revision:string;inputLimit:number;contextTokens:number;scope:'text-only';custom:boolean;files:readonly {path:string;bytes:number;sha256:string}[]};
 export function decisionModelDescriptor(value:string|CustomDecisionModel):DecisionModelDescriptor{
@@ -74,6 +78,11 @@ export async function prepareDecisionFile(path:string,allowNetwork:boolean,signa
 export async function prepareDecision(allowNetwork:boolean,signal:AbortSignal,progress:(s:string)=>void,fetcher=globalThis.fetch.bind(globalThis),model:string|CustomDecisionModel=manifest.id,localFiles?:File[]){
  const descriptor=decisionModelDescriptor(model);if(descriptor.custom){if(localFiles)throw Error('Use reviewed custom Decision import');for(const [i,pin] of descriptor.files.entries()){check(signal);progress('Verifying local model · '+(i+1)+' / '+descriptor.files.length);await readCustomDecisionFile(model as CustomDecisionModel,pin.path,signal,progress);}check(signal);return {prepared:true,bytes:descriptor.files.reduce((n,f)=>n+f.bytes,0)};}
  const supplied=new Map<string,File>();if(localFiles){if(allowNetwork||!localFiles.length)throw Error('Local Decision files required');const names=new Set(manifest.files.map(pin=>pin.path.split('/').at(-1)!));for(const file of localFiles){if(!names.has(file.name)||supplied.has(file.name))throw Error('Unknown or duplicate Decision file · '+file.name);supplied.set(file.name,file);}}
+ if(!localFiles){
+  const store=createDecisionAssetStore({directory:localDirectory,fetch:fetcher});
+  await store.prepare(allowNetwork,signal,(done,total,phase)=>{const label=phase==='verifying'?'Verifying':'Downloading';progress(label+' · '+Math.round(done/Math.max(1,total)*100)+'%');});
+  check(signal);return {prepared:true,bytes:manifest.files.reduce((n,f)=>n+f.bytes,0)};
+ }
  let missing=0;for(const [i,pin] of manifest.files.entries()){check(signal);progress('Preparing '+(i+1)+' / '+manifest.files.length);if(localFiles&&!supplied.has(pin.path.split('/').at(-1)!)){try{await readDecisionFile(pin.path,signal,progress);continue;}catch{check(signal);missing++;continue;}}await prepareDecisionFile(pin.path,localFiles?false:allowNetwork,signal,progress,{directory:localDirectory,fetch:fetcher},localFiles?supplied.get(pin.path.split('/').at(-1)!):undefined);}
  if(missing)throw Error('Decision files still missing · '+missing);check(signal);return {prepared:true,bytes:manifest.files.reduce((n,f)=>n+f.bytes,0)};
 }

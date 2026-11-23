@@ -1441,3 +1441,11 @@ worker/build change in that check, so PWA adoption is unverified. No real-model
 transfer bytes were captured. Current P0 follow-up evidence and limitations are
 tracked in `REMAINING-GATES.md`; the later local diagnostics-only candidate is
 not included in this Site version.
+
+## Public Site v386 — Memory Home Schedule navigation (2026-11-22 JST)
+
+Product candidate commit `1ba2e02ef9b1748210ba346f3e72c77e3eb7f82e` on PR #113 builds as `95335123c7a30b70` with 168 verified app assets and main bundle `index-CW6wWGKo.js`. Exact-head GitHub Actions run [45017476496](https://github.com/Unjuno/babelshelf/actions/runs/45017476496) passed all stages. The navigation change adds Schedule to Memory Home while retaining the existing Memory-root folder. Navigation unit tests passed 3/3, the full local quality workflow passed, and an isolated local side-panel browser opened Memory Home → Schedule.
+
+Site source commit `960618fbb116def0cb4aae06e534910416920d56` was saved as version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_f8e59a048bc48191a079239dbb5d92f9` and deployed successfully as `appgdep_6b02d8ff93588191939c02d18335d597`. The existing public audience and custom domain `https://babelshelf.com` were retained. The archive has SHA-256 `31a9ffd3486e0c1ee5b3278bbba00bae4e34045678cb3a1e237868e3204a511f` (182 archived files, 109,424,640 bytes uncompressed). WASM gzip/identity byte equivalence, request-method handling, offline-shell byte identity/headers and mutable-shell cache policy passed. A no-cache request to the public manifest returned build `95335123c7a30b70` with 168 app assets; the referenced entry bundle returned HTTP 200.
+
+The existing side-panel PWA still showed its persisted previous session after reload; it did not prove adoption of the new worker. The published server artifact is verified, but PWA update adoption in that profile remains unverified. Audit 19's schedule answer failures, restore/feedback reports, update/model persistence uncertainty and physical-device gates remain open. This is a debugging deployment, not general-release approval; the release gate remains DO-NOT-SHIP.

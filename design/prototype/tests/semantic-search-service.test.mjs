@@ -48,6 +48,15 @@ test('search re-reads current source revisions after embedding before binding ci
  }finally{await store.close();await removeDatabase(name);}
 });
 
+test('scope is applied before semantic ranking so out-of-folder neighbors cannot crowd out a folder result',async()=>{
+ const name='semantic-service-scope-'+crypto.randomUUID(),store=createSemanticIndexStore({name});try{
+  const distractors=Array.from({length:12},(_,index)=>source({id:`note-${String(index).padStart(2,'0')}`,path:`Inbox/note-${index}.md`,body:'seed distraction'})),target=source({id:'note-zz-target',path:'Notes/target.md',body:'seed target'}),all=[...distractors,target];
+  await indexSemanticSources(all,{modelRevision:'embed-r1',store,embed});
+  const hits=await searchSemanticSources('seed',async()=>all,{modelRevision:'embed-r1',store,embed},{limit:12,sourceFilter:item=>item.path.startsWith('Notes/')});
+  assert.deepEqual(hits.map(hit=>hit.noteId),[target.id]);
+ }finally{await store.close();await removeDatabase(name);}
+});
+
 test('indexing removes derived entries for withdrawn, protected, system and deleted sources only',async()=>{
  const name='semantic-service-prune-'+crypto.randomUUID(),store=createSemanticIndexStore({name});try{
   const active=source(),withdrawn=source({id:'withdrawn'}),protectedNote=source({id:'protected'}),system=source({id:'system'}),deleted=source({id:'deleted'});

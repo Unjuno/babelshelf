@@ -14,6 +14,7 @@ export default defineConfig({
   viewport:{width:390,height:844},
   isMobile:true,
   hasTouch:true,
+  trace:'retain-on-failure',
  },
  webServer:{
   command:`npm run dev:app -- ${port}`,

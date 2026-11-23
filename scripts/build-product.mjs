@@ -29,7 +29,8 @@ function optionalRoles(file){
  // worker/fonts/cmaps so an ordinary shell update does not force a large
  // parser into every first load.
  if(name.startsWith('pdf-engine-')||name.startsWith('pdf-')&&name.endsWith('.js'))return ['pdf'];
- if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['decision','speech','vision','search'];
+ if(name.startsWith('ort-wasm-simd-threaded.asyncify-'))return ['speech','vision','search'];
+ if(name.startsWith('ort-wasm-simd-threaded.jsep-'))return ['decision'];
  if(/^(default|compat)-.*\.wasm$/.test(name))return ['text-wllama'];
  if(/^wllama-.*\.wasm$/.test(name))return ['text-lfm-check'];
  if(/^(bridge|worker|lstm|simd-lstm|relaxedsimd-lstm)-.*\.bin$/.test(name))return ['ocr'];

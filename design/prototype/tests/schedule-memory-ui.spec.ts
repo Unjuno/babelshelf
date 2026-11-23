@@ -155,11 +155,11 @@ test('a repeated Run now tap is absorbed before the schedule actions sheet close
  const run=page.getByRole('button',{name:'Run now',exact:true});await run.dblclick();
  await expect(page.locator('button.schedule-detail',{hasText:'Calculate 12 + 10'})).toContainText('Completed');
  await expect(run).toBeDisabled();
+ await expect(page.getByRole('dialog',{name:'Schedule'}).getByText('Run finished · you can run it again shortly',{exact:true})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Schedule prompt'})).toBeHidden();
  await expect(run).toBeVisible();
- await page.getByRole('button',{name:'Close',exact:true}).click();
- await page.getByRole('button',{name:'Schedule actions for Calculate 12 + 10'}).click();
- await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
+ await expect(run).toBeEnabled({timeout:3000});
+ await run.click();await page.getByRole('button',{name:'History',exact:true}).click();await expect(page.getByRole('button',{name:/succeeded/})).toHaveCount(2);
 });
 
 test('schedule validation is visible and a schedule can be deleted to recoverable trash',async({page})=>{
@@ -188,12 +188,26 @@ test('schedule validation is visible and a schedule can be deleted to recoverabl
  await expect(trash.getByRole('heading',{name:'Delete permanently?'})).toHaveCount(0);
 });
 
+test('deleting an enabled schedule definition explains which data is affected',async({page})=>{
+ await page.goto('/');await navigate(page,'Schedule');await page.getByRole('button',{name:'New schedule'}).click();
+ await page.getByRole('textbox',{name:'Schedule prompt'}).fill('QA scheduled definition warning');
+ const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});
+ await page.getByRole('textbox',{name:'Schedule date'}).fill(tomorrow);await page.getByRole('textbox',{name:'Schedule time'}).fill('09:00');await page.getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('switch',{name:'Enable QA scheduled definition warning'}).click();
+ await navigate(page,'Memory');await page.getByRole('navigation',{name:'Memory path'}).getByRole('button',{name:'Memory',exact:true}).click();await page.getByRole('button',{name:'Open Schedule',exact:true}).click();
+ await page.getByRole('button',{name:/Open 2026-.*\.md/}).click();await page.getByRole('button',{name:'File actions'}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();
+ const confirmation=page.getByRole('dialog',{name:'Delete?'});await expect(confirmation).toContainText('definition for an enabled schedule');await expect(confirmation).toContainText('Moving it to Trash removes it from Schedule until restored');await expect(confirmation).toContainText('Past run history and notifications are stored separately and stay available');
+ await confirmation.getByRole('button',{name:'Cancel',exact:true}).click();
+});
+
 test('a schedule edited in Memory updates the Schedule view and notification delivery is clearly in-app',async({page})=>{
  await page.goto('/');
  await navigate(page,'Schedule');
  await expect(page.getByText('Runs while visible',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'New schedule'}).click();
  await expect(page.getByRole('status')).toContainText('New schedules start paused. Turn on Enable after saving to run them.');
+ await expect(page.getByRole('note')).toContainText('Scheduled answers run locally and do not browse the web.');
+ await expect(page.getByRole('note')).toContainText('add the relevant information to Memory first');
  await expect(page.locator('#schedule-next')).toContainText('Next if enabled ·');
  await page.getByRole('textbox',{name:'Schedule prompt'}).fill('Check the emergency kit');
  const tomorrow=await page.evaluate(()=>{const date=new Date();date.setDate(date.getDate()+1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;});

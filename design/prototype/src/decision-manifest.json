@@ -14,25 +14,26 @@
     "scope": "text-only"
   },
   "runtime": {
+    "backend": "jsep-webgpu-wasm",
     "name": "onnxruntime-web",
     "version": "1.31.0-dev.20260914-8d85527a0",
     "revision": "8d85527a010e294a26b274749f74294b2a32cec5",
     "license": "MIT",
     "files": [
       {
-        "path": "dist/ort.webgpu.bundle.min.mjs",
-        "bytes": 117929,
-        "sha256": "7c93a51e9906b246af505bbfbfa4e5806ebe70a081ab0ca0d34e1180293f4f8d"
+        "path": "dist/ort.bundle.min.mjs",
+        "bytes": 413592,
+        "sha256": "fa9bfe0b20e7cd21af5bfd3f838c117b67de883854f99bf586115883d2fd177d"
       },
       {
-        "path": "dist/ort-wasm-simd-threaded.asyncify.mjs",
-        "bytes": 53057,
-        "sha256": "0966b6105cd936744498aa60df7a22cbd47af3374dbc64a9ab561c08a71e3611"
+        "path": "dist/ort-wasm-simd-threaded.jsep.mjs",
+        "bytes": 46851,
+        "sha256": "c2f80e915e9df63289788a99d434d8c4e00e64e9c1f030f4b80b022458dd2c99"
       },
       {
-        "path": "dist/ort-wasm-simd-threaded.asyncify.wasm",
-        "bytes": 26861777,
-        "sha256": "49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082"
+        "path": "dist/ort-wasm-simd-threaded.jsep.wasm",
+        "bytes": 28352885,
+        "sha256": "62ff86b2f2fa3a79eb87a7e4720e8ea9051942bf975f314181bf7dcef2feac06"
       }
     ]
   },

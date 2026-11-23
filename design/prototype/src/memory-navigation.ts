@@ -1,7 +1,7 @@
 import { settings } from './app-settings.ts';
 export type MemoryScope = 'home' | 'root' | 'folder';
 export const USER_ROOTS = Object.freeze([
- {path:'Inbox',label:'Inbox'}, {path:'Notes',label:'Notes'}, {path:'Attachments',label:'Files'},
+ {path:'Inbox',label:'Inbox'}, {path:'Notes',label:'Notes'}, {path:'Schedule',label:'Schedule'}, {path:'Attachments',label:'Files'},
 ]);
 export function memoryBreadcrumbs(scope:MemoryScope,path=''){
  const crumbs:{label:string;scope:MemoryScope;path:string}[]=[{label:'Memory',scope:'root',path:''}];
@@ -13,7 +13,7 @@ export function memoryBreadcrumbs(scope:MemoryScope,path=''){
 }
 export function memoryFolderEntries(scope:MemoryScope,path:string,folders:string[]){
  if(scope==='home')return USER_ROOTS.map(root=>({...root,scope:'folder' as MemoryScope}));
- if(scope==='root')return [{label:'Home',path:'',scope:'home' as MemoryScope},...folders.filter(p=>!p.includes('/')&&!USER_ROOTS.some(r=>r.path===p)).map(p=>({label:p,path:p,scope:'folder' as MemoryScope}))];
+ if(scope==='root')return [{label:'Home',path:'',scope:'home' as MemoryScope},...folders.filter(p=>!p.includes('/')&&(!USER_ROOTS.some(r=>r.path===p)||p==='Schedule')).map(p=>({label:p,path:p,scope:'folder' as MemoryScope}))];
  return folders.filter(p=>p.split('/').slice(0,-1).join('/')===path).map(p=>({label:p.split('/').at(-1)!,path:p,scope:'folder' as MemoryScope}));
 }
 export function memoryNoteMatchesScope(scope:MemoryScope,folderPath:string,notePath:string,query:string){

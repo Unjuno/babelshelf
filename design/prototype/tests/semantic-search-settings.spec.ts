@@ -10,13 +10,14 @@ test('Search model selection is explicit and does not download or index files',a
  const section=page.locator('[data-model-role="search"]');
  await expect(section).toContainText('Granite Embedding');
  await expect(section).toContainText('Off');
- await expect(section.getByRole('status')).toContainText('Choose a Search model above');
+ await expect(section.getByRole('status').filter({hasText:'Choose a Search model above'})).toBeVisible();
  const picker=section.getByRole('combobox',{name:'Search model'});
  await expect(picker).toBeVisible();
  await expect(picker.locator('option')).toHaveCount(3);
  await picker.selectOption('granite-embedding-97m-multilingual-r2-onnx');
  await expect(section).toContainText('Prepare and load to use semantic matches');
- await expect(section.getByRole('status')).toContainText('Search model preparation needs downloads enabled');
+ await expect(section.getByRole('status',{name:'Semantic index status'})).toContainText('Semantic index not built');
+ await expect(section.getByRole('status').filter({hasText:'Search model preparation needs downloads enabled'})).toBeVisible();
  await expect(section.getByRole('button',{name:'Turn off',exact:true})).toBeVisible();
  const state=section.locator('.model-preparation');
  await section.getByRole('button',{name:'Check runtime',exact:true}).click();
