@@ -25,3 +25,19 @@ test('Restore backup opens a review and restores its note through the Settings f
  await page.getByRole('button',{name:'Open audit20-restore-roundtrip.md',exact:true}).click();
  await expect(page.locator('.file-body')).toContainText('Restore UI roundtrip · preserved local record');
 });
+
+test('Restore backup keeps invalid-file errors visible in Local files and leaves storage unchanged',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Local files',exact:true}).click();
+ const chooserPromise=page.waitForEvent('filechooser');
+ await page.getByRole('button',{name:'Restore backup',exact:true}).click();
+ const chooser=await chooserPromise;
+ await chooser.setFiles({name:'invalid.brainpack',mimeType:'application/json',buffer:Buffer.from('{"not":"a backup"}')});
+ const alert=page.getByRole('alert');
+ await expect(alert).toContainText('Backup verification failed');
+ await expect(alert).toContainText('nothing changed');
+ await expect(page.getByRole('dialog',{name:'Restore backup?'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Restore backup',exact:true})).toBeEnabled();
+});

@@ -7,7 +7,7 @@ import {semanticSearchOperationMessage} from './semantic-search-errors.ts';
 type FilesState='Not checked'|'Files present · not verified'|'Files verified'|'Files prepared'|'Files not prepared';
 export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{modelId:string;downloads:boolean;disabled?:boolean;onSelect:(modelId:string)=>void}){
  const selected=!!modelId,manifest=semanticEmbeddingManifestFor(selected?modelId:semanticEmbeddingManifest.id),assetBytes=semanticEmbeddingAssetBytesFor(manifest);
- const [filesState,setFilesState]=useState<FilesState>(selected?'Not checked':'Files not prepared'),[runtimeReady,setRuntimeReady]=useState(false),[loaded,setLoaded]=useState(false),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number}|null>(null),[testResult,setTestResult]=useState(''),[error,setError]=useState('');
+ const [filesState,setFilesState]=useState<FilesState>(selected?'Not checked':'Files not prepared'),[runtimeReady,setRuntimeReady]=useState(false),[loaded,setLoaded]=useState(false),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number;needsUpdate?:boolean}|null>(null),[testResult,setTestResult]=useState(''),[error,setError]=useState('');
  const operation=useRef<AbortController|null>(null);
  const blocked=!!disabled||busy,canLoad=selected&&runtimeReady&&(filesState==='Files verified'||filesState==='Files prepared');
  const select=(next:string)=>{void closeSemanticSearchRuntime();setTestResult('');setIndexed(null);setProgress('');setLoaded(false);setRuntimeReady(false);setFilesState(next?'Not checked':'Files not prepared');setError('');onSelect(next);};
@@ -15,6 +15,8 @@ export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{mo
   if(!selected){setFilesState('Files not prepared');setRuntimeReady(false);setLoaded(false);return;}
   let active=true;const controller=new AbortController();
   void getSemanticSearchRuntime(modelId).then(async runtime=>{
+   const index=await runtime.indexStatus(controller.signal);
+   if(active)setIndexed(index);
    if(runtime.loaded){if(active){setLoaded(true);setFilesState('Files verified');setRuntimeReady(true);setError('');}return;}
    const state=await runtime.status(controller.signal);
    if(active){setFilesState(state.filesPresent?'Files present · not verified':'Files not prepared');setError('');}
@@ -62,7 +64,7 @@ export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{mo
     <button className="quiet-button" disabled={blocked||!loaded} onClick={()=>void run('index','Building Search index',(runtime,signal)=>runtime.index(signal,events))}>Build index</button>
     <button className="quiet-button" disabled={blocked||!loaded} onClick={()=>void run('unload','Unloading Search model',(runtime,signal)=>runtime.unload(signal))}>Unload</button>
    </div>
-   {indexed&&<div className="source-revision">Indexed {indexed.sources.toLocaleString('en')} notes · {indexed.chunks.toLocaleString('en')} passages</div>}
+   <div className="source-revision" role="status" aria-label="Semantic index status">{indexed?.needsUpdate?'Semantic index needs update · rebuild to include current note revisions':indexed?.sources?`Semantic index ready · ${indexed.sources.toLocaleString('en')} current notes · ${indexed.chunks.toLocaleString('en')} passages`:'Semantic index not built · Memory search currently uses word matches'}</div>
    {testResult&&<div className="speech-runtime-status" role={testResult.includes('passed')?'status':'alert'}>{testResult}</div>}
   </>}
   {busy&&<><div className="speech-runtime-status" role="status">{progress||'Working…'}</div><button className="quiet-button" onClick={cancel}>Stop</button></>}
