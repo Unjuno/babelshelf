@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-11-22 JST. This file holds product requirements and next work; the single current GitHub/Site release snapshot and device evidence live at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md), with detailed dated runs in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). Do not duplicate release hashes or deployment identifiers here.
+Updated 2026-11-24 JST. This file holds product requirements and next work; the single current GitHub/Site release snapshot and device evidence live at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md), with detailed dated runs in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). Do not duplicate release hashes or deployment identifiers here.
 
 ## Read in this order
 
@@ -32,7 +32,7 @@ Connection settings remain Memory-backed. Chat may propose toggling `diagnosticL
 
 ### Release-readiness checklist · 2026-11-23 JST
 
-Current candidate and deployment identifiers are recorded in [REMAINING-GATES.md](docs/REMAINING-GATES.md); component status is in [COMPONENT-INVENTORY.md](docs/COMPONENT-INVENTORY.md). The local candidate passed the full `npm run test:quality` workflow, is pushed to PR #113, and is live as public debug Site v389. Latest exact-head GitHub Actions run 45159389475 is stalled at browser system dependency installation; no pass is claimed. The audited `GatherBlockQuantized` failure was on an older build; current candidate real D1 JSEP-WASM classification succeeds, but current Decision/custom-tool chat dispatch remains unverified. A new isolated real-D1 rerun could not reach session creation because Hugging Face Xet asset fetch aborted; see the dated evidence in [REMAINING-GATES.md](docs/REMAINING-GATES.md). Restore backup 16/16 no-response, Memory UI search parity/conflict, and Repair/other-role retention remain open P0s. General release remains DO-NOT-SHIP while any P0 below remains open. PC browser tests and WASM model evidence do not establish physical-device acceptance.
+Current candidate and deployment identifiers are recorded in [REMAINING-GATES.md](docs/REMAINING-GATES.md); component status is in [COMPONENT-INVENTORY.md](docs/COMPONENT-INVENTORY.md). Product commit `8e28482a6b957f9b49ecc12d4eb7687d142243a4` is pushed to PR #113 (open, unmerged), exact-head GitHub Actions run 45197947403 passed, and the full local `npm run test:quality` workflow passed. The exact 170-asset build is live as public debug Site v391. The audited `GatherBlockQuantized` failure was on an older build; current candidate real D1 JSEP-WASM classification succeeds, but current Decision/custom-tool chat dispatch remains unverified. A new isolated real-D1 rerun could not reach session creation because Hugging Face Xet asset fetch aborted; see the dated evidence in [REMAINING-GATES.md](docs/REMAINING-GATES.md). Restore backup 16/16 no-response, Memory UI search parity/conflict, and Repair/other-role retention remain open P0s. General release remains DO-NOT-SHIP while any P0 below remains open. PC browser tests and WASM model evidence do not establish physical-device acceptance.
 
 | Priority | Work | State | Evidence needed to close it |
 |---|---|---|---|
