@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-24 JST の現在候補は製品コミット `bf2def4327ef52aec0956ee197b1e2f0f0e3cf17`、branch `codex/nov21-contextual-chat-followup` / PR #113。Debug Site v393にビルド`ed68b874e90f8927`（170検証済み資産、entry `index-CPwlzJLY.js`）を公開。Decision assets/pinned assets/routing 39/39、`npm run check`、`git diff --check`、全品質workflowに合格。GitHub Actions exact-head run 45229926754 は進行中。実D1再取得はCDN切断で推論前に中断。一般リリース判定はDO-NOT-SHIP。証拠と未解決ゲートは [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
+2026-11-24 JST の現在候補は製品コミット `bf2def4327ef52aec0956ee197b1e2f0f0e3cf17`、branch `codex/nov21-contextual-chat-followup` / PR #113。Debug Site v393にビルド`ed68b874e90f8927`（170検証済み資産、entry `index-CPwlzJLY.js`）を公開。Decision assets/pinned assets/routing 39/39、`npm run check`、`git diff --check`、全品質workflowに合格。GitHub Actions exact-head はmerge前の必須ゲート（最新状態はPR #113で確認）。実D1再取得はCDN切断で推論前に中断。一般リリース判定はDO-NOT-SHIP。証拠と未解決ゲートは [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 
