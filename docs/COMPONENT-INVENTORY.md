@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-24 JST の候補は semantic search relevance filter を含むbuild `af77e7d8529deeae`（170検証済み資産、entry `index-DuHMVPD1.js`）。全ローカル品質workflowと実モデルsemantic integrationが合格。Product commit `ec078e07` はPR #113へpush済み、latest ledger head `99270dea` のGitHub Actions 45249848655が進行中。Debug Site v394へ同一buildを公開し、両公開originでmanifestとentry bundle SHA-256一致を確認。Fresh isolated Chromeはapp shell準備後に`Files verified`とactive worker `af77e7d8529deeae`を報告。旧Search QA tabからのUpdate採用だけは未確認。実測でcosine floor 0.75とtop-score差0.05の候補cohort制限を追加し、近接競合候補を保持。Muse固有Decision ONNX、Backup Restore、モデル保持、schedule回答検証などP0は残るためDO-NOT-SHIP。証拠は [REMAINING-GATES.md](REMAINING-GATES.md) と [TEST-RESULTS.txt](TEST-RESULTS.txt)。
+2026-11-24 JST の候補は semantic search relevance filter を含むbuild `af77e7d8529deeae`（170検証済み資産、entry `index-DuHMVPD1.js`）。全ローカル品質workflowと実モデルsemantic integrationが合格。Product commit `ec078e07` はPR #113へpush済み、latest ledger head `290ca0c7` のGitHub Actions 45252185606が進行中。Debug Site v394へ同一buildを公開し、両公開originのmanifestとentry bundle SHA-256一致を確認。Fresh isolated Chromeはapp shell準備後に`Files verified`とactive worker `af77e7d8529deeae`を報告。Side-panelの既存profileはOffline・入力添付ありのため旧worker `400813a209347f37`から更新せず、ユーザーデータを維持。Muse固有Decision ONNX、Backup Restore、モデル保持、schedule回答検証などP0は残るためDO-NOT-SHIP。証拠は [REMAINING-GATES.md](REMAINING-GATES.md) と [TEST-RESULTS.txt](TEST-RESULTS.txt)。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 
