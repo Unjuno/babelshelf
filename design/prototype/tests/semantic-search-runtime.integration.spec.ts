@@ -44,12 +44,13 @@ test('pinned multilingual Search model indexes saved notes and retrieves a Japan
    return {loaded,indexed,paraphraseRuns,conflictRuns};
   }finally{await runtime.close();}
  },`/assets/${runtimeAsset}`);
+ console.log('Search integration · fixed-corpus result vectors · '+JSON.stringify({paraphrase:result.paraphraseRuns[0],conflict:result.conflictRuns[0]}));
  expect(result.loaded).toMatchObject({model:'granite-embedding-97m-multilingual-r2-onnx',device:'wasm'});
  expect(result.indexed.sources).toBe(4);
  expect(result.paraphraseRuns).toHaveLength(4);
- for(const hits of result.paraphraseRuns){expect(hits[0]?.noteId).toBe('meeting-location');expect(hits[0]?.quote).toContain('north entrance');}
+ for(const hits of result.paraphraseRuns){expect(hits.map(hit=>hit.noteId)).toEqual(['meeting-location']);expect(hits[0]?.quote).toContain('north entrance');}
  expect(result.paraphraseRuns.slice(1)).toEqual([result.paraphraseRuns[0],result.paraphraseRuns[0],result.paraphraseRuns[0]]);
  expect(result.conflictRuns).toHaveLength(4);
- for(const hits of result.conflictRuns){expect(hits.map(hit=>hit.noteId)).toContain('secret-quokka');expect(hits.map(hit=>hit.noteId)).toContain('secret-blueberry');}
+ for(const hits of result.conflictRuns){expect(hits.map(hit=>hit.noteId)).toEqual(['secret-quokka','secret-blueberry']);}
  expect(result.conflictRuns.slice(1)).toEqual([result.conflictRuns[0],result.conflictRuns[0],result.conflictRuns[0]]);
 });
