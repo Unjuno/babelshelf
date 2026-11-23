@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-24 JST の現在候補は semantic search relevance filter を含むローカルbuild `af77e7d8529deeae`（170検証済み資産、entry `index-DuHMVPD1.js`）。`npm run check`、実モデルsemantic integration（4反復×2クエリ）、全品質workflow、`git diff --check`が合格。この候補はまだGitHub exact-head CI／Site deploy前。実測でSearch UIのON/OFFは異なるが、日本語の会議質問が無関係ノートも返していたためcosine floor 0.75とtop-score差0.05のコホート制限を追加。近接した競合ノートは両方保持。Muse固有Decision ONNX、Backup Restore、モデル保持、schedule回答検証などP0は残るため一般リリースDO-NOT-SHIP。リリース状態・証拠は [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別記録は [TEST-RESULTS.txt](TEST-RESULTS.txt) を参照。
+2026-11-24 JST の候補は semantic search relevance filter を含むbuild `af77e7d8529deeae`（170検証済み資産、entry `index-DuHMVPD1.js`）。全品質workflowと実モデルsemantic integrationが合格。Product commit `ec078e07` はPR #113へpush済み、exact-head GitHub Actions 45247566363は進行中。Debug Site v394へ同一buildを公開し、両公開originでmanifestとentry bundle SHA-256一致を確認。隔離の旧Search QA tabからのUpdate採用は停滞しworker adoption未確認。実測でcosine floor 0.75とtop-score差0.05の候補cohort制限を追加、近接競合候補を保持。Muse固有Decision ONNX、Backup Restore、モデル保持、schedule回答検証などP0は残るため一般リリースDO-NOT-SHIP。証拠は [REMAINING-GATES.md](REMAINING-GATES.md) と [TEST-RESULTS.txt](TEST-RESULTS.txt)。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 
