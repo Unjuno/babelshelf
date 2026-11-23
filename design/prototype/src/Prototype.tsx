@@ -32,6 +32,7 @@ import {searchResultRows,searchDisplayStatus} from './search-display';
 import {SemanticSearchSettings} from './SemanticSearchSettings';
 import {configureSemanticSearchRuntime,getSemanticSearchRuntime} from './semantic-search-session';
 import type {FileResult} from './file-discovery';
+import type {MemoryPassageResult} from './memory-search-types.ts';
 // @ts-expect-error Shared search folding is JavaScript.
 import {normalizeSearchText} from '../../../dist/core.js';
 import {readDeviceStorage,requestStorageProtection,storageBytes,type DeviceStorage} from './device-storage';
@@ -732,6 +733,7 @@ export default function Prototype() {
  async function openOriginal(ref:OriginalRef){await showAttachment({id:ref.id,asset:ref,name:'Original',kind:'file',size:0,url:'',status:'Reading'});}
  function attachmentCard(item:Attachment,removable=false){return <div className="media-card" key={item.id}><button type="button" className="media-open" onClick={()=>showAttachment(item)}>{item.kind==='image'&&item.url?<img src={item.url} alt=""/>:item.kind==='video'&&item.url?<span className="attachment-video"><video className="attachment-video-thumb" src={item.url} muted playsInline preload="metadata"/><Play size={18}/></span>:<span className="media-kind">{item.kind==='audio'?<><Microphone size={18}/>Listen</>:item.kind==='text'?'Text':item.kind==='image'?'Image':item.kind==='video'?'Video':'File'}</span>}<span className="media-info"><strong>{item.name}</strong><small>{Math.max(1,Math.ceil(item.size/1024))} KB · {inputReadProgress?.id===item.id?inputReadProgress.label:item.status}</small></span></button>{removable&&<button type="button" className="icon-button" aria-label={'Remove '+item.name} disabled={sending} onClick={()=>{if(sendLock.current)return;setAttachments(a=>a.filter(x=>x.id!==item.id));URL.revokeObjectURL(item.url);assetURLs.current.delete(item.url);}}><X size={18}/></button>}</div>;}
  const [memoryScope,setMemoryScope]=useState<MemoryScope>('home');
+ const [semanticMemoryHits,setSemanticMemoryHits]=useState<MemoryPassageResult[]>([]),[semanticMemorySearchState,setSemanticMemorySearchState]=useState<'idle'|'not-ready'|'searching'|'error'>('idle');
  function browseMemory(scope:MemoryScope,path=''){requestEditorExit(()=>{keyboard.hide();setMemoryScope(scope);setActiveFolder(path);setOpened(null);setEditing(false);setQuery('');});}
  const files=useRef<HTMLInputElement>(null), mediaFiles=useRef<HTMLInputElement>(null), cameraFiles=useRef<HTMLInputElement>(null), toolPackageImport=useRef<HTMLInputElement>(null);
  const [navOpen,setNavOpen]=useState(false),[navTarget,setNavTarget]=useState<Page|null>(null);
@@ -1345,6 +1347,17 @@ export default function Prototype() {
  }
  const memoryQuery:string=normalizeSearchText(query);
  const visible=notes.filter(n=>normalizeSearchText(n.path+' '+n.body).includes(memoryQuery));
+ useEffect(()=>{
+  setSemanticMemoryHits([]);
+  const search=page==='memory'&&memoryQuery.trim()&&modelPreferences.searchModel?{query:query.trim(),model:modelPreferences.searchModel}:null;
+  if(!search){setSemanticMemoryHits([]);setSemanticMemorySearchState('idle');return;}
+  const controller=new AbortController();let active=true;const timer=setTimeout(()=>{
+   void (async()=>{setSemanticMemorySearchState('searching');try{const runtime=await getSemanticSearchRuntime(search.model);controller.signal.throwIfAborted();if(!runtime.loaded){if(active){setSemanticMemoryHits([]);setSemanticMemorySearchState('not-ready');}return;}const hits=await runtime.search(search.query,12,controller.signal);if(active)setSemanticMemoryHits(hits.filter(hit=>notes.some(note=>note.id===hit.noteId&&note.version===hit.revision&&memoryNoteMatchesScope(memoryScope,activeFolder,note.path,memoryQuery))));if(active)setSemanticMemorySearchState('idle');}catch(error){if(active&&!controller.signal.aborted){setSemanticMemoryHits([]);setSemanticMemorySearchState('error');}}})();
+  },240);
+  return()=>{active=false;clearTimeout(timer);controller.abort();};
+ },[page,query,memoryQuery,memoryScope,activeFolder,modelPreferences.searchModel,notes]);
+ const semanticFileIds=new Set(semanticMemoryHits.map(hit=>hit.noteId));
+ const semanticRows=semanticMemoryHits.filter(hit=>!visible.some(note=>note.id===hit.noteId));
  const allFolders=[...new Set([...SYSTEM_FOLDERS,...extraFolders,...notes.map(n=>n.path.split('/').slice(0,-1).join('/'))].flatMap(path=>path?path.split('/').map((_,i,a)=>a.slice(0,i+1).join('/')):[]))].sort((a,b)=>{const ai=SYSTEM_FOLDERS.indexOf(a),bi=SYSTEM_FOLDERS.indexOf(b);return (ai<0?5:ai)-(bi<0?5:bi)||a.localeCompare(b);});
  const crumbs=memoryBreadcrumbs(memoryScope,activeFolder);
  const folderEntries=memoryFolderEntries(memoryScope,activeFolder,allFolders);
@@ -1367,7 +1380,7 @@ export default function Prototype() {
  useEffect(()=>{const expiry=nextUndoExpiry(noticeQueue);if(expiry===undefined)return;const timer=setTimeout(()=>setNoticeQueue(queue=>expireUndoNotices(queue)),Math.max(0,expiry-Date.now()));return()=>clearTimeout(timer);},[noticeQueue]);
  const deletionUndoVisible=notice==='Deleted'&&!!deletionUndoBatch&&!dialogueError&&!storageError&&!taskController.error&&!fileSaveWarning&&!submissionStatus&&!sending&&!bonsai.busy&&!storagePending;
  const renderBreadcrumbs=()=> <nav className="memory-breadcrumbs" aria-label="Memory path">{crumbs.map((crumb,i)=><span className="crumb" key={crumb.scope+crumb.path}>{i>0&&<CaretRight size={13}/>}<button aria-current={i===crumbs.length-1?'location':undefined} onClick={()=>browseMemory(crumb.scope,crumb.path)}>{crumb.label}</button></span>)}</nav>;
- const renderListing=()=> <>{visibleFolders.map(entry=><MemoryItem key={entry.scope+entry.path} label={entry.label} folder protectedItem={entry.scope!=='folder'||isSystemFolder(entry.path)} onOpen={()=>browseMemory(entry.scope,entry.path)} onActions={()=>itemActions({kind:'folder',value:entry.path,label:entry.label})}/>)}{scopedNotes.map(n=><MemoryItem key={n.id} label={memoryQuery?n.path:n.path.split('/').at(-1)!} folder={false} protectedItem={n.protected} pathProtected={n.managed} onOpen={()=>openNote(n.id)} onActions={()=>itemActions({kind:'file',value:n.id,label:n.path.split('/').at(-1)!})}/>)}{!visibleFolders.length&&!scopedNotes.length&&<div className="empty-state">No files</div>}</>;
+ const renderListing=()=> <>{visibleFolders.map(entry=><MemoryItem key={entry.scope+entry.path} label={entry.label} folder protectedItem={entry.scope!=='folder'||isSystemFolder(entry.path)} onOpen={()=>browseMemory(entry.scope,entry.path)} onActions={()=>itemActions({kind:'folder',value:entry.path,label:entry.label})}/>)}{scopedNotes.map(n=><MemoryItem key={n.id} label={memoryQuery?n.path:n.path.split('/').at(-1)!} folder={false} protectedItem={n.protected} pathProtected={n.managed} onOpen={()=>openNote(n.id)} onActions={()=>itemActions({kind:'file',value:n.id,label:n.path.split('/').at(-1)!})}/>)}{semanticMemorySearchState==='searching'&&<div className="source-revision" role="status">Searching saved passages…</div>}{semanticMemorySearchState==='not-ready'&&<div className="source-revision" role="status">Load the selected Search model and build its index to include meaning matches · showing word matches</div>}{semanticMemorySearchState==='error'&&<div className="source-revision" role="status">Semantic search unavailable · showing word matches</div>}{semanticRows.map(hit=><button className="source-link" key={hit.noteId} onClick={()=>openNote(hit.noteId,hit.path)}>{hit.path??notes.find(note=>note.id===hit.noteId)?.path??'Saved file'}<span className="result-excerpt">{hit.quote}</span><small>Meaning match</small></button>)}{!visibleFolders.length&&!scopedNotes.length&&!semanticRows.length&&<div className="empty-state">No files</div>}</>;
 
  useEffect(()=>{if(page!=='settings'||settingsPanel!=='files')return;let alive=true;void readDeviceStorage().then(value=>{if(alive)setDeviceStorage(value);});return()=>{alive=false;};},[page,settingsPanel]);
  useEffect(()=>{const node=composerElement.current;if(!node)return;const update=()=>setComposerHeight(Math.ceil(node.getBoundingClientRect().height+Math.max(0,Number.parseFloat(getComputedStyle(node).marginBottom)||0)));update();const observer=new ResizeObserver(update);observer.observe(node);return()=>observer.disconnect();},[page,sheet,storageReady,metadataReady,dialogueReady]);

@@ -1,7 +1,10 @@
 /// <reference lib="webworker" />
-import * as ort from 'onnxruntime-web/webgpu';
-import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url';
-import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url';
+// D1's pinned Q4 token-embedding graph uses com.microsoft::GatherBlockQuantized.
+// The WebGPU-specific reduced-operator bundle omits it; the full JSEP bundle
+// in this same pinned ORT build registers it for WebGPU and WASM execution.
+import * as ort from 'onnxruntime-web';
+import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
+import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
 import {PreTrainedTokenizer,env} from '@huggingface/transformers';
 import {decisionManifest,decisionModelDescriptor,decisionStatus,prepareDecision,readDecisionFile,readCustomDecisionFile} from './decision-assets';
 import type {CustomDecisionModel} from './preference-records';
