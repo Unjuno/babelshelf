@@ -136,7 +136,7 @@ test('Restore backup opens a review for an exported local archive',async({page},
  await page.getByRole('button',{name:'Local files',exact:true}).click();
  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Export backup',exact:true}).click();
  const download=await downloadPromise,filePath=testInfo.outputPath('restore-flow.brainpack');await download.saveAs(filePath);
- const chooserPromise=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();
+ const chooserPromise=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Choose a backup file. Nothing changes until you confirm a restore.'})).toBeVisible();
  const chooser=await chooserPromise;await chooser.setFiles(filePath);
  const review=page.getByRole('dialog',{name:'Restore backup?'});await expect(review).toBeVisible();await expect(review).toContainText('records');
  await review.getByRole('button',{name:'Cancel',exact:true}).click();
