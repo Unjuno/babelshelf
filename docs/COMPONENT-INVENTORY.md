@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-23 JST の更新候補は branch `codex/nov21-contextual-chat-followup`、製品ビルド `674fc9c5111dcec2`（170検証済み資産）。Debug Site v388として公開（一般リリース判定はDO-NOT-SHIP）。GitHub PR #113 は open、候補をpush済み。機能と設計の対応、最適化、検証済みの範囲、未解決事項を同じ表で管理する。公開可否は [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
+2026-11-23 JST の更新候補は branch `codex/nov21-contextual-chat-followup`、製品コミット `4892d03629ee818a82c5059c7c65e3ab70ad35cf`、ビルド `674fc9c5111dcec2`（170検証済み資産）。Debug Site v388として公開（一般リリース判定はDO-NOT-SHIP）。PR #113 は open。Site配信物の証拠と未解決ゲートは [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 
@@ -17,7 +17,7 @@
 | DATA / 保存・履歴・削除 | `knowledge-store.ts`、`memory-trash.ts`、`backup-state.ts`。IndexedDBが正本、Markdownは投影 | 改版時CAS、履歴・withdrawal・原本IDを保持。通常／復旧DBオープンは15秒で失敗を返し、遅れて成立した接続を閉じる | **PARTIAL** — 現候補UIで隔離profileからbackup file picker→review→restore→再表示した本文一致1/1。`test:quality`内のrestore UI 2件、更新QAのOPFSモデルセンチネル保持も合格。Museの16/16無反応と実モデルの更新前後OPFS存在は未再現・未記録 |
 | SCHED / スケジュール・通知 | `scheduled-answer.ts`、`task-records.ts`、`ScheduleEditorSheet.tsx`。Run now、予定回、Retry、履歴、アプリ内通知 | 出典不要な質問と根拠が必要な質問を分ける。回答候補・再試行計測を保持。作成時にウェブ非対応とMemory根拠の注意を表示。閉じたPWAでの起動は保証しない | **OPEN / P0** — Audit 19で挨拶と3+3が失敗、France-capitalはノートなし0/2・対応ノートあり成功（前監査の2/2改善という要約は誤り）。正確な失敗プロンプト/run recordは未保存。v384の挨拶1回成功は単一例。CPU/WASM・answer/run/history/notification整合は未受入。定義削除警告は公開済みだが、後続操作の結果通知は無反応との報告あり |
 | TOOL / Decision・ツール | `agent-coordinator.ts`、`decision-routing.ts`、`decision-worker.ts`、`custom-tool-runtime.ts`。組込・承認付き操作・隔離QuickJS | 宣言済みローカル能力だけを公開。コード、時間、出力、呼出回数に上限。DecisionとTextは別ロール。Decision専用workerはD1 GatherBlockQuantizedを含む固定JSEP bundle/WASMを使用 | **PARTIAL / P0** — 現候補ソースworkerの実D1モデル405.9MB取得・hash検証・WASM session作成・Paris首都命題のtrue分類が隔離Chromiumで1/1。WebGPUセッション、Decisionを使うチャット／カスタムツールdispatchは未検証。監査のWebGPU `GatherBlockQuantized`失敗は閉じていない |
-| PWA / 起動・更新・接続 | `scripts/build-product.mjs` とService Worker。検証済みシェルを明示準備・修復・更新し、オンライン状態を別管理 | ハッシュ付きアセット、履歴キャッシュ、モデル保存とシェル更新を分離 | **PARTIAL** — build `4f5296e102430af7`をdebug Site v387として公開。build manifestをブラウザで照合。前候補のSite配信アーカイブ検査と品質workflowは合格。Audit20で更新後Not preparedが3監査続いたが、実OPFS asset ID前後比較はなく、更新経路にモデル削除は見つからない。実モデル・実機受入は未完 |
+| PWA / 起動・更新・接続 | `scripts/build-product.mjs` とService Worker。検証済みシェルを明示準備・修復・更新し、オンライン状態を別管理 | ハッシュ付きアセット、履歴キャッシュ、モデル保存とシェル更新を分離 | **PARTIAL / P0** — Debug Site v388配信元の新規タブはbuild `674fc9c5111dcec2`を確認。既存 `babelshelf.com` タブはworker `4f5296e102430af7`のままで新ビルドへの切替未確認。更新後Not preparedは3監査続くが、実OPFS asset ID前後比較はなく、更新経路にモデル削除は見つからない。実モデル・実機受入は未完 |
 | DIAG / 診断・進捗 | `device-diagnostics.ts`、`LiveTextWork.tsx`、`inference-measurements.ts`。ロード、入力処理、生成、停止を記録 | 実測値を表示し、計測不能とゼロを区別。端末検査記録をローカル保存 | **PARTIAL** — Check device、更新中操作、実行状態のUI検査合格。handoff Chromium/WebKit 38/38。WebKitの旧root消失traceは原因未特定だが、今回の全品質runで再現なし。物理iPhone/Androidは未検証 |
 | EXT / フィードバック・公開 | `FeedbackPanel.tsx`、`feedback-api/src/index.mjs`。利用者の明示送信。GitHub CIとSite配布を別工程化 | 入力サイズ制限、受信側検証、失敗時のHTTP/service error提示。候補アセットのビルドID・ハッシュを記録 | **PARTIAL** — Site v383隔離profileの合成QA POSTはHTTP 201でD1保存確認。Audit 19ではFeedbackがHTTP 405で0/2だが、該当request method/URL/response traceは未保存。Safe endpoint probesでGET=405、OPTIONS=204、invalid POST=400。POST 405の原因は未特定。mocked 503 UIではdraft保持 |
 
@@ -44,7 +44,7 @@
 | P1 | WebKitでアプリ起動待ちの散発タイムアウト | **間欠リスク** — 最新の全品質runでhandoff 38/38。以前の1 runでtrace上storage gate描画後にrootが空になったが、資産は全て200、console/pageerror/requestfailedなし。isolated 3回と今回の全runは合格。原因未確定 | 再発した場合は別traceで調査し、時間制限やassertionを緩めず安定性を再確認 |
 | P1 | Trashの実データ参照サイクル | **部分確認** — 合成25件のグラフと関連削除は合格 | 監査データを匿名化した同型グラフで定義・Runs・通知・会話参照を確認し、関連項目だけを削除、無関係原本と履歴を保持 |
 | P1 | 削除／改版後の添付チップ整合 | **UI回帰合格、旧データ修復未完** — 消失ファイルは説明・解除できる | 削除、復元、新版作成、別タブ編集後に添付ID/revisionを照合し、古い参照の説明と回復を実ブラウザで確認 |
-| P1 | Search意味検索の実ランタイム | **未検証** — UIで準備は明示、選択時に暗黙取得しない | 承認取得、ハッシュ、ロード、意味順位、原文引用、オフライン再検索まで行い、キーワードfallbackを維持 |
+| P1 | Search意味検索の実ランタイム | **WASMで部分検証** — 実Graniteモデルを隔離Chromiumで検証・ロードし、日本語言い換え1件を意味順位で正しく取得。UIの複数クエリ・ON/OFF比較、オフライン再検索は未確認 | 固定corpusで複数クエリのcandidate ID/rankとキーワードfallback、改版、scope、オフラインを対応比較 |
 | P1 | iPhone/Android installed PWA | **未検証** — iOS handoff UIはPCで試験済み。Phone Useは接続不可 | 実機の現候補でモデルLoad/Generation、Home Screen起動、オフライン冷間起動、再開後の保存を確認。PC WebKitは代替にしない |
 | P2 | 通知送信・GitHub/Siteへの公開配線 | **未検証** — フィードバックUIのオフライン挙動と本番POST成功は別 | テスト用の明示的な送信でAPIの受信・応答を確認。公開はrelease gate合格後にbuildを照合して実行 |
 
