@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {createHash} from 'node:crypto';
-import {decisionManifest,decisionFile,readDecisionFile,prepareDecisionFile,prepareDecision,inspectCustomDecisionModel,importCustomDecisionModel,readCustomDecisionFile,decisionModelDescriptor} from '../src/decision-assets.ts';
+import {decisionManifest,decisionFile,readDecisionFile,prepareDecisionFile,prepareDecision,inspectCustomDecisionModel,importCustomDecisionModel,readCustomDecisionFile,decisionModelDescriptor,createDecisionAssetStore} from '../src/decision-assets.ts';
 const bytes=new TextEncoder().encode(fs.readFileSync(new URL('../src/decision-manifest.json',import.meta.url),'utf8'));
 const config=new TextEncoder().encode('{\n  "backend": "tokenizers",\n  "bos_token": "<|startoftext|>",\n  "eos_token": "<|im_end|>",\n  "pad_token": "<|pad|>",\n  "mask_token": "<|mask|>",\n  "clean_up_tokenization_spaces": false,\n  "model_max_length": 16384,\n  "tokenizer_class": "TokenizersBackend"\n}\n');
 const fixture=(cached,controller,abortReading=false)=>{
@@ -39,6 +39,21 @@ test('storage writer failure cancels the acquired download instead of leaving a 
  const controller=new AbortController();let cancelled=false;
  const io={fetch:async()=>new Response(new ReadableStream({cancel(){cancelled=true;}})),directory:async()=>({async getFileHandle(name,options){if(!options?.create)throw Error('Missing');return {async createWritable(){throw Error('Disk full');}};}})};
  await assert.rejects(prepareDecisionFile('tokenizer_config.json',true,controller.signal,()=>{},io),/Disk full/);assert.equal(cancelled,true);
+});
+
+test('built-in Decision asset preparation resumes from the last verified range after a network interruption',async()=>{
+ const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+37);for(let i=0;i<all.length;i++)all[i]=i%251;
+ const digest=createHash('sha256').update(all).digest('hex'),files=new Map(),ranges=[];
+ const handle={async getFile(){return files.get(digest)??new Blob([]);},async createWritable(){let data=new Uint8Array(await (files.get(digest)??new Blob([])).arrayBuffer()),position=0;return {async seek(value){position=value;},async truncate(value){data=data.slice(0,value);position=Math.min(position,value);},async write(value){const chunk=new Uint8Array(value),next=new Uint8Array(Math.max(data.length,position+chunk.length));next.set(data);next.set(chunk,position);data=next;position+=chunk.length;},async close(){files.set(digest,new Blob([data]));},async abort(){}};}};
+ const directory={async getFileHandle(name,{create=false}={}){assert.equal(name,digest);if(!create&&!files.has(name))throw new DOMException('missing','NotFoundError');return handle;}};
+ let interrupted=false;const fetch=async(_url,options)=>{const match=/bytes=(\d+)-(\d+)/.exec(options.headers.Range),start=Number(match[1]),end=Number(match[2]);ranges.push(options.headers.Range);const headers={'content-range':`bytes ${start}-${end}/${all.length}`,'content-length':String(end-start+1)};
+  if(start===rangeBytes&&!interrupted){interrupted=true;let sent=false;return new Response(new ReadableStream({pull(controller){if(!sent){sent=true;controller.enqueue(all.subarray(start,start+5));}else controller.error(new TypeError('connection reset'));}}),{status:206,headers});}
+  return new Response(all.subarray(start,end+1),{status:206,headers});
+ };
+ const store=createDecisionAssetStore({directory:async()=>directory,fetch},{id:'d1-omni-600M',conversion:{revision:'a'.repeat(40)},runtime:{revision:'decision-runtime-test'},files:[{path:'onnx/model_quantized.onnx_data',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/onnx/model_quantized.onnx_data',bytes:all.length,sha256:digest}]}),signal=new AbortController().signal;
+ await assert.rejects(store.prepare(true,signal),/connection reset/);assert.equal(files.get(digest).size,rangeBytes);
+ const resumed=await store.prepare(true,signal);assert.equal(resumed.downloadedBytes,37);assert.deepEqual(ranges,[`bytes=0-${rangeBytes-1}`,`bytes=${rangeBytes}-${all.length-1}`,`bytes=${rangeBytes}-${all.length-1}`]);
+ assert.equal((await store.status(signal)).filesPresent,true);assert.deepEqual(new Uint8Array(await(await store.read('onnx/model_quantized.onnx_data',signal)).arrayBuffer()),all);
 });
 
 test('Decision pins the full JSEP runtime required by D1 GatherBlockQuantized',()=>{

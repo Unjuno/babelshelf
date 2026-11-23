@@ -1,4 +1,6 @@
 import {expect,test} from '@playwright/test';
+import {decisionRoutingQuestion,decisionRoutingState,decisionRoute} from '../src/decision-routing.ts';
+import {decisionManifest} from '../src/decision-assets.ts';
 const enabled=process.env.BABELSHELF_RUN_D1_INTEGRATION==='1';
 
 test('pinned D1 model prepares, creates a real ONNX session and classifies a statement',async({page})=>{
@@ -21,7 +23,9 @@ test('pinned D1 model prepares, creates a real ONNX session and classifies a sta
    const prepared=await operation('prepare',{allowNetwork:true});
    const loaded=await operation('load');
    const classified=await operation('classify',{state:'Statement: Paris is the capital of France. The statement is true.',question:{type:'noul',instructions:'Is the statement true?'}});
-   return {prepared,loaded,classified,progress};
+   const routeQuestion='Give me a one-sentence explanation of lunar phases.',routeClassification=await operation('classify',{state:decisionRoutingState(routeQuestion),question:decisionRoutingQuestion});
+   const route=decisionRoute(routeClassification,routeQuestion,{summary:'',recent:[],refs:[],turnCount:0},{model:decisionManifest.id,revision:decisionManifest.conversion.revision,inputLimit:decisionManifest.inputLimit,scope:'text-only'});
+   return {prepared,loaded,classified,route:{request:route.request,reason:route.reason,classification:routeClassification},progress};
   }finally{worker.terminate();}
  });
  expect(result.prepared).toMatchObject({prepared:true});
@@ -29,4 +33,7 @@ test('pinned D1 model prepares, creates a real ONNX session and classifies a sta
  expect(result.loaded.device).toBe('wasm');
  expect(result.progress).toContain('WebGPU skipped · D1 Q8 MatMulNBits is unsupported by this WebGPU runtime · using WASM');
  expect(result.classified).toMatchObject({scope:'text-only',model:'d1-omni-600M',answer:{type:'noul',answer:true}});
+ expect(result.route.request).toEqual({action:'chat',query:'Give me a one-sentence explanation of lunar phases.'});
+ expect(result.route.reason).toBe('confident-read-only');
+ expect(result.route.classification).toMatchObject({scope:'text-only',model:'d1-omni-600M',answer:{type:'choice',choice:'chat'}});
 });

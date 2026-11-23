@@ -32,7 +32,7 @@ Connection settings remain Memory-backed. Chat may propose toggling `diagnosticL
 
 ### Release-readiness checklist · 2026-11-23 JST
 
-Current candidate and deployment identifiers are recorded in [REMAINING-GATES.md](docs/REMAINING-GATES.md); component status is in [COMPONENT-INVENTORY.md](docs/COMPONENT-INVENTORY.md). The latest debug candidate adds a deterministic fallback from a failed optional Decision model load to Text planning; full local quality passes. The candidate still needs its exact-head GitHub checks and Site deployment, and real Decision/custom-tool, Muse Restore, search parity, and model-retention questions remain open. General release remains DO-NOT-SHIP while any P0 below remains open. PC browser tests and simulated ONNX failures do not establish physical-device acceptance.
+Current candidate and deployment identifiers are recorded in [REMAINING-GATES.md](docs/REMAINING-GATES.md); component status is in [COMPONENT-INVENTORY.md](docs/COMPONENT-INVENTORY.md). The working tree adds range-resumable acquisition for built-in Decision assets and a deterministic interrupted-CDN regression; focused Decision asset/pinned asset/routing tests (39/39), `npm run check`, and full local quality workflow pass on build `ed68b874e90f8927`. The real D1 rerun stopped during CDN acquisition before inference. The candidate still needs exact-head GitHub checks and Site deployment, and integrated real Decision/custom-tool, Muse Restore, search parity, and cross-update model-retention questions remain open. General release remains DO-NOT-SHIP while any P0 below remains open. PC browser tests and simulated ONNX failures do not establish physical-device acceptance.
 
 | Priority | Work | State | Evidence needed to close it |
 |---|---|---|---|
