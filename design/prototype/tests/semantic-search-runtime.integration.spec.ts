@@ -26,18 +26,21 @@ test('pinned multilingual Search model indexes saved notes and retrieves a Japan
    {id:'meeting-location',path:'Inbox/meeting-location.md',body:'Meeting logistics: everyone will convene beside the north entrance of the main railway station.',version:1},
    {id:'lunch-menu',path:'Inbox/lunch-menu.md',body:'The lunch menu includes noodles, green tea and seasonal fruit.',version:1},
   ]},'granite-embedding-97m-multilingual-r2-onnx');
-  const signal=new AbortController().signal,events=(_type:string,value:unknown)=>{void (window as any).reportSemanticProgress(typeof value==='string'?value:JSON.stringify(value));};
+  const signal=new AbortController().signal;let lastProgress='';
+  const events=(_type:string,value:unknown)=>{const next=typeof value==='string'?value:JSON.stringify(value);if(next!==lastProgress){lastProgress=next;void (window as any).reportSemanticProgress(next);}};
   try{
    await runtime.prepareRuntime(true,signal,events);
    await runtime.prepareModel(true,[],signal,events);
    const loaded=await runtime.load(signal,events);
    const indexed=await runtime.index(signal,events);
-   const hits=await runtime.search('会議の集合場所は駅のどの入口ですか？',12,signal,events);
-   return {loaded,indexed,hits:hits.map(hit=>({noteId:hit.noteId,path:hit.path,quote:hit.quote,score:hit.score}))};
+   const query='会議の集合場所は駅のどの入口ですか？',runs=[];
+   for(let attempt=0;attempt<4;attempt++)runs.push((await runtime.search(query,12,signal,events)).map(hit=>({noteId:hit.noteId,path:hit.path,quote:hit.quote,score:hit.score})));
+   return {loaded,indexed,runs};
   }finally{await runtime.close();}
  },`/assets/${runtimeAsset}`);
  expect(result.loaded).toMatchObject({model:'granite-embedding-97m-multilingual-r2-onnx',device:'wasm'});
  expect(result.indexed.sources).toBe(2);
- expect(result.hits[0]?.noteId).toBe('meeting-location');
- expect(result.hits[0]?.quote).toContain('north entrance');
+ expect(result.runs).toHaveLength(4);
+ for(const hits of result.runs){expect(hits[0]?.noteId).toBe('meeting-location');expect(hits[0]?.quote).toContain('north entrance');}
+ expect(result.runs.slice(1)).toEqual([result.runs[0],result.runs[0],result.runs[0]]);
 });
