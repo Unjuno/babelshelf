@@ -6,12 +6,14 @@ test('Restore backup opens a review and restores its note through the Settings f
  const note=createNote({path:'Inbox/audit20-restore-roundtrip.md',body:'Restore UI roundtrip · preserved local record'});
  note.id='audit20-restore-roundtrip';
  const archive=await makeBackup([note]);
- const input=page.locator('input[type="file"][accept=".brainpack,application/json"]');
  await page.getByRole('button',{name:'Input',exact:true}).click();
  await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Local files',exact:true}).click();
+ const chooserPromise=page.waitForEvent('filechooser');
  await page.getByRole('button',{name:'Restore backup',exact:true}).click();
- await input.setInputFiles({name:'audit20-roundtrip.brainpack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(archive))});
+ const chooser=await chooserPromise;
+ expect(chooser.isMultiple()).toBe(false);
+ await chooser.setFiles({name:'audit20-roundtrip.brainpack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(archive))});
  const dialog=page.getByRole('dialog',{name:'Restore backup?'});
  await expect(dialog).toContainText('1 records');
  await dialog.getByRole('button',{name:'Restore',exact:true}).click();
