@@ -188,6 +188,11 @@ self.addEventListener('fetch',event=>{
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE),path=request.mode==='navigate'?'./index.html':'.'+url.pathname.slice(new URL(self.registration.scope).pathname.length-1);
   const missing=()=>request.mode==='navigate'?recoveryResponse():new Response('Local app asset missing. Prepare or update explicitly.',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
+  // build.json is generated beside sw.js after the worker template is built,
+  // so it is not an ordinary cached asset. Serve the exact manifest captured
+  // by this worker; otherwise a controlled page gets a false 503 for build
+  // checks even though its shell and hashed assets are ready.
+  if(path==='./build.json')return new Response(JSON.stringify({build:BUILD,files:FILES}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
   if(path===META||path.startsWith('./.babelshelf-app-assets/'))return missing();
   // Serving HTML without its entry modules strands the user before React can
   // render StartupRecovery. Verify the small app shell, never model/runtime
