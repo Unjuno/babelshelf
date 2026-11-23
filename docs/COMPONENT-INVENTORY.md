@@ -25,7 +25,7 @@
 
 | 優先 | 問題 | 現在の判定 | 完了条件 |
 |---|---|---|---|
-| P0 | DecisionとカスタムツールのONNX統合経路 | **PARTIAL** — 現候補で実D1をJSEP WASM sessionにロードし分類成功。旧監査buildのGatherBlockQuantized失敗はこのmodel graphで再確認されず、現workerはQ8をWebGPUへ渡さない。監査のcustom-tool chat 2/2 failureは旧buildの結果で、現候補のchat/tool dispatch未確認 | 現候補でDecisionを実際に選択するJSON-planner model/profileからcustom-tool dispatchを実行し、session provider、tool call、最終回答と保存記録を確認。WebGPU passとは報告しない |
+| P0 | DecisionとカスタムツールのONNX統合経路 | **PARTIAL / graceful fallback added** — 候補 build `37c10d6035042df3` では任意Decisionのload失敗をActivityへ残し、Text plannerへ続行する決定的回帰テストが通過。実Decision ONNX session、Decision分類、custom-tool chat統合は未確認。現workerはbuilt-in D1 Q8をWebGPUへ渡さずWASMを選ぶ | 実モデルでDecisionを選択するJSON-planner構成からcustom-tool dispatchし、session provider/operator、tool call、最終回答と保存記録を確認。失敗時にTextへ継続できることも対象ブラウザで検証。WASM fallbackをWebGPU合格とは報告しない |
 | P0 | 更新後に既定モデルがNot preparedとなり再取得が繰り返される | **原因未確定** — Service Worker更新/repair pathにモデルOPFSを削除する処理なし。Museでは3回連続して未準備と約1GB再DLを観測、更新前の実ファイル存在を記録できず削除は未立証 | 更新前後の隔離PCブラウザでモデルOPFSのサイズ/ハッシュを比較し、UI stateとasset bytesを分離。実転送0・実ファイル保持を確認 |
 | P0 | Backup restoreが対象ブラウザで無反応 | **Muse再現未解決** — 現候補の通常Restore newはブラウザで複数回成功、`Restore new`後に本文一致。16/16監査失敗は対象profileの競合/asset形状/chooser traceがなく未説明 | Muse同型backupでchooser→parse→review→commitを計測。conflicts/originals/settings/runs付き全ケースとエラー表示を検証 |
 | P0 | Memory画面のSearch model設定が検索結果に反映されない | **経路修正済み・実モデル未検証** — Memory検索が埋め込みruntimeを呼んでいなかった。明示ロード・索引済み候補を追加し語句一致は維持 | 現候補でSearch modelをload/indexし、日本語意味検索ON/OFFを対応比較。複数候補、revision変更、folder scope、オフラインを確認 |
@@ -54,6 +54,10 @@
 - `dist` は追跡ランタイムとローカル生成物が混在する。追跡状態とimport元を確認してから変更する。
 - `tests`、`design/prototype/tests`、`specs`、`scripts/qa` はロジック、実ブラウザ、自動PWA、実モデル、物理端末を分けて記録する。
 - 設計・仕様は既存の `docs` に集約し、この台帳は責務・最適化・状態の索引とする。詳細と日付付き証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) にリンクする。
+
+2026-11-24 JST · Audit 20 Decision-load fallback follow-up · candidate product build `37c10d6035042df3` (170 assets; entry `index-OZVeikiu.js`)
+
+When optional Decision model loading fails during a chat route, the failure remains in Activity and the current turn continues through the Text planner. A changed Decision selection or cancelled run still aborts normally. Regression test simulates the reported `GatherBlockQuantized` load failure, confirms Text fallback and a user-facing answer; `npm run test:submission` passed 123/123. Full `npm run test:quality` exited 0: Node 286/286; prototype 2,117/2,117; Settings 38/38; editorial 38/38; Chromium and WebKit handoff 38/38 each; app update/recovery 3/3; storage startup 1/1; offline process and installed-PWA checks passed. `npm run check` and `git diff --check` passed. These tests use a simulated Decision load error and do not establish real Decision session/tool dispatch, public profile model retention, or physical-device inference. Site deployment and exact-head GitHub CI are pending; general release remains DO-NOT-SHIP.
 
 2026-11-24 JST · Audit 20 debug follow-up · product build `b04ce65dad6806bc`
 

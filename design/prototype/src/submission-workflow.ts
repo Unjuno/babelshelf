@@ -203,7 +203,17 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
      context=planningContextForInputs({...prepared,refs:[...prepared.refs,...importedRefs]},inputReadings.length>0);}
     }:undefined,
     select:decisionCanRoute?async()=>{
-     await models.decision(checkSend,work=>{setChatProgress('Loading decision model…');return trace('decision.load',decisionAssetInput(false,modelPreferences.customDecisionModels.find(m=>m.id===decisionModel)),work);});
+     try{
+      await models.decision(checkSend,work=>{setChatProgress('Loading decision model…');return trace('decision.load',decisionAssetInput(false,modelPreferences.customDecisionModels.find(m=>m.id===decisionModel)),work);});
+     }catch(error){
+      checkSend();
+      if((error as Error).message==='Decision selection changed')throw error;
+      // Decision is an optional read-only router. Its failed load is already
+      // recorded as a failed activity; continue with Text so a broken optional
+      // ONNX session does not discard the user's entire chat turn.
+      setChatProgress('Decision unavailable · continuing with Text model');
+      return {request:null,reason:'decision-unavailable'};
+     }
      checkSend();setChatProgress('Selecting action…');return routeWithDecision(decision,text,context,descriptors,trace,checkSend);
     }:undefined,
     plan:async()=>{

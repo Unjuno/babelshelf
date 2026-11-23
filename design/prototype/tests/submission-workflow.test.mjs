@@ -658,6 +658,18 @@ test('standalone planning request uses the resident Text model without loading D
  assert.equal(plans,0,'a general planning question does not enter history-biased action selection');assert.equal(answers,1);assert.equal(decisionLoads,0);assert.equal(decisionCalls,0);assert.equal(f.current().turns.at(-1).answer,'Let us plan the weekly reset.');
 });
 
+test('a Decision ONNX load failure is recorded and falls back to the Text planner',async()=>{
+ const f=fixture(),c=createSubmissionController();let decisionLoads=0,textLoads=0,generations=0;let resident='';
+ f.services.model='json-test';f.services.decisionModel='d1-omni-600M';
+ f.services.bonsai={plannerProtocol:'json',protocolForModel:()=> 'json',loaded:'',busy:false,assets:{'json-test':{filesPresent:true}},manifest:{contextTokens:4096,maxOutputTokens:512,models:[{id:'json-test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),load:async id=>{textLoads++;resident=id;return {loaded:id};},get loaded(){return resident;},generate:async()=>{generations++;return generations===1?{text:'{\"action\":\"chat\",\"query\":\"\"}',finishReason:'stop'}:{text:'I can help with questions and local notes.',finishReason:'stop'};},pin(){return this;},stop(){}};
+ f.services.decision={identity:{model:'d1-omni-600M',revision:'r1',inputLimit:4096,scope:'text-only'},enabled:true,ready:true,loaded:false,busy:false,load:async()=>{decisionLoads++;throw Error('GatherBlockQuantized implementation missing at embed/Gather_Q4');},unload:async()=>{},classify:async()=>{throw Error('Decision must not classify after a failed load');}};
+ f.services.ensureProductRuntime=async()=>{};f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ const outcome=await c.run(run=>executeSubmission({text:'I need advice.',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));assert.equal(decisionLoads,1);assert.ok(textLoads>=1);assert.equal(generations,2);
+ const turn=f.current().turns.at(-1);assert.equal(turn.answer,'I can help with questions and local notes.');
+ assert.ok(turn.activity.some(activity=>activity.tool==='decision.load'&&activity.status==='failed'),'the Decision load failure remains in Activity');
+});
+
 test('literal new-note prose is saved exactly without model acquisition, even when another file is open',async()=>{
  const f=fixture(),c=createSubmissionController();await f.services.saveDialogue({...f.current(),currentFile:{noteId:'existing',revision:2}});
  const outcome=await c.run(run=>executeSubmission({text:'QA星見の持ち物は水と充電器。メモして。',attachments:[]},f.services,f.view,run));
