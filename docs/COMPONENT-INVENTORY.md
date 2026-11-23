@@ -1,6 +1,6 @@
 # BabelShelf コンポーネント台帳
 
-2026-11-23 JST の現在候補は branch `codex/nov21-contextual-chat-followup`、製品コミット `4fbc881ba2344b51b846bbce83815e490647088f`、ビルド `400813a209347f37`（170検証済み資産）、最新台帳コミット `72ae5ff3af77b2a931be147074c7eae51b528e3d`。PR #113 はopen、exact-head CI run `45155177211` はbrowser system dependency installationで進行中。Debug Site v389に同じ製品ビルドを公開し、既存PWAタブでもUpdate後のActive worker一致を確認。一般リリース判定はDO-NOT-SHIP。Site配信物の証拠と未解決ゲートは [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
+2026-11-23 JST の現在候補は branch `codex/nov21-contextual-chat-followup`、製品コミット `4fbc881ba2344b51b846bbce83815e490647088f`、ビルド `400813a209347f37`（170検証済み資産）、最新push済み台帳コミット `8f1a33bd4243241eca151f7e411b9a5cb5e91ff2`。PR #113 はopen。exact-head CI run `45159389475` はbrowser system dependency installationで停止状態。Debug Site v389に同じ製品ビルドを公開し、既存PWAタブでもUpdate後のActive worker一致を確認。一般リリース判定はDO-NOT-SHIP。Site配信物の証拠と未解決ゲートは [REMAINING-GATES.md](REMAINING-GATES.md)、ビルド別の証拠は [TEST-RESULTS.txt](TEST-RESULTS.txt) が正本。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
 

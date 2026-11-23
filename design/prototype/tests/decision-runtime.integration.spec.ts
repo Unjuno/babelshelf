@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 const enabled=process.env.BABELSHELF_RUN_D1_INTEGRATION==='1';
 
 test('pinned D1 model prepares, creates a real ONNX session and classifies a statement',async({page})=>{
- test.skip(!enabled,'Explicit opt-in: downloads about 406 MB of pinned D1 weights into this isolated browser profile.');
+ test.skip(!enabled,'Explicit opt-in: may download about 406 MB of pinned D1 weights into this isolated browser profile when assets are missing.');
  test.setTimeout(25*60_000);
  page.on('console',message=>console.log('Decision browser console · '+message.type()+' · '+message.text()));
  page.on('requestfailed',request=>console.log('Decision request failed · '+request.url()+' · '+request.failure()?.errorText));
