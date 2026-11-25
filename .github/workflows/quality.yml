@@ -78,6 +78,7 @@ jobs:
       - name: Review store and offline calculation
         run: |
           npm run test:quality:review-store
+          npm run test:quality:backup-restore
           npm run test:quality:offline-calculation
       - name: Tool, MCP, help and Markdown acceptance
         run: |
