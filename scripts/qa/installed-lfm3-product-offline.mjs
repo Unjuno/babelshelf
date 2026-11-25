@@ -13,13 +13,13 @@ const modelStat=await stat(modelFile);assert.ok(modelStat.size>1_000_000_000,'Ex
 await mkdir(outputDir,{recursive:true});
 const build=JSON.parse(await readFile('design/prototype/dist/app/build.json','utf8')).build;
  const mark='LFM3-COLD-'+build.toUpperCase(),original='The emergency water reserve is exactly 24 litres. Identifier: '+mark+'.';
-const evidence={scope:'Isolated PC Chrome product PWA, local LFM3 QAD Q4_0 imported from a local GGUF, actual offline browser restart and grounded chat. Not phone, Airplane Mode, quality benchmark, or sustained thermal evidence.',build,modelFile:{bytes:modelStat.size},phases:[],externalRequests:[],pass:false};
+const evidence={scope:'Isolated PC Chromium-family product PWA, local LFM3 QAD Q4_0 imported from a local GGUF, actual offline browser restart and grounded chat. Not phone, Airplane Mode, quality benchmark, or sustained thermal evidence.',build,modelFile:{bytes:modelStat.size},phases:[],externalRequests:[],pass:false};
 let context,page;
 async function persist(){await writeFile(join(outputDir,'evidence.json'),JSON.stringify(evidence,null,2));}
 function observe(ctx,phase){ctx.on('request',request=>{if(!request.url().startsWith(url)&&!request.url().startsWith('blob:')&&!request.url().startsWith('data:'))phase.external.push(request.url());});}
 async function activeBuild(p){return p.evaluate(()=>new Promise((resolve,reject)=>{const channel=new MessageChannel(),timer=setTimeout(()=>reject(Error('No active service worker build reply')),5000);channel.port1.onmessage=event=>{clearTimeout(timer);resolve(event.data);};navigator.serviceWorker.controller.postMessage('build',[channel.port2]);}));}
 async function launch(label,offline){
- context=await chromium.launchPersistentContext(profileDir,{channel:'chrome',headless:true,offline,viewport:{width:390,height:844},acceptDownloads:true});context.setDefaultTimeout(30_000);page=context.pages()[0];
+ context=await chromium.launchPersistentContext(profileDir,{channel:process.env.BABELSHELF_QA_BROWSER_CHANNEL || 'chrome',headless:true,offline,viewport:{width:390,height:844},acceptDownloads:true});context.setDefaultTimeout(30_000);page=context.pages()[0];
  const phase={label,offline,external:[],browserVersion:context.browser().version()};observe(context,phase);page.on('pageerror',error=>{(phase.pageErrors??=[]).push(error.message);});page.on('console',message=>{if(message.type()==='error')(phase.consoleErrors??=[]).push(message.text().slice(0,2000));});page.on('requestfailed',request=>{(phase.failedRequests??=[]).push({url:request.url(),error:request.failure()?.errorText??''});});
  await page.goto(url,{timeout:30_000});const connection=page.getByRole('button',{name:/^(Online|Offline) · Tap to switch/});await connection.waitFor({timeout:30_000});
  if(!offline&&await connection.getAttribute('aria-pressed')!=='true')await connection.click();

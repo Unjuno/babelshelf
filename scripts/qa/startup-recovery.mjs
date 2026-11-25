@@ -54,6 +54,30 @@ test('missing shell and boot assets expose offline-safe recovery and preserve lo
    const notes=await new Promise((resolve,reject)=>{const r=db.transaction('notes').objectStore('notes').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();
    return {notes,draft:localStorage.getItem('retained-draft')};
   });
+  const roleDirectories=['babelshelf-text-lfm3-v1','babelshelf-decision-v1','babelshelf-semantic-assets-v1','babelshelf-semantic-assets-v2'];
+  const originalWeights=await page.evaluate(async directories=>{
+   const root=await navigator.storage.getDirectory();
+   return Promise.all(directories.map(async name=>{
+    const directory=await root.getDirectoryHandle(name,{create:true});
+    const file=await directory.getFileHandle('retention-fixture',{create:true});
+    const bytes=crypto.getRandomValues(new Uint8Array(4096));
+    const writer=await file.createWritable();
+    await writer.write(bytes);
+    await writer.close();
+    return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)));
+   }));
+  },roleDirectories);
+  async function verifyRoleFiles(){
+   const digests=await page.evaluate(async directories=>{
+    const root=await navigator.storage.getDirectory();
+    return Promise.all(directories.map(async name=>{
+     const directory=await root.getDirectoryHandle(name);
+     const file=await (await directory.getFileHandle('retention-fixture')).getFile();
+     return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer())));
+    }));
+   },roleDirectories);
+   assert.deepEqual(digests,originalWeights);
+  }
   const original=await preserved();
   // Simulate the browser losing CacheStorage while retaining its registration.
   await page.evaluate(async()=>{for(const name of await caches.keys())await caches.delete(name);});
@@ -74,7 +98,7 @@ test('missing shell and boot assets expose offline-safe recovery and preserve lo
   await page.getByRole('heading',{name:'App ready',exact:true}).waitFor();
   await page.waitForFunction(()=>window.appReady);
   assert.deepEqual(requests.sort(),['/assets/main-START123.js','/index.html'].sort());
-  assert.deepEqual(await preserved(),original);
+  assert.deepEqual(await preserved(),original);await verifyRoleFiles();
   // HTML alone is insufficient: a missing or corrupt entry must also recover.
   await page.evaluate(async sha=>{const pool=await caches.open('babelshelf-product-assets-v1');await pool.put(new URL('./.babelshelf-app-assets/'+sha,location.href).href,new Response('broken'));},files[1].sha256);
   requests.length=0;corrupt=true;
@@ -88,7 +112,7 @@ test('missing shell and boot assets expose offline-safe recovery and preserve lo
   await page.getByRole('heading',{name:'App ready',exact:true}).waitFor();
   assert.deepEqual(requests.filter(path=>path!=='/sw.js'),['/assets/main-START123.js']);
   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>window.appReady);
-  assert.deepEqual(await preserved(),original);
+  assert.deepEqual(await preserved(),original);await verifyRoleFiles();
   // The fallback Update control can fetch and activate a newer release even
   // while canonical model/data networking remains Offline.
   await context.setOffline(false);
@@ -109,7 +133,7 @@ test('missing shell and boot assets expose offline-safe recovery and preserve lo
   await page.getByRole('button',{name:'Update app online',exact:true}).click();
   await page.getByRole('heading',{name:'Updated app ready',exact:true}).waitFor();await page.waitForFunction(()=>window.appReady);
   const activeBuild=await page.evaluate(()=>new Promise(resolve=>{const channel=new MessageChannel();channel.port1.onmessage=event=>{channel.port1.close();resolve(event.data.build);};navigator.serviceWorker.controller.postMessage('build',[channel.port2]);}));
-  assert.equal(activeBuild,'3333333333333333');assert.deepEqual(await preserved(),original);assert.deepEqual(scriptErrors,[]);
+  assert.equal(activeBuild,'3333333333333333');assert.deepEqual(await preserved(),original);await verifyRoleFiles();assert.deepEqual(scriptErrors,[]);
   console.log(JSON.stringify({scope:'PC Chromium, real worker/recovery UI; synthetic shell, no model/device acceptance',browser:browser.version(),missingShell:true,corruptEntry:true,offlineRecovery:true,updateControl:true,dataRetained:true}));
   await context.close();
  }finally{await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
