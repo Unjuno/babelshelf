@@ -302,13 +302,22 @@ export async function coordinateAgentTurn(input:{
    // An adapter cannot impersonate this category by throwing the same class.
    if(call.tool===DEFERRED_TOOL_SEARCH_ID){if(!canDeferCustom)throw new AgentToolInputError();return searchDeferredTools(call.arguments.query,registeredTools);}
    if(call.tool===DEFERRED_TOOL_READ_SKILL_ID){if(!canDeferCustom)throw new AgentToolInputError();try{return readDeferredToolSkill(call.arguments.id,registeredTools);}catch{throw new AgentToolInputError();}}
+   const isCustom=call.tool.startsWith('user.');
+   if(isCustom){
+    try{await input.ensureCustomRuntime();}
+    catch(error){
+     input.check();
+     if(error instanceof Error && 'code' in error && error.code==='runtime-not-prepared')
+      throw Error('Tools runtime not prepared · open Settings → Tools → Prepare runtime');
+     if(error instanceof Error && error.message==='Stopped')throw error;
+     throw new AgentToolExecutionError(call.tool,error);
+    }
+   }
    try{
     // Discovered records remain valid read targets for this turn, even when
     // the model searches again before comparing earlier results. Latest-search
     // shortcuts still use only the newest search and must be reset separately.
     if(call.tool==='memory.search'){searchedMemory=true;latestSearchNoteIds=[];latestSearchQuotes.clear();latestExplicitReadIds=[];namedFileResultsCompleteForSynthesis=false;}
-    const isCustom=call.tool.startsWith('user.');
-    if(isCustom)await input.ensureCustomRuntime();
     const host:ToolHost={
      search:async(query,signal)=>{input.check();const lexical=await input.search(query,signal);input.check();const combined=await combineMemorySearchResults(query,lexical,input.semanticSearch,signal);input.check();return combined;},
      webSearch:input.webSearch?async(query,signal)=>{input.check();const result=await input.webSearch!(query,signal);input.check();return result;}:undefined,

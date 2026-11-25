@@ -1178,3 +1178,15 @@ test('native agents choose their next operation after search instead of legacy a
  assert.equal(result.final.reply.answer,'Meet Monday.');
  assert.equal(calls.some(call=>call[0]==='read'),false);
 });
+
+test('a missing host runtime ends an explicit tool request with preparation guidance',async()=>{
+ const {createCustomToolPackageFiles}=await import('../src/custom-tool-package.ts');
+ const files=createCustomToolPackageFiles({id:'user.lookup',title:'Lookup',instructions:'Look up the query.',code:'({input})=>input',capabilities:[]});
+ let checks=0;
+ const {value}=input([JSON.stringify({action:'tool',query:'user.lookup',body:'{"query":"colour"}'})],{
+  question:'Use user.lookup for colour.',enabledTools:['user.lookup'],readToolSources:async()=>files,
+  ensureCustomRuntime:async()=>{checks++;throw Object.assign(Error('private path'),{code:'runtime-not-prepared'});},maxToolCalls:null,
+ });
+ await assert.rejects(coordinateAgentTurn(value),/Settings → Tools → Prepare runtime/);
+ assert.equal(checks,1);
+});
