@@ -68,6 +68,24 @@ export function bindEvidenceLabels(labels:unknown,evidence:readonly LabelledSour
 export function bindSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],options:{userText?:string}={ }):SourceLabelAnswer{
  return bindMixedSourceLabelAnswer(raw,evidence,[],[],options);
 }
+/** Display a repeated citation marker using its position in the verified source list. */
+export function bindRetriedSourceLabels(raw:unknown,evidence:readonly LabelledSource[],userText:string):SourceLabelAnswer{
+ try{return bindSourceLabelAnswer(raw,evidence,{userText});}catch(error){
+  if(!(error instanceof InternalSourceLabelLeakError))throw error;
+  // The normal binder has checked the schema and references before detecting the leak.
+  const row=raw as {answer:string;sources:string[]};
+  if(row.sources.length<2)throw error;
+  const answer=row.answer.replace(/(?<![A-Za-z0-9_])S[1-9]\d*(?![A-Za-z0-9_])/gi,token=>{
+   const index=row.sources.findIndex(label=>label.toUpperCase()===token.toUpperCase());
+   if(mentionsLabel(userText,token))return token;
+   if(index<0)throw error;
+   const source=evidence.find(ref=>ref.label===row.sources[index]);
+   if(source&&mentionsLabel(source.quote,token))return token;
+   return '['+(index+1)+']';
+  });
+  return bindSourceLabelAnswer({...row,answer},evidence,{userText});
+ }
+}
 /** Bind mixed Memory/Web labels to host-owned sources; Web text remains session-only. */
 export function bindMixedSourceLabelAnswer(raw:unknown,evidence:readonly LabelledSource[],webEvidence:readonly LabelledWebSource[],snapshots:readonly WebSnapshot[],options:{userText?:string}={ }):SourceLabelAnswer{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid answer or sources');

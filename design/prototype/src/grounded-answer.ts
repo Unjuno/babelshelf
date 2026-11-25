@@ -13,7 +13,7 @@ import {historyMessages,parseChatAnswer,type DialogueContext,type SourceRef} fro
 import {groundingQuery,audioOnlySuffix} from './current-input-scope.ts';
 import type {GenerationFormat,GenerationResult} from './text-inference.ts';
 import type {AgentCalculation} from './agent-evidence.ts';
-import {checkedCalculation,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindEvidenceLabels,bindSourceLabelAnswer,hasInternalImplementationLeak,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer} from './agent-evidence.ts';
+import {checkedCalculation,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindEvidenceLabels,bindSourceLabelAnswer,bindRetriedSourceLabels,hasInternalImplementationLeak,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer} from './agent-evidence.ts';
 import {validateWebCitation,type WebCitation,type WebSnapshot} from './web-evidence.ts';
 import {validateClockReading,type ClockReading} from './tools/time.now/tool.ts';
 import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONTEXT_SOURCE_REFS,MAX_PLANNER_AGENT_TOOLS} from './agent-limits.ts';
@@ -417,7 +417,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const retry=messages.map((message,index)=>index===answerSystemIndex?{...message,content:(labelOnly?sourceLabelSystem:message.content)+instruction}:message);
   const retryTokens=await retryBudget(retry,format,citationMismatch?'Context limit · citation retry':'Invalid model JSON · retry');
   generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
-  try{if(labelOnly){parsed=parseLabelBindings(generated.text);summaryLabelBinding=true;}else parsed=parse(generated.text);if(citationMismatch)recovery='citation-retry';}catch(retryError){
+  try{if(labelOnly){parsed=validateUserFacingAnswer(bindRetriedSourceLabels(JSON.parse(generated.text),evidence,question));summaryLabelBinding=true;}else parsed=parse(generated.text);if(citationMismatch)recovery='citation-retry';}catch(retryError){
    if(canRecover(retryError)||retryError instanceof SyntaxError&&(singleSourceRecovery||singleInputRecovery))parsed=await exactSingleSourceFallback(retryError);
    else throw retryError;
   }
