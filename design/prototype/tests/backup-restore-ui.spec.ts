@@ -40,4 +40,12 @@ test('Restore backup keeps invalid-file errors visible in Local files and leaves
  await expect(alert).toContainText('nothing changed');
  await expect(page.getByRole('dialog',{name:'Restore backup?'})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Restore backup',exact:true})).toBeEnabled();
+ const nativeInput=page.getByLabel('Backup file',{exact:true});
+ await expect(nativeInput).toBeVisible();
+ const archive=await makeBackup([createNote({path:'Inbox/fallback.md',body:'Native file selection'})]);
+ await nativeInput.setInputFiles({name:'fallback.brainpack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(archive))});
+ const review=page.getByRole('dialog',{name:'Restore backup?'});
+ await expect(review).toContainText('1 records');
+ await review.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(review).toHaveCount(0);
 });
