@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectAgentToolResult,projectAgentActivityInput,projectAgentActivityResult,agentEvidenceFromCalls,agentAnswerEvidenceFromCalls,agentCalculationsFromCalls,agentSearchEvidenceFromHost,agentReadEvidenceFromHost,observeCustomToolHost,bindSourceLabelAnswer} from '../src/agent-evidence.ts';
+import {projectAgentToolResult,projectAgentActivityInput,projectAgentActivityResult,agentEvidenceFromCalls,agentAnswerEvidenceFromCalls,agentCalculationsFromCalls,agentSearchEvidenceFromHost,agentReadEvidenceFromHost,observeCustomToolHost,bindSourceLabelAnswer,bindRetriedSourceLabels} from '../src/agent-evidence.ts';
 import {AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 
 test('tool projections keep exact bounded excerpts and canonical source identity',()=>{
@@ -298,4 +298,15 @@ test('covered search evidence is discarded only when its quote matches the read 
  assert.throws(()=>agentAnswerEvidenceFromCalls([search('Invented fact.'),read]),/Source quotation conflict/);
  const partial={tool:'memory.search',arguments:{},result:[{noteId:'a',revision:1,start:0,end:8,quote:'Changed!',title:'Notes/a.md'}]};
  assert.equal(agentAnswerEvidenceFromCalls([partial,read]).length,2,'retain conflicting partial range for canonical validation');
+});
+
+test('repeated citation markers use the selected source order and preserve original immutable references',()=>{
+ const evidence=['QUOKKA','BLUEBERRY'].map((quote,i)=>({label:'S'+(i+1),noteId:'note-'+i,revision:2,start:0,end:quote.length,quote}));
+ const row={answer:'S1: QUOKKA. S2: BLUEBERRY.',sources:['S2','S1']};
+ const result=bindRetriedSourceLabels(row,evidence,'What do the notes say?');
+ assert.equal(result.answer,'[2]: QUOKKA. [1]: BLUEBERRY.');
+ assert.deepEqual(result.sources.map(ref=>[ref.noteId,ref.quote]),[['note-1','BLUEBERRY'],['note-0','QUOKKA']]);
+ assert.throws(()=>bindRetriedSourceLabels({...row,answer:'S1 and S3 disagree.'},evidence,''),/internal source label/);
+ assert.throws(()=>bindRetriedSourceLabels({...row,sources:['S1','S3']},evidence,''),/Invalid answer or sources/);
+ assert.throws(()=>bindRetriedSourceLabels({...row,status:'insufficient_evidence'},evidence,''),/cannot carry citations/);
 });
