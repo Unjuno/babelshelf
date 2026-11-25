@@ -1,7 +1,8 @@
 // Generated offline app worker; model/data stores are outside this module.
 import {readAppNetworkAccess} from '../dist/connection-policy.js';
 import {recoveryDocument,recoveryCSP} from './product-recovery.mjs';
-export function productWorker({build,files,remote,feedbackEndpoint=""}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)},FEEDBACK=${JSON.stringify(feedbackEndpoint)};
+export function productWorker({build,files,remote,feedbackEndpoint=""}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
+const FEEDBACK=${JSON.stringify(feedbackEndpoint)};
 const readAppNetworkAccess=${readAppNetworkAccess.toString()};
 const RECOVERY_DOCUMENT=${JSON.stringify(recoveryDocument)},RECOVERY_CSP=${JSON.stringify(recoveryCSP)};
 `+String.raw`
