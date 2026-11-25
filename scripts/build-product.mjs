@@ -70,7 +70,9 @@ const remote=[lfm3.file.url,lfm3IQ3M.file.url,lfm3Q8.file.url,...lfm.models.filt
 // The remote allowlist is part of the worker's behavior even when emitted app
 // assets and the worker template source are unchanged. Give that change a new
 // build ID so existing PWA registrations can receive the reviewed update.
-const build=createHash('sha256').update(JSON.stringify(files)).update(workerSource).update(recoverySource).update(connectionPolicy).update(JSON.stringify(remote)).digest('hex').slice(0,16);
-const worker=productWorker({build,files,remote});
+const {loadEnv}=await import('../design/prototype/node_modules/vite/dist/node/index.js');
+const feedbackEndpoint=(loadEnv('production',prototype,'VITE_').VITE_FEEDBACK_API_URL??'https://babelshelf-feedback-api.unjuno-org.workers.dev/v1/feedback').trim();
+const build=createHash('sha256').update(JSON.stringify(files)).update(workerSource).update(recoverySource).update(connectionPolicy).update(JSON.stringify(remote)).update(feedbackEndpoint).digest('hex').slice(0,16);
+const worker=productWorker({build,files,remote,feedbackEndpoint});
 await writeFile(path.join(root,'sw.js'),worker);await writeFile(path.join(root,'build.json'),JSON.stringify({build,files},null,2));
 console.log('Product shell '+build+' · '+files.length+' verified assets');
