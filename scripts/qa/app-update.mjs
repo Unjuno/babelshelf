@@ -11,7 +11,7 @@ import {productWorker} from '../product-worker.mjs';
 
 const helper=stripTypeScriptTypes(await readFile(new URL('../../design/prototype/src/offline-shell.ts',import.meta.url),'utf8'));
 const hash=value=>createHash('sha256').update(value).digest('hex');
-function generation(number){
+function generation(number,feedbackEndpoint){
  const build=String(number).repeat(16);
  const html=`<!doctype html><title>Update fixture ${number}</title><p id="version">${build}</p><script type="module">
  import {refreshAppVersion,activeAppBuild} from './refresh.js';
@@ -27,7 +27,7 @@ function generation(number){
  reg.addEventListener('updatefound',()=>{const worker=reg.installing,id=++workerId;window.events.push({worker:id,event:'found',state:worker?.state});worker?.addEventListener('statechange',()=>window.events.push({worker:id,event:'state',state:worker.state}));});
  </script>`;
  const files=new Map([['/index.html',html],['/refresh.js',helper],['/payload.txt',`verified generation ${number}`]]);
- const worker=productWorker({build,files:[...files].map(([path,body])=>({path:'.'+path,bytes:Buffer.byteLength(body),sha256:hash(body)})),remote:[]});
+ const worker=productWorker({build,feedbackEndpoint,files:[...files].map(([path,body])=>({path:'.'+path,bytes:Buffer.byteLength(body),sha256:hash(body)})),remote:[]});
  // Model an already-installed predecessor that routes its own script through
  // the app cache and therefore blocks direct update diagnostics.
  const legacyWorker=number===1?worker.replace(/\s*\/\/ Keep the registration script[\s\S]*?return;\n/,''):worker;
@@ -144,5 +144,48 @@ test('one explicit refresh installs, activates and reopens a verified generation
  }finally{
   await browser?.close();
   server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
+ }
+});
+
+test('controlled Chromium delivers the explicit feedback body to a separate local origin',async()=>{
+ const bodies=[];
+ const receiver=createServer(async(req,res)=>{
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Methods','POST');
+  res.setHeader('Access-Control-Allow-Headers','content-type');
+  if(req.method==='OPTIONS'){res.writeHead(204).end();return;}
+  if(req.method!=='POST'||req.url!=='/v1/feedback'){res.writeHead(404).end();return;}
+  let body='';
+  for await(const chunk of req)body+=chunk;
+  bodies.push(body);
+  res.writeHead(201).end('accepted');
+ });
+ await new Promise(resolve=>receiver.listen(0,'127.0.0.1',resolve));
+ const endpoint='http://127.0.0.1:'+receiver.address().port+'/v1/feedback';
+ const version=generation(2,endpoint);
+ const server=createServer((req,res)=>{
+  const body=req.url==='/sw.js'?version.worker:version.files.get(req.url==='/'?'/index.html':req.url);
+  if(body===undefined){res.writeHead(404).end();return;}
+  res.setHeader('Content-Type',req.url.endsWith('.js')?'text/javascript':req.url.endsWith('.txt')?'text/plain':'text/html');
+  res.end(body);
+ });
+ let browser;
+ try{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  browser=await chromium.launch();
+  const page=await browser.newPage();
+  await page.goto('http://127.0.0.1:'+server.address().port);
+  await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+  const body=JSON.stringify({category:'bug',message:'local QA',build:version.build});
+  const result=await page.evaluate(async({endpoint,body})=>{
+   const response=await fetch(endpoint,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',redirect:'error',headers:{'content-type':'application/json'},body});
+   return [response.status,await response.text()];
+  },{endpoint,body});
+  assert.deepEqual(result,[201,'accepted']);
+  assert.deepEqual(bodies,[body]);
+ }finally{
+  await browser?.close();
+  server.close();
+  receiver.close();
  }
 });
