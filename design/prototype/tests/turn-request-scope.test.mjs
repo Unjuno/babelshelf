@@ -36,3 +36,10 @@ test('an answer about the explicitly opened file keeps its resolved action and p
  });
  assert.deepEqual(result,{request:{action:'answer',query:'What date is written in this file?',target:'file'},inputs:[],fileBinding:{request:{action:'answer',query:'What date is written in this file?',target:'file'},binding:'explicit'}});
 });
+
+test('a reply from an executed custom tool keeps its scope with an unrelated file open',()=>{
+ const request={action:'answer',query:'',reply:{answer:'cobalt',sources:[]}};
+ const result=scopeResolvedTurnRequest({request,question:'Tell me the colour returned by the tool.',literal:false,inputs:[],currentFile:file,hasCustomToolReply:true});
+ assert.equal(result.request,request);
+ assert.equal(result.fileBinding.binding,undefined);
+});

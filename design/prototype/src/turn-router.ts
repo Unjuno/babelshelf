@@ -356,6 +356,7 @@ export function scopeResolvedTurnRequest<Request extends {action:string;query:st
  literalAction?:string;
  inputs:CurrentInputRef[];
  currentFile?:WorkingFile;
+ hasCustomToolReply?:boolean;
  }):{request:Request|undefined;inputs:CurrentInputRef[];fileBinding:{request:Request;binding:'explicit'|'default-working-file'|undefined}|undefined}{
  let {request}=input;
  const inputs=['read','search'].includes(input.literalAction??'')?[]:input.inputs;
@@ -369,6 +370,6 @@ export function scopeResolvedTurnRequest<Request extends {action:string;query:st
  if(request&&inputs.length)request=routeInputRequest(request,inputs,input.literal,input.question);
  if(request)request=bindCurrentInputRequest(request,inputs.length>0,input.question);
  let fileBinding:{request:Request;binding:'explicit'|'default-working-file'|undefined}|undefined;
- if(request){fileBinding=bindWorkingFileRequest(request,currentFile,inputs.length>0);request=fileBinding.request;}
+ if(request){fileBinding=bindWorkingFileRequest(request,input.hasCustomToolReply?undefined:currentFile,inputs.length>0);request=fileBinding.request;}
  return {request,inputs,fileBinding};
 }
