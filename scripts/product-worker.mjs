@@ -1,7 +1,8 @@
 // Generated offline app worker; model/data stores are outside this module.
 import {readAppNetworkAccess} from '../dist/connection-policy.js';
 import {recoveryDocument,recoveryCSP} from './product-recovery.mjs';
-export function productWorker({build,files,remote}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
+export function productWorker({build,files,remote,feedbackEndpoint=""}){return `const BUILD=${JSON.stringify(build)},CACHE='babelshelf-product-'+BUILD,FILES=${JSON.stringify(files)},REMOTE=${JSON.stringify(remote)};
+const FEEDBACK=${JSON.stringify(feedbackEndpoint)};
 const readAppNetworkAccess=${readAppNetworkAccess.toString()};
 const RECOVERY_DOCUMENT=${JSON.stringify(recoveryDocument)},RECOVERY_CSP=${JSON.stringify(recoveryCSP)};
 `+String.raw`
@@ -20,8 +21,8 @@ function isolatedResponse(response){
  headers.delete('Content-Encoding');headers.delete('Content-Length');
  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
-async function externalRequest(event){
- const approved=REMOTE.includes(event.request.url)||consumeHF(event),epoch=networkEpoch;
+async function externalRequest(event,feedback=false){
+ const approved=feedback||REMOTE.includes(event.request.url)||consumeHF(event),epoch=networkEpoch;
  if(!approved||!await readAppNetworkAccess(typeof indexedDB==='undefined'?undefined:indexedDB)||epoch!==networkEpoch)return disabledNetwork();
  const controller=new AbortController(),request=event.request,abort=()=>controller.abort();
  networkRequests.add(controller);request.signal?.addEventListener('abort',abort,{once:true});
@@ -178,6 +179,9 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);
+ if(request.method==='POST'&&FEEDBACK&&url.href===new URL(FEEDBACK,self.registration.scope).href&&request.credentials==='omit'&&request.redirect==='error'&&request.headers.get('content-type')==='application/json'){
+  event.respondWith(externalRequest(event,true));return;
+ }
  if(request.method!=='GET'){event.respondWith(new Response('Method unavailable',{status:405}));return;}
  if(url.origin!==self.location.origin){event.respondWith(externalRequest(event));return;}
  // Keep the registration script reachable from a controlled page. Returning
