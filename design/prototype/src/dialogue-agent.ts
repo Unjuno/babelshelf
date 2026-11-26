@@ -44,12 +44,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
        raw=input.tracePlan?await input.tracePlan(history.length,async()=>fallback,()=>undefined):fallback;
       }
      }
-     else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&error.diagnostic.reason==='tool arguments'){
-      protocolRepairUsed=true;raw=await attempt(false,false,true);
-      // The failed call was never executed. A capture selected in its repair
-      // cannot stand in for the missing operation or open a new note review.
-      if(raw.action==='capture')throw new PlannerOutputError('Could not execute tool · try again','','tool repair capture');
-     }
+     else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&error.diagnostic.reason==='tool arguments'){protocolRepairUsed=true;raw=await attempt(false,false,true);}
      else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&error.diagnostic.reason==='query'){protocolRepairUsed=true;raw=await attempt(false,false,false,true);}
      else if(!protocolRepairUsed&&input.engine.plannerProtocol!=='native-tool-calls'&&['target','target action','file scope','current scope','input scope','explicit scope'].includes(error.diagnostic.reason)){protocolRepairUsed=true;raw=await attempt(false,false,false,false,true);}
      else throw error;

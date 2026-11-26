@@ -508,6 +508,9 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
   if(generated.assistantContent!==undefined&&(typeof generated.assistantContent!=='string'||generated.assistantContent.length>32768))invalid('assistant tool content');
   return {action:'tool_batch',calls,...(generated.assistantContent?{assistantContent:generated.assistantContent}:{})} as DialoguePlan;
  }
+ // A malformed legacy tool call was not executed. Its immediate repair must
+ // not replace the missing operation with a new note review.
+ if(engine.plannerProtocol!=='native-tool-calls'&&agent?.nativeCallRejected===true&&value.action==='capture')invalid('tool repair capture','Could not execute tool · try again');
  if(agent?.history.length&&!validAgentResultAction(value.action))invalid('agent final action');
  let terminalReply:SourceLabelAnswer|undefined;
  const conversationReply=value.action==='chat'&&engine.plannerProtocol==='native-tool-calls'&&!scope.inputs&&!scope.file&&!agent?.history.length;
