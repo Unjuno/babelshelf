@@ -305,3 +305,16 @@ test('unload retains runtime ownership until teardown succeeds and prevents over
  runtime.exit=async()=>{exits++;};await adapter.unload();
  assert.equal(exits,2);assert.equal(adapter.runtime,null);assert.equal(adapter.busy,false);
 });
+
+test('plain prose streams cumulative visible text without exposing reasoning or structured JSON',async()=>{
+ for(const json of [false,true]){
+  const adapter=new Lfm3Adapter({Wllama:class{},paths:{default:'wasm'},compat:{wasm:'compat',worker:{code:''}},models:[]}),seen=[];
+  adapter.loaded='local';adapter.runtime={createChatCompletion:async()=> (async function*(){
+   yield {choices:[{delta:{reasoning_content:'private'}}]};assert.deepEqual(seen,[]);
+   yield {choices:[{delta:{content:'Hello'}}]};if(!json)assert.deepEqual(seen,['Hello']);else assert.deepEqual(seen,[]);
+   yield {choices:[{delta:{content:' world'}}]};
+  })()};
+  const result=await adapter.generate([{role:'user',content:'test'}],{json,maxTokens:32,onAnswerPreview:text=>seen.push(text)});
+  assert.equal(result.text,'Hello world');assert.deepEqual(seen,json?[]:['Hello','Hello world']);
+ }
+});
