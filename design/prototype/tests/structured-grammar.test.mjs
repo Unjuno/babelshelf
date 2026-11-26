@@ -162,6 +162,13 @@ test('tool-specific grammar binds each registered tool to its closed argument sc
  const branches=createStructuredSchema(format).anyOf.filter(branch=>branch.properties?.action?.enum?.[0]==='tool');
  assert.equal(branches.length,2);assert.deepEqual(branches.find(branch=>branch.properties.query.enum[0]==='user.colour').properties.body,colour);
 });
+test('tool-specific grammar accepts every field order without permitting missing or repeated fields',()=>{
+ const schema={type:'object',required:['query','enabled'],additionalProperties:false,properties:{query:{type:'string'},enabled:{type:'boolean'},limit:{type:'integer'}}};
+ const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,toolIds:['user.lookup'],toolSchemas:{'user.lookup':schema}}};
+ for(const body of [{query:'x',enabled:true,limit:2},{limit:2,enabled:true,query:'x'},{enabled:false,query:'x'}])assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body})),true);
+ for(const body of [{query:'x'},{enabled:true,limit:2},{query:'x',enabled:true,other:'x'},{query:'x',enabled:true,limit:2.5}])assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body})),false);
+ assert.equal(accepts(format,'{"action":"tool","query":"user.lookup","body":{"query":"x","enabled":true,"query":"y"}}'),false);
+});
 test('planner schema accepts the full configured tool catalog and rejects entries above the shared cap',()=>{
  const toolIds=['memory.search','memory.read','math.calculate',...Array.from({length:61},(_,index)=>`user.local-tool-${index}`)];
  const scope={inputs:false,file:false,current:false,historyCount:0,toolIds},format={type:'dialogue-plan',scope};
