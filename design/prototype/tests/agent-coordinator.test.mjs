@@ -1201,6 +1201,23 @@ test('malformed legacy tool arguments receive one repair without executing rejec
  value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
  await coordinateAgentTurn(value);
  assert.match(JSON.stringify(prompts[1]),/previous tool arguments were invalid JSON/i);
+ assert.match(JSON.stringify(prompts[1]),/only the argument object/i);
+ assert.match(JSON.stringify(prompts[1]),/do not copy the user request/i);
+ assert.doesNotMatch(JSON.stringify(prompts[1]),/finish_ call/i,'legacy JSON repair must not instruct the native function protocol');
  assert.doesNotMatch(JSON.stringify(prompts[1]),/PRIVATE_INVALID_JSON/);
  assert.equal(calls.length,1);
+});
+
+test('malformed custom tool arguments cannot turn their repair into an unrequested note',async()=>{
+ const {createCustomToolPackageFiles}=await import('../src/custom-tool-package.ts');
+ const files=createCustomToolPackageFiles({id:'user.qa-colour',title:'Colour',instructions:'Look up the colour.',code:'()=>({colour:"cobalt"})',capabilities:[]});
+ const {value,calls}=input([
+  JSON.stringify({action:'tool',query:'user.qa-colour',body:'NOT_JSON'}),
+  JSON.stringify({action:'capture',query:'colour',body:'A new note'}),
+ ],{question:'Call user.qa-colour with {"query":"colour"}. Reply with the colour returned.',enabledTools:['user.qa-colour'],builtinPackages:[],readToolSources:async()=>files,maxToolCalls:null});
+ const receipts=[];value.trace=(tool,details,work,project,failureOf,failureProject)=>recordOperation(tool,details,work,async row=>receipts.push(row),project,failureOf,failureProject);
+ await assert.rejects(coordinateAgentTurn(value),error=>error instanceof PlannerOutputError&&error.diagnostic.reason==='tool repair capture');
+ assert.deepEqual(calls,[]);
+ assert.equal(receipts.filter(row=>row.tool==='dialogue.plan'&&row.status==='failed').length,2,'both the invalid call and rejected capture have failed receipts');
+ assert.ok(!receipts.some(row=>row.tool==='dialogue.plan'&&row.status==='succeeded'&&row.output?.action==='capture'));
 });
