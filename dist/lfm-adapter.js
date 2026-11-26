@@ -101,7 +101,7 @@ export class PreparedGgufAdapter {
       call.arguments+=fn.arguments;checkStreamRepetition(call.arguments,fn.arguments,messages,controller);
      }
     }
-    const preview=nativeAnswerPreview(calls);
+    const preview=tools||calls.size?nativeAnswerPreview(calls):json?'':text;
     // Report actual received work, never private reasoning or tool arguments.
     // These events also renew the worker's inactivity deadline; no timer fakes progress.
     const phase=preview||content?'Generating answer':delta?.tool_calls?.length?'Selecting action':delta?.reasoning_content?'Thinking':'';
