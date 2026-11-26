@@ -1780,6 +1780,24 @@ test('ordinary planner route runs sequential local search and returns only a gro
  assert.equal(repeatedSearches,3,'the loop permits two observations and one recovery signal before stopping an unchanged retry');
 });
 
+test('tool answer requests do not open an unsolicited note while requested note creation remains available',async()=>{
+ const tool={id:'math.calculate',effect:'read',network:'none'},context={summary:'',recent:[],refs:[],turnCount:0};
+ for(const [question,expected] of [
+  ['Calculate 3+3 and report the result.','answer'],
+  ['3+3を計算して結果を教えてください。','answer'],
+  ['What do the saved notes say?','answer'],
+  ['保存済みの資料の内容を教えてください。','answer'],
+  ['Calculate 3+3 and save the result as a note.','capture'],
+  ['3+3を計算し、結果をメモに保存して。','capture'],
+ ]){
+  const plans=[{action:'tool',query:'math.calculate',body:'{"expression":"3+3"}'},{action:'capture',query:'calculation',body:'6'}];
+  const engine={manifest:{contextTokens:8192},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(plans.shift())})};
+  const result=await planDialogueAgent({engine,question,context,attachments:[],allowedTools:[tool],execute:async()=>({value:6}),check:()=>{}});
+  assert.equal(result.final.action,expected,question);
+  assert.equal(result.calls.length,1);
+ }
+});
+
 test('compound find-read-tell requests keep tools available and let the model choose each step',async()=>{
  const question='I have a saved note somewhere about an emergency water reserve. Use the available local tools to find the note, read it, then tell me the exact reserve amount and identifier.';
  const plans=[

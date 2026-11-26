@@ -6,6 +6,14 @@ import {DEFERRED_TOOL_SEARCH_ID} from './deferred-tool-search.ts';
 import {requestsImplicitSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {validAgentResultAction} from './harness-actions.ts';
 import type {ReplyStyle} from './reply-style.ts';
+// A read-only tool result does not imply a request to create a note. Apply
+// this only when the user affirmatively asks for an answer and has not also
+// asked to save or create something; ambiguous requests keep normal planning.
+function requestsAnswerWithoutNote(question:string){
+ const save=/\b(?:save|store|remember|record|create|make|write|draft|capture|add)\b|(?:保存(?!済み)|記録(?!済み)|覚え|メモして|作成(?!済み)|書き留め|書いて|残して|追加)/iu;
+ const answer=/\b(?:answer|respond|reply|report|tell|show|explain|describe|say|what|which|when|where|who|how)\b|[?？]|(?:答え|回答|返答|教えて|知らせて|表示|説明|示して|何|どこ|いつ|だれ|誰|どう)/iu;
+ return answer.test(question)&&!save.test(question);
+}
 export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];readObservedWebSources?:()=>AgentPlannerContext['observedWebSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
  let historyRepairUsed=false,deferredToolRepairUsed=false,protocolRepairUsed=false;
  const loop=await runReadOnlyAgentLoop({allowedTools:input.allowedTools,maxToolCalls:input.maxToolCalls,maxResultChars:input.maxResultChars,check:input.check,
@@ -51,6 +59,11 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
     }
    }
    input.check();
+   if(raw?.action==='capture'&&raw.target===undefined&&raw.historyIndex==null&&history.some(item=>!item.error)&&requestsAnswerWithoutNote(input.question)){
+    // Discard the model's proposed note body; the answer stage consumes the
+    // already validated tool evidence and checks citations as usual.
+    raw={action:'answer',query:input.question,...(raw.reply?{reply:raw.reply}:{})};
+   }
    // The planner's legacy `search` action normally ends in a results preview.
    // When the user also asks for an answer, keep it inside the agent loop as
    // the registered Memory search tool so the coordinator can read and ground
