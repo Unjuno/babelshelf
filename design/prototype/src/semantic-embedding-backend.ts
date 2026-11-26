@@ -15,6 +15,7 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
  // Keep the Vite-only worker constructors out of Node tests that inject a
  // fake Worker. The browser factory still compiles both workers as JS bundles.
  let client:ReturnType<typeof createSemanticEmbeddingClient>|null=null,activeController:AbortController|null=null,closed=false;
+ let tail:Promise<void>=Promise.resolve();const controllers=new Set<AbortController>();
  const getClient=async(signal:AbortSignal)=>{
   if(closed)throw Error('Embedding backend closed');if(client?.failed)client=null;if(client)return client;
   const worker=createWorker?createWorker():(await import('./semantic-embedding-worker-factory.ts')).createSemanticEmbeddingWorker(manifest.id);
@@ -23,12 +24,22 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
  };
  const run=<T>(work:(signal:AbortSignal,current:ReturnType<typeof createSemanticEmbeddingClient>)=>Promise<T>,signal?:AbortSignal,events?:Events)=>{
   if(closed)return Promise.reject(Error('Embedding backend closed'));
-  if(activeController)return Promise.reject(Error('Embedding operation busy'));
   if(signal?.aborted)return Promise.reject(Error('Stopped'));
-  const controller=new AbortController();activeController=controller;
-  const onAbort=()=>{controller.abort();const old=client;client=null;if(old)old.abort();};
-  signal?.addEventListener('abort',onAbort,{once:true});
-  return Promise.resolve().then(async()=>{const current=await getClient(controller.signal);return work(controller.signal,current);}).then(value=>{controller.signal.throwIfAborted();return value;}).catch(error=>{if(controller.signal.aborted)throw Error('Stopped');throw error;}).finally(()=>{signal?.removeEventListener('abort',onAbort);if(activeController===controller)activeController=null;});
+  const controller=new AbortController();controllers.add(controller);
+  const onAbort=()=>controller.abort();signal?.addEventListener('abort',onAbort,{once:true});
+  const stopped=new Promise<never>((_resolve,reject)=>controller.signal.addEventListener('abort',()=>{
+   if(activeController===controller){const old=client;client=null;if(old)old.abort();}
+   reject(Error('Stopped'));
+  },{once:true}));
+  const queued=tail.then(async()=>{
+   controller.signal.throwIfAborted();if(closed)throw Error('Embedding backend closed');
+   activeController=controller;
+   try{const current=await getClient(controller.signal),value=await work(controller.signal,current);controller.signal.throwIfAborted();return value;}
+   catch(error){if(controller.signal.aborted)throw Error('Stopped');throw error;}
+   finally{if(activeController===controller)activeController=null;}
+  });
+  tail=queued.then(()=>{},()=>{});
+  return Promise.race([queued,stopped]).finally(()=>{signal?.removeEventListener('abort',onAbort);controllers.delete(controller);});
  };
  const progress=(events?:Events)=>(value:string)=>events?.('progress',value);
  return {
@@ -42,7 +53,7 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
   load:(signal?:AbortSignal,events?:Events)=>run(async(active,current)=>{await verifyProductRuntimeAssets('search',{signal:active,onProgress:item=>events?.('progress',productRuntimeProgressLabel(item))});active.throwIfAborted();await current.load(progress(events));return {model:manifest.id,dimensions:manifest.dimensions,device:manifest.device};},signal,events),
   embed:(texts:readonly string[],signal?:AbortSignal,events?:Events)=>run((_signal,current)=>current.embed(texts),signal,events),
   unload:(signal?:AbortSignal)=>run(async(_signal,current)=>{await current.unload();return true;},signal),
-  abort(){if(activeController){activeController.abort();activeController=null;}const old=client;client=null;if(old)old.abort();},
+  abort(){for(const controller of controllers)controller.abort();const old=client;client=null;if(old)old.abort();},
   close(){if(closed)return;this.abort();closed=true;},
  };
 }
