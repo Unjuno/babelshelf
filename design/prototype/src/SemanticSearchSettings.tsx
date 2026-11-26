@@ -8,24 +8,25 @@ type FilesState='Not checked'|'Files present · not verified'|'Files verified'|'
 export function SemanticSearchSettings({modelId,downloads,disabled,onSelect}:{modelId:string;downloads:boolean;disabled?:boolean;onSelect:(modelId:string)=>void}){
  const selected=!!modelId,manifest=semanticEmbeddingManifestFor(selected?modelId:semanticEmbeddingManifest.id),assetBytes=semanticEmbeddingAssetBytesFor(manifest);
  const [filesState,setFilesState]=useState<FilesState>(selected?'Not checked':'Files not prepared'),[runtimeReady,setRuntimeReady]=useState(false),[loaded,setLoaded]=useState(false),[progress,setProgress]=useState(''),[busy,setBusy]=useState(false),[indexed,setIndexed]=useState<{sources:number;chunks:number;needsUpdate?:boolean}|null>(null),[testResult,setTestResult]=useState(''),[error,setError]=useState('');
- const operation=useRef<AbortController|null>(null);
+ const operation=useRef<AbortController|null>(null),initialProbe=useRef<Promise<void>|null>(null);
  const blocked=!!disabled||busy,canLoad=selected&&runtimeReady&&(filesState==='Files verified'||filesState==='Files prepared');
  const select=(next:string)=>{void closeSemanticSearchRuntime();setTestResult('');setIndexed(null);setProgress('');setLoaded(false);setRuntimeReady(false);setFilesState(next?'Not checked':'Files not prepared');setError('');onSelect(next);};
  useEffect(()=>{
   if(!selected){setFilesState('Files not prepared');setRuntimeReady(false);setLoaded(false);return;}
   let active=true;const controller=new AbortController();
-  void getSemanticSearchRuntime(modelId).then(async runtime=>{
+  const probe=getSemanticSearchRuntime(modelId).then(async runtime=>{
    const index=await runtime.indexStatus(controller.signal);
    if(active)setIndexed(index);
    if(runtime.loaded){if(active){setLoaded(true);setFilesState('Files verified');setRuntimeReady(true);setError('');}return;}
    const state=await runtime.status(controller.signal);
    if(active){setFilesState(state.filesPresent?'Files present · not verified':'Files not prepared');setError('');}
   }).catch(cause=>{if(active)setError(cause instanceof Error?cause.message:'Search status unavailable');});
-  return()=>{active=false;controller.abort();};
+  initialProbe.current=probe;
+  return()=>{active=false;controller.abort();if(initialProbe.current===probe)initialProbe.current=null;};
  },[selected,modelId]);
  const run=async(kind:'check-files'|'prepare-runtime'|'check-runtime'|'prepare-model'|'load'|'test'|'index'|'unload',label:string,work:(runtime:Awaited<ReturnType<typeof getSemanticSearchRuntime>>,signal:AbortSignal)=>Promise<unknown>)=>{
   if(operation.current)return;const controller=new AbortController();operation.current=controller;setBusy(true);setError('');setProgress(label);
-  try{const runtime=await getSemanticSearchRuntime(modelId),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();
+  try{const pending=initialProbe.current;if(pending)await pending;controller.signal.throwIfAborted();const runtime=await getSemanticSearchRuntime(modelId),result=await work(runtime,controller.signal);controller.signal.throwIfAborted();
    if(kind==='check-files'){const files=result as {filesPresent?:boolean};setFilesState(files.filesPresent?'Files verified':'Files not prepared');}
    if(kind==='prepare-runtime'||kind==='check-runtime')setRuntimeReady(true);
    if(kind==='prepare-model')setFilesState('Files prepared');
