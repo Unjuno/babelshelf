@@ -1204,3 +1204,14 @@ test('malformed legacy tool arguments receive one repair without executing rejec
  assert.doesNotMatch(JSON.stringify(prompts[1]),/PRIVATE_INVALID_JSON/);
  assert.equal(calls.length,1);
 });
+
+test('malformed custom tool arguments cannot turn their repair into an unrequested note',async()=>{
+ const {createCustomToolPackageFiles}=await import('../src/custom-tool-package.ts');
+ const files=createCustomToolPackageFiles({id:'user.qa-colour',title:'Colour',instructions:'Look up the colour.',code:'()=>({colour:"cobalt"})',capabilities:[]});
+ const {value,calls}=input([
+  JSON.stringify({action:'tool',query:'user.qa-colour',body:'NOT_JSON'}),
+  JSON.stringify({action:'capture',query:'colour',body:'A new note'}),
+ ],{question:'Call user.qa-colour with {"query":"colour"}. Reply with the colour returned.',enabledTools:['user.qa-colour'],builtinPackages:[],readToolSources:async()=>files,maxToolCalls:null});
+ await assert.rejects(coordinateAgentTurn(value),error=>error instanceof PlannerOutputError&&error.diagnostic.reason==='tool repair capture');
+ assert.deepEqual(calls,[]);
+});
