@@ -22,6 +22,16 @@ test('settings proposals have room for multilingual guidance while respecting th
  }
 });
 
+test('harness setting proposals receive the actual generation limits without a contradictory unlimited default',async()=>{
+ const n=fixture('harness'),current=parsePreference('harness',latest(n).body);let messages;
+ const engine={manifest:{contextTokens:8192},count:async value=>{messages=value;return {prompt_tokens:500};},generate:async()=>({text:patch({replyStyle:'concise'})})};
+ await proposeCorrection(engine,'Use concise replies',n);
+ assert.doesNotMatch(messages[0].content,/both default to null/i);
+ assert.deepEqual(JSON.parse(messages[1].content).settings.profiles,current.profiles);
+ assert.equal(current.profiles[0].maxGenerationMs,300000);
+ assert.equal(current.profiles[0].maxGenerationTokens,8192);
+});
+
 test('model setting proposals see selectable identities but not irrelevant model assets',async()=>{
  const n=fixture('models'),value=parsePreference('models',latest(n).body),sha256='b'.repeat(64);
  const model={id:'local-'+sha256,label:'My fine tune',role:'text',engine:'webml-qwen35',revision:'sha256:'+sha256,file:{bytes:1000,sha256},contextTokens:2048,inspection:{format:'GGUF',version:3,bytes:1000,name:'Custom',architecture:'qwen35',contextLength:4096,tokenizer:'gpt2',chatTemplate:true,tokenCount:1024,tensorCount:1,tensorTypes:[143],tensorExtentsChecked:true,dataOffset:512}};
