@@ -1555,6 +1555,16 @@ test('native planner budget ignores skipped batch entries when given dispatched 
  assert.doesNotMatch(prompt,/budget is exhausted/);
 });
 
+test('agent forwards dispatched count through planner after an unexecuted retry',async()=>{
+ const {AgentToolExecutionError}=await import('../src/agent-loop.ts');
+ const seen=[],actions=[{action:'tool',query:'memory.search',body:'{"query":"bad"}'},{action:'tool',query:'memory.search',body:'{"query":"bad"}'},{action:'tool',query:'memory.search',body:'{"query":"good"}'},{action:'answer',reply:{status:'answered',answer:'yes',sources:['S1']}}];
+ const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:8192},count:async()=>({prompt_tokens:100}),generate:async(messages)=>{seen.push(messages);return {text:JSON.stringify(actions.shift())};}};
+ const result=await planDialogueAgent({engine,question:'Find notes.',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],allowedTools:[{id:'memory.search',effect:'read',network:'none'}],maxToolCalls:2,check:()=>{},execute:async call=>{if(call.arguments.query==='bad')throw new AgentToolExecutionError(call.tool,Error('failure'));return [{noteId:'n',revision:1,start:0,end:3,quote:'yes'}];}});
+ assert.equal(result.calls.length,1);
+ assert.match(seen[2].at(-1).content,/Remaining tool-call budget: 1\./);
+ assert.match(seen[3].at(-1).content,/budget is exhausted/);
+});
+
 test('an exhausted tool budget exposes no callable functions and requests an honest answer',async()=>{
  const allowedTools=[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}],question='Search, read, then explain my saved meeting notes.';let generatedMessages,generatedFormat;
  const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async(messages,_max,format)=>{generatedMessages=messages;generatedFormat=format;return {text:JSON.stringify({action:'answer',query:'I could not search or read the notes because the tool-call budget was exhausted.'})};}};
