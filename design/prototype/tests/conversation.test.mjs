@@ -1780,6 +1780,46 @@ test('ordinary planner route runs sequential local search and returns only a gro
  assert.equal(repeatedSearches,3,'the loop permits two observations and one recovery signal before stopping an unchanged retry');
 });
 
+test('tool answer requests do not open an unsolicited note while requested note creation remains available',async()=>{
+ const tool={id:'math.calculate',effect:'read',network:'none'},context={summary:'',recent:[],refs:[],turnCount:0};
+ for(const [question,expected] of [
+  ['Calculate 3+3 and report the result.','answer'],
+  ['3+3を計算して結果を教えてください。','answer'],
+  ['What do the saved notes say?','answer'],
+  ['保存済みの資料の内容を教えてください。','answer'],
+  ['Calculate 3+3 and tell me; do not save the result.','answer'],
+  ['Calculate 3+3 and tell me; do not save it as a note.','answer'],
+  ['3+3を計算し、保存しないで結果を教えてください。','answer'],
+  ['Calculate 3+3; do not save the input, but save the result as a note.','capture'],
+  ['3+3を計算し、入力を保存しないで結果をメモに保存して教えて。','capture'],
+  ['Calculate 3+3 and save the result as a note.','capture'],
+  ['Calculate 3+3, note the result, and tell me.','capture'],
+  ['Calculate 3+3, jot down the result, and tell me.','capture'],
+  ['Calculate 3+3, take a note, and tell me.','capture'],
+  ['Calculate 3+3 and tell me the result as a note.','capture'],
+  ['3+3を計算し、結果をメモに保存して。','capture'],
+  ['3+3を計算し、メモにして結果を教えて。','capture'],
+  ['3+3を計算し、メモを取って結果を教えて。','capture'],
+  ['3+3を計算し、結果をノートにして教えて。','capture'],
+ ]){
+  const plans=[{action:'tool',query:'math.calculate',body:'{"expression":"3+3"}'},{action:'capture',query:'calculation',body:'6'}];
+  const engine={manifest:{contextTokens:8192},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(plans.shift())})};
+  const result=await planDialogueAgent({engine,question,context,attachments:[],allowedTools:[tool],execute:async()=>({value:6}),check:()=>{}});
+  assert.equal(result.final.action,expected,question);
+  assert.equal(result.calls.length,1);
+ }
+});
+
+test('converting a native capture for an answer request preserves validated original citations',async()=>{
+ const actions=[{action:'tool',query:'memory.search',body:'{"query":"topic"}'},{action:'capture',reply:{status:'answered',answer:'The answer is blue.',sources:['S1']}}];
+ const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:8192},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(actions.shift()),finishReason:'stop'})};
+ const source={noteId:'n',revision:1,start:0,end:19,quote:'The answer is blue.',title:'Notes/test.md'};
+ const result=await planDialogueAgent({engine,question:'What does the saved note say?',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],allowedTools:[{id:'memory.search',effect:'read',network:'none'}],execute:async()=>[source],check:()=>{}});
+ assert.equal(result.final.action,'answer');
+ assert.equal(result.final.reply.answer,'The answer is blue.');
+ assert.deepEqual(result.final.reply.sources,[source]);
+});
+
 test('compound find-read-tell requests keep tools available and let the model choose each step',async()=>{
  const question='I have a saved note somewhere about an emergency water reserve. Use the available local tools to find the note, read it, then tell me the exact reserve amount and identifier.';
  const plans=[
