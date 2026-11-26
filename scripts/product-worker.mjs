@@ -12,7 +12,8 @@ const networkRequests=new Set();let networkEpoch=0;
 async function reportInstallFailure(stage,index,status,error){
  try{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});const errorName=typeof error?.name==='string'&&/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(error.name)?error.name:'Error';const detail={type:'app-update-install-failed',build:BUILD,stage,index,errorName,...(Number.isInteger(status)&&status>=100&&status<=599?{status}:{})};for(const client of clients){if(client.url.startsWith(self.registration.scope))try{client.postMessage(detail);}catch{}}}catch{}
 }
-const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store'}});
+const disabledNetwork=()=>new Response('App is offline',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store','X-BabelShelf-Failure':'offline'}});
+const failedNetwork=()=>new Response('Network request failed',{status:503,headers:{'Content-Type':'text/plain','Cache-Control':'no-store','X-BabelShelf-Failure':'network'}});
 function productAssetFailureCode(error){const message=error instanceof Error?error.message:'',name=error&&typeof error==='object'&&typeof error.name==='string'?error.name:'',code=error&&typeof error==='object'&&typeof error.code==='string'?error.code:'';if(code==='runtime-network-error')return code;if(message==='Stopped')return 'stopped';if(message==='Runtime not prepared · switch Online to prepare')return 'runtime-not-prepared';if(message==='Downloads are off')return 'downloads-off';if(message==='App runtime HTTP request failed')return 'runtime-http-error';if(message==='App asset verification failed')return 'runtime-integrity-error';if(message==='App asset storage verification failed'||name==='QuotaExceededError')return 'runtime-storage-error';return 'runtime-setup-error';}
 function isolatedResponse(response){
  const headers=new Headers(response.headers);
@@ -31,15 +32,15 @@ async function externalRequest(event,feedback=false){
   if(request.signal?.aborted)controller.abort();
   const response=await fetch(request,{signal:controller.signal});
   if(controller.signal.aborted||epoch!==networkEpoch){cleanup();void response.body?.cancel().catch(()=>{});return disabledNetwork();}
-  if(!response.body){cleanup();return response;}
+  if(!response.body){cleanup();if(!response.headers.has('X-BabelShelf-Failure')||response.status===0)return response;const headers=new Headers(response.headers);headers.delete('X-BabelShelf-Failure');return new Response(null,{status:response.status,statusText:response.statusText,headers});}
   const reader=response.body.getReader();
   const stream=new ReadableStream({
    async pull(target){try{const value=await reader.read();if(controller.signal.aborted||epoch!==networkEpoch)throw Error('App is offline');if(value.done){cleanup();target.close();}else target.enqueue(value.value);}catch(error){cleanup();void reader.cancel(error).catch(()=>{});target.error(error);}},
    cancel(reason){cleanup();controller.abort();return reader.cancel(reason);}
   });
-  const headers=new Headers(response.headers);headers.delete('Content-Encoding');headers.delete('Content-Length');
+  const headers=new Headers(response.headers);headers.delete('Content-Encoding');headers.delete('Content-Length');headers.delete('X-BabelShelf-Failure');
   return new Response(stream,{status:response.status,statusText:response.statusText,headers});
- }catch{cleanup();return disabledNetwork();}
+ }catch{cleanup();return controller.signal.aborted||epoch!==networkEpoch?disabledNetwork():failedNetwork();}
 }
 function hfRequestAllowed(raw,range){
  if(raw.length>1024||range.length>32)return false;

@@ -100,7 +100,7 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
       while(offset<pin.bytes){
        const start=offset,end=Math.min(pin.bytes-1,start+resumableRangeBytes-1),expected=end-start+1,range=`bytes ${start}-${end}/${pin.bytes}`;
        stopped(signal);const response=await io.fetch(pin.url,{signal,credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',headers:{Range:`bytes=${start}-${end}`}});stopped(signal);
-       if(!response.ok){await response.body?.cancel().catch(()=>{});throw Error(`Model download failed · HTTP ${response.status}`);}
+       if(!response.ok){await response.body?.cancel().catch(()=>{});const failure=response.headers.get('x-babelshelf-failure');throw Error(failure==='network'?'Network request failed · retry model preparation':failure==='offline'?'Downloads are off':`Model download failed · HTTP ${response.status}`);}
        const reader=response.body?.getReader();
        if(response.status!==206||!reader){await response.body?.cancel().catch(()=>{});throw Error('Resumable model download requires range requests');}
        if(response.headers.get('content-range')!==range){await reader.cancel().catch(()=>{});reader.releaseLock();throw Error('Model download range changed');}
