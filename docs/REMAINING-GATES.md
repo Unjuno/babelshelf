@@ -1,6 +1,6 @@
 ## Current status · 2026-11-26 JST
 
-Public debugging Site v400 serves build 78790c426cb0ddf7 from main commit 63b3507c. PRs #121, #122 and #124 passed full CI. The Q4 native custom-tool route returned cobalt on the pre-integration candidate. With more history on the integrated build, the tool ran successfully after an invalid-input retry but final planning hit the cumulative 300-second limit. Reliable end-to-end tool replies, optional Decision integration, Muse backup restore and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
+Public debugging Site v400 serves build 78790c426cb0ddf7 from main commit 63b3507c. PR #130 proposes a newer candidate and is awaiting exact-head CI; it has not been deployed. In an isolated real D1 + LFM2.5 CPU/WASM replay, that candidate executed a custom tool and returned `cobalt` as an explicitly partial result after repeated calls and an unrelated read. Reliable completion, default-Q4 tool behavior, Muse backup restore, model retention across Repair and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
 
 ## Historical deployment · 2026-11-24 JST
 
