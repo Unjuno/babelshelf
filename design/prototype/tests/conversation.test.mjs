@@ -1807,6 +1807,16 @@ test('tool answer requests do not open an unsolicited note while requested note 
  }
 });
 
+test('converting a native capture for an answer request preserves validated original citations',async()=>{
+ const actions=[{action:'tool',query:'memory.search',body:'{"query":"topic"}'},{action:'capture',reply:{status:'answered',answer:'The answer is blue.',sources:['S1']}}];
+ const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:8192},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(actions.shift()),finishReason:'stop'})};
+ const source={noteId:'n',revision:1,start:0,end:19,quote:'The answer is blue.',title:'Notes/test.md'};
+ const result=await planDialogueAgent({engine,question:'What does the saved note say?',context:{summary:'',recent:[],refs:[],turnCount:0},attachments:[],allowedTools:[{id:'memory.search',effect:'read',network:'none'}],execute:async()=>[source],check:()=>{}});
+ assert.equal(result.final.action,'answer');
+ assert.equal(result.final.reply.answer,'The answer is blue.');
+ assert.deepEqual(result.final.reply.sources,[source]);
+});
+
 test('compound find-read-tell requests keep tools available and let the model choose each step',async()=>{
  const question='I have a saved note somewhere about an emergency water reserve. Use the available local tools to find the note, read it, then tell me the exact reserve amount and identifier.';
  const plans=[
