@@ -43,6 +43,15 @@ test('scheduled prose preserves distinct prose around an orphan reasoning delimi
  const result=await executeScheduledAnswer({store:{all:async()=>[],search:async()=>[]},models:{text:async()=>engine}},{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
  assert.equal(result.answer,`${prefix}\n\n${final}`);
 });
+test('scheduled answers retain a literal model name requested by the user without accepting unrelated internal labels',async()=>{
+ const prompt='Describe the Samsung Galaxy S23',store={all:async()=>{throw Error('Unexpected Memory read');},search:async()=>{throw Error('Unexpected Memory search');}};
+ const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:128,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async()=>({text:'The Samsung Galaxy S23 is a smartphone.',finishReason:'stop',outputTokens:9})};
+ const request={prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''};
+ const result=await executeScheduledAnswer({store,models:{text:async()=>engine}},request);
+ assert.equal(result.answer,'The Samsung Galaxy S23 is a smartphone.');
+ engine.generate=async()=>({text:'S1: The Galaxy S23 is a smartphone.',finishReason:'stop',outputTokens:10});
+ await assert.rejects(executeScheduledAnswer({store,models:{text:async()=>engine}},request),error=>error instanceof ScheduleAnswerError&&error.diagnostic.reason==='internal-source-label');
+});
 test('decorated arithmetic remains a complete local calculation request',()=>{
  for(const prompt of ['🧮 3 + 4 &','🔢 3+4 &']){
   assert.deepEqual(explicitCalculationInput(prompt),{expression:prompt.includes('3 + 4')?'3 + 4':'3+4',showExpression:false});

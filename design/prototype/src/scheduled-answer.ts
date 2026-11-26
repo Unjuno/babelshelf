@@ -37,7 +37,7 @@ function mergeInference(total:AnswerInference|undefined,next:Readonly<AnswerInfe
  }
  return total;
 }
-function scheduledProse(text:string){
+function scheduledProse(text:string,question:string){
  const raw=text.slice(0,4000);
  // A GGUF template can leak an orphan </think> between reasoning and final
  // prose. Remove the prefix only when the post-marker answer duplicates it;
@@ -56,7 +56,8 @@ function scheduledProse(text:string){
   try{const parsed=JSON.parse(visible) as Record<string,unknown>;if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&typeof parsed.answer==='string'&&(!('status'in parsed)||parsed.status==='answered')&&Array.isArray(parsed.sources)&&parsed.sources.length===0&&Object.keys(parsed).every(key=>['status','answer','sources'].includes(key)))answer=parsed.answer.trim();else return {answer:'',reason:'answer-shape',candidate:raw};}
   catch{return {answer:'',reason:'answer-shape',candidate:raw};}
  }
- if(/\bS\d+\b/u.test(answer))return {answer:'',reason:'internal-source-label',candidate:raw};
+ const requestedLabels=new Set(question.match(/\bS\d+\b/gu)??[]);
+ if([...(answer.match(/\bS\d+\b/gu)??[])].some(label=>!requestedLabels.has(label)))return {answer:'',reason:'internal-source-label',candidate:raw};
  if(hasInternalImplementationLeak(answer,'',[]))return {answer:'',reason:'internal-implementation-leak',candidate:raw};
  return {answer,reason:'',candidate:raw};
 }
@@ -72,7 +73,7 @@ async function scheduledConversation(engine:TextRuntime,input:{question:string;m
    if(!Number.isSafeInteger(count.prompt_tokens)||count.prompt_tokens<0)throw Error('Invalid token count');
    const budget=Math.min(manifest.maxOutputTokens??256,manifest.contextTokens-count.prompt_tokens);if(budget<1)throw Error('Response exceeded model context limit');
    const result=await measured.generate(messages,budget,'prose');check();if(result.stopped)throw Error('Stopped');candidate=result.text.slice(0,4000);
-   const parsed=scheduledProse(result.text);
+   const parsed=scheduledProse(result.text,question);
    if(parsed.answer&&!repeatsSchedulePrompt(parsed.answer,question))return {answer:parsed.answer,sources:[],model:modelInfo,inference};
    const reason=parsed.reason||'prompt-echo';
    if(attempt===1)throw new ScheduleAnswerError('Could not verify a schedule answer · edit the prompt and retry',{stage:'answer-validation',reason:reason==='prompt-echo'?'prompt-echo-after-repair':reason,candidate:parsed.candidate||candidate,model:modelInfo,inference:{...inference}});
