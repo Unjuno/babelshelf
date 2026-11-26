@@ -2611,3 +2611,27 @@ test('a short field question exposes both conflicting qualified source excerpts'
  const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'What is the secret word?',query:'secret word',mode:'answer',scope:{kind:'knowledge'}});
  assert.equal(calls,2);assert.equal(result.status,'insufficient_evidence');assert.deepEqual(result.conflictSources.map(x=>x.quote),refs.map(x=>x.quote));assert.equal(result.sources.length,0);
 });
+
+test('repeated internal-label leaks still offer verified conflicting excerpts',async()=>{
+ const notes=['QUOKKA','BLUEBERRY'].map((value,index)=>createNote({path:`Notes/word-leak-${index}.md`,body:`The secret word for this test is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'S1: QUOKKA; S2: BLUEBERRY',sources:['S1','S2']})};}};
+ const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'What is the secret word?',query:'secret word',mode:'answer',scope:{kind:'knowledge'}});
+ assert.equal(calls,3);assert.equal(result.status,'insufficient_evidence');assert.deepEqual(result.conflictSources.map(x=>x.quote),refs.map(x=>x.quote));assert.equal(result.sources.length,0);
+});
+
+test('label-leak conflict fallback refuses changed source revisions',async()=>{
+ const notes=['QUOKKA','BLUEBERRY'].map((value,index)=>createNote({path:`Notes/stale-word-${index}.md`,body:`The secret word for this test is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'S1: QUOKKA; S2: BLUEBERRY',sources:['S1','S2']})};}};
+ const store={all:async()=>calls>=3?notes.slice(0,1):notes,search:async()=>refs};
+ await assert.rejects(groundedAnswer({store,engine:runtime},{model:'test',question:'What is the secret word?',query:'secret word',mode:'answer',scope:{kind:'knowledge'}}),/Source changed · retry/);
+});
+
+test('label-leak conflict fallback cannot invent a conflict from unrelated fields',async()=>{
+ const notes=['The launch code is ALPHA.','The launch time is NOON.'].map((body,index)=>createNote({path:`Notes/no-conflict-${index}.md`,body}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify({status:'answered',answer:'S1: ALPHA; S2: NOON',sources:['S1','S2']})})};
+ const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'What is the launch code?',query:'launch',mode:'answer',scope:{kind:'knowledge'}});
+ assert.equal(result.conflictSources,undefined);
+});

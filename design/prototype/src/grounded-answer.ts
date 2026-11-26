@@ -318,6 +318,18 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
  if(!dialogueOnly&&!evidence.length&&!operationalEvidence)throw Error(hits.length?'Context limit':'No matching notes');
  type ParsedAnswer={answer:string;sources:SourceRef[];status?:'insufficient_evidence'};
  const bindLabels=(labels:unknown)=>bindEvidenceLabels(labels,evidence);
+ // If a repair still leaks an internal label, never display that draft. When
+ // selected original excerpts independently establish a narrow field conflict,
+ // offer those exact excerpts after revalidating every source revision.
+ const conflictAfterLabelLeak=async(error:unknown)=>{
+  if(!(error instanceof InternalSourceLabelLeakError))return null;
+  try{checkAnswerConsistency(question,'',[],evidence);return null;}
+  catch(conflict){
+   if(!(conflict instanceof ConflictingSourceValuesError))return null;
+   const current=await store.all();check();if(inputReadings.length)readingEvidence(current,inputReadings,query);if(workingFile)workingFileNote(current,workingFile);if(!validateGroundingRefs(current,evidence).ok)throw Error('Source changed · retry');
+   return {answer:'',sources:[],status:'insufficient_evidence' as const,checkedSources:bindLabels(evidence.map(ref=>ref.label)),conflictSources:bindLabels(conflict.sourceIndices.map(index=>evidence[index].label)),model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference:{...inference}}:{})};
+  }
+ };
  const validateUserFacingAnswer=(answer:ParsedAnswer):ParsedAnswer=>{if(hasInternalImplementationLeak(answer.answer,question,answer.sources))throw new InternalImplementationLeakError();return answer;};
  const parseLabelBindings=(text:string):ParsedAnswer=>validateUserFacingAnswer(bindSourceLabelAnswer(JSON.parse(text),evidence,{userText:question}));
  const parse=(text:string):ParsedAnswer=>{
@@ -425,7 +437,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
   try{if(labelOnly){parsed=validateUserFacingAnswer(bindRetriedSourceLabels(JSON.parse(generated.text),evidence,question));summaryLabelBinding=true;}else parsed=parse(generated.text);if(citationMismatch)recovery='citation-retry';}catch(retryError){
    if(canRecover(retryError)||retryError instanceof SyntaxError&&(singleSourceRecovery||singleInputRecovery))parsed=await exactSingleSourceFallback(retryError);
-   else throw retryError;
+   else {const conflict=await conflictAfterLabelLeak(retryError);if(conflict)return conflict;throw retryError;}
   }
   }
  }
@@ -467,7 +479,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
    const retryTokens=Math.min(replyTokens,engine.manifest.contextTokens-retryPromptTokens);
    if(retryTokens<256)throw Error('Context limit · consistency retry');
    generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
-   parsed=summaryLabelBinding?parseSingleLabelSummary(generated.text):parse(generated.text);
+   try{parsed=summaryLabelBinding?parseSingleLabelSummary(generated.text):parse(generated.text);}catch(retryError){const conflict=await conflictAfterLabelLeak(retryError);if(conflict)return conflict;throw retryError;}
    if(parsed.status!=='insufficient_evidence'){
     try{checkAnswerConsistency(question,parsed.answer,parsed.sources,evidence);}
     catch(repairError){
