@@ -1,3 +1,7 @@
+export class ConflictingSourceValuesError extends Error {
+ readonly sourceIndices:number[];
+ constructor(sourceIndices:number[]){super('Conflicting source values · describe the disagreement');this.name='ConflictingSourceValuesError';this.sourceIndices=sourceIndices;}
+}
 /** Reject an obvious type mismatch without claiming to verify semantic entailment. */
 export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=[],selectedEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=sourceEvidence){
  const q=question.normalize('NFKC'),a=answer.normalize('NFKC').trim();
@@ -55,7 +59,10 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
    return sourceRows.some(cited=>cited.noteId===selected.noteId&&cited.quote!.trim()===quote);
   }));
   const acknowledges=/(?:\b(?:conflict|contradict|disagree|different|inconsistent|differ)\w*\b|矛盾|食い違|異な)/iu.test(a);
-  if(!mentionsAll||!citesAll||!acknowledges)throw Error('Conflicting source values · describe the disagreement');
+  if(!mentionsAll||!citesAll||!acknowledges){
+   const sourceIndices=selectedEvidence.flatMap((row,index)=>{const match=typeof row.quote==='string'?assignment(row.quote):null;return match&&(match[1].toLocaleLowerCase().replace(/\s+/gu,' ')+'\u0000'+match[2].toLocaleLowerCase())===fieldKey&&values.has(match[3].toLocaleLowerCase())?[index]:[];});
+   throw new ConflictingSourceValuesError(sourceIndices);
+  }
  }
  // Exact citation spans prove where text came from, not that a numeric answer
  // copied the cited value correctly. Guard the narrow, explicit liquid-volume

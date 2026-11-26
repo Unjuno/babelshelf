@@ -105,7 +105,7 @@ export async function executeScheduledAnswer(dependencies:Dependencies,input:Req
   return scheduledConversation(engine,{question,model,signal,replyStyle,userGuidance});
  }
  const result=await answer({model,question,query:request?.query??question,mode:request?.action==='summary'?'summary':'answer',check,scope:{kind:'knowledge'},replyStyle,userGuidance});
- if(result.status==='insufficient_evidence')throw new ScheduleAnswerError('Not enough evidence · '+result.answer,{stage:'answer-validation',reason:'The saved sources do not support an answer',candidate:result.answer.slice(0,4000),model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference?{inference}:{})});
+ if(result.status==='insufficient_evidence')throw new ScheduleAnswerError('conflictSources' in result&&result.conflictSources?'Sources disagree · review saved notes':'Not enough evidence · '+result.answer,{stage:'answer-validation',reason:'conflictSources' in result&&result.conflictSources?'The selected sources disagree':'The saved sources do not support an answer',candidate:result.answer.slice(0,4000),model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference?{inference}:{})});
  // A verbatim-source recovery is useful in an interactive answer, where its
  // provenance is shown. A scheduled run exposes only the answer text; storing
  // that recovery as success would hide that the model's answer failed shape

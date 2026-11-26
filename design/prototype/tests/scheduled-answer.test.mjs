@@ -135,3 +135,11 @@ test('a scheduled malformed prose answer cannot fall back to a successful copied
  assert.equal(failure.diagnostic.reason,'citation-mismatch');assert.equal(failure.diagnostic.candidate,body);assert.equal(failure.diagnostic.inference?.measuredModelCalls,3);assert.equal(failure.diagnostic.inference?.outputTokens,12);assert.equal(failure.diagnostic.inference?.promptTokens,240);assert.equal(failure.diagnostic.inference?.runtimeDecodeMs,45);
  assert.equal(calls,2);
 });
+
+test('scheduled conflicting sources fail with a specific diagnostic rather than a completed answer',async()=>{
+ const notes=['ALPHA','BRAVO'].map((value,index)=>createNote({path:`Notes/launch-${index}.md`,body:`The launch code is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));let calls=0;
+ const runtime={loaded:'selected',assets:{selected:{filesPresent:true}},manifest:{contextTokens:8192,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:100}),generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'ALPHA',sources:['S1']}),finishReason:'stop'};}};
+ await assert.rejects(executeScheduledAnswer({store:{all:async()=>notes,search:async()=>refs},models:{text:async()=>runtime}},{prompt:'What is the launch code in my notes?',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''}),error=>error instanceof ScheduleAnswerError&&error.message==='Sources disagree · review saved notes'&&error.diagnostic.reason==='The selected sources disagree');
+ assert.equal(calls,2);
+});
