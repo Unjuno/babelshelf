@@ -1208,6 +1208,17 @@ test('malformed legacy tool arguments receive one repair without executing rejec
  assert.equal(calls.length,1);
 });
 
+test('legacy planner accepts direct tool argument objects and executes through normal validation',async()=>{
+ const {value,calls}=input([
+  JSON.stringify({action:'tool',query:'memory.search',body:{query:'meeting'}}),
+  JSON.stringify({action:'answer',query:'meeting',target:'knowledge'}),
+ ],{question:'Find meeting notes',enabledTools:['memory.search'],maxToolCalls:null});
+ let format;const generate=value.engine.generate;value.engine.generate=async(...args)=>{format??=args[2];return generate(...args);};
+ await coordinateAgentTurn(value);assert.equal(calls.length,1);
+ assert.equal(format.scope.toolSchemas['memory.search'].additionalProperties,false);
+ assert.deepEqual(format.scope.toolSchemas['memory.search'].required,['query']);
+});
+
 test('malformed custom tool arguments cannot turn their repair into an unrequested note',async()=>{
  const {createCustomToolPackageFiles}=await import('../src/custom-tool-package.ts');
  const files=createCustomToolPackageFiles({id:'user.qa-colour',title:'Colour',instructions:'Look up the colour.',code:'()=>({colour:"cobalt"})',capabilities:[]});

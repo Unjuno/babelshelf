@@ -252,6 +252,35 @@ test('same tool and arguments count as progress when their bounded result change
  assert.equal(result.final,'done');assert.equal(result.calls.length,3);assert.equal(result.attempts.some(item=>item.error?.code==='no_progress_loop'),false);
 });
 
+test('a repeated successful call that ignores the no-progress signal keeps partial evidence for an honest answer',async()=>{
+ const call={kind:'tool',tool:'memory.search',arguments:{query:'colour'}};let executions=0;
+ const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],check:()=>{},plan:async()=>call,
+  execute:async()=>{executions++;return [{noteId:'n',quote:'cobalt'}];},
+  onBudgetExhausted:history=>({partial:true,evidence:history.filter(item=>!item.error)}),
+ });
+ assert.equal(executions,3);assert.equal(result.budgetExhausted,true);assert.equal(result.budgetCause,'no-progress');
+ assert.equal(result.final.partial,true);assert.equal(result.final.evidence.length,2);
+ assert.deepEqual(result.final.evidence[0].result,[{noteId:'n',quote:'cobalt'}]);
+ assert.equal(result.attempts.at(-1).error.code,'no_progress_loop');
+});
+test('repeated failed calls never turn missing evidence into a partial answer',async()=>{
+ let partialCalls=0;const call={kind:'tool',tool:'memory.search',arguments:{query:'missing'}};
+ await assert.rejects(runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],check:()=>{},plan:async()=>call,
+  execute:async()=>{throw new AgentToolExecutionError('memory.search',Error('failed'));},
+  onBudgetExhausted:()=>{partialCalls++;return {partial:true};},
+ }),/repeated the same failed tool call/i);
+ assert.equal(partialCalls,0);
+});
+test('partial fallback records later unexecuted members of a repeated-call batch',async()=>{
+ let executions=0;const call={kind:'tool',tool:'memory.search',arguments:{query:'same'}},later={kind:'tool',tool:'memory.read',arguments:{query:'other'}};
+ const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,check:()=>{},
+  plan:async history=>history.at(-1)?.error?.code==='no_progress_loop'?{kind:'tools',calls:[call,later]}:call,
+  execute:async()=>{executions++;return [{quote:'evidence'}];},onBudgetExhausted:()=>({partial:true}),
+ });
+ assert.equal(executions,3);assert.equal(result.budgetCause,'no-progress');
+ assert.equal(result.attempts.at(-2).error.code,'no_progress_loop');assert.equal(result.attempts.at(-1).error.code,'batch_not_executed');
+});
+
 test('the repeat window detects a search-read cycle even when another tool separates identical calls',async()=>{
  const calls=[];const result=await runReadOnlyAgentLoop({allowedTools:memoryTools,
   plan:async history=>{
