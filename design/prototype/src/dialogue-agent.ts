@@ -10,7 +10,7 @@ import type {ReplyStyle} from './reply-style.ts';
 // this only when the user affirmatively asks for an answer and has not also
 // asked to save or create something; ambiguous requests keep normal planning.
 function requestsAnswerWithoutNote(question:string){
- const save=/\b(?:save|store|remember|record|create|make|write|draft|capture|add)\b|(?:保存(?!済み)|記録(?!済み)|覚え|メモして|作成(?!済み)|書き留め|書いて|残して|追加)/iu;
+ const save=/\b(?:save|store|remember|record|create|make|write|draft|capture|add)\b|\b(?:note|jot)\s+(?:down\b|(?:the|this|that|it|its|your)\b)|\b(?:keep|take)\s+(?:(?:a|the|this|that)\s+)?(?:note|notes|memo)\b|(?:保存(?!済み)|記録(?!済み)|覚え|メモ(?:に|を|として)?(?:して|残して|取って)|作成(?!済み)|書き留め|書いて|残して|追加)/iu;
  const answer=/\b(?:answer|respond|reply|report|tell|show|explain|describe|say|what|which|when|where|who|how)\b|[?？]|(?:答え|回答|返答|教えて|知らせて|表示|説明|示して|何|どこ|いつ|だれ|誰|どう)/iu;
  return answer.test(question)&&!save.test(question);
 }
