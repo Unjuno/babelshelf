@@ -22,13 +22,15 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
   if(closed||signal.aborted){worker.terminate();if(closed)throw Error('Embedding backend closed');throw Error('Stopped');}
   return client??=createSemanticEmbeddingClient(worker);
  };
- const run=<T>(work:(signal:AbortSignal,current:ReturnType<typeof createSemanticEmbeddingClient>)=>Promise<T>,signal?:AbortSignal,events?:Events)=>{
+ const run=<T>(work:(signal:AbortSignal,current:ReturnType<typeof createSemanticEmbeddingClient>)=>Promise<T>,signal?:AbortSignal,events?:Events,softCancel=false)=>{
   if(closed)return Promise.reject(Error('Embedding backend closed'));
   if(signal?.aborted)return Promise.reject(Error('Stopped'));
   const controller=new AbortController();controllers.add(controller);
   const onAbort=()=>controller.abort();signal?.addEventListener('abort',onAbort,{once:true});
+  // A superseded Memory query may finish in the worker without publishing its
+  // result. Explicit Stop and close still terminate active model work.
   const stopped=new Promise<never>((_resolve,reject)=>controller.signal.addEventListener('abort',()=>{
-   if(activeController===controller){const old=client;client=null;if(old)old.abort();}
+   if(activeController===controller&&!softCancel){const old=client;client=null;if(old)old.abort();}
    reject(Error('Stopped'));
   },{once:true}));
   const queued=tail.then(async()=>{
@@ -51,7 +53,7 @@ export function createSemanticEmbeddingBackend(modelIdOrWorker:string|(()=>Worke
   verify:(signal?:AbortSignal,events?:Events)=>run((_signal,current)=>current.verify(),signal,events),
   prepare:(allowNetwork:boolean,localFiles:File[]=[],signal?:AbortSignal,events?:Events)=>run((_signal,current)=>current.prepare(allowNetwork,localFiles,progress(events)),signal,events),
   load:(signal?:AbortSignal,events?:Events)=>run(async(active,current)=>{await verifyProductRuntimeAssets('search',{signal:active,onProgress:item=>events?.('progress',productRuntimeProgressLabel(item))});active.throwIfAborted();await current.load(progress(events));return {model:manifest.id,dimensions:manifest.dimensions,device:manifest.device};},signal,events),
-  embed:(texts:readonly string[],signal?:AbortSignal,events?:Events)=>run((_signal,current)=>current.embed(texts),signal,events),
+  embed:(texts:readonly string[],signal?:AbortSignal,events?:Events,softCancel=false)=>run((_signal,current)=>current.embed(texts),signal,events,softCancel),
   unload:(signal?:AbortSignal)=>run(async(_signal,current)=>{await current.unload();return true;},signal),
   abort(){for(const controller of controllers)controller.abort();const old=client;client=null;if(old)old.abort();},
   close(){if(closed)return;this.abort();closed=true;},
