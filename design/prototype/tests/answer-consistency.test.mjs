@@ -260,3 +260,9 @@ test('discussing a conflict still requires citations for both selected values',(
  assert.throws(()=>checkAnswerConsistency('What is the launch code?','The notes conflict: ALPHA or BRAVO.',cited,selected),/conflicting source values/i);
  assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','The notes conflict: ALPHA or BRAVO.',selected,selected));
 });
+
+test('a citation containing a longer similar value does not support the conflicting value',()=>{
+ const selected=[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'b',quote:'The launch code is BRAVO.'}];
+ const cited=[selected[0],{noteId:'b',quote:'The launch code is BRAVO-OLD.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the launch code?','The notes conflict: ALPHA or BRAVO.',cited,selected),/conflicting source values/i);
+});
