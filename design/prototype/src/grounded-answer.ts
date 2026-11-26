@@ -1,6 +1,6 @@
 import {observeInference as observeAnswerInference,type InferenceMeasurements as AnswerInference} from './inference-measurements.ts';
 import {workingFileEvidence,workingFileNote,type WorkingFile} from './working-file.ts';
-import {checkAnswerConsistency} from './answer-consistency.ts';
+import {checkAnswerConsistency,ConflictingSourceValuesError} from './answer-consistency.ts';
 // This adapter can read evidence and generate prose. It has no write/delete tools.
 // @ts-expect-error Shared baseline core is JavaScript.
 import {parseAnswer,searchNotes,validateGroundingRefs} from '../../../dist/core.js';
@@ -206,7 +206,13 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const parsed=bindSourceLabelAnswer({answer:request.reply.answer,sources:labels,...(request.reply.status?{status:request.reply.status}:{})},labelled,{userText:question});
   checkRepeatedOutput(parsed.answer);
   if(parsed.status!=='insufficient_evidence'){
-   checkAnswerConsistency(question,parsed.answer,parsed.sources,hits);
+   try{checkAnswerConsistency(question,parsed.answer,parsed.sources,hits);}
+   catch(error){
+    if(!(error instanceof ConflictingSourceValuesError))throw error;
+    const fresh=await store.all();check();if(workingFile)workingFileNote(fresh,workingFile);if(!validateGroundingRefs(fresh,hits).ok)throw Error('Source changed · retry');
+    const checkedSources=bindEvidenceLabels(labelled.map(ref=>ref.label),labelled),conflictSources=bindEvidenceLabels(error.sourceIndices.map(index=>labelled[index].label),labelled);
+    return {answer:'',sources:[],status:'insufficient_evidence' as const,checkedSources,conflictSources,model:{id:model,revision:engine.manifest.models.find(m=>m.id===model)?.revision,runtime:engine.manifest.runtime.revision}};
+   }
    if(requestsOneSentence(question)&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
    if(mode==='summary'&&summaryRepeatsRequest(question,parsed.answer,parsed.sources))throw Error('Summary repeated the request · try again');
   }
@@ -462,7 +468,15 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
    if(retryTokens<256)throw Error('Context limit · consistency retry');
    generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
    parsed=summaryLabelBinding?parseSingleLabelSummary(generated.text):parse(generated.text);
-   if(parsed.status!=='insufficient_evidence')checkAnswerConsistency(question,parsed.answer,parsed.sources,evidence);
+   if(parsed.status!=='insufficient_evidence'){
+    try{checkAnswerConsistency(question,parsed.answer,parsed.sources,evidence);}
+    catch(repairError){
+     if(!(repairError instanceof ConflictingSourceValuesError))throw repairError;
+     const current=await store.all();check();if(inputReadings.length)readingEvidence(current,inputReadings,query);if(workingFile)workingFileNote(current,workingFile);if(!validateGroundingRefs(current,evidence).ok)throw Error('Source changed · retry');
+     const checkedSources=bindLabels(evidence.map(ref=>ref.label)),conflictSources=bindLabels(repairError.sourceIndices.map(index=>evidence[index].label));
+     return {answer:'',sources:[],status:'insufficient_evidence' as const,checkedSources,conflictSources,model:{id:model,revision:engine.manifest.models.find(item=>item.id===model)?.revision,runtime:engine.manifest.runtime.revision},...(inference.measuredModelCalls?{inference:{...inference}}:{})};
+    }
+   }
    if(mode==='summary'&&parsed.status!=='insufficient_evidence'&&echoedRequest())throw Error('Summary repeated the request · try again');
    if(wantsOneSentence&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
   }

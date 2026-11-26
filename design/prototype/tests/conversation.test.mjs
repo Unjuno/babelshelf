@@ -2575,3 +2575,31 @@ test('grounded generation checks selected sources even when the draft omits the 
  const result=await groundedAnswer({store,engine:runtime},{model:'test',question:'What is the launch code?',query:'launch code',mode:'answer',scope:{kind:'knowledge'}});
  assert.equal(calls,2);assert.match(result.answer,/conflict/i);assert.equal(result.sources.length,2);
 });
+
+test('conflicting selected excerpts remain inspectable when the model repeats a one-sided answer',async()=>{
+ const notes=['ALPHA','BRAVO'].map((value,index)=>createNote({path:`Notes/conflict-${index}.md`,body:`The launch code is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'ALPHA',sources:['S1']})};}};
+ const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'What is the launch code?',query:'launch code',mode:'answer',scope:{kind:'knowledge'}});
+ assert.equal(calls,2);assert.equal(result.status,'insufficient_evidence');assert.equal(result.conflictSources.length,2);assert.deepEqual(result.conflictSources.map(x=>x.quote),refs.map(x=>x.quote));assert.equal(result.sources.length,0);
+});
+
+test('conflict review excludes unrelated excerpts and rejects sources removed during repair',async()=>{
+ const notes=['The launch code is ALPHA.','The launch code is BRAVO.','The launch time is NOON.'].map((body,index)=>createNote({path:`Notes/conflict-extra-${index}.md`,body}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));
+ let current=notes,calls=0,removeOnRepair=false;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>{calls++;if(removeOnRepair&&calls===2)current=notes.slice(1);return {text:JSON.stringify({status:'answered',answer:'ALPHA',sources:['S1']})};}};
+ const deps={store:{all:async()=>current,search:async()=>refs},engine:runtime},request={model:'test',question:'What is the launch code?',query:'launch',mode:'answer',scope:{kind:'knowledge'}};
+ const result=await groundedAnswer(deps,request);assert.deepEqual(result.conflictSources.map(ref=>ref.quote),refs.slice(0,2).map(ref=>ref.quote));assert.equal(result.checkedSources.length,3);
+ calls=0;removeOnRepair=true;await assert.rejects(groundedAnswer(deps,request),/Source changed · retry/);
+});
+
+test('native terminal replies expose conflicting original excerpts without regeneration and recheck revisions',async()=>{
+ const notes=['ALPHA','BRAVO'].map((value,index)=>createNote({path:`Notes/native-conflict-${index}.md`,body:`The launch code is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));let reads=0,changeAt=Infinity;
+ const engine={manifest:{models:[{id:'test',revision:'fixture'}],runtime:{revision:'fixture'}},generate:async()=>{throw Error('Unexpected regeneration');}};
+ const request={model:'test',question:'What is the launch code?',mode:'answer',scope:{kind:'knowledge'},toolEvidence:{used:true,refs,memoryUsed:true},reply:{answer:'ALPHA',sources:[refs[0]]}};
+ const store={all:async()=>++reads>=changeAt?[notes[0]]:notes,search:async()=>{throw Error('Unexpected search');}};
+ const result=await groundedAnswer({store,engine},request);assert.equal(result.status,'insufficient_evidence');assert.deepEqual(result.conflictSources.map(ref=>ref.quote),refs.map(ref=>ref.quote));assert.deepEqual(result.sources,[]);
+ reads=0;changeAt=2;await assert.rejects(groundedAnswer({store,engine},request),/Source changed/);
+});
