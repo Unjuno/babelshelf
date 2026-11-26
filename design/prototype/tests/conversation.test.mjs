@@ -1788,6 +1788,7 @@ test('tool answer requests do not open an unsolicited note while requested note 
   ['What do the saved notes say?','answer'],
   ['保存済みの資料の内容を教えてください。','answer'],
   ['Calculate 3+3 and tell me; do not save the result.','answer'],
+  ['Calculate 3+3 and tell me; do not save it as a note.','answer'],
   ['3+3を計算し、保存しないで結果を教えてください。','answer'],
   ['Calculate 3+3; do not save the input, but save the result as a note.','capture'],
   ['3+3を計算し、入力を保存しないで結果をメモに保存して教えて。','capture'],
@@ -1795,9 +1796,11 @@ test('tool answer requests do not open an unsolicited note while requested note 
   ['Calculate 3+3, note the result, and tell me.','capture'],
   ['Calculate 3+3, jot down the result, and tell me.','capture'],
   ['Calculate 3+3, take a note, and tell me.','capture'],
+  ['Calculate 3+3 and tell me the result as a note.','capture'],
   ['3+3を計算し、結果をメモに保存して。','capture'],
   ['3+3を計算し、メモにして結果を教えて。','capture'],
   ['3+3を計算し、メモを取って結果を教えて。','capture'],
+  ['3+3を計算し、結果をノートにして教えて。','capture'],
  ]){
   const plans=[{action:'tool',query:'math.calculate',body:'{"expression":"3+3"}'},{action:'capture',query:'calculation',body:'6'}];
   const engine={manifest:{contextTokens:8192},count:async()=>({prompt_tokens:100}),generate:async()=>({text:JSON.stringify(plans.shift())})};
