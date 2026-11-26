@@ -1,5 +1,8 @@
 import {expect,test} from '@playwright/test';
+import {readFile,writeFile} from 'node:fs/promises';
 import {createNote,makeBackup} from '../../../dist/core.js';
+import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
+import {appendTurn} from '../src/conversation.ts';
 
 test('Restore backup opens a review and restores its note through the Settings file picker',async({page})=>{
  await page.goto('/');
@@ -48,4 +51,22 @@ test('Restore backup keeps invalid-file errors visible in Local files and leaves
  await expect(review).toContainText('1 records');
  await review.getByRole('button',{name:'Cancel',exact:true}).click();
  await expect(review).toHaveCount(0);
+});
+
+test('a conflicting backup is reviewed without overwriting a later file edit',async({page},testInfo)=>{
+ test.setTimeout(60_000);
+ await page.goto('/');
+ const navigate=async(label:string)=>{await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:label,exact:true}).click();};
+ await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'New file',exact:true}).click();
+ await page.getByRole('textbox',{name:'File name',exact:true}).fill('backup-conflict-ui');await page.getByRole('textbox',{name:'New file content',exact:true}).fill('Original before backup');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
+ await navigate('Settings');await page.getByRole('button',{name:'Local files',exact:true}).click();const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export backup',exact:true}).click();const path=testInfo.outputPath('conflict.brainpack');await (await download).saveAs(path);
+ const payload=await parseStateBackup(await readFile(path,'utf8'));const dialogue=payload.settings?.find(entry=>entry.key==='ui-v1-dialogue');expect(dialogue).toBeTruthy();const originalDialogue=dialogue!.value;dialogue!.value=appendTurn(originalDialogue,{id:'backup-conflicting-turn',user:'Incoming conflicting conversation'});const extra=createNote({path:'Inbox/backup-new-only.md',body:'Imported new record'}),mixedPath=testInfo.outputPath('mixed-conflict.brainpack');await writeFile(mixedPath,JSON.stringify(await makeStateBackup({notes:[...payload.notes,extra],settings:payload.settings??[],runs:payload.runs??[]})));
+ const currentDialogue=appendTurn(originalDialogue,{id:'current-existing-turn',user:'Existing conversation must remain'});await page.evaluate(value=>new Promise<void>((resolve,reject)=>{const request=indexedDB.open('mlb-memory-v1');request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('settings','readwrite');tx.objectStore('settings').put(value,'ui-v1-dialogue');tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>reject(tx.error);};}),currentDialogue);await page.reload();await page.getByRole('button',{name:'Input',exact:true}).waitFor();
+ await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open backup-conflict-ui.md',exact:true}).click();await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('textbox',{name:'Markdown content',exact:true}).fill('Later local edit must remain');await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('main')).toContainText('Later local edit must remain');
+ await navigate('Settings');await page.getByRole('button',{name:'Local files',exact:true}).click();const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();await (await chooser).setFiles(path);
+ const review=page.getByRole('dialog',{name:'Restore backup?'});await expect(review.getByRole('alert')).toContainText('conflicts · Existing kept');await expect(review).toContainText('backup-conflict-ui.md');await expect(review.getByRole('button',{name:'Restore',exact:true})).toBeDisabled();await review.getByRole('button',{name:'Cancel',exact:true}).click();
+ const mixedChooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();await (await mixedChooser).setFiles(mixedPath);const mixed=page.getByRole('dialog',{name:'Restore backup?'});await expect(mixed.getByRole('alert')).toContainText('conflicts · Existing kept');await expect(mixed).toContainText('Messages');await mixed.getByRole('button',{name:'Restore new',exact:true}).click();await expect(mixed).toHaveCount(0);await page.reload();await page.getByRole('button',{name:'Input',exact:true}).waitFor();
+ await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open backup-conflict-ui.md',exact:true}).click();await expect(page.locator('main')).toContainText('Later local edit must remain');
+ await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open backup-new-only.md',exact:true}).click();await expect(page.locator('main')).toContainText('Imported new record');
+ await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('button',{name:'Input',exact:true}).click();await expect(page.locator('main')).toContainText('Existing conversation must remain');await expect(page.locator('main')).not.toContainText('Incoming conflicting conversation');
 });
