@@ -206,7 +206,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   const parsed=bindSourceLabelAnswer({answer:request.reply.answer,sources:labels,...(request.reply.status?{status:request.reply.status}:{})},labelled,{userText:question});
   checkRepeatedOutput(parsed.answer);
   if(parsed.status!=='insufficient_evidence'){
-   checkAnswerConsistency(question,parsed.answer,parsed.sources);
+   checkAnswerConsistency(question,parsed.answer,parsed.sources,hits);
    if(requestsOneSentence(question)&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
    if(mode==='summary'&&summaryRepeatsRequest(question,parsed.answer,parsed.sources))throw Error('Summary repeated the request · try again');
   }
@@ -448,7 +448,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
   if(wantsOneSentence&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
  }
  if(mode!=='chat'&&parsed.status!=='insufficient_evidence'){
-  try{checkAnswerConsistency(question,parsed.answer,parsed.sources);}catch(error){
+  try{checkAnswerConsistency(question,parsed.answer,parsed.sources,evidence);}catch(error){
    if(error instanceof Error&&error.message==='Answer does not match question · try again'&&workingFile)throw Error('Could not answer from the selected excerpts');
    if(!(error instanceof Error))throw error;
    const fresh=await store.all();check();
@@ -462,7 +462,7 @@ export async function groundedAnswer(dependencies:GroundedAnswerDependencies,req
    if(retryTokens<256)throw Error('Context limit · consistency retry');
    generated=await engine.generate(retry,retryTokens,format);check();if(generated.stopped)throw Error('Stopped');checkRepeatedOutput(generated.text);if(outputLimited(generated,retryTokens))throw Error('Response exceeded model output limit');
    parsed=summaryLabelBinding?parseSingleLabelSummary(generated.text):parse(generated.text);
-   if(parsed.status!=='insufficient_evidence')checkAnswerConsistency(question,parsed.answer,parsed.sources);
+   if(parsed.status!=='insufficient_evidence')checkAnswerConsistency(question,parsed.answer,parsed.sources,evidence);
    if(mode==='summary'&&parsed.status!=='insufficient_evidence'&&echoedRequest())throw Error('Summary repeated the request · try again');
    if(wantsOneSentence&&hasMultipleSentences(parsed.answer))throw Error('One sentence requested · try again');
   }

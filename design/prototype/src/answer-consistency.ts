@@ -1,5 +1,5 @@
 /** Reject an obvious type mismatch without claiming to verify semantic entailment. */
-export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=[]){
+export function checkAnswerConsistency(question:string,answer:string,sourceEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=[],selectedEvidence:readonly {quote?:string;noteId?:string;title?:string}[]=sourceEvidence){
  const q=question.normalize('NFKC'),a=answer.normalize('NFKC').trim();
  // Respect a small set of explicit "leave this out" instructions. This is a
  // lexical scope guard, not a general-purpose interpretation of user intent.
@@ -33,8 +33,9 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // field in different cited records. This does not establish general semantic
  // consistency; ambiguous prose and differing field names are left alone.
  const assignments=new Map<string,Map<string,Set<string>>>();
- for(const [index,row] of sourceRows.entries()){
-  const match=row.quote!.trim().match(/^(?:the\s+)?([\p{L}\p{N}][\p{L}\p{N} '-]{2,90}?)\s+(is|was)\s+([\p{L}\p{N}_-]{2,64})[.!]?$/iu);
+ for(const [index,row] of selectedEvidence.entries()){
+  if(typeof row.quote!=='string')continue;
+  const match=row.quote.normalize('NFKC').trim().match(/^(?:the\s+)?([\p{L}\p{N}][\p{L}\p{N} '-]{2,90}?)\s+(is|was)\s+([\p{L}\p{N}_-]{2,64})[.!]?$/iu);
   if(!match)continue;
   const subject=match[1].toLocaleLowerCase().replace(/\s+/gu,' '),value=match[3].toLocaleLowerCase(),fieldKey=subject+'\u0000'+match[2].toLocaleLowerCase();
   const meaningful=subject.split(' ').filter(word=>word.length>2&&!['the','for','this','that','and'].includes(word));
@@ -46,8 +47,9 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   if(values.size<2||new Set([...values.values()].flatMap(owners=>[...owners])).size<2)continue;
   const normalized=a.toLocaleLowerCase();
   const mentionsAll=[...values.keys()].every(value=>new RegExp(`(?<![\\p{L}\\p{N}_-])${value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?![\\p{L}\\p{N}_-])`,'u').test(normalized));
+  const citesAll=[...values.entries()].every(([value,owners])=>sourceRows.some(row=>(!row.noteId||owners.has(row.noteId))&&row.quote!.toLocaleLowerCase().includes(value)));
   const acknowledges=/(?:\b(?:conflict|contradict|disagree|different|inconsistent|differ)\w*\b|矛盾|食い違|異な)/iu.test(a);
-  if(!mentionsAll||!acknowledges)throw Error('Conflicting source values · describe the disagreement');
+  if(!mentionsAll||!citesAll||!acknowledges)throw Error('Conflicting source values · describe the disagreement');
  }
  // Exact citation spans prove where text came from, not that a numeric answer
  // copied the cited value correctly. Guard the narrow, explicit liquid-volume

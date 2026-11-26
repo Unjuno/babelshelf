@@ -249,3 +249,14 @@ test('present and past field values are not treated as simultaneous conflicting 
  const refs=[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'b',quote:'The launch code was BRAVO.'}];
  assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','ALPHA',refs));
 });
+
+test('a model cannot hide a conflicting selected excerpt by omitting its citation',()=>{
+ const cited=[{noteId:'a',quote:'The launch code is ALPHA.'}],selected=[...cited,{noteId:'b',quote:'The launch code is BRAVO.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the launch code?','ALPHA',cited,selected),/conflicting source values/i);
+});
+
+test('discussing a conflict still requires citations for both selected values',()=>{
+ const cited=[{noteId:'a',quote:'The launch code is ALPHA.'}],selected=[...cited,{noteId:'b',quote:'The launch code is BRAVO.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the launch code?','The notes conflict: ALPHA or BRAVO.',cited,selected),/conflicting source values/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','The notes conflict: ALPHA or BRAVO.',selected,selected));
+});
