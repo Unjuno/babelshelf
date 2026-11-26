@@ -12,7 +12,10 @@ import type {ReplyStyle} from './reply-style.ts';
 function requestsAnswerWithoutNote(question:string){
  const save=/\b(?:save|store|remember|record|create|make|write|draft|capture|add)\b|\b(?:note|jot)\s+(?:down\b|(?:the|this|that|it|its|your)\b)|\b(?:keep|take)\s+(?:(?:a|the|this|that)\s+)?(?:note|notes|memo)\b|(?:保存(?!済み)|記録(?!済み)|覚え|メモ(?:に|を|として)?(?:して|残して|取って)|作成(?!済み)|書き留め|書いて|残して|追加)/iu;
  const answer=/\b(?:answer|respond|reply|report|tell|show|explain|describe|say|what|which|when|where|who|how)\b|[?？]|(?:答え|回答|返答|教えて|知らせて|表示|説明|示して|何|どこ|いつ|だれ|誰|どう)/iu;
- return answer.test(question)&&!save.test(question);
+ // Remove only explicitly negated actions; another affirmative save request
+ // in the same sentence still prevents conversion.
+ const affirmative=question.replace(/\b(?:do\s+not|don't|never)\s+(?:save|store|record|create|write|capture|add)\b/giu,'').replace(/(?:保存|記録|作成)(?:しないで|しない|しなくて|不要|禁止)/gu,'');
+ return answer.test(question)&&!save.test(affirmative);
 }
 export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];readObservedWebSources?:()=>AgentPlannerContext['observedWebSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
  let historyRepairUsed=false,deferredToolRepairUsed=false,protocolRepairUsed=false;
