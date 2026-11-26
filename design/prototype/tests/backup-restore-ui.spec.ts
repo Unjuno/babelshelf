@@ -1,5 +1,7 @@
 import {expect,test} from '@playwright/test';
+import {readFile,writeFile} from 'node:fs/promises';
 import {createNote,makeBackup} from '../../../dist/core.js';
+import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 
 test('Restore backup opens a review and restores its note through the Settings file picker',async({page})=>{
  await page.goto('/');
@@ -56,8 +58,11 @@ test('a conflicting backup is reviewed without overwriting a later file edit',as
  await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'New file',exact:true}).click();
  await page.getByRole('textbox',{name:'File name',exact:true}).fill('backup-conflict-ui');await page.getByRole('textbox',{name:'New file content',exact:true}).fill('Original before backup');await page.getByRole('dialog',{name:'New file'}).getByRole('button',{name:'Save',exact:true}).click();
  await navigate('Settings');await page.getByRole('button',{name:'Local files',exact:true}).click();const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export backup',exact:true}).click();const path=testInfo.outputPath('conflict.brainpack');await (await download).saveAs(path);
+ const payload=await parseStateBackup(await readFile(path,'utf8'));const extra=createNote({path:'Inbox/backup-new-only.md',body:'Imported new record'}),mixedPath=testInfo.outputPath('mixed-conflict.brainpack');await writeFile(mixedPath,JSON.stringify(await makeStateBackup({notes:[...payload.notes,extra],settings:payload.settings??[],runs:payload.runs??[]})));
  await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open backup-conflict-ui.md',exact:true}).click();await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('textbox',{name:'Markdown content',exact:true}).fill('Later local edit must remain');await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('main')).toContainText('Later local edit must remain');
  await navigate('Settings');await page.getByRole('button',{name:'Local files',exact:true}).click();const chooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();await (await chooser).setFiles(path);
  const review=page.getByRole('dialog',{name:'Restore backup?'});await expect(review.getByRole('alert')).toContainText('conflicts · Existing kept');await expect(review).toContainText('backup-conflict-ui.md');await expect(review.getByRole('button',{name:'Restore',exact:true})).toBeDisabled();await review.getByRole('button',{name:'Cancel',exact:true}).click();
+ const mixedChooser=page.waitForEvent('filechooser');await page.getByRole('button',{name:'Restore backup',exact:true}).click();await (await mixedChooser).setFiles(mixedPath);const mixed=page.getByRole('dialog',{name:'Restore backup?'});await expect(mixed.getByRole('alert')).toContainText('conflicts · Existing kept');await mixed.getByRole('button',{name:'Restore new',exact:true}).click();await expect(mixed).toHaveCount(0);
  await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open backup-conflict-ui.md',exact:true}).click();await expect(page.locator('main')).toContainText('Later local edit must remain');
+ await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'Open backup-new-only.md',exact:true}).click();await expect(page.locator('main')).toContainText('Imported new record');
 });
