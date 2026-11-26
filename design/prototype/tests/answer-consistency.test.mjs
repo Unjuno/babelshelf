@@ -266,3 +266,25 @@ test('a citation containing a longer similar value does not support the conflict
  const cited=[selected[0],{noteId:'b',quote:'The launch code is BRAVO-OLD.'}];
  assert.throws(()=>checkAnswerConsistency('What is the launch code?','The notes conflict: ALPHA or BRAVO.',cited,selected),/conflicting source values/i);
 });
+
+test('conflicting exact fields remain visible when the question omits trailing context',()=>{
+ const refs=[{noteId:'a',quote:'The secret word for this test is QUOKKA.'},{noteId:'b',quote:'The secret word for this test is BLUEBERRY.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the secret word?','QUOKKA',refs,refs),/conflicting source values/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the secret word?','The notes disagree: QUOKKA or BLUEBERRY.',refs,refs));
+});
+
+test('shorter field matching does not conflate a different named qualifier',()=>{
+ const refs=[{noteId:'a',quote:'The secret word for this test is QUOKKA.'},{noteId:'b',quote:'The secret word for this test is BLUEBERRY.'}];
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the secret word for another test?','QUOKKA',refs,refs));
+});
+
+test('short field matching also handles a different qualified code',()=>{
+ const refs=[{noteId:'a',quote:'The launch code for mission delta is ALPHA.'},{noteId:'b',quote:'The launch code for mission delta is BRAVO.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the launch code?','ALPHA',[refs[0]],refs),/conflicting source values/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code for mission omega?','ALPHA',refs,refs));
+});
+
+test('qualified-field coverage is retained when the same qualifier is abbreviated',()=>{
+ const refs=[{noteId:'a',quote:'The secret word for this test is QUOKKA.'},{noteId:'b',quote:'The secret word for this test is BLUEBERRY.'}];
+ assert.throws(()=>checkAnswerConsistency('For the test, what is the secret word?','QUOKKA',refs,refs),/conflicting source values/i);
+});

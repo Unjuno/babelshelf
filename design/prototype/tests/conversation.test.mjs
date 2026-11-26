@@ -2603,3 +2603,11 @@ test('native terminal replies expose conflicting original excerpts without regen
  const result=await groundedAnswer({store,engine},request);assert.equal(result.status,'insufficient_evidence');assert.deepEqual(result.conflictSources.map(ref=>ref.quote),refs.map(ref=>ref.quote));assert.deepEqual(result.sources,[]);
  reads=0;changeAt=2;await assert.rejects(groundedAnswer({store,engine},request),/Source changed/);
 });
+
+test('a short field question exposes both conflicting qualified source excerpts',async()=>{
+ const notes=['QUOKKA','BLUEBERRY'].map((value,index)=>createNote({path:`Notes/word-${index}.md`,body:`The secret word for this test is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>{calls++;return {text:JSON.stringify({status:'answered',answer:'QUOKKA',sources:['S1']})};}};
+ const result=await groundedAnswer({store:{all:async()=>notes,search:async()=>refs},engine:runtime},{model:'test',question:'What is the secret word?',query:'secret word',mode:'answer',scope:{kind:'knowledge'}});
+ assert.equal(calls,2);assert.equal(result.status,'insufficient_evidence');assert.deepEqual(result.conflictSources.map(x=>x.quote),refs.map(x=>x.quote));assert.equal(result.sources.length,0);
+});

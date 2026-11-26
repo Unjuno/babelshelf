@@ -44,7 +44,17 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
   if(!match)continue;
   const subject=match[1].toLocaleLowerCase().replace(/\s+/gu,' '),value=match[3].toLocaleLowerCase(),fieldKey=subject+'\u0000'+match[2].toLocaleLowerCase();
   const meaningful=subject.split(' ').filter(word=>word.length>2&&!['the','for','this','that','and'].includes(word));
-  const question=q.toLocaleLowerCase();if(meaningful.length===0||!meaningful.every(word=>question.includes(word)))continue;
+  const question=q.toLocaleLowerCase();
+  // When the user asks only for a field (for example, “secret word?”),
+  // retain conflicting records that agree on the full qualified field. Do
+  // not match a question specifying another qualifier to this shorter head.
+  const head=subject.split(/\s+for\s+/u)[0],headWords=head.split(' ').filter(word=>word.length>2);
+  const genericHead=head!==subject&&headWords.length>=2&&new RegExp(`(?<![\\p{L}\\p{N}_-])${head.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/gu,'\\s+')}(?=\\s*[?？.!]|\\s*$)`,'u').test(question);
+  const qualifier=head!==subject?subject.slice(head.length+5):'';
+  const headPattern=head.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/gu,'\\s+');
+  const otherQualifier=!!qualifier&&new RegExp(`(?<![\\p{L}\\p{N}_-])${headPattern}\\s+for\\s+`,'u').test(question)&&!question.includes(qualifier);
+  const fullMatch=meaningful.every(word=>question.includes(word))&&!otherQualifier;
+  if(meaningful.length===0||!fullMatch&&!genericHead)continue;
   const values=assignments.get(fieldKey)??new Map<string,Set<string>>(),owners=values.get(value)??new Set<string>();
   owners.add(row.noteId??`source-${index}`);values.set(value,owners);assignments.set(fieldKey,values);
  }
