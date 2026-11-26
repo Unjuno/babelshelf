@@ -252,6 +252,16 @@ test('same tool and arguments count as progress when their bounded result change
  assert.equal(result.final,'done');assert.equal(result.calls.length,3);assert.equal(result.attempts.some(item=>item.error?.code==='no_progress_loop'),false);
 });
 
+test('a changed outcome resets the repeat count for the same call',async()=>{
+ const observations=['old','old','new','old','old'];let executions=0;
+ const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],check:()=>{},
+  plan:async history=>history.length<observations.length?{kind:'tool',tool:'memory.search',arguments:{query:'changing'}}:{kind:'final',value:'done'},
+  execute:async()=>({value:observations[executions++]}),
+ });
+ assert.equal(result.final,'done');assert.equal(executions,5);
+ assert.equal(result.attempts.some(item=>item.error?.code==='no_progress_loop'),false);
+});
+
 test('a repeated successful call that ignores the no-progress signal keeps partial evidence for an honest answer',async()=>{
  const call={kind:'tool',tool:'memory.search',arguments:{query:'colour'}};let executions=0;
  const result=await runReadOnlyAgentLoop({allowedTools:[memoryTools[0]],check:()=>{},plan:async()=>call,
