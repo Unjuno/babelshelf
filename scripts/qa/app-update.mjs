@@ -159,7 +159,7 @@ test('controlled Chromium distinguishes a network exception, remote HTTP error a
   assert.deepEqual(await read('/broken'),{status:503,marker:'network',body:'Network request failed'});
   assert.deepEqual(await read('/status'),{status:503,marker:null,body:'remote error'});
   await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('mlb-memory-v1',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite');tx.objectStore('notes').put({id:'settings-connection',state:'active',ui:{managed:true},revisions:[{path:'Settings/connection.md',body:'# Connection\n\n```json\n{"downloads":false,"diagnosticLogs":false}\n```\n'}]});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();});
-  assert.deepEqual(await read('/broken'),{status:503,marker:null,body:'App is offline'});
+  assert.deepEqual(await read('/broken'),{status:503,marker:'offline',body:'App is offline'});
  }finally{await browser?.close();server.closeAllConnections();receiver.closeAllConnections();await Promise.all([new Promise(resolve=>server.close(resolve)),new Promise(resolve=>receiver.close(resolve))]);}
 });
 

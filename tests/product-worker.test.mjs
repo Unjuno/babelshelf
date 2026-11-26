@@ -53,11 +53,11 @@ async function install(h){let work;h.handlers.install({waitUntil:p=>work=p});awa
 test('external request failures distinguish unavailable network from explicit offline mode',async()=>{
  const connection=connectionDatabase(true),h=await harness('unused',{connection,fetcher:async()=>{throw new TypeError('network unavailable')}});
  const failed=await h.request('https://assets.example/model');assert.equal(failed.status,503);assert.equal(failed.headers.get('x-babelshelf-failure'),'network');assert.equal(await failed.text(),'Network request failed');
- connection.set(false);const offline=await h.request('https://assets.example/model');assert.equal(offline.status,503);assert.equal(offline.headers.get('x-babelshelf-failure'),null);assert.equal(await offline.text(),'App is offline');
+ connection.set(false);const offline=await h.request('https://assets.example/model');assert.equal(offline.status,503);assert.equal(offline.headers.get('x-babelshelf-failure'),'offline');assert.equal(await offline.text(),'App is offline');
 });
 test('external servers cannot set the service worker network-failure marker',async()=>{
- for(const body of [null,'server body']){
-  const h=await harness('unused',{fetcher:async()=>new Response(body,{status:503,headers:{'x-babelshelf-failure':'network'}})});
+ for(const [body,marker] of [[null,'network'],['server body','offline']]){
+  const h=await harness('unused',{fetcher:async()=>new Response(body,{status:503,headers:{'x-babelshelf-failure':marker}})});
   const response=await h.request('https://assets.example/model');assert.equal(response.status,503);assert.equal(response.headers.get('x-babelshelf-failure'),null);
  }
 });

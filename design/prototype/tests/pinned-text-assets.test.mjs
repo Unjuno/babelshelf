@@ -70,6 +70,12 @@ test('resumable downloads distinguish worker network failures from HTTP errors',
  const store=createPinnedAssetStore({...manifest,id:'lfm3-1.7b-qad-q4-0',files:[pin]},{directory:async()=>directory,fetch:async()=>new Response('Network request failed',{status:503,headers:{'x-babelshelf-failure':'network'}})});
  await assert.rejects(store.prepare(true,new AbortController().signal),/Network request failed/);assert.equal(files.get(digest).size,rangeBytes);
 });
+test('resumable downloads report an Offline transition without discarding completed ranges',async()=>{
+ const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+1),digest=createHash('sha256').update(all).digest('hex'),pin={path:'model.gguf',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/model.gguf',bytes:all.length,sha256:digest},files=new Map([[digest,new Blob([all.subarray(0,rangeBytes)])]]);
+ const directory={async getFileHandle(name){return {async getFile(){return files.get(name);}};}};
+ const store=createPinnedAssetStore({...manifest,id:'lfm3-1.7b-qad-q4-0',files:[pin]},{directory:async()=>directory,fetch:async()=>new Response('App is offline',{status:503,headers:{'x-babelshelf-failure':'offline'}})});
+ await assert.rejects(store.prepare(true,new AbortController().signal),/Downloads are off/);assert.equal(files.get(digest).size,rangeBytes);
+});
 test('resumable downloads still identify a successful response without range support',async()=>{
  const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+1),digest=createHash('sha256').update(all).digest('hex'),pin={path:'model.gguf',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/model.gguf',bytes:all.length,sha256:digest};
  const directory={async getFileHandle(){return {async getFile(){return new Blob([]);}};}};
