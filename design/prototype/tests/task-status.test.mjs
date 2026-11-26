@@ -4,7 +4,8 @@ import {taskDefinition} from '../src/task-records.ts';
 const task={id:'task',repeat:'once',time:'09:00',date:'2099-01-01',days:[],monthDay:1,interval:1,unit:'days',timezone:'Asia/Tokyo',enabled:false,notify:true,prompt:'Read local data',nextAt:'2099-01-01T00:00:00.000Z'};
 const run=(status,startedAt='2099-01-01T00:00:00.000Z')=>({taskId:task.id,definition:taskDefinition(task),dueAt:task.nextAt,status,startedAt});
 test('retained running occurrence stays visible after local owner disappears and offers a check, not a fresh run',()=>{
- assert.equal(scheduleStatus(task,[run('running')],null,'Asia/Tokyo'),'Running');
+ assert.equal(scheduleStatus(task,[run('running')],null,'Asia/Tokyo'),'Running · check execution');
+ assert.equal(scheduleStatus(task,[run('running')],task.id,'Asia/Tokyo'),'Running');
  assert.equal(scheduleRunAction(run('running')),'Check execution');
  for(const status of ['failed','missed','stopped','interrupted']){assert.equal(scheduleStatus(task,[run(status)],null,'Asia/Tokyo'),status[0].toUpperCase()+status.slice(1)+' · Paused');assert.equal(scheduleStatus({...task,enabled:true},[run(status)],null,'Asia/Tokyo'),status[0].toUpperCase()+status.slice(1));assert.equal(scheduleRunAction(run(status)),'Retry');}
 });
@@ -30,4 +31,11 @@ test('a completed one-off uses the newest manual attempt even when records are u
  assert.equal(currentScheduleExecution(completed,[newer,older]),newer);
  assert.equal(currentScheduleExecution(completed,[older,newer]),newer);
  assert.equal(scheduleStatus(completed,[older,newer],null,'Asia/Tokyo'),'Stopped · Manual run');
+});
+
+test('a running manual rerun owned elsewhere offers a status check without claiming interruption',()=>{
+ const manual={...run('running'),dueAt:'2099-02-01T00:00:00.000Z',manualRerun:true},completed={...task,nextAt:null};
+ assert.equal(scheduleStatus(completed,[manual],null,'Asia/Tokyo'),'Running · check execution · Manual run');
+ assert.equal(scheduleStatus(completed,[manual],task.id,'Asia/Tokyo'),'Running');
+ assert.equal(scheduleRunAction(manual),'Check execution');
 });
