@@ -257,6 +257,17 @@ test('selected model adapter failures retain a runtime stage instead of looking 
  await assert.rejects(planDialogue(port,'Find my meeting note.',context),error=>error.code==='model_runtime');
 });
 
+test('planner preserves the configured generation budget failure and records the attempted call',async()=>{
+ const {TurnInferenceBudgetError}=await import('../src/turn-inference-budget.ts');
+ const context={summary:'',refs:[],recent:[],turnCount:0};
+ for(const cause of ['time','tokens']){
+  const failure=new TurnInferenceBudgetError(cause);let inference;
+  const port={manifest:{contextTokens:2048},count:async()=>({prompt_tokens:100}),generate:async()=>{throw failure;}};
+  await assert.rejects(planDialogue(port,'Find my meeting note.',context,[],{allowedTools:[],history:[],onInference:value=>{inference=value;}}),error=>error===failure&&error.code==='generation_budget_exhausted'&&error.cause===cause);
+  assert.equal(inference.measuredModelCalls,1);assert.equal(inference.promptTokens,100);
+ }
+});
+
 test('planner preflight and inference share one memoized scoped token count',async()=>{
  const {createTextInference}=await import('../src/text-inference.ts');let counts=0,outputBudget=0;
  const runtime={manifest:{contextTokens:2048,models:[{id:'test',revision:'v'}],runtime:{revision:'r'}},loaded:'test',assets:{},load:async()=>{},stop(){},count:async(_messages,format)=>{counts++;assert.equal(format.type,'dialogue-plan');return {prompt_tokens:100};},generate:async(_messages,_budget,format)=>{assert.equal(format.type,'dialogue-plan');return {text:'{"action":"search","query":"meeting"}'};}};
