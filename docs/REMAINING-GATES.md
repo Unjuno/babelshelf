@@ -1,6 +1,6 @@
 ## Current status · 2026-11-26 JST
 
-Public debugging Site v400 serves build 78790c426cb0ddf7 from main commit 63b3507c. PR #130 proposes a newer candidate and is awaiting exact-head CI; it has not been deployed. In an isolated real D1 + LFM2.5 CPU/WASM replay, that candidate executed a custom tool and returned `cobalt` as an explicitly partial result after repeated calls and an unrelated read. Reliable completion, default-Q4 tool behavior, Muse backup restore, model retention across Repair and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
+Public debugging Site v401 serves build `028503829e7348e4` from main commit `3827847e9ef6929b63d07ccd295cb736a6476b49`. PR #130 passed exact-head GitHub quality workflow [45762457624](https://github.com/Unjuno/babelshelf/actions/runs/45762457624) and was merged. The published artifact's build ID was checked at both babelshelf.com and the Site origin. In an isolated real D1 + LFM2.5 CPU/WASM replay, that candidate executed a custom tool and returned `cobalt` as an explicitly partial result after repeated calls and an unrelated read. Reliable completion, default-Q4 tool behavior, Muse backup restore, model retention across Repair and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
 
 ## Historical deployment · 2026-11-24 JST
 
