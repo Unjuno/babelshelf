@@ -229,3 +229,18 @@ test('a second mixed-title clause cannot smuggle swapped values past correctly l
  assert.doesNotThrow(()=>checkAnswerConsistency('二つの備蓄の水量を比較してください。','青葉備蓄は17リットルで、緑川備蓄は29リットルです。',japanese));
  assert.throws(()=>checkAnswerConsistency('二つの備蓄の水量を比較してください。','青葉備蓄は17リットルで、緑川備蓄は29リットルです。青葉備蓄は29リットルで、緑川備蓄は17リットルです。',japanese),/conflicts with cited quantity|not bound to their source/i);
 });
+
+test('a single claimed value cannot conceal conflicting values for the same cited field',()=>{
+ const refs=[{noteId:'a',quote:'The secret word for this test is QUOKKA.'},{noteId:'b',quote:'The secret word for this test is BLUEBERRY.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the secret word for this test? Check my saved notes.','QUOKKA',refs),/conflicting source values/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the secret word for this test?','The notes conflict: one says QUOKKA and the other says BLUEBERRY.',refs));
+ assert.doesNotThrow(()=>checkAnswerConsistency('What are the secret words?','The first secret word is QUOKKA; the second secret word is BLUEBERRY.',[{noteId:'a',quote:'The first secret word is QUOKKA.'},{noteId:'b',quote:'The second secret word is BLUEBERRY.'}]));
+});
+
+test('the conflict guard distinguishes unrelated fields and is not specific to secret words',()=>{
+ const refs=[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'b',quote:'The launch code is BRAVO.'}];
+ assert.throws(()=>checkAnswerConsistency('What is the launch code?','ALPHA',refs),/conflicting source values/i);
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','The sources disagree: ALPHA versus BRAVO.',refs));
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','ALPHA',[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'b',quote:'The door code is BRAVO.'}]));
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','ALPHA',[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'a',quote:'The launch code was BRAVO.'}]));
+});
