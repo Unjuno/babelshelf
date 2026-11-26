@@ -59,3 +59,40 @@ test('a silent model load has a bounded deadline and can be retried with a new w
  const retryWorker=new FakeWorker(),retry=createSemanticEmbeddingClient(retryWorker);
  await retry.load();assert.equal(retry.loaded,true);
 });
+
+test('backend serializes overlapping requests without cancelling the active request',async()=>{
+ const worker=new FakeWorker();worker.reply=false;const backend=createSemanticEmbeddingBackend(()=>worker);
+ const first=backend.status();await new Promise(resolve=>setTimeout(resolve,0));
+ const second=backend.status();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(worker.messages.length,1);const a=worker.messages[0];worker.onmessage({data:{id:a.id,type:'done',value:{filesPresent:true}}});
+ assert.deepEqual(await first,{filesPresent:true});await new Promise(resolve=>setTimeout(resolve,0));assert.equal(worker.messages.length,2);
+ const b=worker.messages[1];worker.onmessage({data:{id:b.id,type:'done',value:{filesPresent:false}}});assert.deepEqual(await second,{filesPresent:false});await backend.close();
+});
+
+test('cancelling a queued request does not terminate another request',async()=>{
+ const worker=new FakeWorker();worker.reply=false;const backend=createSemanticEmbeddingBackend(()=>worker),controller=new AbortController();
+ const first=backend.status();await new Promise(resolve=>setTimeout(resolve,0));const second=backend.status(controller.signal);controller.abort();
+ await assert.rejects(second,/Stopped/);assert.equal(worker.terminated,false);assert.equal(worker.messages.length,1);
+ const a=worker.messages[0];worker.onmessage({data:{id:a.id,type:'done',value:{filesPresent:true}}});assert.deepEqual(await first,{filesPresent:true});await backend.close();
+});
+
+test('closing a backend stops active and waiting requests without starting the latter',async()=>{
+ const worker=new FakeWorker();worker.reply=false;const backend=createSemanticEmbeddingBackend(()=>worker);
+ const first=backend.status();const firstFailure=assert.rejects(first,/Stopped/);await new Promise(resolve=>setTimeout(resolve,0));
+ const second=backend.status();const secondFailure=assert.rejects(second,/Stopped/);await backend.close();await Promise.all([firstFailure,secondFailure]);
+ assert.equal(worker.terminated,true);assert.equal(worker.messages.length,1);await assert.rejects(backend.status(),/closed/);
+});
+
+test('failure of one request does not poison the next queued request',async()=>{
+ const worker=new FakeWorker();worker.reply=false;const backend=createSemanticEmbeddingBackend(()=>worker);
+ const first=backend.status();const firstFailure=assert.rejects(first,/test failure/);await new Promise(resolve=>setTimeout(resolve,0));
+ const second=backend.status();worker.onmessage({data:{id:worker.messages[0].id,type:'error',value:'test failure'}});await firstFailure;
+ await new Promise(resolve=>setTimeout(resolve,0));worker.onmessage({data:{id:worker.messages[1].id,type:'done',value:{filesPresent:true}}});assert.deepEqual(await second,{filesPresent:true});await backend.close();
+});
+
+test('stopping the active request lets a waiting request start on a fresh worker',async()=>{
+ const workers=[];const backend=createSemanticEmbeddingBackend(()=>{const worker=new FakeWorker();worker.reply=workers.length>0;workers.push(worker);return worker;});
+ const controller=new AbortController(),first=backend.status(controller.signal),failure=assert.rejects(first,/Stopped/);
+ await new Promise(resolve=>setTimeout(resolve,0));const second=backend.status();controller.abort();await failure;
+ assert.deepEqual(await second,{filesPresent:true});assert.equal(workers.length,2);assert.equal(workers[0].terminated,true);await backend.close();
+});
