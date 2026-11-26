@@ -56,6 +56,20 @@ test('large pinned ONNX resumes after an interrupted request from its last commi
  assert.deepEqual(phases[0],{done:rangeBytes,total:all.length,phase:'downloading'});assert.equal(phases.at(-1).phase,'verifying');assert.equal(phases.at(-1).done,all.length);
  assert.equal((await store.status(signal)).filesPresent,true);assert.deepEqual(new Uint8Array(await(await store.read('onnx/model_quantized.onnx',signal)).arrayBuffer()),all);
 });
+test('resumable downloads report HTTP failures separately from missing range support and retain completed ranges',async()=>{
+ const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+1),digest=createHash('sha256').update(all).digest('hex'),pin={path:'model.gguf',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/model.gguf',bytes:all.length,sha256:digest};
+ const files=new Map([[digest,new Blob([all.subarray(0,rangeBytes)])]]),requests=[];
+ const directory={async getFileHandle(name){assert.equal(name,digest);return {async getFile(){return files.get(name);}};}};
+ const store=createPinnedAssetStore({...manifest,id:'lfm3-1.7b-qad-q4-0',files:[pin]},{directory:async()=>directory,fetch:async(_url,options)=>{requests.push(options.headers.Range);return new Response('temporarily unavailable',{status:503});}});
+ await assert.rejects(store.prepare(true,new AbortController().signal),/HTTP 503/);
+ assert.equal(files.get(digest).size,rangeBytes);assert.deepEqual(requests,[`bytes=${rangeBytes}-${rangeBytes}`]);
+});
+test('resumable downloads still identify a successful response without range support',async()=>{
+ const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+1),digest=createHash('sha256').update(all).digest('hex'),pin={path:'model.gguf',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/model.gguf',bytes:all.length,sha256:digest};
+ const directory={async getFileHandle(){return {async getFile(){return new Blob([]);}};}};
+ const store=createPinnedAssetStore({...manifest,id:'lfm3-1.7b-qad-q4-0',files:[pin]},{directory:async()=>directory,fetch:async()=>new Response('not a range',{status:200})});
+ await assert.rejects(store.prepare(true,new AbortController().signal),/requires range requests/);
+});
 test('storage quota failure is actionable and preserves completed model ranges',async()=>{
  const rangeBytes=16*1024*1024,all=new Uint8Array(rangeBytes+1),digest=createHash('sha256').update(all).digest('hex'),pin={path:'model.gguf',url:'https://huggingface.co/test/resolve/'+ 'a'.repeat(40)+'/model.gguf',bytes:all.length,sha256:digest},files=new Map();
  const quotaError=new DOMException('The operation failed because it would cause the application to exceed its storage quota.','QuotaExceededError');
