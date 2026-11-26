@@ -22,9 +22,10 @@ export const AGENT_RESULT_ACTIONS=['answer','summary','capture','edit'] as const
 export function validAgentResultAction(action:unknown){return (AGENT_RESULT_ACTIONS as readonly unknown[]).includes(action);}
 export function validHarnessAction(value:unknown){return HARNESS_ACTIONS.some(a=>a.id===value);}
 export function validHarnessTarget(action:unknown,target:unknown){return HARNESS_ACTIONS.some(a=>a.id===action&&(a.targets as readonly unknown[]).includes(target));}
-export type PlannerScope={inputs:boolean;file:boolean;current:boolean;historyCount:number;assistantIndices?:number[];toolIds?:string[];requiredToolIds?:string[];requiredActionIds?:string[]};
+export type PlannerScope={inputs:boolean;file:boolean;current:boolean;historyCount:number;assistantIndices?:number[];toolIds?:string[];requiredToolIds?:string[];requiredActionIds?:string[];afterToolCall?:boolean};
 export function validatePlannerScope(value:PlannerScope){
- if(!value||Object.keys(value).some(k=>!['inputs','file','current','historyCount','assistantIndices','toolIds','requiredToolIds','requiredActionIds'].includes(k))||['inputs','file','current'].some(k=>typeof value[k as keyof PlannerScope]!=='boolean')||!Number.isSafeInteger(value.historyCount)||value.historyCount<0)throw Error('Invalid planner scope');
+ if(!value||Object.keys(value).some(k=>!['inputs','file','current','historyCount','assistantIndices','toolIds','requiredToolIds','requiredActionIds','afterToolCall'].includes(k))||['inputs','file','current'].some(k=>typeof value[k as keyof PlannerScope]!=='boolean')||!Number.isSafeInteger(value.historyCount)||value.historyCount<0)throw Error('Invalid planner scope');
+ if(value.afterToolCall!==undefined&&typeof value.afterToolCall!=='boolean')throw Error('Invalid planner tool history');
  if(value.assistantIndices!==undefined&&(!Array.isArray(value.assistantIndices)||value.assistantIndices.some((index,i,all)=>!Number.isSafeInteger(index)||index<0||index>=value.historyCount||i>0&&index<=all[i-1])))throw Error('Invalid planner assistant indices');
  if(value.toolIds!==undefined&&(!Array.isArray(value.toolIds)||value.toolIds.length>MAX_PLANNER_AGENT_TOOLS||new Set(value.toolIds).size!==value.toolIds.length||value.toolIds.some(id=>typeof id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(id))))throw Error('Invalid planner tool IDs');
  if((value.toolIds??[]).filter(id=>!(AGENT_DISCOVERY_TOOL_IDS as readonly string[]).includes(id)).length>MAX_CONFIGURED_AGENT_TOOLS)throw Error('Invalid planner tool IDs');
@@ -37,7 +38,7 @@ export function scopedHarnessActions(scope:PlannerScope){
  return HARNESS_ACTIONS.map(action=>({...action,targets:(action.targets as readonly string[]).filter(target=>
   (!scope.inputs||!['answer','summary'].includes(action.id)||target==='inputs')&&
   (target!=='inputs'||scope.inputs)&&(target!=='file'||scope.file)&&(target!=='current'||scope.current)&&(target!=='history'||scope.historyCount>0)
- )})).filter(action=>(action.id!=='calculate'||!scope.inputs)&&(!['recall','transform'].includes(action.id)||action.targets.length>0)&&(action.id!=='tool-create'||!scope.inputs&&!scope.file)&&(action.id!=='tool'||!!scope.toolIds?.length)&&(!scope.requiredToolIds||action.id==='tool')&&(!scope.requiredActionIds||scope.requiredActionIds.includes(action.id))).map(action=>action.id==='tool'?{...action,toolIds:scope.requiredToolIds??scope.toolIds}:action);
+ )})).filter(action=>(!scope.afterToolCall||action.id==='tool'||validAgentResultAction(action.id))&&(action.id!=='calculate'||!scope.inputs)&&(!['recall','transform'].includes(action.id)||action.targets.length>0)&&(action.id!=='tool-create'||!scope.inputs&&!scope.file)&&(action.id!=='tool'||!!scope.toolIds?.length)&&(!scope.requiredToolIds||action.id==='tool')&&(!scope.requiredActionIds||scope.requiredActionIds.includes(action.id))).map(action=>action.id==='tool'?{...action,toolIds:scope.requiredToolIds??scope.toolIds}:action);
 }
 export const harnessActionCatalog=(currentInputs=false,scope?:PlannerScope)=>JSON.stringify(scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool').map(action=>currentInputs&&['answer','summary'].includes(action.id)?{...action,targets:['inputs']}:action));
 // The native transport already supplies scoped target enums through function

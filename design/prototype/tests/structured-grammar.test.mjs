@@ -167,3 +167,13 @@ test('after a required local search and read, the structured planner exposes onl
  const schema=createStructuredSchema(format);assert.deepEqual([...new Set(schema.anyOf.map(branch=>branch.properties.action.enum[0]))],['answer']);
  assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...scope,requiredActionIds:['tool']}}),/required planner action IDs/i);
 });
+
+test('after a tool observation the JSON grammar admits continuing calls and only result-consuming final actions',()=>{
+ const scope={inputs:false,file:true,current:true,historyCount:1,toolIds:['user.lookup'],afterToolCall:true};
+ const format={type:'dialogue-plan',scope};
+ const actions=[...new Set(createStructuredSchema(format).anyOf.map(branch=>branch.properties.action.enum[0]))].sort();
+ assert.deepEqual(actions,['answer','capture','edit','summary','tool']);
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body:'{"query":"colour"}'})),true);
+ assert.equal(accepts(format,JSON.stringify({action:'chat',query:''})),false);
+ assert.equal(accepts({...format,scope:{...scope,afterToolCall:false}},JSON.stringify({action:'chat',query:''})),true);
+});

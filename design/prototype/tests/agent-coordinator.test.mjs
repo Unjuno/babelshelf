@@ -1190,3 +1190,17 @@ test('a missing host runtime ends an explicit tool request with preparation guid
  await assert.rejects(coordinateAgentTurn(value),/Settings → Tools → Prepare runtime/);
  assert.equal(checks,1);
 });
+
+test('malformed legacy tool arguments receive one repair without executing rejected content',async()=>{
+ const {value,calls}=input([
+  JSON.stringify({action:'tool',query:'memory.search',body:'PRIVATE_INVALID_JSON'}),
+  JSON.stringify({action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})}),
+  JSON.stringify({action:'answer',query:'meeting',target:'knowledge'}),
+ ],{question:'Find meeting notes',enabledTools:['memory.search'],maxToolCalls:null});
+ const prompts=[],generate=value.engine.generate;
+ value.engine.generate=async(...args)=>{prompts.push(args[0]);return generate(...args);};
+ await coordinateAgentTurn(value);
+ assert.match(JSON.stringify(prompts[1]),/previous tool arguments were invalid JSON/i);
+ assert.doesNotMatch(JSON.stringify(prompts[1]),/PRIVATE_INVALID_JSON/);
+ assert.equal(calls.length,1);
+});

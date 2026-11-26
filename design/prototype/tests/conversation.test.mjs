@@ -2301,7 +2301,14 @@ test('legacy planner keeps changing call allowance outside its stable protocol',
  const allowedTools=[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.'}];
  const first=planDialogueMessages('Find notes',context,[],{allowedTools,history:[],maxToolCalls:3});
  const next=planDialogueMessages('Find notes',context,[],{allowedTools,history:[{tool:'memory.search',arguments:{query:'notes'},result:[]}],maxToolCalls:3});
- assert.deepEqual(first.slice(0,2),next.slice(0,2));
+ const later=planDialogueMessages('Find notes',context,[],{allowedTools,history:[
+  {tool:'memory.search',arguments:{query:'notes'},result:[]},
+  {tool:'memory.search',arguments:{query:'other notes'},result:[]},
+ ],maxToolCalls:3});
+ assert.match(first[0].content,/"chat":/);
+ assert.doesNotMatch(next[0].content,/"chat":/);
+ assert.deepEqual(next.slice(0,2),later.slice(0,2));
+ assert.match(later.at(-2).content,/Remaining tool-call budget: 1/);
  assert.match(first.at(-2).content,/Remaining tool-call budget: 3/);
  assert.match(next.at(-2).content,/Remaining tool-call budget: 2/);
  assert.equal(next.at(-2).role,'system');
