@@ -378,14 +378,15 @@ test('tool evidence and arguments are stable after a handler or planner mutates 
 test('an unexecuted duplicate failure signal does not consume the remaining tool-call slot',async()=>{
  const failed={kind:'tool',tool:'memory.search',arguments:{query:'bad'}};
  const recovery={kind:'tool',tool:'memory.search',arguments:{query:'recovery'}};
- const plans=[failed,failed,recovery,{kind:'final',value:'recovered'}],executed=[];
+ const plans=[failed,failed,recovery,{kind:'final',value:'recovered'}],executed=[],counts=[];
  const result=await runReadOnlyAgentLoop({
   allowedTools:[memoryTools[0]],maxToolCalls:2,check:()=>{},
-  plan:async()=>plans.shift(),
+  plan:async (_history,dispatched)=>{counts.push(dispatched);return plans.shift();},
   execute:async call=>{executed.push(call.arguments.query);if(call.arguments.query==='bad')throw new AgentToolExecutionError('memory.search',Error('failed'));return [{noteId:'recovered'}];},
  });
  assert.equal(result.final,'recovered');
  assert.deepEqual(executed,['bad','recovery']);
+ assert.deepEqual(counts,[0,1,1,2]);
  assert.deepEqual(result.attempts.map(item=>item.error?.code??'success'),['tool_execution','no_progress_loop','success']);
 });
 
