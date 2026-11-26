@@ -39,7 +39,7 @@
 | P1 | Send feedback がオンラインでも失敗する | **成功経路と失敗報告が併存** — synthetic POST HTTP 201/D1保存を確認。一方Audit 19はHTTP 405を0/2報告。GET 405の安全プローブはできたがブラウザPOSTは未再現 | Network evidenceで実POST URL/method/statusを取り、UI/API/edge routeのどこが405を返すか特定。実ユーザーの内容は送信しない |
 | P1 | 有効スケジュール定義ファイルの削除時に影響が無告知 | **公開v383で再現、修正済み** — 隔離profileで有効な一回予定を作成し、削除確認に影響説明がないことを確認。操作はキャンセル。ローカル候補のSchedule/Memory/Toast 27/27とfull quality合格 | 修正はdebug v384以降に含まれ、v386でも公開。一般リリースはP0未解決のため保留 |
 | P1 | 長時間生成失敗時に部分回答が残らない | **コード修正済み、実モデル未確認** — 失敗後は非空previewを`Partial · not verified`として保存。Memoryへコピーした場合もpartial provenanceを保ち、Stop時は未確定previewを確定扱いしない。workflow/copy regressions追加 | 実モデルの300秒timeoutで部分テキスト・状態が保持されること、再試行で履歴を保持することを確認 |
-| P1 | Decision/Text切替とDecision実行結果が分かりにくい | **一部は設計どおり、受入未完** — 単一モデルのメモリ保護で他ロールを解放。隔離ChromiumでD1のWASMロード・分類とText再取得を確認。8Kの実行ではガイド取得後にText計画が時間上限に到達。ツール呼び出し完了は未確認 | 対象端末でTextを解放してDecision実行後、Textを再取得し、経路/進捗/結果を実モデルで確認。二重常駐を無条件に有効化しない |
+| P1 | Decision/Text切替とDecision実行結果が分かりにくい | **一部は設計どおり、受入未完** — 単一モデルのメモリ保護で他ロールを解放。隔離ChromiumでD1のWASMロード・分類とText再取得を確認。8Kの実行ではガイド取得後にText計画が時間上限に到達。D1経由の呼び出し完了は未確認。既定Q4のネイティブ経路は実回答 cobalt を確認したが、v399では引数修正後の最終計画が累積300秒上限に達した | 対象端末でTextを解放してDecision実行後、Textを再取得し、経路/進捗/結果を実モデルで確認。二重常駐を無条件に有効化しない |
 | P1 | スケジュール完了後の Retry/Run now 状態が遅れて更新される | **PCブラウザUI試験合格、実モデル未確認** — same-sheetでRun now二度押しを抑止し、約600msのsettle後に再実行可能。2行の成功履歴を確認 | 実モデルの成功・失敗・停止・Retry後に一覧、活性、履歴、通知の状態が一致することを現行Siteで確認 |
 | P1 | WebKitでアプリ起動待ちの散発タイムアウト | **間欠リスク** — 最新の全品質runでhandoff 38/38。以前の1 runでtrace上storage gate描画後にrootが空になったが、資産は全て200、console/pageerror/requestfailedなし。isolated 3回と今回の全runは合格。原因未確定 | 再発した場合は別traceで調査し、時間制限やassertionを緩めず安定性を再確認 |
 | P1 | Trashの実データ参照サイクル | **部分確認** — 合成25件のグラフと関連削除は合格 | 監査データを匿名化した同型グラフで定義・Runs・通知・会話参照を確認し、関連項目だけを削除、無関係原本と履歴を保持 |

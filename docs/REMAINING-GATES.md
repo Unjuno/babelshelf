@@ -1,6 +1,6 @@
 ## Current status · 2026-11-26 JST
 
-Public debugging Site v398 serves build `b057b034542fa48c` from main commit `2a92f069`. The full quality workflow for PR #120 passed. General release remains DO-NOT-SHIP. Isolated Chromium retained the Q4 weights through simulated shell-cache loss and successfully answered offline after explicit runtime preparation. The deployed candidate returned both conflicting note values with verifiable citations. Integrated Decision-to-custom-tool execution, Muse-specific Restore, acquisition under constrained storage, and long-generation recovery remain open. See the dated [test results](TEST-RESULTS.txt).
+Public debugging Site v399 serves build 7efaa417c8c5c906 from main commit 79f3b12d. PRs #121 and #122 passed full CI. The Q4 native custom-tool route returned cobalt on the pre-integration candidate. With more history on the integrated build, the tool ran successfully after an invalid-input retry but final planning hit the cumulative 300-second limit. Reliable end-to-end tool replies, optional Decision integration, Muse backup restore and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
 
 ## Historical deployment · 2026-11-24 JST
 
