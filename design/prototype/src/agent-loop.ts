@@ -110,7 +110,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  allowedTools:readonly AgentToolCapability[];
  maxToolCalls?:number|null;
  maxResultChars?:number;
- plan:(history:readonly AgentToolAttempt[])=>Promise<AgentPlan<Final>>;
+ plan:(history:readonly AgentToolAttempt[],dispatchedCalls:number)=>Promise<AgentPlan<Final>>;
  onBudgetExhausted?:(history:readonly AgentToolAttempt[])=>Promise<Final>|Final;
  execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;
  check:()=>void;
@@ -129,7 +129,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
   input.check();
   // A planner must not be able to change evidence from an earlier step.
   let plan:AgentPlan<Final>;
-  try{plan=await input.plan(structuredClone(plannerHistory(history)));}
+  try{plan=await input.plan(structuredClone(plannerHistory(history)),dispatchedCalls);}
   catch(error){
    input.check();
    if(!(error instanceof AgentContextCapacityError)||!history.length||!input.onBudgetExhausted)throw error;

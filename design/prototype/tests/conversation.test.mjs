@@ -1547,6 +1547,14 @@ test('native planner receives the exact remaining batch budget without an arbitr
  assert.doesNotMatch(unbounded,/Remaining tool-call budget|one to eight|up to eight/i);
 });
 
+test('native planner budget ignores skipped batch entries when given dispatched count',()=>{
+ const tool={id:'memory.search',effect:'read',network:'none'};
+ const history=[{tool:'memory.search',arguments:{query:'one'},result:[]},{tool:'memory.search',arguments:{query:'two'},result:null,error:{code:'batch_not_executed'}}];
+ const prompt=planDialogueMessages('Search notes.',{summary:'',recent:[],refs:[],turnCount:0},[],{allowedTools:[tool],history,maxToolCalls:2,dispatchedToolCalls:1},true).at(-1).content;
+ assert.match(prompt,/Remaining tool-call budget: 1\./);
+ assert.doesNotMatch(prompt,/budget is exhausted/);
+});
+
 test('an exhausted tool budget exposes no callable functions and requests an honest answer',async()=>{
  const allowedTools=[{id:'memory.search',effect:'read',network:'none'},{id:'memory.read',effect:'read',network:'none'}],question='Search, read, then explain my saved meeting notes.';let generatedMessages,generatedFormat;
  const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async(messages,_max,format)=>{generatedMessages=messages;generatedFormat=format;return {text:JSON.stringify({action:'answer',query:'I could not search or read the notes because the tool-call budget was exhausted.'})};}};
