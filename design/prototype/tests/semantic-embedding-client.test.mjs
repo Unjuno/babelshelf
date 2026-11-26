@@ -96,3 +96,15 @@ test('stopping the active request lets a waiting request start on a fresh worker
  await new Promise(resolve=>setTimeout(resolve,0));const second=backend.status();controller.abort();await failure;
  assert.deepEqual(await second,{filesPresent:true});assert.equal(workers.length,2);assert.equal(workers[0].terminated,true);await backend.close();
 });
+
+test('superseded Memory embedding discards its result without unloading the model',async()=>{
+ const previous=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{serviceWorker:{controller:{postMessage(_message,[port]){port.postMessage({status:'prepared',role:'search',assets:1,bytes:1});port.close();}}}}});
+ try{
+  const worker=new FakeWorker(),backend=createSemanticEmbeddingBackend(()=>worker);await backend.load();worker.reply=false;
+  const controller=new AbortController(),stale=backend.embed(['old query'],controller.signal,undefined,true),failure=assert.rejects(stale,/Stopped/);
+  await new Promise(resolve=>setTimeout(resolve,0));const embed=worker.messages.at(-1);assert.equal(embed.cmd,'embed');controller.abort();await failure;assert.equal(worker.terminated,false);
+  const later=backend.status();worker.onmessage({data:worker.response(embed)});await new Promise(resolve=>setTimeout(resolve,0));const status=worker.messages.at(-1);assert.equal(status.cmd,'status');worker.onmessage({data:worker.response(status)});
+  assert.deepEqual(await later,{filesPresent:true});assert.equal(backend.loaded,true);await backend.close();
+ }finally{if(previous)Object.defineProperty(globalThis,'navigator',previous);else delete globalThis.navigator;}
+});

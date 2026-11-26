@@ -16,7 +16,7 @@ export function createSemanticSearchRuntime(knowledge:KnowledgeReader,modelId:st
   check();const views=await knowledge.views(signal);signal?.throwIfAborted();
   return views.map(note=>({id:note.id,state:'active',revision:note.version,title:note.path.split('/').at(-1)??note.path,body:note.body,path:note.path,protected:note.protected,recordType:note.recordType}));
  };
- const options=(signal?:AbortSignal,events?:Events)=>({modelRevision,store,signal,batchSize:4,maxChunks:10000,progress:(completed:number,total:number)=>events?.('index-progress',{completed,total}),embed:(texts:readonly string[],activeSignal?:AbortSignal)=>backend.embed(texts,activeSignal??signal,events)});
+ const options=(signal?:AbortSignal,events?:Events,softCancel=false)=>({modelRevision,store,signal,batchSize:4,maxChunks:10000,progress:(completed:number,total:number)=>events?.('index-progress',{completed,total}),embed:(texts:readonly string[],activeSignal?:AbortSignal)=>backend.embed(texts,activeSignal??signal,events,softCancel)});
  return {
   modelRevision,
   get loaded(){return backend.loaded;},
@@ -29,7 +29,7 @@ export function createSemanticSearchRuntime(knowledge:KnowledgeReader,modelId:st
   async smokeTest(signal?:AbortSignal,events?:Events){check();if(!backend.loaded)throw Error('Load the Search model first');return runSemanticSearchSmoke((texts,activeSignal)=>backend.embed(texts,activeSignal??signal,events),signal);},
   async indexStatus(signal?:AbortSignal){check();const current=await sources(signal),records=await store.list(modelRevision);signal?.throwIfAborted();const revisions=new Map(current.map(source=>[source.id,source.revision]));const valid=records.filter(record=>revisions.get(record.noteId)===record.revision);return {sources:new Set(valid.map(record=>record.noteId)).size,chunks:valid.length,needsUpdate:records.some(record=>revisions.get(record.noteId)!==record.revision)};},
   async index(signal?:AbortSignal,events?:Events){check();if(!backend.loaded)throw Error('Prepare and load the Search model first');const current=await sources(signal);return indexSemanticSources(current,options(signal,events));},
-  async search(query:string,limit=12,signal?:AbortSignal,events?:Events,sourceFilter?:(source:SemanticSearchSource)=>boolean){check();if(!backend.loaded)throw Error('Prepare and load the Search model first');return searchSemanticSources(query,()=>sources(signal),options(signal,events),{limit,sourceFilter});},
+  async search(query:string,limit=12,signal?:AbortSignal,events?:Events,sourceFilter?:(source:SemanticSearchSource)=>boolean,softCancel=false){check();if(!backend.loaded)throw Error('Prepare and load the Search model first');return searchSemanticSources(query,()=>sources(signal),options(signal,events,softCancel),{limit,sourceFilter});},
   async unload(signal?:AbortSignal){check();return backend.unload(signal);},
   async removeDerivedIndex(){check();await store.removeModel(modelRevision);},
   async close(){if(closed)return;closed=true;backend.close();await store.close();},
