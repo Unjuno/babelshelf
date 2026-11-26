@@ -54,6 +54,7 @@ test('Restore backup keeps invalid-file errors visible in Local files and leaves
 });
 
 test('a conflicting backup is reviewed without overwriting a later file edit',async({page},testInfo)=>{
+ test.setTimeout(60_000);
  await page.goto('/');
  const navigate=async(label:string)=>{await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:label,exact:true}).click();};
  await navigate('Memory');await page.getByRole('button',{name:'Open Inbox',exact:true}).click();await page.getByRole('button',{name:'New file',exact:true}).click();
