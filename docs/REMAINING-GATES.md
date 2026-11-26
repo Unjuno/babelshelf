@@ -1,6 +1,6 @@
 ## Current status · 2026-11-26 JST
 
-Public debugging Site v399 serves build 7efaa417c8c5c906 from main commit 79f3b12d. PRs #121 and #122 passed full CI. The Q4 native custom-tool route returned cobalt on the pre-integration candidate. With more history on the integrated build, the tool ran successfully after an invalid-input retry but final planning hit the cumulative 300-second limit. Reliable end-to-end tool replies, optional Decision integration, Muse backup restore and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
+Public debugging Site v400 serves build 78790c426cb0ddf7 from main commit 63b3507c. PRs #121, #122 and #124 passed full CI. The Q4 native custom-tool route returned cobalt on the pre-integration candidate. With more history on the integrated build, the tool ran successfully after an invalid-input retry but final planning hit the cumulative 300-second limit. Reliable end-to-end tool replies, optional Decision integration, Muse backup restore and constrained-storage acquisition remain open. General release remains DO-NOT-SHIP. See the dated [test results](TEST-RESULTS.txt).
 
 ## Historical deployment · 2026-11-24 JST
 
