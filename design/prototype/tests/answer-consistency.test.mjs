@@ -244,3 +244,8 @@ test('the conflict guard distinguishes unrelated fields and is not specific to s
  assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','ALPHA',[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'b',quote:'The door code is BRAVO.'}]));
  assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','ALPHA',[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'a',quote:'The launch code was BRAVO.'}]));
 });
+
+test('present and past field values are not treated as simultaneous conflicting claims',()=>{
+ const refs=[{noteId:'a',quote:'The launch code is ALPHA.'},{noteId:'b',quote:'The launch code was BRAVO.'}];
+ assert.doesNotThrow(()=>checkAnswerConsistency('What is the launch code?','ALPHA',refs));
+});

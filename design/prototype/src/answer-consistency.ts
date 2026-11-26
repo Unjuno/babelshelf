@@ -34,13 +34,13 @@ export function checkAnswerConsistency(question:string,answer:string,sourceEvide
  // consistency; ambiguous prose and differing field names are left alone.
  const assignments=new Map<string,Map<string,Set<string>>>();
  for(const [index,row] of sourceRows.entries()){
-  const match=row.quote!.trim().match(/^(?:the\s+)?([\p{L}\p{N}][\p{L}\p{N} '-]{2,90}?)\s+(?:is|was)\s+([\p{L}\p{N}_-]{2,64})[.!]?$/iu);
+  const match=row.quote!.trim().match(/^(?:the\s+)?([\p{L}\p{N}][\p{L}\p{N} '-]{2,90}?)\s+(is|was)\s+([\p{L}\p{N}_-]{2,64})[.!]?$/iu);
   if(!match)continue;
-  const subject=match[1].toLocaleLowerCase().replace(/\s+/gu,' '),value=match[2].toLocaleLowerCase();
+  const subject=match[1].toLocaleLowerCase().replace(/\s+/gu,' '),value=match[3].toLocaleLowerCase(),fieldKey=subject+'\u0000'+match[2].toLocaleLowerCase();
   const meaningful=subject.split(' ').filter(word=>word.length>2&&!['the','for','this','that','and'].includes(word));
   const question=q.toLocaleLowerCase();if(meaningful.length===0||!meaningful.every(word=>question.includes(word)))continue;
-  const values=assignments.get(subject)??new Map<string,Set<string>>(),owners=values.get(value)??new Set<string>();
-  owners.add(row.noteId??`source-${index}`);values.set(value,owners);assignments.set(subject,values);
+  const values=assignments.get(fieldKey)??new Map<string,Set<string>>(),owners=values.get(value)??new Set<string>();
+  owners.add(row.noteId??`source-${index}`);values.set(value,owners);assignments.set(fieldKey,values);
  }
  for(const values of assignments.values()){
   if(values.size<2||new Set([...values.values()].flatMap(owners=>[...owners])).size<2)continue;
