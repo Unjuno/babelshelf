@@ -1,4 +1,4 @@
-import {AgentProtocolError,runReadOnlyAgentLoop,type AgentToolCapability,type AgentToolAttempt,type AgentToolCall} from './agent-loop.ts';
+import {AgentNoUsefulEvidenceError,runReadOnlyAgentLoop,type AgentToolCapability,type AgentToolAttempt,type AgentToolCall} from './agent-loop.ts';
 import {agentCorrectionTarget} from './agent-correction-target.ts';
 import {planDialogue,type ChatEngine,type DialogueContext,type DialoguePlan,type PlannerInferenceMetrics,type AgentPlannerContext} from './conversation.ts';
 import {PlannerOutputError} from './planner-error.ts';
@@ -74,7 +74,7 @@ export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;en
     if(typeof item.result==='object')return Object.keys(item.result as object).length>0;
     return typeof item.result==='string'?item.result.length>0:true;
    });
-   if(!useful)throw new AgentProtocolError('Agent could not find useful evidence before the optional call limit or model context capacity');
+   if(!useful)throw new AgentNoUsefulEvidenceError();
    // Keep already-read, source-pinned evidence and let the answer stage report
    // the incomplete coverage. Never execute the planner's over-budget action.
    return {action:'answer',query:''} as DialoguePlan;

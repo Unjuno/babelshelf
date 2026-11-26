@@ -22,13 +22,22 @@ export const AGENT_RESULT_ACTIONS=['answer','summary','capture','edit'] as const
 export function validAgentResultAction(action:unknown){return (AGENT_RESULT_ACTIONS as readonly unknown[]).includes(action);}
 export function validHarnessAction(value:unknown){return HARNESS_ACTIONS.some(a=>a.id===value);}
 export function validHarnessTarget(action:unknown,target:unknown){return HARNESS_ACTIONS.some(a=>a.id===action&&(a.targets as readonly unknown[]).includes(target));}
-export type PlannerScope={inputs:boolean;file:boolean;current:boolean;historyCount:number;assistantIndices?:number[];toolIds?:string[];requiredToolIds?:string[];requiredActionIds?:string[];afterToolCall?:boolean};
+export type PlannerToolSchema={type:'object';required:string[];additionalProperties:false;properties:Record<string,{type:'string'|'number'|'integer'|'boolean';[key:string]:unknown}>};
+export type PlannerScope={inputs:boolean;file:boolean;current:boolean;historyCount:number;assistantIndices?:number[];toolIds?:string[];toolSchemas?:Record<string,PlannerToolSchema>;requiredToolIds?:string[];requiredActionIds?:string[];afterToolCall?:boolean};
 export function validatePlannerScope(value:PlannerScope){
- if(!value||Object.keys(value).some(k=>!['inputs','file','current','historyCount','assistantIndices','toolIds','requiredToolIds','requiredActionIds','afterToolCall'].includes(k))||['inputs','file','current'].some(k=>typeof value[k as keyof PlannerScope]!=='boolean')||!Number.isSafeInteger(value.historyCount)||value.historyCount<0)throw Error('Invalid planner scope');
+ if(!value||Object.keys(value).some(k=>!['inputs','file','current','historyCount','assistantIndices','toolIds','toolSchemas','requiredToolIds','requiredActionIds','afterToolCall'].includes(k))||['inputs','file','current'].some(k=>typeof value[k as keyof PlannerScope]!=='boolean')||!Number.isSafeInteger(value.historyCount)||value.historyCount<0)throw Error('Invalid planner scope');
  if(value.afterToolCall!==undefined&&typeof value.afterToolCall!=='boolean')throw Error('Invalid planner tool history');
  if(value.assistantIndices!==undefined&&(!Array.isArray(value.assistantIndices)||value.assistantIndices.some((index,i,all)=>!Number.isSafeInteger(index)||index<0||index>=value.historyCount||i>0&&index<=all[i-1])))throw Error('Invalid planner assistant indices');
  if(value.toolIds!==undefined&&(!Array.isArray(value.toolIds)||value.toolIds.length>MAX_PLANNER_AGENT_TOOLS||new Set(value.toolIds).size!==value.toolIds.length||value.toolIds.some(id=>typeof id!=='string'||!/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/.test(id))))throw Error('Invalid planner tool IDs');
  if((value.toolIds??[]).filter(id=>!(AGENT_DISCOVERY_TOOL_IDS as readonly string[]).includes(id)).length>MAX_CONFIGURED_AGENT_TOOLS)throw Error('Invalid planner tool IDs');
+ if(value.toolSchemas!==undefined){
+  if(!value.toolSchemas||typeof value.toolSchemas!=='object'||Array.isArray(value.toolSchemas))throw Error('Invalid planner tool schemas');
+  for(const [id,schema] of Object.entries(value.toolSchemas)){
+   if(!value.toolIds?.includes(id)||!schema||schema.type!=='object'||schema.additionalProperties!==false||!schema.properties||typeof schema.properties!=='object'||Array.isArray(schema.properties)||!Array.isArray(schema.required))throw Error('Invalid planner tool schema');
+   const names=Object.keys(schema.properties);
+   if(names.length>8||names.some(name=>!/^[a-z][a-zA-Z0-9_]{0,31}$/.test(name))||new Set(schema.required).size!==schema.required.length||schema.required.some(name=>typeof name!=='string'||!names.includes(name))||names.some(name=>!schema.properties[name]||!['string','number','integer','boolean'].includes(schema.properties[name].type)))throw Error('Invalid planner tool schema');
+  }
+ }
  if(value.requiredToolIds!==undefined&&(!Array.isArray(value.requiredToolIds)||!value.requiredToolIds.length||new Set(value.requiredToolIds).size!==value.requiredToolIds.length||value.requiredToolIds.some(id=>typeof id!=='string'||!value.toolIds?.includes(id))))throw Error('Invalid required planner tool IDs');
  if(value.requiredActionIds!==undefined&&(!Array.isArray(value.requiredActionIds)||!value.requiredActionIds.length||new Set(value.requiredActionIds).size!==value.requiredActionIds.length||value.requiredActionIds.some(id=>typeof id!=='string'||id==='tool'||!validHarnessAction(id))))throw Error('Invalid required planner action IDs');
  return value;

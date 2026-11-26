@@ -28,6 +28,9 @@ export class AgentProtocolError extends Error {
  readonly code='agent_protocol';
  constructor(message:string){super(message);this.name='AgentProtocolError';}
 }
+export class AgentNoUsefulEvidenceError extends AgentProtocolError {
+ constructor(){super('Agent could not find useful evidence before the optional call limit or model context capacity');this.name='AgentNoUsefulEvidenceError';}
+}
 
 /** Stable receipt category for an exception raised while an approved adapter runs. */
 export class AgentToolExecutionError extends Error {
@@ -111,7 +114,7 @@ export async function runReadOnlyAgentLoop<Final>(input:{
  onBudgetExhausted?:(history:readonly AgentToolAttempt[])=>Promise<Final>|Final;
  execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;
  check:()=>void;
-}):Promise<{final:Final;calls:readonly AgentToolResult[];attempts:readonly AgentToolAttempt[];budgetExhausted?:boolean;budgetCause?:'context'|'source-capacity'|'tool-limit'}>{
+}):Promise<{final:Final;calls:readonly AgentToolResult[];attempts:readonly AgentToolAttempt[];budgetExhausted?:boolean;budgetCause?:'context'|'source-capacity'|'tool-limit'|'no-progress'}>{
  // This loop currently executes read-only local tools. Other effects have
  // explicit types but cannot enter this executor until their review/network
  // adapters enforce their commit/connection boundaries.
@@ -176,7 +179,19 @@ export async function runReadOnlyAgentLoop<Final>(input:{
     // Give the planner one explicit recovery step after it ignored a typed
     // failure. Do not execute the failed operation again; if the planner
     // ignores this signal too, stop instead of spinning forever.
-    if(previous.error.code==='no_progress_loop')throw new AgentProtocolError('Agent repeated the same failed tool call without changing its arguments');
+    if(previous.error.code==='no_progress_loop'){
+     const usable=usableHistory(history);
+     if(input.onBudgetExhausted&&usable.some(item=>!item.error&&sameCall(call,{kind:'tool',tool:item.tool,arguments:item.arguments}))){
+      try{
+       const final=await input.onBudgetExhausted(structuredClone(usable));input.check();
+       history.push({tool:recordedTool,arguments:recordedArguments,result:null,error:{code:'no_progress_loop'},...(call.assistantContent?{assistantContent:call.assistantContent}:{}),...(batchId?{batchId}:{})});
+       for(const skipped of calls.slice(callIndex+1))history.push({tool:skipped.tool,arguments:structuredClone(skipped.arguments),result:null,error:{code:'batch_not_executed'},...(batchId?{batchId}:{})});
+       for(const skipped of overBudgetCalls)history.push({tool:skipped.tool,arguments:structuredClone(skipped.arguments),result:null,error:{code:'tool_limit'},...(batchId?{batchId}:{})});
+       return {final,calls:usable.filter(item=>!item.error),attempts:history,budgetExhausted:true,budgetCause:'no-progress'};
+      }catch(error){input.check();if(!(error instanceof AgentNoUsefulEvidenceError))throw error;}
+     }
+     throw new AgentProtocolError('Agent repeated the same failed tool call without changing its arguments');
+    }
     history.push({tool:recordedTool,arguments:recordedArguments,result:null,error:{code:'no_progress_loop'},...(call.assistantContent?{assistantContent:call.assistantContent}:{}),...(batchId?{batchId}:{})});
     abortedBatchAt=callIndex;
     break;

@@ -132,38 +132,65 @@ test('calculation is a targetless tool request and unavailable for current unrea
 
 test('tool-call envelope exposes only the request-local registered IDs and stays strictly shaped',()=>{
  const base={inputs:false,file:false,current:false,historyCount:0,assistantIndices:[]},selected={type:'dialogue-plan',scope:{...base,toolIds:['memory.search','memory.read']}};
- const call={action:'tool',query:'memory.search',body:JSON.stringify({query:'meeting'})};
+ const call={action:'tool',query:'memory.search',body:{query:'meeting'}};
  assert.equal(accepts(selected,JSON.stringify(call)),true);
  assert.equal(accepts(selected,JSON.stringify({...call,query:'filesystem.delete'})),false);
  assert.equal(accepts(selected,JSON.stringify({...call,target:'file'})),false);
  assert.equal(accepts(selected,JSON.stringify({...call,extra:true})),false);
  assert.equal(accepts({type:'dialogue-plan',scope:base},JSON.stringify(call)),false);
  const schema=createStructuredSchema(selected),tool=schema.anyOf.find(branch=>branch.properties?.action?.enum?.[0]==='tool');
- assert.deepEqual(tool.properties.query.enum,['memory.search','memory.read']);assert.equal(tool.properties.body.type,'string');
+ assert.deepEqual(tool.properties.query.enum,['memory.search','memory.read']);assert.equal(tool.properties.body.type,'object');
  assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...base,toolIds:['memory.search','memory.search']}}),/planner tool IDs/i);
+});
+test('tool-call grammar requires a direct flat arguments object',()=>{
+ const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,toolIds:['user.lookup']}};
+ for(const body of [{query:'colour'}, {query:'x',limit:3,enabled:true}, {}])assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body})),true);
+ for(const body of [{nested:{query:'x'}},{items:['x']},{query:null},'{"query":"x"}'])assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body})),false);
+ const branches=createStructuredSchema(format).anyOf.filter(branch=>branch.properties?.action?.enum?.[0]==='tool');
+ assert.ok(branches.some(branch=>branch.properties.body.type==='object'));
+ assert.ok(!branches.some(branch=>branch.properties.body.type==='string'));
+});
+test('tool-specific grammar binds each registered tool to its closed argument schema',()=>{
+ const colour={type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string'}}};
+ const clock={type:'object',required:[],additionalProperties:false,properties:{}};
+ const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,toolIds:['user.colour','time.now'],toolSchemas:{'user.colour':colour,'time.now':clock}}};
+ const call=body=>JSON.stringify({action:'tool',query:'user.colour',body});
+ assert.equal(accepts(format,call({query:'colour'})),true);
+ for(const body of [{},{query:'colour',result:'cobalt'},{query:2},{other:'x'}])assert.equal(accepts(format,call(body)),false);
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:'time.now',body:{}})),true);
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:'time.now',body:{query:'x'}})),false);
+ const branches=createStructuredSchema(format).anyOf.filter(branch=>branch.properties?.action?.enum?.[0]==='tool');
+ assert.equal(branches.length,2);assert.deepEqual(branches.find(branch=>branch.properties.query.enum[0]==='user.colour').properties.body,colour);
+});
+test('tool-specific grammar accepts every field order without permitting missing or repeated fields',()=>{
+ const schema={type:'object',required:['query','enabled'],additionalProperties:false,properties:{query:{type:'string'},enabled:{type:'boolean'},limit:{type:'integer'}}};
+ const format={type:'dialogue-plan',scope:{inputs:false,file:false,current:false,historyCount:0,toolIds:['user.lookup'],toolSchemas:{'user.lookup':schema}}};
+ for(const body of [{query:'x',enabled:true,limit:2},{limit:2,enabled:true,query:'x'},{enabled:false,query:'x'}])assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body})),true);
+ for(const body of [{query:'x'},{enabled:true,limit:2},{query:'x',enabled:true,other:'x'},{query:'x',enabled:true,limit:2.5}])assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body})),false);
+ assert.equal(accepts(format,'{"action":"tool","query":"user.lookup","body":{"query":"x","enabled":true,"query":"y"}}'),false);
 });
 test('planner schema accepts the full configured tool catalog and rejects entries above the shared cap',()=>{
  const toolIds=['memory.search','memory.read','math.calculate',...Array.from({length:61},(_,index)=>`user.local-tool-${index}`)];
  const scope={inputs:false,file:false,current:false,historyCount:0,toolIds},format={type:'dialogue-plan',scope};
  const schema=createStructuredSchema(format),tool=schema.anyOf.find(branch=>branch.properties?.action?.enum?.[0]==='tool');
  assert.equal(tool.properties.query.enum.length,64);
- assert.equal(accepts(format,JSON.stringify({action:'tool',query:toolIds.at(-1),body:'{}'})),true);
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:toolIds.at(-1),body:{}})),true);
  assert.throws(()=>createStructuredSchema({...format,scope:{...scope,toolIds:[...toolIds,'user.extra']}}),/planner tool IDs/i);
 });
 test('a multi-step local lookup can require the next registered tool without exposing one-shot actions',()=>{
  const base={inputs:false,file:false,current:false,historyCount:0,toolIds:['memory.search','memory.read'],requiredToolIds:['memory.search']},format={type:'dialogue-plan',scope:base};
- assert.equal(accepts(format,JSON.stringify({action:'tool',query:'memory.search',body:'{"query":"water"}'})),true);
- for(const value of [{action:'search',query:'water',target:'knowledge'},{action:'read',query:'Notes/water.md',target:'path'},{action:'answer',query:'water',target:'knowledge'},{action:'tool',query:'memory.read',body:'{"query":"Notes/water.md"}'}])assert.equal(accepts(format,JSON.stringify(value)),false,JSON.stringify(value));
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:'memory.search',body:{query:'water'}})),true);
+ for(const value of [{action:'search',query:'water',target:'knowledge'},{action:'read',query:'Notes/water.md',target:'path'},{action:'answer',query:'water',target:'knowledge'},{action:'tool',query:'memory.read',body:{query:'Notes/water.md'}}])assert.equal(accepts(format,JSON.stringify(value)),false,JSON.stringify(value));
  const afterSearch={...base,requiredToolIds:['memory.read']};
- assert.equal(accepts({type:'dialogue-plan',scope:afterSearch},JSON.stringify({action:'tool',query:'memory.read',body:'{"query":"Notes/water.md"}'})),true);
- assert.equal(accepts({type:'dialogue-plan',scope:afterSearch},JSON.stringify({action:'tool',query:'memory.search',body:'{"query":"water"}'})),false);
+ assert.equal(accepts({type:'dialogue-plan',scope:afterSearch},JSON.stringify({action:'tool',query:'memory.read',body:{query:'Notes/water.md'}})),true);
+ assert.equal(accepts({type:'dialogue-plan',scope:afterSearch},JSON.stringify({action:'tool',query:'memory.search',body:{query:'water'}})),false);
  assert.equal(accepts({type:'dialogue-plan',scope:{...base,requiredToolIds:undefined}},JSON.stringify({action:'answer',query:'water',target:'knowledge'})),true);
  assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...base,requiredToolIds:['filesystem.delete']}}),/required planner tool IDs/i);
 });
 test('after a required local search and read, the structured planner exposes only the final answer action',()=>{
  const scope={inputs:false,file:false,current:false,historyCount:0,toolIds:['memory.search','memory.read'],requiredActionIds:['answer']},format={type:'dialogue-plan',scope};
  assert.equal(accepts(format,JSON.stringify({action:'answer',query:'reserve',target:'knowledge'})),true);
- for(const value of [{action:'tool',query:'memory.search',body:'{"query":"reserve"}'},{action:'search',query:'reserve',target:'knowledge'},{action:'read',query:'Notes/water.md',target:'path'},{action:'capture',query:'reserve',body:'a guess'}])assert.equal(accepts(format,JSON.stringify(value)),false,JSON.stringify(value));
+ for(const value of [{action:'tool',query:'memory.search',body:{query:'reserve'}},{action:'search',query:'reserve',target:'knowledge'},{action:'read',query:'Notes/water.md',target:'path'},{action:'capture',query:'reserve',body:'a guess'}])assert.equal(accepts(format,JSON.stringify(value)),false,JSON.stringify(value));
  const schema=createStructuredSchema(format);assert.deepEqual([...new Set(schema.anyOf.map(branch=>branch.properties.action.enum[0]))],['answer']);
  assert.throws(()=>createStructuredGrammar({type:'dialogue-plan',scope:{...scope,requiredActionIds:['tool']}}),/required planner action IDs/i);
 });
@@ -173,7 +200,7 @@ test('after a tool observation the JSON grammar admits continuing calls and only
  const format={type:'dialogue-plan',scope};
  const actions=[...new Set(createStructuredSchema(format).anyOf.map(branch=>branch.properties.action.enum[0]))].sort();
  assert.deepEqual(actions,['answer','capture','edit','summary','tool']);
- assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body:'{"query":"colour"}'})),true);
+ assert.equal(accepts(format,JSON.stringify({action:'tool',query:'user.lookup',body:{query:'colour'}})),true);
  assert.equal(accepts(format,JSON.stringify({action:'chat',query:''})),false);
  assert.equal(accepts({...format,scope:{...scope,afterToolCall:false}},JSON.stringify({action:'chat',query:''})),true);
 });

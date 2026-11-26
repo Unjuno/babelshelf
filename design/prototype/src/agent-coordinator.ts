@@ -95,7 +95,7 @@ function namedFilesReadCompletely(question:string,history:readonly {tool:string;
  return new Set(ids).size===names.length&&allNamedSourcesFullyRead(history,ids);
 }
 
-export type AgentBudgetReason='context'|'source-capacity'|'activity-capacity'|'profile-limit'|'both-limits';
+export type AgentBudgetReason='context'|'source-capacity'|'activity-capacity'|'profile-limit'|'both-limits'|'no-progress';
 
 /** Application boundary for registry selection, audited tool execution and source observation. */
 export async function coordinateAgentTurn(input:{
@@ -354,6 +354,6 @@ export async function coordinateAgentTurn(input:{
    try{if(stateHash(noteSourceMetadata(records,result.noteId,result.revision))!==result.snapshot)throw Error('changed');}catch{throw Error('Source changed · retry');}
   }
  }
- const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='source-capacity'?'source-capacity':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
+ const budgetReason=loop.budgetCause==='context'?'context':loop.budgetCause==='source-capacity'?'source-capacity':loop.budgetCause==='no-progress'?'no-progress':loop.budgetCause==='tool-limit'?(activityLimit===null?'profile-limit':profileLimit===null||activityLimit<profileLimit?'activity-capacity':profileLimit<activityLimit?'profile-limit':'both-limits'):undefined;
  return {final:loop.final,calls:loop.calls,customEvidence,webSnapshots:[...webSourcesByAttempt.values()].flat(),context,budgetExhausted:loop.budgetExhausted===true,...(budgetReason?{budgetReason}:{}),snapshot:input.snapshot};
 }

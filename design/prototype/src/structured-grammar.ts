@@ -37,7 +37,12 @@ export function createStructuredSchema(format:StructuredFormat):JsonSchema{
  for(const action of actions){
   if(action.id==='tool'){
    const toolIds=scope?.requiredToolIds??scope?.toolIds;
-   if(toolIds?.length)branches.push({type:'object',properties:{action:{type:'string',enum:['tool']},query:{type:'string',enum:toolIds},body:{type:'string'}},required:['action','query','body'],additionalProperties:false});
+   if(toolIds?.length){
+    const envelope=(ids:string[],body:JsonSchema)=>({type:'object',properties:{action:{type:'string',enum:['tool']},query:{type:'string',enum:ids},body},required:['action','query','body'],additionalProperties:false});
+    const fallback=toolIds.filter(id=>!scope?.toolSchemas?.[id]);
+    for(const id of toolIds){const schema=scope?.toolSchemas?.[id];if(schema)branches.push(envelope([id],schema));}
+    if(fallback.length)branches.push(envelope(fallback,{type:'object',maxProperties:8,additionalProperties:{anyOf:[{type:'string'},{type:'number'},{type:'boolean'}]}}));
+   }
    continue;
   }
   if(action.id==='capture'&&!scope?.inputs){
@@ -55,7 +60,7 @@ export function createStructuredSchema(format:StructuredFormat):JsonSchema{
  return {type:'object',anyOf:branches};
 }
 type State={nodes:number[];remaining:number;min:number;max:number};
-type Node={epsilon:number[];edges:{accept:(byte:number)=>boolean;to:number}[]};
+type Node={epsilon:number[];edges:{accept:(byte:number)=>boolean;to:number}[];expand?:()=>void};
 type Fragment={start:number;end:number};
 export function createStructuredGrammar(format:StructuredFormat){
  const kind=typeof format==='string'?format:format?.type;
@@ -75,6 +80,37 @@ export function createStructuredGrammar(format:StructuredFormat){
   return {start,end};
  };
  const integer=():Fragment=>{const start=node(),digits=node(),end=node();edge(start,end,b=>b===48);edge(start,digits,b=>b>=49&&b<=57);edge(digits,digits,b=>b>=48&&b<=57);nodes[digits].epsilon.push(end);return {start,end};};
+ const number=():Fragment=>{
+  const start=node(),sign=node(),whole=node(),digits=node(),fractionStart=node(),fraction=node(),exponentStart=node(),exponentSign=node(),exponent=node(),end=node();
+  nodes[start].epsilon.push(sign);edge(start,sign,b=>b===45);edge(sign,whole,b=>b===48);edge(sign,digits,b=>b>=49&&b<=57);edge(digits,digits,b=>b>=48&&b<=57);nodes[digits].epsilon.push(whole);
+  nodes[whole].epsilon.push(end);edge(whole,fractionStart,b=>b===46);edge(fractionStart,fraction,b=>b>=48&&b<=57);edge(fraction,fraction,b=>b>=48&&b<=57);nodes[fraction].epsilon.push(end);
+  for(const from of [whole,fraction])edge(from,exponentStart,b=>b===69||b===101);nodes[exponentStart].epsilon.push(exponentSign);edge(exponentStart,exponentSign,b=>b===43||b===45);edge(exponentSign,exponent,b=>b>=48&&b<=57);edge(exponent,exponent,b=>b>=48&&b<=57);nodes[exponent].epsilon.push(end);return {start,end};
+ };
+ const flatObject=():Fragment=>{
+  const open=literal('{'),close=literal('}'),member=()=>seq(string(),literal(':'),alt([string(),number(),literal('true'),literal('false')]));
+  let end=open.end;nodes[end].epsilon.push(close.start);
+  for(let i=0;i<8;i++){const item=i?seq(literal(','),member()):member();nodes[end].epsilon.push(item.start);end=item.end;nodes[end].epsilon.push(close.start);}
+  return {start:open.start,end:close.end};
+ };
+ const closedObject=(schema:NonNullable<PlannerScope['toolSchemas']>[string]):Fragment=>{
+  const open=literal('{'),close=literal('}'),fields=Object.entries(schema.properties),states=new Map<number,number>();
+  let required=0;for(let index=0;index<fields.length;index++)if(schema.required.includes(fields[index][0]))required|=1<<index;
+  const stateFor=(mask:number):number=>{
+   const existing=states.get(mask);if(existing!==undefined)return existing;
+   const state=node();states.set(mask,state);
+   // Expand only masks reachable from the model's actual prefix. Eagerly
+   // expanding every permutation for every registered tool is too costly.
+   nodes[state].expand=()=>{
+    if((mask&required)===required)nodes[state].epsilon.push(close.start);
+    for(let index=0;index<fields.length;index++){
+     if(mask&(1<<index))continue;const [name,field]=fields[index];
+     const scalar=field.type==='string'?string():field.type==='boolean'?alt([literal('true'),literal('false')]):field.type==='integer'?alt([integer(),seq(literal('-'),integer())]):number();
+     const part=seq(literal((mask?',':'')+JSON.stringify(name)+':'),scalar);nodes[state].epsilon.push(part.start);nodes[part.end].epsilon.push(stateFor(mask|(1<<index)));
+    }
+   };return state;
+  };
+  nodes[open.end].epsilon.push(stateFor(0));return {start:open.start,end:close.end};
+ };
  // States scale with decimal width, not turn count; no leading zeroes.
  const boundedInteger=(max:number):Fragment=>{
   const branches:Fragment[]=[];
@@ -115,7 +151,7 @@ export function createStructuredGrammar(format:StructuredFormat){
   for(const action of scope?scopedHarnessActions(scope):HARNESS_ACTIONS.filter(action=>action.id!=='tool')){
    if(action.id==='tool'){
     const toolIds=scope?.requiredToolIds??scope?.toolIds;
-    if(toolIds?.length)alternatives.push(seq(literal('{"action":"tool","query":'),alt(toolIds.map(id=>literal(JSON.stringify(id)))),field('body',string()),literal('}')));
+    if(toolIds?.length)for(const id of toolIds)alternatives.push(seq(literal('{"action":"tool","query":'+JSON.stringify(id)),field('body',scope?.toolSchemas?.[id]?closedObject(scope.toolSchemas[id]):flatObject()),literal('}')));
     continue;
    }
    if(action.id==='capture'&&!scope?.inputs)alternatives.push(seq(literal('{"action":"capture","body":'),string(),literal('}')));
@@ -135,7 +171,7 @@ export function createStructuredGrammar(format:StructuredFormat){
    }
   }root=alt(alternatives);
  }
- function closure(input:number[]){const found=new Set(input),stack=[...found];while(stack.length){for(const next of nodes[stack.pop()!].epsilon)if(!found.has(next)){found.add(next);stack.push(next);}}return [...found];}
+ function closure(input:number[]){const found=new Set(input),stack=[...found];while(stack.length){const id=stack.pop()!,expand=nodes[id].expand;if(expand){nodes[id].expand=undefined;expand();}for(const next of nodes[id].epsilon)if(!found.has(next)){found.add(next);stack.push(next);}}return [...found];}
  const initial:State={nodes:closure([root.start]),remaining:0,min:128,max:191};
  function advance(state:State,bytes:Uint8Array):State|null{
   let current=state.nodes,remaining=state.remaining,min=state.min,max=state.max;
