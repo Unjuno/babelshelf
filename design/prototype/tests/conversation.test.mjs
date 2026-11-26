@@ -2566,3 +2566,12 @@ test('mixed Memory and Web citations stay within the shared 64-label protocol',(
  assert.equal(webResult.results[0].source,'S64');
  assert.doesNotMatch(JSON.stringify(messages),/S65/);
 });
+
+test('grounded generation checks selected sources even when the draft omits the conflicting citation',async()=>{
+ const notes=['ALPHA','BRAVO'].map((value,index)=>createNote({path:`Notes/launch-${index}.md`,body:`The launch code is ${value}.`}));
+ const refs=notes.map(note=>({noteId:note.id,revision:1,start:0,end:note.revisions[0].body.length,quote:note.revisions[0].body}));
+ const store={all:async()=>notes,search:async()=>refs};let calls=0;
+ const runtime={...engine(),loaded:'test',manifest:{contextTokens:4096,models:[],runtime:{}},generate:async()=>({text:JSON.stringify(++calls===1?{status:'answered',answer:'ALPHA',sources:['S1']}:{status:'answered',answer:'The notes conflict: ALPHA or BRAVO.',sources:['S1','S2']})})};
+ const result=await groundedAnswer({store,engine:runtime},{model:'test',question:'What is the launch code?',query:'launch code',mode:'answer',scope:{kind:'knowledge'}});
+ assert.equal(calls,2);assert.match(result.answer,/conflict/i);assert.equal(result.sources.length,2);
+});
