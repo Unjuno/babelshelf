@@ -11,7 +11,7 @@ import {productWorker} from '../product-worker.mjs';
 
 const helper=stripTypeScriptTypes(await readFile(new URL('../../design/prototype/src/offline-shell.ts',import.meta.url),'utf8'));
 const hash=value=>createHash('sha256').update(value).digest('hex');
-function generation(number,feedbackEndpoint){
+function generation(number,feedbackEndpoint,remote=[]){
  const build=String(number).repeat(16);
  const html=`<!doctype html><title>Update fixture ${number}</title><p id="version">${build}</p><script type="module">
  import {refreshAppVersion,activeAppBuild} from './refresh.js';
@@ -27,7 +27,7 @@ function generation(number,feedbackEndpoint){
  reg.addEventListener('updatefound',()=>{const worker=reg.installing,id=++workerId;window.events.push({worker:id,event:'found',state:worker?.state});worker?.addEventListener('statechange',()=>window.events.push({worker:id,event:'state',state:worker.state}));});
  </script>`;
  const files=new Map([['/index.html',html],['/refresh.js',helper],['/payload.txt',`verified generation ${number}`]]);
- const worker=productWorker({build,feedbackEndpoint,files:[...files].map(([path,body])=>({path:'.'+path,bytes:Buffer.byteLength(body),sha256:hash(body)})),remote:[]});
+ const worker=productWorker({build,feedbackEndpoint,files:[...files].map(([path,body])=>({path:'.'+path,bytes:Buffer.byteLength(body),sha256:hash(body)})),remote});
  // Model an already-installed predecessor that routes its own script through
  // the app cache and therefore blocks direct update diagnostics.
  const legacyWorker=number===1?worker.replace(/\s*\/\/ Keep the registration script[\s\S]*?return;\n/,''):worker;
@@ -145,6 +145,22 @@ test('one explicit refresh installs, activates and reopens a verified generation
   await browser?.close();
   server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
  }
+});
+
+test('controlled Chromium distinguishes a network exception, remote HTTP error and Offline',async()=>{
+ const receiver=createServer((req,res)=>{if(req.url==='/broken'){req.socket.destroy();return;}res.writeHead(503,{'Access-Control-Allow-Origin':'*','Access-Control-Expose-Headers':'x-babelshelf-failure','x-babelshelf-failure':'network'}).end('remote error');});
+ await new Promise(resolve=>receiver.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+receiver.address().port,version=generation(2,undefined,[base+'/broken',base+'/status']);
+ const server=createServer((req,res)=>{const body=req.url==='/sw.js'?version.worker:version.files.get(req.url==='/'?'/index.html':req.url);if(body===undefined){res.writeHead(404).end();return;}res.setHeader('Content-Type',req.url.endsWith('.js')?'text/javascript':'text/html');res.end(body);});
+ let browser;
+ try{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));browser=await chromium.launch();const page=await browser.newPage();await page.goto('http://127.0.0.1:'+server.address().port);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+  const read=path=>page.evaluate(async url=>{const response=await fetch(url,{credentials:'omit'});return {status:response.status,marker:response.headers.get('x-babelshelf-failure'),body:await response.text()};},base+path);
+  assert.deepEqual(await read('/broken'),{status:503,marker:'network',body:'Network request failed'});
+  assert.deepEqual(await read('/status'),{status:503,marker:null,body:'remote error'});
+  await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('mlb-memory-v1',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});await new Promise((resolve,reject)=>{const tx=db.transaction('notes','readwrite');tx.objectStore('notes').put({id:'settings-connection',state:'active',ui:{managed:true},revisions:[{path:'Settings/connection.md',body:'# Connection\n\n```json\n{"downloads":false,"diagnosticLogs":false}\n```\n'}]});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();});
+  assert.deepEqual(await read('/broken'),{status:503,marker:null,body:'App is offline'});
+ }finally{await browser?.close();server.closeAllConnections();receiver.closeAllConnections();await Promise.all([new Promise(resolve=>server.close(resolve)),new Promise(resolve=>receiver.close(resolve))]);}
 });
 
 test('controlled Chromium delivers the explicit feedback body to a separate local origin',async()=>{
