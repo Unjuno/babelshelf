@@ -35,3 +35,12 @@ test('Search model selection is explicit and does not download or index files',a
  await expect(section).toContainText('Off');
  expect(external).toEqual([]);
 });
+test('an immediate Search file check waits for the initial status probe',async({page})=>{
+ await page.addInitScript(()=>{const send=Worker.prototype.postMessage;Worker.prototype.postMessage=function(message:any,...rest:any[]){if(message?.cmd==='status'){setTimeout(()=>send.call(this,message,...rest),2000);return;}return send.call(this,message,...rest);};});
+ await page.goto('/');await page.getByRole('button',{name:'Input',exact:true}).click();await page.getByRole('menuitem',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Models',exact:true}).click();
+ const section=page.locator('[data-model-role="search"]');await section.getByRole('combobox',{name:'Search model'}).selectOption('granite-embedding-97m-multilingual-r2-onnx');
+ await section.getByRole('button',{name:'Check files',exact:true}).click();
+ await expect(section.getByRole('button',{name:'Check files',exact:true})).toBeEnabled();
+ await expect(section.locator('.model-preparation')).toContainText('Files not prepared');
+ await expect(section.getByRole('alert').filter({hasText:'Embedding operation busy'})).toHaveCount(0);
+});
