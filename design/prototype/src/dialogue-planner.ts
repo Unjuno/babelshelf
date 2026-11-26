@@ -4,6 +4,7 @@ import {namesExplicitSavedKnowledge,namesDeicticFile,requestsCrossSource} from '
 import {HARNESS_ACTIONS,plannerRoutingInstruction,validHarnessAction,validHarnessTarget,validAgentResultAction,type PlannerScope} from './harness-actions.ts';
 import {harnessGuidanceMessage} from './harness-guidance.ts';
 import {ModelRuntimeError,PlannerOutputError} from './planner-error.ts';
+import {TurnInferenceBudgetError} from './turn-inference-budget.ts';
 import {safeRuntimeMetrics,type RuntimeGenerationMetrics} from './text-inference.ts';
 import {DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOOL_SEARCH_ID,deferredToolReferences} from './deferred-tool-search.ts';
 import {nativeFinalPlanTools} from './native-output-format.ts';
@@ -479,7 +480,7 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
  }
  const generationStart=performance.now();
  const inference:PlannerInferenceMetrics={measuredModelCalls:1,promptTokens,maxOutputTokens,countMs,generationWallMs:0};
- let generated;try{generated=await engine.generate(messages,maxOutputTokens,format,agent?.onPreview);}catch(error){inference.generationWallMs=performance.now()-generationStart;agent?.onInference?.({...inference});if(error instanceof PlannerOutputError||error instanceof Error&&error.message==='Stopped')throw error;throw new ModelRuntimeError(error);}
+ let generated;try{generated=await engine.generate(messages,maxOutputTokens,format,agent?.onPreview);}catch(error){inference.generationWallMs=performance.now()-generationStart;agent?.onInference?.({...inference});if(error instanceof PlannerOutputError||error instanceof TurnInferenceBudgetError||error instanceof Error&&error.message==='Stopped')throw error;throw new ModelRuntimeError(error);}
  inference.generationWallMs=performance.now()-generationStart;
  if(typeof generated.outputTokens==='number'&&Number.isSafeInteger(generated.outputTokens)&&generated.outputTokens>=0)inference.outputTokens=generated.outputTokens;
  const metrics=safeRuntimeMetrics(generated.metrics);
@@ -507,6 +508,9 @@ export async function planDialogue(engine:ChatEngine,question:string,context:Dia
   if(generated.assistantContent!==undefined&&(typeof generated.assistantContent!=='string'||generated.assistantContent.length>32768))invalid('assistant tool content');
   return {action:'tool_batch',calls,...(generated.assistantContent?{assistantContent:generated.assistantContent}:{})} as DialoguePlan;
  }
+ // A malformed legacy tool call was not executed. Its immediate repair must
+ // not replace the missing operation with a new note review.
+ if(engine.plannerProtocol!=='native-tool-calls'&&agent?.nativeCallRejected===true&&value.action==='capture')invalid('tool repair capture','Could not execute tool · try again');
  if(agent?.history.length&&!validAgentResultAction(value.action))invalid('agent final action');
  let terminalReply:SourceLabelAnswer|undefined;
  const conversationReply=value.action==='chat'&&engine.plannerProtocol==='native-tool-calls'&&!scope.inputs&&!scope.file&&!agent?.history.length;
