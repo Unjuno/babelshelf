@@ -1,6 +1,7 @@
 import {AgentNoUsefulEvidenceError,runReadOnlyAgentLoop,type AgentToolCapability,type AgentToolAttempt,type AgentToolCall} from './agent-loop.ts';
 import {agentCorrectionTarget} from './agent-correction-target.ts';
-import {planDialogue,type ChatEngine,type DialogueContext,type DialoguePlan,type PlannerInferenceMetrics,type AgentPlannerContext} from './conversation.ts';
+import type {ChatEngine,DialogueContext} from './conversation.ts';
+import {planDialogue,type DialoguePlan,type PlannerInferenceMetrics,type AgentPlannerContext} from './dialogue-planner.ts';
 import {PlannerOutputError} from './planner-error.ts';
 import {DEFERRED_TOOL_SEARCH_ID} from './deferred-tool-search.ts';
 import {requestsImplicitSearchReadAnswer} from './saved-knowledge-reference.ts';

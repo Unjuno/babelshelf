@@ -116,7 +116,7 @@ test('preparation forwards planner-fit checks and persists only the resulting co
 });
 
 test('agent preparation leaves room for tool observations instead of filling the window with archived turns',async()=>{
- const {plannerContextFits}=await import('../src/conversation.ts');
+ const {plannerContextFits}=await import('../src/dialogue-planner.ts');
  const prior={schema:1,revision:4,turns:[{id:'old',user:'OLD LARGE ARCHIVE',answer:'Old answer'},{id:'latest',user:'Keep the latest request',answer:'Latest answer'}],compaction:null},before=structuredClone(prior);
  const agent={allowedTools:[{id:'memory.search',effect:'read',network:'none',usage:'Find records',inputSchema:{type:'object',properties:{query:{type:'string'}}}}],history:[]};
  let summaries=0,saved;
@@ -128,7 +128,7 @@ test('agent preparation leaves room for tool observations instead of filling the
 });
 
 test('agent headroom follows response needs without imposing a hard limit on an explicit large request',async()=>{
- const {plannerContextFits}=await import('../src/conversation.ts');
+ const {plannerContextFits}=await import('../src/dialogue-planner.ts');
  const context={summary:'',recent:[{id:'old',user:'HISTORY MARKER',answer:'Prior answer'}],refs:[],turnCount:1},before=structuredClone(context);
  const agent={allowedTools:[{id:'memory.search',effect:'read',network:'none',inputSchema:{type:'object',properties:{}}}],history:[]};
  let withHistory=5800,base=3000;
@@ -144,7 +144,7 @@ test('agent headroom follows response needs without imposing a hard limit on an 
 
 test('prepared recall counts do not evict the exact first planner preflight before generation',async()=>{
  const {createTextInference}=await import('../src/text-inference.ts');
- const {plannerContextFits,planDialogue}=await import('../src/conversation.ts');
+ const {plannerContextFits,planDialogue}=await import('../src/dialogue-planner.ts');
  let counts=0,generations=0;
  const runtime={manifest:{contextTokens:2048,models:[{id:'local',revision:'weights'}],runtime:{revision:'runtime'}},loaded:'local',assets:{local:{filesPresent:true}},load:async()=>{},stop:()=>{},count:async messages=>{counts++;return {prompt_tokens:Math.ceil(JSON.stringify(messages).length/4)};},generate:async()=>{generations++;return {text:'{"action":"answer","query":"the archived marker"}'};}};
  const engine=createTextInference(()=>runtime),question='What was the exact archived marker ALPHA-208?';

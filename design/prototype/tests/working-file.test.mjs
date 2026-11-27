@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createNote,reviseNote,withdrawNote} from '../../../dist/core.js';
-import {emptyDialogue,validateDialogue,dialogueContext,historyPayload,planDialogue} from '../src/conversation.ts';
+import {emptyDialogue,validateDialogue,dialogueContext,historyPayload} from '../src/conversation.ts';
+import {planDialogue} from '../src/dialogue-planner.ts';
 import {withWorkingFile,withoutWorkingFile,workingFileNote,workingFileMetadata,workingFileCoverage,workingFileEvidence,bindWorkingFileRequest,bindExplicitCurrentFileQuestion,validateWorkingFileLink,createFileFocusQueue} from '../src/working-file.ts';
 
 test('removing input file context preserves dialogue originals and refuses a stale removal target',()=>{

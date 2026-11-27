@@ -1,7 +1,8 @@
 import {buildActiveToolRegistry,type ToolSourceRecord} from './active-tool-registry.ts';
 import {agentCalculationsFromCalls,agentClockReadingsFromCalls,agentCustomResultsFromCalls,agentToolInfoFromCalls,agentEvidenceFromCalls,beginCustomEvidence,projectAgentActivityInput,projectAgentActivityResult,projectAgentToolResult} from './agent-evidence.ts';
 import {planDialogueAgent} from './dialogue-agent.ts';
-import type {ChatEngine,DialogueContext,DialoguePlan} from './conversation.ts';
+import type {ChatEngine,DialogueContext} from './conversation.ts';
+import type {DialoguePlan} from './dialogue-planner.ts';
 import {listMemoryEntries,resolveToolNotes} from './tools/tool-host.ts';
 import {SYSTEM_FOLDERS} from './memory-paths.ts';
 import type {ToolPackage} from './tools/tool-registry.ts';

@@ -7,7 +7,7 @@ import {createIsolatedTextClient} from '../src/isolated-text-client.ts';
 import {Engine} from '../../../dist/engine.js';
 import {nativeOutputRequest} from '../src/native-output-format.ts';
 import {nativeResponseTools,nativeResponseText} from '../../../dist/native-response.js';
-import {planDialogueMessages} from '../src/conversation.ts';
+import {planDialogueMessages} from '../src/dialogue-planner.ts';
 import {scopedHarnessActions} from '../src/harness-actions.ts';
 function setup(nativeStructuredOutput=false){const calls=[];let finish;
  const backend=name=>({manifest:{contextTokens:4096,runtime:{revision:'webml-test'},models:[{id:'4B',revision:'four'}]},loaded:null,worker:{terminate(){calls.push(name+':terminate');}},async init(){return{};},async call(cmd){calls.push(name+':'+cmd);return cmd==='status'?{[name]:{filesPresent:true}}:{};},async load(id){calls.push(name+':load');if(name==='onnx')await new Promise(r=>finish=r);this.loaded=id;},async unload(){calls.push(name+':unload');this.loaded=null;},abort(){calls.push(name+':abort');this.loaded=null;}});
