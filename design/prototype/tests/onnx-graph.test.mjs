@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {decisionBackendForModel} from '../src/decision-backend.ts';
-import {onnxGraphHasOperator} from '../src/onnx-graph.ts';
+import {onnxGraphExternalDataLocation,onnxGraphHasOperator} from '../src/onnx-graph.ts';
 
 const varint=value=>{const bytes=[];while(value>127){bytes.push((value&127)|128);value=Math.floor(value/128);}bytes.push(value);return bytes;};
 const field=(number,wire,payload)=>[...varint(number*8+wire),...(wire===2?[...varint(payload.length),...payload]:payload)];
@@ -32,4 +32,18 @@ test('ONNX graph scanner identifies GatherBlockQuantized in the real operator pr
  const needsWasm=onnxGraphHasOperator(new Uint8Array(fixture.buffer,fixture.byteOffset,fixture.byteLength),'GatherBlockQuantized');
  assert.equal(needsWasm,true);
  assert.equal(decisionBackendForModel({modelId:'custom-decision',requiresGatherBlockQuantized:needsWasm,webgpuAvailable:true}).backend,'wasm');
+});
+
+test('Decision ONNX external-data path is read from TensorProto metadata',()=>{
+ const pair=[...message(1,text('location')),...message(2,text('model_q4.onnx_data'))];
+ const tensor=message(13,pair),graph=message(5,tensor),model=message(7,graph);
+ assert.equal(onnxGraphExternalDataLocation(Uint8Array.from(model)),'model_q4.onnx_data');
+});
+
+test('Decision ONNX external-data paths must be single, relative and unambiguous',()=>{
+ const pair=(value)=>message(13,[...message(1,text('location')),...message(2,text(value))]);
+ const graph=entries=>message(7,entries.map(value=>message(5,pair(value))).flat());
+ assert.throws(()=>onnxGraphExternalDataLocation(Uint8Array.from(graph(['one.bin','two.bin']))),/location is invalid/i);
+ assert.throws(()=>onnxGraphExternalDataLocation(Uint8Array.from(graph(['../weights.bin']))),/location is unsupported/i);
+ assert.throws(()=>onnxGraphExternalDataLocation(Uint8Array.from([0x3a,0xff,0xff])),/location is invalid/i);
 });

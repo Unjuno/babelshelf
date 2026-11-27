@@ -1,5 +1,9 @@
 # Public Site v424 — stalled-generation feedback (2026-11-28 JST)
 
+## Decision Q4 diagnostic candidate status · 2026-11-28 JST
+
+No Site deployment has been made for the unmerged Q4 Decision candidate. The existing public v424 remains live. The candidate has a real isolated Chromium Q4 JSEP/WASM session/inference pass, but the full local quality workflow had two WebKit MCP custom-tool failures (both passed in isolated rerun); exact-head GitHub CI has not run. Publish only the exact artifact after its required workflow is green, and describe it as a debug candidate while Audit 20 P0s remain.
+
 Product PR [#177](https://github.com/Unjuno/babelshelf/pull/177) merged to
 `main` as `97cbfebc50d6e7c1ede270cf3bf7d8a65c264cd8`. Exact-head GitHub quality
 run [46032457905](https://github.com/Unjuno/babelshelf/actions/runs/46032457905)

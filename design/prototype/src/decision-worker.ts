@@ -12,7 +12,7 @@ import {DecisionContextError,encodeDecision,decisionAnswer,validateDecisionQuest
 import {createDecisionSession} from './decision-execution';
 import {probeDecisionWebGPU} from './decision-webgpu';
 import {decisionBackendForModel} from './decision-backend';
-import {onnxGraphHasOperator} from './onnx-graph';
+import {onnxGraphExternalDataLocation,onnxGraphHasOperator} from './onnx-graph';
 import {preferHighPerformanceAdapterRequests} from './webgpu-preference.ts';
 // Apply before session creation; ONNX Runtime passes this preference to
 // requestAdapter. It does not prove which adapter or execution path is used.
@@ -33,10 +33,10 @@ async function load(model:string|CustomDecisionModel,progress:(s:string)=>void){
  const parsed=JSON.parse(await files.get('config.json')!.text());if(parsed.model_type!=='d1_omni'||parsed.max_length!==descriptor.contextTokens)throw Error('Decision model config incompatible');
  const tokenizer=new PreTrainedTokenizer(JSON.parse(await files.get('tokenizer.json')!.text()),JSON.parse(await files.get('tokenizer_config.json')!.text()));check();
  encodeDecision(tokenizer,'Compatibility check',{type:'noul',instructions:'Is this text?'},descriptor.inputLimit);
- const graph=new Uint8Array(await files.get('onnx/model_quantized.onnx')!.arrayBuffer()),data=new Uint8Array(await files.get('onnx/model_quantized.onnx_data')!.arrayBuffer());check();const requiresGatherBlockQuantized=onnxGraphHasOperator(graph,'GatherBlockQuantized');
+ const graph=new Uint8Array(await files.get('onnx/model_quantized.onnx')!.arrayBuffer()),data=new Uint8Array(await files.get('onnx/model_quantized.onnx_data')!.arrayBuffer()),externalDataLocation=onnxGraphExternalDataLocation(graph);check();const requiresGatherBlockQuantized=onnxGraphHasOperator(graph,'GatherBlockQuantized');
  device='wasm';const gpu=(globalThis.navigator as Navigator&{gpu?:{requestAdapter:(options?:{powerPreference?:'high-performance'|'low-power'})=>Promise<unknown>}}|undefined)?.gpu;const knownQ8D1=descriptor.id===decisionManifest.id&&decisionManifest.conversion.dtype==='q8';const probe=knownQ8D1||requiresGatherBlockQuantized?'unavailable':await probeDecisionWebGPU(gpu,8000,controller!.signal);check();const backend=decisionBackendForModel({modelId:descriptor.id,quantization:knownQ8D1?'q8':undefined,requiresGatherBlockQuantized,webgpuAvailable:probe==='available'});device=backend.backend;if(backend.reason)progress('WebGPU skipped · '+backend.reason+' · using WASM');progress('Loading · '+(device==='webgpu'?'WebGPU':'WASM'));
  let webgpuFallbackReason:string|undefined;
- const execution=await createDecisionSession({preferred:device,create:backend=>ort.InferenceSession.create(graph,{executionProviders:[backend],graphOptimizationLevel:'all',externalData:[{path:'model_quantized.onnx_data',data}]}),check,onFallback:error=>{webgpuFallbackReason=error instanceof Error?error.message:String(error);progress('WebGPU unavailable · switching to WASM · '+webgpuFallbackReason.slice(0,240));}});device=execution.device;const loaded=execution.session;
+ const execution=await createDecisionSession({preferred:device,create:backend=>ort.InferenceSession.create(graph,{executionProviders:[backend],graphOptimizationLevel:'all',externalData:[{path:externalDataLocation,data}]}),check,onFallback:error=>{webgpuFallbackReason=error instanceof Error?error.message:String(error);progress('WebGPU unavailable · switching to WASM · '+webgpuFallbackReason.slice(0,240));}});device=execution.device;const loaded=execution.session;
  try{check();const inputs=['input_ids','attention_mask','prefix_len','marker_pos','marker_mask','qtype'];if(loaded.inputNames.length!==inputs.length||inputs.some(name=>!loaded.inputNames.includes(name))||!loaded.outputNames.includes('logits'))throw Error('Decision graph incompatible');session=loaded;tok=tokenizer;config=parsed;activeModel=descriptor;return {prepared:true,loaded:true,device,model:descriptor.id,revision:descriptor.revision,...(webgpuFallbackReason?{webgpuFallbackReason}:{})};}catch(e){await loaded.release();throw e;}
 }
 async function classify(state:string,question:DecisionQuestion){
