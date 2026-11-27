@@ -86,7 +86,7 @@ export async function runOfflineProcessCheck(browserType,{profileDir,outputDir,u
   });
   await phase(true,async(p,entry)=>{
    entry.search=await search(p,marker,edited);assert.ok(entry.search.includes('24リットル'));entry.attachmentSearch=await search(p,'FIR-5263',inputs[0].body);entry.offlineImportSearch=await search(p,'IRIS-1901',offlineInputs[0].body);afterRestart=await backup(p,'after-restart.brainpack');
-   const restore=p.locator('input[type=file][accept=".brainpack,application/json"]');await restore.setInputFiles(join(outputDir,'before.brainpack'));await p.getByRole('dialog').waitFor();assert.ok((await p.getByRole('dialog').innerText()).includes('conflicts'));assert.ok(await p.getByRole('button',{name:'Restore',exact:true}).isDisabled());await p.getByRole('button',{name:'Cancel',exact:true}).click();entry.conflictRefused=true;
+   const restore=p.getByLabel('Choose backup file',{exact:true});await restore.setInputFiles(join(outputDir,'before.brainpack'));await p.getByRole('dialog').waitFor();assert.ok((await p.getByRole('dialog').innerText()).includes('conflicts'));assert.ok(await p.getByRole('button',{name:'Restore',exact:true}).isDisabled());await p.getByRole('button',{name:'Cancel',exact:true}).click();entry.conflictRefused=true;
    await restore.setInputFiles(join(outputDir,'after-restart.brainpack'));await p.getByRole('dialog').waitFor();await p.getByRole('button',{name:'Restore',exact:true}).click();await p.getByRole('dialog').waitFor({state:'hidden'});const final=await backup(p,'after-restore.brainpack',true);
    for(const key of ['notes','settings','runs'])assert.deepEqual(final[key],afterRestart[key],key+' changed during identical restore');entry.identicalRestore=true;
   });
