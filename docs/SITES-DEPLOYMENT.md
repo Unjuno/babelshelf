@@ -1,5 +1,9 @@
 # Public Site v424 — stalled-generation feedback (2026-11-28 JST)
 
+## Decision Q4 diagnostic candidate status · 2026-11-28 JST
+
+The Q4 Decision candidate PR #179 (`a6040b2c`) passed exact-head GitHub quality run 46048810437 across all 20 stages. Local `npm run test:quality` had two WebKit MCP custom-tool failures that passed on isolated rerun. Main integration/CI and Site deployment are pending; public v424 remains live. Publish only the exact verified artifact after main CI is green, and describe it as a debug candidate while Audit 20 P0s remain.
+
 Product PR [#177](https://github.com/Unjuno/babelshelf/pull/177) merged to
 `main` as `97cbfebc50d6e7c1ede270cf3bf7d8a65c264cd8`. Exact-head GitHub quality
 run [46032457905](https://github.com/Unjuno/babelshelf/actions/runs/46032457905)

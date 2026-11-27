@@ -76,6 +76,11 @@ test('custom D1 files require the fixed text graph and stay local, content-addre
  await assert.rejects(inspectCustomDecisionModel([...files.slice(0,4),new File([new Uint8Array([9])],'arbitrary.onnx_data')]),/unsupported|missing/i);
  await assert.rejects(inspectCustomDecisionModel([new File([JSON.stringify({model_type:'other',max_length:16384})],'config.json'),...files.slice(1)]),/compatible/i);
 });
+
+test('custom D1 import accepts its official model_q4 filenames and stores canonical D1 roles',async()=>{
+ const files=[new File([JSON.stringify({model_type:'d1_omni',max_length:16384,_name_or_path:'D1 Q4'})],'config.json'),new File(['{}'],'tokenizer.json'),new File(['{}'],'tokenizer_config.json'),new File([new Uint8Array([1,2,3])],'model_q4.onnx'),new File([new Uint8Array([4,5,6])],'model_q4.onnx_data')];
+ const review=await inspectCustomDecisionModel(files);assert.equal(review.model.label,'D1 Q4');assert.deepEqual(review.model.files.map(file=>file.path),['config.json','tokenizer.json','tokenizer_config.json','onnx/model_quantized.onnx','onnx/model_quantized.onnx_data']);assert.deepEqual(review.files,files);
+});
 test('decision descriptors pin built-in and custom models to their own local revision and role',()=>{
  const builtin=decisionModelDescriptor(decisionManifest.id);assert.equal(builtin.id,decisionManifest.id);assert.equal(builtin.revision,decisionManifest.conversion.revision);assert.equal(builtin.custom,false);
  const files=[{path:'config.json',bytes:1,sha256:'1'.repeat(64)},{path:'tokenizer.json',bytes:1,sha256:'2'.repeat(64)},{path:'tokenizer_config.json',bytes:1,sha256:'3'.repeat(64)},{path:'onnx/model_quantized.onnx',bytes:1,sha256:'4'.repeat(64)},{path:'onnx/model_quantized.onnx_data',bytes:1,sha256:'5'.repeat(64)}];const model={id:'local-decision-'+createHash('sha256').update(JSON.stringify(files)).digest('hex'),label:'Custom',role:'decision',engine:'onnx-d1-text',revision:'sha256:'+createHash('sha256').update(JSON.stringify(files)).digest('hex'),files,inspection:{format:'D1-ONNX',architecture:'d1_omni',contextTokens:16384,inputLimit:2048,scope:'text-only'}};
