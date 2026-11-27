@@ -35,7 +35,7 @@ export function createLfm3TextBackend(createWorker:()=>Worker,custom:CustomLocal
  const stores=new Map<string,any>();
  for(const pinned of lfm3TextModels){
   const pinnedStore=createPinnedAssetStore({id:pinned.id,revision:pinned.revision,runtime:pinned.runtime,files:[{path:pinned.file.name,url:pinned.file.url,bytes:pinned.file.bytes,sha256:pinned.file.sha256}]},{directory,fetch:globalThis.fetch.bind(globalThis)});
-  stores.set(pinned.id,{status:pinnedStore.status,verify:async(signal:AbortSignal)=>{await pinnedStore.read(pinned.file.name,signal);},prepare:(allowNetwork:boolean,signal:AbortSignal,progress:any,files:File[])=>allowNetwork&&!files.length?preparePinnedInWorker(pinned.id,signal,progress):pinnedStore.prepare(allowNetwork,signal,progress,files)});
+  stores.set(pinned.id,{status:pinnedStore.status,verify:async(signal:AbortSignal)=>{await pinnedStore.read(pinned.file.name,signal);},prepare:(allowNetwork:boolean,signal:AbortSignal,progress:any,files:File[])=>allowNetwork&&!files.length?preparePinnedInWorker(pinned.id,signal,progress):pinnedStore.prepare(allowNetwork,signal,progress,files),discardIncomplete:pinnedStore.discardIncomplete});
  }
  for(const model of customLfm3TextModels(custom)){
   if(!('localModel'in model))continue;

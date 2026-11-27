@@ -21,11 +21,19 @@ function fixture() {
      };
     }
    };
-  }
+  },
+  async removeEntry(name){if(!files.delete(name))throw new DOMException('missing','NotFoundError');}
  };
  const store=createPinnedAssetStore(manifest,{directory:async()=>directory,fetch:async()=>{fetches++;return new Response(bytes);}});
  return {store,files,get fetches(){return fetches;},get writers(){return writers;}};
 }
+test('incomplete pinned data can be discarded explicitly while complete model data is preserved',async()=>{
+ const f=fixture(),signal=new AbortController().signal;f.files.set(sha256,new Blob([new Uint8Array([1,2])]));
+ assert.deepEqual(await f.store.status(signal),{filesPresent:false,partialBytes:2,expectedBytes:3,incompleteAssets:1});
+ assert.deepEqual(await f.store.discardIncomplete(signal),{discardedBytes:2,discardedAssets:1});assert.equal(f.files.has(sha256),false);
+ await f.store.prepare(true,signal);const complete=f.files.get(sha256);
+ assert.deepEqual(await f.store.discardIncomplete(signal),{discardedBytes:0,discardedAssets:0});assert.equal(f.files.get(sha256),complete);assert.equal((await f.store.status(signal)).filesPresent,true);
+});
 test('pinned assets never acquire missing data during read or offline preparation',async()=>{
  const f=fixture(),signal=new AbortController().signal;await assert.rejects(f.store.read('onnx/model_quantized.onnx',signal),/missing/);await assert.rejects(f.store.prepare(false,signal),/Downloads/);assert.equal(f.fetches,0);assert.equal(f.writers,0);
 });
