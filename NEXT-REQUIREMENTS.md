@@ -1,6 +1,6 @@
 # Current requirements and next work
 
-Updated 2026-11-26 JST. This file holds product requirements and next work; the single current GitHub/Site release snapshot and device evidence live at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md), with detailed dated runs in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). Do not duplicate release hashes or deployment identifiers here.
+Updated 2026-11-27 JST. This file holds product requirements and next work; the single current GitHub/Site release snapshot and device evidence live at the top of [REMAINING-GATES.md](docs/REMAINING-GATES.md), with detailed dated runs in [TEST-RESULTS.txt](docs/TEST-RESULTS.txt). Do not duplicate release hashes or deployment identifiers here.
 
 ## Read in this order
 
