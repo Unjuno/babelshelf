@@ -4,17 +4,18 @@ import {prepareOfflineShell} from './pwa-offline-setup.ts';
 test('explicit calculator wording keeps parentheses offline without a model',async({page,context})=>{
  await page.goto('/');await prepareOfflineShell(page);
  await context.setOffline(true);await page.reload();
- for(const [question,expression,result] of [
-  ['Use the calculator to work out (84 + 16) / 5, and give just the result.','(84 + 16) / 5',20],
-  ['Please compute (6 + 4) / 2, return only the answer.','(6 + 4) / 2',5],
-  ['Evaluate −2 × (3 + 4).','−2 × (3 + 4)',-14],
-  ['2+2は？','2+2',4],
-  ['3+3は？','3+3',6],
+ for(const [question,expression,result,expectedAnswer] of [
+  ['Use the calculator to work out (84 + 16) / 5, and give just the result.','(84 + 16) / 5',20,undefined],
+  ['🧮 Calculate 3 + 4 & answer with the number only','3 + 4',7,'7'],
+  ['Please compute (6 + 4) / 2, return only the answer.','(6 + 4) / 2',5,undefined],
+  ['Evaluate −2 × (3 + 4).','−2 × (3 + 4)',-14,undefined],
+  ['2+2は？','2+2',4,undefined],
+  ['3+3は？','3+3',6,undefined],
  ] as const){
   await page.getByRole('textbox',{name:'Message',exact:true}).fill(question);
   await page.getByRole('button',{name:'Send',exact:true}).click();
   const row=page.locator('.sent-message').last();
-  await expect(row).toContainText(expression+' = '+result);
+  await expect(row).toContainText(expectedAnswer??expression+' = '+result);
   await expect(row.getByText('Calculated',{exact:true})).toBeVisible();
   await row.getByRole('button',{name:'View activity',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Activity',exact:true});
