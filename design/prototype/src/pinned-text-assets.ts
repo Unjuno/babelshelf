@@ -66,11 +66,21 @@ export function createPinnedAssetStore(manifest:Manifest,io:IO){
   // Presence is intentionally weaker than verified readiness. Every runtime read rehashes.
   async status(signal:AbortSignal){
    stopped(signal);const directory=await io.directory();stopped(signal);
+   let partialBytes=0,expectedBytes=0,incompleteAssets=0;
    for(const pin of pins.files){
-    try{const state=await withAssetLock(pin,signal,async()=>{const file=await(await directory.getFileHandle(pin.sha256)).getFile();stopped(signal);return file.size===pin.bytes;});if(!state)return {filesPresent:false};}
-    catch(error){stopped(signal);if(error instanceof Error&&error.name==='NotFoundError')return {filesPresent:false};throw error;}
+    try{const state=await withAssetLock(pin,signal,async()=>{const file=await(await directory.getFileHandle(pin.sha256)).getFile();stopped(signal);return file.size;});if(state!==pin.bytes){if(state>=0&&state<pin.bytes){partialBytes+=state;expectedBytes+=pin.bytes;incompleteAssets++;}return {filesPresent:false,...(incompleteAssets?{partialBytes,expectedBytes,incompleteAssets}:{})};}}
+    catch(error){stopped(signal);if(error instanceof Error&&error.name==='NotFoundError')return {filesPresent:false,...(incompleteAssets?{partialBytes,expectedBytes,incompleteAssets}:{})};throw error;}
    }
    return {filesPresent:true};
+  },
+  async discardIncomplete(signal:AbortSignal){
+   let discardedBytes=0,discardedAssets=0;const directory=await io.directory();stopped(signal);
+   for(const pin of pins.files){await withAssetLock(pin,signal,async()=>{
+    let size:number;try{size=(await(await directory.getFileHandle(pin.sha256)).getFile()).size;}catch(error){stopped(signal);if(error instanceof Error&&error.name==='NotFoundError')return;throw error;}
+    stopped(signal);if(!Number.isSafeInteger(size)||size<0||size>=pin.bytes)return;
+    await forgetSnapshot(pin);stopped(signal);await directory.removeEntry(pin.sha256);discardedBytes+=size;discardedAssets++;
+   });}
+   return {discardedBytes,discardedAssets};
   },
   async prepare(allowNetwork:boolean,signal:AbortSignal,progress:Progress=()=>{},localFiles:File[]=[]){
    let downloadedBytes=0,downloadedAssets=0;
