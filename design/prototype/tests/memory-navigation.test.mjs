@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {memoryBreadcrumbs,memoryFolderEntries,memoryNoteMatchesScope,memoryCreationFolder} from '../src/memory-navigation.ts';
+import {memoryBreadcrumbs,memoryFolderEntries,memoryNoteMatchesLocation,memoryNoteMatchesScope,memoryCreationFolder} from '../src/memory-navigation.ts';
 test('Home exposes user locations including schedules while root retains other internal locations',()=>{
  const folders=['Inbox','Notes','Notes/work','Schedule','Notifications','Attachments','Tools','Settings'];
  assert.deepEqual(memoryFolderEntries('home','',folders).map(e=>e.label),['Inbox','Notes','Schedule','Files']);
@@ -24,4 +24,11 @@ test('search scope is global at Memory root, user-only at Home, and recursive in
  assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/plan.md',''),true);
  assert.equal(memoryNoteMatchesScope('folder','Notes','Notes/work/plan.md',''),false);
  assert.equal(memoryNoteMatchesScope('root','','Notes/plan.md',''),false);
+});
+test('semantic search location scope does not require a lexical query match',()=>{
+ assert.equal(memoryNoteMatchesLocation('root','','Notes/meaning-only.md'),true);
+ assert.equal(memoryNoteMatchesLocation('home','','Notes/meaning-only.md'),true);
+ assert.equal(memoryNoteMatchesLocation('home','','Settings/private.md'),false);
+ assert.equal(memoryNoteMatchesLocation('folder','Notes','Notes/work/meaning-only.md'),true);
+ assert.equal(memoryNoteMatchesLocation('folder','Notes','Inbox/meaning-only.md'),false);
 });

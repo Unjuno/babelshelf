@@ -18,6 +18,10 @@ export function memoryFolderEntries(scope:MemoryScope,path:string,folders:string
 }
 export function memoryNoteMatchesScope(scope:MemoryScope,folderPath:string,notePath:string,query:string){
  if(!query)return scope==='folder'&&notePath.split('/').slice(0,-1).join('/')===folderPath;
+ return memoryNoteMatchesLocation(scope,folderPath,notePath);
+}
+/** Scope semantic candidates by location only; query relevance belongs to the search ranker. */
+export function memoryNoteMatchesLocation(scope:MemoryScope,folderPath:string,notePath:string){
  if(scope==='root')return true;
  if(scope==='home')return USER_ROOTS.some(root=>notePath.startsWith(root.path+'/'));
  return notePath.startsWith(folderPath+'/');

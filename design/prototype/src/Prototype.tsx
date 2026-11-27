@@ -142,7 +142,7 @@ import {modelSetsFor,createUserModelSet,matchingModelSet,applyModelSet,modelSetA
 import {ModelSetSheets,type ModelSetSheetsView} from './ModelSetSheets';
 import { deletionContents, canRestore, trashLocation } from './memory-trash';
 import { memoryFilePath as filePath, uniqueMemoryFilePath, memoryFolderPath as folderPath, suggestedNoteName, SYSTEM_FOLDERS, isSystemFolder, MAX_FOLDER_DEPTH } from './memory-paths';
-import { memoryBreadcrumbs, memoryFolderEntries, memoryNoteMatchesScope, memoryCreationFolder, type MemoryScope } from './memory-navigation';
+import { memoryBreadcrumbs, memoryFolderEntries, memoryNoteMatchesLocation, memoryNoteMatchesScope, memoryCreationFolder, type MemoryScope } from './memory-navigation';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import {DeferredViewBoundary} from './DeferredViewBoundary';
 import {applyLocalFont,localFontStore,type LocalFontFile} from './local-fonts';
@@ -1357,7 +1357,7 @@ export default function Prototype() {
   const search=page==='memory'&&memoryQuery.trim()&&modelPreferences.searchModel?{query:query.trim(),model:modelPreferences.searchModel}:null;
   if(!search){setSemanticMemoryHits([]);setSemanticMemorySearchState('idle');return;}
   const controller=new AbortController();let active=true;const timer=setTimeout(()=>{
-   void (async()=>{setSemanticMemorySearchState('searching');try{const runtime=await getSemanticSearchRuntime(search.model);controller.signal.throwIfAborted();if(!runtime.loaded){if(active){setSemanticMemoryHits([]);setSemanticMemorySearchState('not-ready');}return;}const hits=await runtime.search(search.query,12,controller.signal,undefined,source=>memoryNoteMatchesScope(memoryScope,activeFolder,source.path??'',memoryQuery),true);if(active)setSemanticMemoryHits(hits.filter(hit=>notes.some(note=>note.id===hit.noteId&&note.version===hit.revision&&memoryNoteMatchesScope(memoryScope,activeFolder,note.path,memoryQuery))));if(active)setSemanticMemorySearchState('ready');}catch(error){if(active&&!controller.signal.aborted){setSemanticMemoryHits([]);setSemanticMemorySearchState('error');}}})();
+   void (async()=>{setSemanticMemorySearchState('searching');try{const runtime=await getSemanticSearchRuntime(search.model);controller.signal.throwIfAborted();if(!runtime.loaded){if(active){setSemanticMemoryHits([]);setSemanticMemorySearchState('not-ready');}return;}const hits=await runtime.search(search.query,12,controller.signal,undefined,source=>memoryNoteMatchesLocation(memoryScope,activeFolder,source.path??''),true);if(active)setSemanticMemoryHits(hits.filter(hit=>notes.some(note=>note.id===hit.noteId&&note.version===hit.revision&&memoryNoteMatchesLocation(memoryScope,activeFolder,note.path))));if(active)setSemanticMemorySearchState('ready');}catch(error){if(active&&!controller.signal.aborted){setSemanticMemoryHits([]);setSemanticMemorySearchState('error');}}})();
   },240);
   return()=>{active=false;clearTimeout(timer);controller.abort();};
  },[page,query,memoryQuery,memoryScope,activeFolder,modelPreferences.searchModel,notes]);
