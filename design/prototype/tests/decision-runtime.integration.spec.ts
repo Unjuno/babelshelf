@@ -33,7 +33,9 @@ test('pinned D1 model creates a real session, verifies a statement, and defers a
  expect(result.prepared).toMatchObject({prepared:true});
  expect(result.loaded).toMatchObject({loaded:true,model:'d1-omni-600M'});
  expect(result.loaded.device).toBe('wasm');
- expect(result.progress).toContain('WebGPU skipped · D1 Q8 MatMulNBits is unsupported by this WebGPU runtime · using WASM');
+ const backendFallback=result.progress.find((message:string)=>message.startsWith('WebGPU skipped · '));
+ expect(backendFallback).toMatch(/^WebGPU skipped · (?:D1 Q8 MatMulNBits|GatherBlockQuantized) is unsupported by this WebGPU runtime · using WASM$/);
+ expect(result.progress).toContain('Loading · WASM');
  expect(result.classified).toMatchObject({scope:'text-only',model:'d1-omni-600M',answer:{type:'noul',answer:true}});
  expect(route).toEqual({request:null,reason:'ambiguous'});
  expect(result.routeClassification).toMatchObject({scope:'text-only',model:'d1-omni-600M',answer:{type:'choice',choice:'answer'}});
