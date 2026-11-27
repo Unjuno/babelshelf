@@ -1,4 +1,4 @@
-import type {NoteView} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import type {ExecutionView} from './useTasks.ts';
 import {taskRunView,validateRunCalculation} from './task-records.ts';
 

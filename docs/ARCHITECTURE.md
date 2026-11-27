@@ -27,7 +27,7 @@ flowchart TD
 | UI and transient state | `design/prototype/src/Prototype.tsx`, focused screens, hooks | Navigation, drafts, sheets, progress presentation, composing existing operations | Canonical record validity or transaction authority |
 | Submission and agent workflow | `input-submission.ts`, `submission-workflow.ts`, `agent-coordinator.ts`, `agent-loop.ts`, `turn-router.ts` | Input snapshot, execution sequence, typed tool/action selection and stage outcomes | Direct mutation that bypasses storage contracts or approval |
 | Domain contracts | `conversation.ts`, `grounded-answer.ts`, `task-records.ts`, correction/source modules | IDs/revisions, evidence scope, task state, answer and review rules | Browser UI, IndexedDB transaction mechanics, runtime download |
-| Canonical local data | `knowledge-store.ts`, `useKnowledge.ts`, `dist/*storage*` and related adapters | IndexedDB records/revisions and their Markdown-style path projection | Treating Memory paths as host files; inference/runtime cache ownership |
+| Canonical local data | `knowledge-contract.ts`, `knowledge-store.ts`, `useKnowledge.ts`, `backup-contract.ts`, `backup-state.ts`, `dist/*storage*` and related adapters | IndexedDB records/revisions, backup/restore data shapes and their Markdown-style path projection | Treating Memory paths as host files; inference/runtime cache ownership |
 | Inference roles | `useBonsai.ts`, `useDecision.ts`, `useSpeech.ts`, `useVision.ts`, role-specific clients/workers | Model-specific preparation, loading, inference, cancellation and measurement | Cloud fallback or user data persistence |
 | Tool boundary | `src/tools/`, `custom-tool-*` | Registered local capabilities, schema validation and constrained dispatch | Granting authority from SKILL.md or model output |
 | Browser platform | `dist/`, service-worker code, OPFS/IDB adapters | Verified app/runtime cache, local assets, worker transport and browser policy | Product policy or silent acquisition |
@@ -76,19 +76,16 @@ The source scan has not established two production algorithms with identical con
 | Deviation | Evidence | Containment / next step |
 |---|---|---|
 | Overgrown composition root | `Prototype.tsx` is 1,555 lines and had 142 local imports in the static scan | Keep composition/UI state here; extract one completed workflow only when its inputs, outputs and cancellation are explicit |
-| Two source dependency cycles | Conversation/execution and knowledge/recovery clusters listed below | Separate by owned contracts and migrate all callers; do not paper over with type-only barrels |
+| One source dependency cycle | Conversation/execution cluster remains; knowledge/recovery was removed by the 2026-11-28 contract batch | Separate by owned contracts and migrate all callers; do not paper over with type-only barrels |
 | Preferences aggregate unrelated domain schemas | `preference-records.ts` parses user settings and depends on role validators for several model types | Inventory individual settings and validators before splitting; preserve single versioning/migration authority |
 | Architecture boundaries are not generally enforced | Root `scripts/check.mjs` checks built JS syntax, DOM IDs, model pins and shell hashes, not the TypeScript dependency graph | Agree the boundaries first, then add a static check for the migrated core rather than grandfathering the whole tree |
 | Flat source layout mixes UI, domains, workers and platform clients | Most source modules are siblings under `design/prototype/src`, with `tools/` as a partial exception | Move only when a cohesive module contract is completed; path changes alone are not progress |
 
 ### Dependency scan findings and limits
 
-An import-only scan of `design/prototype/src`, `design/prototype/product` and tracked `dist` source found a large conversation/execution dependency cluster and a storage/recovery cluster. It counts type imports as dependencies and excludes dynamic imports, JSON/WASM assets and package internals, so it is not the full build graph. The two smaller source cycles removed in this batch were `device-model-test.ts` ↔ `device-diagnostics.ts` and `custom-vision-assets.ts` ↔ `preference-records.ts`; one edge in each cycle was type-only, but each still coupled a lower-level contract to its owner. Two larger strongly connected groups remain:
+An import-only scan of `design/prototype/src` (2026-11-28) found 332 source files, 1,060 resolved relative imports and one strongly connected component. It counts type imports as dependencies and excludes dynamic imports, JSON/WASM assets and package internals, so it is not the full build graph. The removed source cycles are `device-model-test.ts` ↔ `device-diagnostics.ts`, `custom-vision-assets.ts` ↔ `preference-records.ts`, and the knowledge/recovery cluster; each had a lower-level contract coupled back to its owner. The remaining SCC is `conversation.ts`, `dialogue-planner.ts`, `dialogue-agent.ts`, `agent-evidence.ts`, `web-evidence.ts`, `current-input-scope.ts`, `input-readings.ts`, `vision-text.ts`, `video-observations.ts`, `voice-input.ts`, `working-file.ts` and `text-transform.ts`.
 
-1. Conversation/input/planner/evidence/readings: `conversation.ts`, `dialogue-planner.ts`, `dialogue-agent.ts`, `agent-evidence.ts`, `web-evidence.ts`, `current-input-scope.ts`, `input-readings.ts`, `vision-text.ts`, `video-observations.ts`, `voice-input.ts`, `working-file.ts`, `harness-activity.ts` and `text-transform.ts`.
-2. Knowledge/recovery: `knowledge-store.ts`, `backup-state.ts`, `pending-note-review.ts`, `note-creation.ts`, `note-restore.ts` and `settings-restore.ts`.
-
-These groups are the next staged-refactor candidates; do not break them by moving files without first assigning contracts and migrating all consumers. The detector is a bounded source scan, not a proof that the package/build graph has no other cycle.
+The knowledge/recovery modules now depend on the leaf contracts `knowledge-contract.ts` and `backup-contract.ts`. The conversation group is the next staged-refactor candidate; do not break it by moving files without first assigning contracts and migrating all consumers. This bounded source scan is not proof that the package/build graph has no other cycle.
 
 ## Runtime and ownership
 

@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
-import {KnowledgeStore,type NoteView} from './knowledge-store';
+import {KnowledgeStore} from './knowledge-store';
+import type {NoteView} from './knowledge-contract';
 export const knowledge=new KnowledgeStore();
 export function useKnowledge(defaults:NoteView[]){
  const [notes,render]=useState(defaults),[ready,setReady]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState('');

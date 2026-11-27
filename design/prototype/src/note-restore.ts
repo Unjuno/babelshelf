@@ -1,4 +1,4 @@
-import type {StateSnapshot,StatePayload} from './backup-state.ts';
+import type {StateSnapshot,StatePayload} from './backup-contract.ts';
 import {validateHistoricalSourceRefs} from './historical-source-refs.ts';
 // @ts-expect-error Shared canonical core.
 import {latest,reviseNote,checkNotes} from '../../../dist/core.js';

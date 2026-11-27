@@ -1,5 +1,5 @@
 import {parsePreference,formatPreference,preferencePath,type PreferenceGroup} from './preference-records.ts';
-import type {StateSnapshot,StatePayload} from './backup-state.ts';
+import type {StateSnapshot,StatePayload} from './backup-contract.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {latest,reviseNote,checkNotes} from '../../../dist/core.js';
 const groups:PreferenceGroup[]=['appearance','models','connection','harness'];

@@ -32,7 +32,8 @@ import {prepareTurnContext} from './turn-context-preparation.ts';
 import {PENDING_CORRECTION_STATE} from './pending-correction.ts';
 import {agentCorrectionTarget} from './agent-correction-target.ts';
 import {discoverCorrectionTarget,type CorrectionTargetOption} from './saved-correction-target.ts';
-import {projectNote,type NoteView} from './knowledge-store.ts';
+import {projectNote} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import {createTurnInferenceBudget} from './turn-inference-budget.ts';
 // @ts-expect-error Shared baseline is plain JavaScript.
 import {localRequest} from '../../../dist/requests.js';
