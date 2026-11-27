@@ -1,3 +1,37 @@
+# Public Site v424 — stalled-generation feedback (2026-11-28 JST)
+
+Product PR [#177](https://github.com/Unjuno/babelshelf/pull/177) merged to
+`main` as `97cbfebc50d6e7c1ede270cf3bf7d8a65c264cd8`. Exact-head GitHub quality
+run [46032457905](https://github.com/Unjuno/babelshelf/actions/runs/46032457905)
+and post-merge main run
+[46034816419](https://github.com/Unjuno/babelshelf/actions/runs/46034816419)
+passed all 20 stages. Product build `07645f7087323ce1` contains 170 verified
+assets; entry `index-DW0AACoE.js` is 265,834 bytes with SHA-256
+`cf2c28f685f75ec644db349a182c6971c0c682373c5e9b055f65432ae8899ebd`.
+
+The product maps the isolated client's no-progress timeout to a readable stalled
+state and retains an emitted ordinary-prose preview as `Partial · not verified`.
+The timeout path is regression-tested; this does not establish Muse's routed Q4
+or no-preview behavior. It remains a debugging build, and general release is
+DO-NOT-SHIP.
+
+Site source commit `00623da647d61b1b9850a0490167d28132f84711` contains the
+release manifest for the exact main commit/build. Sites saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_3b1144fec5948191bb83dae8c032e6a9`
+(v424) and deployed it successfully as
+`appgdep_6b09b606009c819192c166aa2eaf81bb`. Existing public audience and custom
+domain `https://babelshelf.com/` were retained. The Site archive SHA-256 is
+`2635bf0a1e634fae25e7e1bdab0cf5469a33035be33b8b194e341b3319c477a9` (209
+files; 119,050,240 bytes).
+
+No-cache requests to the custom domain `/`, `/build.json`, `/sw.js` and the
+entry returned HTTP 200. The manifest reported build `07645f7087323ce1` and 170
+assets. Public entry size/hash matched the local manifest. Local delivery
+checks verified exact decompressed ONNX WASM bytes for gzip/identity, offline
+shell transport, mutable shell cache policy and POST rejection. No real model
+inference or physical-device acceptance was run for this deployment. Remaining
+P0 release gates are tracked in `REMAINING-GATES.md`.
+
 # Debug Site v421 — Memory semantic-scope correction (2026-11-27 JST)
 
 Product PR #165 merged to `main` as
