@@ -1,3 +1,30 @@
+# Debug Site v421 — Memory semantic-scope correction (2026-11-27 JST)
+
+Product PR #165 merged to `main` as
+`580415048e5cf725f32b2026f33c3806c2d72f48`. Exact-head full GitHub quality
+run [45948808500](https://github.com/Unjuno/babelshelf/actions/runs/45948808500)
+and post-merge main run
+[45950681824](https://github.com/Unjuno/babelshelf/actions/runs/45950681824)
+passed. App build `773647acc07b502d` contains 170 verified assets and entry
+`index-BcFSI7F6.js`. Site source commit
+`b40c07c2a49f33bae4fc583f7fb7dff8376ff341` records the product commit/build;
+saved version
+`appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_13b1094953bc8191a60897ce052beb7c`
+(v421) deployed successfully as
+`appgdep_6b0920d84ab48191a298e6fe2774d291`. The existing public audience and
+`https://babelshelf.com/` were preserved.
+
+The correction prevents semantic Memory candidates from being filtered out
+unless they also lexically match the query; semantic results are restricted by
+Memory location and exact lexical matches remain available. Site delivery
+checks passed exact ONNX WASM gzip/identity bytes, POST method handling,
+offline-shell transport and mutable shell cache policy. Public `/build.json`
+returned build `773647acc07b502d` and 170 entries; the declared 265,834-byte
+entry bundle SHA-256 matched the public response. No real embedding UI replay,
+integrated Decision/tool chat, Muse-profile restore/Repair path, or physical
+device test was performed. This is a public debugging candidate; general
+release remains DO-NOT-SHIP.
+
 # Public Site v351 — chat, local database and schedule recovery (2026-11-12 JST)
 
 Product PR #60 merged to `main` as
