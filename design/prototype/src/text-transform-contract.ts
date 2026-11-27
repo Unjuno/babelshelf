@@ -1,0 +1,2 @@
+/** Persisted receipt for a literal text operation applied to one exact dialogue message. */
+export type TextToolReceipt={target:{turnId:string;turnIndex:number;speaker:string};result:{matches:number;text?:string;error?:string}}&({name:'text.replace';arguments:{find:string;with:string}}|{name:'text.split_lines';arguments:{delimiter:string}}|{name:'text.format_lines';arguments:{format:'checklist'|'bullets'|'numbered'}});

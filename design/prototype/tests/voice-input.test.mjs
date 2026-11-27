@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {voicePrompt,bindVoice,validateVoiceInputs,transcriptCitationRange} from '../src/voice-input.ts';
+import {voicePrompt,bindVoice,validateVoiceInputs} from '../src/voice-input.ts';
+import {transcriptCitationRange} from '../src/transcript-citation.ts';
 import * as recording from '../src/recording-session.ts';
 
 function recordingFixture({startError=false,empty=false}={}){

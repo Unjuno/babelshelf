@@ -1,7 +1,8 @@
 import {appendTurn,INTERRUPTED_TURN_STATUS,type Dialogue} from './conversation.ts';
 import {prepareOriginal,readOriginal,originalRef,originalText,checkAttachmentBatch,type OriginalAsset,type OriginalRef,type OriginalKind} from './original-assets.ts';
 import {readingRef,readingStatus,type ReviewedText,type InputReadingRef} from './input-readings.ts';
-import {bindVoice,type VoiceInput} from './voice-input.ts';
+import {bindVoice} from './voice-input.ts';
+import type {VoiceInput} from './voice-input-contract.ts';
 import {recoverSubmittedInput} from './input-recovery.ts';
 
 export type SubmissionAttachment={id:string;name:string;kind:OriginalKind;size:number;status:string;asset?:OriginalRef;file?:File;prepared?:OriginalAsset;reviewedText?:ReviewedText;reading?:InputReadingRef;voice?:VoiceInput};

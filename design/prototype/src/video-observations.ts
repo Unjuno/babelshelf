@@ -2,7 +2,7 @@ import {visionManifest} from './vision-assets.ts';
 import {originalRef,readOriginal,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {videoFramePlan,validateSampledFrame,type VideoFramePlan} from './video-frame-plan.ts';
 import {validateTranscript,type Transcript} from './speech-transcript.ts';
-import {transcriptCitationRange,type AudioRange} from './voice-input.ts';
+import {transcriptCitationRange,type AudioRange} from './transcript-citation.ts';
 import {validVisionModelIdentity,type VisionModelIdentity} from './vision-model-identity.ts';
 export type VideoFrameObservation={requestedUs:number;timestampUs:number;durationUs:number;width:number;height:number;imageSha256:string;text:string};
 export type VideoAudioReading={status:'processed';value:Transcript}|{status:'not-selected'|'not-prepared'|'no-audio-track'|'too-long'};
