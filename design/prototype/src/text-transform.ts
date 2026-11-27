@@ -1,7 +1,7 @@
 // Read-only literal operation on one exact earlier message. No storage/network capability.
 // @ts-expect-error Shared baseline parser is JavaScript.
 import {parseJSON} from '../../../dist/core.js';
-import type {ChatEngine} from './conversation';
+import type {TextEngine} from './text-inference.ts';
 import type {TextToolReceipt} from './text-transform-contract.ts';
 export type ReadOriginal={turnId:string;turnIndex:number;speaker?:string;quote:string;start:number;end:number};
 const lineFormatInstruction=' For formatting the existing nonempty lines as a checklist, bulleted list or numbered list, use {"action":"format_lines","format":"checklist"}, {"action":"format_lines","format":"bullets"} or {"action":"format_lines","format":"numbered"}. This changes list markers only; do not compose new items or explain response rules. Extraction or summarization is not line formatting.';
@@ -11,7 +11,7 @@ export const inspectTextSystem='Select how to use TEXT for the CURRENT INSTRUCTI
 export function inspectTextMessages(question:string,original:ReadOriginal){return textTransformMessages(question,original).map((m,i)=>i===0?{...m,content:inspectTextSystem+lineFormatInstruction}:m);}
 // Both recall and transform planning identify an original; the operation is decided
 // from the current instruction against that exact original, never an old request.
-export async function inspectDialogueText(engine:ChatEngine,question:string,original:ReadOriginal,check=()=>{}){
+export async function inspectDialogueText(engine:TextEngine,question:string,original:ReadOriginal,check=()=>{}){
  check();const messages=inspectTextMessages(question,original);
  if((await engine.count(messages)).prompt_tokens+256>engine.manifest.contextTokens)throw Error('Input exceeds context limit');check();
  const result=await engine.generate(messages,256);check();if(result.stopped)throw Error('Stopped');const value=parseJSON(result.text);
@@ -49,7 +49,7 @@ export function applyTextTransform(raw:string,original:ReadOriginal):{answer?:st
  if(answer===original.quote)return fail('No change · original retained');
  receipt.result.text=answer;return {answer,toolCalls:[receipt]};
 }
-export async function transformDialogueText(engine:ChatEngine,question:string,original:ReadOriginal,check=()=>{}){
+export async function transformDialogueText(engine:TextEngine,question:string,original:ReadOriginal,check=()=>{}){
  check();const messages=textTransformMessages(question,original);
  if((await engine.count(messages)).prompt_tokens+256>engine.manifest.contextTokens)throw Error('Input exceeds context limit');check();
  const result=await engine.generate(messages,256);check();if(result.stopped)throw Error('Stopped');return applyTextTransform(result.text,original);

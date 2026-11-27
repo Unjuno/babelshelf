@@ -1,4 +1,4 @@
-import type {Dialogue} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 import {GroundingConflictError} from './grounding-conflict.ts';
 import type {SourceMetadataGuard} from './note-provenance.ts';

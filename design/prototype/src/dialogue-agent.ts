@@ -1,6 +1,7 @@
 import {AgentNoUsefulEvidenceError,runReadOnlyAgentLoop,type AgentToolCapability,type AgentToolAttempt,type AgentToolCall} from './agent-loop.ts';
 import {agentCorrectionTarget} from './agent-correction-target.ts';
-import type {ChatEngine,DialogueContext} from './conversation.ts';
+import type {DialogueContext} from './dialogue-contract.ts';
+import type {TextEngine} from './text-inference.ts';
 import {planDialogue,type DialoguePlan,type PlannerInferenceMetrics,type AgentPlannerContext} from './dialogue-planner.ts';
 import {PlannerOutputError} from './planner-error.ts';
 import {DEFERRED_TOOL_SEARCH_ID} from './deferred-tool-search.ts';
@@ -18,7 +19,7 @@ function requestsAnswerWithoutNote(question:string){
  const affirmative=question.replace(/\b(?:do\s+not|don't|never)\s+(?:save|store|record|create|write|capture|add)\s+(?:(?:it|this|that|the\s+result)\s+)?as\s+(?:(?:a|the|new)\s+)*(?:note|memo|file)\b/giu,'').replace(/\b(?:do\s+not|don't|never)\s+(?:save|store|record|create|write|capture|add)\b/giu,'').replace(/(?:保存|記録|作成)(?:しないで|しない|しなくて|不要|禁止)/gu,'');
  return answer.test(question)&&!save.test(affirmative);
 }
-export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:ChatEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];readObservedWebSources?:()=>AgentPlannerContext['observedWebSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
+export async function planDialogueAgent(input:{onPreview?:(text:string)=>void;engine:TextEngine;question:string;context:DialogueContext;attachments:{name:string;kind:string;status:string}[];allowedTools:readonly AgentToolCapability[];maxToolCalls?:number|null;maxResultChars?:number;userGuidance?:string;replyStyle?:ReplyStyle;readObservedSources?:()=>AgentPlannerContext['observedSources'];readObservedWebSources?:()=>AgentPlannerContext['observedWebSources'];hasUsefulEvidence?:(history:readonly AgentToolAttempt[])=>boolean;selectNextPlan?:(history:readonly AgentToolAttempt[])=>DialoguePlan|null;normalizeToolArguments?:(tool:string,args:Record<string,unknown>,history:readonly AgentToolAttempt[])=>Record<string,unknown>;execute:(call:AgentToolCall,attemptIndex:number)=>Promise<unknown>;check:()=>void;tracePlan?:(step:number,work:()=>Promise<DialoguePlan>,metrics:()=>PlannerInferenceMetrics|undefined)=>Promise<DialoguePlan>;traceTool?:(call:AgentToolCall,work:()=>Promise<unknown>,attemptIndex:number)=>Promise<unknown>}){
  let historyRepairUsed=false,deferredToolRepairUsed=false,protocolRepairUsed=false;
  const loop=await runReadOnlyAgentLoop({allowedTools:input.allowedTools,maxToolCalls:input.maxToolCalls,maxResultChars:input.maxResultChars,check:input.check,
   plan:async (history,dispatchedToolCalls)=>{

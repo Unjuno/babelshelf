@@ -1,5 +1,6 @@
 import {observeInference as observeAnswerInference,type InferenceMeasurements as AnswerInference} from './inference-measurements.ts';
-import {workingFileEvidence,workingFileNote,type WorkingFile} from './working-file.ts';
+import {workingFileEvidence,workingFileNote} from './working-file.ts';
+import type {WorkingFile} from './working-file-contract.ts';
 import {checkAnswerConsistency,ConflictingSourceValuesError} from './answer-consistency.ts';
 // This adapter can read evidence and generate prose. It has no write/delete tools.
 // @ts-expect-error Shared baseline core is JavaScript.
@@ -10,7 +11,8 @@ import type {KnowledgeStore} from './knowledge-store';
 import type {TextRuntime} from './text-inference';
 import {readingEvidence} from './input-readings.ts';
 import type {CurrentInputRef} from './input-reading-contract.ts';
-import {historyMessages,parseChatAnswer,type DialogueContext} from './conversation.ts';
+import {historyMessages,parseChatAnswer} from './conversation.ts';
+import type {DialogueContext} from './dialogue-contract.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 import {groundingQuery,audioOnlySuffix} from './current-input-scope.ts';
 import type {GenerationFormat,GenerationResult} from './text-inference.ts';

@@ -1,7 +1,8 @@
 import type {DialogueCopy} from './dialogue-copy.ts';
 import type {SavedSourceRef} from './note-provenance.ts';
 import type {NoteView} from './knowledge-contract.ts';
-import {completeTurn,type Dialogue} from './conversation.ts';
+import {completeTurn} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 import {boundedPrefix} from './utf8-text.ts';
 
 export function newNoteSourceRef(note:{id:string;path:string;body:string}){

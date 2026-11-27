@@ -10,7 +10,7 @@ import {notePath} from '../../../dist/files.js';
 import {SHA256} from '../../../dist/sha256.js';
 import {applyTextTransform,textTransformMessages} from './text-transform.ts';
 import type {TextToolReceipt} from './text-transform-contract.ts';
-import type {ChatEngine} from './conversation';
+import type {TextEngine} from './text-inference.ts';
 import {validateCustomToolInputSchema,validateCustomToolPackageSources} from './custom-tool-validation.ts';
 import {parsePreference} from './preference-records.ts';
 import {snapshotHarnessToolSources} from './harness-tool-choices.ts';
@@ -152,7 +152,7 @@ export function literalCorrectionProposal(note:Canonical,request:string):Correct
  if(note?.ui?.managed||note?.ui?.recordType||customToolPath(note))return null;
  const operation=explicitLiteralReplacement(request)??explicitFromToReplacement(request,latest(note).body);return operation?prepareCorrection(note,request,JSON.stringify(operation)):null;
 }
-export async function proposeCorrection(engine:ChatEngine,request:string,note:Canonical,check=()=>{},records?:Canonical[]){
+export async function proposeCorrection(engine:TextEngine,request:string,note:Canonical,check=()=>{},records?:Canonical[]){
  check();const literal=literalCorrectionProposal(note,request);if(literal)return literal;
  note=structuredClone(note);editable(note);if(typeof request!=='string'||!request.trim()||request.length>30000)throw Error('Invalid correction request');check();if(note.ui?.managed){
   const toolSources=note.id==='settings-harness'&&records?snapshotHarnessToolSources(records):undefined;

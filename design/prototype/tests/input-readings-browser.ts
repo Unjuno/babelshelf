@@ -3,7 +3,8 @@ import {KnowledgeStore} from '../src/knowledge-store';
 import {prepareOriginal,originalRef} from '../src/original-assets';
 import {makeOcrText} from '../src/ocr-text';
 import {readingRef,type ReviewedText} from '../src/input-readings';
-import {appendTurn,emptyDialogue,type Dialogue} from '../src/conversation';
+import {appendTurn,emptyDialogue} from '../src/conversation';
+import type {Dialogue} from '../src/dialogue-contract';
 import {stateHash} from '../src/backup-state';
 const out=document.querySelector('#results')!;
 // Controlled extraction metadata: tests real transactions, not OCR/model accuracy.

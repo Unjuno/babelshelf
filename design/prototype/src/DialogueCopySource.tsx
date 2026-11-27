@@ -1,6 +1,6 @@
 import {useId,useMemo,useState} from 'react';
 import {KeyboardInput} from './mobile';
-import type {Dialogue} from './conversation';
+import type {Dialogue} from './dialogue-contract.ts';
 import {dialogueCopyIsPartial,dialogueCopyHasLimitedSpace,dialogueCopyPage,type DialogueCopyReview} from './dialogue-copy';
 
 export function DialogueCopySource({dialogue,review,body,busy,onSelect}:{dialogue:Dialogue;review:DialogueCopyReview;body:string;busy:boolean;onSelect:(index:number,speaker:'user'|'assistant')=>boolean}){

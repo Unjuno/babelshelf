@@ -3,7 +3,7 @@ import {groundedAnswer,type AnswerInference,type GroundedAnswerRequest} from './
 import type {KnowledgeStore} from './knowledge-store.ts';
 import type {NoteView} from './knowledge-contract.ts';
 import type {TextRuntime} from './text-inference.ts';
-import type {DialogueContext} from './conversation.ts';
+import type {DialogueContext} from './dialogue-contract.ts';
 import type {createTurnActivityTracer} from './harness-activity.ts';
 import type {AgentBudgetReason} from './agent-coordinator.ts';
 import {proposeTask} from './task-proposals.ts';

@@ -1,6 +1,6 @@
 import {validateTranscript,type Transcript} from './speech-transcript.ts';
 import {originalKey,type OriginalAsset} from './original-assets.ts';
-import type {Dialogue} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 import type {VoiceInput} from './voice-input-contract.ts';
 export function voicePrompt(draft:string,t:Transcript){if(!t.text?.trim())throw Error('Voice text unavailable');return draft+(draft&&!draft.endsWith('\n')?'\n':'')+t.text;}
 export function bindVoice(t:Transcript,user:string):VoiceInput {const start=user.indexOf(t.text),unique=start>=0&&user.indexOf(t.text,start+1)<0;return {schema:1,transcript:structuredClone(t),prompt:unique?{start,end:start+t.text.length}:null};}

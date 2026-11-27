@@ -1,5 +1,6 @@
-import {dialogueOutcome,focusExcerpt,type Dialogue,type DialogueContext} from './conversation.ts';
-import {requestNamesEarlierDialogue} from './dialogue-planner.ts';
+import {dialogueOutcome,focusExcerpt} from './conversation.ts';
+import type {Dialogue,DialogueContext} from './dialogue-contract.ts';
+import {requestNamesEarlierDialogue} from './dialogue-request.ts';
 // @ts-expect-error Canonical lexical search is JavaScript.
 import {searchNotes} from '../../../dist/core.js';
 

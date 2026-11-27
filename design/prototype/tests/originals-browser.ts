@@ -1,6 +1,7 @@
 import {KnowledgeStore} from '../src/knowledge-store';
 import {prepareOriginal,readOriginal,originalRef,originalNote,originalKey} from '../src/original-assets';
-import {emptyDialogue,appendTurn,type Dialogue} from '../src/conversation';
+import {emptyDialogue,appendTurn} from '../src/conversation';
+import type {Dialogue} from '../src/dialogue-contract';
 const output=document.querySelector('#results')!;
 document.querySelector('#run')!.addEventListener('click',async()=>{
  const name='babelshelf-originals-qa-'+crypto.randomUUID(),a=new KnowledgeStore(name),b=new KnowledgeStore(name),restored=new KnowledgeStore(name+'-restore'),lines:string[]=[];

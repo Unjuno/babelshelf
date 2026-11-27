@@ -2,7 +2,7 @@ import {runBuiltinTool,type CalculationToolResult} from './tools/builtin-tool-re
 import type {ToolHost} from './tools/tool-host.ts';
 import type {createToolRegistry} from './tools/tool-registry.ts';
 import {validateDecimalReceipt} from './tools/math.calculate/decimal-receipt.ts';
-import type {DialogueTurn} from './conversation.ts';
+import type {DialogueTurn} from './dialogue-contract.ts';
 import {explicitCalculationInput} from './explicit-calculation.ts';
 
 type CalculationRegistry=Pick<ReturnType<typeof createToolRegistry>,'identity'|'run'>;

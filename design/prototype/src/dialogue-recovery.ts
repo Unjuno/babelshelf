@@ -1,4 +1,5 @@
-import {emptyDialogue,validateDialogue,type Dialogue} from './conversation.ts';
+import {emptyDialogue,validateDialogue} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 // User-requested read only. Drain both queues even if one failed; never replay.
 export async function readDialogueRecovery(writers:Promise<unknown>[],load:()=>Promise<Dialogue|undefined>){
  await Promise.allSettled(writers);const stored=await load();
