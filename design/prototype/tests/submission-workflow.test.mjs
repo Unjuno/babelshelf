@@ -658,6 +658,19 @@ test('standalone planning request uses the resident Text model without loading D
  assert.equal(plans,0,'a general planning question does not enter history-biased action selection');assert.equal(answers,1);assert.equal(decisionLoads,0);assert.equal(decisionCalls,0);assert.equal(f.current().turns.at(-1).answer,'Let us plan the weekly reset.');
 });
 
+test('an explicit enabled-tool reference skips read-only Decision routing and continues with the Text planner',async()=>{
+ const f=fixture(),c=createSubmissionController();let decisionLoads=0,decisionCalls=0,generations=0,resident='';
+ f.services.model='json-test';f.services.decisionModel='d1-omni-600M';
+ const pkg={definition:clock.definition,entry:'Tools/time.now/tool.ts',sources:[{path:'Tools/time.now/SKILL.md',body:'Read the device clock.'},{path:'Tools/time.now/tool.ts',body:'Trusted local device clock.'}],run:clock.run};
+ f.services.builtinToolPackages=[pkg];f.services.builtinToolRegistry=createToolRegistry([pkg]);f.services.activeHarnessProfile={...f.services.activeHarnessProfile,enabledTools:['time.now'],maxResultChars:8000};
+ f.services.bonsai={plannerProtocol:'json',protocolForModel:()=> 'json',get loaded(){return resident;},busy:false,assets:{'json-test':{filesPresent:true}},manifest:{contextTokens:4096,maxOutputTokens:512,models:[{id:'json-test',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),load:async id=>{resident=id;return {loaded:id};},generate:async()=>{generations++;if(generations===1)return {text:'{"action":"tool","query":"time.now","body":"{}"}'};if(generations===2)return {text:'{"action":"answer","query":"device time","target":"knowledge"}'};return {text:'{"answer":"Device time noted.","citations":[]}',finishReason:'stop'};},pin(){return this;},stop(){}};
+ f.services.decision={...f.services.decision,enabled:true,ready:true,loaded:false,busy:false,load:async()=>{decisionLoads++;throw Error('Decision must not load for an explicit enabled-tool reference');},classify:async()=>{decisionCalls++;throw Error('Decision must not classify a tool request');},unload:async()=>{}};
+ f.services.knowledge={all:async()=>[],views:async()=>[],search:async()=>[],getState:async()=>[]};
+ const outcome=await c.run(run=>executeSubmission({text:'Call time.now and report the device time.',attachments:[]},f.services,f.view,run));
+ assert.equal(outcome,'completed',JSON.stringify(c.state));assert.equal(decisionLoads,0);assert.equal(decisionCalls,0);assert.equal(generations,3);
+ assert.equal(f.current().turns.at(-1).answer,'Device time noted.');assert.ok(f.current().turns.at(-1).activity.some(activity=>activity.tool==='time.now'&&activity.status==='succeeded'));
+});
+
 test('a Decision ONNX load failure is recorded and falls back to the Text planner',async()=>{
  const f=fixture(),c=createSubmissionController();let decisionLoads=0,textLoads=0,generations=0;let resident='';
  f.services.model='json-test';f.services.decisionModel='d1-omni-600M';
