@@ -45,7 +45,13 @@ export function explicitCalculationInput(text:string):{expression:string;showExp
  if(englishPercent)return {expression:`(${englishPercent[2]} * ${englishPercent[1]} / 100)`,showExpression:true};
  // Match the complete request, never search prose, files or previous turns for
  // executable text. Keep grouping/signs verbatim; only consume known UI prose.
- const wrapped=input.trim().match(/^(?:please\s+)?(?:use\s+(?:the\s+)?calculator\s+to\s+)?(?:calculate|compute|evaluate|work\s+out)\s+([\d\s.+\-*/()×÷−eE]+?)(?:,\s*(?:and\s+)?(?:give|return|show)\s+(?:just|only)\s+(?:the\s+)?(?:result|answer))?[.!?]?$/i);
+ // Some users pair a single leading icon with an explicit number-only format.
+ // Its full grammar is bounded so a following save/delete action still routes
+ // through the planner.
+ const iconStripped=input.trim().replace(/^\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?\s*/u,'');
+ const numberOnly=iconStripped.match(/^(?:please\s+)?(?:use\s+(?:the\s+)?calculator\s+to\s+)?(?:calculate|compute|evaluate|work\s+out)\s+([\d\s.+\-*/()×÷−eE]+?)\s*&\s*(?:answer|reply)\s+with\s+(?:the\s+)?(?:number|result|answer)\s+only[.!?]?$/i);
+ if(numberOnly){const expression=orderedCalculationInput('Calculate '+numberOnly[1].trim());return expression===null?null:{expression,showExpression:false};}
+ const wrapped=iconStripped.match(/^(?:please\s+)?(?:use\s+(?:the\s+)?calculator\s+to\s+)?(?:calculate|compute|evaluate|work\s+out)\s+([\d\s.+\-*/()×÷−eE]+?)(?:,\s*(?:and\s+)?(?:give|return|show)\s+(?:just|only)\s+(?:the\s+)?(?:result|answer))?[.!?]?$/i);
  if(!wrapped)return null;
  const expression=orderedCalculationInput('Calculate '+wrapped[1].trim());
  return expression===null?null:{expression,showExpression:true};

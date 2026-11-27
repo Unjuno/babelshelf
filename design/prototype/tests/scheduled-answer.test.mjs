@@ -58,6 +58,14 @@ test('decorated arithmetic remains a complete local calculation request',()=>{
  }
  for(const prompt of ['🧮 3 + 4 & then save it','Please calculate 3 + 4 & delete the note'])assert.equal(explicitCalculationInput(prompt),null);
 });
+test('a decorated English calculation with an explicit number-only response uses the local calculator',async()=>{
+ const f=run();f.dependencies.calculate=async expression=>makeDecimalReceipt(expression);
+ const prompt='🧮 Calculate 3 + 4 & answer with the number only';
+ assert.deepEqual(explicitCalculationInput(prompt),{expression:'3 + 4',showExpression:false});
+ const result=await executeScheduledAnswer(f.dependencies,{prompt,model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
+ assert.equal(result.answer,'7');assert.equal(result.calculation.result,'7');assert.equal(f.calls,0);
+ for(const suffix of ['save it','delete the note','store the answer'])assert.equal(explicitCalculationInput(`🧮 Calculate 3 + 4 & answer with the number only and ${suffix}`),null,suffix);
+});
 test('a schedule prompt echo gets one bounded prose repair and keeps the generated answer',async()=>{
  let generations=0;const engine={loaded:'selected',manifest:{contextTokens:8192,maxOutputTokens:512,models:[{id:'selected',revision:'fixture'}],runtime:{revision:'fixture'}},count:async()=>({prompt_tokens:64}),generate:async(messages,_budget,format)=>{generations++;assert.equal(format,'prose');if(generations===2)assert.match(messages[0].content,/Do not quote, restate, or explain/);return {text:generations===1?'say hello briefly':'Hello! How can I help?',finishReason:'stop',outputTokens:4};}};
  const result=await executeScheduledAnswer({store:{all:async()=>{throw Error('Echo repair must not read Memory');},search:async()=>{throw Error('Echo repair must not search Memory');}},models:{text:async()=>engine}},{prompt:'say hello briefly',model:'selected',signal:new AbortController().signal,replyStyle:'balanced',userGuidance:''});
