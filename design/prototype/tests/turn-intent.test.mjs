@@ -88,6 +88,9 @@ test('decision routing does not evict a resident Text model or load before Text 
  assert.equal(decisionMayRouteRequest(true,true,request,'json',{textResident:true,textFilesPresent:true}),false);
  assert.equal(decisionMayRouteRequest(true,true,request,'json',{textResident:false,textFilesPresent:false}),false);
  assert.equal(decisionMayRouteRequest(true,true,request,'json',{textResident:false,textFilesPresent:true}),true);
+ assert.equal(decisionMayRouteRequest(true,true,'Call user.qa-colour with {"query":"colour"} and report its result.','json',{textResident:false,textFilesPresent:true,enabledToolIds:['user.qa-colour']}),false,'the Text planner must own explicit enabled-tool invocation');
+ assert.equal(decisionMayRouteRequest(true,true,'What does user.qa-colour do?','json',{textResident:false,textFilesPresent:true,enabledToolIds:['user.qa-colour']}),false,'tool identity questions also stay out of the read-only Decision shortcut');
+ assert.equal(decisionMayRouteRequest(true,true,'Call user.qa-colours with {"query":"colour"}.','json',{textResident:false,textFilesPresent:true,enabledToolIds:['user.qa-colour']}),true,'nearby tool IDs must not suppress ordinary Decision routing');
 });
 
 test('unspecified saved search excludes topics, context, compound actions and attachments',()=>{

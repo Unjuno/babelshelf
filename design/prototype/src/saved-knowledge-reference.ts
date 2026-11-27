@@ -97,11 +97,19 @@ export function requestsSynthesisWithoutMoreTools(question:string){
  const tail=question.slice(last.index+last[0].length);
  return !/\b(?:search|find|look\s+(?:for|up)|locate|retrieve|read|open|inspect|extract|translate|verify|confirm)\b|(?:検索|探し|読み|開い|抽出|翻訳|確認|検証)/iu.test(tail);
 }
-export function decisionMayRouteRequest(enabled:boolean,ready:boolean,text:string,plannerProtocol:'json'|'native-tool-calls'='json',resources:{textResident?:boolean;textFilesPresent?:boolean}={}){
+export function decisionMayRouteRequest(enabled:boolean,ready:boolean,text:string,plannerProtocol:'json'|'native-tool-calls'='json',resources:{textResident?:boolean;textFilesPresent?:boolean;enabledToolIds?:readonly string[]}={}){
  // A native-tool planner can make the route and tool choice in its own turn.
  // The app has one inference resident: do not evict a warm Text model just to
  // load Decision, and do not load Decision if Text cannot be prepared anyway.
- return enabled&&ready&&plannerProtocol!=='native-tool-calls'&&!resources.textResident&&resources.textFilesPresent!==false&&!requestsCrossSource(text)&&!requestsLocalSearchReadAnswer(text);
+ const explicitlyCallsEnabledTool=(resources.enabledToolIds??[]).some(id=>{
+  if(typeof id!=='string'||!id.trim())return false;
+  const escaped=id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return new RegExp(`(?<![\\p{L}\\p{N}_-])${escaped}(?![\\p{L}\\p{N}_-])`,'iu').test(text);
+ });
+ // The Decision classifier only returns read-only/chat labels. It cannot
+ // select or invoke an enabled tool, so loading it for an explicit tool call
+ // adds a model swap and a failure point before the Text planner does the work.
+ return enabled&&ready&&plannerProtocol!=='native-tool-calls'&&!resources.textResident&&resources.textFilesPresent!==false&&!explicitlyCallsEnabledTool&&!requestsCrossSource(text)&&!requestsLocalSearchReadAnswer(text);
 }
 
 export function namesExplicitSavedKnowledge(text:string){

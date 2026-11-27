@@ -181,7 +181,7 @@ export async function executeSubmission(input:{text:string;attachments:Attachmen
     if(prior.currentFile&&!prior.turns.at(-1)!.refs!.some(ref=>ref.noteId===prior.currentFile!.noteId&&ref.revision===prior.currentFile!.revision))throw Error('Source changed · retry');
     await ensureText();return await reviewedCalculation();
    }
-   const decisionCanRoute=decisionMayRouteRequest(decision.enabled,decision.ready,text,bonsai.protocolForModel?.(model)??'json',{textResident:bonsai.loaded===model,textFilesPresent:bonsai.assets[model]?.filesPresent===true});
+   const decisionCanRoute=decisionMayRouteRequest(decision.enabled,decision.ready,text,bonsai.protocolForModel?.(model)??'json',{textResident:bonsai.loaded===model,textFilesPresent:bonsai.assets[model]?.filesPresent===true,enabledToolIds:activeHarnessProfile.enabledTools});
    const decisionFirst=!request&&decisionCanRoute;
    const activityEventCount=currentDialogue().turns.find(turn=>turn.id===id)?.activity?.length??0;
    const preplannerReserve=decisionFirst?4:2; // model/Decision loads and one context-fit/compaction receipt
