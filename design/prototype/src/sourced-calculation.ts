@@ -1,4 +1,4 @@
-import type {SourceRef} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 import type {TextEngine} from './text-inference.ts';
 // @ts-expect-error Shared canonical knowledge operations are JavaScript.
 import {validateGroundingRefs} from '../../../dist/core.js';

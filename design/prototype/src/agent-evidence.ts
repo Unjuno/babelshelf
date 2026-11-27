@@ -1,6 +1,6 @@
 import {AgentSourceCapacityError,type AgentToolResult} from './agent-loop.ts';
 import {AgentToolResultTooLargeError} from './agent-tool-errors.ts';
-import type {SourceRef} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 import {bindWebCitationLabels,type WebCitation,type WebSnapshot} from './web-evidence.ts';
 import type {FileResult} from './file-discovery.ts';
 import type {ToolHost} from './tools/tool-host.ts';

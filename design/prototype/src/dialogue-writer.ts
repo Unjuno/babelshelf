@@ -1,4 +1,5 @@
-import type {Dialogue,SourceRef} from './conversation.ts';
+import type {Dialogue} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 import {GroundingConflictError} from './grounding-conflict.ts';
 import type {SourceMetadataGuard} from './note-provenance.ts';
 // One local serialization boundary; IDB still enforces the cross-tab expected value.

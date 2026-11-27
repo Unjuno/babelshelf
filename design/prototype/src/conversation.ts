@@ -15,7 +15,7 @@ import type {VoiceInput} from './voice-input.ts';
 import {parseJSON,parseAnswer,searchNotes} from '../../../dist/core.js';
 import type {TextToolReceipt} from './text-transform';
 import type {OriginalRef} from './original-assets';
-export type SourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string;title?:string;groundingEligible?:boolean};
+import type {SourceRef} from './source-reference-contract.ts';
 export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];sourceMetadataGuards?:import('./note-provenance.ts').SourceMetadataGuard[];results?:SourceRef[];files?:FileResult[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
 export type DialogueDisplayGroup={turn:DialogueTurn;earlierAttempts:Pick<DialogueTurn,'id'|'status'|'activity'>[]};
 /** A view-only grouping for exact no-attachment retries; canonical turns and receipts remain untouched. */

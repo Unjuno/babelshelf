@@ -1,6 +1,7 @@
 import {videoTimingCoverage} from './speech-transcript.ts';
 import {validHarnessTarget} from './harness-actions.ts';
-import type {Dialogue,SourceRef} from './conversation.ts';
+import type {Dialogue} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 import {requestNamesEarlierDialogue,requestNamesWorkingFile} from './dialogue-planner.ts';
 import {namedSavedSubject,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.

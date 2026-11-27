@@ -37,6 +37,7 @@ import type {StateSnapshot,RestoreMode} from './backup-contract.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,emptyDialogue,type Dialogue} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 import {createConversationSession,switchConversationSession,renameConversationSession,deleteConversationSession,validateConversationSessions,CONVERSATION_SESSIONS_KEY,conversationDialogueKey,isConversationDialogueKey,type ConversationSessions} from './conversation-sessions.ts';
 import type {NoteView} from './knowledge-contract.ts';
 import {withoutWorkingFile} from './working-file.ts';
@@ -618,7 +619,7 @@ export class KnowledgeStore {
  /** Commit a newly grounded dialogue result only while its reviewed sources
   * and expected conversation are still current. Historical turns are not
   * revalidated here. */
- async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:import('./conversation.ts').SourceRef[],metadataGuards:{noteId:string;revision:number;snapshot:string}[]=[]){
+ async compareGroundedDialogue(before:Dialogue|undefined,next:Dialogue,refs:SourceRef[],metadataGuards:{noteId:string;revision:number;snapshot:string}[]=[]){
   ({before,next,refs,metadataGuards}=structuredClone({before,next,refs,metadataGuards}));
   validateDialogue(next);if(!Array.isArray(refs)||!Array.isArray(metadataGuards)||!refs.length&&!metadataGuards.length||!metadataGuards.every(isSourceMetadataGuard))throw Error('Source required');
   const previous=new Map((before?.turns??[]).map(turn=>[turn.id,turn]));
