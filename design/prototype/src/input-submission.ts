@@ -1,6 +1,7 @@
 import {appendTurn,INTERRUPTED_TURN_STATUS,type Dialogue} from './conversation.ts';
 import {prepareOriginal,readOriginal,originalRef,originalText,checkAttachmentBatch,type OriginalAsset,type OriginalRef,type OriginalKind} from './original-assets.ts';
-import {readingRef,readingStatus,type ReviewedText,type InputReadingRef} from './input-readings.ts';
+import {readingRef,readingStatus,type ReviewedText} from './input-readings.ts';
+import type {InputReadingRef} from './input-reading-contract.ts';
 import {bindVoice} from './voice-input.ts';
 import type {VoiceInput} from './voice-input-contract.ts';
 import {recoverSubmittedInput} from './input-recovery.ts';
