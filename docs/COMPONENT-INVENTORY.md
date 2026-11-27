@@ -1,8 +1,10 @@
 # BabelShelf コンポーネント台帳
 
-## Latest published debug candidate · 2026-11-27
+## Latest published debug candidate · 2026-11-28
 
 Product main commit `45728b823c8c97b272fe5c1c825e6fc969e914fe` (PR #175) builds as `1b4c75119a496fe0` with 170 assets and entry `index-fo_rNhlw.js`. Exact-head GitHub Actions run 46013739872 passed all 20 stages; post-merge main run 46016739923 passed all 20 stages. The change exposes the byte count and an explicit confirmation action for removing incomplete pinned-model files only. Focused OPFS/backend tests passed 49/49, Chromium UI acceptance passed 1/1, and full local `npm run test:quality` passed. It does not raise the effective OPFS write limit or complete the default Q4 download. Public Site v423 is live and its build manifest and entry match the candidate bytes. Muse's exact Q4 Decision/tool flow, same-profile backup restore, real-model Repair retention, broad search conflicts, and schedule validation remain unverified. General release remains DO-NOT-SHIP. See [REMAINING-GATES.md](REMAINING-GATES.md) and [TEST-RESULTS.txt](TEST-RESULTS.txt).
+
+Continuation check · 2026-11-28: GitHub main quality workflow 46021785395 completed successfully across 20 stages. This was a read-only re-audit; no product files changed and no new model/browser claim is made. Decision, backup/restore, Repair retention, broad search conflicts, schedule answer validation and long-generation behavior remain open P0s. The exact Decision reproduction needs the auditor's model ID/quantization, ONNX plus external-data hashes, runtime/provider and failure trace; the previously passing D1 Q8/JSEP test is not interchangeable evidence. Current public Site remains v423.
 
 ## Earlier Audit 20 snapshot · 2026-11-27
 
