@@ -78,7 +78,7 @@ The source scan has not established two production algorithms with identical con
 | Overgrown composition root | `Prototype.tsx` is 1,555 lines and had 142 local imports in the static scan | Keep composition/UI state here; extract one completed workflow only when its inputs, outputs and cancellation are explicit |
 | One source dependency cycle | Conversation/execution cluster remains; knowledge/recovery was removed by the 2026-11-28 contract batch | Separate by owned contracts and migrate all callers; do not paper over with type-only barrels |
 | Preferences aggregate unrelated domain schemas | `preference-records.ts` parses user settings and depends on role validators for several model types | Inventory individual settings and validators before splitting; preserve single versioning/migration authority |
-| Architecture boundaries are not generally enforced | Root `scripts/check.mjs` checks built JS syntax, DOM IDs, model pins and shell hashes, not the TypeScript dependency graph | Agree the boundaries first, then add a static check for the migrated core rather than grandfathering the whole tree |
+| Architecture boundaries are only partly enforced | `scripts/check-architecture.mjs` protects three leaf contracts and the deferred backup dependency; the broad source graph still has one conversation SCC | Extend checks only after each additional boundary is migrated; do not claim the whole graph is cycle-free |
 | Flat source layout mixes UI, domains, workers and platform clients | Most source modules are siblings under `design/prototype/src`, with `tools/` as a partial exception | Move only when a cohesive module contract is completed; path changes alone are not progress |
 
 ### Dependency scan findings and limits
