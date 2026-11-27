@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
-// D1's pinned Q4 token-embedding graph uses com.microsoft::GatherBlockQuantized.
-// The WebGPU-specific reduced-operator bundle omits it; the full JSEP bundle
-// in this same pinned ORT build registers it for WebGPU and WASM execution.
+// Compatible D1 Q4 token-embedding graphs can use com.microsoft::GatherBlockQuantized.
+// The built-in D1 manifest is Q8; keep the full pinned JSEP bundle so a Q4 graph
+// unsupported by WebGPU can fall back to the WASM provider that implements this op.
 import * as ort from 'onnxruntime-web';
 import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url';
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
