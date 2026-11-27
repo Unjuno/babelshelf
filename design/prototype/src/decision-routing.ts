@@ -1,4 +1,4 @@
-import {type DialogueContext} from './conversation.ts';
+import type {DialogueContext} from './dialogue-contract.ts';
 import {pinDecisionIdentity,type DecisionClassification,type DecisionIdentity,type DecisionRuntime} from './decision-port.ts';
 import type {DecisionQuestion} from './decision.ts';
 import type {ActivityTool} from './harness-activity.ts';

@@ -1,5 +1,6 @@
 import {calculate} from './tools/math.calculate/tool.ts';
-import {planningContextForInputs} from './current-input-scope.ts';
+import {planningContextForInputs} from './dialogue-context-projection.ts';
+import {requestNamesEarlierDialogue,requestNamesWorkingFile} from './dialogue-request.ts';
 import {namesExplicitSavedKnowledge,namesDeicticFile,requestsCrossSource} from './saved-knowledge-reference.ts';
 import {HARNESS_ACTIONS,plannerRoutingInstruction,validHarnessAction,validHarnessTarget,validAgentResultAction,type PlannerScope,type PlannerToolSchema} from './harness-actions.ts';
 import {harnessGuidanceMessage} from './harness-guidance.ts';
@@ -12,27 +13,13 @@ import {agentEvidenceFromCalls,agentCalculationsFromCalls,agentClockReadingsFrom
 import {createWebCitation,type WebSnapshot} from './web-evidence.ts';
 import {answerLanguageInstruction,englishOneSentenceFormat,groundedOutputTokens,replyStyleInstruction,requestsExtendedReply,type ReplyStyle} from './reply-style.ts';
 import {AgentContextCapacityError,type AgentToolCapability} from './agent-loop.ts';
-import {historyPayload,historyMessages,type DialogueContext,type ChatEngine} from './conversation.ts';
+import {historyPayload,historyMessages} from './conversation.ts';
+import type {DialogueContext} from './dialogue-contract.ts';
+import type {TextEngine} from './text-inference.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 // @ts-expect-error Shared baseline is JavaScript.
 import {parseJSON,searchNotes} from '../../../dist/core.js';
 
-export function requestNamesWorkingFile(question:string){
- return /\b(?:(?:in|from|about|within|inside|on)\s+)?(?:(?:this|that|the|current|currently\s+open(?:ed)?(?:\s+[\w-]+){0,2}|open(?:ed)?)\s+)?(?:(?:input|attached)\s+)?(?:file|note|document|memo)\b/i.test(question)
-  ||/(?:この|その|当該|今(?:開いている)?|現在の|開いた)?(?:(?:入力|添付)(?:した|された)?)?(?:ファイル|メモ|ノート|文書|資料)(?:の|に|で|から|について|を|内|中)/.test(question)
-  ||/(?:这(?:个|份|篇)?(?:文件|文档|笔记)|(?:文件|文档|笔记)(?:中|里|内))/.test(question)
-  ||/\b(?:en|dentro de|sobre|desde)\s+(?:(?:este|esta|ese|esa|el|la|actual)\s+)?(?:archivo|documento|nota)\b/i.test(question)
-  ||/\b(?:dans|sur|depuis)\s+(?:(?:ce|cette|le|la)\s+)?(?:fichier|document|note)\b/i.test(question)
-  ||/\b(?:aus|über)\s+(?:(?:dieser|diese|dieses|der|die|das|aktuellen)\s+)?(?:datei|dokument|notiz)\b/i.test(question);
-}
-export function requestNamesEarlierDialogue(question:string){
- // Bare "before"/"prior" also describe dates and arithmetic ("minutes before
- // 15:00"); they must not redirect a saved-note question to dialogue history.
- return /\b(?:earlier|previous(?:ly)?|last time|past conversation|conversation history|earlier message|previous message|what did (?:i|we|you) (?:say|ask|tell|decide|mention)|our conversation|chat history|my first message)\b/i.test(question)
-  ||/\b(?:as (?:before|above)|same (?:way|thing|format|style)|likewise)\b|(?:同じように|同様に|前と同じ|さっきと同じ)/iu.test(question)
-  ||/(?:前に|以前|さっき|先ほど|前回|前の会話|過去の会話|会話履歴|前のメッセージ|以前の発言|私が(?:言った|聞いた|話した)|話した内容|決めたこと)/.test(question)
-  ||/(?:之前|以前|刚才|上次|以前的对话|历史对话|之前我说|我们讨论)/.test(question);
-}
 // Match the model payload to the already restricted request scope. This is a
 // transient projection; saved originals and context used by later tools remain.
 /** Explicit saved content is not a dialogue-original or implicit working-file
@@ -426,7 +413,7 @@ function plannerInput(question:string,context:DialogueContext,attachments:{name:
  const tools=[...(agent?.allowedTools.filter(tool=>nativeToolIds?.includes(tool.id)).map(tool=>({type:'function' as const,function:{name:tool.id,description:(tool.usage||`Use ${tool.id}.`).slice(0,1000),parameters:tool.inputSchema?plannerInputSchema(tool.inputSchema):{type:'object',properties:{},additionalProperties:false}}}))??[]),...nativeFinalPlanTools(scope,[...replySources,...replyWebSources].map(source=>source.label),!!agent?.history.length)];
  return {operationalEvidence,messages:planDialogueMessages(question,context,attachments,agent,true,replySources),format:{type:'native-tool-plan' as const,tools},scope,replySources,replyWebSources};
 }
-export async function plannerContextFits(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext){
+export async function plannerContextFits(engine:TextEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext){
  const {messages,format}=plannerInput(question,context,attachments,agent,engine.plannerProtocol==='native-tool-calls'),count=await engine.count(messages,format);
  if(!Number.isSafeInteger(count.prompt_tokens)||count.prompt_tokens<0)throw Error('Invalid token count');
  const capacity=engine.manifest.contextTokens;
@@ -449,7 +436,7 @@ export async function plannerContextFits(engine:ChatEngine,question:string,conte
  const reserve=Math.max(MIN_PLANNER_OUTPUT_TOKENS,Math.min(desired,Math.floor((capacity-baseCount)/2)));
  return capacity-count.prompt_tokens>=reserve;
 }
-export async function planDialogue(engine:ChatEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext):Promise<DialoguePlan>{
+export async function planDialogue(engine:TextEngine,question:string,context:DialogueContext,attachments:{name:string;kind:string;status:string}[]=[],agent?:AgentPlannerContext):Promise<DialoguePlan>{
  const direct=plainConversationRoute(question,attachments,context);if(direct)return direct as DialoguePlan;
  engine=engine.pin?.()??engine;
  const input=plannerInput(question,context,attachments,agent,engine.plannerProtocol==='native-tool-calls'),{scope}=input;let {messages,format,replySources,replyWebSources,operationalEvidence}=input;

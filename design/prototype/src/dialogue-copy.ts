@@ -1,4 +1,5 @@
-import {resolveDialogueTarget,readDialogueTurn,dialogueTurnStatus,type Dialogue,type DialogueTarget} from './conversation.ts';
+import {resolveDialogueTarget,readDialogueTurn,dialogueTurnStatus,type DialogueTarget} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 
 export type DialogueCopy={schema:1;noteRevision:1;turnId:string;turnIndex:number;speaker:'user'|'assistant';quote:string;refs:SourceRef[];edited:boolean};

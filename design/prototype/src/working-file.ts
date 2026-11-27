@@ -1,14 +1,14 @@
 import {videoTimingCoverage} from './speech-transcript.ts';
 import {validHarnessTarget} from './harness-actions.ts';
-import type {Dialogue} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 import type {SourceRef} from './source-reference-contract.ts';
-import {requestNamesEarlierDialogue,requestNamesWorkingFile} from './dialogue-planner.ts';
+import {requestNamesEarlierDialogue,requestNamesWorkingFile} from './dialogue-request.ts';
 import {namedSavedSubject,namesExplicitSavedKnowledge,namesSavedKnowledge} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {latest,searchableNoteIds,searchNotes,chunks} from '../../../dist/core.js';
 // @ts-expect-error Shared canonical path contract is JavaScript.
 import {notePath} from '../../../dist/files.js';
-export type WorkingFile={noteId:string;revision:number};
+import type {WorkingFile} from './working-file-contract.ts';
 export function validateWorkingFile(value:unknown):WorkingFile{
  const pin=value as WorkingFile;
  if(!pin||typeof pin!=='object'||Array.isArray(pin)||Object.keys(pin).sort().join(',')!=='noteId,revision'||typeof pin.noteId!=='string'||!pin.noteId||!Number.isSafeInteger(pin.revision)||pin.revision<1)throw Error('Working file invalid');return pin;

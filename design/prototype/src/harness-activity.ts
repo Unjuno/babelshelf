@@ -139,7 +139,7 @@ export function createTurnActivityTracer(ports:{check:()=>void;readActivities:()
  };
 }
 /** Preserve old inline receipts and append overflow in separately persisted pages. */
-export async function persistTurnActivity(ports:{turnId:string;readActivities:()=>Activity[]|undefined;readStored:()=>import('./conversation.ts').Dialogue|undefined;persistInline:(activities:Activity[])=>Promise<void>;persistPaged:(turnId:string,activity:Activity,expected:import('./conversation.ts').Dialogue)=>Promise<void>},activity:Activity){
+export async function persistTurnActivity(ports:{turnId:string;readActivities:()=>Activity[]|undefined;readStored:()=>import('./dialogue-contract.ts').Dialogue|undefined;persistInline:(activities:Activity[])=>Promise<void>;persistPaged:(turnId:string,activity:Activity,expected:import('./dialogue-contract.ts').Dialogue)=>Promise<void>},activity:Activity){
  const inline=ports.readActivities();if(!inline)throw Error('Input unavailable');
  if(inline.some(item=>item.id===activity.id)||inline.length<MAX_ACTIVITY_EVENTS_PER_TURN){await ports.persistInline(updateActivity(inline,activity));return false;}
  const expected=ports.readStored();if(!expected)throw Error('Input unavailable');await ports.persistPaged(ports.turnId,activity,expected);return true;

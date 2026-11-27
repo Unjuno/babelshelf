@@ -1,4 +1,5 @@
-import {KnowledgeStore} from '../src/knowledge-store';import {appendTurn,emptyDialogue,completeTurn,type Dialogue} from '../src/conversation';import {recordOperation,startActivity,updateActivity,type Activity} from '../src/harness-activity';import {stateHash} from '../src/backup-state';
+import {KnowledgeStore} from '../src/knowledge-store';import {appendTurn,emptyDialogue,completeTurn} from '../src/conversation';
+import type {Dialogue} from '../src/dialogue-contract';import {recordOperation,startActivity,updateActivity,type Activity} from '../src/harness-activity';import {stateHash} from '../src/backup-state';
 const output=document.querySelector('#results')!;document.querySelector('#run')!.addEventListener('click',async()=>{
  const name='babelshelf-activity-qa-'+crypto.randomUUID(),a=new KnowledgeStore(name),b=new KnowledgeStore(name),restore=new KnowledgeStore(name+'-restored'),lines:string[]=[];const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);lines.push('PASS · '+label);output.textContent=lines.join('\n');};
  try{await a.initialize([]);await restore.initialize([]);let state=appendTurn(emptyDialogue(),{id:'test',user:'Find a note'});await a.compareState('dialogue',undefined,state);

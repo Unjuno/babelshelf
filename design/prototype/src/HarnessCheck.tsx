@@ -6,7 +6,7 @@ import {parseHarnessCases,type HarnessFixture as Fixture} from './harness-fixtur
 import {Engine} from '../../../dist/engine.js';
 import manifest from '../../../dist/model-manifest.json';
 import {dialogueAnswerMessages} from './grounded-answer';
-import type {DialogueContext} from './conversation';
+import type {DialogueContext} from './dialogue-contract.ts';
 import {parseChatAnswer} from './conversation';
 
 const code='CEDAR-4826',expected='CEDAR\n4826';

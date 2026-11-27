@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const sourceRoot=path.resolve('design/prototype/src');
 const extensions=['.ts','.tsx','.js','.jsx'];
-const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts']);
+const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts','dialogue-contract.ts','working-file-contract.ts']);
 const files=[];
 async function collect(directory){
  for(const entry of await fs.readdir(directory,{withFileTypes:true})){
@@ -26,10 +26,15 @@ for(const file of files){
   if(target)graph.get(file).push(target);
  }
 }
-for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts']]){
+for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts'],['DialogueOutcome','dialogue-contract.ts'],['DialogueTurn','dialogue-contract.ts'],['Dialogue','dialogue-contract.ts'],['DialogueContext','dialogue-contract.ts'],['WorkingFile','working-file-contract.ts']]){
  const declarations=[];
  for(const file of files){const source=await fs.readFile(file,'utf8');for(const match of source.matchAll(new RegExp(`\\b(?:export\\s+)?type\\s+${name}\\s*=`, 'g')))declarations.push({file,offset:match.index});}
  if(declarations.length!==1||declarations[0].file!==path.join(sourceRoot,owner))throw Error(`${name} must have one declaration in ${owner}`);
+}
+for(const [name,owner] of [['requestNamesWorkingFile','dialogue-request.ts'],['requestNamesEarlierDialogue','dialogue-request.ts'],['planningContextForInputs','dialogue-context-projection.ts']]){
+ const declarations=[];
+ for(const file of files){const source=await fs.readFile(file,'utf8');for(const match of source.matchAll(new RegExp(`\\bexport\\s+function\\s+${name}\\s*\\(`,'g')))declarations.push(file);}
+ if(declarations.length!==1||declarations[0]!==path.join(sourceRoot,owner))throw Error(`${name} must have one implementation in ${owner}`);
 }
 
 let nextIndex=0;
@@ -50,6 +55,7 @@ for(const component of components){
  const protectedMembers=component.filter(file=>protectedContracts.has(path.basename(file)));
  if(protectedMembers.length)throw Error(`Architecture contract participates in a static import cycle: ${protectedMembers.map(file=>path.relative(sourceRoot,file)).join(', ')}`);
 }
+if(components.length)throw Error(`Source modules must be acyclic; found ${components.length} strongly connected component(s): ${components.map(component=>component.map(file=>path.relative(sourceRoot,file).replaceAll(path.sep,'/')).sort().join(' ↔ ')).join(' | ')}`);
 
 const store=path.join(sourceRoot,'knowledge-store.ts'),backup=path.join(sourceRoot,'backup-state.ts');
 const reachable=new Set(),pending=[store];
@@ -58,5 +64,4 @@ if(reachable.has(backup))throw Error('KnowledgeStore static dependency graph mus
 const conversation=path.join(sourceRoot,'conversation.ts');
 for(const owner of ['dialogue-planner.ts','dialogue-agent.ts'])if(graph.get(conversation)?.includes(path.join(sourceRoot,owner)))throw Error(`conversation.ts must not re-export or import ${owner}`);
 const edgeCount=[...graph.values()].reduce((count,edges)=>count+edges.length,0);
-console.log(`Architecture contracts / deferred backup dependency: PASS · ${files.length} source files · ${edgeCount} static imports · ${components.length} existing cycle(s)`);
-for(const component of components)console.log(`Existing cycle: ${component.map(file=>path.relative(sourceRoot,file).replaceAll(path.sep,'/')).sort().join(' ↔ ')}`);
+console.log(`Architecture contracts / deferred backup dependency / acyclic source graph: PASS · ${files.length} source files · ${edgeCount} static imports · 0 cycles`);

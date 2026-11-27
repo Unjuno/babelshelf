@@ -1,7 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {planDialogue,planDialogueMessages} from '../src/dialogue-planner.ts';
 import * as inputScope from '../src/current-input-scope.ts';
-const {planningContextForInputs,bindCurrentInputRequest}=inputScope;
+import {planningContextForInputs} from '../src/dialogue-context-projection.ts';
+const {bindCurrentInputRequest}=inputScope;
 const context={summary:'',recent:[],refs:[],turnCount:1,currentFile:{noteId:'OLD-SETTINGS-TARGET',revision:3}},inputs=[{name:'new.md',kind:'text',status:'Text available'}];
 test('current attachment retrieval uses the literal human request without rewriting planner evidence',()=>{
  const question='What is the marker in this attachment?',proposal={action:'answer',query:'Earlier marker OLD-481',target:'inputs'},before=structuredClone(proposal);

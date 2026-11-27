@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {BottomSheet} from './mobile';
 import type {CorrectionTargetOption} from './saved-correction-target';
-import type {WorkingFile} from './working-file';
+import type {WorkingFile} from './working-file-contract.ts';
 
 export function useCorrectionTargetChoice(){
  const [choice,setChoice]=useState<CorrectionTargetOption[]|null>(null);

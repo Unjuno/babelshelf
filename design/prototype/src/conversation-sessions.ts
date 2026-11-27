@@ -1,4 +1,5 @@
-import {emptyDialogue,validateDialogue,type Dialogue} from './conversation.ts';
+import {emptyDialogue,validateDialogue} from './conversation.ts';
+import type {Dialogue} from './dialogue-contract.ts';
 export type ConversationSession={id:string;name:string;createdAt:string;updatedAt:string};
 export type ConversationSessions={schema:1;activeId:string;sessions:ConversationSession[]};
 export const CONVERSATION_SESSIONS_KEY='ui-v1-conversation-sessions';

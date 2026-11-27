@@ -1,5 +1,6 @@
 import {KnowledgeStore} from '../src/knowledge-store';
-import {emptyDialogue,appendTurn,completeTurn,validateDialogue,type Dialogue} from '../src/conversation';
+import {emptyDialogue,appendTurn,completeTurn,validateDialogue} from '../src/conversation';
+import type {Dialogue} from '../src/dialogue-contract';
 const output=document.querySelector('#results')!;
 document.querySelector('#run')!.addEventListener('click',async()=>{
  const name='babelshelf-dialogue-qa-'+crypto.randomUUID(),a=new KnowledgeStore(name),b=new KnowledgeStore(name),lines:string[]=[];

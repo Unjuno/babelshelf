@@ -1,13 +1,16 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
-import {currentDialogueResult,dialogueContext,type Dialogue,type DialogueContext} from './conversation.ts';
-import {contextIndependentConversation,independentSavedKnowledgeContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type DialoguePlan} from './dialogue-planner.ts';
+import {currentDialogueResult,dialogueContext} from './conversation.ts';
+import {contextIndependentConversation,independentSavedKnowledgeContext,type DialoguePlan} from './dialogue-planner.ts';
+import type {Dialogue,DialogueContext} from './dialogue-contract.ts';
+import {requestNamesEarlierDialogue,requestNamesWorkingFile} from './dialogue-request.ts';
 import {explicitInputQuestion,explicitQuoteRequest} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest} from './input-readings.ts';
 import type {CurrentInputRef} from './input-reading-contract.ts';
 import {namedEnglishSavedSubject,namedJapaneseSavedSubject,namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge,requestsCompoundSearchTask,requestsCrossSource,requestsLocalSearchReadAnswer} from './saved-knowledge-reference.ts';
-import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest,type WorkingFile} from './working-file.ts';
+import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest} from './working-file.ts';
+import type {WorkingFile} from './working-file-contract.ts';
 import {earlierOperationContext} from './dialogue-outcomes.ts';
 import {explicitLiteralReplacement,namedCorrectionClause,unquotedCorrectionText} from './correction-request.ts';
 

@@ -1,4 +1,6 @@
-import {boundedDialogueContext,compactDialogue,dialogueContextFits,type ChatEngine,type Dialogue,type DialogueContext} from './conversation.ts';
+import {boundedDialogueContext,compactDialogue,dialogueContextFits} from './conversation.ts';
+import type {TextEngine} from './text-inference.ts';
+import type {Dialogue,DialogueContext} from './dialogue-contract.ts';
 import {independentSavedKnowledgeContext} from './dialogue-planner.ts';
 import {addMeasurement,recordGenerationMeasurements,type InferenceMeasurements} from './inference-measurements.ts';
 import type {ActivityTool} from './harness-activity.ts';
@@ -6,10 +8,10 @@ import type {ActivityTool} from './harness-activity.ts';
 type Trace=<T>(tool:ActivityTool,input:unknown,work:()=>Promise<T>,project?:(value:T)=>unknown,failureOf?:(value:T)=>unknown,failureProject?:(error:unknown)=>unknown)=>Promise<T>;
 type ContextInference=InferenceMeasurements&{lastCountPromptTokens?:number;contextTokens?:number};
 /** Observe context preparation without retaining prompt or generated text in the activity receipt. */
-function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatEngine{
+function observeContextInference(engine:TextEngine,usage:ContextInference):TextEngine{
  return new Proxy(engine,{get(target,property){
   if(property==='pin')return ()=>observeContextInference(target.pin?.()??target,usage);
-  if(property==='count')return async(...args:Parameters<ChatEngine['count']>)=>{
+  if(property==='count')return async(...args:Parameters<TextEngine['count']>)=>{
    const started=performance.now();try{
     const result=await target.count(...args);
     // Record the last fit candidate, not a sum of mutually exclusive prompts.
@@ -21,7 +23,7 @@ function observeContextInference(engine:ChatEngine,usage:ContextInference):ChatE
    }catch(error){delete usage.lastCountPromptTokens;delete usage.contextTokens;throw error;}
    finally{usage.countMs=addMeasurement(usage.countMs,performance.now()-started);}
   };
-  if(property==='generate')return async(...args:Parameters<ChatEngine['generate']>)=>{
+  if(property==='generate')return async(...args:Parameters<TextEngine['generate']>)=>{
    const started=performance.now();usage.measuredModelCalls++;
    try{
     const result=await target.generate(...args);
@@ -40,7 +42,7 @@ function inferenceReceipt(usage:ContextInference){
 /** Prepare one planner context from a pinned dialogue, persisting only a changed compaction. */
 export async function prepareTurnContext(input:{
  prior:Dialogue;
- engine:ChatEngine;
+ engine:TextEngine;
  model:string|undefined;
  question:string;
  currentInputs?:boolean;
@@ -49,7 +51,7 @@ export async function prepareTurnContext(input:{
  currentDialogue:()=>Dialogue;
  saveDialogue:(dialogue:Dialogue)=>Promise<void>;
  trace:Trace;
- fitsPlanner?:(context:DialogueContext,engine?:ChatEngine)=>Promise<boolean>;
+ fitsPlanner?:(context:DialogueContext,engine?:TextEngine)=>Promise<boolean>;
 }):Promise<DialogueContext>{
  input.check();
  const saved=independentSavedKnowledgeContext(input.question,input.currentInputs);if(saved)return saved;

@@ -1,4 +1,4 @@
-import type {WorkingFile} from './working-file.ts';
+import type {WorkingFile} from './working-file-contract.ts';
 import {workingFileNote,workingFileMetadata} from './working-file.ts';
 
 export type CorrectionTargetOption=WorkingFile&{path:string};
