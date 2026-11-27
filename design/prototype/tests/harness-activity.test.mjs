@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {recordOperation,startActivity,finishActivity,validateActivity,activityLabel} from '../src/harness-activity.ts';
 import {AgentToolResultTooLargeError} from '../src/agent-loop.ts';
 import {emptyDialogue,appendTurn,dialogueContext,historyPayload,validateDialogue} from '../src/conversation.ts';
-import {planDialogue} from '../src/conversation.ts';
+import {planDialogue} from '../src/dialogue-planner.ts';
 const input={query:'日本語の記録'};
 test('folder listing executes and persists an activity receipt',async()=>{
  const entries=[];const result=await recordOperation('memory.list',{path:'Inbox'},async()=>({entries:[]}),async item=>entries.push(item));

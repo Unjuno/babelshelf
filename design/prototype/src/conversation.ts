@@ -281,9 +281,6 @@ export async function compactDialogue(state:Dialogue,engine:ChatEngine,question:
  }
  throw Error('Context limit · original retained');
 }
-export * from './dialogue-planner.ts';
-export {planDialogueAgent} from './dialogue-agent.ts';
-
 export function parseChatAnswer(text:string,evidence:any[],dialogueOnly=false){
  const value=parseJSON(text);if(value?.status!==undefined){const parsed=parseAnswer(text,evidence);if(parsed.status==='insufficient_evidence')throw Error('Insufficient evidence');return {answer:parsed.answer as string,sources:parsed.refs as SourceRef[]};}if(typeof value.answer!=='string'||!value.answer.trim()||value.citations===undefined&&!dialogueOnly||value.citations!==undefined&&!Array.isArray(value.citations))throw Error('Invalid answer');
  if(value.citations===undefined)return {answer:value.answer as string,sources:[] as SourceRef[]};

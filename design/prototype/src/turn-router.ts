@@ -1,6 +1,7 @@
 // Application routing policy for one submitted turn. Model adapters, UI state,
 // activity persistence and action execution remain behind caller-owned ports.
-import {contextIndependentConversation,currentDialogueResult,dialogueContext,independentSavedKnowledgeContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type Dialogue,type DialogueContext,type DialoguePlan} from './conversation.ts';
+import {currentDialogueResult,dialogueContext,type Dialogue,type DialogueContext} from './conversation.ts';
+import {contextIndependentConversation,independentSavedKnowledgeContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type DialoguePlan} from './dialogue-planner.ts';
 import {explicitInputQuestion,explicitQuoteRequest} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
 import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';

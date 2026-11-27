@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {planDialogue,planDialogueMessages} from '../src/conversation.ts';
+import {planDialogue,planDialogueMessages} from '../src/dialogue-planner.ts';
 import * as inputScope from '../src/current-input-scope.ts';
 const {planningContextForInputs,bindCurrentInputRequest}=inputScope;
 const context={summary:'',recent:[],refs:[],turnCount:1,currentFile:{noteId:'OLD-SETTINGS-TARGET',revision:3}},inputs=[{name:'new.md',kind:'text',status:'Text available'}];

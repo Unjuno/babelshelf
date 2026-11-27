@@ -69,13 +69,13 @@ test('legacy capture review is shown as interrupted without changing stored text
 test('explicit saved-file work cannot select an unrelated current answer, history or pinned file',async()=>{
  const question='保存したQA星見のメモの水をお茶に直して。';
  const context={summary:'Earlier unrelated summary',recent:[{id:'old',user:'Unrelated old request',answer:'Unrelated current answer'}],refs:[],turnCount:1,currentResult:{turnId:'old'},currentFile:{noteId:'unrelated',revision:1}};
- const before=structuredClone(context),scope=conversation.plannerScope(context,false,question);
+ const before=structuredClone(context),scope=dialoguePlanner.plannerScope(context,false,question);
  assert.equal(scope.current,false);assert.equal(scope.file,false);assert.equal(scope.historyCount,0);
  const prompts=planDialogueMessages(question,context);assert.doesNotMatch(JSON.stringify(prompts),/Earlier unrelated summary|Unrelated old request|Unrelated current answer|"noteId":"unrelated"/);
  const engine={manifest:{contextTokens:4096},count:async()=>({prompt_tokens:100}),generate:async()=>({text:'{"action":"transform","query":"","target":"current"}'})};
  await assert.rejects(planDialogue(engine,question,context));assert.deepEqual(context,before);
- assert.equal(conversation.plannerScope(context,false,'What did I say earlier about my saved note?').historyCount,1);
- assert.equal(conversation.plannerScope(context,false,'Compare this file with the saved meeting note.').file,true);
+ assert.equal(dialoguePlanner.plannerScope(context,false,'What did I say earlier about my saved note?').historyCount,1);
+ assert.equal(dialoguePlanner.plannerScope(context,false,'Compare this file with the saved meeting note.').file,true);
 });
 
 test('explicit Memory paths select fresh knowledge context without losing real dialogue follow-ups',async()=>{
@@ -83,7 +83,7 @@ test('explicit Memory paths select fresh knowledge context without losing real d
  const context={summary:'Stale English comparison',recent:[{id:'old',user:'Old task',answer:'Old invented translation'}],refs:[],turnCount:1,currentResult:{turnId:'old'},currentFile:{noteId:'unrelated',revision:1}};
  const before=structuredClone(context);
  for(const question of ['Read Notes/alpha.md and compare it with Notes/beta.md.','user.read-pair を first="Inbox/資料.md", second="Inbox/資料二.md" で実行して比較してください。']){
-  const scope=conversation.plannerScope(context,false,question);
+  const scope=dialoguePlanner.plannerScope(context,false,question);
   assert.equal(scope.historyCount,0);assert.equal(scope.current,false);assert.equal(scope.file,false);
   assert.doesNotMatch(JSON.stringify(planDialogueMessages(question,context,[],undefined,true)),/Stale English comparison|Old invented translation|unrelated/);
   assert.equal(independentSavedKnowledgeContext(question,true),null,'current attachments keep the mixed-input path');
@@ -111,7 +111,8 @@ test('planner retains bounded source provenance without exposing unchecked quote
 });
 import assert from 'node:assert/strict';
 import {planDialogueAgent} from '../src/dialogue-agent.ts';
-import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,planDialogue,planDialogueMessages,readDialogueTurn,resolveDialogueTarget,plannerOutputTokenBudget,plannerResponseTokenBudget} from '../src/conversation.ts';
+import {emptyDialogue,appendTurn,completeTurn,dialogueContext,boundedDialogueContext,historyPayload,historyMessages,compactDialogue,compactionMessages,parseChatAnswer,readDialogueTurn,resolveDialogueTarget} from '../src/conversation.ts';
+import {planDialogue,planDialogueMessages,plannerOutputTokenBudget,plannerResponseTokenBudget} from '../src/dialogue-planner.ts';
 
 test('planner output budget grows with context but never exceeds remaining capacity',()=>{
  assert.equal(plannerOutputTokenBudget(100,2048),512);
@@ -199,6 +200,7 @@ test('planner serialization keeps retained dialogue before changing selectors wi
  assert.deepEqual([old,next],before);
 });
 import * as conversation from '../src/conversation.ts';
+import * as dialoguePlanner from '../src/dialogue-planner.ts';
 import {groundedAnswer,dialogueAnswerMessages} from '../src/grounded-answer.ts';
 import {createTurnInferenceBudget} from '../src/turn-inference-budget.ts';
 import {applyTextTransform,textTransformMessages,transformDialogueText} from '../src/text-transform.ts';
@@ -216,7 +218,7 @@ test('dialogue compaction also fits the actual planner overhead without discardi
 });
 
 test('an exact planner fit supersedes the generic history quota and counts complete tools with the output reserve',async()=>{
- const {plannerContextFits}=await import('../src/conversation.ts');
+ const {plannerContextFits}=await import('../src/dialogue-planner.ts');
  const prior={schema:1,revision:1,turns:[{id:'one',user:'retained '.repeat(420),answer:'Original answer'}],compaction:null};let calls=0;
  const unchanged=await compactDialogue(prior,{...engine(),generate:async()=>{calls++;return {text:'Should not compact'};}},'Continue',()=>{},async()=>true);
  assert.equal(unchanged,prior);assert.equal(calls,0);
@@ -1249,17 +1251,17 @@ test('plain greetings take the model-backed conversation route without asking a 
 
 test('standalone greetings use a fresh answer context without deleting retained dialogue',async()=>{
  const prior={summary:'Workshop moved to Monday at 10.',recent:[{id:'turn-7',user:'What did we decide about the workshop?',answer:'Move it to Monday at 10.'}],refs:[{noteId:'meeting',revision:2,start:0,end:31,quote:'Workshop moved to Monday at 10.'}],turnCount:7,lastAnswerIndex:6};
- assert.equal(typeof conversation.contextIndependentConversation,'function');
- const result=conversation.contextIndependentConversation('Hello.',[],prior);
+ assert.equal(typeof dialoguePlanner.contextIndependentConversation,'function');
+ const result=dialoguePlanner.contextIndependentConversation('Hello.',[],prior);
  assert.deepEqual(result,{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}});
  assert.equal(prior.summary,'Workshop moved to Monday at 10.');assert.equal(prior.recent.length,1);assert.equal(prior.turnCount,7);
  let decisionCalls=0;assert.deepEqual(await resolveTurnRoute({current:result.request,question:'Hello.',select:async()=>{decisionCalls++;return {request:null,reason:'ambiguous'};},plan:async()=>({action:'capture'}),check:()=>{}}),{request:result.request,source:'explicit'});assert.equal(decisionCalls,0);
- assert.equal(conversation.contextIndependentConversation('What did we decide about the workshop?',[],prior),null);
- assert.deepEqual(conversation.contextIndependentConversation('Hello, what time is the workshop?',[],prior),{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}},'an unreferenced current question does not inherit an unrelated older topic');
- const farewell=conversation.contextIndependentConversation('Say goodbye in one short sentence.',[],prior);
+ assert.equal(dialoguePlanner.contextIndependentConversation('What did we decide about the workshop?',[],prior),null);
+ assert.deepEqual(dialoguePlanner.contextIndependentConversation('Hello, what time is the workshop?',[],prior),{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}},'an unreferenced current question does not inherit an unrelated older topic');
+ const farewell=dialoguePlanner.contextIndependentConversation('Say goodbye in one short sentence.',[],prior);
  assert.deepEqual(farewell,{request:{action:'chat',query:''},context:{summary:'',recent:[],refs:[],turnCount:0}});
- assert.equal(conversation.contextIndependentConversation('Say goodbye based on my saved notes.',[],prior),null);
- assert.equal(conversation.contextIndependentConversation('Hello.',[{name:'photo.jpg',kind:'image',status:'Image text not prepared'}],prior),null);
+ assert.equal(dialoguePlanner.contextIndependentConversation('Say goodbye based on my saved notes.',[],prior),null);
+ assert.equal(dialoguePlanner.contextIndependentConversation('Hello.',[{name:'photo.jpg',kind:'image',status:'Image text not prepared'}],prior),null);
 });
 
 test('explicit greeting requests skip action selection but source-based greetings keep the evidence planner',async()=>{
@@ -1303,7 +1305,7 @@ test('planner advertises the same available scopes it sends to local structured 
 });
 
 test('an explicitly current-file question cannot be routed to coincidentally matching old dialogue',async()=>{
- const {plannerScope}=await import('../src/conversation.ts');
+ const {plannerScope}=await import('../src/dialogue-planner.ts');
  const context={summary:'Earlier user question also mentions a marker and reserve.',recent:[{id:'open',user:'Read: Inbox/QA181-summary-source.md'}],refs:[],turnCount:54,currentFile:{noteId:'opened',revision:1},historyAssistantIndices:[3,22],recalled:[{turnId:'old',turnIndex:0,speaker:'user',quote:'What are the marker and reserve?',start:0,end:40}]};
  context.currentResult={turnId:'previous-answer'};
  const before=structuredClone(context);
@@ -1322,7 +1324,7 @@ test('an explicitly current-file question cannot be routed to coincidentally mat
 });
 
 test('planner assistant selectors come from retained originals across compaction, never failed-turn status',async()=>{
- const {plannerScope}=await import('../src/conversation.ts');
+ const {plannerScope}=await import('../src/dialogue-planner.ts');
  let state=appendTurn(emptyDialogue(),{id:'original',user:'Question',answer:'Original answer'});
  state=appendTurn(state,{id:'failed',user:'Another question',status:'Stopped'});
  state={...state,compaction:{through:1,summary:'Untrusted summary mentioning an invented answer'}};
@@ -1859,7 +1861,7 @@ test('an empty exact read is recoverable through another model-selected tool cal
 });
 
 test('native planner offers the stable selected local tool set alongside final actions',async()=>{
- const {plannerContextFits}=await import('../src/conversation.ts');let received;
+ const {plannerContextFits}=await import('../src/dialogue-planner.ts');let received;
  const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:4096},count:async(_messages,format)=>{received=format;return {prompt_tokens:100};}};
  const agent={allowedTools:[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.',inputSchema:{type:'object',required:['query'],additionalProperties:false,properties:{query:{type:'string',minLength:1,maxLength:2000}}}},{id:'memory.read',effect:'read',network:'none',usage:'Read an exact local note.'}],history:[]};
  assert.equal(await plannerContextFits(engine,'Search local Memory for my saved emergency water reserve note, read the exact file, then tell me its exact amount and identifier.',{summary:'',recent:[],refs:[],turnCount:0},[],agent),true);
@@ -1868,7 +1870,7 @@ test('native planner offers the stable selected local tool set alongside final a
 });
 
 test('native planner keeps selected tools available after a read',async()=>{
- const {plannerContextFits}=await import('../src/conversation.ts');let received;
+ const {plannerContextFits}=await import('../src/dialogue-planner.ts');let received;
  const engine={plannerProtocol:'native-tool-calls',manifest:{contextTokens:4096},count:async(_messages,format)=>{received=format;return {prompt_tokens:100};}};
  const agent={allowedTools:[{id:'memory.search',effect:'read',network:'none',usage:'Search local notes.'},{id:'memory.read',effect:'read',network:'none',usage:'Read an exact local note.'}],history:[{tool:'memory.search',arguments:{query:'emergency water reserve'},result:[{noteId:'note-1',revision:1,quote:'24 litres'}]},{tool:'memory.read',arguments:{query:'note-1'},result:[{noteId:'note-1',path:'Inbox/water.md',revision:1,excerpt:'24 litres'}]}]};
  const question='Search local Memory for my saved emergency water reserve note, read the exact file, then tell me its exact amount and identifier.';

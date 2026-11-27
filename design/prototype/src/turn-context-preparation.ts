@@ -1,4 +1,5 @@
-import {boundedDialogueContext,compactDialogue,dialogueContextFits,independentSavedKnowledgeContext,type ChatEngine,type Dialogue,type DialogueContext} from './conversation.ts';
+import {boundedDialogueContext,compactDialogue,dialogueContextFits,type ChatEngine,type Dialogue,type DialogueContext} from './conversation.ts';
+import {independentSavedKnowledgeContext} from './dialogue-planner.ts';
 import {addMeasurement,recordGenerationMeasurements,type InferenceMeasurements} from './inference-measurements.ts';
 import type {ActivityTool} from './harness-activity.ts';
 

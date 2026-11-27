@@ -50,5 +50,7 @@ const store=path.join(sourceRoot,'knowledge-store.ts'),backup=path.join(sourceRo
 const reachable=new Set(),pending=[store];
 while(pending.length){const file=pending.pop();if(reachable.has(file))continue;reachable.add(file);for(const target of graph.get(file)??[])pending.push(target);}
 if(reachable.has(backup))throw Error('KnowledgeStore static dependency graph must defer backup validation to its operation path');
+const conversation=path.join(sourceRoot,'conversation.ts');
+for(const owner of ['dialogue-planner.ts','dialogue-agent.ts'])if(graph.get(conversation)?.includes(path.join(sourceRoot,owner)))throw Error(`conversation.ts must not re-export or import ${owner}`);
 const edgeCount=[...graph.values()].reduce((count,edges)=>count+edges.length,0);
 console.log(`Architecture contracts / deferred backup dependency: PASS · ${files.length} source files · ${edgeCount} static imports · ${components.length} existing cycle(s)`);
