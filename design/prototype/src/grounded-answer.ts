@@ -8,7 +8,8 @@ import {parseAnswer,searchNotes,validateGroundingRefs} from '../../../dist/core.
 import {notePath} from '../../../dist/files.js';
 import type {KnowledgeStore} from './knowledge-store';
 import type {TextRuntime} from './text-inference';
-import {readingEvidence,type CurrentInputRef} from './input-readings.ts';
+import {readingEvidence} from './input-readings.ts';
+import type {CurrentInputRef} from './input-reading-contract.ts';
 import {historyMessages,parseChatAnswer,type DialogueContext} from './conversation.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 import {groundingQuery,audioOnlySuffix} from './current-input-scope.ts';

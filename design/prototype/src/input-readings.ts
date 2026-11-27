@@ -4,14 +4,13 @@ import {transcriptNote,validateTranscript,videoTimingCoverage,type Transcript} f
 import {visionTextNote,validateVisionText,type VisionText} from './vision-text.ts';
 import {videoVisionCoverage} from './video-observations.ts';
 import {originalKey,type OriginalAsset} from './original-assets.ts';
-import type {Dialogue} from './conversation.ts';
 import type {SourceRef} from './source-reference-contract.ts';
+import type {CurrentInputRef,InputReadingRef} from './input-reading-contract.ts';
+import type {OriginalRef} from './original-assets.ts';
 import {requestsCrossSource} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {searchableNoteIds,searchNotes,chunks,latest} from '../../../dist/core.js';
 export type ReviewedText={kind:'ocr';id:string;value:OcrText}|{kind:'pdf';id:string;value:PdfText}|{kind:'speech';id:string;value:Transcript}|{kind:'vision';id:string;value:VisionText};
-export type InputReadingRef={kind:'ocr'|'pdf'|'speech'|'vision';noteId:string;revision:1};
-export type CurrentInputRef=InputReadingRef|{kind:'text'|'video-audio';noteId:string;revision:1};
 export function inputReadingKind(note:any):InputReadingRef['kind']|undefined{
  const kinds=([['ocr','ocrText'],['pdf','pdfText'],['speech','transcription'],['vision','visionText']] as const).filter(([,field])=>note?.[field]);
  return !note?.originalAsset&&kinds.length===1?kinds[0][0]:undefined;
@@ -26,7 +25,7 @@ export function buildInputReadings(readings:ReviewedText[],runs:{key:string;valu
   if(r.kind==='ocr')return ocrTextNote(r.id,asset,r.value);if(r.kind==='pdf')return pdfTextNote(r.id,asset,r.value);if(r.kind==='speech')return transcriptNote(r.id,asset,r.value);if(r.kind==='vision')return visionTextNote(r.id,asset,r.value);throw Error('Input reading unsupported');
  });
 }
-export function validateInputReadings(dialogue:Dialogue|undefined,notes:any[],runs:{key:string;value:any}[]){
+export function validateInputReadings(dialogue:{turns?:{attachments?:{reading?:InputReadingRef;asset?:OriginalRef;voice?:unknown}[]}[]}|undefined,notes:any[],runs:{key:string;value:any}[]){
  for(const turn of dialogue?.turns??[])for(const a of turn.attachments??[])if(a.reading!==undefined){
   const r=a.reading,n=notes.find(n=>n.id===r?.noteId),v=n?.revisions?.find((v:any)=>v.version===r.revision),asset=runs.find(v=>v.key===originalKey(a.asset?.id??''))?.value as OriginalAsset;
   if(!r||Object.keys(r).sort().join(',')!=='kind,noteId,revision'||!['ocr','pdf','speech','vision'].includes(r.kind)||r.revision!==1||!n||!v||!asset||!a.asset||a.voice||n.originalAsset||n.mediaSource?.id!==a.asset.id||n.mediaSource?.revision!==a.asset.revision||n.mediaSource?.sha256!==a.asset.sha256)throw Error('Input reading link invalid');

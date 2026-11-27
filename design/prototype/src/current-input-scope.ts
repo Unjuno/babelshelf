@@ -1,6 +1,6 @@
 import type {DialogueContext} from './conversation.ts';
 import {requestNamesEarlierDialogue} from './dialogue-planner.ts';
-import type {CurrentInputRef} from './input-readings.ts';
+import type {CurrentInputRef} from './input-reading-contract.ts';
 import {requestsCrossSource} from './saved-knowledge-reference.ts';
 export const audioOnlySuffix=(text:string)=>/^[^?？\r\n;；]+[?？]\s*use only the audio[.!]?$/iu.test(text.trim());
 /** Select only the embedded transcript range of a mixed video observation. */

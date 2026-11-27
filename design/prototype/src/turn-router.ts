@@ -4,7 +4,8 @@ import {currentDialogueResult,dialogueContext,type Dialogue,type DialogueContext
 import {contextIndependentConversation,independentSavedKnowledgeContext,requestNamesEarlierDialogue,requestNamesWorkingFile,type DialoguePlan} from './dialogue-planner.ts';
 import {explicitInputQuestion,explicitQuoteRequest} from './current-input-scope.ts';
 import {bindCurrentInputRequest} from './current-input-scope.ts';
-import {routeInputRequest,type CurrentInputRef} from './input-readings.ts';
+import {routeInputRequest} from './input-readings.ts';
+import type {CurrentInputRef} from './input-reading-contract.ts';
 import {namedEnglishSavedSubject,namedJapaneseSavedSubject,namedSavedSubject,namesDeicticFile,namesExplicitSavedKnowledge,namesSavedKnowledge,requestsCompoundSearchTask,requestsCrossSource,requestsLocalSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {bindExplicitCurrentFileQuestion,bindWorkingFileRequest,scopeLiteralRequest,type WorkingFile} from './working-file.ts';
 import {earlierOperationContext} from './dialogue-outcomes.ts';

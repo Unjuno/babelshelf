@@ -8,7 +8,7 @@ import {validateActivity,type Activity} from './harness-activity.ts';
 import {harnessGuidanceMessage} from './harness-guidance.ts';
 import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 import {isSourceMetadataGuard} from './note-provenance.ts';
-import type {InputReadingRef} from './input-readings.ts';
+import type {InputReadingRef} from './input-reading-contract.ts';
 import type {VoiceInput} from './voice-input-contract.ts';
 // Dialogue is working context, never authorization or a replacement for canonical notes.
 // @ts-expect-error Shared baseline is JavaScript.

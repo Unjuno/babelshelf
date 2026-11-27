@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const sourceRoot=path.resolve('design/prototype/src');
 const extensions=['.ts','.tsx','.js','.jsx'];
-const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts']);
+const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts']);
 const files=[];
 async function collect(directory){
  for(const entry of await fs.readdir(directory,{withFileTypes:true})){
@@ -26,7 +26,7 @@ for(const file of files){
   if(target)graph.get(file).push(target);
  }
 }
-for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts']]){
+for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts']]){
  const declarations=[];
  for(const file of files){const source=await fs.readFile(file,'utf8');for(const match of source.matchAll(new RegExp(`\\b(?:export\\s+)?type\\s+${name}\\s*=`, 'g')))declarations.push({file,offset:match.index});}
  if(declarations.length!==1||declarations[0].file!==path.join(sourceRoot,owner))throw Error(`${name} must have one declaration in ${owner}`);
@@ -59,3 +59,4 @@ const conversation=path.join(sourceRoot,'conversation.ts');
 for(const owner of ['dialogue-planner.ts','dialogue-agent.ts'])if(graph.get(conversation)?.includes(path.join(sourceRoot,owner)))throw Error(`conversation.ts must not re-export or import ${owner}`);
 const edgeCount=[...graph.values()].reduce((count,edges)=>count+edges.length,0);
 console.log(`Architecture contracts / deferred backup dependency: PASS · ${files.length} source files · ${edgeCount} static imports · ${components.length} existing cycle(s)`);
+for(const component of components)console.log(`Existing cycle: ${component.map(file=>path.relative(sourceRoot,file).replaceAll(path.sep,'/')).sort().join(' ↔ ')}`);

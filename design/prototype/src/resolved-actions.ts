@@ -17,7 +17,7 @@ import {combineMemorySearchResults} from './memory-search-combine.ts';
 import {searchMemoryWithQuestionFallback} from './memory-search-fallback.ts';
 import {resolveReadCompletion,resolveSearchCompletion} from './read-completion.ts';
 import {resolveReadIntent} from './read-intent.ts';
-import type {CurrentInputRef} from './input-readings.ts';
+import type {CurrentInputRef} from './input-reading-contract.ts';
 import {validVisionModelIdentity} from './vision-model-identity.ts';
 // @ts-expect-error Shared canonical source validation is JavaScript.
 import {validateGroundingRefs} from '../../../dist/core.js';
