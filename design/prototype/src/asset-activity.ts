@@ -13,7 +13,7 @@ import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 import {speechManifest} from './speech-assets.ts';
 import {getSpeechManifest,speechModelLabel} from './speech-models.ts';
 import {visionManifest} from './vision-assets.ts';
-import type {CustomVisionModel} from './preference-records.ts';
+import type {CustomVisionModel} from './custom-vision-contract.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
 import {semanticEmbeddingManifestFor} from './semantic-embedding-manifest.ts';
 export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'vision.prepare'|'search.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare'|'runtime.prepare';

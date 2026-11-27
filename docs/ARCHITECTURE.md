@@ -1,6 +1,81 @@
 # Current application architecture
 
-Updated 2026-10-29. This document describes current ownership and runnable product boundaries. The accepted baseline and completed bounded Send refactor are documented in [architecture rationalization](ARCHITECTURE-RATIONALIZATION.md); current structural gaps and migration gates are in [architecture review](ARCHITECTURE-REVIEW.md). `ARCHITECTURE.txt` is retained as a historical 0.1 baseline.
+Updated 2026-11-28. This document describes current ownership and runnable product boundaries. The accepted baseline and completed bounded Send refactor are documented in [architecture rationalization](ARCHITECTURE-RATIONALIZATION.md); current structural gaps and migration gates are in [architecture review](ARCHITECTURE-REVIEW.md). `ARCHITECTURE.txt` is retained as a historical 0.1 baseline.
+
+## Source-verified module map · 2026-11-28
+
+This map was checked against current TypeScript/JavaScript imports and the product entry. It is a responsibility map, not a claim that every boundary is already enforced.
+
+```mermaid
+flowchart TD
+  UI[product entry + React screens] --> APP[application workflows/hooks]
+  APP --> DOMAIN[conversation, planner, grounding, tasks, corrections]
+  APP --> STORE[KnowledgeStore + IndexedDB adapters]
+  APP --> INFER[role-specific inference clients]
+  DOMAIN --> STORE
+  INFER --> WORKERS[dedicated model workers]
+  WORKERS --> RUNTIME[Wllama / ONNX Runtime Web / Transformers]
+  STORE --> IDB[(IndexedDB canonical records)]
+  WORKERS --> OPFS[(OPFS model/original assets)]
+  SW[service worker + verified shell] --> CACHE[(CacheStorage app/runtime assets)]
+  PRODUCT[product entry] --> SW
+```
+
+| Area | Main source | Owns | Must not own |
+|---|---|---|---|
+| Product composition | `design/prototype/product/` | Native app entry, startup recovery, shell styling and build entry | Product rules or alternate persistence |
+| UI and transient state | `design/prototype/src/Prototype.tsx`, focused screens, hooks | Navigation, drafts, sheets, progress presentation, composing existing operations | Canonical record validity or transaction authority |
+| Submission and agent workflow | `input-submission.ts`, `submission-workflow.ts`, `agent-coordinator.ts`, `agent-loop.ts`, `turn-router.ts` | Input snapshot, execution sequence, typed tool/action selection and stage outcomes | Direct mutation that bypasses storage contracts or approval |
+| Domain contracts | `conversation.ts`, `grounded-answer.ts`, `task-records.ts`, correction/source modules | IDs/revisions, evidence scope, task state, answer and review rules | Browser UI, IndexedDB transaction mechanics, runtime download |
+| Canonical local data | `knowledge-store.ts`, `useKnowledge.ts`, `dist/*storage*` and related adapters | IndexedDB records/revisions and their Markdown-style path projection | Treating Memory paths as host files; inference/runtime cache ownership |
+| Inference roles | `useBonsai.ts`, `useDecision.ts`, `useSpeech.ts`, `useVision.ts`, role-specific clients/workers | Model-specific preparation, loading, inference, cancellation and measurement | Cloud fallback or user data persistence |
+| Tool boundary | `src/tools/`, `custom-tool-*` | Registered local capabilities, schema validation and constrained dispatch | Granting authority from SKILL.md or model output |
+| Browser platform | `dist/`, service-worker code, OPFS/IDB adapters | Verified app/runtime cache, local assets, worker transport and browser policy | Product policy or silent acquisition |
+| Delivery and quality | `scripts/`, `specs/`, `tests/`, `design/prototype/tests/`, `feedback-api/` | Build/deployment adapters, contract/Node/browser/runtime checks | Replacing current product contracts with QA-only behavior |
+
+### State ownership
+
+| State | Authority | Projection/cache | Update boundary |
+|---|---|---|---|
+| Notes, revisions, folders, schedules, runs, notifications and persisted preferences | IndexedDB `mlb-memory-v1`, through `KnowledgeStore`/storage adapters | React screen state and Memory path tree | Validated store operations, expected revision checks and transactions |
+| Model/runtime files | Content-addressed CacheStorage for verified shared runtime assets; OPFS for prepared model assets | Per-role worker readiness and in-session loaded state | Explicit asset policy, pinned hashes, worker lifecycle |
+| Original media | Local original-asset store referenced by canonical records | Derived OCR/transcript/readings are separate records | Preserve original identity/revision and source ranges |
+| App shell | Build manifest + service-worker-managed CacheStorage | Current page/worker controller | Verified update/repair workflow |
+| Device diagnostic continuation/report | Bounded browser-local diagnostic storage | Developer screen | One-run marker and explicit report copy |
+| UI-only state | React component/hooks; specific short-lived browser markers where documented | Component rendering | User action or operation lifecycle; never a second canonical knowledge store |
+
+### Stack and implementation variants
+
+The active product uses React 19, TypeScript 7, Vite 8 and Playwright 1.61. Local inference adapters include Wllama 3.8.1, ONNX Runtime Web (a pinned development build), Hugging Face Transformers.js 4.3.0, QuickJS for constrained custom tools, plus browser APIs for WebGPU/WASM, IndexedDB, OPFS, CacheStorage and service workers. This is not one interchangeable runtime: GGUF/Wllama, ONNX roles, Transformers pipelines and the baseline `dist` engine have different file formats and contracts. Keep separate adapters where compatibility differs; deduplicate only shared policy or proven identical algorithms.
+
+| Similar-looking implementations | Current distinction | Decision |
+|---|---|---|
+| Wllama, ONNX Runtime Web, Transformers.js and baseline `dist` inference | Different supported formats, model protocols, worker lifecycles and fallback contracts | Intentional variants; do not replace with a generic engine until an explicit shared contract passes real-model acceptance |
+| Exact/local text search and semantic embedding search | Lexical matching supports deterministic names/terms; embeddings add paraphrase retrieval and ranking | Complementary paths, not duplicates; keep the selected Search setting and corpus scope authoritative |
+| IndexedDB knowledge records and Memory Markdown paths | Records/revisions are canonical; Markdown-like paths are a UI/export projection | One data authority; never add a second file-backed knowledge store |
+| Verified runtime shell cache and OPFS model files | Shared application/runtime bytes versus user-prepared model/original assets | Separate storage owners and retention policies |
+| Node unit tests, Playwright browser tests, built-PWA/offline checks and device handoff | Different execution scopes and evidence | Keep separate; a passing lower-level suite does not imply browser, real-model or physical-device acceptance |
+
+The source scan has not established two production algorithms with identical contracts and behavior that can safely be deleted. The concrete confirmed redundancies so far are dependency paths that duplicated ownership, now removed in the device-test/diagnostics and custom-Vision/preference boundaries. Any future deduplication must compare callers, semantics, storage effects and failure behavior before deleting one path.
+
+### Current deviations from the target
+
+| Deviation | Evidence | Containment / next step |
+|---|---|---|
+| Overgrown composition root | `Prototype.tsx` is 1,555 lines and had 142 local imports in the static scan | Keep composition/UI state here; extract one completed workflow only when its inputs, outputs and cancellation are explicit |
+| Two source dependency cycles | Conversation/execution and knowledge/recovery clusters listed below | Separate by owned contracts and migrate all callers; do not paper over with type-only barrels |
+| Preferences aggregate unrelated domain schemas | `preference-records.ts` parses user settings and depends on role validators for several model types | Inventory individual settings and validators before splitting; preserve single versioning/migration authority |
+| Architecture boundaries are not generally enforced | Root `scripts/check.mjs` checks built JS syntax, DOM IDs, model pins and shell hashes, not the TypeScript dependency graph | Agree the boundaries first, then add a static check for the migrated core rather than grandfathering the whole tree |
+| Flat source layout mixes UI, domains, workers and platform clients | Most source modules are siblings under `design/prototype/src`, with `tools/` as a partial exception | Move only when a cohesive module contract is completed; path changes alone are not progress |
+
+### Dependency scan findings and limits
+
+An import-only scan of `design/prototype/src`, `design/prototype/product` and tracked `dist` source found a large conversation/execution dependency cluster and a storage/recovery cluster. It counts type imports as dependencies and excludes dynamic imports, JSON/WASM assets and package internals, so it is not the full build graph. The two smaller source cycles removed in this batch were `device-model-test.ts` ↔ `device-diagnostics.ts` and `custom-vision-assets.ts` ↔ `preference-records.ts`; one edge in each cycle was type-only, but each still coupled a lower-level contract to its owner. Two larger strongly connected groups remain:
+
+1. Conversation/input/planner/evidence/readings: `conversation.ts`, `dialogue-planner.ts`, `dialogue-agent.ts`, `agent-evidence.ts`, `web-evidence.ts`, `current-input-scope.ts`, `input-readings.ts`, `vision-text.ts`, `video-observations.ts`, `voice-input.ts`, `working-file.ts`, `harness-activity.ts` and `text-transform.ts`.
+2. Knowledge/recovery: `knowledge-store.ts`, `backup-state.ts`, `pending-note-review.ts`, `note-creation.ts`, `note-restore.ts` and `settings-restore.ts`.
+
+These groups are the next staged-refactor candidates; do not break them by moving files without first assigning contracts and migrating all consumers. The detector is a bounded source scan, not a proof that the package/build graph has no other cycle.
 
 ## Runtime and ownership
 

@@ -29,15 +29,6 @@ export function describeDiagnosticEnvironment(platform:string,userAgent:string):
 }
 export type OfflineRestartMarker={schema:1;startedAt:string;appBuild:string;returnAttempted?:boolean;modelTestRequested?:boolean;modelTestModel?:string;modelTestMode?:DeviceModelTestMode;baseline:{checkedAt:string;appBuild:string;standalone:boolean;onlineSignal:boolean;checks:DiagnosticCheck[];modelGeneration?:ModelGenerationDiagnostic}};
 export function canRunSelectedModelDiagnostic(input:{modelSelected:boolean;filesPresent:boolean;busy:boolean;otherModelLoaded:boolean}){return input.modelSelected&&input.filesPresent&&!input.busy&&!input.otherModelLoaded;}
-/** A model smoke test passes only when the selected model returns the exact expected JSON shape and value. */
-export function parseDeviceModelSmokeAnswer(text:string):'READY'{
- let value:unknown;
- try{value=JSON.parse(text);}catch{throw Error('Invalid structured response');}
- if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid structured response');
- const record=value as Record<string,unknown>;
- if(Object.keys(record).length!==1||!Object.hasOwn(record,'answer')||typeof record.answer!=='string'||record.answer.trim()!=='READY')throw Error('Invalid structured response');
- return 'READY';
-}
 /** iOS exposes Home Screen launch both through display-mode and its legacy Safari standalone flag. */
 export function isStandalonePwa(displayModeStandalone:boolean,iosStandalone?:boolean){return displayModeStandalone||iosStandalone===true;}
 export function wasmThreadCapability(input:{crossOriginIsolated?:boolean;sharedArrayBuffer?:boolean;sharedWasmMemory?:boolean}={}){

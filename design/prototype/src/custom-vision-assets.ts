@@ -2,7 +2,7 @@
 import {hashLocalModel} from '../../../dist/local-models.js';
 // @ts-expect-error Shared streaming SHA-256 implementation is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
-import type {CustomVisionModel} from './preference-records.ts';
+import type {CustomVisionModel} from './custom-vision-contract.ts';
 
 const paths=['chat_template.jinja','config.json','generation_config.json','preprocessor_config.json','processor_config.json','tokenizer.json','tokenizer_config.json','onnx/decoder_model_merged_q4f16.onnx','onnx/decoder_model_merged_q4f16.onnx_data','onnx/embed_tokens_q4f16.onnx','onnx/embed_tokens_q4f16.onnx_data','onnx/vision_encoder_q4f16.onnx','onnx/vision_encoder_q4f16.onnx_data'] as const;
 const maxBytes=2*1024*1024*1024;

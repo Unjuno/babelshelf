@@ -1,5 +1,4 @@
 import type {GenerationFormat,GenerationResult} from './text-inference.ts';
-import {parseDeviceModelSmokeAnswer} from './device-diagnostics.ts';
 export type DeviceModelTestMode='quick'|'performance'|'full-cycle';
 export type DeviceTestMode='app'|'offline-readiness'|'storage-health'|'runtime-support'|'model-readiness'|DeviceModelTestMode;
 export type DeviceModelTestFailureStage='runtime-setup'|'model-preparation'|'model-load'|'count'|'generation'|'warm-generation'|'output-validation'|'unload';
@@ -29,6 +28,15 @@ export function deviceModelTestFailureType(error:unknown,stage:DeviceModelTestFa
 export class DeviceModelTestError extends Error{
  readonly code:'stopped'|'incomplete-output'|'empty-output';
  constructor(code:'stopped'|'incomplete-output'|'empty-output',message:string){super(message);this.name='DeviceModelTestError';this.code=code;}
+}
+/** A model smoke test passes only when the selected model returns the exact expected JSON shape and value. */
+export function parseDeviceModelSmokeAnswer(text:string):'READY'{
+ let value:unknown;
+ try{value=JSON.parse(text);}catch{throw Error('Invalid structured response');}
+ if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid structured response');
+ const record=value as Record<string,unknown>;
+ if(Object.keys(record).length!==1||!Object.hasOwn(record,'answer')||typeof record.answer!=='string'||record.answer.trim()!=='READY')throw Error('Invalid structured response');
+ return 'READY';
 }
 export function deviceModelTestProfile(mode:DeviceModelTestMode){
  if(mode==='quick')return {workload:'ready-v1' as const,maxTokens:64,format:'dialogue-answer' as GenerationFormat,messages:[{role:'system',content:'Return exactly one JSON object with no additional properties. Set the answer field to the exact string READY.'},{role:'user',content:'Return the required answer now.'}]};

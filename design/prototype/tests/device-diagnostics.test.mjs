@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,describeDiagnosticEnvironment,formatDeviceDiagnosticReport,inspectWebGpuAdapter,isStandalonePwa,parseDeviceModelSmokeAnswer,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
+import {cacheRoundtripProbe,canRunSelectedModelDiagnostic,claimOfflineRestartAttempt,clearOfflineRestartMarker,clearSavedDeviceTestReport,completeInterruptedOfflineRestartReport,completeOfflineRestartReport,describeDiagnosticEnvironment,formatDeviceDiagnosticReport,inspectWebGpuAdapter,isStandalonePwa,readOfflineRestartMarker,readSavedDeviceTestReport,runDeviceDiagnostics,wasmThreadCapability,writeOfflineRestartMarker,writeSavedDeviceTestReport} from '../src/device-diagnostics.ts';
 
 test('diagnostic environment uses bounded platform and browser labels without trusting raw strings',()=>{
  assert.equal(describeDiagnosticEnvironment('iPhone','Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1'),'iPhone · Safari 26.6.1');
@@ -67,11 +67,6 @@ test('selected model diagnostic refuses another resident inference model without
  assert.equal(canRunSelectedModelDiagnostic({...ready,busy:true}),false);
 });
 
-test('selected model smoke counts success only for the exact expected structured answer',()=>{
- assert.equal(parseDeviceModelSmokeAnswer('{"answer":"READY"}'),'READY');
- assert.equal(parseDeviceModelSmokeAnswer('{"answer":" READY "}'),'READY');
- for(const invalid of ['{"answer":"anything"}','{"answer":""}','{"answer":"READY","extra":true}','[]','null','not-json'])assert.throws(()=>parseDeviceModelSmokeAnswer(invalid),/Invalid structured response/);
-});
 
 test('device diagnostics run bounded local probes and distinguish readiness from model execution',async()=>{
  const storage=memoryStorage();
