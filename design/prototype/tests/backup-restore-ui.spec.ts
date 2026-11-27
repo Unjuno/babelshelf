@@ -4,6 +4,25 @@ import {createNote,makeBackup} from '../../../dist/core.js';
 import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 import {appendTurn} from '../src/conversation.ts';
 
+test('Restore backup can be selected directly without opening the scripted chooser',async({page})=>{
+ await page.goto('/');
+ await page.getByRole('button',{name:'Input',exact:true}).click();
+ await page.getByRole('menuitem',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Local files',exact:true}).click();
+ const input=page.getByLabel('Choose backup file',{exact:true});
+ await expect(input).toBeVisible();
+ await expect(input).toBeEnabled();
+ const note=createNote({path:'Inbox/direct-backup-restore.md',body:'Direct local file selection restored'});
+ note.id='direct-backup-restore';
+ const archive=await makeBackup([note]);
+ await input.setInputFiles({name:'direct-backup.brainpack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(archive))});
+ const review=page.getByRole('dialog',{name:'Restore backup?'});
+ await expect(review).toContainText('1 records');
+ await review.getByRole('button',{name:'Restore',exact:true}).click();
+ await expect(review).toHaveCount(0);
+ await expect(page.getByRole('status').filter({hasText:'Restored · 1 records'})).toBeVisible();
+});
+
 test('Restore backup opens a review and restores its note through the Settings file picker',async({page})=>{
  await page.goto('/');
  const note=createNote({path:'Inbox/audit20-restore-roundtrip.md',body:'Restore UI roundtrip · preserved local record'});
@@ -43,7 +62,7 @@ test('Restore backup keeps invalid-file errors visible in Local files and leaves
  await expect(alert).toContainText('nothing changed');
  await expect(page.getByRole('dialog',{name:'Restore backup?'})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Restore backup',exact:true})).toBeEnabled();
- const nativeInput=page.getByLabel('Backup file',{exact:true});
+ const nativeInput=page.getByLabel('Choose backup file',{exact:true});
  await expect(nativeInput).toBeVisible();
  const archive=await makeBackup([createNote({path:'Inbox/fallback.md',body:'Native file selection'})]);
  await nativeInput.setInputFiles({name:'fallback.brainpack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(archive))});
