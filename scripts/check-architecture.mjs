@@ -1,0 +1,54 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+const sourceRoot=path.resolve('design/prototype/src');
+const extensions=['.ts','.tsx','.js','.jsx'];
+const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts']);
+const files=[];
+async function collect(directory){
+ for(const entry of await fs.readdir(directory,{withFileTypes:true})){
+  const file=path.join(directory,entry.name);
+  if(entry.isDirectory())await collect(file);
+  else if(extensions.some(extension=>file.endsWith(extension)))files.push(file);
+ }
+}
+await collect(sourceRoot);
+const fileSet=new Set(files),graph=new Map(files.map(file=>[file,[]]));
+function resolveRelative(from,specifier){
+ const base=path.resolve(path.dirname(from),specifier);
+ return [base,...extensions.map(extension=>base+extension),...['index.ts','index.tsx'].map(file=>path.join(base,file))].find(candidate=>fileSet.has(candidate));
+}
+for(const file of files){
+ const source=await fs.readFile(file,'utf8');
+ const staticImport=/\b(?:import|export)\s+(?:type\s+)?(?:[^'";\n]+?\s+from\s+)?['"](\.[^'"]+)['"]/g;
+ for(const match of source.matchAll(staticImport)){
+  const target=resolveRelative(file,match[1]);
+  if(target)graph.get(file).push(target);
+ }
+}
+
+let nextIndex=0;
+const stack=[],onStack=new Set(),indices=new Map(),lowLinks=new Map(),components=[];
+function visit(file){
+ indices.set(file,nextIndex);lowLinks.set(file,nextIndex++);stack.push(file);onStack.add(file);
+ for(const target of graph.get(file)){
+  if(!indices.has(target)){visit(target);lowLinks.set(file,Math.min(lowLinks.get(file),lowLinks.get(target)));}
+  else if(onStack.has(target))lowLinks.set(file,Math.min(lowLinks.get(file),indices.get(target)));
+ }
+ if(lowLinks.get(file)!==indices.get(file))return;
+ const component=[];let member;
+ do{member=stack.pop();onStack.delete(member);component.push(member);}while(member!==file);
+ if(component.length>1||graph.get(file).includes(file))components.push(component);
+}
+for(const file of files)if(!indices.has(file))visit(file);
+for(const component of components){
+ const protectedMembers=component.filter(file=>protectedContracts.has(path.basename(file)));
+ if(protectedMembers.length)throw Error(`Architecture contract participates in a static import cycle: ${protectedMembers.map(file=>path.relative(sourceRoot,file)).join(', ')}`);
+}
+
+const store=path.join(sourceRoot,'knowledge-store.ts'),backup=path.join(sourceRoot,'backup-state.ts');
+const reachable=new Set(),pending=[store];
+while(pending.length){const file=pending.pop();if(reachable.has(file))continue;reachable.add(file);for(const target of graph.get(file)??[])pending.push(target);}
+if(reachable.has(backup))throw Error('KnowledgeStore static dependency graph must defer backup validation to its operation path');
+const edgeCount=[...graph.values()].reduce((count,edges)=>count+edges.length,0);
+console.log(`Architecture contracts / deferred backup dependency: PASS · ${files.length} source files · ${edgeCount} static imports · ${components.length} existing cycle(s)`);

@@ -33,7 +33,7 @@
     "test:quality:installed-pwa": "node scripts/qa/installed-pwa.mjs",
     "test:quality": "npm test && npm run test:prototype && npm run check && npm run build:app && npm run test:app && npm run test:editor:built && npm run test:quality:review-store && npm run test:quality:backup-restore && npm run test:quality:offline-calculation && npm run test:quality:working-file && npm run test:help:built && npm run test:tools:built && npm run test:markdown && npm run test:quality:hash && npm run test:quality:custom-tools && npm run test:quality:mcp && npm run test:quality:mcp:webkit && npm run test:quality:device-memory && npm run test:quality:inference-lock && npm run test:quality:schedule-ui && npm run test:quality:settings-ui && npm run test:quality:editorial && npm run test:ios-handoff:built && npm run test:ios-handoff:webkit:built && npm run test:quality:app-update && npm run test:quality:storage-startup && npm run test:quality:offline && npm run test:quality:installed-pwa",
     "test:agent-coordinator": "node --test design/prototype/tests/agent-coordinator.test.mjs",
-    "check": "node scripts/check.mjs",
+    "check": "node scripts/check.mjs && node scripts/check-architecture.mjs",
     "dev": "node scripts/serve.mjs",
     "test:markdown": "node --test specs/markdown.acceptance.mjs",
     "dev:prototype": "npm --prefix design/prototype run dev -- --host 127.0.0.1 --port 4180",
