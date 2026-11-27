@@ -163,6 +163,8 @@ test('GPU failure display stays short while original operation diagnostics remai
  const receipt=finishActivity(startActivity('dialogue.plan',{question:'Read my local file'}),{error:Error(raw)}),before=structuredClone(receipt);
  assert.equal(runtimeStatus(raw),'GPU unavailable');assert.equal(runtimeStatus('GPU disconnected: device removed'),'GPU unavailable');assert.equal(receipt.error.message,raw);assert.deepEqual(receipt,before);
  for(const value of ['Invalid model JSON','Invalid model JSON · retry','Invalid model action'])assert.equal(runtimeStatus(value),'Could not understand · try again');
+ assert.equal(runtimeStatus('No text-generation progress for 300 seconds · model stopped; load it to retry'),'Text generation stalled · any partial answer is unverified');
+ assert.equal(runtimeStatus('Text generation timed out after 300 seconds'),'Text generation timed out · shortened the request or try again');
  for(const value of ['Invalid candidate source','Invalid candidate source shape','Invalid candidate source index','Invalid candidate source unit','Candidate quote not found','Candidate quote must be unique','Invalid calculation candidate'])assert.equal(runtimeStatus(value),'Could not prepare calculation · check values');
  assert.equal(runtimeStatus('Invalid model JSON','What is in my note? Delete it.'),'Could not understand · try one request at a time');
  assert.equal(runtimeStatus('Invalid model JSON','What is in my note?'),'Could not understand · try again');

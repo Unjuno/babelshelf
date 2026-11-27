@@ -3,6 +3,7 @@ import {originalNote} from '../src/original-assets.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {executeSubmission} from '../src/submission-workflow.ts';
+import {TurnInferenceBudgetError} from '../src/turn-inference-budget.ts';
 import {MAX_AGENT_RESULT_CHARS} from '../src/agent-limits.ts';
 import {createSubmissionController} from '../src/submission-controller.ts';
 import {createToolRegistry} from '../src/tools/tool-registry.ts';
@@ -911,8 +912,8 @@ test('native current-file reply is accepted without read-completion inference or
 });
 
 
-test('ordinary prose Send publishes live previews and preserves failed output as an unverified partial answer',async()=>{
- for(const failure of [null,'Runtime failed','Stopped']){
+test('ordinary prose Send publishes previews and preserves timed-out output as an unverified partial answer',async()=>{
+ for(const failure of [null,Error('Runtime failed'),Error('No text-generation progress for 300 seconds · model stopped; load it to retry'),new TurnInferenceBudgetError('time'),new TurnInferenceBudgetError('tokens'),Error('Stopped')]){
   const f=fixture(),c=createSubmissionController();let observed=false,modelCalls=0;
   f.services.activeHarnessProfile={...f.services.activeHarnessProfile,maxToolCalls:null,maxResultChars:8000};
   f.services.model='test';
@@ -923,14 +924,15 @@ test('ordinary prose Send publishes live previews and preserves failed output as
    assert.equal(format,'prose','standalone general chat skips an unrelated planner generation');
    onPreview('A short');observed=true;
    assert.equal(c.state.preview,'A short');assert.equal(f.current().turns.at(-1).answer,undefined);
-   if(failure)throw Error(failure);
+   if(failure)throw failure;
    return {text:'A short story.',finishReason:'stop'};
   },load:async()=>{throw Error('Already loaded');},stop(){}};
   const outcome=await c.run(run=>executeSubmission({text:'Tell me a story.',attachments:[]},f.services,f.view,run));
   assert.equal(modelCalls,1,'a standalone conversation uses one bounded Text answer generation');
   assert.ok(observed,c.state.error);assert.equal(c.state.preview,'');
-  if(failure==='Runtime failed'){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,'A short');assert.equal(f.current().turns.at(-1).refs,undefined);assert.match(f.current().turns.at(-1).status,/Partial · not verified · Runtime failed/);}
-  else if(failure==='Stopped'){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);}
+  if(failure instanceof TurnInferenceBudgetError){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,'A short');assert.equal(f.current().turns.at(-1).refs,undefined);assert.match(f.current().turns.at(-1).status,/Partial · not verified/);assert.ok(f.current().turns.at(-1).activity.some(item=>item.error?.code==='generation_budget_exhausted'));}
+  else if(failure instanceof Error&&failure.message!=='Stopped'){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,'A short');assert.equal(f.current().turns.at(-1).refs,undefined);assert.match(f.current().turns.at(-1).status,/Partial · not verified/);}
+  else if(failure instanceof Error&&failure.message==='Stopped'){assert.notEqual(outcome,'completed');assert.equal(f.current().turns.at(-1).answer,undefined);}
   else{assert.equal(outcome,'completed',c.state.error);assert.equal(f.current().turns.at(-1).answer,'A short story.');}
   assert.equal(f.reviews.length,0);
  }
