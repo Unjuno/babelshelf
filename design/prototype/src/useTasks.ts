@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {knowledge} from './useKnowledge';
-import type {NoteView} from './knowledge-store';
+import type {NoteView} from './knowledge-contract';
 import {parseTask,taskRunView,noticeView,taskDefinition,type Task,type RunData,type RunDiagnostic,type NoticeData} from './task-records';
 import {createTaskCancellation} from './task-cancellation';
 export type TaskView=Task&{id:string;title:string;version:number;path:string;nextAt?:string|null;requiresReview?:boolean};

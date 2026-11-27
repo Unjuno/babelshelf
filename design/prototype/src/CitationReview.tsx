@@ -1,4 +1,4 @@
-import type {NoteView} from './knowledge-store';
+import type {NoteView} from './knowledge-contract';
 
 type Source={noteId:string;revision:number;start:number;quote:string;citedQuote?:string};
 

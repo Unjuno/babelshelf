@@ -1,4 +1,4 @@
-import type {NoteView} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import type {NewNoteContent} from './note-creation.ts';
 
 export const PENDING_NOTE_REVIEW_STATE='pending-note-review';

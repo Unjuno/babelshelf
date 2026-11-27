@@ -33,16 +33,15 @@ import {validateMemoryFilePath,memoryFolderPath,assertMutableFolder,SYSTEM_FOLDE
 import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRunView,noticeView,noticeBody,taskNotice,claimTaskRun,finishTaskRun,skipTaskRun,heartbeatRun,type Task,type RunStatus,type RunDiagnostic} from './task-records.ts';
 import {applyCorrection,undoCorrection,correctionProposalHash,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {stateHash} from './backup-hash.ts';
-import type {StateSnapshot,RestoreMode} from './backup-state.ts';
-import {validateState} from './backup-state.ts';
+import type {StateSnapshot,RestoreMode} from './backup-contract.ts';
 import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,emptyDialogue,type Dialogue} from './conversation.ts';
 import {createConversationSession,switchConversationSession,renameConversationSession,deleteConversationSession,validateConversationSessions,CONVERSATION_SESSIONS_KEY,conversationDialogueKey,isConversationDialogueKey,type ConversationSessions} from './conversation-sessions.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import {withoutWorkingFile} from './working-file.ts';
 export {CorrectionConflictError,prepareCorrection,applyCorrection,undoCorrection,resolveCorrectionTarget,canUndoCorrection,loadCorrectionHistory,runReviewedCorrection} from './note-corrections.ts';
 
-export type NoteView={id:string;path:string;body:string;version:number;history:string[];paths?:string[];protected?:boolean;managed?:boolean;recordType?:'schedule'|'execution'|'notification';nextAt?:string|null;requiresReview?:boolean;readOnly?:boolean;kind?:'original'|'generated';sources?:SavedSourceRef[];dialogueCopy?:DialogueCopy;dialogueCopyCoverage?:'partial';importedFrom?:{name:string;bytes:number};originalAsset?:OriginalRef;mediaSource?:OriginalRef;vision?:{model:string;revision:string;prompt:string}};
 type Canonical=ReturnType<typeof createNote>;
 export function projectNote(n:Canonical):NoteView {
  validateDialogueCopyRecord(n);const v=latest(n);return {id:n.id,path:notePath(n),body:v.body,version:v.version,history:n.revisions.slice(0,-1).map((r:any)=>r.body),...(n.kind?{kind:n.kind}:{}),...(Array.isArray(n.sources)?{sources:n.sources.map(sourceReferenceForView)}:{}),paths:n.revisions.map((r:any)=>notePath(n,r.version)),protected:!!n.ui?.protected,managed:!!n.ui?.managed,...(n.ui?.recordType?{recordType:n.ui.recordType,nextAt:n.taskCursor?.nextAt,requiresReview:!!n.ui.requiresReview,readOnly:n.ui.recordType!=='schedule'}:{}),...(n.dialogueCopy?{dialogueCopy:structuredClone(n.dialogueCopy)}:{}),...(n.dialogueCopyCoverage?{dialogueCopyCoverage:n.dialogueCopyCoverage}:{}),...(n.importedFrom?{importedFrom:n.importedFrom}:{}),...(n.originalAsset?{originalAsset:structuredClone(n.originalAsset)}:{}),...(n.mediaSource?{mediaSource:structuredClone(n.mediaSource)}:{}),...(n.visionText?{vision:{model:n.visionText.model,revision:n.visionText.revision,prompt:n.visionText.prompt}}:{})};
@@ -465,6 +464,7 @@ export class KnowledgeStore {
   * checks and writes share one transaction; a started transaction is never replayed. */
  async purgeMemory(batches:RecoveryBatch[],expectedTrash:RecoveryBatch[]|undefined,options:{removeConversationLinks?:boolean;removeActivityLinks?:boolean}={}){
   ({batches,expectedTrash,options}=structuredClone({batches,expectedTrash,options}));
+  const {validateState}=await import('./backup-state.ts');
   const tx=await this.startTransaction(['notes','settings','runs'],'readwrite');
   return new Promise<PurgeMemoryResult>((resolve,reject)=>{let error:unknown,result:PurgeMemoryResult;
    readSnapshot(tx,current=>{try{

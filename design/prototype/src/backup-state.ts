@@ -19,6 +19,7 @@ import {validatePdfLinks} from './pdf-text.ts';
 import {validateInputReadings} from './input-readings.ts';
 import {validateVoiceInputs} from './voice-input.ts';
 import {validateTranscriptLinks} from './speech-transcript.ts';
+import type {Entry,StateSnapshot,StatePayload,RestoreConflict,StateRestorePlan,RestoreMode} from './backup-contract.ts';
 // Portable local data, never runtime readiness, executable tools or write authority.
 // @ts-expect-error Shared baseline core is JavaScript.
 import {checkNotes,latest,reviseNote,parseBackup} from '../../../dist/core.js';
@@ -32,11 +33,6 @@ import {memoryFolderPath} from './memory-paths.ts';
 import {validateOriginalLinks} from './original-assets.ts';
 import {conversationDialogueEntries,isConversationDialogueKey,CONVERSATION_SESSIONS_KEY,validateConversationSessions} from './conversation-sessions.ts';
 
-export type Entry={key:string;value:any};
-export type StateSnapshot={notes:any[];settings:Entry[];runs:Entry[]};
-export type StatePayload={schema:1|2;createdAt:string;notes:any[];settings?:Entry[];runs?:Entry[];excluded?:string[]};
-export type RestoreConflict={store:'notes'|'settings'|'runs';key:string;label:string};
-export type StateRestorePlan={conflicts:RestoreConflict[];added:{notes:number;settings:number;runs:number};writes:StateSnapshot|null};
 const excluded=['model-assets','runtime-assets','unsaved-drafts','unpersisted-attachments'];
 export const MAX_BACKUP_BYTES=200000000;
 function checkBackupText(text:string,limit=MAX_BACKUP_BYTES){if(!utf8BytesWithin(text,limit))throw Error('Backup too large · 200 MB limit');return text;}
@@ -116,7 +112,6 @@ export function guardRestoredNote(note:any){
  if(n.id==='settings-connection'&&n.ui?.managed){const current=parsePreference('connection',latest(n).body);if(current.downloads||current.diagnosticLogs)n=reviseNote(n,{body:formatPreference('connection',{downloads:false,diagnosticLogs:false,rustxngEndpoint:current.rustxngEndpoint})},latest(n).version);}
  return n;
 }
-export type RestoreMode='strict'|'new-only';
 export function planStateRestore(current:StateSnapshot,incoming:StatePayload,mode:RestoreMode='strict'):StateRestorePlan{
  if(mode!=='strict'&&mode!=='new-only')throw Error('Invalid restore mode');
  if(mode==='new-only'&&incoming.schema!==2)throw Error('New-only restore requires schema2');

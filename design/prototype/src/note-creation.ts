@@ -1,6 +1,6 @@
 import type {DialogueCopy} from './dialogue-copy.ts';
 import type {SavedSourceRef} from './note-provenance.ts';
-import type {NoteView} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import {completeTurn,type Dialogue} from './conversation.ts';
 import {boundedPrefix} from './utf8-text.ts';
 

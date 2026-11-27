@@ -1,4 +1,5 @@
-import {KnowledgeStore,type NoteView} from './knowledge-store.ts';
+import {KnowledgeStore} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 
 export type DeviceMemorySmokeStage='setup'|'initialize'|'write'|'read'|'search'|'revise'|'backup'|'withdraw'|'cleanup';
 const stageMessages:Record<DeviceMemorySmokeStage,string>={

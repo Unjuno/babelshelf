@@ -1,6 +1,7 @@
 import {observeInference,type InferenceMeasurements} from './inference-measurements.ts';
 import {groundedAnswer,type AnswerInference,type GroundedAnswerRequest} from './grounded-answer.ts';
-import type {KnowledgeStore,NoteView} from './knowledge-store.ts';
+import type {KnowledgeStore} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import type {TextRuntime} from './text-inference.ts';
 import type {DialogueContext} from './conversation.ts';
 import type {createTurnActivityTracer} from './harness-activity.ts';

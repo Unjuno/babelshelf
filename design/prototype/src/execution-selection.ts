@@ -1,4 +1,4 @@
-import type {NoteView} from './knowledge-store.ts';
+import type {NoteView} from './knowledge-contract.ts';
 import {taskRunView} from './task-records.ts';
 export function executionAtRevision(notes:NoteView[],id:string,revision?:number){
  const note=notes.find(n=>n.id===id&&n.recordType==='execution');if(!note)return undefined;

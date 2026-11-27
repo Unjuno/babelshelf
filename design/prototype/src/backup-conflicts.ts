@@ -1,4 +1,4 @@
-import type {RestoreConflict} from './backup-state.ts';
+import type {RestoreConflict} from './backup-contract.ts';
 import {PENDING_CORRECTION_KEY} from './pending-correction.ts';
 import {PENDING_NOTE_REVIEW_KEY} from './pending-note-review.ts';
 

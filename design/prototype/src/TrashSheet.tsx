@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {canRestore,trashLocation} from './memory-trash';
-import type {RecoveryBatch,NoteView,PurgeRetentionReference} from './knowledge-store';
+import type {RecoveryBatch,PurgeRetentionReference} from './knowledge-store';
+import type {NoteView} from './knowledge-contract';
 
 export function TrashSheet({trash,notes,folders,busy,onRestore,onPurge,onClose}:{trash:RecoveryBatch[];notes:NoteView[];folders:string[];busy:boolean;onRestore:(batch:RecoveryBatch)=>void;onPurge:(batches:RecoveryBatch[],options:{removeConversationLinks:boolean;removeActivityLinks:boolean})=>Promise<false|{purged:number;retained:number;retainedReferences:PurgeRetentionReference[];dialogueLinksRemoved?:number;activityEntriesRemoved?:number}>;onClose:()=>void}){
  const [review,setReview]=useState<RecoveryBatch[]|null>(null);
