@@ -31,7 +31,8 @@ flowchart TD
 | Inference roles | `useBonsai.ts`, `useDecision.ts`, `useSpeech.ts`, `useVision.ts`, role-specific clients/workers | Model-specific preparation, loading, inference, cancellation and measurement | Cloud fallback or user data persistence |
 | Tool boundary | `src/tools/`, `custom-tool-*` | Registered local capabilities, schema validation and constrained dispatch | Granting authority from SKILL.md or model output |
 | Browser platform | `dist/`, service-worker code, OPFS/IDB adapters | Verified app/runtime cache, local assets, worker transport and browser policy | Product policy or silent acquisition |
-| Delivery and quality | `scripts/`, `specs/`, `tests/`, `design/prototype/tests/`, `feedback-api/` | Build/deployment adapters, contract/Node/browser/runtime checks | Replacing current product contracts with QA-only behavior |
+| Delivery and quality | `scripts/`, `specs/`, `tests/`, `design/prototype/tests/` | Build/deployment adapters, contract/Node/browser/runtime checks | Replacing current product contracts with QA-only behavior |
+| Explicit feedback service | `feedback-api/src/index.mjs`, `feedback-api/migrations/`, `feedback-api/wrangler.jsonc` | User-initiated HTTP validation and D1 feedback persistence | Inference, knowledge sync or automatic telemetry |
 
 ### State ownership
 
@@ -43,6 +44,18 @@ flowchart TD
 | App shell | Build manifest + service-worker-managed CacheStorage | Current page/worker controller | Verified update/repair workflow |
 | Device diagnostic continuation/report | Bounded browser-local diagnostic storage | Developer screen | One-run marker and explicit report copy |
 | UI-only state | React component/hooks; specific short-lived browser markers where documented | Component rendering | User action or operation lifecycle; never a second canonical knowledge store |
+
+### Contract and configuration authorities
+
+| Concept | Authority | Related projections that are not authorities |
+|---|---|---|
+| Built-in model catalog/defaults | `app-settings.json` validated by `app-settings.ts`; pinned model/runtime manifests identify actual assets and compatibility | Settings selectors and model names shown in UI |
+| User model/tool/appearance/connection choices | Versioned `Settings/*.md` records parsed and validated by `preference-records.ts` | React form state and a selected model ID; neither proves readiness or grants new authority |
+| Supported media operations | `local-capabilities.ts` plus the owning adapters/contracts | `app-settings.json` carries input limits, not a parallel capability claim |
+| Active tools and limits | Versioned Harness preferences plus the registered `tool-registry.ts`; app adapters enforce schemas/capabilities | `SKILL.md` prose and model-produced tool arguments are untrusted descriptions/data |
+| Schedules and outcomes | `task-records.ts` and canonical IndexedDB records; schedule execution is app-owned and foreground-only | Schedule UI rows and notifications are projections/receipts |
+| Worker/runtime messages | Role-owned request/response modules and validators near each worker/client | Catalog support or WebGPU capability probes do not prove execution/provider success |
+| App and feedback delivery | PWA build manifest/service-worker contract; feedback endpoint contract in `feedback-api/src/index.mjs` | Site deployment identifiers and GitHub workflow status are delivery evidence, not product state |
 
 ### Stack and implementation variants
 

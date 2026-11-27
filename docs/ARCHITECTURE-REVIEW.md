@@ -6,11 +6,23 @@ The source-of-truth module/state map is in [ARCHITECTURE.md](ARCHITECTURE.md). T
 
 | Priority | Candidate | Evidence / intended change | State |
 |---|---|---|---|
-| A1 | Conversation and planner dependency cluster | `conversation.ts` participates in cycles with planner, agent, evidence, readings and input-scope modules. Define the narrow data contracts first; avoid a rename-only split. | Open; map complete |
-| A2 | Knowledge/recovery dependency cluster | `knowledge-store.ts`, backup, pending-note review and restore modules form a cycle. Keep transaction/CAS authority in one storage owner; identify pure validation/projection code that can move downward. | Open; map complete |
+| A1 | Conversation and planner dependency cluster | `conversation.ts` participates in cycles with planner, agent, evidence, readings and input-scope modules and has 38 source import sites. Separate stable dialogue record/context contracts and request/history functions; migrate every call site rather than keeping `conversation.ts` as a catch-all barrel. | Open; boundary identified, exact contract split remains to be proven |
+| A2 | Knowledge/recovery dependency cluster | `knowledge-store.ts` has 15 source import sites; backup, pending-note review and restore modules also participate in the cycle. Keep transaction/CAS authority in one storage owner; identify pure validation/projection code that can move downward. | Open; map complete |
 | A3 | `Prototype.tsx` orchestration | It is the largest source file and imports 142 local modules in the static scan. Extract only a complete operation with explicit inputs/results and migrated callers; keep view state local. | Open; no extraction by file size alone |
 | A4 | Preference schema ownership | `preference-records.ts` coordinates models, tools, settings and role-specific validation. Check field-by-field single ownership before proposing new schemas; preserve existing version migration behavior. | Open |
 | A5 | Architecture enforcement | Add a machine-checkable dependency/ownership rule after the first cycle boundaries are reduced enough to define a useful rule without grandfathering broad violations. | Open; avoid a false green baseline |
+
+## Optimization evidence pool
+
+These are measurement tasks, not approved parameter changes. Keep the current safe runtime defaults until matched evidence identifies a bottleneck and a candidate improves the same task without harming correctness, stop behavior or storage safety.
+
+| Priority | Hypothesis to test | Existing signal | Required comparison before changing code |
+|---|---|---|---|
+| O1 | Context settings above 8K may disable the LFM3 turn-to-turn prompt-reuse path even when the actual prompt is short. | `dist/lfm-adapter.js` selects reuse based on configured context size; runtime measurement already reports prompt/reuse and prefill counters. | Same real model and device at 8K vs 16K on short independent, repeated-prefix and edited-prefix turns; record reused/new tokens, prefill time and peak memory. Never silently lower the user's context setting. |
+| O2 | The synchronous Home startup may pay for a large `Prototype` chunk before all screens are needed. | Current production build warns about a 766.74 kB minified `Prototype-*.js` chunk; the entry also has lazy screen chunks. | Attribute actual cold startup cost first; test one feature boundary at a time and verify offline shell caching, navigation, update integrity and cold launch. A build warning alone is not a user-visible regression. |
+| O3 | Exclusive Text/Decision residency protects memory but may add repeated model load latency after role switches. | `model-execution.ts` unloads the idle opposite role; same-role work reuses the session. | On target devices, measure unload/load count, switch latency, available memory and failure/eviction behavior across representative Text→Decision→Text tasks. Do not enable dual residency from PC timing alone. |
+| O4 | Input batch/microbatch 128 may not be best for every browser/GPU/CPU path. | Current GGUF adapter fixes both values at 128 and selects CPU threads conditionally. | Compare a small predeclared set (64/128/256) with the same model, exact prompt, output and provider; record prefill/decode, memory, UI responsiveness, Stop latency and answer/citation correctness. |
+| O5 | User-perceived wait may be dominated by input processing or hidden planning rather than decode speed. | Existing Activity captures stage timing, token counts and backend/runtime metrics; historical samples show high prefill and much faster warm reuse under different conditions. | Use a complete send-to-verified-answer trace on the reported target profile, separate cold/warm and exact/prefix-miss cache states, then change only the measured dominant stage. Do not infer a general speedup from one repeated prompt. |
 
 ### Decision log
 
@@ -22,6 +34,7 @@ The source-of-truth module/state map is in [ARCHITECTURE.md](ARCHITECTURE.md). T
 
 - [x] Record current module/state ownership and relative-import cycle candidates.
 - [x] Remove the device-test/diagnostics and custom-Vision/preferences source cycles; migrate their consumers and parser tests.
+- [x] Record the measured optimization hypotheses separately from release bugs; keep them unapproved until matched experiments support a change.
 - [ ] Confirm remaining graph clusters from current source, then choose one cohesive domain boundary.
 - [ ] Add a dependency rule that rejects new cycles in the agreed core boundary after existing exceptions are removed.
 - [ ] Reassess after each verified batch; do not treat this queue as a mandate for wholesale rewrites.
