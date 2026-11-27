@@ -56,7 +56,8 @@ import {resolveCorrectionTarget,type CorrectionProposal} from './note-correction
 import type {Task} from './task-records.ts';
 import type {OriginalRef,OriginalAsset} from './original-assets.ts';
 import type {ReviewedText,InputReadingRef,CurrentInputRef} from './input-readings.ts';
-import type {VoiceInput,AudioRange} from './voice-input.ts';
+import type {AudioRange} from './transcript-citation.ts';
+import type {VoiceInput} from './voice-input-contract.ts';
 import type {ocrCitationRegion} from './ocr-text.ts';
 import type {pdfCitationPage} from './pdf-text.ts';
 export type SubmissionAttachment = {id:string;name:string;mime?:string;url:string;kind:'image'|'audio'|'video'|'text'|'file';size:number;status:string;text?:string;asset?:OriginalRef;file?:File;prepared?:OriginalAsset;reviewedText?:ReviewedText;reading?:InputReadingRef;voice?:VoiceInput;range?:AudioRange;imageRegion?:ReturnType<typeof ocrCitationRegion>;pdfPage?:ReturnType<typeof pdfCitationPage>};

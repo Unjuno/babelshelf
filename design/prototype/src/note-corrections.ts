@@ -8,7 +8,8 @@ import {latest,reviseNote,checkNotes,parseJSON} from '../../../dist/core.js';
 import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared incremental hash is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
-import {applyTextTransform,textTransformMessages,type TextToolReceipt} from './text-transform.ts';
+import {applyTextTransform,textTransformMessages} from './text-transform.ts';
+import type {TextToolReceipt} from './text-transform-contract.ts';
 import type {ChatEngine} from './conversation';
 import {validateCustomToolInputSchema,validateCustomToolPackageSources} from './custom-tool-validation.ts';
 import {parsePreference} from './preference-records.ts';

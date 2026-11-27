@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const sourceRoot=path.resolve('design/prototype/src');
 const extensions=['.ts','.tsx','.js','.jsx'];
-const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts']);
+const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts']);
 const files=[];
 async function collect(directory){
  for(const entry of await fs.readdir(directory,{withFileTypes:true})){
@@ -26,12 +26,11 @@ for(const file of files){
   if(target)graph.get(file).push(target);
  }
 }
-const sourceRefDeclarations=[];
-for(const file of files){
- const source=await fs.readFile(file,'utf8');
- for(const match of source.matchAll(/\b(?:export\s+)?type\s+SourceRef\s*=/g))sourceRefDeclarations.push({file,offset:match.index});
+for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts']]){
+ const declarations=[];
+ for(const file of files){const source=await fs.readFile(file,'utf8');for(const match of source.matchAll(new RegExp(`\\b(?:export\\s+)?type\\s+${name}\\s*=`, 'g')))declarations.push({file,offset:match.index});}
+ if(declarations.length!==1||declarations[0].file!==path.join(sourceRoot,owner))throw Error(`${name} must have one declaration in ${owner}`);
 }
-if(sourceRefDeclarations.length!==1||sourceRefDeclarations[0].file!==path.join(sourceRoot,'source-reference-contract.ts'))throw Error('SourceRef must have one declaration in source-reference-contract.ts');
 
 let nextIndex=0;
 const stack=[],onStack=new Set(),indices=new Map(),lowLinks=new Map(),components=[];

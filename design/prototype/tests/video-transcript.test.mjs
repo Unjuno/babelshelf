@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {prepareOriginal,originalNote,originalKey} from '../src/original-assets.ts';
 import {makeTranscript,transcriptNote,validateTranscript} from '../src/speech-transcript.ts';
-import {transcriptCitationRange} from '../src/voice-input.ts';
+import {transcriptCitationRange} from '../src/transcript-citation.ts';
 import {makeStateBackup,parseStateBackup} from '../src/backup-state.ts';
 test('mapped video transcript preserves timing through backup and converts citation offsets',async()=>{
  const asset=await prepareOriginal(new File(['schema fixture'],'delayed.webm',{type:'video/webm'}));

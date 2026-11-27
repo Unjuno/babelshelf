@@ -9,11 +9,11 @@ import {harnessGuidanceMessage} from './harness-guidance.ts';
 import {MAX_CONTEXT_SOURCE_REFS} from './agent-limits.ts';
 import {isSourceMetadataGuard} from './note-provenance.ts';
 import type {InputReadingRef} from './input-readings.ts';
-import type {VoiceInput} from './voice-input.ts';
+import type {VoiceInput} from './voice-input-contract.ts';
 // Dialogue is working context, never authorization or a replacement for canonical notes.
 // @ts-expect-error Shared baseline is JavaScript.
 import {parseJSON,parseAnswer,searchNotes} from '../../../dist/core.js';
-import type {TextToolReceipt} from './text-transform';
+import type {TextToolReceipt} from './text-transform-contract.ts';
 import type {OriginalRef} from './original-assets';
 import type {SourceRef} from './source-reference-contract.ts';
 export type DialogueTurn={id:string;user:string;answer?:string;status?:string;refs?:SourceRef[];sourceMetadataGuards?:import('./note-provenance.ts').SourceMetadataGuard[];results?:SourceRef[];files?:FileResult[];readTurn?:{turnId:string;index:number;speaker:string};toolCalls?:TextToolReceipt[];activity?:Activity[];attachments?:{id:string;name:string;kind:string;status:string;size?:number;asset?:OriginalRef;voice?:VoiceInput;reading?:InputReadingRef}[]};
