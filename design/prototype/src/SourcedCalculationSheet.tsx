@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {BottomSheet} from './mobile';
 import type {SourcedCalculationEvidence,SourcedCalculationProposal} from './sourced-calculation';
-import type {SourceRef} from './conversation';
+import type {SourceRef} from './source-reference-contract';
 
 export type CalculationReview={expression:string;question:string;sources:SourceRef[];evidence:SourcedCalculationEvidence[];proposal:SourcedCalculationProposal};
 

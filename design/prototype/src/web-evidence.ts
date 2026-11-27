@@ -1,4 +1,4 @@
-import type {SourceRef} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 const MAX_SNAPSHOT_BYTES=12_000;
 const MAX_QUOTE_CHARS=4_000;
 const MAX_MEMORY_QUOTE_CHARS=24_000;

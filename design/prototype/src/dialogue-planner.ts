@@ -12,7 +12,8 @@ import {agentEvidenceFromCalls,agentCalculationsFromCalls,agentClockReadingsFrom
 import {createWebCitation,type WebSnapshot} from './web-evidence.ts';
 import {answerLanguageInstruction,englishOneSentenceFormat,groundedOutputTokens,replyStyleInstruction,requestsExtendedReply,type ReplyStyle} from './reply-style.ts';
 import {AgentContextCapacityError,type AgentToolCapability} from './agent-loop.ts';
-import {historyPayload,historyMessages,type DialogueContext,type ChatEngine,type SourceRef} from './conversation.ts';
+import {historyPayload,historyMessages,type DialogueContext,type ChatEngine} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 // @ts-expect-error Shared baseline is JavaScript.
 import {parseJSON,searchNotes} from '../../../dist/core.js';
 

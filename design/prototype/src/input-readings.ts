@@ -4,7 +4,8 @@ import {transcriptNote,validateTranscript,videoTimingCoverage,type Transcript} f
 import {visionTextNote,validateVisionText,type VisionText} from './vision-text.ts';
 import {videoVisionCoverage} from './video-observations.ts';
 import {originalKey,type OriginalAsset} from './original-assets.ts';
-import type {Dialogue,SourceRef} from './conversation.ts';
+import type {Dialogue} from './conversation.ts';
+import type {SourceRef} from './source-reference-contract.ts';
 import {requestsCrossSource} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {searchableNoteIds,searchNotes,chunks,latest} from '../../../dist/core.js';
