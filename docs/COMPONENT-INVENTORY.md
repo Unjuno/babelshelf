@@ -1,5 +1,9 @@
 # BabelShelf コンポーネント台帳
 
+## Audit 20 follow-up · 2026-11-27
+
+Local candidate build `8419fc6319c5f081` (170 verified assets, entry `index-BJ6uiXoK.js`) adds an always-visible direct backup-file selection path alongside the existing chooser. Full `npm run test:quality` passed all stages on this exact source, including backup/restore UI 4/4, offline-process acceptance (`pass: true`) and installed-PWA acceptance (`pass: true`). The previous real-model browser run proved a pinned D1 Q8 ONNX WASM session and routing classification, but not this candidate's old Audit 20 Q4 graph, Muse's profile or integrated Decision→custom-tool→saved-answer flow. GitHub exact-head CI and Site publication remain pending. The Restore/Muse profile, Repair/model-asset retention and integrated Decision P0 gates remain open; general release stays DO-NOT-SHIP. Detailed evidence is in [TEST-RESULTS.txt](TEST-RESULTS.txt).
+
 2026-11-27 JST のデバッグ候補はSite v417、product build `6239b5133004307f`（170資産、entry `index-DJCwIpm_.js`）として公開済み。PR #159の厳密一致算術prompt routing fixはGitHub full-quality run [45914475237](https://github.com/Unjuno/babelshelf/actions/runs/45914475237)に全17段階合格し、main commit `1a4425949c6f1dfd8b77478f9329e12e3b440cb4`へ統合。Site v417 source `b20720c286a26bba2a14edcb2e333a8c203b5c5c`、deployment `appgdep_6b08ceb14578819185c729ae6dfc885b`。公開manifest/entryのHTTP 200とbundle SHA-256 `757cbbdab28ee43d6ff6bde04d296c7bcdad024e1affa59d8721a96052cf8a04`を両public originで確認。監査20の旧GatherBlockQuantized graph/Muse profile、実アプリDecision→tool→保存、Muse restore・Repair経路model保持、検索/回答・scheduleの広い安定性は未解決。一般公開判定はDO-NOT-SHIP。既存side-panelの保存データは変更していない。証拠は [REMAINING-GATES.md](REMAINING-GATES.md) と [TEST-RESULTS.txt](TEST-RESULTS.txt)。
 
 状態の意味：**PASS** は記載した検証範囲のみ合格、**PARTIAL** は一部の証拠はあるが受入条件が未完、**OPEN** は実環境または機能の受入が未確認。自動テストを実モデル・公開環境・物理端末の証拠へ読み替えない。
