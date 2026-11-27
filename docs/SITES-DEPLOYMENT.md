@@ -1,8 +1,12 @@
+# Public Site v425 — D1 Q4 Decision loader debug candidate (2026-11-28 JST)
+
+Product PR [#179](https://github.com/Unjuno/babelshelf/pull/179) merged as main commit `5f75ee99c1b656fa32c766a1b248e7f869f5f8b1`; product commit `a6040b2c`. Exact-head workflow [46050970471](https://github.com/Unjuno/babelshelf/actions/runs/46050970471) and post-merge main workflow [46052812930](https://github.com/Unjuno/babelshelf/actions/runs/46052812930) passed all 20 quality stages. Product build `896f26aa9f05c915` has 170 verified assets and entry `index-D0E4KyjK.js` (265,834 bytes; SHA-256 `2fb0017ecb61e4621c2e490b7559822a20c18b86de4dffdd202183b162cf043a`).
+
+Site source commit `2bbd67b6a20df10e2690cc4c71b8a2d9285efca0`; saved version `appgprj_6ad46c7eb3a88191b67b5fded25711d5~appgver_8a956587a80c81918eaaa4f9d6a0f50e`; deployment `appgdep_6b09d6afb8ac819194935db1a0847400` succeeded to [https://babelshelf.com](https://babelshelf.com). Archive SHA-256 `1592c32904a4a6abc6ed7362d0946c4fe76b42e01007ecfc7851853cbf0cc61d` (210 files, 120,033,280 bytes). No-cache public checks found build `896f26aa9f05c915`, 170 assets, `/sw.js` HTTP 200, and entry `/assets/index-D0E4KyjK.js` HTTP 200 with 265,834 bytes and matching SHA-256.
+
+The candidate parses the external-data location declared by the official D1 Omni Q4 graph and accepts its Q4 filenames through content-hash verification. A pinned real graph/weights import, real ONNX Runtime JSEP/WASM Decision session and statement classification passed in isolated Chromium. This does not verify Muse's exact audited model hash, integrated Decision→tool→answer/save, or any physical device. General release remains DO-NOT-SHIP because Audit 20 P0s remain open. Local full-quality WebKit failures passed isolated reruns; exact-head and main CI passed.
+
 # Public Site v424 — stalled-generation feedback (2026-11-28 JST)
-
-## Decision Q4 diagnostic candidate status · 2026-11-28 JST
-
-The Q4 Decision candidate PR #179 (`a6040b2c`) passed exact-head GitHub quality run 46048810437 across all 20 stages. Local `npm run test:quality` had two WebKit MCP custom-tool failures that passed on isolated rerun. Main integration/CI and Site deployment are pending; public v424 remains live. Publish only the exact verified artifact after main CI is green, and describe it as a debug candidate while Audit 20 P0s remain.
 
 Product PR [#177](https://github.com/Unjuno/babelshelf/pull/177) merged to
 `main` as `97cbfebc50d6e7c1ede270cf3bf7d8a65c264cd8`. Exact-head GitHub quality

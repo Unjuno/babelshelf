@@ -1,5 +1,44 @@
 # Architecture review and target — 2026-10-28
 
+## Current architecture work queue and decision log · 2026-11-28
+
+The source-of-truth module/state map is in [ARCHITECTURE.md](ARCHITECTURE.md). This queue tracks structural work, not product release gates; the latter remain in [REMAINING-GATES.md](REMAINING-GATES.md). A batch is complete only after all callers move, the old path is removed, focused verification passes and any new invariant is enforceable.
+
+| Priority | Candidate | Evidence / intended change | State |
+|---|---|---|---|
+| A1 | Conversation and planner dependency cluster | `conversation.ts` participates in cycles with planner, agent, evidence, readings and input-scope modules and has 38 source import sites. Separate stable dialogue record/context contracts and request/history functions; migrate every call site rather than keeping `conversation.ts` as a catch-all barrel. | Open; boundary identified, exact contract split remains to be proven |
+| A2 | Knowledge/recovery dependency cluster | `knowledge-store.ts` has 15 source import sites; backup, pending-note review and restore modules also participate in the cycle. Keep transaction/CAS authority in one storage owner; identify pure validation/projection code that can move downward. | Open; map complete |
+| A3 | `Prototype.tsx` orchestration | It is the largest source file and imports 142 local modules in the static scan. Extract only a complete operation with explicit inputs/results and migrated callers; keep view state local. | Open; no extraction by file size alone |
+| A4 | Preference schema ownership | `preference-records.ts` coordinates models, tools, settings and role-specific validation. Check field-by-field single ownership before proposing new schemas; preserve existing version migration behavior. | Open |
+| A5 | Architecture enforcement | Add a machine-checkable dependency/ownership rule after the first cycle boundaries are reduced enough to define a useful rule without grandfathering broad violations. | Open; avoid a false green baseline |
+
+## Optimization evidence pool
+
+These are measurement tasks, not approved parameter changes. Keep the current safe runtime defaults until matched evidence identifies a bottleneck and a candidate improves the same task without harming correctness, stop behavior or storage safety.
+
+| Priority | Hypothesis to test | Existing signal | Required comparison before changing code |
+|---|---|---|---|
+| O1 | Context settings above 8K may disable the LFM3 turn-to-turn prompt-reuse path even when the actual prompt is short. | `dist/lfm-adapter.js` selects reuse based on configured context size; runtime measurement already reports prompt/reuse and prefill counters. | Same real model and device at 8K vs 16K on short independent, repeated-prefix and edited-prefix turns; record reused/new tokens, prefill time and peak memory. Never silently lower the user's context setting. |
+| O2 | The synchronous Home startup may pay for a large `Prototype` chunk before all screens are needed. | Current production build warns about a 766.74 kB minified `Prototype-*.js` chunk; the entry also has lazy screen chunks. | Attribute actual cold startup cost first; test one feature boundary at a time and verify offline shell caching, navigation, update integrity and cold launch. A build warning alone is not a user-visible regression. |
+| O3 | Exclusive Text/Decision residency protects memory but may add repeated model load latency after role switches. | `model-execution.ts` unloads the idle opposite role; same-role work reuses the session. | On target devices, measure unload/load count, switch latency, available memory and failure/eviction behavior across representative Text→Decision→Text tasks. Do not enable dual residency from PC timing alone. |
+| O4 | Input batch/microbatch 128 may not be best for every browser/GPU/CPU path. | Current GGUF adapter fixes both values at 128 and selects CPU threads conditionally. | Compare a small predeclared set (64/128/256) with the same model, exact prompt, output and provider; record prefill/decode, memory, UI responsiveness, Stop latency and answer/citation correctness. |
+| O5 | User-perceived wait may be dominated by input processing or hidden planning rather than decode speed. | Existing Activity captures stage timing, token counts and backend/runtime metrics; historical samples show high prefill and much faster warm reuse under different conditions. | Use a complete send-to-verified-answer trace on the reported target profile, separate cold/warm and exact/prefix-miss cache states, then change only the measured dominant stage. Do not infer a general speedup from one repeated prompt. |
+
+### Decision log
+
+- **ADR-A01 · 2026-11-28 · Model smoke parser ownership.** `parseDeviceModelSmokeAnswer` validates the bounded output of a selected-model diagnostic workload, so it belongs with `device-model-test.ts`, not the general diagnostics/report module. Migrated its only runtime caller and test to the owner; removed the reverse dependency. Keep diagnostics report construction separate. Evidence: focused Node tests pass 47/47; the current code no longer has a device-test/diagnostics import cycle.
+- **ADR-A02 · 2026-11-28 · Preserve distinct inference engines and storage projections.** The registered runtimes have different model formats and execution contracts; the Memory Markdown tree is a projection of IndexedDB, while OPFS/CacheStorage have separate asset roles. Do not unify these under a generic adapter until a real shared contract reduces caller complexity without weakening offline, provenance or data-preservation behavior.
+- **ADR-A03 · 2026-11-28 · Vision model contract ownership.** The persisted `CustomVisionModel` shape is defined by the custom Vision format and is needed by preference validation, runtime workers and UI. Its sole declaration now lives in `custom-vision-contract.ts`; preference parsing may depend on the Vision validator, while the validator no longer depends back on the general preference record module. Every type consumer moved; no shadow type or re-export shim remains.
+
+### Progress
+
+- [x] Record current module/state ownership and relative-import cycle candidates.
+- [x] Remove the device-test/diagnostics and custom-Vision/preferences source cycles; migrate their consumers and parser tests.
+- [x] Record the measured optimization hypotheses separately from release bugs; keep them unapproved until matched experiments support a change.
+- [ ] Confirm remaining graph clusters from current source, then choose one cohesive domain boundary.
+- [ ] Add a dependency rule that rejects new cycles in the agreed core boundary after existing exceptions are removed.
+- [ ] Reassess after each verified batch; do not treat this queue as a mandate for wholesale rewrites.
+
 ## Runtime setup deadlines across suspended pages · 2026-11-04
 
 An iPhone report from build `48777327b2d5c402` recorded an LFM3 full-cycle failure at `runtime-setup`, before model preparation (`filesPresent:false`, `assetState:not-run`), after about 29 minutes. It is an older browser-tab build, not evidence of a current runtime or generation failure. The current client already has a 10-minute absolute runtime preparation limit and only starts acquisition after an explicit local-cache miss. However, its deadline was enforced by a page timer; a suspended iOS page may not run that callback promptly. The client now checks `Date.now()` deadlines both in the watchdog and before accepting every worker reply, cancelling and rejecting a late success after the deadline. A controlled regression simulates page suspension by advancing wall time before a success reply. Focused runtime/device suites, the full prototype suite, app build and product acceptance pass. This closes late-success acceptance, not background execution: an OS-suspended page cannot be made to run or cancel promptly, and this does not establish iPhone LFM3 compatibility. Another device run is needed only if current-build behavior specifically fails after this guard.

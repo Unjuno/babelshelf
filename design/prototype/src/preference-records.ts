@@ -9,13 +9,13 @@ import {validateAppearancePalette,validateAppearancePaletteRegistry,type NamedAp
 import {REPLY_STYLES,type ReplyStyle} from './reply-style.ts';
 import {validateHarnessGuidance} from './harness-guidance.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
+import type {CustomVisionModel} from './custom-vision-contract.ts';
 import {validateRustXngEndpoint} from './rustxng-search-client.ts';
 import {semanticEmbeddingManifests} from './semantic-embedding-manifest.ts';
 
 export type CustomLocalModel={id:string;label:string;role:'text';engine:'webml-qwen35'|'wllama-lfm2'|'wllama-lfm3'|'wllama-qwen3';revision:string;file:{bytes:number;sha256:string};contextTokens:number;source?:{provider:'huggingface';repo:string;revision:string;file:string;license:string|null};inspection:{format:'GGUF';version:number;bytes:number;name:string;architecture:string;contextLength:number;tokenizer:string;chatTemplate:boolean;tokenCount:number;tensorCount:number;tensorTypes:number[];tensorExtentsChecked:boolean}};
 export type CustomDecisionModel={id:string;label:string;role:'decision';engine:'onnx-d1-text';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'D1-ONNX';architecture:'d1_omni';contextTokens:16384;inputLimit:2048;scope:'text-only'}};
 export type CustomSpeechModel={id:string;label:string;role:'speech';engine:'transformers-whisper-onnx';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'Whisper-ONNX';architecture:'whisper';device:'wasm';dtype:'q8';maxDurationSeconds:120}};
-export type CustomVisionModel={id:string;label:string;role:'vision';engine:'transformers-lfm2-vl-onnx';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'LFM2-VL-ONNX';architecture:'lfm2_vl';device:'webgpu';dtype:'q4f16';maxImageTokens:256;scope:'image-text'}};
 export type ModelSetSelection={textModel:string;decisionModel:string;transcriptionModel:string;ocrModel:string;visionModel:string;searchModel:string};
 export type UserModelSet={id:string;label:string;detail:string;models:ModelSetSelection};
 export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';bytes:number;sha256:string};

@@ -1,0 +1,1 @@
+export type CustomVisionModel={id:string;label:string;role:'vision';engine:'transformers-lfm2-vl-onnx';revision:string;files:{path:string;bytes:number;sha256:string}[];inspection:{format:'LFM2-VL-ONNX';architecture:'lfm2_vl';device:'webgpu';dtype:'q4f16';maxImageTokens:256;scope:'image-text'}};
