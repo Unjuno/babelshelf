@@ -341,7 +341,7 @@ test('appearance adds local font selection without rewriting old records or acce
  const migrated=readPreference('appearance',notes);assert.equal(migrated.fontFamily,'system');assert.deepEqual(migrated.fonts,[]);assert.equal(record.body,before);
  const font={id:'font-'+'a'.repeat(64),label:'Local Sans',format:'woff2',bytes:4000,sha256:'a'.repeat(64)};
  const updated=updatePreference('appearance',notes,value=>({...value,fontFamily:font.id,fonts:[font]}));assert.equal(readPreference('appearance',updated).fontFamily,font.id);assert.deepEqual(updated.find(n=>n.id===record.id).history,[before]);
- for(const change of [value=>{value.fonts[0].sha256='b'.repeat(64);},value=>{value.fontFamily='https://example.com/font.woff2';},value=>{value.fonts[0].format='css';}]){const invalid=structuredClone(readPreference('appearance',updated));change(invalid);assert.throws(()=>parsePreference('appearance',formatPreference('appearance',invalid)),/Invalid local font registry/);}
+ for(const change of [value=>{value.fonts[0].sha256='b'.repeat(64);},value=>{value.fontFamily='https://example.com/font.woff2';},value=>{value.fonts[0].format='css';},value=>{value.fonts[0].bytes=20*1024*1024+1;},value=>{value.fonts[0].label='x'.repeat(129);},value=>{value.fonts.push({...value.fonts[0]});}]){const invalid=structuredClone(readPreference('appearance',updated));change(invalid);assert.throws(()=>parsePreference('appearance',formatPreference('appearance',invalid)),/Invalid local font registry/);}
 });
 
 

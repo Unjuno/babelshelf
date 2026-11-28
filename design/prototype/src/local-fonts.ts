@@ -1,6 +1,5 @@
-import type {LocalFont,LocalFontFormat} from './local-font-contract.ts';
+import {MAX_LOCAL_FONT_BYTES,type LocalFont,type LocalFontFormat} from './local-font-contract.ts';
 type FontIo={directory:()=>Promise<FileSystemDirectoryHandle>};
-const MAX_BYTES=20*1024*1024;
 const defaultIo:FontIo={directory:async()=>await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-local-fonts-v1',{create:true})};
 
 function formatFromBytes(bytes:Uint8Array):LocalFontFormat{
@@ -16,7 +15,7 @@ async function sha256(file:Blob){const digest=await crypto.subtle.digest('SHA-25
 export function createLocalFontStore(io:FontIo=defaultIo){
  return {
   async import(file:File){
-   if(!(file instanceof Blob)||file.size<4||file.size>MAX_BYTES)throw Error('Font must be 4 bytes to 20 MB');
+   if(!(file instanceof Blob)||file.size<4||file.size>MAX_LOCAL_FONT_BYTES)throw Error('Font must be 4 bytes to 20 MB');
    const bytes=new Uint8Array(await file.slice(0,4).arrayBuffer()),format=formatFromBytes(bytes),hash=await sha256(file),id='font-'+hash;
    const dir=await io.directory(),handle=await dir.getFileHandle(hash,{create:true}),writer=await handle.createWritable();
    try{await file.stream().pipeTo(writer);}catch(error){await writer.abort().catch(()=>{});throw error;}
