@@ -39,7 +39,7 @@ for(const file of files){
   const misplaced=imported.filter(name=>contractTypeOwners.has(name)&&resolveRelative(file,match[2])!==path.join(sourceRoot,contractTypeOwners.get(name)));
   if(misplaced.length)throw Error(`Contract types must be imported directly from their owner: ${path.relative(sourceRoot,file)} (${misplaced.join(', ')})`);
  }
- if(path.basename(file)!=='preference-records.ts'&&/\bPreferences\[['"](?:models|harness)['"]\]/.test(source))throw Error(`Preference consumers must use their leaf contract instead of reaching through Preferences: ${path.relative(sourceRoot,file)}`);
+ if(path.basename(file)!=='preference-records.ts'&&/\bPreferences\[['"](?:models|harness|appearance|connection)['"]\]/.test(source))throw Error(`Preference consumers must use their leaf contract instead of reaching through Preferences: ${path.relative(sourceRoot,file)}`);
 }
 for(const [name,owner] of [['requestNamesWorkingFile','dialogue-request.ts'],['requestNamesEarlierDialogue','dialogue-request.ts'],['planningContextForInputs','dialogue-context-projection.ts']]){
  const declarations=[];
