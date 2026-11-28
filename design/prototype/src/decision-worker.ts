@@ -7,7 +7,7 @@ import wasmURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded
 import mjsURL from '../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs?url';
 import {PreTrainedTokenizer,env} from '@huggingface/transformers';
 import {decisionManifest,decisionModelDescriptor,decisionStatus,prepareDecision,readDecisionFile,readCustomDecisionFile} from './decision-assets';
-import type {CustomDecisionModel} from './preference-records';
+import type {CustomDecisionModel} from './model-registry-contract.ts';
 import {DecisionContextError,encodeDecision,decisionAnswer,validateDecisionQuestion,type DecisionQuestion} from './decision';
 import {createDecisionSession} from './decision-execution';
 import {probeDecisionWebGPU} from './decision-webgpu';

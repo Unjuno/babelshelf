@@ -7,7 +7,7 @@ import {configureLocalTransformerRuntime} from './transformers-runtime';
 import {speechReady,speechRuntimeResponse} from './speech-assets';
 import {getSpeechManifest} from './speech-models';
 import {customSpeechRuntimeResponse,speechModelDescriptor,readCustomSpeechFile} from './custom-speech-assets';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 env.allowRemoteModels=false;env.allowLocalModels=true;env.localModelPath='/asr-model/';
 env.useBrowserCache=false;env.useFSCache=false;env.useCustomCache=true;
 let activeCustomModels:CustomSpeechModel[]=[];

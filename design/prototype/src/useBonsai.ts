@@ -16,7 +16,7 @@ import {inferenceLeaseManager,type InferenceLease} from './inference-lease';
 import {settings} from './app-settings';
 // @ts-expect-error Shared baseline worker controller is JavaScript.
 import {Engine} from '../../../dist/engine.js';
-import type {CustomLocalModel} from './preference-records';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 // @ts-expect-error Shared strict manifest builder is JavaScript.
 import {withLocalModels} from '../../../dist/local-model-manifest.js';
 import baseManifest from '../../../dist/model-manifest.json';

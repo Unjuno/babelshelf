@@ -2,7 +2,7 @@ import source from './lfm3-manifest.json' with {type:'json'};
 import q8Source from './lfm3-q8-manifest.json' with {type:'json'};
 import iq3mSource from './lfm3-iq3m-manifest.json' with {type:'json'};
 import runtimeAssets from '../runtime/wllama-lfm3/manifest.json' with {type:'json'};
-import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 
 const pinned=(model:typeof source)=>({
  id:model.id,name:model.name,revision:model.revision,engine:model.engine,maxReplyTokens:model.contextTokens,

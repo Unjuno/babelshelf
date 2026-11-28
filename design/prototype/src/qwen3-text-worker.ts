@@ -11,7 +11,7 @@ import {Qwen3Adapter} from '../../../dist/qwen3-adapter.js';
 import {validateLocalModel} from '../../../dist/local-models.js';
 import {describeQwen3Text} from './qwen3-text-manifest.ts';
 import {createRecentPreparedFileReader} from './prepared-file-snapshot.ts';
-import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 import {createLfmTextRuntime as createPreparedGgufTextRuntime} from './lfm-text-runtime.ts';
 import {createTextWorkerHost} from './text-worker-host.ts';
 import {ownChildWorkers} from './owned-workers.ts';

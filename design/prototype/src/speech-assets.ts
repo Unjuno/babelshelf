@@ -2,7 +2,7 @@ import manifest from './speech-manifest.json' with {type:'json'};
 import {speechModels,getSpeechManifest} from './speech-models.ts';
 // @ts-expect-error Shared verified hash implementation is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 import {readCustomSpeechFile} from './custom-speech-assets.ts';
 export const speechManifest=manifest;
 type Asset=typeof manifest.files[number];

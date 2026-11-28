@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {SpeechClient} from './speech-control';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 import {inferenceLeaseManager} from './inference-lease';
 export function useSpeech(model:string='whisper-tiny',customModels:readonly CustomSpeechModel[]=[],beforeTranscribe?:(check:()=>void)=>Promise<void>){
  const before=useRef(beforeTranscribe);before.current=beforeTranscribe;

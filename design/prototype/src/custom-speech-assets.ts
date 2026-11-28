@@ -2,7 +2,7 @@
 import {MAX_LOCAL_SPEECH_BYTES,hashLocalModel,localSpeechModelId,validateLocalModel} from '../../../dist/local-models.js';
 // @ts-expect-error Shared streaming SHA-256 implementation is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 const paths=['config.json','generation_config.json','preprocessor_config.json','tokenizer.json','tokenizer_config.json','special_tokens_map.json','onnx/encoder_model_quantized.onnx','onnx/decoder_model_merged_quantized.onnx'] as const;
 type Pin=CustomSpeechModel['files'][number];type IO={directory:()=>Promise<FileSystemDirectoryHandle>};type Review={model:CustomSpeechModel;files:File[];status:'execution-not-tested'};
 const defaultDirectory=async()=>(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-speech-custom-v1',{create:true});const defaultIO:IO={directory:defaultDirectory};

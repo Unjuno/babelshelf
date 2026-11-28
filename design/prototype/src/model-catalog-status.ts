@@ -1,6 +1,5 @@
 import {capabilityState,type LocalCapability} from './local-capabilities.ts';
-import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel} from './preference-records.ts';
-import type {CustomVisionModel} from './custom-vision-contract.ts';
+import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel,CustomVisionModel} from './model-registry-contract.ts';
 import {textAssetInput} from './asset-activity.ts';
 import {textExecutionRoute} from './text-execution-route.ts';
 import {textBackendPolicy} from './text-device-policy.ts';

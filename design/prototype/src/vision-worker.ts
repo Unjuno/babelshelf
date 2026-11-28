@@ -6,7 +6,7 @@ import {configureLocalTransformerRuntime} from './transformers-runtime';
 import {visionManifest,visionReady,visionRuntimeResponse} from './vision-assets';
 import {customVisionModelDescriptor,customVisionReady,customVisionRuntimeResponse,readCustomVisionFile,validateCustomVisionModel} from './custom-vision-assets.ts';
 import {requireVisionWebGPU} from './vision-webgpu.ts';
-import type {CustomVisionModel} from './custom-vision-contract.ts';
+import type {CustomVisionModel} from './model-registry-contract.ts';
 import type {VisionModelIdentity} from './vision-model-identity.ts';
 import {validateVisionOutput} from './vision-output.ts';
 import {withTensorResources} from './tensor-resources';
