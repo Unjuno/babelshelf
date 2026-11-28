@@ -1,4 +1,5 @@
-import {parsePreference,formatPreference,preferenceGroup,type PreferenceGroup,type Preferences} from './preference-records.ts';
+import {parsePreference,formatPreference,preferenceGroup,type PreferenceGroup} from './preference-records.ts';
+import type {AppearancePreferences} from './appearance-preference-contract.ts';
 import type {ModelPreferences} from './model-preference-contract.ts';
 import {validateAppearancePalette} from './appearance-palette.ts';
 import {settings as appSettings} from './app-settings.ts';
@@ -29,7 +30,7 @@ export function settingsPatchResult(note:any,raw:string):{after:string;operation
  if(!value||value.action!=='patch'||Object.keys(value).sort().join(',')!=='action,changes')throw Error('Invalid settings patch');
  let changes:Record<string,unknown>;
  if(group==='appearance'&&value.changes&&typeof value.changes==='object'&&!Array.isArray(value.changes)&&Object.keys(value.changes).length===1&&Object.hasOwn(value.changes,'palette')){
-  const legacyPalette=validateAppearancePalette(value.changes.palette),paletteRegistry=before.paletteRegistry as Preferences['appearance']['paletteRegistry'],retained=paletteRegistry.filter(palette=>palette.id!=='palette-legacy');
+  const legacyPalette=validateAppearancePalette(value.changes.palette),paletteRegistry=before.paletteRegistry as AppearancePreferences['paletteRegistry'],retained=paletteRegistry.filter(palette=>palette.id!=='palette-legacy');
   if(legacyPalette)retained.push({id:'palette-legacy',...legacyPalette});
   changes=checkedChanges(group,{paletteRegistry:retained,activePaletteId:legacyPalette?'palette-legacy':''});
  }else changes=checkedChanges(group,value.changes);
