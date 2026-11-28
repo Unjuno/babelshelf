@@ -1,10 +1,9 @@
-export type FontFormat='woff2'|'woff'|'ttf'|'otf';
-export type LocalFontFile={id:string;label:string;format:FontFormat;bytes:number;sha256:string};
+import type {LocalFont,LocalFontFormat} from './local-font-contract.ts';
 type FontIo={directory:()=>Promise<FileSystemDirectoryHandle>};
 const MAX_BYTES=20*1024*1024;
 const defaultIo:FontIo={directory:async()=>await(await navigator.storage.getDirectory()).getDirectoryHandle('babelshelf-local-fonts-v1',{create:true})};
 
-function formatFromBytes(bytes:Uint8Array):FontFormat{
+function formatFromBytes(bytes:Uint8Array):LocalFontFormat{
  const tag=String.fromCharCode(...bytes.subarray(0,4));
  if(tag==='wOF2')return 'woff2';
  if(tag==='wOFF')return 'woff';
@@ -23,15 +22,15 @@ export function createLocalFontStore(io:FontIo=defaultIo){
    try{await file.stream().pipeTo(writer);}catch(error){await writer.abort().catch(()=>{});throw error;}
    const stored=await(await dir.getFileHandle(hash)).getFile();
    if(stored.size!==file.size||await sha256(stored)!==hash){await dir.removeEntry(hash).catch(()=>{});throw Error('Font verification failed');}
-   return {id,label:labelFromName(file.name),format,bytes:file.size,sha256:hash} satisfies LocalFontFile;
+   return {id,label:labelFromName(file.name),format,bytes:file.size,sha256:hash} satisfies LocalFont;
   },
-  async read(font:LocalFontFile){
+  async read(font:LocalFont){
    if(!/^font-[a-f0-9]{64}$/.test(font.id)||font.sha256!==font.id.slice(5))throw Error('Invalid font reference');
    const dir=await io.directory(),file=await(await dir.getFileHandle(font.sha256)).getFile();
    if(file.size!==font.bytes||await sha256(file)!==font.sha256)throw Error('Font verification failed');
    return file.arrayBuffer();
   },
-  async remove(font:LocalFontFile){
+  async remove(font:LocalFont){
    if(!/^font-[a-f0-9]{64}$/.test(font.id)||font.sha256!==font.id.slice(5))throw Error('Invalid font reference');
    await(await io.directory()).removeEntry(font.sha256);
   },
@@ -39,7 +38,7 @@ export function createLocalFontStore(io:FontIo=defaultIo){
 }
 export const localFontStore=createLocalFontStore();
 
-export function applyLocalFont(font:LocalFontFile|undefined,bytes?:ArrayBuffer){
+export function applyLocalFont(font:LocalFont|undefined,bytes?:ArrayBuffer){
  const key='babelshelf-'+(font?.sha256??'system');
  const root=document.documentElement;
  for(const existing of [...document.fonts])if(existing.family.startsWith('babelshelf-'))document.fonts.delete(existing);

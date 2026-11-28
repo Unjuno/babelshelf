@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { CaretRight, Plus } from '@phosphor-icons/react';
 import { settings } from './app-settings';
-import type { LocalFontFile } from './local-fonts';
+import type { LocalFont } from './local-font-contract.ts';
 import type { Preferences } from './preference-records';
 
 type AppearancePreferences = Preferences['appearance'];
@@ -14,7 +14,7 @@ type Props = {
   onPaletteChange: (id: string) => void;
   onEditFile: () => void;
   onFontChange: (id: string) => void;
-  onFontRemove: (font: LocalFontFile) => void;
+  onFontRemove: (font: LocalFont) => void;
   onFontImport: (file: File) => void;
   onReset: () => void;
 };
