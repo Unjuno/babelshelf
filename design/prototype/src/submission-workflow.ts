@@ -49,9 +49,8 @@ import {decisionMayRouteRequest,requestsImplicitSearchReadAnswer} from './saved-
 import type {SubmissionRun} from './submission-controller.ts';
 import type {KnowledgeStore} from './knowledge-store.ts';
 import type {TextRuntime} from './text-inference.ts';
-import type {HarnessProfile} from './harness-preference-contract.ts';
+import type {HarnessPreferences,HarnessProfile} from './harness-preference-contract.ts';
 import type {ModelPreferences} from './model-preference-contract.ts';
-import type {Preferences} from './preference-records.ts';
 import type {ConnectionPreferences} from './connection-preference-contract.ts';
 import type {DecisionRuntime} from './decision-port.ts';
 
@@ -98,7 +97,7 @@ export type SubmissionServices={
  speech:{ready:boolean;transcribe:AutomaticReadingAdapterPorts['transcribe']};
  vision:AutomaticReadingAdapterPorts['vision'];
  model:string;ocrModel:string;ocrLanguage:AutomaticReadingAdapterPorts['ocrLanguage'];speechModel:string;visionModel:string;visionAvailable:boolean;decisionModel:string;
- modelPreferences:ModelPreferences;harnessPreferences:Preferences['harness'];activeHarnessProfile:HarnessProfile;settingsRevisions?:{models:number|null;harness:number|null};connectionPreferences:ConnectionPreferences;
+ modelPreferences:ModelPreferences;harnessPreferences:HarnessPreferences;activeHarnessProfile:HarnessProfile;settingsRevisions?:{models:number|null;harness:number|null};connectionPreferences:ConnectionPreferences;
  semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<import('./memory-search-types.ts').MemoryPassageResult[]|null>;
  diagnostics:Pick<Storage,'getItem'|'setItem'>;
  currentDialogue:()=>Dialogue;storedDialogue:()=>Dialogue|undefined;settled:()=>Promise<void>;

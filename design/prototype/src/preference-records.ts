@@ -1,12 +1,9 @@
 import {settings} from './app-settings.ts';
-import {MAX_AGENT_RESULT_CHARS,MAX_CONFIGURED_AGENT_TOOLS,SAFE_AGENT_TOOL_IDS} from './agent-loop.ts';
-import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
+import {MAX_AGENT_RESULT_CHARS} from './agent-loop.ts';
 import {validateAppearancePalette} from './appearance-palette.ts';
 import {createAppearancePreferenceDefaults,validateAppearancePreference,type AppearancePreferences} from './appearance-preference-contract.ts';
 import {createConnectionPreferenceDefaults,validateConnectionPreference} from './connection-preference-contract.ts';
-import {REPLY_STYLES,type ReplyStyle} from './reply-style-contract.ts';
-import type {HarnessPreferences,HarnessProfile} from './harness-preference-contract.ts';
-import {validateHarnessGuidance} from './harness-guidance.ts';
+import {createHarnessPreferenceDefaults,validateHarnessPreferenceRecord} from './harness-preference-contract.ts';
 import {createModelPreferenceDefaults,validateModelPreferences,type ModelPreferences} from './model-preference-contract.ts';
 
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
@@ -19,11 +16,7 @@ const defaults={
  models:createModelPreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
  appearance:createAppearancePreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
  connection:createConnectionPreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
- harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
-  {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:8192,maxGenerationMs:300_000},
-  {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read','memory.sources'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:8192,maxGenerationMs:300_000},
-  {id:'conversation',label:'Conversation',enabledTools:[],maxToolCalls:0,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:8192,maxGenerationMs:300_000},
- ] as HarnessProfile[]},
+ harness:createHarnessPreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
 };
 export type Preferences=typeof defaults;
 export type PreferenceRecord={id:string;path:string;body:string;version:number;history:string[];paths?:string[];managed?:boolean;protected?:boolean};
@@ -124,17 +117,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  }else if(group==='connection'){
   validateConnectionPreference(value as Preferences['connection']);
  }else {
-  const harness=value as Preferences['harness'];
-  if(typeof harness.replyStyle!=='string'||!REPLY_STYLES.includes(harness.replyStyle as ReplyStyle)||!validateHarnessGuidance(harness.userGuidance)||typeof harness.activeProfileId!=='string'||!Array.isArray(harness.profiles)||!harness.profiles.length||harness.profiles.length>12)throw Error('Invalid harness profile registry or user guidance');
-  const ids=new Set<string>();
-  for(const profile of harness.profiles){
-   if(!profile||typeof profile!=='object'||Array.isArray(profile)||Object.keys(profile).sort().join('|')!=='enabledTools|id|label|maxGenerationMs|maxGenerationTokens|maxResultChars|maxToolCalls')throw Error('Invalid harness profile fields');
-   if(typeof profile.id!=='string'||!/^[a-z][a-z0-9-]{0,31}$/.test(profile.id)||ids.has(profile.id)||typeof profile.label!=='string'||!profile.label.trim()||profile.label.length>48)throw Error('Invalid harness profile identity');
-   ids.add(profile.id);
-   if(!Array.isArray(profile.enabledTools)||profile.enabledTools.length>MAX_CONFIGURED_AGENT_TOOLS||new Set(profile.enabledTools).size!==profile.enabledTools.length||profile.enabledTools.some(id=>typeof id!=='string'||(!SAFE_AGENT_TOOL_IDS.includes(id as typeof SAFE_AGENT_TOOL_IDS[number])&&!/^user\.[a-z][a-z0-9-]{0,47}$/.test(id))))throw Error('Unsupported harness tool');
-   if(profile.maxToolCalls!==null&&(!Number.isSafeInteger(profile.maxToolCalls)||profile.maxToolCalls<0)||!Number.isSafeInteger(profile.maxResultChars)||profile.maxResultChars<256||profile.maxResultChars>MAX_AGENT_RESULT_CHARS||profile.maxGenerationTokens===undefined||profile.maxGenerationTokens!==null&&(!Number.isSafeInteger(profile.maxGenerationTokens)||typeof profile.maxGenerationTokens!=='number'||profile.maxGenerationTokens<256||profile.maxGenerationTokens>MAX_TURN_GENERATION_TOKENS)||profile.maxGenerationMs===undefined||profile.maxGenerationMs!==null&&(!Number.isSafeInteger(profile.maxGenerationMs)||typeof profile.maxGenerationMs!=='number'||profile.maxGenerationMs<1_000||profile.maxGenerationMs>MAX_TURN_GENERATION_MS)||!profile.enabledTools.length&&profile.maxToolCalls!==0)throw Error('Harness profile budget is invalid');
-  }
-  if(!ids.has(harness.activeProfileId))throw Error('Active harness profile is unavailable');
+  validateHarnessPreferenceRecord(value);
  }
  return value;
 }
