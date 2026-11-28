@@ -1,7 +1,7 @@
 import {cleanReasoningMarkup,dialogueAnswerMessages,groundedAnswer,type GroundedAnswerDependencies,type AnswerInference} from './grounded-answer.ts';
 import type {TextRuntime} from './text-inference.ts';
 import type {RunDiagnostic} from './task-records.ts';
-import type {Preferences} from './preference-records.ts';
+import type {ReplyStyle} from './reply-style-contract.ts';
 import {addMeasurement,observeInference} from './inference-measurements.ts';
 import {hasInternalImplementationLeak} from './agent-evidence.ts';
 import {explicitCalculationInput} from './explicit-calculation.ts';
@@ -14,7 +14,7 @@ import {schedulePromptBody} from './scheduled-prompt.ts';
 import {localRequest} from '../../../dist/requests.js';
 
 type Dependencies={store:GroundedAnswerDependencies['store'];models:{text:(model:string,check:()=>void)=>Promise<TextRuntime>};calculate?:(expression:string,check:()=>void)=>Promise<unknown>};
-type Request={prompt:string;model:string;signal:AbortSignal;replyStyle:Preferences['harness']['replyStyle'];userGuidance:string};
+type Request={prompt:string;model:string;signal:AbortSignal;replyStyle:ReplyStyle;userGuidance:string};
 
 export class ScheduleAnswerError extends Error{
  readonly diagnostic:RunDiagnostic;
@@ -61,7 +61,7 @@ function scheduledProse(text:string,question:string){
  if(hasInternalImplementationLeak(answer,'',[]))return {answer:'',reason:'internal-implementation-leak',candidate:raw};
  return {answer,reason:'',candidate:raw};
 }
-async function scheduledConversation(engine:TextRuntime,input:{question:string;model:string;signal:AbortSignal;replyStyle:Preferences['harness']['replyStyle'];userGuidance:string}){
+async function scheduledConversation(engine:TextRuntime,input:{question:string;model:string;signal:AbortSignal;replyStyle:ReplyStyle;userGuidance:string}){
  const {question,model,signal,replyStyle,userGuidance}=input,check=()=>{if(signal.aborted)throw Error('Stopped');},manifest=engine.manifest,modelInfo={id:model,revision:manifest.models.find(item=>item.id===model)?.revision,runtime:manifest.runtime.revision};
  const inference:AnswerInference={measuredModelCalls:0};let candidate='';
  try{
