@@ -1,5 +1,6 @@
 import {visionManifest} from './vision-assets.ts';
-import {originalRef,readOriginal,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {originalRef,readOriginal,type OriginalAsset} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 import {videoFramePlan,validateSampledFrame,type VideoFramePlan} from './video-frame-plan.ts';
 import {validateTranscript,type Transcript} from './speech-transcript.ts';
 import {transcriptCitationRange,type AudioRange} from './transcript-citation.ts';

@@ -1,8 +1,8 @@
-import type {FileResult} from './file-discovery.ts';
+import type {FileResult} from './file-result-contract.ts';
 import type {Activity} from './harness-activity.ts';
 import type {InputReadingRef} from './input-reading-contract.ts';
-import type {OriginalRef} from './original-assets.ts';
-import type {SourceMetadataGuard} from './note-provenance.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
+import type {SourceMetadataGuard} from './source-metadata-contract.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 import type {TextToolReceipt} from './text-transform-contract.ts';
 import type {VoiceInput} from './voice-input-contract.ts';

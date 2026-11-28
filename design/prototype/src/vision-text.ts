@@ -1,6 +1,7 @@
 import {visionManifest} from './vision-assets.ts';
 import {isOcrImage} from './ocr-text.ts';
-import {readOriginal,originalRef,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {readOriginal,originalRef,type OriginalAsset} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 import {validateVideoVisionText,type VideoVisionText} from './video-observations.ts';
 import {validVisionModelIdentity} from './vision-model-identity.ts';
 // @ts-expect-error Canonical notes are JavaScript.

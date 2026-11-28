@@ -57,7 +57,8 @@ import type {ProcessingTool} from './processing-history.ts';
 import type {ProductRuntimeRole} from './product-runtime-assets.ts';
 import {resolveCorrectionTarget,type CorrectionProposal} from './note-corrections.ts';
 import type {Task} from './task-records.ts';
-import type {OriginalRef,OriginalAsset} from './original-assets.ts';
+import type {OriginalAsset} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 import type {ReviewedText} from './input-readings.ts';
 import type {InputReadingRef,CurrentInputRef} from './input-reading-contract.ts';
 import type {AudioRange} from './transcript-citation.ts';
@@ -98,7 +99,7 @@ export type SubmissionServices={
  semanticSearch?:(query:string,signal?:AbortSignal)=>Promise<import('./memory-search-types.ts').MemoryPassageResult[]|null>;
  diagnostics:Pick<Storage,'getItem'|'setItem'>;
  currentDialogue:()=>Dialogue;storedDialogue:()=>Dialogue|undefined;settled:()=>Promise<void>;
- saveDialogue:(next:Dialogue)=>Promise<void>;finishTurn:(id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:NonNullable<DialogueTurn['refs']>,metadata?:import('./note-provenance.ts').SourceMetadataGuard[])=>Promise<void>;
+ saveDialogue:(next:Dialogue)=>Promise<void>;finishTurn:(id:string,result:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:NonNullable<DialogueTurn['refs']>,metadata?:import('./source-metadata-contract.ts').SourceMetadataGuard[])=>Promise<void>;
  flushStorage:()=>Promise<unknown>;refreshStorage:()=>Promise<unknown>;refreshSnapshot:()=>Promise<NoteView[]>;
  ensureProductRuntime:(role:ProductRuntimeRole,acquire:boolean)=>Promise<void>;
  traceProcessing:<T>(tool:ProcessingTool,input:unknown,work:()=>Promise<T>,project:(value:T)=>unknown,stopped:()=>boolean)=>Promise<T>;

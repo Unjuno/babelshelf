@@ -1,4 +1,4 @@
-import type {OriginalRef} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 // Share only pending reads of the exact immutable identity. Preview selection,
 // verification and ownership/revocation of completed URLs stay with the caller.
 export function createOriginalLoader<T>(read:(pin:OriginalRef)=>Promise<T>){

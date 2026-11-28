@@ -1,4 +1,4 @@
-import type {FileResult} from './file-discovery.ts';
+import type {FileResult} from './file-result-contract.ts';
 
 /** A text excerpt may be used as evidence only after the canonical source check. */
 export type MemoryPassageResult={

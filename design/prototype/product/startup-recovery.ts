@@ -11,7 +11,8 @@ export async function recoverStartup<Registration>(ports:{getRegistration:()=>Pr
 }
 // @ts-expect-error Shared path validation is JavaScript.
 import {normalizePath,notePath} from '../../../dist/files.js';
-import {originalKey,readOriginal,type OriginalAsset,type OriginalRef} from '../src/original-assets.ts';
+import {originalKey,readOriginal,type OriginalAsset} from '../src/original-assets.ts';
+import type {OriginalRef} from '../src/original-ref-contract.ts';
 function openExistingMemory(timeoutMs=15000){return new Promise<IDBDatabase>((resolve,reject)=>{
  let settled=false,blocked=false;const finish=(callback:(value:any)=>void,value:any)=>{if(settled)return false;settled=true;clearTimeout(timer);callback(value);return true;};
  const timer=setTimeout(()=>finish(reject,Error('Local storage did not respond. Your saved data was not changed. Reopen the app to try again.')),timeoutMs);

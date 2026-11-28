@@ -4,7 +4,7 @@ import {notePath} from '../../../dist/files.js';
 // @ts-expect-error Shared search folding is JavaScript.
 import {normalizeSearchText,searchStoredNotesUniqueWindow} from '../../../dist/core.js';
 import {stateHash} from './backup-hash.ts';
-export type FileResult={kind:'file';noteId:string;revision:number;path:string};
+import type {FileResult} from './file-result-contract.ts';
 const normalize:(text:string)=>string=normalizeSearchText;
 export function findStoredFiles(notes:any[],query:string,limit=12,maxResults=20):FileResult[]{
  const q=normalize(query);if(!q||q.length>2000)return [];

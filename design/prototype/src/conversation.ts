@@ -1,4 +1,5 @@
-import {validateFileResults,type FileResult} from './file-discovery.ts';
+import {validateFileResults} from './file-discovery.ts';
+import type {FileResult} from './file-result-contract.ts';
 import {calculate} from './tools/math.calculate/tool.ts';
 import {planningContextForInputs} from './dialogue-context-projection.ts';
 import {namesExplicitSavedKnowledge,namesDeicticFile} from './saved-knowledge-reference.ts';

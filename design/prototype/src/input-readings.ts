@@ -6,7 +6,7 @@ import {videoVisionCoverage} from './video-observations.ts';
 import {originalKey,type OriginalAsset} from './original-assets.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 import type {CurrentInputRef,InputReadingRef} from './input-reading-contract.ts';
-import type {OriginalRef} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 import {requestsCrossSource} from './saved-knowledge-reference.ts';
 // @ts-expect-error Shared canonical core is JavaScript.
 import {searchableNoteIds,searchNotes,chunks,latest} from '../../../dist/core.js';

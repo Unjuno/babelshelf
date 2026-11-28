@@ -1,7 +1,7 @@
 import type {Dialogue} from './dialogue-contract.ts';
 import type {SourceRef} from './source-reference-contract.ts';
 import {GroundingConflictError} from './grounding-conflict.ts';
-import type {SourceMetadataGuard} from './note-provenance.ts';
+import type {SourceMetadataGuard} from './source-metadata-contract.ts';
 // One local serialization boundary; IDB still enforces the cross-tab expected value.
 // Functional updates are narrowly authored by the harness, never supplied by a model.
 export function createDialogueWriter(read:()=>Dialogue,write:(next:Dialogue,refs?:SourceRef[],metadata?:SourceMetadataGuard[])=>Promise<void>){

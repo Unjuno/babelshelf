@@ -34,7 +34,7 @@ import {LocalFileActions} from './LocalFileActions';
 import {configureSemanticSearchRuntime,getSemanticSearchRuntime} from './semantic-search-session';
 import {orderMemorySearchNotes} from './memory-search-order';
 import {shouldShowMemoryEmptyState} from './memory-listing-state';
-import type {FileResult} from './file-discovery';
+import type {FileResult} from './file-result-contract';
 import type {MemoryPassageResult} from './memory-search-types.ts';
 // @ts-expect-error Shared search folding is JavaScript.
 import {normalizeSearchText} from '../../../dist/core.js';
@@ -127,7 +127,8 @@ import {FeedbackPanel} from './FeedbackPanel';
 import {type PurgeRetentionReference} from './knowledge-store';
 import type {NoteView} from './knowledge-contract';
 import {createNewNoteView,newNoteSourceRef} from './note-creation';
-import {prepareOriginal,TEXT_ATTACHMENT_ACCEPT,originalMime,originalKind,originalText,readOriginal,originalRef,checkAttachmentBatch,type OriginalRef,type OriginalAsset} from './original-assets';
+import {prepareOriginal,TEXT_ATTACHMENT_ACCEPT,originalMime,originalKind,originalText,readOriginal,originalRef,checkAttachmentBatch,type OriginalAsset} from './original-assets';
+import type {OriginalRef} from './original-ref-contract';
 import {makeVisionText,type VisionText} from './vision-text';
 import {videoVisionCitationRange} from './video-observations';
 import {taskDefinition,parseTask} from './task-records';
@@ -228,10 +229,10 @@ export default function Prototype() {
   lastRenderedTurnCount.current=value.turns.length;
  }
  useEffect(()=>{if(!storageReady)return;let alive=true;knowledge.ensureConversationSessions().then(async sessions=>{if(!alive)return;setConversationSessions(sessions);const value=await knowledge.getState<Dialogue>('dialogue');if(!alive)return;storedDialogue.current=value;dialogue.current=value?validateDialogue(value):emptyDialogue();renderDialogue(dialogue.current);setDialogueReady(true);}).catch(e=>{if(alive)setDialogueError(e.message);});return()=>{alive=false;};},[storageReady]);
- const writeDialogue=async(value:Dialogue,refs?:SourceRef[],metadata?:import('./note-provenance').SourceMetadataGuard[])=>{if(refs?.length||metadata?.length)await knowledge.compareGroundedDialogue(storedDialogue.current,value,refs??[],metadata);else await knowledge.compareState('dialogue',storedDialogue.current,value);storedDialogue.current=value;dialogue.current=value;renderDialogue(value);};
+ const writeDialogue=async(value:Dialogue,refs?:SourceRef[],metadata?:import('./source-metadata-contract').SourceMetadataGuard[])=>{if(refs?.length||metadata?.length)await knowledge.compareGroundedDialogue(storedDialogue.current,value,refs??[],metadata);else await knowledge.compareState('dialogue',storedDialogue.current,value);storedDialogue.current=value;dialogue.current=value;renderDialogue(value);};
  const dialogueWriter=useRef<ReturnType<typeof createDialogueWriter>|null>(null);if(!dialogueWriter.current)dialogueWriter.current=createDialogueWriter(()=>dialogue.current,writeDialogue);
  async function saveDialogue(value:Dialogue){await dialogueWriter.current!.replace(value);}
- async function finishTurn(id:string,value:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:SourceRef[],metadata?:import('./note-provenance').SourceMetadataGuard[]){await dialogueWriter.current!.update(current=>completeTurn(current,id,{...value,...(metadata?.length&&value.answer?{sourceMetadataGuards:structuredClone(metadata)}:{})}),guardSources,metadata);}
+ async function finishTurn(id:string,value:Partial<Omit<DialogueTurn,'id'|'user'>>,guardSources?:SourceRef[],metadata?:import('./source-metadata-contract').SourceMetadataGuard[]){await dialogueWriter.current!.update(current=>completeTurn(current,id,{...value,...(metadata?.length&&value.answer?{sourceMetadataGuards:structuredClone(metadata)}:{})}),guardSources,metadata);}
  const fileFocusQueue=useRef<ReturnType<typeof createFileFocusQueue>|null>(null);if(!fileFocusQueue.current)fileFocusQueue.current=createFileFocusQueue(()=>dialogue.current,(value,remove)=>dialogueWriter.current!.update(current=>remove?withoutWorkingFile(current,remove):withWorkingFile(current,value.currentFile!)));
  const inputFile=dialogue.current.currentFile,inputFileNote=inputFile?notes.find(note=>note.id===inputFile.noteId):undefined;
  const inputFilePath=inputFileNote&&inputFile?(inputFileNote.paths?.[inputFile.revision-1]??inputFileNote.path):'File';

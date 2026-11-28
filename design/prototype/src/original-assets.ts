@@ -4,8 +4,8 @@ import {createNote} from '../../../dist/core.js';
 // @ts-expect-error Shared hash is JavaScript.
 import {SHA256} from '../../../dist/sha256.js';
 import {memoryFilePath} from './memory-paths.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 export type OriginalKind='text'|'image'|'audio'|'video'|'file';
-export type OriginalRef={id:string;revision:1;sha256:string};
 export type OriginalAsset={schema:1;type:'original-asset';id:string;revision:1;name:string;mime:string;kind:OriginalKind;bytes:number;sha256:string;createdAt:string;data:string};
 export const MAX_ORIGINAL_BYTES=32*1024*1024;
 export const MAX_ATTACHMENT_BATCH_BYTES=64*1024*1024;

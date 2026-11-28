@@ -1,7 +1,8 @@
 import {validateVideoAudioTiming,type VideoAudioTiming} from './video-audio-timeline.ts';
 import languages from './speech-languages.json' with {type:'json'};
 import {speechModelProvenance,validSpeechModelProvenance} from './speech-models.ts';
-import {readOriginal,originalRef,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {readOriginal,originalRef,type OriginalAsset} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 // @ts-expect-error Canonical baseline is JavaScript.
 import {createNote} from '../../../dist/core.js';
 export type Transcript={schema:1;containerTiming?:VideoAudioTiming;type:'audio-transcript';sourceTrack?:'video-audio';timebase?:'decoded-audio';timing:'model-estimated';language:string;original:OriginalRef;model:{id:string;revision:string;runtime:string;dtype:string};durationMs:number;coverage:{startMs:number;endMs:number};text:string;segments:{startMs:number;endMs:number;modelEndMs:number|null;text:string}[]};
