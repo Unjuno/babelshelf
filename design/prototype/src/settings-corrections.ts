@@ -1,4 +1,5 @@
 import {parsePreference,formatPreference,preferenceGroup,type PreferenceGroup,type Preferences} from './preference-records.ts';
+import type {ModelPreferences} from './model-preference-contract.ts';
 import {validateAppearancePalette} from './appearance-palette.ts';
 import {settings as appSettings} from './app-settings.ts';
 import {OCR_LANGUAGES} from './ocr-assets.ts';
@@ -54,7 +55,7 @@ function settingsProposalContext(group:EditableGroup,value:Record<string,unknown
  const selected=Object.fromEntries(allowed[group].map(key=>[key,value[key]]));
  if(group==='harness')return {settings:selected,...harnessToolChoices(toolSources)};
  if(group!=='models')return {settings:selected};
- const models=value as unknown as Preferences['models'];
+ const models=value as unknown as ModelPreferences;
  const choices=(ids:string[],builtins:readonly {value:string;label:string}[],custom:readonly {id:string;label:string}[]=[])=>[
   {id:'',label:'Not configured'},
   ...ids.map(id=>({id,label:custom.find(model=>model.id===id)?.label??builtins.find(model=>model.value===id)?.label??id})),
