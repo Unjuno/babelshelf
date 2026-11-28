@@ -1,7 +1,8 @@
 import {localAdapters} from './local-capabilities.ts';
 import {initialPreparationPlan} from './initial-preparation.ts';
 import {semanticEmbeddingManifest,semanticEmbeddingManifests} from './semantic-embedding-manifest.ts';
-import type {Preferences,ModelSetSelection,UserModelSet} from './preference-records.ts';
+import type {ModelSetSelection,UserModelSet} from './model-registry-contract.ts';
+import type {Preferences} from './preference-records.ts';
 
 export type ModelSetId=string;
 export type ModelSet=UserModelSet;

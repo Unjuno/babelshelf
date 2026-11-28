@@ -1,5 +1,5 @@
 import {textAssetInput} from './asset-activity.ts';
-import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 
 export function selectedTextFileGuidance(modelId:string,customModels:readonly CustomLocalModel[]=[]):string {
  if(!modelId)return 'Choose a model before supplying its files.';

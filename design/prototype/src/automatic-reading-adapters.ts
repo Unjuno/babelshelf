@@ -7,7 +7,7 @@ import type {VisionText} from './vision-text.ts';
 import type {OcrText} from './ocr-text.ts';
 import type {PdfText} from './pdf-text.ts';
 import type {OcrLanguage} from './ocr-assets.ts';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 import type {ReadingAdapters} from './automatic-reading.ts';
 
 type RuntimeRole='vision'|'speech'|'ocr'|'pdf';

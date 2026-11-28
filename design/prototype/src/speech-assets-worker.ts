@@ -2,7 +2,7 @@
 // Checking or preparing speech files does not need to load Transformers or
 // ONNX Runtime. Keep that heavier inference bundle out of the app's startup path.
 import {prepareSpeech,speechReady} from './speech-assets.ts';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 
 let busy=false;
 self.onmessage=async({data}:MessageEvent<any>)=>{

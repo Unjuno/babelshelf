@@ -1,6 +1,6 @@
 import tiny from './speech-manifest.json' with {type:'json'};
 import base from './speech-base-manifest.json' with {type:'json'};
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomSpeechModel} from './model-registry-contract.ts';
 
 // One package identity is shared by preparation, execution and source records.
 // A UI label alone cannot admit another architecture or a remote runtime.

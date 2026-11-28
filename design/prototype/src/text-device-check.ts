@@ -3,7 +3,7 @@ import {textModelFileSize} from './model-catalog-status.ts';
 import {textExecutionRoute} from './text-execution-route.ts';
 import {requestAdapterWithFallback} from './webgpu-preference.ts';
 import {textBackendPolicy} from './text-device-policy.ts';
-import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 
 type GpuPort={requestAdapter:(options?:{powerPreference?:'low-power'|'high-performance'})=>Promise<unknown>};
 export type TextDeviceCheck={modelId:string;modelBytes:number|null;availableBytes:number|null;storage:'already-present'|'below-file-size'|'estimate-covers-file'|'unknown';backend:'webgpu'|'cpu-wasm';fallbackBackend?:'cpu-wasm';webgpu:'available'|'unavailable'|'unknown'|'not-needed'};

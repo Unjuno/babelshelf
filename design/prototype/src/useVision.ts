@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {VisionClient} from './vision-control';
 import {inferenceLeaseManager} from './inference-lease';
 import {customVisionReady,importCustomVisionModel} from './custom-vision-assets.ts';
-import type {CustomVisionModel} from './custom-vision-contract.ts';
+import type {CustomVisionModel} from './model-registry-contract.ts';
 
 const builtinVision='lfm25-vl-450m-q4f16';
 

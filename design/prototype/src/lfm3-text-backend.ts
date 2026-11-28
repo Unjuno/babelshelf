@@ -3,7 +3,7 @@ import {createPinnedAssetStore} from './pinned-text-assets.ts';
 import {createLocalGgufAssetStore} from './local-gguf-asset-store.ts';
 import {createIsolatedTextClient,DEFAULT_TEXT_MODEL_LOAD_TIMEOUT_MS} from './isolated-text-client.ts';
 import {customLfm3TextModels,describeLfm3Text,lfm3TextModels} from './lfm3-text-manifest.ts';
-import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 import {deserializeLfm3AssetFailure} from './lfm3-asset-worker-protocol.ts';
 
 /** LFM3's pinned Wllama load reports its start and GPU-offload log, but no

@@ -4,7 +4,7 @@ import {createPinnedAssetStore} from './pinned-text-assets.ts';
 import {SHA256} from '../../../dist/sha256.js';
 // @ts-expect-error Shared strict local model record and cancellable hash functions are JavaScript.
 import {MAX_LOCAL_DECISION_BYTES,hashLocalModel,localDecisionModelId,validateLocalModel} from '../../../dist/local-models.js';
-import type {CustomDecisionModel} from './preference-records.ts';
+import type {CustomDecisionModel} from './model-registry-contract.ts';
 export const decisionManifest=manifest;
 export function createDecisionAssetStore(io:Pick<IO,'directory'|'fetch'>,source:typeof manifest=manifest){
  return createPinnedAssetStore({id:'decision-'+source.id.toLowerCase(),revision:source.conversion.revision,runtime:{revision:source.runtime.revision},files:source.files},io);

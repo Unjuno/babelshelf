@@ -3,7 +3,7 @@ import {getLfmTextManifest} from './lfm-text-manifest.ts';
 import {getQwen3TextManifest} from './qwen3-text-manifest.ts';
 import {getLfm3TextManifest} from './lfm3-text-manifest.ts';
 import {getOnnxTextManifest} from './text-model-manifest.ts';
-import type {CustomLocalModel} from './preference-records.ts';
+import type {CustomLocalModel} from './model-registry-contract.ts';
 
 export type TextExecutionRoute={engine:'webml-qwen35'|'wllama-lfm2'|'wllama-lfm3'|'wllama-qwen3'|'transformers-causal-wasm'|'transformers-causal-webgpu';backend:'webgpu'|'cpu-wasm';fallbackBackend?:'cpu-wasm'};
 export type TextExecutionIdentity=TextExecutionRoute&{revision:string;runtimeRevision:string};

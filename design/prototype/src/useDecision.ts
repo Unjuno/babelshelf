@@ -1,5 +1,5 @@
 import {decisionManifest,decisionModelDescriptor} from './decision-assets';
-import type {CustomDecisionModel} from './preference-records';
+import type {CustomDecisionModel} from './model-registry-contract.ts';
 import {pinDecisionIdentity} from './decision-port';
 import {useEffect,useRef,useState} from 'react';
 import {DecisionClient} from './decision-control';

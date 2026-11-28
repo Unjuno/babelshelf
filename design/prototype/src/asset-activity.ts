@@ -4,16 +4,14 @@ import {getLfmTextManifest} from './lfm-text-manifest.ts';
 import {isOnnxText,getOnnxTextManifest} from './text-model-manifest.ts';
 // @ts-expect-error Shared strict manifest builder is JavaScript.
 import {withLocalModels} from '../../../dist/local-model-manifest.js';
-import type {CustomLocalModel} from './preference-records.ts';
-import type {CustomDecisionModel} from './preference-records.ts';
-import type {CustomSpeechModel} from './preference-records.ts';
+import type {CustomLocalModel,CustomDecisionModel,CustomSpeechModel} from './model-registry-contract.ts';
 import {decisionManifest} from './decision-assets.ts';
 import {ocrManifest,ocrModelPins,type OcrLanguage} from './ocr-assets.ts';
 import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 import {speechManifest} from './speech-assets.ts';
 import {getSpeechManifest,speechModelLabel} from './speech-models.ts';
 import {visionManifest} from './vision-assets.ts';
-import type {CustomVisionModel} from './custom-vision-contract.ts';
+import type {CustomVisionModel} from './model-registry-contract.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
 import {semanticEmbeddingManifestFor} from './semantic-embedding-manifest.ts';
 export type AssetTool='decision.prepare'|'decision.load'|'decision.unload'|'ocr.prepare'|'vision.prepare'|'search.prepare'|'model.prepare'|'model.load'|'model.unload'|'speech.prepare'|'runtime.prepare';
