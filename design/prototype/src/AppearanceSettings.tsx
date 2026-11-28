@@ -2,9 +2,7 @@ import { useRef } from 'react';
 import { CaretRight, Plus } from '@phosphor-icons/react';
 import { settings } from './app-settings';
 import type { LocalFont } from './local-font-contract.ts';
-import type { Preferences } from './preference-records';
-
-type AppearancePreferences = Preferences['appearance'];
+import type { AppearancePreferences } from './appearance-preference-contract.ts';
 
 type Props = {
   preferences: AppearancePreferences;

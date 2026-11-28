@@ -5,8 +5,8 @@ import speechLanguages from './speech-languages.json' with {type:'json'};
 import {settings} from './app-settings.ts';
 import {MAX_AGENT_RESULT_CHARS,MAX_CONFIGURED_AGENT_TOOLS,SAFE_AGENT_TOOL_IDS} from './agent-loop.ts';
 import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
-import {validateAppearancePalette,validateAppearancePaletteRegistry,type NamedAppearancePalette} from './appearance-palette.ts';
-import type {LocalFont} from './local-font-contract.ts';
+import {validateAppearancePalette} from './appearance-palette.ts';
+import {createAppearancePreferenceDefaults,validateAppearancePreference,type AppearancePreferences} from './appearance-preference-contract.ts';
 import {REPLY_STYLES,type ReplyStyle} from './reply-style-contract.ts';
 import type {HarnessPreferences,HarnessProfile} from './harness-preference-contract.ts';
 import {validateHarnessGuidance} from './harness-guidance.ts';
@@ -23,7 +23,7 @@ export class UnsupportedPreferenceSchemaError extends Error{
 }
 const defaults={
  models:{schemaVersion:PREFERENCE_SCHEMA_VERSION,customSets:[] as UserModelSet[],customModels:[] as CustomLocalModel[],customDecisionModels:[] as CustomDecisionModel[],customSpeechModels:[] as CustomSpeechModel[],customVisionModels:[] as CustomVisionModel[],visionModel:'',visionLibrary:[] as string[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel,'2B'] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,lfm3ContextTokens:8192,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[],searchModel:'',searchLibrary:[] as string[]},
- appearance:{schemaVersion:PREFERENCE_SCHEMA_VERSION,theme:settings.defaults.theme,background:settings.defaults.background,glass:settings.defaults.glass,fontFamily:settings.defaults.fontFamily,fonts:[] as LocalFont[],paletteRegistry:[] as NamedAppearancePalette[],activePaletteId:''},
+ appearance:createAppearancePreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
  connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false,rustxngEndpoint:''},
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
   {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:8192,maxGenerationMs:300_000},
@@ -139,10 +139,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
    if(!models||typeof models!=='object'||Array.isArray(models)||Object.keys(models).sort().join('|')!=='decisionModel|ocrModel|searchModel|textModel|transcriptionModel|visionModel'||typeof models.textModel!=='string'||!m.textLibrary.includes(models.textModel)||typeof models.decisionModel!=='string'||models.decisionModel!==''&&!m.decisionLibrary.includes(models.decisionModel)||typeof models.transcriptionModel!=='string'||models.transcriptionModel!==''&&!m.transcriptionLibrary.includes(models.transcriptionModel)||typeof models.ocrModel!=='string'||models.ocrModel!==''&&!m.ocrLibrary.includes(models.ocrModel)||typeof models.visionModel!=='string'||models.visionModel!==''&&!m.visionLibrary.includes(models.visionModel)||typeof models.searchModel!=='string'||models.searchModel!==''&&!m.searchLibrary.includes(models.searchModel))throw Error('Custom model set references an unregistered model');
   }
  }else if(group==='appearance'){
-  const a=value as Preferences['appearance'];
-  if(!settings.appearance.themes.includes(a.theme)||!settings.appearance.backgrounds.includes(a.background)||!settings.appearance.glass.includes(a.glass))throw Error('Unsupported appearance value');
-  if(typeof a.fontFamily!=='string'||a.fontFamily!=='system'&&!a.fonts?.some(font=>font.id===a.fontFamily)||!Array.isArray(a.fonts)||a.fonts.length>32||new Set(a.fonts.map(font=>font?.id)).size!==a.fonts.length||a.fonts.some(font=>!font||!/^font-[a-f0-9]{64}$/.test(font.id)||typeof font.label!=='string'||font.label.length>128||!['woff2','woff','ttf','otf'].includes(font.format)||!Number.isSafeInteger(font.bytes)||font.bytes<1||font.bytes>20*1024*1024||font.sha256!==font.id.slice(5)))throw Error('Invalid local font registry');
-  const validated=validateAppearancePaletteRegistry(a.paletteRegistry,a.activePaletteId);a.paletteRegistry=validated.paletteRegistry;a.activePaletteId=validated.activePaletteId;
+  validateAppearancePreference(value as AppearancePreferences);
  }else if(group==='connection'){
   if(typeof value.downloads!=='boolean'||typeof value.diagnosticLogs!=='boolean'||typeof value.rustxngEndpoint!=='string'||value.rustxngEndpoint.length>2048)throw Error('Invalid connection preference');
   if(value.rustxngEndpoint)validateRustXngEndpoint(value.rustxngEndpoint);
