@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {searchRustXng,validateRustXngEndpoint} from '../src/rustxng-search-client.ts';
+import {validateRustXngEndpoint} from '../src/rustxng-search-contract.ts';
+import {searchRustXng} from '../src/rustxng-search-client.ts';
 
 const invalidEndpoint=error=>error?.code==='invalid_endpoint';
 

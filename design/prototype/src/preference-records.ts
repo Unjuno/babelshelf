@@ -7,12 +7,12 @@ import {MAX_AGENT_RESULT_CHARS,MAX_CONFIGURED_AGENT_TOOLS,SAFE_AGENT_TOOL_IDS} f
 import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
 import {validateAppearancePalette} from './appearance-palette.ts';
 import {createAppearancePreferenceDefaults,validateAppearancePreference,type AppearancePreferences} from './appearance-preference-contract.ts';
+import {createConnectionPreferenceDefaults,validateConnectionPreference} from './connection-preference-contract.ts';
 import {REPLY_STYLES,type ReplyStyle} from './reply-style-contract.ts';
 import type {HarnessPreferences,HarnessProfile} from './harness-preference-contract.ts';
 import {validateHarnessGuidance} from './harness-guidance.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
 import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel,CustomVisionModel,UserModelSet} from './model-registry-contract.ts';
-import {validateRustXngEndpoint} from './rustxng-search-client.ts';
 import {semanticEmbeddingManifests} from './semantic-embedding-manifest.ts';
 
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
@@ -24,7 +24,7 @@ export class UnsupportedPreferenceSchemaError extends Error{
 const defaults={
  models:{schemaVersion:PREFERENCE_SCHEMA_VERSION,customSets:[] as UserModelSet[],customModels:[] as CustomLocalModel[],customDecisionModels:[] as CustomDecisionModel[],customSpeechModels:[] as CustomSpeechModel[],customVisionModels:[] as CustomVisionModel[],visionModel:'',visionLibrary:[] as string[],ocrModel:'',ocrLibrary:[] as string[],ocrLanguage:'eng+jpn' as OcrLanguage,transcriptionLanguage:'en',textLibrary:[settings.defaults.textModel,'2B'] as string[],decisionLibrary:[] as string[],textModel:settings.defaults.textModel,lfm3ContextTokens:8192,decisionModel:settings.defaults.decisionModel,transcriptionModel:settings.defaults.transcriptionModel,transcriptionLibrary:settings.defaults.transcriptionModel?[settings.defaults.transcriptionModel]:[] as string[],searchModel:'',searchLibrary:[] as string[]},
  appearance:createAppearancePreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
- connection:{schemaVersion:PREFERENCE_SCHEMA_VERSION,downloads:settings.defaults.downloads,diagnosticLogs:false,rustxngEndpoint:''},
+ connection:createConnectionPreferenceDefaults(PREFERENCE_SCHEMA_VERSION),
  harness:{schemaVersion:PREFERENCE_SCHEMA_VERSION,replyStyle:'balanced' as ReplyStyle,userGuidance:'',activeProfileId:'standard',profiles:[
   {id:'standard',label:'Standard',enabledTools:['memory.search','memory.list','memory.read','memory.sources','math.calculate','time.now'],maxToolCalls:null,maxResultChars:MAX_AGENT_RESULT_CHARS,maxGenerationTokens:8192,maxGenerationMs:300_000},
   {id:'source-first',label:'Source first',enabledTools:['memory.search','memory.list','memory.read','memory.sources'],maxToolCalls:null,maxResultChars:6000,maxGenerationTokens:8192,maxGenerationMs:300_000},
@@ -141,8 +141,7 @@ export function parsePreference<G extends PreferenceGroup>(group:G,body:string):
  }else if(group==='appearance'){
   validateAppearancePreference(value as AppearancePreferences);
  }else if(group==='connection'){
-  if(typeof value.downloads!=='boolean'||typeof value.diagnosticLogs!=='boolean'||typeof value.rustxngEndpoint!=='string'||value.rustxngEndpoint.length>2048)throw Error('Invalid connection preference');
-  if(value.rustxngEndpoint)validateRustXngEndpoint(value.rustxngEndpoint);
+  validateConnectionPreference(value as Preferences['connection']);
  }else {
   const harness=value as Preferences['harness'];
   if(typeof harness.replyStyle!=='string'||!REPLY_STYLES.includes(harness.replyStyle as ReplyStyle)||!validateHarnessGuidance(harness.userGuidance)||typeof harness.activeProfileId!=='string'||!Array.isArray(harness.profiles)||!harness.profiles.length||harness.profiles.length>12)throw Error('Invalid harness profile registry or user guidance');

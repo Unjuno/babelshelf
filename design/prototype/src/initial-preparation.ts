@@ -12,6 +12,7 @@ import {getSpeechManifest,speechModelLabel} from './speech-models.ts';
 import {ocrFiles} from './ocr-assets.ts';
 import {visionManifest} from './vision-assets.ts';
 import {semanticEmbeddingManifestFor,semanticEmbeddingAssetBytesFor} from './semantic-embedding-manifest.ts';
+import type {ConnectionPreferences} from './connection-preference-contract.ts';
 export type PreparationRole='text'|'speech'|'ocr'|'decision'|'vision'|'search';
 type Role=PreparationRole;
 /** Browser quota estimates are advisory; they are not a hard install gate. */
@@ -64,7 +65,7 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
 }
 export type InitialPreparation=ReturnType<typeof initialPreparationPlan>;
 type PreparationStep=InitialPreparation['steps'][number];
-export function assertPreparationSettings(plan:InitialPreparation,current:{models:Preferences['models'];connection:Pick<Preferences['connection'],'downloads'>},step?:PreparationStep){
+export function assertPreparationSettings(plan:InitialPreparation,current:{models:Preferences['models'];connection:Pick<ConnectionPreferences,'downloads'>},step?:PreparationStep){
  if(JSON.stringify(current.models)!==plan.expected)throw Error('Model settings changed · review again');
  if(step&&!step.ready&&step.bytes>0&&!current.connection.downloads)throw Error('Downloads are off');
 }
