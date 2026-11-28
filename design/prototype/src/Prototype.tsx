@@ -150,7 +150,8 @@ import { memoryFilePath as filePath, uniqueMemoryFilePath, memoryFolderPath as f
 import { memoryBreadcrumbs, memoryFolderEntries, memoryNoteMatchesLocation, memoryNoteMatchesScope, memoryCreationFolder, type MemoryScope } from './memory-navigation';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import {DeferredViewBoundary} from './DeferredViewBoundary';
-import {applyLocalFont,localFontStore,type LocalFontFile} from './local-fonts';
+import {applyLocalFont,localFontStore} from './local-fonts';
+import type {LocalFont} from './local-font-contract.ts';
 import {appearancePaletteStyle} from './appearance-palette';
 import {runDeviceMemorySmokeTest} from './device-memory-smoke';
 import {readViewLocation,saveViewLocation,type Page,type SettingsPanel} from './view-location';
@@ -503,7 +504,7 @@ export default function Prototype() {
  const fontRegistryKey=appearancePreferences.fonts.map(font=>font.id+':'+font.sha256).join('|');
  useEffect(()=>{let active=true;const selected=appearancePreferences.fonts.find(font=>font.id===appearancePreferences.fontFamily);if(!selected){applyLocalFont(undefined);return()=>{active=false;};}void localFontStore.read(selected).then(bytes=>{if(active)applyLocalFont(selected,bytes);}).catch(()=>{if(active)applyLocalFont(undefined);});return()=>{active=false;};},[appearancePreferences.fontFamily,fontRegistryKey]);
  async function importLocalFont(file?:File){if(!file)return;try{const font=await localFontStore.import(file);setNotes(a=>updatePreference('appearance',a,current=>({...current,fonts:[...current.fonts.filter(item=>item.id!==font.id),font],fontFamily:font.id})));await flushStorage();toast('Font imported · saved on this device');}catch(error){toast((error as Error).message);}}
- async function removeLocalFont(font:LocalFontFile){try{setNotes(a=>updatePreference('appearance',a,current=>({...current,fonts:current.fonts.filter(item=>item.id!==font.id),fontFamily:current.fontFamily===font.id?'system':current.fontFamily})));await flushStorage();await localFontStore.remove(font);toast('Font removed');}catch(error){toast((error as Error).message);}}
+ async function removeLocalFont(font:LocalFont){try{setNotes(a=>updatePreference('appearance',a,current=>({...current,fonts:current.fonts.filter(item=>item.id!==font.id),fontFamily:current.fontFamily===font.id?'system':current.fontFamily})));await flushStorage();await localFontStore.remove(font);toast('Font removed');}catch(error){toast((error as Error).message);}}
  const setTheme=(value:string)=>setNotes(a=>updatePreference('appearance',a,p=>({...p,theme:value,activePaletteId:''})));
  const setBackground=(value:string)=>setNotes(a=>updatePreference('appearance',a,p=>({...p,background:value,activePaletteId:''})));
  const setMaterial=(value:string)=>setNotes(a=>updatePreference('appearance',a,p=>({...p,glass:value,activePaletteId:''})));
