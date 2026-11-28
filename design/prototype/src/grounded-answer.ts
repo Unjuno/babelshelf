@@ -22,7 +22,8 @@ import {validateWebCitation,type WebCitation,type WebSnapshot} from './web-evide
 import {validateClockReading,type ClockReading} from './tools/time.now/tool.ts';
 import {AGENT_DISCOVERY_TOOL_IDS,MAX_CONTEXT_SOURCE_REFS,MAX_PLANNER_AGENT_TOOLS} from './agent-limits.ts';
 import {builtinToolIds} from './tools/builtin-tools.ts';
-import {answerLanguageInstruction,dialogueOutputLimits,firstSentenceOnly,groundedOutputTokens,hasMultipleSentences,replyStyleInstruction,requestsOneSentence,userFacingAnswerInstruction,type ReplyStyle} from './reply-style.ts';
+import {answerLanguageInstruction,dialogueOutputLimits,firstSentenceOnly,groundedOutputTokens,hasMultipleSentences,replyStyleInstruction,requestsOneSentence,userFacingAnswerInstruction} from './reply-style.ts';
+import type {ReplyStyle} from './reply-style-contract.ts';
 import {exactMinutesBefore} from './time-answer.ts';
 import {harnessGuidanceMessage} from './harness-guidance.ts';
 import {namesSavedKnowledge,namedSavedSubject,namedJapaneseSavedSubject,namedEnglishSavedSubject,matchesNamedSource} from './saved-knowledge-reference.ts';

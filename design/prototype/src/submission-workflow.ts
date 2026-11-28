@@ -49,7 +49,8 @@ import {decisionMayRouteRequest,requestsImplicitSearchReadAnswer} from './saved-
 import type {SubmissionRun} from './submission-controller.ts';
 import type {KnowledgeStore} from './knowledge-store.ts';
 import type {TextRuntime} from './text-inference.ts';
-import type {Preferences,HarnessProfile} from './preference-records.ts';
+import type {HarnessProfile} from './harness-preference-contract.ts';
+import type {Preferences} from './preference-records.ts';
 import type {DecisionRuntime} from './decision-port.ts';
 
 import type {AutomaticReadingAdapterPorts} from './automatic-reading-adapters.ts';

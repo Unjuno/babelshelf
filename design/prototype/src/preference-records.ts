@@ -6,7 +6,8 @@ import {settings} from './app-settings.ts';
 import {MAX_AGENT_RESULT_CHARS,MAX_CONFIGURED_AGENT_TOOLS,SAFE_AGENT_TOOL_IDS} from './agent-loop.ts';
 import {MAX_TURN_GENERATION_MS,MAX_TURN_GENERATION_TOKENS} from './turn-inference-budget.ts';
 import {validateAppearancePalette,validateAppearancePaletteRegistry,type NamedAppearancePalette} from './appearance-palette.ts';
-import {REPLY_STYLES,type ReplyStyle} from './reply-style.ts';
+import {REPLY_STYLES,type ReplyStyle} from './reply-style-contract.ts';
+import type {HarnessPreferences,HarnessProfile} from './harness-preference-contract.ts';
 import {validateHarnessGuidance} from './harness-guidance.ts';
 import {validateCustomVisionModel} from './custom-vision-assets.ts';
 import type {CustomDecisionModel,CustomLocalModel,CustomSpeechModel,CustomVisionModel,UserModelSet} from './model-registry-contract.ts';
@@ -14,8 +15,6 @@ import {validateRustXngEndpoint} from './rustxng-search-client.ts';
 import {semanticEmbeddingManifests} from './semantic-embedding-manifest.ts';
 
 export type LocalFont={id:string;label:string;format:'woff2'|'woff'|'ttf'|'otf';bytes:number;sha256:string};
-export type HarnessProfile={id:string;label:string;enabledTools:string[];maxToolCalls:number|null;maxResultChars:number;maxGenerationTokens?:number|null;maxGenerationMs?:number|null};
-export type HarnessPreferences={replyStyle:ReplyStyle;userGuidance:string;activeProfileId:string;profiles:HarnessProfile[]};
 export type PreferenceGroup='models'|'appearance'|'connection'|'harness';
 export const PREFERENCE_SCHEMA_VERSION=7 as const;
 export class UnsupportedPreferenceSchemaError extends Error{

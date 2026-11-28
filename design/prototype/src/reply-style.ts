@@ -1,5 +1,4 @@
-export const REPLY_STYLES=['balanced','concise','detailed'] as const;
-export type ReplyStyle=typeof REPLY_STYLES[number];
+import {REPLY_STYLES,type ReplyStyle} from './reply-style-contract.ts';
 
 /** One language contract for both agent completion and separate answer generation.
  * Tool guides, application labels and source languages do not choose the reply language. */

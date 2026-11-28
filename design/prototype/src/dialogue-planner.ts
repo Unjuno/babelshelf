@@ -11,7 +11,8 @@ import {DEFERRED_TOOL_READ_SKILL_ID,DEFERRED_TOOL_SEARCH_CAPABILITY,DEFERRED_TOO
 import {nativeFinalPlanTools} from './native-output-format.ts';
 import {agentEvidenceFromCalls,agentCalculationsFromCalls,agentClockReadingsFromCalls,agentCustomResultsFromCalls,agentToolInfoFromCalls,bindMixedSourceLabelAnswer,InternalImplementationLeakError,InternalSourceLabelLeakError,sourceComparisonInstruction,type SourceLabelAnswer,type LabelledSource,type LabelledWebSource} from './agent-evidence.ts';
 import {createWebCitation,type WebSnapshot} from './web-evidence.ts';
-import {answerLanguageInstruction,englishOneSentenceFormat,groundedOutputTokens,replyStyleInstruction,requestsExtendedReply,type ReplyStyle} from './reply-style.ts';
+import {answerLanguageInstruction,englishOneSentenceFormat,groundedOutputTokens,replyStyleInstruction,requestsExtendedReply} from './reply-style.ts';
+import type {ReplyStyle} from './reply-style-contract.ts';
 import {AgentContextCapacityError,type AgentToolCapability} from './agent-loop.ts';
 import {historyPayload,historyMessages} from './conversation.ts';
 import type {DialogueContext} from './dialogue-contract.ts';

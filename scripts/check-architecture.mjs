@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const sourceRoot=path.resolve('design/prototype/src');
 const extensions=['.ts','.tsx','.js','.jsx'];
-const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','model-registry-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts','dialogue-contract.ts','working-file-contract.ts','file-result-contract.ts','original-ref-contract.ts','source-metadata-contract.ts']);
+const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','model-registry-contract.ts','harness-preference-contract.ts','reply-style-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts','dialogue-contract.ts','working-file-contract.ts','file-result-contract.ts','original-ref-contract.ts','source-metadata-contract.ts']);
 const files=[];
 async function collect(directory){
  for(const entry of await fs.readdir(directory,{withFileTypes:true})){
@@ -26,7 +26,8 @@ for(const file of files){
   if(target)graph.get(file).push(target);
  }
 }
-for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts'],['DialogueOutcome','dialogue-contract.ts'],['DialogueTurn','dialogue-contract.ts'],['Dialogue','dialogue-contract.ts'],['DialogueContext','dialogue-contract.ts'],['WorkingFile','working-file-contract.ts'],['FileResult','file-result-contract.ts'],['OriginalRef','original-ref-contract.ts'],['SourceMetadataGuard','source-metadata-contract.ts'],['CustomLocalModel','model-registry-contract.ts'],['CustomDecisionModel','model-registry-contract.ts'],['CustomSpeechModel','model-registry-contract.ts'],['CustomVisionModel','model-registry-contract.ts'],['ModelSetSelection','model-registry-contract.ts'],['UserModelSet','model-registry-contract.ts']]){
+const contractTypeOwners=new Map([['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts'],['DialogueOutcome','dialogue-contract.ts'],['DialogueTurn','dialogue-contract.ts'],['Dialogue','dialogue-contract.ts'],['DialogueContext','dialogue-contract.ts'],['WorkingFile','working-file-contract.ts'],['FileResult','file-result-contract.ts'],['OriginalRef','original-ref-contract.ts'],['SourceMetadataGuard','source-metadata-contract.ts'],['CustomLocalModel','model-registry-contract.ts'],['CustomDecisionModel','model-registry-contract.ts'],['CustomSpeechModel','model-registry-contract.ts'],['CustomVisionModel','model-registry-contract.ts'],['ModelSetSelection','model-registry-contract.ts'],['UserModelSet','model-registry-contract.ts'],['HarnessProfile','harness-preference-contract.ts'],['HarnessPreferences','harness-preference-contract.ts'],['ReplyStyle','reply-style-contract.ts']]);
+for(const [name,owner] of contractTypeOwners){
  const declarations=[];
  for(const file of files){const source=await fs.readFile(file,'utf8');for(const match of source.matchAll(new RegExp(`\\b(?:export\\s+)?type\\s+${name}\\s*=`, 'g')))declarations.push({file,offset:match.index});}
  if(declarations.length!==1||declarations[0].file!==path.join(sourceRoot,owner))throw Error(`${name} must have one declaration in ${owner}`);
@@ -35,8 +36,8 @@ for(const file of files){
  const source=await fs.readFile(file,'utf8');
  for(const match of source.matchAll(/\b(?:import|export)\s+(?:type\s+)?\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g)){
   const imported=match[1].split(',').map(value=>value.trim().replace(/^type\s+/,'').split(/\s+as\s+/)[0]);
-  const misplaced=imported.filter(name=>['CustomLocalModel','CustomDecisionModel','CustomSpeechModel','CustomVisionModel','ModelSetSelection','UserModelSet'].includes(name));
-  if(misplaced.length&&resolveRelative(file,match[2])!==path.join(sourceRoot,'model-registry-contract.ts'))throw Error(`Model registry contracts must be imported directly from model-registry-contract.ts: ${path.relative(sourceRoot,file)} (${misplaced.join(', ')})`);
+  const misplaced=imported.filter(name=>contractTypeOwners.has(name)&&resolveRelative(file,match[2])!==path.join(sourceRoot,contractTypeOwners.get(name)));
+  if(misplaced.length)throw Error(`Contract types must be imported directly from their owner: ${path.relative(sourceRoot,file)} (${misplaced.join(', ')})`);
  }
 }
 for(const [name,owner] of [['requestNamesWorkingFile','dialogue-request.ts'],['requestNamesEarlierDialogue','dialogue-request.ts'],['planningContextForInputs','dialogue-context-projection.ts']]){

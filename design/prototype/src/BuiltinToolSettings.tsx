@@ -1,5 +1,5 @@
 import {builtinTools,builtinToolIds} from './tools/builtin-tools.ts';
-import type {HarnessProfile} from './preference-records.ts';
+import type {HarnessProfile} from './harness-preference-contract.ts';
 
 export function BuiltinToolSettings({profile,disabled,onChange}:{profile:HarnessProfile;disabled:boolean;onChange:(id:string,enabled:boolean)=>void}){
  return <section aria-label="Built-in tools"><h2>Tools</h2>{builtinTools.map(({tool,settingsLabel})=>{
