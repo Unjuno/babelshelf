@@ -2,7 +2,7 @@ import {localAdapters} from './local-capabilities.ts';
 import {initialPreparationPlan} from './initial-preparation.ts';
 import {semanticEmbeddingManifest,semanticEmbeddingManifests} from './semantic-embedding-manifest.ts';
 import type {ModelSetSelection,UserModelSet} from './model-registry-contract.ts';
-import type {Preferences} from './preference-records.ts';
+import type {ModelPreferences} from './model-preference-contract.ts';
 
 export type ModelSetId=string;
 export type ModelSet=UserModelSet;
@@ -34,16 +34,16 @@ export const modelSets:readonly ModelSet[]=Object.freeze([
  {id:'local-full-search-311m',label:'Full local · higher quality Search',detail:'Adds Granite Embedding 311M multilingual · 346 MB · not benchmarked on device',models:{textModel:'lfm3-1.7b-qad-q4-0',decisionModel:'d1-omni-600M',transcriptionModel:'whisper-tiny',ocrModel:'tesseract-7',visionModel:'lfm25-vl-450m-q4f16',searchModel:'granite-embedding-311m-multilingual-r2-onnx'}},
 ]);
 
-const connected=(set:ModelSet,value?:Preferences['models'])=>{
+const connected=(set:ModelSet,value?:ModelPreferences)=>{
  const roles=[['textModel','text','text.generate'],['decisionModel','decision','decision.classify'],['transcriptionModel','transcription','audio.transcribe'],['ocrModel','ocr','image.ocr'],['visionModel','vision','image.describe']] as const;
  for(const [selection,role,capability] of roles){const id=set.models[selection];if(!id)continue;const adapter=localAdapters.some(item=>item.models.includes(id)&&item.capabilities.includes(capability));const custom=role==='text'?value?.customModels.some(model=>model.id===id&&model.role==='text'&&['webml-qwen35','wllama-lfm2','wllama-lfm3','wllama-qwen3'].includes(model.engine)):role==='decision'?value?.customDecisionModels.some(model=>model.id===id&&model.role==='decision'&&model.engine==='onnx-d1-text'):role==='transcription'?value?.customSpeechModels.some(model=>model.id===id&&model.role==='speech'&&model.engine==='transformers-whisper-onnx'):role==='vision'?value?.customVisionModels.some(model=>model.id===id&&model.role==='vision'&&model.engine==='transformers-lfm2-vl-onnx'):false;if(!adapter&&!custom)throw Error('Model set contains a model without a connected role adapter');}
  const searchId=set.models.searchModel;if(searchId&&!semanticEmbeddingManifests.some(item=>item.id===searchId))throw Error('Model set contains a Search model without a connected adapter');
 };
 for(const set of modelSets)connected(set);
 
-export function modelSetsFor(value:Preferences['models']):readonly ModelSet[]{return [...value.customSets,...modelSets];}
+export function modelSetsFor(value:ModelPreferences):readonly ModelSet[]{return [...value.customSets,...modelSets];}
 
-export function createUserModelSet(value:Preferences['models'],label:string,detail:string):UserModelSet{
+export function createUserModelSet(value:ModelPreferences,label:string,detail:string):UserModelSet{
  const name=label.trim(),description=detail.trim();
  if(!name||name.length>48||/[\u0000-\u001f\u007f]/.test(name))throw Error('Set name must be 1–48 characters');
  if(!description||description.length>120||/[\u0000-\u001f\u007f]/.test(description))throw Error('Set detail must be 1–120 characters');
@@ -57,11 +57,11 @@ export function createUserModelSet(value:Preferences['models'],label:string,deta
  return set;
 }
 
-export function matchingModelSet(value:Preferences['models']):ModelSet|undefined{
+export function matchingModelSet(value:ModelPreferences):ModelSet|undefined{
  return modelSetsFor(value).find(set=>Object.entries(set.models).every(([key,id])=>value[key as keyof ModelSetSelection]===id));
 }
 
-export function applyModelSet(value:Preferences['models'],id:string):Preferences['models']{
+export function applyModelSet(value:ModelPreferences,id:string):ModelPreferences{
  const set=modelSetsFor(value).find(candidate=>candidate.id===id);if(!set)throw Error('Unknown model set');connected(set,value);
  return {...value,...set.models,
   textLibrary:set.models.textModel?[...new Set([...value.textLibrary,set.models.textModel])]:value.textLibrary,
@@ -75,7 +75,7 @@ export function applyModelSet(value:Preferences['models'],id:string):Preferences
 
 // Cold acquisition total for the selected roles, before any existing local
 // cache is considered. This is a manifest byte count, not a device-fit claim.
-export function modelSetAssetBytes(value:Preferences['models'],id:string):number{
+export function modelSetAssetBytes(value:ModelPreferences,id:string):number{
  const selected=applyModelSet(value,id);
  const plan=initialPreparationPlan(selected,{text:false,speech:false,ocr:false,decision:false,vision:false,search:false});
  return plan.bytes;

@@ -4,7 +4,7 @@ import {decisionManifest} from './decision-assets.ts';
 import {capabilityState} from './local-capabilities.ts';
 import {isOnnxText} from './text-model-manifest.ts';
 import {combinedLocalTextManifest as combinedTextManifest,isLfmText} from './lfm-text-manifest.ts';
-import type {Preferences} from './preference-records.ts';
+import type {ModelPreferences} from './model-preference-contract.ts';
 import textManifest from '../../../dist/model-manifest.json' with {type:'json'};
 // @ts-expect-error Shared strict manifest builder is JavaScript.
 import {withLocalModels} from '../../../dist/local-model-manifest.js';
@@ -19,7 +19,7 @@ type Role=PreparationRole;
 export function preparationEstimateMayBeTooLarge(requiredBytes:number,availableBytes:number|null|undefined){
  return Number.isSafeInteger(requiredBytes)&&requiredBytes>0&&typeof availableBytes==='number'&&Number.isFinite(availableBytes)&&availableBytes>=0&&availableBytes<requiredBytes;
 }
-export function preparationRoles(value:Preferences['models'],onlyRole?:PreparationRole):PreparationRole[]{
+export function preparationRoles(value:ModelPreferences,onlyRole?:PreparationRole):PreparationRole[]{
  const selections=[['text','textModel'],['speech','transcriptionModel'],['ocr','ocrModel'],['decision','decisionModel'],['vision','visionModel'],['search','searchModel']] as const;
  return selections.filter(([role,key])=>(!onlyRole||role===onlyRole)&&!!value[key]).map(([role])=>role);
 }
@@ -30,7 +30,7 @@ export function textPreparationStatus(assets:Record<string,{filesPresent?:boolea
  const status=assets[model];
  return {text:status?.filesPresent===true&&status?.statusError!==true,textStatusError:status?.statusError===true};
 }
-export function initialPreparationPlan(value:Preferences['models'],ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;search?:boolean;runtime?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
+export function initialPreparationPlan(value:ModelPreferences,ready:Record<'text'|'speech'|'ocr',boolean>&{decision?:boolean;vision?:boolean;search?:boolean;runtime?:boolean;textStatusError?:boolean},onlyRole?:PreparationRole){
  const models=structuredClone(value),roles=preparationRoles(value,onlyRole),text=roles.includes('text')?combinedTextManifest(withLocalModels(textManifest,value.customModels),'',value.customModels).models.find((m:{id:string})=>m.id===value.textModel):undefined;
  if(roles.includes('text')&&!text)throw Error('Text runtime not connected');
  const selectedSpeech=value.customSpeechModels.find(model=>model.id===value.transcriptionModel);
@@ -65,7 +65,7 @@ export function initialPreparationPlan(value:Preferences['models'],ready:Record<
 }
 export type InitialPreparation=ReturnType<typeof initialPreparationPlan>;
 type PreparationStep=InitialPreparation['steps'][number];
-export function assertPreparationSettings(plan:InitialPreparation,current:{models:Preferences['models'];connection:Pick<ConnectionPreferences,'downloads'>},step?:PreparationStep){
+export function assertPreparationSettings(plan:InitialPreparation,current:{models:ModelPreferences;connection:Pick<ConnectionPreferences,'downloads'>},step?:PreparationStep){
  if(JSON.stringify(current.models)!==plan.expected)throw Error('Model settings changed · review again');
  if(step&&!step.ready&&step.bytes>0&&!current.connection.downloads)throw Error('Downloads are off');
 }
