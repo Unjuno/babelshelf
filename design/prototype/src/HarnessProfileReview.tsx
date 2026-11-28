@@ -1,4 +1,5 @@
-import {parsePreference,type HarnessProfile} from './preference-records';
+import type {HarnessProfile} from './harness-preference-contract.ts';
+import {parsePreference} from './preference-records';
 import type {CorrectionProposal} from './note-corrections';
 import {builtinTools} from './tools/builtin-tools';
 

@@ -1,6 +1,7 @@
 import {prepareCorrection} from './note-corrections.ts';
 import {settingsCorrectionTarget} from './settings-corrections.ts';
-import {initialPreferenceNotes,parsePreference,updatePreference,type HarnessPreferences,type PreferenceRecord} from './preference-records.ts';
+import type {HarnessPreferences} from './harness-preference-contract.ts';
+import {initialPreferenceNotes,parsePreference,updatePreference,type PreferenceRecord} from './preference-records.ts';
 import {MAX_CONFIGURED_AGENT_TOOLS} from './agent-loop.ts';
 import type {ToolPackage} from './tools/tool-registry.ts';
 

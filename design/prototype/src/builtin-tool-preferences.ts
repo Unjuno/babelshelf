@@ -1,5 +1,5 @@
 import {SAFE_AGENT_TOOL_IDS} from './agent-loop.ts';
-import type {HarnessPreferences} from './preference-records.ts';
+import type {HarnessPreferences} from './harness-preference-contract.ts';
 
 export function setBuiltinToolEnabled<T extends HarnessPreferences>(value:T,profileId:string,id:string,enabled:boolean):T{
  if(!SAFE_AGENT_TOOL_IDS.includes(id as (typeof SAFE_AGENT_TOOL_IDS)[number])||value.activeProfileId!==profileId)return value;

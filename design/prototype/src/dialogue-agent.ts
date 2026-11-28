@@ -7,7 +7,7 @@ import {PlannerOutputError} from './planner-error.ts';
 import {DEFERRED_TOOL_SEARCH_ID} from './deferred-tool-search.ts';
 import {requestsImplicitSearchReadAnswer} from './saved-knowledge-reference.ts';
 import {validAgentResultAction} from './harness-actions.ts';
-import type {ReplyStyle} from './reply-style.ts';
+import type {ReplyStyle} from './reply-style-contract.ts';
 // A read-only tool result does not imply a request to create a note. Apply
 // this only when the user affirmatively asks for an answer and has not also
 // asked to save or create something; ambiguous requests keep normal planning.
