@@ -1,4 +1,5 @@
-import {readOriginal,originalRef,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {readOriginal,originalRef,type OriginalAsset} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 import {ocrManifest,ocrModelPins,ocrFiles,type OcrLanguage} from './ocr-assets.ts';
 // @ts-expect-error Canonical baseline is JavaScript.
 import {createNote} from '../../../dist/core.js';

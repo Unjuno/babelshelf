@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {knowledge} from './useKnowledge';
-import {prepareOriginal,type OriginalAsset,type OriginalRef} from './original-assets';
+import {prepareOriginal,type OriginalAsset} from './original-assets';
+import type {OriginalRef} from './original-ref-contract';
 const EMPTY_REGIONS:number[][]=[];
 export function OcrImagePreview({input,regions=EMPTY_REGIONS}:{input:File|OriginalAsset|OriginalRef;regions?:number[][]}){
  const [zoom,setZoom]=useState(1),[image,setImage]=useState(''),[error,setError]=useState('');

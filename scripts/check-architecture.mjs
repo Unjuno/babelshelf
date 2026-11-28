@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const sourceRoot=path.resolve('design/prototype/src');
 const extensions=['.ts','.tsx','.js','.jsx'];
-const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts','dialogue-contract.ts','working-file-contract.ts']);
+const protectedContracts=new Set(['knowledge-contract.ts','backup-contract.ts','custom-vision-contract.ts','source-reference-contract.ts','voice-input-contract.ts','text-transform-contract.ts','transcript-citation.ts','input-reading-contract.ts','dialogue-contract.ts','working-file-contract.ts','file-result-contract.ts','original-ref-contract.ts','source-metadata-contract.ts']);
 const files=[];
 async function collect(directory){
  for(const entry of await fs.readdir(directory,{withFileTypes:true})){
@@ -26,7 +26,7 @@ for(const file of files){
   if(target)graph.get(file).push(target);
  }
 }
-for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts'],['DialogueOutcome','dialogue-contract.ts'],['DialogueTurn','dialogue-contract.ts'],['Dialogue','dialogue-contract.ts'],['DialogueContext','dialogue-contract.ts'],['WorkingFile','working-file-contract.ts']]){
+for(const [name,owner] of [['SourceRef','source-reference-contract.ts'],['VoiceInput','voice-input-contract.ts'],['TextToolReceipt','text-transform-contract.ts'],['AudioRange','transcript-citation.ts'],['InputReadingRef','input-reading-contract.ts'],['CurrentInputRef','input-reading-contract.ts'],['DialogueOutcome','dialogue-contract.ts'],['DialogueTurn','dialogue-contract.ts'],['Dialogue','dialogue-contract.ts'],['DialogueContext','dialogue-contract.ts'],['WorkingFile','working-file-contract.ts'],['FileResult','file-result-contract.ts'],['OriginalRef','original-ref-contract.ts'],['SourceMetadataGuard','source-metadata-contract.ts']]){
  const declarations=[];
  for(const file of files){const source=await fs.readFile(file,'utf8');for(const match of source.matchAll(new RegExp(`\\b(?:export\\s+)?type\\s+${name}\\s*=`, 'g')))declarations.push({file,offset:match.index});}
  if(declarations.length!==1||declarations[0].file!==path.join(sourceRoot,owner))throw Error(`${name} must have one declaration in ${owner}`);

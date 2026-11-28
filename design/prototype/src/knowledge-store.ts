@@ -34,7 +34,8 @@ import {parseTask,taskDefinition,taskNextAt,reviseTaskNote,createTaskNote,taskRu
 import {applyCorrection,undoCorrection,correctionProposalHash,type CorrectionProposal,type CorrectionReceipt} from './note-corrections.ts';
 import {stateHash} from './backup-hash.ts';
 import type {StateSnapshot,RestoreMode} from './backup-contract.ts';
-import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset,type OriginalRef} from './original-assets.ts';
+import {originalNote,originalKey,readOriginal,validateOriginalLinks,checkAttachmentBatch,type OriginalAsset} from './original-assets.ts';
+import type {OriginalRef} from './original-ref-contract.ts';
 import {transcriptNote,type Transcript} from './speech-transcript.ts';
 import {validateDialogue,emptyDialogue} from './conversation.ts';
 import type {Dialogue} from './dialogue-contract.ts';

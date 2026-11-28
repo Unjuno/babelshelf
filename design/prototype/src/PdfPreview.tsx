@@ -1,7 +1,8 @@
 import {useEffect,useState} from 'react';
 import {knowledge} from './useKnowledge';
 import {verifyProductRuntimeAssets} from './product-runtime-assets';
-import {prepareOriginal,type OriginalAsset,type OriginalRef} from './original-assets';
+import {prepareOriginal,type OriginalAsset} from './original-assets';
+import type {OriginalRef} from './original-ref-contract';
 const EMPTY_REGIONS:number[][]=[];
 export function PdfPreview({input,initialPage=1,regions=EMPTY_REGIONS,onPrepare}:{input:File|OriginalAsset|OriginalRef;initialPage?:number;regions?:number[][];onPrepare?:()=>void}){
  const [zoom,setZoom]=useState(1),[page,setPage]=useState(initialPage),[result,setResult]=useState<{image:string;pages:number}|null>(null),[error,setError]=useState('');

@@ -4,8 +4,8 @@
 import {latest,validateGroundingRefs} from '../../../dist/core.js';
 // @ts-expect-error Shared canonical path contract is JavaScript.
 import {notePath} from '../../../dist/files.js';
+import type {SourceMetadataGuard} from './source-metadata-contract.ts';
 export type SavedSourceRef={noteId:string;revision:number;start:number;end:number;quote:string;citedQuote?:string};
-export type SourceMetadataGuard={noteId:string;revision:number;snapshot:string};
 export function isSourceMetadataGuard(value:unknown):value is SourceMetadataGuard{
  if(!value||typeof value!=='object')return false;
  const guard=value as SourceMetadataGuard;
